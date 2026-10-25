@@ -366,6 +366,24 @@ These are documentation corrections using existing measurements; they require no
 runtime rerun and confer no production qualification or approval. Review logging
 is the only change to this spec.
 
+### October 25 d41a3c55 continuation review
+
+Review covers this run's Verification append in the original story against
+`d41a3c55a684491d02f61c5ea98e0f74332b5d4d`. The frozen baseline, statuses and
+whole-story gates remain unchanged. The edge-case and verification-gap reviewers
+found no additional issues.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| d41a3c55 Blind 1: environment missing from copyable commands | low | patch | The temporary recorder sets all four variables for every command; only the proof fixture consumes the candidate selector. Add explicit exports and correct the integration-only wording so a copied invocation preserves the measured settings. |
+| d41a3c55 Blind 2: restart process identities compressed | medium | patch | Both restart manifests retain original and replacement host/sidecar PIDs plus unchanged internal gRPC ports. A labeled table makes the replacement and focused/full-class distinction assessable without temporary captures. |
+| d41a3c55 Blind 3: projection log correlation omitted | low | patch | The real-projection manifest binds synthetic tenant, topic, aggregate and correlation values to the reported connections and readback. Record those test-generated identifiers while retaining the shared-topology limitation. |
+| d41a3c55 Blind 4: metadata boundary results omitted | medium | patch | Both restart captures record 2,048 serialized bytes accepted on both hosts and 2,129/2,050/2,060-byte vectors rejected. State those measured outcomes beside the unchanged contract limits. |
+
+These corrections use existing command receipts and scenario captures. No runtime
+tests were repeated for documentation edits. Review logging is the only change to
+this spec; local passes supply no CI result, production qualification or approval.
+
 ## Verification
 
 The October 25 executed commands, counts, UTC intervals and local-only limitations

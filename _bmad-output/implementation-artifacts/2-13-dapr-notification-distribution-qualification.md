@@ -727,3 +727,561 @@ spec/sprint `in-progress`, unchecked whole-story tasks and
 
 Final documentation checks: `bash scripts/check-committed-files.sh` passed
 (9,039 tracked files checked), and `git diff --check` passed.
+
+## Verification — October 25 d41a3c55 Continuation
+
+Source revision: `d41a3c55a684491d02f61c5ea98e0f74332b5d4d`. CI run link: none;
+these are local checks under AD-12. The clean starting tree, HEAD and all
+root-declared submodule checkouts remained unchanged through the commands below.
+The complete Debug source-reference solution build passed, including both host
+graphs. It changed 56 selected output files, with no measured source or runtime
+changes. Before/after captures of 12,556 source/configuration files and 545 selected
+assembly/deps/runtimeconfig/executable files stayed unchanged during all five test
+commands. This is incremental-build and execution-stability evidence, not clean
+reproducibility or atomic launch-identity proof. The only implementation edit is
+this Verification append; no behavioral correction is claimed.
+
+The explicitly selected fixture runtime was
+`/tmp/eventstore-2-13-retirement-oduc267u/daprd-retirement`, version
+`1.18.7-local-2-13-retirement`, SHA-256
+`a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6`.
+Installed daprd `1.18.7` remained SHA-256
+`e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488`.
+Observed tools were SDK `10.0.402`, .NET `10.0.13`, xUnit runner `4.0.2`, Dapr
+CLI `1.18.2` and Aspire CLI `13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8`.
+`go version` exited 127 (`go: command not found`), and
+`rg --files /tmp/eventstore-2-13-retirement-oduc267u -g 'go.mod' -g 'go.sum'`
+found no manifests. Current Go/source concurrency requalification remains unrun;
+the earlier runtime reconstruction limitations still apply.
+
+The recorder set all four environment variables below for every recorded command,
+including build, lifecycle and focused-server commands. For shell replay:
+
+```sh
+export EnableKeycloak=false
+# Integration-proof runtime/output settings; also present on the other commands.
+export HEXALITH_STORY_2_13_DAPRD_PATH=/tmp/eventstore-2-13-retirement-oduc267u/daprd-retirement
+export HEXALITH_STORY_2_13_EVIDENCE_DIRECTORY=/tmp/story-2-13-20261025-d41a3c55-nxrvyikt/scenario-output
+export R10A2_EVIDENCE_DIRECTORY=/tmp/story-2-13-20261025-d41a3c55-nxrvyikt/redis-output
+```
+
+Only the integration proofs consume the runtime/output settings. The candidate
+selection applies only to the two proof sidecars; composed AppHosts and the
+ordinary Direct fixture use installed daprd. Local logs/captures remain
+temporary output under that parent directory, with no committed packet or validator.
+The existing `/usr/bin/docker` worked and reported server `29.8.2`; no adapter
+or daemon change was needed.
+
+The baseline and auxiliary topology used these exact commands:
+
+```sh
+APPHOST=src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+aspire run --apphost "$APPHOST" --detach --no-build --non-interactive --format Json
+aspire wait eventstore --timeout 45 --apphost "$APPHOST" --non-interactive
+aspire describe --apphost "$APPHOST" --format Json --non-interactive
+aspire stop --apphost "$APPHOST" --non-interactive
+# After the build, start the auxiliary topology and retain its sample resource.
+aspire run --apphost "$APPHOST" --detach --no-build --non-interactive --format Json
+aspire wait sample --timeout 45 --apphost "$APPHOST" --non-interactive
+aspire wait sample-dapr-cli --status up --timeout 45 --apphost "$APPHOST" --non-interactive
+aspire resource eventstore stop --apphost "$APPHOST" --non-interactive
+aspire resource eventstore-dapr-cli stop --apphost "$APPHOST" --non-interactive
+```
+
+All lifecycle commands passed. Baseline AppHost/CLI PIDs were `99943`/`99686`,
+with inspected project/sidecar resources Running/Healthy; auxiliary PIDs were
+`36828`/`36742`. During the focused restart, sanitized `aspire describe` at
+`10:22:02 UTC` showed sample/sample-sidecar Running/Healthy and
+eventstore/eventstore-sidecar Finished. Explicit-AppHost `aspire stop` ended the
+auxiliary topology before the projection/Direct pair. Read-only process inspection
+also found unrelated FrontComposer `eventstore`/`sample` sidecars sharing placement
+`50005` and scheduler `50006`; those peers were preserved. This run therefore
+establishes no isolated two-replica placement or exclusive sample-dispatch claim.
+Pre/post `docker inspect` and `docker image inspect` found unchanged Redis,
+placement and scheduler container IDs, start times, image IDs and digests, matching
+the earlier support table. No shared service was reconfigured or stopped.
+
+The build and five test commands ran sequentially; read-only observations also ran
+while tests were active. Every test row has zero failures, skips and runner errors.
+
+| Exact command | Result and UTC interval on 2026-10-25 |
+| --- | --- |
+| `dotnet build Hexalith.EventStore.slnx -c Debug -m:1 -p:UseHexalithProjectReferences=true` | Passed, 0 warnings/errors; `10:17:12.667964–10:21:07.993883`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -method '*DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState'` | 1 passed; `10:21:48.650747–10:22:43.258977`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -class '*SignalRDaprDistributionRuntimeProofTests'` | 6 passed; `10:22:52.118230–10:25:24.867240`; no `-stopOnFail`. |
+| `tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests -class '*ETagActorTests' -class '*SignalRProjectionChangedBroadcasterTests' -class '*DaprProjectionChangeNotifierTests' -class '*DaprProjectionChangeNotifierSignalRTests' -class '*ProjectionChangedNotificationValidatorTests' -class '*DomainServiceWorkloadAssertionHandlerTests'` | 102 passed; `10:25:38.851785–10:25:39.812927`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -class '*SignalRDaprProjectionDispatchProofTests' -class '*ValidProjectionRoundTripE2ETests'` | 2 passed; `10:25:46.221836–10:26:48.382832`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -class '*SignalRRedisBackplaneRuntimeProofTests'` | 1 passed; `10:27:16.020545–10:30:10.647651`. |
+
+The Redis report's static `dotnet test ... --filter` template was not executed;
+the direct executable command above is authoritative. Key tested DLL hashes below
+agree before/after all five test commands; paths are relative to the owning
+project's `bin/Debug/net10.0/`:
+
+| Output | SHA-256 |
+| --- | --- |
+| `Hexalith.EventStore.dll` | `8c1f6be1f7ed24bb5fecb3e73739deb9bb08d4cfc0f81b89fac3e227f7c57007` |
+| `Hexalith.EventStore.Server.dll` | `ab3b350237867d32233ea4c644cf1f20c7de55def351826a516c6624e660c08d` |
+| `Hexalith.EventStore.Gateway.dll` | `b014cdc0fe249410f4a809707d483161b27a95eec58b4c8c4cd12c640ac2453f` |
+| `Hexalith.EventStore.Sample.dll` | `71d0ed4c2fba233fc8274e4f9c8dc3891d6f418796982b4b5d8b029657a579d7` |
+| `Hexalith.EventStore.AppHost.dll` | `a2492dbafdd80dac6525406f38be064b1d893d741303d95ae059d8f046d2410d` |
+| `Hexalith.EventStore.IntegrationTests.dll` | `cc02398d94acfb4b8e371caf8225a8565dc3c2cf92c88f5ced7041cdbec617d0` |
+| `Hexalith.EventStore.Server.Tests.dll` | `986089c57d77e399a5ea6054b4d33ce44634829f98d818651b8edd556eb58f71` |
+
+The exact-topic Development profile remained `pubsub.redis` v1 with
+`consumerID: "{uuid}"`, `state.redis` v1 and `dapr.io/v2alpha1` subscriptions,
+shared app ID `eventstore` and independent proof sidecars. Focused/full-class
+reused-endpoint captures proved initial actor ownership on the second host and
+Dapr persisted version/ETag `1` → `2`. The second replica's process replacement
+and retained internal gRPC endpoint were:
+
+| Run | Original host PID | Restored host PID | Original sidecar PID | Restored sidecar PID | Original internal gRPC port | Restored internal gRPC port |
+| --- | --- | --- | --- | --- | --- | --- |
+| Focused restart | `55116` | `57668` | `55182` | `87547` | `42209` | `42209` |
+| Full distribution class | `562` | `2218` | `682` | `28483` | `41149` | `41149` |
+
+Both restart manifests record acceptance of exactly 2,048 serialized metadata bytes
+on both hosts and rejection of the 2,129-, 2,050- and 2,060-byte vectors on both
+hosts. Each run records the same three distinct rejected callback event IDs on
+its two hosts, alongside the accepted boundary control.
+
+Reset disconnected 33 connections and rejected 1,554 reconnects;
+blackhole discarded 3,766 bytes without proxy disconnects or reconnect rejection.
+Both hosts' reads ended with `OperationCanceledException` in 2,000.0968–2,004.5586 ms
+against the unchanged 2,000 ms caller budget/5,000 ms outer bound. Both fault cases
+read back versions `[1,1]` and ETags `["1","1"]` after restore, then final version
+`2`/ETag `"2"`. These synthetic checks establish no canonical UI freshness or
+real projection completion; outage publication remains unknown until reconciliation.
+
+The separate real-projection proof recorded command `Completed`, one event,
+`ProjectionBacked` provenance, count `1` on both hosts and identical authoritative
+ETag `"Y291bnRlcg.L89o_pBtNUSyl3AYpOMRvA"`. Both authorized clients received
+signal/detail with scope `counter-status` and `change-kind=counter-projection-updated`.
+Tenant B received neither during four concurrent one-second channel reads.
+The manifest's test-generated synthetic identifiers correlate its command,
+projection and callback logs; they confer no isolation from the shared topology
+described above:
+
+| Identifier | Test-generated value |
+| --- | --- |
+| Tenant | `tenant-a-f789caf82b61499c9bbd855884efbe0b` |
+| Exact topic | `tenant-a-f789caf82b61499c9bbd855884efbe0b.counter.projection-changed` |
+| Aggregate | `distribution-projection-38c954518c324beda9c662fe143db56c` |
+| Correlation | `6a3db09c-399b-4329-9cbe-65cb6c77ef76` |
+
+| Proof node | Host / sidecar PID | Authorized connection | Other-tenant connection |
+| --- | --- | --- | --- |
+| First | `18627` / `18663` | `5UoADJ964-2eJs0HXuRI0w` | `XkREK-LVgyv8mdhO9VFdGw` |
+| Second | `20023` / `20284` | `pyV9ghpS7ilwXhJ6NyvXGw` | `ChKhRC-Cv1fyUGm8Tx1gKQ` |
+
+That scenario's generated SHA-256 identities were `pubsub.yaml` =
+`483c2de2d90aa876a80efe6499edc98a82903a46ddd98a79a9f610ec2719b001`,
+`statestore.yaml` = `8cfd8564018ac754f5d3f14acfc215f3d2caf186cb1e14b7b377b1d4660d023a`
+and `subscription-0.yaml` = `e2a8afede65000a8fbd279acf8bb7bfcc707c09eb8cb03e1fc7ce3cd36feeefa`;
+these bytes identify only that scenario. Authorization, serialized metadata bounds,
+caller budgets and the existing 15-second signal deadline were unchanged.
+
+Final explicit-AppHost `aspire stop`/`aspire describe` found no running AppHost;
+the `10:30:51 UTC` product-process scan found no workspace proof host or selected
+candidate sidecar. Other workspaces' processes were preserved. The inotify ceiling
+remained `1,048,576` at every captured boundary; the final accessible scan counted
+3,796 watch lines across 18,591 readable fdinfo files, with 37 inaccessible entries.
+No sysctl write was needed.
+
+The historical projection failures and Redis identity ambiguity remain unexplained;
+current passes do not resolve them. Go requalification and CI remain absent, and
+the separate Contracts validator blocker was not rerun, reclassified or exempted.
+Production runtime/durable broker/enrolled issuer, shipped topic enrollment,
+canonical freshness fault behavior, atomic both-host transition/rollback and owner
+disposition remain gated. Original story `backlog`, active spec/sprint `in-progress`,
+unchecked whole-story tasks, frozen intent and `accepted_exceptions: []` are unchanged.
+
+Documentation checks: `bash scripts/check-committed-files.sh` passed (9,039 tracked
+files checked); `git diff --check` passed.
+
+## Verification — October 25 Pinned Go Reconstruction And Controls
+
+Source revision: `d41a3c55a684491d02f61c5ea98e0f74332b5d4d`. Historical input
+revision: `b7ba9bb1fdff85fb47817d35506bd6ca81b23d70`; Dapr upstream:
+`b32a815fa2260983e181b95272ea555fe17d3895`. CI run/link: none; these are local
+checks. No Go-retirement job was found in the repository's tracked
+`.github/workflows`; this does not describe uninspected remote reusable workflows.
+
+The missing-source/toolchain reconstruction gap is resolved, but the existing Go
+qualification does **not** pass. Two full race runs exposed separate failures:
+a deadline error-chain assertion and a data race in the upstream scaling test's
+reflective membership assertion. Both were reproduced on pristine pinned upstream
+source. The original failing tests and historical results remain unchanged;
+passing focused controls and diagnostic variants do not replace those failures.
+No acquisition input remains missing.
+
+All reconstruction, caches, logs and diagnostic overlays are disposable output
+under `/tmp/story-2-13-go-20261025-7_9k48d6`. No evidence packet or validator was
+added to the repository. The only task edit is this append; the pre-existing story
+and spec changes are preserved. The installed and retained fixture runtimes,
+repository dependencies, production graphs, original story `backlog`, spec/sprint
+`in-progress`, unchecked whole-story tasks and accepted-exception register remain
+unchanged. No .NET tests were rerun: no application source or selected runtime was
+changed. No runtime was installed or substituted into a fixture.
+
+Reconstruction used the historical `runs-2026-10-21-concurrency-retirement/`
+patch, build receipt and source inventory, plus the original acquisition and
+manifest records from `runs-2026-10-21-runtime-recovery/`, all read with `git show`
+from the historical input revision above. Five local Go test files were recovered
+from `runs-2026-10-21-concurrency-retirement/snapshots/retirement-runtime-build/external/`:
+`local_cancellation_test.go.source`, `local_concurrency_test.go.source`,
+`local_recovery_test.go.source`, `local_retirement_test.go.source` and
+`local_retirement_pool_test.go.source`. They were copied to their original router
+or manager paths without editing. The reconstructed tree matches all **5,587**
+entries in `before-candidate-build-source-inventory.json`: **4,441 files** and
+**1,146 directories**, including recorded modes, with zero missing, extra or
+changed entries. The upstream control tree has all **4,436** original archive
+files byte-identical and only the historical cancellation/recovery test files added.
+
+Acquisition and patch commands (all exit 0) were:
+
+```sh
+R=/tmp/story-2-13-go-20261025-7_9k48d6
+S="$R/dapr-b32a815fa2260983e181b95272ea555fe17d3895"
+U="$R/upstream-control/dapr-b32a815fa2260983e181b95272ea555fe17d3895"
+H="$R/history"
+O="$R/overlays"
+GO="$R/go/bin/go"
+curl --fail --location --show-error --connect-timeout 20 --max-time 180 --output "$R/go1.26.9.linux-amd64.tar.gz" https://go.dev/dl/go1.26.9.linux-amd64.tar.gz
+curl --fail --location --show-error --connect-timeout 20 --max-time 180 --output "$R/dapr-source.tar.gz" https://codeload.github.com/dapr/dapr/tar.gz/b32a815fa2260983e181b95272ea555fe17d3895
+```
+
+The following are **equivalent replay steps**, arranged for a fresh disposable
+`R` after the downloads and before running the patch commands below; they are not
+additional test executions. `git show` recovery and `tarfile.extractall` were
+performed in the measured run. No separate `chmod` was needed then: extracted
+modes and the five recovered `0644` tests already matched the historical inventory.
+The final mode loop below makes that outcome explicit for a replay under another
+umask. For a new run, create `R` with `mktemp -d /tmp/story-2-13-go-replay-XXXXXXXX`
+and derive the other aliases from it before downloading. Run from the EventStore
+repository; all outputs remain under `R`.
+
+```sh
+python3 - "$R" <<'PY'
+from pathlib import Path
+import hashlib, json, shutil, subprocess, sys, tarfile
+r = Path(sys.argv[1])
+h = r / "history"
+rev = "b7ba9bb1fdff85fb47817d35506bd6ca81b23d70"
+base = "_bmad-output/implementation-artifacts/evidence/story-2-13/"
+c = "runs-2026-10-21-concurrency-retirement/"
+l = "concurrency-closing-2026-10-21/review-lifetime-controls/"
+def recover(relative):
+    out = h / relative
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(subprocess.check_output(["git", "show", rev + ":" + base + relative]))
+    return out
+for name in ("candidate-from-upstream.patch", "before-candidate-build-source-inventory.json",
+             "candidate-runtime-identity.json", "retirement-runtime-build.json"):
+    recover(c + name)
+for name in ("runtime-acquisition.json", "go.mod.source", "go.sum.source"):
+    recover("runs-2026-10-21-runtime-recovery/" + name)
+for relative in (c + "retirement-churn.overlay.json", c + "cancel-guard-mutant.overlay.json",
+                 l + "caller-lease-candidate.overlay.json", l + "caller-lease-mutant.overlay.json",
+                 l + "lifetime-controls.overlay.json", l + "full-router-manager.overlay.json"):
+    overlay = json.loads(recover(relative).read_text())
+    for replacement in overlay["Replace"].values():
+        recover(replacement.split(base, 1)[1])
+archives = {
+    "go1.26.9.linux-amd64.tar.gz": "42d158b4d8f7b61ac0a830567c940a86098fb7aac52e467a5ebec03ef5cc2f8d",
+    "dapr-source.tar.gz": "43c5df99b6f9ecfac15313c49728969d8fc2ea9d13b4cb6777725311e496ba50",
+}
+for name, expected in archives.items():
+    if hashlib.sha256((r / name).read_bytes()).hexdigest() != expected:
+        raise SystemExit("archive hash mismatch: " + name)
+    with tarfile.open(r / name) as archive:
+        archive.extractall(r, filter="data")
+s = r / "dapr-b32a815fa2260983e181b95272ea555fe17d3895"
+u = r / "upstream-control" / s.name
+with tarfile.open(r / "dapr-source.tar.gz") as archive:
+    archive.extractall(u.parent, filter="data")
+for name in ("local_cancellation_test.go", "local_concurrency_test.go", "local_recovery_test.go",
+             "local_retirement_test.go", "local_retirement_pool_test.go"):
+    recovered = recover(c + "snapshots/retirement-runtime-build/external/" + name + ".source")
+    folder = "pkg/api/grpc/manager" if name == "local_retirement_pool_test.go" else "pkg/actors/router"
+    shutil.copyfile(recovered, s / folder / name)
+    if name in ("local_cancellation_test.go", "local_recovery_test.go"):
+        shutil.copyfile(recovered, u / folder / name)
+for relative, entry in json.loads((h / c / "before-candidate-build-source-inventory.json").read_text()).items():
+    (s / relative).chmod(entry["mode"])
+PY
+```
+
+This constructs `U` directly from the unpatched archive and copies only the two
+historical test files into it. Apply the recorded patch to `S` only:
+
+```sh
+patch --dry-run -p1 -d "$S" -i "$H/runs-2026-10-21-concurrency-retirement/candidate-from-upstream.patch"
+patch -p1 -d "$S" -i "$H/runs-2026-10-21-concurrency-retirement/candidate-from-upstream.patch"
+```
+
+The Go executable, patch and manifest hashes still require the checks in the
+table below before Go execution; the measured run checked them with Python
+`hashlib.sha256(...).hexdigest()` and compared all source entries with the
+historical inventory.
+
+Archives were SHA-256 checked before extraction with Python `tarfile.extractall`
+using `filter='data'`. The patch changed only `pkg/actors/router/router.go`,
+`pkg/api/grpc/manager/manager.go` and `pkg/api/grpc/manager/pool.go`. Verified hashes:
+
+| Input | SHA-256 |
+| --- | --- |
+| Go `1.26.9` Linux amd64 archive | `42d158b4d8f7b61ac0a830567c940a86098fb7aac52e467a5ebec03ef5cc2f8d` |
+| Extracted `go/bin/go` | `e90c4e12df236ea0c2e7536fd68da8a47fc0b585c19588bf6c1a70cfc296a0f9` |
+| Dapr upstream archive | `43c5df99b6f9ecfac15313c49728969d8fc2ea9d13b4cb6777725311e496ba50` |
+| Candidate patch | `f4981813f47bcbb8779cf7e5578db74ca0ec19b7841a615581df7fda7f31d515` |
+| Candidate `go.mod` | `d218290004fa0583025e5a21d6478e6c1dfa07953102eb0288a0cdf433ae50d8` |
+| Candidate `go.sum` | `0a7d34bc98a876eddfe1fc6e1b4ba7cb2b50d4f0b0c87a0b35493f9915181ce0` |
+
+One initial historical lookup failed: `git show b7ba9bb1fdff85fb47817d35506bd6ca81b23d70:_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-concurrency-retirement/runtime-sources/pkg/actors/router/local_recovery_test.go.source`
+exited **128**, reporting that the path does not exist in that revision. The
+missing input was resolved at `snapshots/retirement-runtime-build/external/local_recovery_test.go.source`
+under the same historical retirement directory; its recovered SHA-256 is
+`3fd1da4b1fcca0b7258ea34a6c38ecace09d7ab9696f517a501bf0d7f8702548`.
+This was a resolved lookup error, not a substitute source version.
+
+The following shorthand expands the exact recorded Go invocation prefixes; paths
+are relocated into the new disposable directory, while historical test arguments,
+patch, versions and expectations are preserved:
+
+```sh
+gc() {
+    env GOTOOLCHAIN=local GOPATH="$R/gopath" GOCACHE="$R/gocache" "$GO" -C "$S" "$@"
+}
+gt() {
+    test_source=$1
+    shift
+    env GOTOOLCHAIN=local GOPATH="$R/gopath" GOCACHE="$R/gocache" CGO_ENABLED=1 "$GO" -C "$test_source" test -race -mod=readonly -p=4 "$@"
+}
+```
+
+`gc mod download -json` passed (`10:44:27.823634–10:44:49.157302 UTC`): **498**
+modules, zero download errors; every downloaded archive/module-manifest sum
+matched the unchanged historical `go.sum`. `gc mod verify` passed with
+`all modules verified` before tests. grpc-go remains `v1.83.2`. `"$GO" version`
+reported `go1.26.9 linux/amd64`; effective race settings were `GOOS=linux`,
+`GOARCH=amd64`, `GOAMD64=v1`, `GOTOOLCHAIN=local`, `CGO_ENABLED=1`, `CC=gcc`,
+`CXX=g++`, empty `GOFLAGS`, `GOPROXY=https://proxy.golang.org,direct` and
+`GOSUMDB=sum.golang.org`. `gcc --version` reported Ubuntu `15.2.0-16ubuntu1`
+(`15.2.0`) before tests and at later environment inspection; historical C-compiler
+identity was not pinned, so C-toolchain equivalence is not claimed.
+
+Existing overlay sources came from the historical retirement directory and
+`concurrency-closing-2026-10-21/review-lifetime-controls/`. Only overlay absolute
+paths were remapped. All nine later-review replacement-hash comparisons matched
+the historical command receipts. Effective supplemental source hashes were:
+
+| Source / mutation | SHA-256 |
+| --- | --- |
+| Resolver churn test | `c841f36e020487f6ab3a94cbddeb498b9b0ff5aeb1a0541b0c3fa496d206a1bf` |
+| Pool lifetime controls | `c6d9d2c35460b3c2d47c549181c14007d5cdce458948b34cf158f157b8e2380f` |
+| Post-retirement caller controls | `73cc473d8c4fd028cc9a9b0058d98e4dbcf654b816b4c04c70187e9ba337c007` |
+| Second-lease test | `75acb8ef33ee4a4edd87d2dc68fd3e3132c6b5327f1fea088e9da2a7f6ef8b29` |
+| Cancellation-guard mutant router | `2a4ab419256c71e413d9124a8458f1abb373bd8b5ee9703b32224b32a241a642` |
+| Extra-release mutant router | `961213204b4013cdbd3d68e15b07aaf7bc2928af8d96d47b031de70abe934942` |
+
+Exactly **six historical overlays** and **two diagnostic overlays** were executed.
+The focused historical lane used no overlay. Extracted `candidate-probe` and
+`mutant-probe` files were not executed. For the mappings below, aliases are:
+
+```sh
+C="$H/runs-2026-10-21-concurrency-retirement"
+L="$H/concurrency-closing-2026-10-21/review-lifetime-controls"
+A="$S/pkg/actors/router"
+M="$S/pkg/api/grpc/manager"
+D="$R/diagnostics"
+```
+
+Each arrow is an exact JSON `Replace` key → value after expanding these aliases:
+
+| Overlay file | Target → replacement |
+| --- | --- |
+| `$O/retirement-churn.overlay.json` | `$A/local_retirement_churn_test.go` → `$C/local_retirement_churn_test.go.source` |
+| `$O/cancel-guard-mutant.overlay.json` | `$A/router.go` → `$C/cancel-guard-mutant.go.source` |
+| `$O/caller-lease-candidate.overlay.json` | `$A/review_caller_lease_test.go` → `$L/retained-double-release/caller_lease_test.go` |
+| `$O/caller-lease-mutant.overlay.json` | `$A/review_caller_lease_test.go` → `$L/retained-double-release/caller_lease_test.go`; `$A/router.go` → `$L/retained-double-release/router.go` |
+| `$O/lifetime-controls.overlay.json` | `$M/review_lifetime_pool_test.go` → `$L/review_lifetime_pool_test.go.source`; `$A/review_retirement_context_test.go` → `$L/review_retirement_context_test.go.source` |
+| `$O/full-router-manager.overlay.json` | `$M/review_lifetime_pool_test.go` → `$L/review_lifetime_pool_test.go.source`; `$A/review_retirement_context_test.go` → `$L/review_retirement_context_test.go.source`; `$A/review_caller_lease_test.go` → `$L/retained-double-release/caller_lease_test.go`; `$A/local_retirement_churn_test.go` → `$C/local_retirement_churn_test.go.source` |
+| `$D/deadline.overlay.json` | `$A/local_cancellation_test.go` → `$D/local_cancellation_test.go` |
+| `$D/scaling-membership.overlay.json` | `$M/manager_test.go` → `$D/manager_test.go` |
+
+To reconstruct the six historical overlay JSON files, read the recovered originals
+under `C` or `L`, replace the source prefix
+`/tmp/eventstore-2-13-retirement-oduc267u/dapr-b32a815fa2260983e181b95272ea555fe17d3895`
+with `S` and the history prefix
+`/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-2-13`
+with `H` in all keys/values, then write `{"Replace": mapping}` under `O` using the
+same basename. This is the path-only transformation used in the measured run.
+The two diagnostic JSON files contain only their single mapping shown above.
+
+The deadline diagnostic copies `$A/local_cancellation_test.go` to
+`$D/local_cancellation_test.go` and makes only this zero-context diff (tab indentation is
+preserved). The original `require.ErrorIs` assertion is unchanged:
+
+```diff
+--- a/pkg/actors/router/local_cancellation_test.go
++++ b/pkg/actors/router/local_cancellation_test.go
+@@ -67,0 +68,2 @@
++				deadlineAt, _ := ctx.Deadline()
++				t.Logf("diagnostic: status=%s ctxErr=%v afterDeadline=%s channel=%s error=%v", status.Code(callErr), ctx.Err(), time.Since(deadlineAt), conn.GetState(), callErr)
+```
+
+The scaling diagnostic copies `$M/manager_test.go` to `$D/manager_test.go` and
+makes only this diff; it is an investigation variant, not the historical suite:
+
+```diff
+--- a/pkg/api/grpc/manager/manager_test.go
++++ b/pkg/api/grpc/manager/manager_test.go
+@@ -99 +99,2 @@
+-	assert.Contains(t, uniqueConns, c)
++	_, reused := uniqueConns[c]
++	assert.True(t, reused, "pooled connection identity must be reused")
+```
+
+The test commands below ran sequentially. Counts distinguish top-level tests
+from nested subtests; repeated runs count each invocation. Every row has zero
+skips. Expected-red mutation failures are explicitly separate from unexpected
+qualification failures.
+
+| Exact command, using the prefixes above | Result: passed/failed counts | UTC interval, 2026-10-25 |
+| --- | --- | --- |
+| `gt "$S" ./pkg/actors/router ./pkg/api/grpc/manager -run 'TestConcurrency\|TestLocalRetirement\|TestLocalEvaluation\|TestReviewCanceled' -count=1 -timeout=1m -v` | Exit 0, passed; top 11/0, sub 11/0; 0 race reports. | `10:45:11.176239–10:47:14.924884` |
+| `gt "$S" -overlay="$O/retirement-churn.overlay.json" ./pkg/actors/router ./pkg/api/grpc/manager -count=1 -timeout=3m -v` | Exit 1, failed; top 19/1, sub 22/1; 0 race reports. | `10:47:20.039545–10:47:28.157738` |
+| `gt "$S" ./pkg/actors/router -run '^TestLocalEvaluationCallerCancellationRetainsChannel/deadline$' -count=20 -timeout=1m -v` | Exit 0, passed; top 20/0, sub 20/0; 0 race reports. | `10:48:11.395042–10:48:22.036204` |
+| `gt "$U" ./pkg/actors/router -run '^TestLocalEvaluationCallerCancellationRetainsChannel/deadline$' -count=50 -timeout=1m -v` | Exit 1, failed; top 47/3, sub 47/3; 0 race reports. | `10:49:04.209874–10:49:22.973146` |
+| `gt "$S" -overlay="$R/diagnostics/deadline.overlay.json" ./pkg/actors/router -run '^TestLocalEvaluationCallerCancellationRetainsChannel/deadline$' -count=50 -timeout=1m -v` | Exit 1, failed; top 48/2, sub 48/2; 0 race reports. | `10:49:43.531805–10:49:58.605067` |
+| `gt "$S" -overlay="$O/cancel-guard-mutant.overlay.json" ./pkg/actors/router -run 'TestConcurrencyCancelledUnavailable\|TestReviewCanceledUnavailable' -count=1 -timeout=1m -v` | Exit 1, expected red; top 1/1, sub 0/0; 0 race reports. | `10:50:12.772950–10:50:16.550216` |
+| `gt "$S" -overlay="$O/caller-lease-candidate.overlay.json" ./pkg/actors/router -run '^TestReviewRetiringCallerKeepsOtherLease$' -count=1 -timeout=30s -v` | Exit 0, passed; top 1/0, sub 0/0; 0 race reports. | `10:50:16.579773–10:50:21.275323` |
+| `gt "$S" -overlay="$O/caller-lease-mutant.overlay.json" ./pkg/actors/router -run '^TestReviewRetiringCallerKeepsOtherLease$' -count=1 -timeout=30s -v` | Exit 1, expected red; top 0/1, sub 0/0; 0 race reports. | `10:50:21.317372–10:50:26.336475` |
+| `gt "$S" -overlay="$O/lifetime-controls.overlay.json" ./pkg/actors/router ./pkg/api/grpc/manager -run '^TestClosing(FirstRetirement\|BlockingClose\|CallerContextAfterRetirement)' -count=1 -timeout=30s -v` | Exit 0, passed; top 3/0, sub 8/0; 0 race reports. | `10:50:26.379581–10:50:33.421843` |
+| `gt "$S" -overlay="$O/full-router-manager.overlay.json" ./pkg/actors/router ./pkg/api/grpc/manager -run . -count=1 -timeout=30s -v` | Exit 1, failed; top 23/1, sub 31/0; 2 race reports. | `10:50:33.475894–10:50:42.822005` |
+| `gt "$U" ./pkg/api/grpc/manager -run '^TestGetAppClient_Scaling$' -count=20 -timeout=1m -v` | Exit 1, failed; top 19/1, sub 0/0; 1 race reports. | `10:51:18.242723–10:51:20.968446` |
+| `gt "$S" -overlay="$R/diagnostics/scaling-membership.overlay.json" ./pkg/api/grpc/manager -run '^TestGetAppClient_Scaling$' -count=20 -timeout=1m -v` | Exit 0, passed; top 20/0, sub 0/0; 0 race reports. | `10:51:42.406506–10:51:46.141134` |
+
+The focused controls exercised overlapping actor, reminder and stream RPCs,
+healthy-server `Unavailable`, transport recovery, caller cancellation/deadline,
+retirement exclusion, final-lease closure and repeated retirement. The dedicated
+lifetime run additionally passed **500** simultaneous first-retirement/acquisition/
+final-release races (acquisition preceded retirement in **259** rounds), both
+blocking-Close paths, and all six actor/reminder/stream cancellation/deadline
+cases after retirement. Replacement channels remained live; old channels closed
+after their final lease. The original pool concurrency test ran **50** rounds
+with **32** held leases. Each full churn run passed **25** channels beside
+**25,000** resolver updates; no `ResetConnectBackoff` is used. These bounded local
+controls establish no untested deployment envelope.
+
+The cancellation-guard mutant removed only `ctx.Err() == nil`. Its discriminating
+control observed the cancelled channel become `Shutdown` instead of
+`TransientFailure`; the older healthy-channel control still passed. The
+extra-release mutant inserted `cancel(false)` before the existing deferred
+release, and the second-lease control rejected premature `Shutdown`. Thus both
+negative controls failed at their intended assertions, rather than at setup or
+compilation.
+
+The unexpected deadline failure is `TestLocalEvaluationCallerCancellationRetainsChannel/deadline`
+at `local_cancellation_test.go:68`: `require.ErrorIs(t, callErr, ctx.Err())` saw
+`ctx.Err() == nil` while the RPC returned
+`rpc error: code = DeadlineExceeded desc = stream terminated by RST_STREAM with error code: CANCEL`.
+The unchanged candidate's 20 focused repetitions passed; the pristine upstream
+control failed **3/50**, and a logging-only candidate overlay failed **2/50**.
+The overlay preserved the assertion and recorded a `Ready` channel with nil
+`ctx.Err()` **988.106 microseconds** and **1.42247 milliseconds** after the caller's
+deadline. Its test-source SHA-256 is
+`f906af27feefc8cf95edc31f18259e1439743854ed30041673208ae83979e3cb`.
+
+Pinned grpc-go `v1.83.2` explains this ordering: `internal/transport/http2_server.go:601`
+starts an independent timeout callback that sends `RST_STREAM CANCEL`, while
+`internal/transport/http2_client.go:1286` converts that reset to `DeadlineExceeded`
+by comparing the deadline timestamp with `time.Now()`, independently of
+`ctx.Err()`. Dapr's `pkg/actors/router/router.go:274` checks `ctx.Err()` before
+classifying the error; when it is still nil, `DeadlineExceeded` takes the permanent
+error path and `Call` unwraps it. The retirement predicate at line 309 requires
+`Unavailable`, so this outcome does not enter it. The source and diagnostic
+observations support a deadline-callback ordering failure in the existing strict
+error-chain control, also present without the retirement patch. No runtime
+normalization or deadline-test expectation change was made; cancellation
+qualification remains failed.
+
+The second failure is `TestGetAppClient_Scaling`, `manager_test.go:99`, with **two**
+data-race reports in the final full-overlay run. The read stack is
+`assert.Contains` → `containsElement` → `ObjectsAreEqual` → `reflect.DeepEqual`;
+the first writer is Go `1.26.9` `context.AfterFunc` (`src/context/context.go:329`)
+via grpc-go `v1.83.2` `grpcsync.CallbackSerializer.run`
+(`internal/grpcsync/callback_serializer.go:111`). The second is Go `context.withCancel`
+(`src/context/context.go:278`) via `context.WithCancel` and grpc-go
+`transport.NewHTTP2Client` (`internal/transport/http2_client.go:212`), reached from
+`addrConn.createTransport`. Both race reports identify `sync/atomic.AddInt32`
+against the reflective read of live connection/context state. Pinned testify `v1.11.1`
+`assert/assertions.go:936` iterates map keys and uses deep equality, which inspects
+the other live connection when map iteration reaches it before the identical
+pointer. The pristine upstream scaling test reproduced **one failed/19 passed**
+iterations with a race report. After that reproduction, a scratch diagnostic
+replaced only the membership assertion with `_, reused := uniqueConns[c]` and
+`assert.True(t, reused, "pooled connection identity must be reused")`; **20/20**
+iterations passed under `-race`. Diagnostic test-source SHA-256:
+`dc5471a36a8026f5ee0aeb6dd0b143151595725a69b410b705fe4da8d66ea0bd`.
+Native map membership is a supported proposed test correction; it was not applied
+to the reconstructed historical test or the repository. The original full-suite
+race failure remains a failure, and this diagnostic does not qualify that suite.
+
+The historical build command also passed (exit 0,
+`10:51:54.106687–10:54:47.901507 UTC`), with only disposable paths relocated:
+
+```sh
+env GOTOOLCHAIN=local GOPATH="$R/gopath" GOCACHE="$R/gocache" CGO_ENABLED=0 "$GO" -C "$S" build -mod=readonly -p=4 -tags=allcomponents '-ldflags=-X=github.com/dapr/dapr/pkg/buildinfo.version=1.18.7-local-2-13-retirement -X=github.com/dapr/dapr/pkg/buildinfo.gitcommit=b32a815fa2260983e181b95272ea555fe17d3895 -X=github.com/dapr/dapr/pkg/buildinfo.gitversion=v1.18.7-local-2-13-retirement -X=github.com/dapr/kit/logger.DaprVersion=1.18.7-local-2-13-retirement' -o "$R/daprd-retirement" ./cmd/daprd
+"$R/daprd-retirement" --version
+"$GO" version -m "$R/daprd-retirement"
+```
+
+Both identity commands exited 0. The new binary reports
+`1.18.7-local-2-13-retirement`, is **318,006,519 bytes**, and has SHA-256
+`af3d5fe552b177613fc5489f8ecef936087b414902d5b4ecd5690fe545d540ad`.
+All **420** compiled dependency records and **four** replacement records exactly
+match the historical `candidate-runtime-identity.json`, including versions and
+module checksums. The Go version, build tags and linker assignments match. The
+binary hash differs from the retained fixture binary: the historical command has
+no `-trimpath` and this build uses different absolute source/cache paths. This is
+an exact-input reconstruction with a separately identified output, not a
+byte-for-byte reproducibility claim. Its `--version` invocation was the only
+execution of the rebuilt daprd; no sidecar was launched with it.
+
+After all tests and the build, `gc mod verify` again exited 0 with
+`all modules verified` (`10:55:46.874402–10:56:00.132899 UTC`). The complete
+5,587-entry candidate inventory and manifest hashes were unchanged. Before this
+append, all **9,039** tracked file hashes matched the task-start capture, and
+HEAD remained `d41a3c55a684491d02f61c5ea98e0f74332b5d4d`. Installed
+`/home/administrator/.dapr/bin/daprd` remained SHA-256
+`e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488`;
+retained `/tmp/eventstore-2-13-retirement-oduc267u/daprd-retirement` remained
+`a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6`.
+The Go-source controls are now executed and their failures investigated; the two
+original full-suite failures, missing CI run and all production/disposition gates
+remain open. No story completion, approval or production qualification is claimed.
+
+Documentation checks after the initial append: `bash scripts/check-committed-files.sh`
+exited 0 (**9,039** tracked entries checked), and `git diff --check` exited 0.
+The documentation review added replay extraction/recovery/mode steps, the eight
+executed overlay mappings, the exact diagnostic diffs and the race writer frames.
+No runtime or .NET tests were repeated for these documentation-only corrections.
+
+Review triage for this Verification append; edge-case and verification-gap
+reviewers reported no additional findings. Historical tests/results and statuses
+remain unchanged.
+
+| Finding | Severity | Documentation correction |
+| --- | --- | --- |
+| Reconstruction replay gaps | Medium | Added Git recovery, checked archive extraction, source-mode normalization and pristine-control steps; labelled equivalent replay. |
+| Overlay mapping gaps | Medium | Recorded all six executed historical and two diagnostic overlay mappings; excluded unused probe files. |
+| Deadline diagnostic not recoverable | Medium | Included the exact logging-only diff with the original assertion and both diagnostic mappings. |
+| Race writer stacks compressed | Low | Added pinned `context.AfterFunc`/callback-serializer and `context.withCancel`/HTTP2-client locations. |
+| Documentation validation missing | Low | Recorded the initial checks and reran both after these corrections. |
+
+After the documentation corrections, `bash scripts/check-committed-files.sh`
+again exited 0 (**9,039** tracked entries). The first `git diff --check` found
+space-before-tab/trailing-whitespace in the embedded diff context (exit 2); the
+snippets now use exact zero-context diffs. The final `git diff --check` exited 0.
