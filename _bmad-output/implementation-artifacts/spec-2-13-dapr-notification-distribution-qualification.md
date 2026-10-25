@@ -11,7 +11,7 @@ story_key: '2-13-dapr-notification-distribution-qualification'
 context:
   - _bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md
   - _bmad-output/planning-artifacts/architecture.md
-  - _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-restart-trace.md
+  - _bmad-output/implementation-artifacts/spec-evidence-storage-simplification.md
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -63,6 +63,29 @@ context:
 - Given completion is requested, when reviewers inspect the packet, then it binds identities, commands, results, UTC interval, scenarios, limits, and an approved disposition.
 
 ## Implementation Notes
+
+### Current continuation: October 25 unchanged local qualification
+
+The October 23 evidence-storage decision in architecture AD-12 supersedes the
+packet-writing instructions in the dated continuations below. Record new commands,
+results, source revision and CI run identity in the original story's Verification
+section; do not restore deleted evidence files or introduce new committed packets
+or packet validators. The dated continuation scopes and their historical failures
+remain historical context, including both failed projection regressions and the
+Redis binary-identity ambiguity.
+
+The former frontmatter context report was deleted by
+`6a0b6441f6d78a3007678a1d0ec336e9cb8ff961`. Its complete historical contents were
+read without restoring it using
+`git show bbfd0fada14ce11e137365637238af4fec2f7f7f:_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-restart-trace.md`.
+The replacement context entry binds the current evidence-storage policy.
+
+This continuation verifies the unchanged, explicitly selected retirement runtime
+and the existing application proofs. Passing current runs cannot establish the
+cause or resolution of the historical failures. Implement a correction only after
+reproducing and establishing its mechanism. Keep the installed runtime, dependencies,
+production graphs, frozen intent, original story's backlog status, in-progress spec/sprint
+row and empty exception register unchanged.
 
 ### Active continuation: shared-channel concurrency safety
 
@@ -192,6 +215,11 @@ The local restart diagnostic phase adds failure-only evidence retention in the e
 
 ## Spec Change Log
 
+- 2026-10-25 — Replaced the deleted frontmatter report with the approved evidence-storage
+  policy and documented its read-only historical retrieval. New unchanged-runtime
+  qualification results belong in the original story's Verification section under
+  AD-12. Prior failures and all production/disposition gates remain open.
+
 The [shared-channel concurrency evaluation](evidence/story-2-13/qualification-2026-10-21-concurrency-retirement.md)
 reproduces eviction cancelling held actor/reminder/stream RPC attempts and rejects
 a reset alternative after a pinned grpc-go resolver-churn data race/fatal error.
@@ -286,7 +314,26 @@ Review follow-up retains passing additional lifetime controls and a full Go race
 
 Closing audit: the Redis test body passes, but its receipt records nine assembly/deps before/after differences, so stable-binary compatibility remains unqualified. Later workspace output drift is separately retained; its writer is unattributed and current user outputs are preserved. The final qualification gate fails for the two projection regressions and this identity ambiguity. Complete raw-log, overlay and historical preservation checks do not grant qualification or approval.
 
+### October 25 unchanged local continuation review
+
+Review covers this continuation's documentation changes against run-start
+`749767072b8c2ea2abc8a23540ca65471d078c49`; the frozen story baseline is preserved.
+The edge-case and verification-gap reviewers found no additional issues. This is
+a local documentation review, not a whole-story qualification or owner approval.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| October 25 Blind 1: fallback output provenance | medium | patch | Added nine captured assembly/deps identities, build/reuse provenance and the earlier pair's missing deps/sample capture. The story now distinguishes execution stability from complete source correspondence. |
+| October 25 Blind 2: disposable runtime reconstruction | medium | patch | Added the upstream revision and six historical Git retrieval references for the patch, dependencies, toolchain and build command. Missing current inputs and the inability to reproduce the runtime are explicit. |
+| October 25 Blind 3: auxiliary topology commands | medium | patch | Added the exact start, readiness and resource-stop sequence, process/resource names, and the retained in-run state observation. Missing separate wait/stop receipts are explicit. |
+| October 25 Blind 4: support service identities | medium | patch | Added Redis, placement, scheduler and Aspire CLI identities. The story labels their inspection as retrospective and states that absent pre-run captures cannot be supplied retroactively. |
+
 ## Verification
+
+The October 25 executed commands, counts, UTC intervals and local-only limitations
+are recorded in the [original story's Verification section](2-13-dapr-notification-distribution-qualification.md#verification--october-25-unchanged-local-continuation).
+They do not replace historical failures, a CI run, Go requalification, the failed
+complete source-reference dependency graph, or the gated production disposition.
 
 **Commands:**
 - `aspire run` then `aspire describe` — establish baseline resource state before code edits.
