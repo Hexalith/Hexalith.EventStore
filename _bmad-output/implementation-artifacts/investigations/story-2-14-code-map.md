@@ -54,7 +54,7 @@ The existing audit identities are distinct:
 - `system:global-administrators:global-administrators` maps to `audit-global-administrators:singleton`.
 - `audit:system` is immutable legacy evidence consumed by ownership-aware compatibility readers.
 
-Proposed owner decision: expose legacy managed-system history read-only through a cataloged, authorized platform operation; preserve original identity and audit owner. This is a proposal only. Keeping active management instead requires reconciliation of the Tenants and AD-27 contracts. Neither choice permits a blanket key rename or ambiguous merged audit stream.
+Owner direction accepted on 2026-10-25: complete 5.12 first, then coordinate a SemVer-major explicit-scope transition. Preserve existing durable identities and writable platform administration. The `system` storage partition holds all managed-tenant aggregates, so making it read-only would break normal administration. Inventory whether a managed tenant literally named `system` exists and is active before choosing its retirement policy. Unused/retired history remains readable through authorized platform access; active use requires owner reconciliation with AD-27, not automatic freezing. No deployed inventory has been obtained, and repository tests do not establish deployed usage. No blanket key rename or ambiguous merged audit stream is authorized.
 
 ## Validation plan
 

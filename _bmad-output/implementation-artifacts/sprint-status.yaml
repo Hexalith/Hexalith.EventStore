@@ -92,6 +92,7 @@ development_status:
   2-13-dapr-notification-distribution-qualification: done
   # 2.13: closed 2026-10-25 by an owner-accepted SignalR Redis exception; no Dapr replacement.
   2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts: backlog
+  # do 5.12 before
   2-15-messageid-only-command-status-identity: backlog
   2-16-bounded-signalr-detail-metadata: backlog
   2-17-generated-code-and-generator-build-quality: backlog

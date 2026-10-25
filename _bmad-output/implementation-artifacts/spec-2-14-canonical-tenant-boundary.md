@@ -20,6 +20,8 @@ context:
 
 **Approach:** Share a Contracts canonicalizer, propagate its result before downstream work, and move platform requests to the authenticated catalog scope. Preserve historical storage identities through an approved migration.
 
+**Owner decisions (2026-10-25):** Complete 5.12 first, limited to its schema, codec, validator and Development/test catalog; activation stays in 5.13. Then make one coordinated SemVer-major explicit-scope transition across controlled consumers. Preserve existing storage identities and writable platform administration. Inventory actual managed-`system` use before retiring it: unused/retired history remains readable; active use requires owner reconciliation, never automatic freezing. Keep this draft pending the prerequisite and that inventory.
+
 ## Boundaries & Constraints
 
 **Always:** Apply AD-27 lowercase normalization and its 1–64-character grammar to request tenants and grants. Require one explicit request scope; grants authorize it but never select it. Preserve operation authorization, workload resource bindings, and distinct audit ownership. Consume Story 5.12's schema/codec; Story 2.12 is done. Obtain owner approval of the migration and classify public changes under NFR12 before implementation.
@@ -37,12 +39,6 @@ context:
 
 </frozen-after-approval>
 
-## Open Questions
-
-1. **Prerequisite:** 5.12 remains backlog and its catalog is absent. Start 5.12 first, retaining this draft (recommended), or hold this draft until an existing catalog implementation is supplied? The latter requires its location and validation results.
-2. **Compatibility:** Approve a SemVer-major transition replacing `RestTenantSource.System` and claim-only scope selection with explicit scope, or require a compatibility design first? The latter returns conflicting AD-27 requirements to architecture before implementation; it cannot preserve synthetic tenant routing silently.
-3. **Legacy managed `system`:** Approve read-only historical access through authenticated platform operations, preserving separate tenant/global audit owners (recommended), or retain active management of that literal tenant? Active management conflicts with AD-27 and requires owner reconciliation with Tenants' existing rollout contract.
-
 ## Code Map
 
 Exact paths, callers, tests and migration inventory are in [the investigation](investigations/story-2-14-code-map.md). Path prefixes below are repository-relative: `C=src/Hexalith.EventStore.Contracts`, `G=src/Hexalith.EventStore`, `A=src/Hexalith.EventStore.Admin.Server`, `T=references/Hexalith.Tenants`.
@@ -56,7 +52,7 @@ Exact paths, callers, tests and migration inventory are in [the investigation](i
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] This spec and `T/docs/audit-stream-rollout.md` — settle questions and record the owner-approved migration/classifications after 5.12; reconcile the conflicting managed-`system` policy.
+- [ ] This spec and `T/docs/audit-stream-rollout.md` — after 5.12, inventory deployed managed-`system` use, record migration/classifications and reconcile its policy. Keep platform administration writable on existing storage; no active tenant retirement is approved.
 - [ ] `C/Identity/TenantCanonicalizer.cs` (new), `C/Rest/RestTenantSource.cs`, `C/Rest/RestApiAttribute.cs` — define shared boundary validation and approved explicit-scope metadata using 5.12 declarations.
 - [ ] `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` — validate selected scope/grants and forward canonical values; add compiled matrix tests.
 - [ ] `G/Authorization/`, `G/Pipeline/AuthorizationBehavior.cs`, `G/Controllers/`, `G/SignalRHub/ProjectionChangedHub.cs` — update inventoried callers, including actor prechecks, status and replay tenant discovery; preserve their separate operation/identifier policies.
@@ -77,7 +73,7 @@ Exact paths, callers, tests and migration inventory are in [the investigation](i
 
 ## Design Notes
 
-Proposed migration separates logical request scope from durable identity: only an authorized catalog mapping selects historical storage. No blanket rename of `system`, audit union, or public tenant alias. Footprint spans both repositories and shared public metadata. Scope literals/credential vocabulary come from 5.12, not guesses here.
+Approved direction separates request scope from durable identity: an authorized catalog mapping selects existing storage. The shared `system` partition holds all Tenants aggregates; it must remain writable for platform administration. A managed tenant literally named `system` is a separate inventory item. No blanket rename, audit union or public alias. Scope literals/credential vocabulary come from 5.12.
 
 ## Verification
 
