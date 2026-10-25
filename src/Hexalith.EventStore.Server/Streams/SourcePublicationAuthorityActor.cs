@@ -16,7 +16,9 @@ public sealed class SourcePublicationAuthorityActor(ActorHost host, SourcePublic
     /// <summary>The independent private actor registration name.</summary>
     public const string ActorTypeName = "SourcePublicationAuthorityActor";
     private const string StateKey = "source-publication-authority-v1";
+    /// <summary>Gets the canonical namespace anchor purpose suffix.</summary>
     internal const string NamespacePurpose = "|source-publication-namespace-v1";
+    /// <summary>Gets the canonical publication index anchor purpose suffix.</summary>
     internal const string IndexPurpose = "|source-publications-v1";
 
     /// <inheritdoc/>
@@ -153,6 +155,7 @@ public sealed class SourcePublicationAuthorityActor(ActorHost host, SourcePublic
             : call.Method == "reconciliation" ? call.Body : JsonSerializer.SerializeToUtf8Bytes(true);
     }
 
+    /// <summary>Checks capacity and actual bounded serialization before any state staging.</summary>
     internal static bool CanPersist(SourcePublicationAuthorityState state)
     {
         if (state.Records.Count > 30000) return false;
@@ -177,6 +180,7 @@ public sealed class SourcePublicationAuthorityActor(ActorHost host, SourcePublic
         if (!confirmed.HasValue || !Same(confirmed.Value, state)) throw new InvalidOperationException("PublicationAuthorityOutcomeUnknown");
         return true;
     }
+    /// <summary>Validates canonical enrollment structure and distinct authority roles.</summary>
     internal static bool Valid(SourcePublicationAuthorityEnrollment value, SourcePublicationScope scope)
         => value.Scope == scope && value.InitialSources is { Count: <= 1000 } && value.CommandSources is { Count: <= 1000 }
             && value.InitialSources.Concat(value.CommandSources).All(item => item is not null && item.TenantId == scope.Tenant && item.Domain == scope.Domain)
@@ -272,9 +276,12 @@ public sealed class SourcePublicationAuthorityActor(ActorHost host, SourcePublic
             .Select(record => JsonSerializer.Deserialize<AnchoredStateTransition>(record.Body)!)
             .SingleOrDefault(transition => transition.ScopeId == purpose && transition.TargetRevision == revision) is { } original
                 ? JsonSerializer.Deserialize<T>(original.TargetBytes) : default;
+    /// <summary>Computes the exact immutable transition identity.</summary>
     internal static string TransitionId(AnchoredStateTransition value) => RecoverableAnchoredState.Digest(value);
+    /// <summary>Reads one exact independently retained journal value.</summary>
     internal static T? Value<T>(IReadOnlyList<SourcePublicationAuthorityRecord> records, string key)
         => records.SingleOrDefault(record => record.Key == key) is { } found ? JsonSerializer.Deserialize<T>(found.Body) : default;
+    /// <summary>Compares the retained original bytes at the exact journal identity.</summary>
     internal static bool Exact(IReadOnlyList<SourcePublicationAuthorityRecord> records, string key, byte[] body)
         => records.SingleOrDefault(record => record.Key == key) is { } found && found.Body.AsSpan().SequenceEqual(body);
     private static bool Append(List<SourcePublicationAuthorityRecord> records, string key, byte[] body)

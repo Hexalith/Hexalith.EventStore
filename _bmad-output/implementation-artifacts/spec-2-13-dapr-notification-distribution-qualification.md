@@ -437,6 +437,29 @@ passed (9,091 tracked entries), as did `git diff --check`. Parent preservation
 checks confirmed the original story prefix, frozen intent, spec baseline/status,
 sprint row and exception register; run-start HEAD remained unchanged.
 
+### October 25 dee84974 continuation review
+
+Review covers only this continuation's Verification append in the original story,
+against run-start `dee8497458bfc92e094ac66fb977b2eddabd6c93`. The frozen baseline,
+intent, statuses and whole-story gates remain unchanged. Edge-case and
+verification-gap reviewers found no additional issues.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| dee84974 Blind 1: shared-endpoint topology understated | medium | patch | The in-distribution process receipt includes six additional auxiliary app identities on placement/scheduler endpoints 50005/50006. Corrected the participant list; bounded observations still establish no exclusive topology. |
+| dee84974 Blind 2: scenario capture mapping omitted | low | patch | Nine manifests exist, including two reused-endpoint runs and catalog before/after captures. Added their exact temporary relative paths beside the measurements. |
+| dee84974 Blind 3: Redis comparison observations omitted | medium | patch | The existing report records distinct origin/target PIDs, 21 ms signal delivery, the disabled-backplane control and a 5,747.1851 ms fail-open diagnostic. Added those observations with transport-only and source-drift limits. |
+| dee84974 Blind 4: denial coverage summary imprecise | low | patch | Passing source includes malformed-tenant and replacement-identity denied-rejoin assertions. Enumerated exercised denials and distinguished the unestablished conflicting-claim and in-place revocation cases; no missing test is claimed fixed. |
+| dee84974 Blind 5: inherited Contracts blocker unidentified | low | patch | Read-only historical retrieval identifies the Release command, 2,348 passes/1 failure/2 skips and 10,898 package-authority errors in retained MSBuild evidence. Added that identity without asserting a current Contracts failure or rerun. |
+
+These corrections use existing receipts and test source; no runtime tests were
+repeated. Parent checks independently confirmed all 550 measured output identities
+match across all ten test boundaries. Concurrent commit
+`8fb04342d487e8ec1df80a15a75f967227201294` was observed after the measured commands;
+it is outside the tested revision and this continuation's reviewed changes.
+Review logging is the only change to this spec. Local passes supply no CI result,
+historical failure resolution, production qualification or approval.
+
 ## Verification
 
 The October 25 executed commands, counts, UTC intervals and local-only limitations
