@@ -16,7 +16,7 @@ public static class ReadModelBatchValidation
         if (batch.DiscoverableRecovery && !batch.RetainManifestForRecovery && batch.OwnerSelection is null && batch.OwnerSelections is null)
             throw new ArgumentException("Discoverable preparation requires a retained recovery manifest.", nameof(batch));
         if (batch.Operations.Count > options.MaxOperations
-            || batch.RetainManifestForRecovery && batch.Operations.Count > ReadModelBatchOptions.DefaultMaxOperations) {
+            || (batch.RetainManifestForRecovery || batch.DiscoverableRecovery) && batch.Operations.Count > ReadModelBatchOptions.DefaultMaxOperations) {
             throw new ArgumentException(
                 $"Read-model batch has {batch.Operations.Count} operations, exceeding the configured maximum of {options.MaxOperations}.",
                 nameof(batch));
@@ -25,7 +25,7 @@ public static class ReadModelBatchValidation
         foreach (ReadModelBatchOperation operation in batch.Operations) {
             int keyBytes = System.Text.Encoding.UTF8.GetByteCount(operation.Key);
             if (keyBytes > options.MaxKeyByteLength
-                || batch.RetainManifestForRecovery && keyBytes > ReadModelBatchOptions.DefaultMaxKeyByteLength) {
+                || (batch.RetainManifestForRecovery || batch.DiscoverableRecovery) && keyBytes > ReadModelBatchOptions.DefaultMaxKeyByteLength) {
                 throw new ArgumentException(
                     $"Read-model batch logical key exceeds the configured maximum of {options.MaxKeyByteLength} UTF-8 bytes.",
                     nameof(batch));
@@ -43,7 +43,7 @@ public static class ReadModelBatchValidation
 
         byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
         if (manifest.Length > options.MaxCanonicalManifestBytes
-            || batch.RetainManifestForRecovery && manifest.Length > ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes) {
+            || (batch.RetainManifestForRecovery || batch.DiscoverableRecovery) && manifest.Length > ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes) {
             throw new ArgumentException(
                 $"Read-model batch canonical manifest is {manifest.Length} bytes, exceeding the configured maximum of {options.MaxCanonicalManifestBytes}.",
                 nameof(batch));

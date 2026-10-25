@@ -505,6 +505,7 @@ public static class DomainProjectionDispatcher {
         var operations = new List<ReadModelBatchOperation>();
         var stagedOperations = new List<ReadModelBatchOperation>();
         bool discoverableRecovery = false;
+        int stagedManifestBudget = ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes;
         var failures = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
         foreach (IAsyncDomainProjectionHandler handler in handlers)
         {
@@ -548,6 +549,12 @@ public static class DomainProjectionDispatcher {
                         ProjectionDispatchReasonCodes.UnsupportedCapability);
                 operations.AddRange(plan.Operations);
                 stagedOperations.AddRange(plan.StagedOperations);
+                if (plan.StagedOperations.Count != 0)
+                {
+                    if (plan.GenerationStagingMaxCanonicalManifestBytes is < 1 or > ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes)
+                        throw new ArgumentException("Invalid generation staging budget.");
+                    stagedManifestBudget = Math.Min(stagedManifestBudget, plan.GenerationStagingMaxCanonicalManifestBytes);
+                }
                 discoverableRecovery |= plan.DiscoverableRecovery;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
@@ -569,7 +576,7 @@ public static class DomainProjectionDispatcher {
                     ? outcome : new ProjectionDispatchOutcome(handler.ProjectionType,
                         ProjectionDispatchStatus.Retryable, null, ProjectionDispatchReasonCodes.PartialRetry))]));
         return await CompleteGenerationPreparationAsync(services, header, identity, handlers, storeName,
-            operations, stagedOperations, discoverableRecovery, cancellationToken).ConfigureAwait(false);
+            operations, stagedOperations, discoverableRecovery, stagedManifestBudget, cancellationToken).ConfigureAwait(false);
     }
 
     internal static async Task<DomainProjectionRebuildPreparation> PrepareRebuildBatchAsync(
@@ -622,6 +629,7 @@ public static class DomainProjectionDispatcher {
         var operations = new List<ReadModelBatchOperation>();
         var stagedOperations = new List<ReadModelBatchOperation>();
         bool discoverableRecovery = false;
+        int stagedManifestBudget = ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes;
         string? storeName = null;
         foreach (IAsyncDomainProjectionHandler handler in handlers) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -654,6 +662,12 @@ public static class DomainProjectionDispatcher {
                 storeName ??= plan.StoreName;
                 operations.AddRange(plan.Operations);
                 stagedOperations.AddRange(plan.StagedOperations);
+                if (plan.StagedOperations.Count != 0)
+                {
+                    if (plan.GenerationStagingMaxCanonicalManifestBytes is < 1 or > ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes)
+                        throw new ArgumentException("Invalid generation staging budget.");
+                    stagedManifestBudget = Math.Min(stagedManifestBudget, plan.GenerationStagingMaxCanonicalManifestBytes);
+                }
                 discoverableRecovery |= plan.DiscoverableRecovery;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
@@ -696,13 +710,13 @@ public static class DomainProjectionDispatcher {
         }
 
         return await CompleteGenerationPreparationAsync(serviceProvider, dispatchRequest, identityOptions, handlers,
-            storeName, operations, stagedOperations, discoverableRecovery, cancellationToken).ConfigureAwait(false);
+            storeName, operations, stagedOperations, discoverableRecovery, stagedManifestBudget, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<DomainProjectionRebuildPreparation> CompleteGenerationPreparationAsync(
         IServiceProvider services, ProjectionDispatchRequest request, DomainProjectionIdentityOptions identity,
         IAsyncDomainProjectionHandler[] handlers, string storeName, List<ReadModelBatchOperation> operations,
-        List<ReadModelBatchOperation> stagedOperations, bool discoverableRecovery, CancellationToken token)
+        List<ReadModelBatchOperation> stagedOperations, bool discoverableRecovery, int stagedManifestBudget, CancellationToken token)
     {
         try
         {
@@ -720,7 +734,7 @@ public static class DomainProjectionDispatcher {
             services.GetService<IReadModelBatchStore>()?.ValidateBatch(batch);
             if (stagedOperations.Count != 0)
                 await ReadModelGenerationStaging.StageAsync(services.GetRequiredService<IReadModelBatchStore>(),
-                    batch.Scope, stagedOperations, token).ConfigureAwait(false);
+                    batch.Scope, stagedOperations, stagedManifestBudget, token).ConfigureAwait(false);
             return new(handlers, batch, null);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }

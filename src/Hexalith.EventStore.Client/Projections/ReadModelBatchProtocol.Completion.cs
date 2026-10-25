@@ -39,6 +39,7 @@ internal sealed partial class ReadModelBatchProtocol
         if (_ownerSelections is null || !_ownerSelections.Any(static owner =>
             owner.ReceiptProjectionName == ReadModelRebuildCompletion.ReceiptProjectionName)) return true;
         (ReadModelBatchMarker? receipt, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+        if (_batch.DiscoverableRecovery && receipt?.Status == ReadModelBatchMarkerStatus.Aborted) return true;
         if (receipt is not { Status: ReadModelBatchMarkerStatus.Completed, Operations: null,
                 OriginalManifest: null, OriginalManifestKey: null, RecoveryAnchor: null }
             || receipt.ScopeHash != _scopeHash || receipt.BatchId != _batch.Scope.BatchId

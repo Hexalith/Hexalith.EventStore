@@ -37,6 +37,10 @@ public sealed class DomainProjectionRebuildPlan {
     /// <summary>Gets the immutable candidate operation snapshot.</summary>
     public IReadOnlyList<ReadModelBatchOperation> Operations { get; }
 
+    /// <summary>Gets the explicit canonical-byte budget for generation staging, within the SDK hard recovery ceiling.
+    /// Existing plans retain the conservative 512-KiB default and 32-operation groups.</summary>
+    public int GenerationStagingMaxCanonicalManifestBytes { get; init; } = 512 * 1024;
+
     /// <summary>Gets disjoint immutable generation writes to stage before the coordinated canonical promotion.</summary>
     public IReadOnlyList<ReadModelBatchOperation> StagedOperations {
         get => _stagedOperations;

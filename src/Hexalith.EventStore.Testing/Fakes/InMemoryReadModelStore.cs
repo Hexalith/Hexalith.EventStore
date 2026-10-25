@@ -291,6 +291,14 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     }
 
     /// <inheritdoc/>
+    public Task<ReadModelPendingBatchRecoveryResult> SettleRecoveryScopeAsync(ReadModelBatchScope scope, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelRecoveryDiscovery.SettleAsync(new InMemoryBatchAccessor(this, scope.StoreName), BatchOptions,
+            NullLogger.Instance, scope, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<ReadModelPendingBatchRecoveryResult> RetireRecoveryScopeAsync(ReadModelBatchScope scope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(scope);
@@ -400,6 +408,27 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
         string prefix = storeName + "\0";
         return _entries.Where(pair => pair.Key.StartsWith(prefix, StringComparison.Ordinal))
             .ToDictionary(pair => pair.Key[prefix.Length..], pair => pair.Value.Bytes.ToArray(), StringComparer.Ordinal);
+    }
+
+    /// <summary>Recreates a fresh store from exact serialized physical bytes, issuing fresh backend ETags.</summary>
+    /// <param name="storeName">The empty target store component.</param>
+    /// <param name="values">The complete defensive snapshot previously serialized by the test fixture.</param>
+    public void ImportRawSnapshot(string storeName, IReadOnlyDictionary<string, byte[]> values)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentNullException.ThrowIfNull(values);
+        foreach (var pair in values)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(pair.Key);
+            ArgumentNullException.ThrowIfNull(pair.Value);
+        }
+        lock (_gate)
+        {
+            string prefix = storeName + "\0";
+            if (_entries.Keys.Any(key => key.StartsWith(prefix, StringComparison.Ordinal)))
+                throw new InvalidOperationException("Snapshot import requires an empty target store.");
+            foreach (var pair in values) _entries[Compose(storeName, pair.Key)] = new(pair.Value.ToArray(), NextETag());
+        }
     }
 
     /// <summary>Returns whether the raw stored bytes at a key are a pending batch envelope.</summary>

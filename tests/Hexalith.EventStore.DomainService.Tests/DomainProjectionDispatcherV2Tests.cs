@@ -635,6 +635,99 @@ public sealed class DomainProjectionDispatcherV2Tests {
         (await persisted.GetAsync<int[]>("statestore", "generation-0", token)).Value.ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData(false, "partition")]
+    [InlineData(true, "partition")]
+    [InlineData(false, "refusal")]
+    [InlineData(true, "refusal")]
+    [InlineData(false, "large-with-nonstaging-default")]
+    [InlineData(true, "large-with-nonstaging-default")]
+    public async Task OrdinaryAndStreamedRebuildHonorOnlyTheMostRestrictiveStagingPlanCeiling(bool streamed, string scenario)
+    {
+        var token = TestContext.Current.CancellationToken;
+        bool large = scenario == "large-with-nonstaging-default";
+        var handler = Substitute.For<IAsyncDomainProjectionRebuildHandler, IAsyncDomainProjectionStreamedRebuildHandler>();
+        handler.Domain.Returns("widget"); handler.ProjectionType.Returns("widget-detail");
+        handler.OrdinaryDeliveryEnabled.Returns(true); handler.RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
+        ((IAsyncDomainProjectionStreamedRebuildHandler)handler).RebuildTransportStoreName.Returns("statestore");
+        var operations = large
+            ? new[] { ReadModelBatchOperation.Write("generation-large", new string('v', 600_000), ReadModelBatchConcurrency.CreateOnly) }
+            : Enumerable.Range(0, scenario == "refusal" ? 33 : 4).Select(i => ReadModelBatchOperation.Write("generation-" + i,
+                new string('v', scenario == "refusal" && i == 32 ? 9000 : 3000), ReadModelBatchConcurrency.CreateOnly)).ToArray();
+        var plan = new DomainProjectionRebuildPlan("statestore", [ReadModelBatchOperation.Write("canonical-detail", new { count = 1 }, ReadModelBatchConcurrency.CreateOnly)])
+            { StagedOperations = operations, GenerationStagingMaxCanonicalManifestBytes = large ? 1_048_576 : 8000 };
+        handler.PrepareRebuildAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(plan);
+        ((IAsyncDomainProjectionStreamedRebuildHandler)handler).PrepareStreamedRebuildAsync(Arg.Any<ProjectionRequest>(),
+            Arg.Any<IAsyncEnumerable<ProjectionEventDto>>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+            {
+                await foreach (var item in call.Arg<IAsyncEnumerable<ProjectionEventDto>>()) _ = item;
+                return plan;
+            });
+        var second = Substitute.For<IAsyncDomainProjectionRebuildHandler, IAsyncDomainProjectionStreamedRebuildHandler>();
+        second.Domain.Returns("widget"); second.ProjectionType.Returns("widget-index");
+        second.OrdinaryDeliveryEnabled.Returns(true); second.RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
+        ((IAsyncDomainProjectionStreamedRebuildHandler)second).RebuildTransportStoreName.Returns("statestore");
+        var secondPlan = new DomainProjectionRebuildPlan("statestore", [ReadModelBatchOperation.Write("canonical-index", new { count = 1 }, ReadModelBatchConcurrency.CreateOnly)])
+            { StagedOperations = large ? [] : [ReadModelBatchOperation.Write("generation-index", new { count = 1 }, ReadModelBatchConcurrency.CreateOnly)],
+                GenerationStagingMaxCanonicalManifestBytes = large ? 512 * 1024 : 12_000 };
+        second.PrepareRebuildAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(secondPlan);
+        ((IAsyncDomainProjectionStreamedRebuildHandler)second).PrepareStreamedRebuildAsync(Arg.Any<ProjectionRequest>(),
+            Arg.Any<IAsyncEnumerable<ProjectionEventDto>>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+            {
+                await foreach (var item in call.Arg<IAsyncEnumerable<ProjectionEventDto>>()) _ = item;
+                return secondPlan;
+            });
+        var persisted = new InMemoryReadModelStore();
+        var batches = Substitute.For<IReadModelBatchStore>();
+        var observed = new List<ReadModelBatch>();
+        batches.When(store => store.ValidateBatch(Arg.Any<ReadModelBatch>())).Do(call => persisted.ValidateBatch(call.Arg<ReadModelBatch>()));
+        batches.ExecuteAsync(Arg.Any<ReadModelBatch>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            observed.Add(call.Arg<ReadModelBatch>());
+            return persisted.ExecuteAsync(call.Arg<ReadModelBatch>(), call.Arg<CancellationToken>());
+        });
+        using var services = new ServiceCollection().AddSingleton<IReadModelStore>(persisted).AddSingleton(batches)
+            .AddSingleton<IReadModelBatchStagingStore>(persisted).AddSingleton<IAsyncDomainProjectionHandler>(handler)
+            .AddSingleton<IAsyncDomainProjectionHandler>(second).BuildServiceProvider();
+        var identity = new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" };
+        var options = new ProjectionDispatchOptions();
+        var request = CreateRequest(ProjectionRouteCatalogFingerprint.Compute(identity.AppId, identity.ServiceVersion,
+            [new("widget", "widget-detail"), new("widget", "widget-index")]), "widget-detail", "widget-index");
+        if (streamed)
+        {
+            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(request.Request.Events, JsonSerializerOptions.Web);
+            request = request with { Request = request.Request with { Events = [], RebuildSourceHeadSequence = 1 }, RebuildTransport = new(1, Convert.ToHexString(SHA256.HashData(bytes))) };
+            await DomainProjectionRebuildTransport.StoreAsync(services, new(request, 0, bytes), options, identity, token);
+        }
+        var response = streamed ? await DomainProjectionDispatcher.StageRebuildAsync(services, request, options, identity, token)
+            : await DomainProjectionDispatcher.RebuildAsync(services, request, options, identity, token);
+        if (scenario == "refusal")
+        {
+            response.Outcomes.ShouldAllBe(outcome => outcome.ReasonCode == ProjectionDispatchReasonCodes.MalformedOutcome);
+            observed.ShouldBeEmpty();
+            (await persisted.GetAsync<string>("statestore", "generation-0", token)).Value.ShouldBeNull();
+            (await persisted.GetAsync<string>("statestore", "canonical-detail", token)).Value.ShouldBeNull();
+            return;
+        }
+        response.Outcomes.ShouldAllBe(outcome => outcome.Status == ProjectionDispatchStatus.Completed);
+        var staged = observed.Where(batch => batch.Scope.ProjectionType.EndsWith(".generation", StringComparison.Ordinal)).ToArray();
+        staged.Length.ShouldBe(large ? 1 : 4);
+        foreach (var batch in staged)
+            ReadModelBatchValidation.Validate(batch, new ReadModelBatchOptions { MaxCanonicalManifestBytes = large ? 1_048_576 : 8000 });
+        var originalIdentities = staged.Select(batch => (batch.Scope.BatchId, Manifest: Snapshot(batch))).ToArray();
+        observed.Clear();
+        _ = streamed ? await DomainProjectionDispatcher.StageRebuildAsync(services, request, options, identity, token)
+            : await DomainProjectionDispatcher.RebuildAsync(services, request, options, identity, token);
+        observed.Where(batch => batch.Scope.ProjectionType.EndsWith(".generation", StringComparison.Ordinal))
+            .Select(batch => (batch.Scope.BatchId, Manifest: Snapshot(batch))).ShouldBe(originalIdentities);
+        static string Snapshot(ReadModelBatch batch) => JsonSerializer.Serialize(new
+        {
+            batch.Scope,
+            Operations = batch.Operations.Select(operation => new { operation.Key,
+                Value = Convert.ToBase64String(operation.CanonicalValue.Span), operation.Concurrency })
+        });
+    }
+
     [Fact]
     public async Task RebuildAsync_OnePreparationFailureDoesNotPromoteAnyRoute() {
         IAsyncDomainProjectionRebuildHandler detail = CreateRebuildHandler("widget", "widget-detail");

@@ -1,6 +1,6 @@
 namespace Hexalith.EventStore.Client.Projections;
 
-/// <summary>Settles every registered private preparation for an exact aggregate before physical erasure.</summary>
+/// <summary>Settles registered committed work and retires private preparation for an exact aggregate during physical erasure.</summary>
 public interface IReadModelRecoveryScopeStore
 {
     /// <summary>Persists discoverable preparation without installing any canonical participant.</summary>
@@ -18,6 +18,11 @@ public interface IReadModelRecoveryScopeStore
     /// <param name="fingerprint">The immutable original manifest fingerprint.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     Task<ReadModelBatchStagingResult> ReadRecoveryDecisionAsync(ReadModelBatchScope scope, string fingerprint, CancellationToken cancellationToken = default);
+
+    /// <summary>Completes committed registered work and releases terminal registrations without retiring or committing prepared work.</summary>
+    /// <param name="scope">The exact store, tenant, domain and aggregate; all projection registrations are inspected.</param>
+    /// <param name="cancellationToken">Cancels settlement; uncertainty must prevent delivery acknowledgement.</param>
+    Task<ReadModelPendingBatchRecoveryResult> SettleRecoveryScopeAsync(ReadModelBatchScope scope, CancellationToken cancellationToken = default);
 
     /// <summary>Rotates admission, retires registered preparations and removes their original private bytes.</summary>
     /// <param name="scope">The exact store, tenant, domain and aggregate. Projection and batch discriminators are ignored.</param>

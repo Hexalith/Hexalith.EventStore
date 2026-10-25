@@ -25,6 +25,14 @@ public sealed partial class DaprReadModelStore : IReadModelRecoveryScopeStore
     }
 
     /// <inheritdoc/>
+    public Task<ReadModelPendingBatchRecoveryResult> SettleRecoveryScopeAsync(ReadModelBatchScope scope, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelRecoveryDiscovery.SettleAsync(new DaprReadModelBatchStateAccessor(_daprClient, scope.StoreName),
+            _options, _logger, scope, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<ReadModelPendingBatchRecoveryResult> RetireRecoveryScopeAsync(ReadModelBatchScope scope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(scope);

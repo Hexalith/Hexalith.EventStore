@@ -419,6 +419,9 @@ internal sealed partial class ReadModelBatchProtocol {
         string existingEtag,
         CancellationToken cancellationToken) {
         if (await IsRetiredAsync(cancellationToken).ConfigureAwait(false)) throw new ReadModelBatchRaceException();
+        if (_batch.DiscoverableRecovery
+            && !(await ReadModelRecoveryDiscovery.SettleAsync(_accessor, _options, _logger, _batch.Scope, cancellationToken).ConfigureAwait(false)).IsResolved)
+            throw new ReadModelBatchRaceException();
         if (_batch.DiscoverableRecovery && !await ReadModelRecoveryDiscovery.EnrollAsync(_accessor, _batch, _fingerprint,
             async () =>
             {
@@ -437,7 +440,7 @@ internal sealed partial class ReadModelBatchProtocol {
             OriginalManifest = _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery ? null : ReadModelBatchFingerprint.BuildCanonicalManifest(_batch),
         };
         ReadOnlyMemory<byte> bytes = SerializeMarker(marker);
-        if (marker.OriginalManifest is not null && bytes.Length > 16_384)
+        if (marker.OriginalManifest is not null && (bytes.Length > 16_384 || _batch.DiscoverableRecovery))
         {
             // The manifest is existing batch recovery material, with its own one-MiB ceiling.
             // Keep the control record bounded and reference only this scope's immutable bytes.
@@ -962,6 +965,7 @@ internal sealed partial class ReadModelBatchProtocol {
             Status = ReadModelBatchMarkerStatus.Completed,
             OwnerSelection = _ownerSelection,
             OwnerSelections = _ownerSelections,
+            RetainedParticipantCount = _batch.RetainManifestForRecovery || _batch.DiscoverableRecovery ? _batch.Operations.Count : 0,
             Operations = null,
             TerminalTimeUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
         };
@@ -1289,14 +1293,15 @@ internal sealed partial class ReadModelBatchProtocol {
             {
                 bool finished = await FinishRecoveryAnchorAsync(_accessor, marker, _batch.Scope, _injector, cancellationToken, _options.TimeProvider).ConfigureAwait(false);
                 if (finished && _batch.DiscoverableRecovery)
-                    await ReadModelRecoveryDiscovery.RemoveAsync(_accessor, _batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
+                    return await ClearRecoveryAnchorAsync(_batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false)
+                        && await ReleaseTerminalRegistrationAsync(_batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
                 return finished;
             }
         }
-        bool reclaimed = _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery
+        bool reclaimed = _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery && !_batch.DiscoverableRecovery
             || await ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken).ConfigureAwait(false);
         if (reclaimed && _batch.DiscoverableRecovery)
-            await ReadModelRecoveryDiscovery.RemoveAsync(_accessor, _batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
+            reclaimed = await ReleaseTerminalRegistrationAsync(_batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
         return reclaimed && await PublishCompletionProofAsync(cancellationToken).ConfigureAwait(false);
     }
 
