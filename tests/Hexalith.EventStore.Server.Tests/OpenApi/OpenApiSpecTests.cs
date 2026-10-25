@@ -117,6 +117,20 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
     }
 
     [Fact]
+    public async Task OpenApiDocument_StatusAmbiguity_Declares409ProblemDetails()
+    {
+        JsonElement doc = await GetOpenApiDocumentAsync();
+
+        JsonElement response = doc.GetProperty("paths")
+            .GetProperty("/api/v1/commands/status/{messageId}").GetProperty("get")
+            .GetProperty("responses").GetProperty("409");
+        response.GetProperty("description").GetString().ShouldBe("The identifier matches multiple commands or authorized tenant scopes.");
+        JsonElement schema = response.GetProperty("content")
+            .GetProperty("application/problem+json").GetProperty("schema");
+        schema.GetProperty("$ref").GetString().ShouldBe("#/components/schemas/ProblemDetails");
+    }
+
+    [Fact]
     public async Task SwaggerUi_ReturnsHtml() {
         HttpClient client = _factory.CreateClient();
 

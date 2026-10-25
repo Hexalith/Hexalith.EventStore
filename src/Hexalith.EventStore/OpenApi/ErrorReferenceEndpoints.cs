@@ -92,9 +92,9 @@ public static class ErrorReferenceEndpoints {
             ["Read the response's code, category, retryable, and clientAction fields to identify the exact failure — this type covers several distinct outcomes.", "For clientAction poll_status_then_retry (409), poll command status before retrying; for retry_later (503), retry after Retry-After or a short delay; for contact_support (503), contact support with the correlationId instead of retrying blindly.", "For clientAction correct_request (400), the command was rejected and will not succeed on retry; correct it and submit a new key."]),
 
         new("command-correlation-ambiguous", "Ambiguous Command Correlation", 409,
-            "The tenant-scoped correlation identifier maps to multiple live commands, so compatibility lookup cannot select one safely.",
-            """{"type":"https://hexalith.io/problems/command-correlation-ambiguous","title":"Ambiguous Command Correlation","status":409,"detail":"The correlation identifier maps to multiple commands. Query again using the command MessageId."}""",
-            ["Use the MessageId returned by command submission.", "Do not retry correlation lookup until a unique MessageId is available."]),
+            "The identifier matches multiple commands or authorized tenant scopes, so status lookup cannot select one safely.",
+            """{"type":"https://hexalith.io/problems/command-correlation-ambiguous","title":"Ambiguous Command Correlation","status":409,"detail":"The identifier matches multiple commands or authorized tenant scopes. Verify the command MessageId and authorized tenant scope; contact support if a MessageId lookup remains ambiguous."}""",
+            ["Verify the MessageId returned by command submission and the authorized tenant scope.", "A MessageId can still be ambiguous across authorized tenant scopes. Have an operator verify the intended tenant scope; repeating the same lookup does not resolve ambiguity.", "Do not infer command success or resubmit the business command because status lookup returned 409. Contact support with the response correlationId (the request diagnostic reference), not only the command identifier being queried."]),
 
         new("rate-limit-exceeded", "Rate Limit Exceeded", 429,
             "The per-tenant rate limit has been exceeded for the current time window.",

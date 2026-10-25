@@ -133,6 +133,53 @@ public class CommandStatusControllerTests {
         problem.Detail.ShouldNotContain("01MESSAGE000000000000000001");
     }
 
+    /// <summary>
+    /// Every supported ambiguity shape gives general remediation without disclosing matched records.
+    /// </summary>
+    /// <param name="matchKind">The second tenant's direct, indexed, or legacy lookup shape.</param>
+    [Theory]
+    [InlineData("direct")]
+    [InlineData("indexed")]
+    [InlineData("legacy")]
+    public async Task GetStatus_CrossTenantAmbiguity_ReturnsScopeAwareSupportSafeGuidance(string matchKind)
+    {
+        const string lookupId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string otherMessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
+        var store = new InMemoryCommandStatusStore();
+        var index = new InMemoryCommandCorrelationIndex();
+        await store.WriteStatusAsync("tenant-a", lookupId,
+            new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow,
+                "private-aggregate-a", 1, null, null, null,
+                matchKind == "legacy" ? null : lookupId, "private-correlation-a"),
+            CancellationToken.None);
+        string secondKey = matchKind == "indexed" ? otherMessageId : lookupId;
+        await store.WriteStatusAsync("tenant-b", secondKey,
+            new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow,
+                "private-aggregate-b", 1, null, null, null,
+                matchKind == "legacy" ? null : secondKey, "private-correlation-b"),
+            CancellationToken.None);
+        if (matchKind == "indexed")
+        {
+            _ = await index.AddAsync("tenant-b", lookupId, otherMessageId);
+        }
+        var controller = CreateController(store, index, "tenant-a", "tenant-b");
+
+        IActionResult result = await controller.GetStatus(lookupId, CancellationToken.None);
+
+        ObjectResult conflict = result.ShouldBeOfType<ObjectResult>();
+        conflict.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        ProblemDetails problem = conflict.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Type.ShouldBe("https://hexalith.io/problems/command-correlation-ambiguous");
+        problem.Title.ShouldBe("Ambiguous Command Correlation");
+        problem.Detail.ShouldBe("The identifier matches multiple commands or authorized tenant scopes. Verify the command MessageId and authorized tenant scope; contact support if a MessageId lookup remains ambiguous.");
+        problem.Detail.ShouldNotContain("tenant-a");
+        problem.Detail.ShouldNotContain("tenant-b");
+        problem.Detail.ShouldNotContain("private-");
+        problem.Detail.ShouldNotContain(otherMessageId);
+        problem.Extensions.Keys.ShouldBe(["correlationId"]);
+        controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");
+    }
+
     [Fact]
     public async Task GetStatus_AuthorizedTenantOnly_DoesNotProbeOtherTenantStatusOrIndex() {
         ICommandStatusStore store = Substitute.For<ICommandStatusStore>();

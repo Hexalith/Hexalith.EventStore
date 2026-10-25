@@ -48,6 +48,23 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
     }
 
     [Fact]
+    public async Task ErrorReferencePage_CommandAmbiguity_ExplainsCrossTenantMessageIdCollisions()
+    {
+        using HttpClient client = _factory.CreateClient();
+        using HttpResponseMessage response = await client.GetAsync("/problems/command-correlation-ambiguous");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        string body = await response.Content.ReadAsStringAsync();
+
+        body.ShouldContain("multiple commands or authorized tenant scopes");
+        body.ShouldContain("A MessageId can still be ambiguous across authorized tenant scopes.");
+        body.ShouldContain("Have an operator verify the intended tenant scope");
+        body.ShouldContain("Do not infer command success or resubmit the business command");
+        body.ShouldContain("response correlationId (the request diagnostic reference)");
+        body.ShouldNotContain("Query again using the command MessageId.");
+        body.ShouldNotContain("Do not retry correlation lookup until a unique MessageId is available.");
+    }
+
+    [Fact]
     public async Task ErrorReferencePage_UnknownType_Returns404() {
         HttpClient client = _factory.CreateClient();
 
