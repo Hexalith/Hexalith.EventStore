@@ -1,0 +1,204 @@
+{
+  "generation": 7,
+  "allowRuntimeOverrides": false,
+  "declarations": [
+    {
+      "routeId": "counter-create",
+      "kind": "command",
+      "domain": "counter",
+      "messageType": "create-counter",
+      "projectionType": null,
+      "contractVersion": "v1",
+      "messageIdVersion": 2,
+      "credentialKind": "workload",
+      "operation": "domain-service:process",
+      "platformAdmission": null,
+      "fallbackTypes": []
+    },
+    {
+      "routeId": "counter-get",
+      "kind": "query",
+      "domain": "counter",
+      "messageType": "get-counter-status",
+      "projectionType": "counter",
+      "contractVersion": "v1",
+      "messageIdVersion": null,
+      "credentialKind": "workload",
+      "operation": "domain-service:query",
+      "platformAdmission": null,
+      "fallbackTypes": []
+    },
+    {
+      "routeId": "counter-project",
+      "kind": "projection",
+      "domain": "counter",
+      "messageType": null,
+      "projectionType": "counter",
+      "contractVersion": "v1",
+      "messageIdVersion": null,
+      "credentialKind": "workload",
+      "operation": "domain-service:project",
+      "platformAdmission": null,
+      "fallbackTypes": []
+    },
+    {
+      "routeId": "platform-tenant-create",
+      "kind": "command",
+      "domain": "tenants",
+      "messageType": "create-tenant",
+      "projectionType": null,
+      "contractVersion": "v1",
+      "messageIdVersion": 2,
+      "credentialKind": "workload",
+      "operation": "domain-service:process",
+      "platformAdmission": {
+        "namespace": "platform:tenants",
+        "requiredHumanPermission": "tenants:create"
+      },
+      "fallbackTypes": []
+    },
+    {
+      "routeId": "query-fallback",
+      "kind": "query",
+      "domain": "counter",
+      "messageType": "*",
+      "projectionType": "counter",
+      "contractVersion": "v1",
+      "messageIdVersion": null,
+      "credentialKind": "workload",
+      "operation": "domain-service:query",
+      "platformAdmission": null,
+      "fallbackTypes": [
+        "get-counter-history",
+        "get-counter-status"
+      ]
+    }
+  ],
+  "bindings": [
+    {
+      "routeId": "counter-create",
+      "appId": "fixture-counter",
+      "method": "process",
+      "contractVersion": "v1",
+      "isRuntimeOverride": false
+    },
+    {
+      "routeId": "counter-get",
+      "appId": "fixture-counter",
+      "method": "query",
+      "contractVersion": "v1",
+      "isRuntimeOverride": false
+    },
+    {
+      "routeId": "counter-project",
+      "appId": "fixture-counter",
+      "method": "project",
+      "contractVersion": "v1",
+      "isRuntimeOverride": false
+    },
+    {
+      "routeId": "platform-tenant-create",
+      "appId": "fixture-tenants",
+      "method": "process",
+      "contractVersion": "v1",
+      "isRuntimeOverride": false
+    },
+    {
+      "routeId": "query-fallback",
+      "appId": "fixture-counter",
+      "method": "query",
+      "contractVersion": "v1",
+      "isRuntimeOverride": false
+    }
+  ],
+  "idempotency": [
+    {
+      "routeId": "counter-create",
+      "generation": 7,
+      "domain": "counter",
+      "commandType": "create-counter",
+      "adapterId": "fixture:counter-create",
+      "operationId": "fixture:create-counter",
+      "policyVersion": "policy-v1",
+      "descriptorSchema": {
+        "schemaId": "fixture:counter-create",
+        "version": 1,
+        "fields": [
+          {
+            "name": "aggregate-id",
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "type": "int64"
+          }
+        ]
+      },
+      "descriptorDigest": "bb37d4e3a5e7231f8ddb01ee5100044aa4bd7fb1d948702a3963b5e96fa50b5a",
+      "retentionTier": "mutation",
+      "activeDigestKeyGeneration": "g2",
+      "readerDigestKeyGenerations": [
+        "g2",
+        "g1"
+      ],
+      "secretStore": "fixture-secrets",
+      "logicalSecretName": "fixture-digest-ring",
+      "secretMapGeneration": "map-v2",
+      "keyMap": [
+        {
+          "generation": "g1",
+          "mapKey": "digest-g1"
+        },
+        {
+          "generation": "g2",
+          "mapKey": "digest-g2"
+        }
+      ],
+      "consumerAppId": "fixture-eventstore"
+    },
+    {
+      "routeId": "platform-tenant-create",
+      "generation": 7,
+      "domain": "tenants",
+      "commandType": "create-tenant",
+      "adapterId": "fixture:platform-tenant-create",
+      "operationId": "fixture:create-tenant",
+      "policyVersion": "policy-v1",
+      "descriptorSchema": {
+        "schemaId": "fixture:platform-tenant-create",
+        "version": 1,
+        "fields": [
+          {
+            "name": "aggregate-id",
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "type": "int64"
+          }
+        ]
+      },
+      "descriptorDigest": "119d0ab6e5c55ad2d526185aa21ccd160aa78e35873c1a77c89507034c5f5666",
+      "retentionTier": "mutation",
+      "activeDigestKeyGeneration": "g2",
+      "readerDigestKeyGenerations": [
+        "g2",
+        "g1"
+      ],
+      "secretStore": "fixture-secrets",
+      "logicalSecretName": "fixture-digest-ring",
+      "secretMapGeneration": "map-v2",
+      "keyMap": [
+        {
+          "generation": "g1",
+          "mapKey": "digest-g1"
+        },
+        {
+          "generation": "g2",
+          "mapKey": "digest-g2"
+        }
+      ],
+      "consumerAppId": "fixture-eventstore"
+    }
+  ]
+}
