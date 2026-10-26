@@ -44,7 +44,7 @@ public static partial class DevelopmentRouteCatalogBuilder
                 throw Failure($"$.bindings[{index}].routeId", "missing-declaration");
             }
 
-            routes.Add(new(binding.RouteId, input.Generation, RouteCatalogCodec.ComputeDeclarationDigest(declaration),
+            routes.Add(new(declaration.RouteId, input.Generation, RouteCatalogCodec.ComputeDeclarationDigest(declaration),
                 binding.AppId, binding.Method, binding.ContractVersion, declaration.CredentialKind, declaration.Operation, binding.IsRuntimeOverride));
         }
 
