@@ -5,6 +5,29 @@ namespace Hexalith.EventStore.Contracts.Tests.Routing;
 public class RouteCatalogValidatorTests
 {
     [Theory]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public void DomainLengthMatchesRuntimeDeclarationsAndIdempotencyMetadata(int length, bool valid)
+        => AssertDomain(new string('a', length), valid);
+
+    [Theory]
+    [InlineData("billing--orders", true)]
+    [InlineData("-billing", false)]
+    [InlineData("billing-", false)]
+    [InlineData("Billing", false)]
+    public void DomainSyntaxMatchesRuntimeDeclarationsAndIdempotencyMetadata(string domain, bool valid)
+        => AssertDomain(domain, valid);
+
+    [Fact]
+    public void DomainGrammarDoesNotRelaxOtherIdentifiers()
+    {
+        RouteContractDeclaration declaration = RouteCatalogCodec.Decode(RouteCatalogCodecTests.FixtureBytes()).Declarations[0];
+        RouteCatalogValidator.ValidateDeclaration(declaration with { Domain = "billing--orders" });
+        Should.Throw<RouteCatalogValidationException>(() => RouteCatalogValidator.ValidateDeclaration(declaration with { RouteId = "billing--orders" }))
+            .Diagnostics.Single().Code.ShouldBe("missing-or-invalid-name");
+    }
+
+    [Theory]
     [InlineData("duplicate-id", "duplicate-route-id")]
     [InlineData("duplicate-key", "duplicate-route-key")]
     [InlineData("missing-declaration", "missing-declaration")]
@@ -129,5 +152,24 @@ public class RouteCatalogValidatorTests
         routes[0] = routes[0] with { DeclarationDigest = RouteCatalogCodec.ComputeDeclarationDigest(declarations[0]), IsRuntimeOverride = true };
         RouteCatalogEnvelope catalog = RouteCatalogCodec.Seal(valid with { AllowRuntimeOverrides = true, Declarations = declarations, Routes = routes });
         RouteCatalogValidator.Validate(catalog);
+    }
+
+    private static void AssertDomain(string domain, bool valid)
+    {
+        RouteCatalogEnvelope catalog = RouteCatalogCodec.Decode(RouteCatalogCodecTests.FixtureBytes());
+        RouteContractDeclaration declaration = catalog.Declarations[0] with { Domain = domain };
+        IdempotencyCatalogEntry entry = catalog.Idempotency[0] with { Domain = domain };
+        if (valid)
+        {
+            RouteCatalogCodec.ComputeDeclarationDigest(declaration).Length.ShouldBe(64);
+            RouteCatalogCodec.ComputeIdempotencyEntryDigest(entry).Length.ShouldBe(64);
+        }
+        else
+        {
+            Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.ComputeDeclarationDigest(declaration))
+                .Diagnostics.Single().Code.ShouldBe("missing-or-invalid-domain");
+            Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.ComputeIdempotencyEntryDigest(entry))
+                .Diagnostics.Single().Code.ShouldBe("missing-or-invalid-domain");
+        }
     }
 }

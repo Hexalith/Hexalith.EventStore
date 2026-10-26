@@ -55,14 +55,15 @@ See [investigation](investigations/story-5-12-code-map.md) for exact sources and
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_bmad-output/planning-artifacts/architecture.md` and its companion `.memlog.md` — record the three owner choices once answered, removing the obsolete no-Contracts-dependency explanation without altering other decisions.
-- [ ] `C/Routing/RouteContractDeclaration.cs`, `RouteCatalogEnvelope.cs`, `RouteCatalogEntry.cs`, `IdempotencyCatalogEntry.cs`, `PlatformAdmissionDeclaration.cs` in that directory — define closed versioned models; one type per file; require explicit command grammar versions.
-- [ ] `C/Routing/RouteCatalogCodec.cs`, `RouteCatalogValidator.cs` — implement canonical encoding/declaration hashing, exact-byte decoding, semantic validation and bounded entry/field failures using BCL APIs.
-- [ ] `C/Authorization/EventStoreOperationIdentifiers.cs`, `D/Authentication/EventStoreWorkloadOperations.cs`, `JwtBearerAuthenticationContract.cs` in the latter directory — implement approved declaration ownership while preserving existing authentication behavior; 2.14 implements new platform enforcement.
-- [ ] `src/Hexalith.EventStore.Client/Routing/DevelopmentRouteCatalogBuilder.cs` and `tools/routing-catalog.cs` — compose declared contracts with value-free Development bindings, generate/check the catalog through the shared codec; refuse missing required inputs.
+- [x] `_bmad-output/planning-artifacts/architecture.md` and its companion `.memlog.md` — record the three owner choices once answered, removing the obsolete no-Contracts-dependency explanation without altering other decisions.
+- [x] `C/Routing/RouteContractDeclaration.cs`, `RouteCatalogEnvelope.cs`, `RouteCatalogEntry.cs`, `IdempotencyCatalogEntry.cs`, `PlatformAdmissionDeclaration.cs` in that directory — define closed versioned models; one type per file; require explicit command grammar versions.
+- [x] `C/Routing/RouteCatalogCodec.cs`, `RouteCatalogValidator.cs` — implement canonical encoding/declaration hashing, exact-byte decoding, semantic validation and bounded entry/field failures using BCL APIs.
+- [x] `C/Authorization/EventStoreOperationIdentifiers.cs`, `D/Authentication/EventStoreWorkloadOperations.cs`, `JwtBearerAuthenticationContract.cs` in the latter directory — implement approved declaration ownership while preserving existing authentication behavior; 2.14 implements new platform enforcement.
+- [x] `src/Hexalith.EventStore.Client/Routing/DevelopmentRouteCatalogBuilder.cs` and `tools/routing-catalog.cs` — compose declared contracts with value-free Development bindings, generate/check the catalog through the shared codec; refuse missing required inputs.
 - [ ] `deploy/dapr/eventstore-routing-catalog.json` — generate only from a complete profile whose current effective routes are verified; never fill missing policy with defaults to make generation pass.
-- [ ] `T/Routing/RouteCatalogCodecTests.cs`, `RouteCatalogValidatorTests.cs`, `Fixtures/` in that directory — positive controls and checked-in negatives observed failing for every rejection, round trips and stable digests.
+- [x] `T/Routing/RouteCatalogCodecTests.cs`, `RouteCatalogValidatorTests.cs`, `Fixtures/` in that directory — positive controls and checked-in negatives observed failing for every rejection, round trips and stable digests.
 - [ ] `tests/Hexalith.EventStore.Server.Tests/DomainServices/DevelopmentRouteCatalogParityTests.cs`, `tests/Hexalith.EventStore.QueryRouting.Tests/DaprDomainQueryInvokerTests.cs` — compare actual resolution, query override and projection discovery; run through existing CI lanes.
+
 
 **Acceptance Criteria:**
 - Given complete declarations, when generation runs twice, then canonical bytes/digests match and runtime-target parity passes without changing dispatch behavior.
@@ -71,10 +72,10 @@ See [investigation](investigations/story-5-12-code-map.md) for exact sources and
 
 ## Implementation Notes
 
-The bounded tooling defines closed v1 construction inputs, deterministic catalog bytes, declaration/descriptor/facet digests, and an external root digest equal to SHA-256 of the exact retained envelope bytes. Synthetic complete fixtures use `fixture-*` targets and explicit test policies; they are not actual Development declarations. No deployment catalog or runtime adoption is included. V1 permits only workload command/query/projection target hops; general ingress remains endpoint metadata. Commands require exact declarations and individual AD-25 joins; query/projection fallbacks must enumerate finite discriminators, with exact declarations taking precedence.
+The bounded tooling defines closed v1 construction inputs, deterministic catalog bytes, declaration/descriptor/idempotency-entry/facet digests, and an external root digest equal to SHA-256 of the exact retained envelope bytes. Synthetic complete fixtures use `fixture-*` targets and explicit test policies; they are not actual Development declarations. No deployment catalog or runtime adoption is included. V1 permits only workload command/query/projection target hops; general ingress remains endpoint metadata. Commands require exact declarations and individual AD-25 joins; query/projection fallbacks must enumerate finite discriminators, with exact declarations taking precedence.
 
 
-- 2026-10-26 — Approved staged delivery is implemented through [catalog construction tooling](spec-route-catalog-construction-tooling.md). That bounded work item may finish independently; this full story and its sprint row remain in-progress until complete real declarations and Development parity pass.
+- 2026-10-26 — Approved staged delivery is implemented through [catalog construction tooling](spec-route-catalog-construction-tooling.md). That bounded work item is complete after review and verification; this full story and its sprint row remain in-progress until complete real declarations and Development parity pass.
 
 ## Spec Change Log
 
@@ -86,4 +87,12 @@ Use a catalog-specific BCL codec. Human platform admission and downstream worklo
 
 ## Verification
 
-Build affected test projects individually with `-c Debug -p:UseHexalithProjectReferences=true`; run focused built xUnit executables then full suites. CI uses Release/package mode. Record commands, counts, full revision and CI link. Planning: `git diff --check`, `bash scripts/check-committed-files.sh`; no runtime tests yet.
+Bounded tooling is implemented and reviewed on source snapshot `54733d1b928c41f1e9fdf46841d043c8d482d648` plus reviewed working-tree patches and documentation. Final individual Debug/source builds passed with zero warnings/errors. Focused checks passed 74 Contracts and 37 Client cases; the compatibility lane passed 12 ServiceDefaults cases. Parent reran all full affected suites after review fixes: Contracts 1,315 passed/2 existing package-inventory skips; Client 2,217 passed/2 existing Dapr live-test skips; ServiceDefaults 16 passed. All 3,548 tests passed with no failures. CLI tests now use an isolated build, resolving the earlier shared-artifact collision. Three review layers completed; all catalog findings were resolved, with one unrelated query paging issue recorded in deferred-work.md. Exact commands, triage, and earlier failure boundaries are in the bounded tooling spec.
+
+Direct CLI generation/validation exited 0 with golden root `d30010c9b1017f29c5ae9da9a39289d8865bfce91bd153b6000beaad0248f4c0`; actual-profile inspection exited 2 with four bindings/52 diagnostics and no deployment file. `git diff --check` and `bash scripts/check-committed-files.sh` passed. CI uses the existing Release/package lanes; it was not run in this session, so no CI URL is available. These results prove construction and compatibility, not a complete real profile or runtime-target parity.
+
+### Bounded construction result (2026-10-26)
+
+The [tooling spec](spec-route-catalog-construction-tooling.md) records the exact commands, source revision, test counts, golden root digest, and real-profile inspection. Its four configured bindings (`counter`, `greeting`, `global-administrators`, `tenants`) still lack authoritative route declarations and complete per-command AD-25 adapter/operation, policy, descriptor, retention, digest-generation, logical-map, and consumer metadata. The two existing `system` bindings also lack namespace/exact-human-permission declarations. Projection inventory and convention/dynamic fallback parity remain unverified. The offline report enumerates 52 missing-input diagnostics and explicitly limits its inventory to checked-in JSON configuration.
+
+Synthetic fixture generation succeeds; actual-profile inspection exits nonzero and writes no deployment catalog. The full Development catalog and runtime-target parity tasks remain unchecked. Story 5.12 and its sprint row remain in-progress; Story 2.14 stays pending/backlog. Construction does not activate a catalog, implement platform admission, or establish production/OQ8 readiness.

@@ -35,6 +35,7 @@ public class EventStoreOperationCompatibilityTests
     public void HumanPermissionClaimRemainsSeparateFromWorkloadOperation()
     {
         JwtBearerAuthenticationContract.HumanPermissionClaimType.ShouldBe("eventstore:permission");
-        JwtBearerAuthenticationContract.HumanPermissionClaimType.ShouldNotBe("eventstore:operation");
+        EventStoreWorkloadAuthenticationDefaults.OperationClaimType.ShouldBe("eventstore:operation");
+        JwtBearerAuthenticationContract.HumanPermissionClaimType.ShouldNotBe(EventStoreWorkloadAuthenticationDefaults.OperationClaimType);
     }
 }

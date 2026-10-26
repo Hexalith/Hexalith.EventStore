@@ -105,7 +105,7 @@ public static partial class RouteCatalogValidator
     {
         Require(entry is not null, path, "missing-idempotency-entry");
         Name(entry.RouteId, path + ".routeId");
-        Name(entry.Domain, path + ".domain");
+        Domain(entry.Domain, path + ".domain");
         Name(entry.CommandType, path + ".commandType");
         Require(entry.Generation is > 0 and <= 9007199254740991, path + ".generation", "invalid-generation");
         Token(entry.AdapterId, path + ".adapterId");
@@ -146,7 +146,7 @@ public static partial class RouteCatalogValidator
         Require(declaration is not null, path, "missing-declaration");
         Name(declaration.RouteId, path + ".routeId");
         Require(declaration.Kind is "command" or "query" or "projection", path + ".kind", "unsupported-kind");
-        Name(declaration.Domain, path + ".domain");
+        Domain(declaration.Domain, path + ".domain");
         Require(IsMatch(declaration.ContractVersion, VersionPattern()), path + ".contractVersion", "invalid-contract-version");
         Require(declaration.CredentialKind == "workload", path + ".credentialKind", "invalid-target-credential");
         string operation = declaration.Kind switch
@@ -214,6 +214,8 @@ public static partial class RouteCatalogValidator
 
     private static void Name(string? value, string path) => Require(IsMatch(value, NamePattern()), path, "missing-or-invalid-name");
 
+    private static void Domain(string? value, string path) => Require(value is { Length: > 0 and <= 64 } && DomainPattern().IsMatch(value), path, "missing-or-invalid-domain");
+
     private static void Token(string? value, string path) => Require(IsMatch(value, TokenPattern()), path, "missing-or-invalid-token");
 
     private static bool IsMatch(string? value, Regex pattern) => value is { Length: > 0 and <= 128 } && pattern.IsMatch(value);
@@ -234,6 +236,9 @@ public static partial class RouteCatalogValidator
 
     [GeneratedRegex("\\A[a-z0-9]+(?:-[a-z0-9]+)*\\z", RegexOptions.CultureInvariant)]
     private static partial Regex NamePattern();
+
+    [GeneratedRegex("\\A[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\z", RegexOptions.CultureInvariant)]
+    private static partial Regex DomainPattern();
 
     [GeneratedRegex("\\A[A-Za-z0-9][A-Za-z0-9._:/-]*\\z", RegexOptions.CultureInvariant)]
     private static partial Regex TokenPattern();

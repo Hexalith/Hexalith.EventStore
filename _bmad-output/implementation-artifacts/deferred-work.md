@@ -6141,3 +6141,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
   summary: Align the operator guides with AD-26 and the accepted exception, which grant the SignalR Redis backplane no production eligibility.
   evidence: `docs/guides/configuration-reference.md`, `docs/guides/deployment-docker-compose.md` and `docs/operations/redis-signalr-channel-isolation.md` (2026-05-03 decision) present the backplane for staging and production multi-instance use. Architecture AD-26 already said Redis is Development/test only, so the contradiction predates Story 2.13's disposition.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-route-catalog-construction-tooling.md`
+  summary: Preserve producer paging metadata when an otherwise conditional query response would return 304.
+  evidence: Concurrent QueriesController changes gate 304 on request policy inputs, projection version, and warnings, but not normalized producer Metadata.Paging; a producer may apply default paging with an opaque ETag while the request has no policy inputs. EventStoreGatewayClient constructs 304 metadata without Paging, losing cursor/count data. This is outside the catalog tooling's explicit no-runtime-change intent; add a default-producer-paging conditional-response test and retain a 200 body or a complete carrier.

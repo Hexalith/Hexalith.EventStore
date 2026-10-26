@@ -66,6 +66,35 @@ public class DevelopmentRouteCatalogBuilderTests
         }
     }
 
+    [Theory]
+    [InlineData("binding")]
+    [InlineData("declaration")]
+    [InlineData("descriptor")]
+    public void ConstructionInputRejectsNestedDuplicatesBeforeCanonicalEncoding(string location)
+    {
+        string input = File.ReadAllText(FixturePath("CompleteInput.json"));
+        DevelopmentRouteCatalogBuilder.Build(DevelopmentRouteCatalogBuilder.ReadInput(Encoding.UTF8.GetBytes(input)));
+        Should.Throw<RouteCatalogValidationException>(() => DevelopmentRouteCatalogBuilder.ReadInput(Encoding.UTF8.GetBytes(WithNestedDuplicate(input, location))))
+            .Diagnostics.Single().Code.ShouldBe("duplicate-field");
+    }
+
+    [Theory]
+    [InlineData("comments")]
+    [InlineData("trailing-comma")]
+    [InlineData("bom")]
+    public void AppsettingsSyntaxIsNotAcceptedForConstructionInputs(string syntax)
+    {
+        string input = File.ReadAllText(FixturePath("CompleteInput.json"));
+        string invalid = syntax switch
+        {
+            "comments" => input.Insert(1, "/* appsettings comment */"),
+            "trailing-comma" => input.Insert(input.LastIndexOf('}'), ","),
+            _ => "\uFEFF" + input,
+        };
+        Should.Throw<RouteCatalogValidationException>(() => DevelopmentRouteCatalogBuilder.ReadInput(Encoding.UTF8.GetBytes(invalid)))
+            .Diagnostics.Single().Code.ShouldBe("invalid-json-or-closed-schema");
+    }
+
     [Fact]
     public void RealDevelopmentConfigurationReportsAllFourBindingsAndExplicitInventoryLimits()
     {
@@ -102,36 +131,185 @@ public class DevelopmentRouteCatalogBuilderTests
     }
 
     [Fact]
+    public void InspectionAcceptsAppsettingsSyntaxAndMergesCaseInsensitiveSectionsAndFields()
+    {
+        string first = """
+            { // normal appsettings syntax
+              "eventstore":{"domainservices":{"registrations":{"*|counter|v1":{
+                "tenantid":"*","domain":"counter","appid":"old","methodname":"process","version":"v1",
+              },},},},
+            }
+            """;
+        string second = """
+            {"EventSTORE":{"DomainSERVICES":{"RegisTRATIONS":{"*|counter|v1":{"AppID":"sample"}}}}}
+            """;
+        DevelopmentCatalogInspection report = DevelopmentRouteCatalogBuilder.Inspect([Encoding.UTF8.GetBytes("\uFEFF" + first), Encoding.UTF8.GetBytes(second)]);
+        report.Bindings.Single().ShouldBe(new DevelopmentBindingInventory("*", "counter", "sample", "process", "query", "v1"));
+    }
+
+    [Theory]
+    [InlineData("root")]
+    [InlineData("section")]
+    [InlineData("selector")]
+    [InlineData("field")]
+    [InlineData("unrelated-secret")]
+    public void InspectionRejectsDuplicateConfigurationPropertiesWithoutDisclosingValues(string location)
+    {
+        string valid = ConfigurationWithSelector("*|counter|v1");
+        DevelopmentRouteCatalogBuilder.Inspect([Encoding.UTF8.GetBytes(valid)]).Bindings.Count.ShouldBe(1);
+        string invalid = location switch
+        {
+            "root" => valid.Insert(1, "\"eventstore\":{},"),
+            "section" => valid.Replace("\"DomainServices\":", "\"domainservices\":{},\"DomainServices\":", StringComparison.Ordinal),
+            "selector" => valid.Replace("\"*|counter|v1\":", "\"*|COUNTER|V1\":{},\"*|counter|v1\":", StringComparison.Ordinal),
+            "field" => valid.Replace("\"AppId\":", "\"appid\":\"never-print-this\",\"AppId\":", StringComparison.Ordinal),
+            _ => valid.Insert(1, "\"Secrets\":{\"key\":\"never-print-this\",\"KEY\":\"never-print-this\"},"),
+        };
+        RouteCatalogValidationException exception = Should.Throw<RouteCatalogValidationException>(() => DevelopmentRouteCatalogBuilder.Inspect([Encoding.UTF8.GetBytes(invalid)]));
+        exception.Diagnostics.Single().Code.ShouldBe("duplicate-configuration-key");
+        exception.Message.ShouldNotContain("never-print-this");
+    }
+
+    [Theory]
+    [InlineData("*|counter|v1", "*", true)]
+    [InlineData("tenant-a|counter|v1", "tenant-a", true)]
+    [InlineData("wildcard_counter_v1", "*", true)]
+    [InlineData("*|greeting|v1", "*", false)]
+    [InlineData("wildcard_greeting_v1", "*", false)]
+    [InlineData("*|counter|v2", "*", false)]
+    [InlineData("tenant-a|counter|v1", "*", false)]
+    [InlineData("wildcard_counter_v1", "tenant-a", false)]
+    [InlineData("*|COUNTER|v1", "*", false)]
+    [InlineData("WildCard_counter_v1", "*", false)]
+    public void InspectionRequiresSupportedSelectorAndValueAgreement(string selector, string tenant, bool valid)
+    {
+        byte[] configuration = Encoding.UTF8.GetBytes(ConfigurationWithSelector(selector, tenant));
+        if (valid)
+        {
+            DevelopmentRouteCatalogBuilder.Inspect([configuration]).Bindings.Single().Domain.ShouldBe("counter");
+        }
+        else
+        {
+            RouteCatalogValidationException exception = Should.Throw<RouteCatalogValidationException>(() => DevelopmentRouteCatalogBuilder.Inspect([configuration]));
+            exception.Diagnostics.Single().Code.ShouldBe("selector-value-mismatch-or-unsupported-selector");
+            exception.Message.ShouldNotContain(selector);
+        }
+    }
+
+    [Theory]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public void InspectionUsesRuntimeDomainLength(int length, bool valid)
+    {
+        string domain = new('a', length);
+        byte[] configuration = Encoding.UTF8.GetBytes(ConfigurationWithSelector($"*|{domain}|v1", domain: domain));
+        if (valid)
+        {
+            DevelopmentRouteCatalogBuilder.Inspect([configuration]).Bindings.Single().Domain.ShouldBe(domain);
+        }
+        else
+        {
+            Should.Throw<RouteCatalogValidationException>(() => DevelopmentRouteCatalogBuilder.Inspect([configuration]))
+                .Diagnostics.Single().Code.ShouldBe("missing-or-invalid-safe-binding");
+        }
+    }
+
+    [Fact]
+    public void InspectionAcceptsConsecutiveHyphensInRuntimeDomains()
+    {
+        byte[] configuration = Encoding.UTF8.GetBytes(ConfigurationWithSelector("wildcard_counter--domain_v1", domain: "counter--domain"));
+        DevelopmentRouteCatalogBuilder.Inspect([configuration]).Bindings.Single().Domain.ShouldBe("counter--domain");
+    }
+
+    [Fact]
     public async Task FileToolGeneratesAndValidatesFixturesAndRefusesIncompleteInputs()
     {
         string directory = Path.Combine(Path.GetTempPath(), "route-catalog-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
+            string tool = await BuildToolAsync(Path.Combine(directory, "artifacts"));
             string output = Path.Combine(directory, "catalog.json");
-            (int exit, string log) = await RunToolAsync("generate", FixturePath("CompleteInput.json"), output);
+            (int exit, string log) = await RunToolAsync(tool, "generate", FixturePath("CompleteInput.json"), output);
             exit.ShouldBe(0, log);
             byte[] expected = File.ReadAllBytes(FixturePath("CanonicalCatalog.json"));
             File.ReadAllBytes(output).ShouldBe(expected);
             string root = RouteCatalogCodec.ComputeRootDigest(RouteCatalogCodec.Decode(expected));
             log.ShouldContain(root);
-            (exit, log) = await RunToolAsync("validate", output, root);
+            (exit, log) = await RunToolAsync(tool, "validate", output, root);
             exit.ShouldBe(0, log);
-            (exit, log) = await RunToolAsync("validate", output, new string('0', 64));
+            (exit, log) = await RunToolAsync(tool, "validate", output, new string('0', 64));
             exit.ShouldBe(2, log);
             log.ShouldContain("root-digest-mismatch");
 
             string incomplete = Path.Combine(directory, "incomplete.json");
             File.WriteAllText(incomplete, JsonSerializer.Serialize(ReadFixture() with { Idempotency = [] }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
             string absent = Path.Combine(directory, "must-not-exist.json");
-            (exit, log) = await RunToolAsync("generate", incomplete, absent);
+            (exit, log) = await RunToolAsync(tool, "generate", incomplete, absent);
             exit.ShouldBe(2, log);
             File.Exists(absent).ShouldBeFalse();
-            (exit, log) = await RunToolAsync("generate", incomplete, output);
+            (exit, log) = await RunToolAsync(tool, "generate", incomplete, output);
             exit.ShouldBe(2, log);
             File.ReadAllBytes(output).ShouldBe(expected);
 
-            (exit, log) = await RunToolAsync("inspect", SettingsPath("appsettings.json"), SettingsPath("appsettings.Development.json"));
+            string duplicate = Path.Combine(directory, "duplicate.json");
+            File.WriteAllText(duplicate, WithNestedDuplicate(File.ReadAllText(FixturePath("CompleteInput.json")), "descriptor"));
+            foreach (string destination in new[] { absent, output })
+            {
+                (exit, log) = await RunToolAsync(tool, "generate", duplicate, destination);
+                exit.ShouldBe(2, log);
+                log.ShouldContain("duplicate-field");
+                File.Exists(absent).ShouldBeFalse();
+                File.ReadAllBytes(output).ShouldBe(expected);
+            }
+
+            string oversized = Path.Combine(directory, "oversized.json");
+            using (FileStream file = File.Create(oversized))
+            {
+                file.SetLength(RouteCatalogCodec.MaximumByteLength + 1L);
+            }
+
+            foreach (string[] arguments in new[]
+            {
+                new[] { "generate", oversized, absent },
+                ["generate", oversized, output],
+                ["validate", oversized],
+                ["inspect", oversized, SettingsPath("appsettings.Development.json")],
+                ["inspect", SettingsPath("appsettings.json"), oversized],
+            })
+            {
+                (exit, log) = await RunToolAsync(tool, arguments);
+                exit.ShouldBe(2, log);
+                log.ShouldContain("size-limit");
+                File.Exists(absent).ShouldBeFalse();
+                File.ReadAllBytes(output).ShouldBe(expected);
+            }
+
+            // Failed replacement also cleans up the completed temporary sibling.
+            string blocked = Path.Combine(directory, "blocked");
+            Directory.CreateDirectory(blocked);
+            File.WriteAllBytes(Path.Combine(blocked, "catalog.json"), expected);
+            (exit, log) = await RunToolAsync(tool, "generate", FixturePath("CompleteInput.json"), blocked);
+            exit.ShouldBe(3, log);
+            File.ReadAllBytes(Path.Combine(blocked, "catalog.json")).ShouldBe(expected);
+            Directory.GetFiles(directory, ".routing-catalog-*.tmp").ShouldBeEmpty();
+
+            // Existing readers retain their original bytes while the path acquires the completed catalog.
+            byte[] sentinel = Encoding.UTF8.GetBytes("previous-catalog-sentinel");
+            File.WriteAllBytes(output, sentinel);
+            using (var previous = new FileStream(output, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            {
+                (exit, log) = await RunToolAsync(tool, "generate", FixturePath("CompleteInput.json"), output);
+                exit.ShouldBe(0, log);
+                File.ReadAllBytes(output).ShouldBe(expected);
+                using var retained = new MemoryStream();
+                previous.CopyTo(retained);
+                retained.ToArray().ShouldBe(sentinel);
+            }
+
+            Directory.GetFiles(directory, ".routing-catalog-*.tmp").ShouldBeEmpty();
+
+            (exit, log) = await RunToolAsync(tool, "inspect", SettingsPath("appsettings.json"), SettingsPath("appsettings.Development.json"));
             exit.ShouldBe(2, log);
             log.ShouldContain("idempotency-adapter-and-operation");
             log.ShouldContain("runtime parity remains unverified");
@@ -143,6 +321,24 @@ public class DevelopmentRouteCatalogBuilderTests
     }
 
     private static DevelopmentRouteCatalogInput ReadFixture() => DevelopmentRouteCatalogBuilder.ReadInput(File.ReadAllBytes(FixturePath("CompleteInput.json")));
+
+    private static string WithNestedDuplicate(string input, string location)
+    {
+        using JsonDocument document = JsonDocument.Parse(input);
+        (JsonElement target, string property) = location switch
+        {
+            "binding" => (document.RootElement.GetProperty("bindings")[0], "appId"),
+            "declaration" => (document.RootElement.GetProperty("declarations")[0], "domain"),
+            _ => (document.RootElement.GetProperty("idempotency")[0].GetProperty("descriptorSchema"), "schemaId"),
+        };
+        string original = target.GetRawText();
+        string duplicate = original.Insert(1, $"\"{property}\":{target.GetProperty(property).GetRawText()},");
+        return input.Replace(original, duplicate, StringComparison.Ordinal);
+    }
+
+    private static string ConfigurationWithSelector(string selector, string tenant = "*", string domain = "counter") =>
+        "{\"EventStore\":{\"DomainServices\":{\"Registrations\":{\"" + selector
+        + "\":{\"TenantId\":\"" + tenant + "\",\"Domain\":\"" + domain + "\",\"AppId\":\"sample\",\"MethodName\":\"process\",\"Version\":\"v1\"}}}}}";
 
     private static DevelopmentCatalogInspection InspectRealConfiguration() => DevelopmentRouteCatalogBuilder.Inspect(
         [File.ReadAllBytes(SettingsPath("appsettings.json")), File.ReadAllBytes(SettingsPath("appsettings.Development.json"))]);
@@ -162,22 +358,27 @@ public class DevelopmentRouteCatalogBuilderTests
         return directory?.FullName ?? throw new InvalidOperationException("Repository root unavailable.");
     }
 
-    private static async Task<(int Exit, string Log)> RunToolAsync(params string[] arguments)
+    private static async Task<string> BuildToolAsync(string artifacts)
     {
-        var start = new ProcessStartInfo("dotnet") { WorkingDirectory = FindRoot(), RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
-        foreach (string argument in new[] { "run", "--file", "tools/routing-catalog.cs", "--no-launch-profile", "-v", "quiet" })
-        {
-            start.ArgumentList.Add(argument);
-        }
-
+        var arguments = new List<string> { "build", "tools/routing-catalog.cs", "--artifacts-path", artifacts, "-v", "quiet" };
 #if DEBUG
-        start.ArgumentList.Add("-c=Debug");
-        start.ArgumentList.Add("-p:UseHexalithProjectReferences=true");
+        arguments.Add("-c=Debug");
+        arguments.Add("-p:UseHexalithProjectReferences=true");
 #else
-        start.ArgumentList.Add("-c=Release");
-        start.ArgumentList.Add("-p:UseHexalithProjectReferences=false");
+        arguments.Add("-c=Release");
+        arguments.Add("-p:UseHexalithProjectReferences=false");
 #endif
-        start.ArgumentList.Add("--");
+        (int exit, string log) = await RunProcessAsync("dotnet", arguments);
+        exit.ShouldBe(0, log);
+        return Directory.GetFiles(Path.Combine(artifacts, "bin"), "routing-catalog.dll", SearchOption.AllDirectories).Single();
+    }
+
+    private static Task<(int Exit, string Log)> RunToolAsync(string tool, params string[] arguments)
+        => RunProcessAsync("dotnet", [tool, .. arguments]);
+
+    private static async Task<(int Exit, string Log)> RunProcessAsync(string executable, IReadOnlyList<string> arguments)
+    {
+        var start = new ProcessStartInfo(executable) { WorkingDirectory = FindRoot(), RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         foreach (string argument in arguments)
         {
             start.ArgumentList.Add(argument);
