@@ -20,7 +20,8 @@ public static class WorkloadBindingAuthorityExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
-        services.AddOptions<WorkloadAuthorityOptions>().Bind(configuration.GetSection(WorkloadAuthorityOptions.SectionName));
+        services.AddOptions<WorkloadAuthorityOptions>().Bind(configuration.GetSection(WorkloadAuthorityOptions.SectionName))
+            .PostConfigure(options => WorkloadAuthorityBindingConfiguration.Configure(options, configuration));
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<WorkloadBindingAuthority>();
         return services;
