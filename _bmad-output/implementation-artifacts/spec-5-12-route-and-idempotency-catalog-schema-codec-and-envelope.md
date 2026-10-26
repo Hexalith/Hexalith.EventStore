@@ -2,10 +2,10 @@
 title: '5.12 Route and idempotency catalog construction'
 type: 'feature'
 created: '2026-10-25'
-status: 'in-review'
+status: 'in-progress'
 baseline_commit: '8e7c12211c05d7c8db926148550cd3b45844ffd4'
 route: 'dispatch'
-review_loop_iteration: 0
+review_loop_iteration: 1
 story_id: '5.12'
 story_key: '5-12-route-and-idempotency-catalog-schema-codec-and-envelope'
 context:
@@ -92,6 +92,8 @@ The initial bounded tooling phase defined closed v1 construction inputs, determi
 
 ## Spec Change Log
 
+- 2026-10-26: Review loop 1 — R3B3/R3B4/R3B5 exposed partial command inventory validation. Added the non-frozen shared-runtime-discovery correction plan and KEEP instructions; the known-bad state is a catalog passing parity for non-dispatchable/missing handlers or unsupported aliases. All verified review corrections are retained below. No code/user work is reverted under the explicit preservation constraint.
+
 - 2026-10-26: Owner approved the linked declaration proposal. Added the explicit decision to frozen intent under that authorization, preserved the original baseline and prior verified tooling, and expanded the remaining implementation tasks to cover real aliases, computed/actor queries, domain declarations/adapters and Development parity. Tenants source changes are explicitly authorized; runtime adoption/provisioning stays out of scope.
 
 - 2026-10-26: Reopened the bounded tooling item for the confirmed CLI path-error handling and AD-36 operation-ownership corrections. Parent scope, baseline, frozen intent, and incomplete Development/parity tasks are unchanged.
@@ -99,6 +101,28 @@ The initial bounded tooling phase defined closed v1 construction inputs, determi
 ## Review Triage Log
 
 - 2026-10-26: Follow-up findings F1/F2 in the [tooling spec](spec-route-catalog-construction-tooling.md) were confirmed and fixed. Invalid CLI file arguments now produce a bounded exit-3 error; AD-36 assigns identifiers to Contracts and compatible forwarding/authentication to ServiceDefaults. The implementation is ready for parent review; no runtime or full-profile completion is inferred.
+
+### Real-catalog review, first pass (2026-10-26)
+
+Every finding was classified before grouping. Reviewers read the root baseline plus the Tenants source diff. The package boundary remains a delivery blocker; source review does not waive it.
+
+| Finding | Verdict | Evidence and route |
+| --- | --- | --- |
+| R3B1 | medium | Confirmed: configuration binding can throw InvalidOperationException containing the supplied conversion value; CLI handles neither this exception nor a safe catalog translation. Correct with a bounded diagnostic and subprocess negative/control. Patch. |
+| R3B2 | medium | Confirmed: new Development construction calls File.ReadAllBytes before the 4 MiB inspection guard, unlike existing CLI modes. A large local input is allocated in full. Bound the initial reads and reuse the retained bytes when binding. Patch; distinct from the previously rejected arbitrary in-memory heap budget. |
+| R3B3 | medium | Confirmed: ValidateCommands counts all methods named Handle, while EventStoreAggregate checks state, return and optional envelope/cancellation shapes and prefers a cancellation overload. A wrong-shape method can pass inventory, and supported paired overloads can be miscounted. Bad spec: use shared effective dispatcher discovery. |
+| R3B4 | medium | Confirmed: the four fixed aggregate Type arguments exclude newly hosted aggregate classes in the already enrolled Sample/Tenants assemblies. Discover the complete hosted assembly inventory through SDK rules and compare it to the declared profile. Bad spec, same incomplete command-discovery root cause. |
+| R3B5 | medium | Confirmed: adapter metadata is compared to itself; aliases are not compared with the actual CLR/contract lookup keys. The review probe's Bogus alias passes parity but actual dispatch rejects it. Bad spec, same incomplete command-discovery root cause; also bind each discovered handler to its actual domain. |
+| R3B6 | medium | Confirmed: static attached declarations are not executable Domain/QueryType evidence. Actual Tenants handlers derive QueryType today, but the helper/test would accept a future mismatched instance route. Add owning-host verification comparing every registered executable handler's Domain/QueryType and attached declaration with packaged enrollment; keep metadata inspection claims accurate. Patch at the owning verification boundary, no root dependency on the executable. |
+| R3B7 | medium | Confirmed: RequiresAuthenticatedSubject=true with no acting-subject:string field constructs, then every CreateIntent fails schema matching after injection. Validate this known schema relationship at construction, beside positive/negative controls. Patch. |
+| R3B8 | medium | Confirmed: the adapter retains caller-owned collection references and registry matching rereads declarations after startup overlap checks. Mutating aliases can change acceptance or introduce ambiguity later. Snapshot nested policy collections and registry matching data before use; prove mutations cannot change accepted routes or canonical schemas. Patch. |
+| R3B9 | medium | Confirmed: helper-only metadata tests supply registration directly, so deleting Program enrollment or endpoint Bind stays green. Add real-host HTTP metadata assertions. Patch, grouped with R3V1. |
+| R3B10 | medium | Confirmed: independent fixture generation covers v1 only; new v2 tests are implementation-generated round trips. Add independent v2 declaration/facet/root vectors covering all new execution/scope metadata, retaining v1 vectors unchanged. Patch. |
+| R3E1 | medium | Confirmed by both recorded package-build failures: published pins lack the new APIs. The approved intent explicitly excludes dependency updates/external publication, so no such mutation is performed. This is an already recorded open delivery gate, not a code patch or a new deferred ledger entry; story completion/CI success remain unclaimed. |
+| R3E2 | medium | Carried bounded-spec B10/R2B5/R2E2/R2V2: unchanged producer paging can be lost on 304. Already deferred outside the approved no-routing/response-change intent. Preserve concurrent query work and do not patch or defer again. |
+| R3V1 | medium | Pre-verified regression gap: actual metadata endpoint assertions cover query types only; neither new projection outputs nor real enrollment are checked. Extend the existing Tenants host test to prove both projection names, exact secondary outputs and absence of invented named capabilities. Patch, same root cause as R3B9. |
+
+The R3B3/R3B4/R3B5 group requires a non-frozen plan correction before implementation. Other surviving corrections are included below so the re-derived source closes their demonstrated outcomes. No prior/user work is reverted: the approved continuation explicitly requires preserving it. The package gate and existing unrelated paging deferral are retained unchanged.
 
 ## Design Notes
 
@@ -212,3 +236,20 @@ The root package-consumer boundary was also checked after removing the nonpackab
 ### Parent source acceptance audit (2026-10-26)
 
 The parent inspected the baseline diff and the separate Tenants changes, checked the generated profile and owner definitions, and matched the frozen matrix to the 219 executed focused cases. Local implementation tasks are complete. The existing package/CI task and broad affected verification remain open; independent source review proceeds without implying those gates passed. Sprint status stays in-progress, and no Git history or dependency mutation is authorized.
+
+### Review correction plan and KEEP instructions (2026-10-26)
+
+Trigger: R3B3/R3B4/R3B5 showed that independent, partial reflection is not proof of executable command dispatch. The plan now requires the existing dispatcher discovery rules to be shared internally with offline verification (or reused through an existing SDK seam), including accepted state/return/envelope/cancellation signatures, overload preference, contract/CLR aliases, actual domain and complete hosted aggregate discovery. Do not add an unnecessary public API or copy a second divergent dispatcher algorithm. Preserve public constructor compatibility and runtime behavior. Private/internal refactoring and friend access for the nonpackable construction assembly are allowed where needed; no new package or dependency version is authorized.
+
+KEEP: retain all working v1 codec/fixture bytes and digests; retain the approved v2 metadata, 29-route Development catalog and root c156ce0b68bab43f561805db9cd02714d123026d388f65c764d7b6fa4e3b7308 unless a demonstrated semantic correction requires changing it; retain all 17 owner policies and exact payload/subject semantics; preserve source/package separation, existing published pins, source-version fixes and the packable Tenants capability seam. Preserve all unrelated committed query/provenance work and prior tooling corrections. Do not stage, commit, push, branch, publish, provision, activate, update dependencies or initialize submodules. Do not load skills under references.
+
+Remaining review correction tasks:
+
+- [ ] R3B1/R3B2: Make Development configuration intake bounded before allocation/parsing, bind the exact retained bytes, and translate conversion failures into value-free catalog diagnostics. Test invalid conversion and oversized source files through the real CLI beside passing controls; failed commands must preserve existing output.
+- [ ] R3B3/R3B4/R3B5: Reuse effective runtime aggregate/Handle discovery for complete hosted inventory, valid signatures, cancellation-overload preference, exact aliases and domain parity. Add negatives for invalid Handle shape, undeclared hosted aggregate, changed/extra/missing alias/domain, and a positive supported cancellation overload. Demonstrate actual dispatch agreement without changing dispatch behavior.
+- [ ] R3B6: In the Tenants owning host tests, obtain actual registered query handler instances and compare every executable Domain/QueryType and attached declaration to the packaged capability enrollment. A declaration/runtime mismatch and missing registration must fail. Keep root construction free of executable-host references.
+- [ ] R3B7/R3B8: Validate the authenticated-subject descriptor relationship; deep snapshot policy collections and registry route matching metadata so caller mutation cannot alter startup-validated routing or schemas. Add focused mismatch/mutation controls without enabling admission or trusting extensions.
+- [ ] R3B9/R3V1: Extend the real Tenants operational-metadata HTTP test to verify actual DI enrollment, both callable projection names, exact legacy secondary outputs, and absence of invented named capabilities. Verify the registration/Bind omission would fail the assertion.
+- [ ] R3B10: Extend the independent fixture generator and checked-in fixtures with schema-v2 declaration, route/idempotency facet and root vectors covering aliases, actor type, delegated context, outputs and resolver tenant scope. Test exact bytes/digests independently of production generation; leave v1 vectors unchanged.
+
+Run focused affected checks for these corrections, not broad suites; parent broad verification follows the next review. Record exact commands, nonzero test counts and matrix coverage. Keep source implementation reviewable while package/CI completion remains blocked by the recorded release dependency. The original baseline and frozen approved intent are unchanged.
