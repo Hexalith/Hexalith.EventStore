@@ -17,6 +17,8 @@ public class RouteCatalogValidatorTests
     [InlineData("policy-generation", "generation-mismatch")]
     [InlineData("declaration-digest", "declaration-digest-mismatch")]
     [InlineData("descriptor-digest", "descriptor-digest-mismatch")]
+    [InlineData("entry-content-digest", "idempotency-content-digest-mismatch")]
+    [InlineData("entry-policy-tamper", "idempotency-content-digest-mismatch")]
     [InlineData("route-facet", "digest-mismatch")]
     [InlineData("idempotency-facet", "digest-mismatch")]
     [InlineData("missing-message-version", "invalid-message-id-version")]
@@ -43,6 +45,15 @@ public class RouteCatalogValidatorTests
     [InlineData("ambiguous-fallback", "ambiguous-fallback")]
     [InlineData("production-override", "override-outside-development")]
     [InlineData("undeclared-override", "undeclared-override")]
+    [InlineData("missing-target", "missing-or-invalid-name")]
+    [InlineData("invalid-method", "invalid-method")]
+    [InlineData("missing-schema", "missing-descriptor-schema")]
+    [InlineData("duplicate-schema-field", "duplicate-descriptor-field")]
+    [InlineData("unknown-schema-type", "unsupported-descriptor-type")]
+    [InlineData("missing-secret-store", "missing-or-invalid-name")]
+    [InlineData("command-fallback", "command-requires-exact-declaration")]
+    [InlineData("zero-generation", "invalid-generation")]
+    [InlineData("null-declarations", "missing-or-invalid-list")]
     public void InvalidSemanticsFailBesidePassingControl(string scenario, string code)
     {
         RouteCatalogEnvelope valid = RouteCatalogCodec.Decode(RouteCatalogCodecTests.FixtureBytes());
@@ -64,6 +75,8 @@ public class RouteCatalogValidatorTests
             case "route-generation": routes[0] = routes[0] with { Generation = 8 }; break;
             case "policy-generation": policies[0] = policies[0] with { Generation = 8 }; break;
             case "declaration-digest": routes[0] = routes[0] with { DeclarationDigest = new string('0', 64) }; break;
+            case "entry-content-digest": policies[0] = policies[0] with { ContentDigest = new string('0', 64) }; break;
+            case "entry-policy-tamper": policies[0] = policies[0] with { PolicyVersion = "changed-owner-policy" }; break;
             case "descriptor-digest": policies[0] = policies[0] with { DescriptorDigest = new string('0', 64) }; break;
             case "route-facet": candidate = candidate with { RouteFacetDigest = new string('0', 64) }; break;
             case "idempotency-facet": candidate = candidate with { IdempotencyFacetDigest = new string('0', 64) }; break;
@@ -91,6 +104,15 @@ public class RouteCatalogValidatorTests
             case "ambiguous-fallback": declarations = [.. declarations, declarations[4] with { RouteId = "overlap" }]; break;
             case "production-override": candidate = candidate with { Profile = "Production", AllowRuntimeOverrides = true }; break;
             case "undeclared-override": routes[0] = routes[0] with { IsRuntimeOverride = true }; break;
+            case "missing-target": routes[0] = routes[0] with { AppId = "" }; break;
+            case "invalid-method": routes[0] = routes[0] with { Method = "../query" }; break;
+            case "missing-schema": policies[0] = policies[0] with { DescriptorSchema = null! }; break;
+            case "duplicate-schema-field": policies[0] = policies[0] with { DescriptorSchema = policies[0].DescriptorSchema with { Fields = [policies[0].DescriptorSchema.Fields[0], policies[0].DescriptorSchema.Fields[0]] } }; break;
+            case "unknown-schema-type": policies[0] = policies[0] with { DescriptorSchema = policies[0].DescriptorSchema with { Fields = [new("amount", "unknown")] } }; break;
+            case "missing-secret-store": policies[0] = policies[0] with { SecretStore = "" }; break;
+            case "command-fallback": declarations[0] = declarations[0] with { MessageType = "*", FallbackTypes = ["create-counter"] }; break;
+            case "zero-generation": candidate = candidate with { Generation = 0 }; break;
+            case "null-declarations": declarations = null!; break;
         }
 
         candidate = candidate with { Declarations = declarations, Routes = routes, Idempotency = policies };

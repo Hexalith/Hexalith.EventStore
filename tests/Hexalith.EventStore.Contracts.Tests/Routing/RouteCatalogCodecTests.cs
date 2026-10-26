@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 using Hexalith.EventStore.Contracts.Routing;
 
@@ -23,6 +22,7 @@ public class RouteCatalogCodecTests
         catalog.RouteFacetDigest.ShouldBe(expected.RootElement.GetProperty("routeFacet").GetString());
         catalog.IdempotencyFacetDigest.ShouldBe(expected.RootElement.GetProperty("idempotencyFacet").GetString());
         RouteCatalogCodec.ComputeDeclarationDigest(catalog.Declarations[0]).ShouldBe(expected.RootElement.GetProperty("declaration").GetString());
+        RouteCatalogCodec.ComputeIdempotencyEntryDigest(catalog.Idempotency[0]).ShouldBe(expected.RootElement.GetProperty("idempotencyEntry").GetString());
         RouteCatalogCodec.ComputeDescriptorDigest(catalog.Idempotency[0].DescriptorSchema).ShouldBe(expected.RootElement.GetProperty("descriptor").GetString());
     }
 
@@ -97,7 +97,11 @@ public class RouteCatalogCodecTests
         RouteCatalogEnvelope catalog = RouteCatalogCodec.Decode(FixtureBytes());
         RouteCatalogEnvelope changed = RouteCatalogCodec.Seal(catalog with
         {
-            Idempotency = catalog.Idempotency.Select(i => i with { ReaderDigestKeyGenerations = i.ReaderDigestKeyGenerations.Reverse().ToArray() }).ToArray(),
+            Idempotency = catalog.Idempotency.Select(i =>
+            {
+                IdempotencyCatalogEntry changed = i with { ReaderDigestKeyGenerations = i.ReaderDigestKeyGenerations.Reverse().ToArray() };
+                return changed with { ContentDigest = RouteCatalogCodec.ComputeIdempotencyEntryDigest(changed) };
+            }).ToArray(),
         });
         changed.IdempotencyFacetDigest.ShouldNotBe(catalog.IdempotencyFacetDigest);
     }

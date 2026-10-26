@@ -71,6 +71,9 @@ See [investigation](investigations/story-5-12-code-map.md) for exact sources and
 
 ## Implementation Notes
 
+The bounded tooling defines closed v1 construction inputs, deterministic catalog bytes, declaration/descriptor/facet digests, and an external root digest equal to SHA-256 of the exact retained envelope bytes. Synthetic complete fixtures use `fixture-*` targets and explicit test policies; they are not actual Development declarations. No deployment catalog or runtime adoption is included. V1 permits only workload command/query/projection target hops; general ingress remains endpoint metadata. Commands require exact declarations and individual AD-25 joins; query/projection fallbacks must enumerate finite discriminators, with exact declarations taking precedence.
+
+
 - 2026-10-26 — Approved staged delivery is implemented through [catalog construction tooling](spec-route-catalog-construction-tooling.md). That bounded work item may finish independently; this full story and its sprint row remain in-progress until complete real declarations and Development parity pass.
 
 ## Spec Change Log

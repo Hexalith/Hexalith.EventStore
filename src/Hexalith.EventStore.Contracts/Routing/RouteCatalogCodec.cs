@@ -9,9 +9,10 @@ namespace Hexalith.EventStore.Contracts.Routing;
 /// Objects use ordinal property ordering, BCL default JSON string escaping, decimal integers,
 /// explicit nulls, no whitespace/BOM, and no trailing newline. Collections are ordered by RouteId,
 /// field Name, key Generation, or ordinal string value. Reader generations retain their declared
-/// lookup order. Every digest is lowercase hexadecimal SHA-256 over a canonical object containing
-/// a purpose discriminator and schemaVersion. Declaration/descriptor preimages contain only their
-/// named payload; route-facet contains generation/declarations/routes; idempotency-facet contains
+/// lookup order. Digests are lowercase hexadecimal SHA-256. Declaration, descriptor, and facet
+/// preimages are canonical objects containing a purpose discriminator and schemaVersion. Declaration/descriptor preimages contain only their
+/// named payload; idempotency-entry contains every entry field except contentDigest;
+/// route-facet contains generation/declarations/routes; idempotency-facet contains
 /// generation/entries. The root is SHA-256 of the exact complete canonical envelope bytes and is
 /// returned separately, never serialized into its own preimage.
 /// A digest never includes itself. These bytes do not change any existing fingerprint protocol.
@@ -128,6 +129,42 @@ public static class RouteCatalogCodec
 
         RouteCatalogValidator.ValidateDescriptor(descriptor);
         return Hash(new { purpose = "idempotency-descriptor", schemaVersion = 1, descriptor = Normalize(descriptor) });
+    }
+
+    /// <summary>Hashes all static idempotency entry metadata except its own content digest.</summary>
+    public static string ComputeIdempotencyEntryDigest(IdempotencyCatalogEntry entry)
+    {
+        if (entry is null)
+        {
+            throw Failure("$", "missing-document");
+        }
+
+        RouteCatalogValidator.ValidateIdempotencyMetadata(entry, "$.idempotencyEntry");
+        return Hash(new
+        {
+            purpose = "idempotency-entry",
+            schemaVersion = 1,
+            entry = new
+            {
+                entry.RouteId,
+                entry.Generation,
+                entry.Domain,
+                entry.CommandType,
+                entry.AdapterId,
+                entry.OperationId,
+                entry.PolicyVersion,
+                DescriptorSchema = Normalize(entry.DescriptorSchema),
+                entry.DescriptorDigest,
+                entry.RetentionTier,
+                entry.ActiveDigestKeyGeneration,
+                ReaderDigestKeyGenerations = entry.ReaderDigestKeyGenerations.ToArray(),
+                entry.SecretStore,
+                entry.LogicalSecretName,
+                entry.SecretMapGeneration,
+                KeyMap = entry.KeyMap.OrderBy(k => k.Generation, StringComparer.Ordinal).ToArray(),
+                entry.ConsumerAppId,
+            },
+        });
     }
 
     /// <summary>Computes the complete routing facet preimage.</summary>

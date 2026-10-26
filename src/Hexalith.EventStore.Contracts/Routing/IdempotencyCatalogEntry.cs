@@ -18,6 +18,7 @@ namespace Hexalith.EventStore.Contracts.Routing;
 /// <param name="SecretMapGeneration">Explicit generation marker of the logical map.</param>
 /// <param name="KeyMap">Exactly one value-free map reference for every reader generation.</param>
 /// <param name="ConsumerAppId">Explicit application consuming the digest keys.</param>
+/// <param name="ContentDigest">Digest of the complete entry excluding this field, produced by the shared codec.</param>
 public sealed record IdempotencyCatalogEntry(
     string RouteId,
     long Generation,
@@ -35,4 +36,5 @@ public sealed record IdempotencyCatalogEntry(
     string LogicalSecretName,
     string SecretMapGeneration,
     IReadOnlyList<DigestKeyMapReference> KeyMap,
-    string ConsumerAppId);
+    string ConsumerAppId,
+    string ContentDigest);

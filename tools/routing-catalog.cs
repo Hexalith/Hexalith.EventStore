@@ -1,6 +1,7 @@
 #!/usr/bin/env dotnet
 #:project ../src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj
 #:property IsPackable=false
+#:property PublishAot=false
 
 using System.Text.Json;
 

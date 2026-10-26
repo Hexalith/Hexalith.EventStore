@@ -93,40 +93,52 @@ public static partial class RouteCatalogValidator
             Require(commands.Add(entry.RouteId!), path + ".routeId", "duplicate-idempotency-entry");
             Require(entry.Domain == declaration!.Domain && entry.CommandType == declaration.MessageType, path, "command-join-mismatch");
             Require(entry.Generation == envelope.Generation, path + ".generation", "generation-mismatch");
-            Token(entry.AdapterId, path + ".adapterId");
-            Token(entry.OperationId, path + ".operationId");
-            Token(entry.PolicyVersion, path + ".policyVersion");
-            CheckDescriptor(entry.DescriptorSchema, path + ".descriptorSchema");
-            Require(entry.DescriptorDigest == RouteCatalogCodec.ComputeDescriptorDigest(entry.DescriptorSchema), path + ".descriptorDigest", "descriptor-digest-mismatch");
-            Require(entry.RetentionTier is "mutation" or "commit", path + ".retentionTier", "invalid-retention-tier");
-            Token(entry.ActiveDigestKeyGeneration, path + ".activeDigestKeyGeneration");
-            List(entry.ReaderDigestKeyGenerations, path + ".readerDigestKeyGenerations", allowEmpty: false);
-            var readers = new HashSet<string>(StringComparer.Ordinal);
-            foreach (string reader in entry.ReaderDigestKeyGenerations)
-            {
-                Token(reader, path + ".readerDigestKeyGenerations");
-                Require(readers.Add(reader), path + ".readerDigestKeyGenerations", "duplicate-generation");
-            }
-
-            Require(readers.Contains(entry.ActiveDigestKeyGeneration), path + ".activeDigestKeyGeneration", "active-generation-not-readable");
-            Name(entry.SecretStore, path + ".secretStore");
-            Token(entry.LogicalSecretName, path + ".logicalSecretName");
-            Token(entry.SecretMapGeneration, path + ".secretMapGeneration");
-            Name(entry.ConsumerAppId, path + ".consumerAppId");
-            List(entry.KeyMap, path + ".keyMap", allowEmpty: false);
-            var generations = new HashSet<string>(StringComparer.Ordinal);
-            var mapKeys = new HashSet<string>(StringComparer.Ordinal);
-            foreach (DigestKeyMapReference key in entry.KeyMap)
-            {
-                Token(key.Generation, path + ".keyMap.generation");
-                Token(key.MapKey, path + ".keyMap.mapKey");
-                Require(generations.Add(key.Generation) && mapKeys.Add(key.MapKey), path + ".keyMap", "duplicate-key-reference");
-            }
-
-            Require(generations.SetEquals(readers), path + ".keyMap", "reader-generation-map-mismatch");
+            ValidateIdempotencyMetadata(entry, path);
+            Require(entry.ContentDigest == RouteCatalogCodec.ComputeIdempotencyEntryDigest(entry), path + ".contentDigest", "idempotency-content-digest-mismatch");
         }
 
         Require(commands.Count == declarations.Values.Count(d => d.Kind == "command"), "$.idempotency", "missing-command-idempotency");
+    }
+
+    /// <summary>Validates static idempotency metadata before entry hashing; no join or digest is inferred.</summary>
+    internal static void ValidateIdempotencyMetadata(IdempotencyCatalogEntry entry, string path)
+    {
+        Require(entry is not null, path, "missing-idempotency-entry");
+        Name(entry.RouteId, path + ".routeId");
+        Name(entry.Domain, path + ".domain");
+        Name(entry.CommandType, path + ".commandType");
+        Require(entry.Generation is > 0 and <= 9007199254740991, path + ".generation", "invalid-generation");
+        Token(entry.AdapterId, path + ".adapterId");
+        Token(entry.OperationId, path + ".operationId");
+        Token(entry.PolicyVersion, path + ".policyVersion");
+        CheckDescriptor(entry.DescriptorSchema, path + ".descriptorSchema");
+        Require(entry.DescriptorDigest == RouteCatalogCodec.ComputeDescriptorDigest(entry.DescriptorSchema), path + ".descriptorDigest", "descriptor-digest-mismatch");
+        Require(entry.RetentionTier is "mutation" or "commit", path + ".retentionTier", "invalid-retention-tier");
+        Token(entry.ActiveDigestKeyGeneration, path + ".activeDigestKeyGeneration");
+        List(entry.ReaderDigestKeyGenerations, path + ".readerDigestKeyGenerations", allowEmpty: false);
+        var readers = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string reader in entry.ReaderDigestKeyGenerations)
+        {
+            Token(reader, path + ".readerDigestKeyGenerations");
+            Require(readers.Add(reader), path + ".readerDigestKeyGenerations", "duplicate-generation");
+        }
+
+        Require(readers.Contains(entry.ActiveDigestKeyGeneration), path + ".activeDigestKeyGeneration", "active-generation-not-readable");
+        Name(entry.SecretStore, path + ".secretStore");
+        Token(entry.LogicalSecretName, path + ".logicalSecretName");
+        Token(entry.SecretMapGeneration, path + ".secretMapGeneration");
+        Name(entry.ConsumerAppId, path + ".consumerAppId");
+        List(entry.KeyMap, path + ".keyMap", allowEmpty: false);
+        var generations = new HashSet<string>(StringComparer.Ordinal);
+        var mapKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (DigestKeyMapReference key in entry.KeyMap)
+        {
+            Token(key.Generation, path + ".keyMap.generation");
+            Token(key.MapKey, path + ".keyMap.mapKey");
+            Require(generations.Add(key.Generation) && mapKeys.Add(key.MapKey), path + ".keyMap", "duplicate-key-reference");
+        }
+
+        Require(generations.SetEquals(readers), path + ".keyMap", "reader-generation-map-mismatch");
     }
 
     private static void CheckDeclaration(RouteContractDeclaration declaration, string path)

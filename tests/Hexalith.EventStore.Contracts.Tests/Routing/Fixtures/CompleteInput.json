@@ -154,7 +154,8 @@
           "mapKey": "digest-g2"
         }
       ],
-      "consumerAppId": "fixture-eventstore"
+      "consumerAppId": "fixture-eventstore",
+      "contentDigest": "61a34efa07de16a03fb30e6149754c27eeab5cbe7688252ef98b69da0e0c6c84"
     },
     {
       "routeId": "platform-tenant-create",
@@ -198,7 +199,8 @@
           "mapKey": "digest-g2"
         }
       ],
-      "consumerAppId": "fixture-eventstore"
+      "consumerAppId": "fixture-eventstore",
+      "contentDigest": "ce09c9f99011132de8e086bafc12735b83edac9b131bda2479850d715d41dbc7"
     }
   ]
 }
