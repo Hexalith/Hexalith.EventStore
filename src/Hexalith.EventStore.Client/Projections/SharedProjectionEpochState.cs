@@ -65,6 +65,12 @@ internal sealed record SharedProjectionEpochState(
     bool OwnerSequenceHandoffPending = false,
     int StageReservedPageCount = 0)
 {
+    /// <summary>The immutable certified abort repair reservation and retained original evidence.</summary>
+    public SharedProjectionAbortRepairReceipt? AbortRepair { get; init; }
+
+    /// <summary>Whether the repair completed while the normal abort fence remains held.</summary>
+    public bool AbortRepairCompleted { get; init; }
+
     /// <summary>Conflicting delivery identities, including the explicit repair audit.</summary>
     public SharedProjectionDeliveryConflict[] DeliveryConflicts { get; init; } = [];
 

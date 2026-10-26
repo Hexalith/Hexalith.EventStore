@@ -246,6 +246,8 @@ public sealed partial class SharedProjectionEpochCoordinator
             SharedProjectionEpochState updated = state with
             {
                 Epoch = checked(state.Epoch + 1),
+                AbortRepair = null,
+                AbortRepairCompleted = false,
                 Phase = chunkedCapture ? SharedProjectionEpochPhase.Capturing : SharedProjectionEpochPhase.Building,
                 OperationId = operationId,
                 OperationTenantId = requestedOperationTenantId,
@@ -1821,6 +1823,7 @@ public sealed partial class SharedProjectionEpochCoordinator
             SharedProjectionEpochState state = entry.Value ?? throw new InvalidOperationException("The shared projection has no epoch state.");
             ValidateState(state);
             ValidateBoundary(state, scope);
+            ThrowIfAbortRepairReserved(state);
             if (state.OwnerSequenceHandoffPending
                 || state.Phase is SharedProjectionEpochPhase.Building or SharedProjectionEpochPhase.Capturing
                 || state.Journal.Length == 0)
@@ -2205,6 +2208,7 @@ public sealed partial class SharedProjectionEpochCoordinator
             SharedProjectionEpochState state = entry.Value ?? throw new InvalidOperationException("Shared rebuild has not begun.");
             ValidateState(state);
             ValidateBoundary(state, scope);
+            ThrowIfAbortRepairReserved(state);
             if (state.Phase == SharedProjectionEpochPhase.Open
                 && string.Equals(state.OperationId, operationId, StringComparison.Ordinal)
                 && state.ActiveGeneration != state.Epoch)
@@ -2382,6 +2386,7 @@ public sealed partial class SharedProjectionEpochCoordinator
                 ?? throw new InvalidOperationException("Shared rebuild state disappeared during abort closeout.");
             ValidateState(state);
             ValidateBoundary(state, scope);
+            ThrowIfAbortRepairReserved(state);
             if (!string.Equals(state.OperationId, operationId, StringComparison.Ordinal)
                 || state.ActiveGeneration == state.Epoch)
             {
@@ -2777,12 +2782,26 @@ public sealed partial class SharedProjectionEpochCoordinator
     }
 
     /// <summary>Reads a specific physical generation for deterministic catch-up folding.</summary>
-    public async Task<ReadModelEntry<TValue>> ReadGenerationAsync<TValue>(
-        SharedProjectionScope scope,
-        long generation,
-        string logicalKey,
-        CancellationToken cancellationToken = default)
-        where TValue : class
+    public Task<ReadModelEntry<TValue>> ReadGenerationAsync<TValue>(SharedProjectionScope scope,
+        long generation, string logicalKey, CancellationToken cancellationToken = default) where TValue : class
+        => ReadGenerationCoreAsync<TValue>(scope, generation, logicalKey, false, cancellationToken);
+
+    /// <summary>Observes effective JSON metadata, preserving a present literal null through its ETag.</summary>
+    /// <param name="scope">The durable projection scope.</param>
+    /// <param name="generation">The selected generation to observe.</param>
+    /// <param name="logicalKey">The logical metadata or inventory key.</param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <returns>The effective JSON, original ETag, physical generation and pointer concurrency evidence.</returns>
+    public async Task<ReadModelEntry<System.Text.Json.Nodes.JsonNode>> ReadGenerationJsonAsync(
+        SharedProjectionScope scope, long generation, string logicalKey, CancellationToken cancellationToken = default)
+    {
+        _ = await RequireStateAsync(scope, cancellationToken).ConfigureAwait(false);
+        return await ReadGenerationCoreAsync<System.Text.Json.Nodes.JsonNode>(scope, generation, logicalKey,
+            true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ReadModelEntry<TValue>> ReadGenerationCoreAsync<TValue>(SharedProjectionScope scope,
+        long generation, string logicalKey, bool preserveJsonNull, CancellationToken cancellationToken) where TValue : class
     {
         ArgumentNullException.ThrowIfNull(scope);
         scope.Validate();
@@ -2792,19 +2811,20 @@ public sealed partial class SharedProjectionEpochCoordinator
         }
 
         if (!scope.CopyOnWrite)
-            return await _store.GetAsync<TValue>(scope.StoreName, scope.PhysicalKey(generation, logicalKey),
-                cancellationToken).ConfigureAwait(false);
+            return (await _store.GetAsync<TValue>(scope.StoreName, scope.PhysicalKey(generation, logicalKey),
+                cancellationToken).ConfigureAwait(false)) with { SourceGeneration = generation };
 
         ReadModelEntry<SharedProjectionCopyOnWritePointer> pointer = await _store
             .GetAsync<SharedProjectionCopyOnWritePointer>(scope.StoreName,
                 scope.CopyOnWritePointerKey(logicalKey), cancellationToken).ConfigureAwait(false);
         if (pointer.Value is { } marker && marker.LatestGeneration == generation
             && (marker.LatestDeleted || marker.LatestExpiresAtUtc <= _timeProvider.GetUtcNow()))
-            return new ReadModelEntry<TValue>(null, null);
+            return new ReadModelEntry<TValue>(null, null) { SourceGeneration = generation, PointerETag = pointer.ETag };
 
         ReadModelEntry<TValue> direct = await _store.GetAsync<TValue>(scope.StoreName,
             scope.PhysicalKey(generation, logicalKey), cancellationToken).ConfigureAwait(false);
-        if (direct.Value is not null) return direct;
+        direct = direct with { SourceGeneration = generation, PointerETag = pointer.ETag };
+        if (direct.Value is not null || preserveJsonNull && !string.IsNullOrEmpty(direct.ETag)) return direct;
 
         long? inherited = null;
         bool deleted = false;
@@ -2830,22 +2850,22 @@ public sealed partial class SharedProjectionEpochCoordinator
                 deleted = selected.PreviousDeleted || inheritedDeadline <= _timeProvider.GetUtcNow();
             }
         }
-        if (deleted) return new ReadModelEntry<TValue>(null, null);
+        if (deleted) return new ReadModelEntry<TValue>(null, null) { SourceGeneration = generation, PointerETag = pointer.ETag };
         if (inherited is { } source)
         {
             if (source == generation && inheritedDeadline <= _timeProvider.GetUtcNow())
-                return new ReadModelEntry<TValue>(null, null);
+                return new ReadModelEntry<TValue>(null, null) { SourceGeneration = generation, PointerETag = pointer.ETag };
             if (source == generation)
                 throw new SharedProjectionReadUnavailableException(
                     new InvalidOperationException("A selected copy-on-write value is missing."));
             ReadModelEntry<TValue> inheritedValue = await _store.GetAsync<TValue>(scope.StoreName,
                 scope.PhysicalKey(source, logicalKey), cancellationToken).ConfigureAwait(false);
             if (inheritedValue.Value is null && inheritedDeadline <= _timeProvider.GetUtcNow())
-                return new ReadModelEntry<TValue>(null, null);
-            if (inheritedValue.Value is null)
+                return new ReadModelEntry<TValue>(null, null) { SourceGeneration = generation, PointerETag = pointer.ETag };
+            if (inheritedValue.Value is null && !(preserveJsonNull && !string.IsNullOrEmpty(inheritedValue.ETag)))
                 throw new SharedProjectionReadUnavailableException(
                     new InvalidOperationException("An inherited copy-on-write value is missing."));
-            return inheritedValue;
+            return inheritedValue with { SourceGeneration = source, PointerETag = pointer.ETag };
         }
 
         ReadModelEntry<SharedProjectionEpochState> epoch = await ReadStateAsync(scope, cancellationToken)
@@ -2855,8 +2875,8 @@ public sealed partial class SharedProjectionEpochCoordinator
         if (anchor > generation || pointer.Value is { } older && older.PreviousGeneration > generation)
             throw new SharedProjectionReadUnavailableException(
                 new InvalidOperationException("The requested copy-on-write generation is no longer provable."));
-        return await _store.GetAsync<TValue>(scope.StoreName, scope.PhysicalKey(anchor.Value, logicalKey),
-            cancellationToken).ConfigureAwait(false);
+        return (await _store.GetAsync<TValue>(scope.StoreName, scope.PhysicalKey(anchor.Value, logicalKey),
+            cancellationToken).ConfigureAwait(false)) with { SourceGeneration = anchor.Value, PointerETag = pointer.ETag };
     }
 
     private static ReadModelBatch BuildBatch(
@@ -3489,6 +3509,7 @@ public sealed partial class SharedProjectionEpochCoordinator
     /// <summary>Rejects invalid durable epoch evidence before reads, phase changes or legacy compensation.</summary>
     internal static void ValidateState(SharedProjectionEpochState state)
     {
+        ValidateAbortRepairState(state);
         if (state.Version != 1 || state.Epoch < 0 || state.ActiveGeneration < 0
             || state.ActiveGeneration > state.Epoch || !Enum.IsDefined(state.Phase)
             || state.CopyOnWriteAnchorGeneration is < 0

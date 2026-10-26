@@ -16,6 +16,104 @@ public sealed class SharedProjectionEpochCoordinatorTests {
         "widget-index",
         ["ordinary-dispatch"]);
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CertifiedAbortRepairResumesExactReservationAndPreservesPendingDeliveryAndEvidence(bool afterDelete) {
+        var store = new InMemoryReadModelStore();
+        var fault = new AbortRepairFaultStore(store);
+        var batchFault = new AbortRepairBatchFaultStore(store);
+        var coordinator = new SharedProjectionEpochCoordinator(fault, batchFault);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        long epoch = await coordinator.BeginAsync(s_scope, "repair-owner", "inventory", new Dictionary<string, long>());
+        SharedProjectionLease lease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+        (await coordinator.JournalAsync(s_scope, lease, Delivery(1, 4))).ShouldBe(SharedProjectionJournalResult.Journaled);
+        await Should.ThrowAsync<IOException>(() => coordinator.AbortAsync(s_scope, "repair-owner",
+            (_, _, _) => throw new IOException("Corrupt selected metadata")));
+        store.SeedRaw(s_scope.StoreName, s_scope.PhysicalKey(0, "metadata"), new Counter(99));
+        var corrupt = await store.GetAsync<System.Text.Json.Nodes.JsonNode>(s_scope.StoreName, s_scope.PhysicalKey(0, "metadata"));
+        var request = new SharedProjectionAbortRepairRequest("repair-owner", "inventory", epoch, 0, "certificate",
+            [new("metadata", corrupt.ETag!, corrupt.Value!.ToJsonString())]);
+        fault.FailEvidence = !afterDelete;
+        batchFault.FailRepair = afterDelete;
+        await Should.ThrowAsync<IOException>(() => coordinator.RepairAbortMetadataAsync(s_scope, request));
+        var reserved = (await coordinator.GetAbortRepairAsync(s_scope)).ShouldNotBeNull();
+        await Should.ThrowAsync<InvalidOperationException>(() => coordinator.CatchUpAsync(s_scope, Fold(coordinator)));
+        await Should.ThrowAsync<InvalidOperationException>(() => coordinator.AbortAsync(s_scope, "repair-owner", Fold(coordinator)));
+        await Should.ThrowAsync<InvalidOperationException>(() => coordinator.CompleteAbortAsync(s_scope, "repair-owner"));
+        await Should.ThrowAsync<InvalidOperationException>(() => coordinator.RepairAbortMetadataAsync(s_scope, request with { CertificateId = "foreign" }));
+        await Should.ThrowAsync<InvalidOperationException>(() => coordinator.BeginAsync(s_scope, "other", "inventory", new Dictionary<string, long>()));
+        foreach (SharedProjectionAbortRepairRequest conflicting in new[] {
+            request with { Epoch = epoch + 1 }, request with { ActiveGeneration = 1 },
+            request with { OperationId = "other" }, request with { InventoryFingerprint = "other" } })
+        {
+            if (conflicting.ActiveGeneration >= conflicting.Epoch)
+                await Should.ThrowAsync<ArgumentException>(() => coordinator.RepairAbortMetadataAsync(s_scope, conflicting));
+            else
+                await Should.ThrowAsync<InvalidOperationException>(() => coordinator.RepairAbortMetadataAsync(s_scope, conflicting));
+        }
+        if (afterDelete)
+            (await store.GetAsync<System.Text.Json.Nodes.JsonNode>(s_scope.StoreName, s_scope.PhysicalKey(0, "metadata"))).Value.ShouldBeNull();
+        fault.FailEvidence = false;
+        var cold = new SharedProjectionEpochCoordinator(store, store);
+        (await cold.RepairAbortMetadataAsync(s_scope, request)).Fingerprint.ShouldBe(reserved.Fingerprint);
+        (await store.GetAsync<System.Text.Json.Nodes.JsonNode>(s_scope.StoreName, s_scope.PhysicalKey(0, "metadata"))).Value.ShouldBeNull();
+        (await cold.GetStatusAsync(s_scope)).PendingDeliveryCount.ShouldBe(1);
+        (await cold.GetStatusAsync(s_scope)).IsAborting.ShouldBeTrue();
+        var evidence = await store.GetAsync<SharedProjectionAbortRepairReceipt>(s_scope.StoreName, s_scope.StateKey + ":abort-repair:" + epoch);
+        evidence.Value.ShouldNotBeNull().Request.Values[0].OriginalJson.ShouldBe(request.Values[0].OriginalJson);
+        await cold.AbortAsync(s_scope, "repair-owner", Fold(cold));
+        (await cold.GetStatusAsync(s_scope)).PendingDeliveryCount.ShouldBe(0);
+        (await cold.ReadAsync<Counter>(s_scope, "index")).Value.ShouldNotBeNull().Value.ShouldBe(4);
+        (await store.GetAsync<SharedProjectionAbortRepairReceipt>(s_scope.StoreName, s_scope.StateKey + ":abort-repair:" + epoch)).ETag.ShouldBe(evidence.ETag);
+        long nextEpoch = await cold.BeginAsync(s_scope, "second-repair", "second-inventory",
+            new Dictionary<string, long> { ["widget-a"] = 1 });
+        (await cold.GetAbortRepairAsync(s_scope)).ShouldBeNull();
+        lease = await cold.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+        _ = await cold.JournalAsync(s_scope, lease, Delivery(2, 5));
+        await Should.ThrowAsync<IOException>(() => cold.AbortAsync(s_scope, "second-repair", (_, _, _) => throw new IOException("metadata")));
+        store.SeedRaw(s_scope.StoreName, s_scope.PhysicalKey(0, "second-metadata"), new Counter(100));
+        var nextCorrupt = await store.GetAsync<System.Text.Json.Nodes.JsonNode>(s_scope.StoreName, s_scope.PhysicalKey(0, "second-metadata"));
+        var nextRequest = new SharedProjectionAbortRepairRequest("second-repair", "second-inventory", nextEpoch, 0, "second-certificate",
+            [new("second-metadata", nextCorrupt.ETag!, nextCorrupt.Value!.ToJsonString())]);
+        (await cold.RepairAbortMetadataAsync(s_scope, nextRequest)).Request.Epoch.ShouldBe(nextEpoch);
+        await cold.AbortAsync(s_scope, "second-repair", Fold(cold));
+        (await cold.ReadAsync<Counter>(s_scope, "index")).Value.ShouldNotBeNull().Value.ShouldBe(9);
+        (await store.GetAsync<SharedProjectionAbortRepairReceipt>(s_scope.StoreName, s_scope.StateKey + ":abort-repair:" + epoch)).ETag.ShouldBe(evidence.ETag);
+    }
+
+    [Fact]
+    public async Task ReservedRepairRefusesChangedSourceAfterRestartAndRetainsOriginalMetadata() {
+        var store = new InMemoryReadModelStore();
+        var fault = new AbortRepairFaultStore(store);
+        var coordinator = new SharedProjectionEpochCoordinator(fault, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        long epoch = await coordinator.BeginAsync(s_scope, "guarded-repair", "inventory", new Dictionary<string, long>());
+        SharedProjectionLease lease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.JournalAsync(s_scope, lease, Delivery(1, 4));
+        await Should.ThrowAsync<IOException>(() => coordinator.AbortAsync(s_scope, "guarded-repair", (_, _, _) => throw new IOException("metadata")));
+        store.SeedRaw(s_scope.StoreName, s_scope.PhysicalKey(0, "metadata"), new Counter(99));
+        store.SeedRaw(s_scope.StoreName, s_scope.PhysicalKey(0, "source"), new Counter(7));
+        var metadata = await store.GetAsync<System.Text.Json.Nodes.JsonNode>(s_scope.StoreName, s_scope.PhysicalKey(0, "metadata"));
+        var source = await store.GetAsync<System.Text.Json.Nodes.JsonNode>(s_scope.StoreName, s_scope.PhysicalKey(0, "source"));
+        var request = new SharedProjectionAbortRepairRequest("guarded-repair", "inventory", epoch, 0, "certificate",
+            [new("metadata", metadata.ETag!, metadata.Value!.ToJsonString())]) {
+            SourceGuards = [new("source", source.ETag!, Convert.ToHexString(SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(source.Value!.ToJsonString()))))]
+        };
+        fault.FailEvidence = true;
+        await Should.ThrowAsync<IOException>(() => coordinator.RepairAbortMetadataAsync(s_scope, request));
+        store.SeedRaw(s_scope.StoreName, s_scope.PhysicalKey(0, "source"), new Counter(8));
+        var cold = new SharedProjectionEpochCoordinator(store, store);
+        await Should.ThrowAsync<InvalidOperationException>(() => cold.RepairAbortMetadataAsync(s_scope, request));
+        (await store.GetAsync<System.Text.Json.Nodes.JsonNode>(s_scope.StoreName, s_scope.PhysicalKey(0, "metadata"))).ETag.ShouldBe(metadata.ETag);
+        (await cold.GetStatusAsync(s_scope)).PendingDeliveryCount.ShouldBe(1);
+        (await cold.GetStatusAsync(s_scope)).IsAborting.ShouldBeTrue();
+        await Should.ThrowAsync<InvalidOperationException>(() => cold.CatchUpAsync(s_scope, Fold(cold)));
+    }
+
+
+
     [Fact]
     public async Task CapturedIdentityPrefixExtendsAfterOrdinaryGrowthAndPreservesReplay() {
         var store = new InMemoryReadModelStore();
