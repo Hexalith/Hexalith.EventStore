@@ -2,7 +2,8 @@
 title: '5.12 Route and idempotency catalog construction'
 type: 'feature'
 created: '2026-10-25'
-status: 'draft'
+status: 'in-progress'
+baseline_commit: '8e7c12211c05d7c8db926148550cd3b45844ffd4'
 route: 'dispatch'
 review_loop_iteration: 0
 story_id: '5.12'
@@ -22,6 +23,8 @@ context:
 
 **Owner direction (2026-10-25):** Complete this before 2.14; use a library/local catalog. Activation stays in 5.13; storage identities stay unchanged.
 
+**Owner decisions (2026-10-26):** Contracts owns operation identifiers; ServiceDefaults retains authentication and compatible forwarding constants. Human platform grants use exact `eventstore:permission` matches, with no wildcard or administrator bypass. General ingress stays in endpoint metadata; platform declarations bind namespace and `RequiredHumanPermission` separately from workload-hop credentials. Implement tooling and a concrete gap report first, then obtain/implement real missing declarations. This story stays open until the complete Development catalog passes; 2.14 remains pending.
+
 ## Boundaries & Constraints
 
 **Always:** Bind stable route IDs, generation, root/facet digests, exact target app/method/version, admitted credential/operation and command MessageId declaration/version digest. Join each command to AD-25 metadata: adapter, operation, descriptor schema/digest, retention, digest-key generations, logical secret map and consumer. Preserve existing wire/hash protocols. Record proof in this spec plus CI under the October 23 policy.
@@ -39,13 +42,6 @@ context:
 | Override | Undeclared fallback or runtime override outside Development | Reject candidate | No production claim |
 
 </frozen-after-approval>
-
-## Open Questions
-
-1. **Vocabulary owner:** Contracts definitions with unchanged ServiceDefaults forwarding constants (recommended), or a new abstractions package? The first uses today's existing dependency; the second expands packaging and release scope.
-2. **Human grants:** Reuse `eventstore:permission` with exact platform-operation matching (recommended), or add a new human claim? Exact matching rejects missing grants, wildcards and administrator bypass; a new claim also needs issuer/host mapping changes. Workload `eventstore:operation` remains separate.
-3. **Ingress:** Keep general ingress policy in endpoint metadata and add namespace + `RequiredHumanPermission` to platform admission declarations (recommended), or catalog every ingress endpoint now? The first derives platform endpoint metadata from the same declaration while downstream rows retain workload credentials; the second expands 5.12 into 5.14's inventory.
-4. **Missing inputs:** Supply authoritative adapter/descriptor/retention declarations for the current Development profile (recommended), or narrow the first delivery to construction tooling plus a failing incomplete-profile report? The latter permits useful implementation but does not complete 5.12 or unblock 2.14. No registrations were found in current Sample/host code.
 
 ## Code Map
 
@@ -74,6 +70,8 @@ See [investigation](investigations/story-5-12-code-map.md) for exact sources and
 - Given missing adapter/policy metadata or an unactivated production instance, when evaluated, then incompleteness/readiness remains explicit and this story cannot claim complete delivery from synthetic fixtures.
 
 ## Implementation Notes
+
+- 2026-10-26 — Approved staged delivery is implemented through [catalog construction tooling](spec-route-catalog-construction-tooling.md). That bounded work item may finish independently; this full story and its sprint row remain in-progress until complete real declarations and Development parity pass.
 
 ## Spec Change Log
 
