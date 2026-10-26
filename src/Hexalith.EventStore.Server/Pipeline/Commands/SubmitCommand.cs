@@ -18,6 +18,11 @@ public record SubmitCommand(
     bool IsGlobalAdmin = false,
     string? IdempotencyKey = null) : IRequest<SubmitCommandResult>
 {
+    /// <summary>Authenticated acting subject captured by the gateway; never bound from command JSON or extensions.</summary>
+    [System.Runtime.Serialization.IgnoreDataMember]
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? AuthenticatedSubject { get; init; }
+
     /// <summary>Gateway-only authenticated human claims; excluded from command persistence and client JSON.</summary>
     [System.Runtime.Serialization.IgnoreDataMember]
     [System.Text.Json.Serialization.JsonIgnore]

@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.EventStore\Hexalith.EventStore.csproj" />
+    <ProjectReference Include="$(HexalithTenantsBasePath)/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" Condition="'$(HexalithTenantsFromSource)' == 'true'" />
+    <PackageReference Include="Hexalith.Tenants.Contracts" Condition="'$(HexalithTenantsFromSource)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>

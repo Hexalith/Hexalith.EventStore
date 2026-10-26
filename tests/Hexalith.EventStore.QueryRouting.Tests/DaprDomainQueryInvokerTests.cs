@@ -42,6 +42,25 @@ public sealed class DaprDomainQueryInvokerTests {
         capture.RequestUri!.AbsolutePath.ShouldEndWith("/invoke/projects-app/method/query");
     }
 
+    [Fact]
+    public async Task DeclaredTenantQueriesUseActualQueryOverrideForEveryWireDiscriminator()
+    {
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        foreach (var route in Hexalith.Tenants.Contracts.Routing.TenantCatalogDeclarations.Queries)
+        {
+            IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+            resolver.ResolveAsync("system", route.Domain, Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new DomainServiceRegistration("tenants", "different-command-method", "system", route.Domain, "v1"));
+            var capture = new QueryRequestCaptureHandler();
+            using var http = new HttpClient(capture);
+            IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+            factory.CreateClient(Arg.Any<string>()).Returns(http);
+            var invoker = new DaprDomainQueryInvoker(daprClient, factory, resolver, NullLogger<DaprDomainQueryInvoker>.Instance);
+            await invoker.InvokeAsync(new QueryEnvelope("system", route.Domain, "target", route.MessageType!, "{}"u8.ToArray(), "correlation", "user"), TestContext.Current.CancellationToken);
+            capture.RequestUri!.AbsolutePath.ShouldEndWith("/invoke/tenants/method/query");
+        }
+    }
+
     private static QueryEnvelope Query()
         => new(
             "tenant-a",

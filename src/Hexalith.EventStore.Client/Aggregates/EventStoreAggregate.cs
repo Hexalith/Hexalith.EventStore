@@ -305,13 +305,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
     /// "Namespace.TypeName, Assembly" → "TypeName", "Namespace.TypeName" → "TypeName", "TypeName" → "TypeName".
     /// </summary>
     private static string ExtractShortTypeName(string commandType) {
-        // Strip assembly qualification: "Namespace.Type, Assembly" → "Namespace.Type"
-        int commaIndex = commandType.IndexOf(',', StringComparison.Ordinal);
-        string fullName = commaIndex >= 0 ? commandType[..commaIndex] : commandType;
-
-        // Strip namespace: "Namespace.Type" → "Type"
-        int dotIndex = fullName.LastIndexOf('.');
-        return dotIndex >= 0 ? fullName[(dotIndex + 1)..] : fullName;
+        return Hexalith.EventStore.Contracts.Routing.CommandDiscriminatorCompatibility.LookupKey(commandType);
     }
 
 }

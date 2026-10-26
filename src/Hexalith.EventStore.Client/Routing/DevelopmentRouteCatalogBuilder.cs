@@ -45,16 +45,17 @@ public static partial class DevelopmentRouteCatalogBuilder
             }
 
             routes.Add(new(declaration.RouteId, input.Generation, RouteCatalogCodec.ComputeDeclarationDigest(declaration),
-                binding.AppId, binding.Method, binding.ContractVersion, declaration.CredentialKind, declaration.Operation, binding.IsRuntimeOverride));
+                binding.AppId, binding.Method, binding.ContractVersion, declaration.CredentialKind, declaration.Operation, binding.IsRuntimeOverride, binding.ResolverTenantPattern));
         }
 
-        return RouteCatalogCodec.Seal(new(1, input.Generation, "Development", input.AllowRuntimeOverrides,
+        return RouteCatalogCodec.Seal(new(input.Declarations.Any(d => d.Execution is not null) ? 2 : 1, input.Generation, "Development", input.AllowRuntimeOverrides,
             input.Declarations, routes, input.Idempotency, string.Empty, string.Empty));
     }
 
     /// <summary>
     /// Inspects only explicitly whitelisted registration fields from base-to-overlay JSON layers.
     /// It never binds idempotency options, reads keys, scans assemblies, or claims runtime parity.
+    /// Flattened colon-delimited configuration property paths are unsupported and rejected.
     /// </summary>
     public static DevelopmentCatalogInspection Inspect(IReadOnlyList<ReadOnlyMemory<byte>> configurationLayers)
     {
@@ -77,7 +78,7 @@ public static partial class DevelopmentRouteCatalogBuilder
                 }
 
                 using JsonDocument document = JsonDocument.Parse(bytes, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-                RejectDuplicateConfigurationProperties(document.RootElement, $"$.configuration[{layer}]");
+                ValidateConfigurationProperties(document.RootElement, $"$.configuration[{layer}]");
                 if (!TryGetConfigurationProperty(document.RootElement, "EventStore", out JsonElement eventStore)
                     || !TryGetConfigurationProperty(eventStore, "DomainServices", out JsonElement services)
                     || !TryGetConfigurationProperty(services, "Registrations", out JsonElement section))
@@ -129,6 +130,7 @@ public static partial class DevelopmentRouteCatalogBuilder
                 bool valid = name switch
                 {
                     "Domain" => value.Length <= 64 && DomainPattern().IsMatch(value),
+                    "AppId" => DomainPattern().IsMatch(value),
                     "TenantId" when value == "*" => true,
                     _ => SafeBindingField().IsMatch(value),
                 };
@@ -174,6 +176,7 @@ public static partial class DevelopmentRouteCatalogBuilder
         return new(inventory, gaps,
             "Checked-in JSON registrations only; base/Development overlays are merged case-insensitively by registration field. "
             + "Only canonical matching pipe selectors and sanitized wildcard selectors are supported. "
+            + "Flattened colon-delimited configuration property paths are unsupported and rejected. "
             + "No environment, user secrets, AppHost injection, Dapr configuration, assembly declarations, adapter registrations, "
             + "or runtime projection discovery were inspected. Configured key options are not authoritative AD-25 declarations. "
             + "The query method reflects the current gateway query invoker; runtime parity remains unverified. "
@@ -197,26 +200,31 @@ public static partial class DevelopmentRouteCatalogBuilder
         return false;
     }
 
-    private static void RejectDuplicateConfigurationProperties(JsonElement element, string path)
+    private static void ValidateConfigurationProperties(JsonElement element, string path)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (JsonProperty property in element.EnumerateObject())
             {
+                if (property.Name.Contains(':'))
+                {
+                    throw Failure(path, "unsupported-flattened-configuration-path");
+                }
+
                 if (!names.Add(property.Name))
                 {
                     throw Failure(path, "duplicate-configuration-key");
                 }
 
-                RejectDuplicateConfigurationProperties(property.Value, path);
+                ValidateConfigurationProperties(property.Value, path);
             }
         }
         else if (element.ValueKind == JsonValueKind.Array)
         {
             foreach (JsonElement item in element.EnumerateArray())
             {
-                RejectDuplicateConfigurationProperties(item, path);
+                ValidateConfigurationProperties(item, path);
             }
         }
     }

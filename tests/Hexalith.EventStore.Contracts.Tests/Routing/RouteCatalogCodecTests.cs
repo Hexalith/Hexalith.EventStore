@@ -8,6 +8,22 @@ namespace Hexalith.EventStore.Contracts.Tests.Routing;
 
 public class RouteCatalogCodecTests
 {
+    [Theory]
+    [InlineData("invalid-utf8")]
+    [InlineData("unpaired-high")]
+    [InlineData("unpaired-low")]
+    public void InvalidPropertyNameEncodingHasOnlyASafeDiagnostic(string scenario)
+    {
+        byte[] valid = FixtureBytes();
+        RouteCatalogCodec.Decode(valid);
+        byte[] invalidName = scenario == "invalid-utf8" ? [0xff] : Encoding.UTF8.GetBytes(scenario == "unpaired-high" ? "\\uD800" : "\\uDC00");
+        byte[] invalid = [.. "{\"never-print-this"u8, .. invalidName, .. "\":null,"u8, .. valid[1..]];
+        RouteCatalogValidationException failure = Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.Decode(invalid));
+        failure.Diagnostics.Single().ShouldBe(new RouteCatalogDiagnostic("$", "invalid-json-or-closed-schema"));
+        failure.Message.ShouldBe("Route catalog rejected: $: invalid-json-or-closed-schema");
+        failure.InnerException.ShouldBeNull();
+    }
+
     [Fact]
     public void CompleteFixtureMatchesIndependentGoldenDigestsAndRoundTripsExactly()
     {
@@ -69,7 +85,7 @@ public class RouteCatalogCodecTests
             "unknown-root" => valid.Insert(1, "\"secretValue\":\"do-not-disclose\","),
             "unknown-nested" => valid.Replace("\"adapterId\":", "\"secretValue\":\"do-not-disclose\",\"adapterId\":", StringComparison.Ordinal),
             "missing-required" => valid.Replace("\"messageIdVersion\":2,", "", StringComparison.Ordinal),
-            "unsupported-version" => valid.Replace("\"schemaVersion\":1", "\"schemaVersion\":2", StringComparison.Ordinal),
+            "unsupported-version" => valid.Replace("\"schemaVersion\":1", "\"schemaVersion\":3", StringComparison.Ordinal),
             "escaped-property" => valid.Replace("\"profile\"", "\"profi\\u006ce\"", StringComparison.Ordinal),
             "property-order" => "{\"schemaVersion\":1," + valid[1..].Replace(",\"schemaVersion\":1", "", StringComparison.Ordinal),
             "bom" => "\uFEFF" + valid,

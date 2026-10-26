@@ -12,6 +12,60 @@ namespace Hexalith.EventStore.Client.Tests.Routing;
 
 public class DevelopmentRouteCatalogBuilderTests
 {
+    [Theory]
+    [InlineData("invalid-utf8")]
+    [InlineData("unpaired-high")]
+    [InlineData("unpaired-low")]
+    public void ConstructionInputRejectsMalformedPropertyNamesWithoutParserDisclosure(string scenario)
+    {
+        byte[] valid = File.ReadAllBytes(FixturePath("CompleteInput.json"));
+        DevelopmentRouteCatalogBuilder.Build(DevelopmentRouteCatalogBuilder.ReadInput(valid));
+        RouteCatalogValidationException failure = Should.Throw<RouteCatalogValidationException>(() =>
+            DevelopmentRouteCatalogBuilder.ReadInput(WithMalformedPropertyName(valid, scenario)));
+        failure.Message.ShouldBe("Route catalog rejected: $: invalid-json-or-closed-schema");
+        failure.InnerException.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("""{"EventStore:DomainServices:Registrations":{"*|counter|v1":{"AppId":"never-print-this"}}}""")]
+    [InlineData("""{"EventStore":{"DomainServices:Registrations":{"*|counter|v1":{"AppId":"never-print-this"}}}}""")]
+    [InlineData("""{"EventStore":{"DomainServices":{"Registrations:*|counter|v1:AppId":"never-print-this"}}}""")]
+    [InlineData("""{"EventStore":{"DomainServices":{"Registrations":{"*|counter|v1:AppId":"never-print-this"}}}}""")]
+    [InlineData("""{"EventStore:DomainServices:Registrations:*|counter|v1:AppId":"never-print-this"}""")]
+    public void InspectionRejectsFlattenedPathsInsteadOfOmittingOrKeepingStaleBindings(string overlay)
+    {
+        byte[] valid = Encoding.UTF8.GetBytes(ConfigurationWithSelector("*|counter|v1"));
+        DevelopmentCatalogInspection control = DevelopmentRouteCatalogBuilder.Inspect([valid]);
+        control.Bindings.Single().AppId.ShouldBe("sample");
+        control.InventoryLimit.ShouldContain("Flattened colon-delimited configuration property paths are unsupported");
+        foreach (ReadOnlyMemory<byte>[] layers in new[]
+        {
+            new ReadOnlyMemory<byte>[] { Encoding.UTF8.GetBytes(overlay) },
+            [valid, Encoding.UTF8.GetBytes(overlay)],
+        })
+        {
+            RouteCatalogValidationException failure = Should.Throw<RouteCatalogValidationException>(() => DevelopmentRouteCatalogBuilder.Inspect(layers));
+            failure.Diagnostics.Single().ShouldBe(new RouteCatalogDiagnostic($"$.configuration[{layers.Length - 1}]", "unsupported-flattened-configuration-path"));
+            failure.Message.ShouldNotContain("never-print-this");
+            failure.InnerException.ShouldBeNull();
+        }
+    }
+
+    [Theory]
+    [InlineData("billing--orders", true)]
+    [InlineData("-billing", false)]
+    [InlineData("billing-", false)]
+    [InlineData("Billing", false)]
+    [InlineData("billing/orders", false)]
+    public void InspectionAppIdGrammarMatchesCatalog(string appId, bool valid)
+        => AssertInspectionAppId(appId, valid);
+
+    [Theory]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public void InspectionAppIdLengthMatchesCatalog(int length, bool valid)
+        => AssertInspectionAppId(new string('a', length), valid);
+
     [Fact]
     public void ExplicitFixturesBuildTheGoldenCatalogRepeatedly()
     {
@@ -252,6 +306,28 @@ public class DevelopmentRouteCatalogBuilderTests
             exit.ShouldBe(2, log);
             File.ReadAllBytes(output).ShouldBe(expected);
 
+            // Every file argument rejects empty/blank paths with a bounded error and preserves existing output.
+            foreach (string invalidPath in new[] { string.Empty, " ", "\t" })
+            {
+                foreach (string[] arguments in new[]
+                {
+                    new[] { "generate", invalidPath, absent },
+                    ["generate", invalidPath, output],
+                    ["generate", FixturePath("CompleteInput.json"), invalidPath],
+                    ["validate", invalidPath],
+                    ["inspect", invalidPath, SettingsPath("appsettings.Development.json")],
+                    ["inspect", SettingsPath("appsettings.json"), invalidPath],
+                })
+                {
+                    (exit, log) = await RunToolAsync(tool, arguments);
+                    exit.ShouldBe(3, log);
+                    log.Trim().ShouldBe("Route catalog file access failed.");
+                    File.Exists(absent).ShouldBeFalse();
+                    File.ReadAllBytes(output).ShouldBe(expected);
+                    Directory.GetFiles(directory, ".routing-catalog-*.tmp").ShouldBeEmpty();
+                }
+            }
+
             string duplicate = Path.Combine(directory, "duplicate.json");
             File.WriteAllText(duplicate, WithNestedDuplicate(File.ReadAllText(FixturePath("CompleteInput.json")), "descriptor"));
             foreach (string destination in new[] { absent, output })
@@ -261,6 +337,49 @@ public class DevelopmentRouteCatalogBuilderTests
                 log.ShouldContain("duplicate-field");
                 File.Exists(absent).ShouldBeFalse();
                 File.ReadAllBytes(output).ShouldBe(expected);
+            }
+
+            foreach (string scenario in new[] { "invalid-utf8", "unpaired-high", "unpaired-low" })
+            {
+                string invalidInput = Path.Combine(directory, "invalid-input.json");
+                string invalidCatalog = Path.Combine(directory, "invalid-catalog.json");
+                File.WriteAllBytes(invalidInput, WithMalformedPropertyName(File.ReadAllBytes(FixturePath("CompleteInput.json")), scenario));
+                File.WriteAllBytes(invalidCatalog, WithMalformedPropertyName(expected, scenario));
+                foreach (string[] arguments in new[]
+                {
+                    new[] { "generate", invalidInput, absent },
+                    ["generate", invalidInput, output],
+                    ["validate", invalidCatalog],
+                })
+                {
+                    (exit, log) = await RunToolAsync(tool, arguments);
+                    exit.ShouldBe(2, log);
+                    log.Trim().ShouldBe("Route catalog rejected: $: invalid-json-or-closed-schema");
+                    File.Exists(absent).ShouldBeFalse();
+                    File.ReadAllBytes(output).ShouldBe(expected);
+                    Directory.GetFiles(directory, ".routing-catalog-*.tmp").ShouldBeEmpty();
+                }
+            }
+
+            // The input guard accepts this valid document; only the expanded encoded envelope exceeds 4 MiB.
+            byte[] largeInputBytes = JsonSerializer.SerializeToUtf8Bytes(LargeQueryInput(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            largeInputBytes.Length.ShouldBeLessThan(RouteCatalogCodec.MaximumByteLength);
+            RouteCatalogEnvelope largeCatalog = DevelopmentRouteCatalogBuilder.Build(DevelopmentRouteCatalogBuilder.ReadInput(largeInputBytes));
+            largeCatalog.Routes.Count.ShouldBe(3500);
+            RouteCatalogValidator.Validate(largeCatalog);
+            JsonSerializer.SerializeToUtf8Bytes(largeCatalog).Length.ShouldBeGreaterThan(RouteCatalogCodec.MaximumByteLength);
+            Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.Encode(largeCatalog)).Diagnostics.Single()
+                .ShouldBe(new RouteCatalogDiagnostic("$", "size-limit"));
+            string largeInput = Path.Combine(directory, "large-input.json");
+            File.WriteAllBytes(largeInput, largeInputBytes);
+            foreach (string destination in new[] { absent, output })
+            {
+                (exit, log) = await RunToolAsync(tool, "generate", largeInput, destination);
+                exit.ShouldBe(2, log);
+                log.Trim().ShouldBe("Route catalog rejected: $: size-limit");
+                File.Exists(absent).ShouldBeFalse();
+                File.ReadAllBytes(output).ShouldBe(expected);
+                Directory.GetFiles(directory, ".routing-catalog-*.tmp").ShouldBeEmpty();
             }
 
             string oversized = Path.Combine(directory, "oversized.json");
@@ -321,6 +440,41 @@ public class DevelopmentRouteCatalogBuilderTests
     }
 
     private static DevelopmentRouteCatalogInput ReadFixture() => DevelopmentRouteCatalogBuilder.ReadInput(File.ReadAllBytes(FixturePath("CompleteInput.json")));
+
+    private static byte[] WithMalformedPropertyName(byte[] document, string scenario)
+    {
+        byte[] name = scenario == "invalid-utf8" ? [0xff] : Encoding.UTF8.GetBytes(scenario == "unpaired-high" ? "\\uD800" : "\\uDC00");
+        return [.. "{\"never-print-this"u8, .. name, .. "\":null,"u8, .. document[1..]];
+    }
+
+    private static DevelopmentRouteCatalogInput LargeQueryInput()
+    {
+        RouteContractDeclaration template = ReadFixture().Declarations.Single(d => d.RouteId == "counter-get");
+        RouteContractDeclaration[] declarations = Enumerable.Range(0, 3500).Select(index =>
+        {
+            string name = new string('a', 121) + index.ToString("D7", System.Globalization.CultureInfo.InvariantCulture);
+            return template with { RouteId = name, MessageType = name, Domain = new string('d', 64), ProjectionType = new string('p', 128) };
+        }).ToArray();
+        RouteCompositionBinding[] bindings = declarations.Select(d => new RouteCompositionBinding(
+            d.RouteId, new string('a', 80), new string('m', 64), d.ContractVersion, false)).ToArray();
+        return new(7, false, declarations, bindings, []);
+    }
+
+    private static void AssertInspectionAppId(string appId, bool valid)
+    {
+        string control = ConfigurationWithSelector("*|counter|v1");
+        DevelopmentRouteCatalogBuilder.Inspect([Encoding.UTF8.GetBytes(control)]);
+        byte[] configuration = Encoding.UTF8.GetBytes(control.Replace("\"AppId\":\"sample\"", $"\"AppId\":\"{appId}\"", StringComparison.Ordinal));
+        if (valid)
+        {
+            DevelopmentRouteCatalogBuilder.Inspect([configuration]).Bindings.Single().AppId.ShouldBe(appId);
+        }
+        else
+        {
+            Should.Throw<RouteCatalogValidationException>(() => DevelopmentRouteCatalogBuilder.Inspect([configuration])).Diagnostics.Single()
+                .ShouldBe(new RouteCatalogDiagnostic("$.bindings[0].AppId", "missing-or-invalid-safe-binding"));
+        }
+    }
 
     private static string WithNestedDuplicate(string input, string location)
     {

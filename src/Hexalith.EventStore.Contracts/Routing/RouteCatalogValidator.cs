@@ -34,7 +34,7 @@ public static partial class RouteCatalogValidator
     internal static void ValidateMetadata(RouteCatalogEnvelope envelope)
     {
         Require(envelope is not null, "$", "missing-document");
-        Require(envelope.SchemaVersion == 1, "$.schemaVersion", "unsupported-version");
+        Require(envelope.SchemaVersion is 1 or 2, "$.schemaVersion", "unsupported-version");
         Require(envelope.Generation is > 0 and <= 9007199254740991, "$.generation", "invalid-generation");
         Token(envelope.Profile, "$.profile");
         Require(!envelope.AllowRuntimeOverrides || envelope.Profile == "Development", "$.allowRuntimeOverrides", "override-outside-development");
@@ -44,20 +44,43 @@ public static partial class RouteCatalogValidator
 
         var declarations = new Dictionary<string, RouteContractDeclaration>(StringComparer.Ordinal);
         var exactKeys = new HashSet<string>(StringComparer.Ordinal);
+        var aliasKeys = new HashSet<string>(StringComparer.Ordinal);
+        var compatibilityAliasKeys = new HashSet<string>(StringComparer.Ordinal);
+        var normalizedExactAliasKeys = new HashSet<string>(StringComparer.Ordinal);
         var fallbackKeys = new HashSet<string>(StringComparer.Ordinal);
         for (int index = 0; index < envelope.Declarations.Count; index++)
         {
             RouteContractDeclaration declaration = envelope.Declarations[index];
             string path = $"$.declarations[{index}]";
             CheckDeclaration(declaration, path);
+            Require((envelope.SchemaVersion == 2) == (declaration.Execution is not null), path + ".execution", "schema-execution-mismatch");
             Require(declarations.TryAdd(declaration.RouteId, declaration), path + ".routeId", "duplicate-route-id");
             string keyPrefix = $"{(declaration.Kind == "projection" ? "projection" : "message")}|{declaration.Domain}|";
+            if (declaration.Execution is { } execution)
+            {
+                foreach (string alias in execution.Aliases)
+                {
+                    Require(aliasKeys.Add(keyPrefix + alias), path + ".execution.aliases", "ambiguous-handler-alias");
+                    string normalizedKey = keyPrefix + CommandDiscriminatorCompatibility.LookupKey(alias);
+                    if (execution.AliasPolicy == "clr-short-name-v1")
+                    {
+                        Require(!normalizedExactAliasKeys.Contains(normalizedKey), path + ".execution.aliases", "ambiguous-handler-alias");
+                        compatibilityAliasKeys.Add(normalizedKey);
+                    }
+                    else
+                    {
+                        Require(!compatibilityAliasKeys.Contains(normalizedKey), path + ".execution.aliases", "ambiguous-handler-alias");
+                        normalizedExactAliasKeys.Add(normalizedKey);
+                    }
+                }
+            }
+
             string discriminator = declaration.Kind == "projection" ? declaration.ProjectionType! : declaration.MessageType!;
             if (discriminator == "*")
             {
-                foreach (string type in declaration.FallbackTypes)
+                for (int typeIndex = 0; typeIndex < declaration.FallbackTypes.Count; typeIndex++)
                 {
-                    Require(fallbackKeys.Add(keyPrefix + type), path + ".fallbackTypes", "ambiguous-fallback");
+                    Require(fallbackKeys.Add(keyPrefix + declaration.FallbackTypes[typeIndex]), $"{path}.fallbackTypes[{typeIndex}]", "ambiguous-fallback");
                 }
             }
             else
@@ -74,8 +97,11 @@ public static partial class RouteCatalogValidator
             Require(declarations.TryGetValue(route.RouteId ?? string.Empty, out RouteContractDeclaration? declaration), path + ".routeId", "missing-declaration");
             Require(bound.Add(route.RouteId!), path + ".routeId", "duplicate-route-id");
             Require(route.Generation == envelope.Generation, path + ".generation", "generation-mismatch");
-            Name(route.AppId, path + ".appId");
-            Require(IsMatch(route.Method, MethodPattern()), path + ".method", "invalid-method");
+            AppId(route.AppId, path + ".appId");
+            Require(envelope.SchemaVersion == 1 ? route.ResolverTenantPattern is null
+                : route.ResolverTenantPattern == "*" || (route.ResolverTenantPattern is { Length: > 0 and <= 64 } && DomainPattern().IsMatch(route.ResolverTenantPattern)),
+                path + ".resolverTenantPattern", "invalid-resolver-tenant-pattern");
+            Require(declaration!.Execution?.TargetKind == "projection-actor" ? route.Method == "QueryAsync" : IsMatch(route.Method, MethodPattern()), path + ".method", "invalid-method");
             Require(route.ContractVersion == declaration!.ContractVersion, path + ".contractVersion", "declaration-mismatch");
             Require(route.CredentialKind == declaration.CredentialKind, path + ".credentialKind", "declaration-mismatch");
             Require(route.Operation == declaration.Operation, path + ".operation", "declaration-mismatch");
@@ -85,6 +111,7 @@ public static partial class RouteCatalogValidator
 
         Require(bound.Count == declarations.Count, "$.routes", "missing-binding");
         var commands = new HashSet<string>(StringComparer.Ordinal);
+        var secretMapGenerations = new Dictionary<(string Consumer, string Store, string Name), string>();
         for (int index = 0; index < envelope.Idempotency.Count; index++)
         {
             IdempotencyCatalogEntry entry = envelope.Idempotency[index];
@@ -94,6 +121,10 @@ public static partial class RouteCatalogValidator
             Require(entry.Domain == declaration!.Domain && entry.CommandType == declaration.MessageType, path, "command-join-mismatch");
             Require(entry.Generation == envelope.Generation, path + ".generation", "generation-mismatch");
             ValidateIdempotencyMetadata(entry, path);
+            var secretReference = (entry.ConsumerAppId, entry.SecretStore, entry.LogicalSecretName);
+            Require(!secretMapGenerations.TryGetValue(secretReference, out string? generation) || generation == entry.SecretMapGeneration,
+                path + ".secretMapGeneration", "conflicting-secret-map-generation");
+            secretMapGenerations[secretReference] = entry.SecretMapGeneration;
             Require(entry.ContentDigest == RouteCatalogCodec.ComputeIdempotencyEntryDigest(entry), path + ".contentDigest", "idempotency-content-digest-mismatch");
         }
 
@@ -106,7 +137,7 @@ public static partial class RouteCatalogValidator
         Require(entry is not null, path, "missing-idempotency-entry");
         Name(entry.RouteId, path + ".routeId");
         Domain(entry.Domain, path + ".domain");
-        Name(entry.CommandType, path + ".commandType");
+        Discriminator(entry.CommandType, path + ".commandType");
         Require(entry.Generation is > 0 and <= 9007199254740991, path + ".generation", "invalid-generation");
         Token(entry.AdapterId, path + ".adapterId");
         Token(entry.OperationId, path + ".operationId");
@@ -117,25 +148,31 @@ public static partial class RouteCatalogValidator
         Token(entry.ActiveDigestKeyGeneration, path + ".activeDigestKeyGeneration");
         List(entry.ReaderDigestKeyGenerations, path + ".readerDigestKeyGenerations", allowEmpty: false);
         var readers = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string reader in entry.ReaderDigestKeyGenerations)
+        for (int index = 0; index < entry.ReaderDigestKeyGenerations.Count; index++)
         {
-            Token(reader, path + ".readerDigestKeyGenerations");
-            Require(readers.Add(reader), path + ".readerDigestKeyGenerations", "duplicate-generation");
+            string reader = entry.ReaderDigestKeyGenerations[index];
+            string readerPath = $"{path}.readerDigestKeyGenerations[{index}]";
+            Token(reader, readerPath);
+            Require(readers.Add(reader), readerPath, "duplicate-generation");
         }
 
         Require(readers.Contains(entry.ActiveDigestKeyGeneration), path + ".activeDigestKeyGeneration", "active-generation-not-readable");
         Name(entry.SecretStore, path + ".secretStore");
         Token(entry.LogicalSecretName, path + ".logicalSecretName");
         Token(entry.SecretMapGeneration, path + ".secretMapGeneration");
-        Name(entry.ConsumerAppId, path + ".consumerAppId");
+        AppId(entry.ConsumerAppId, path + ".consumerAppId");
         List(entry.KeyMap, path + ".keyMap", allowEmpty: false);
         var generations = new HashSet<string>(StringComparer.Ordinal);
         var mapKeys = new HashSet<string>(StringComparer.Ordinal);
-        foreach (DigestKeyMapReference key in entry.KeyMap)
+        for (int index = 0; index < entry.KeyMap.Count; index++)
         {
-            Token(key.Generation, path + ".keyMap.generation");
-            Token(key.MapKey, path + ".keyMap.mapKey");
-            Require(generations.Add(key.Generation) && mapKeys.Add(key.MapKey), path + ".keyMap", "duplicate-key-reference");
+            DigestKeyMapReference key = entry.KeyMap[index];
+            string keyPath = $"{path}.keyMap[{index}]";
+            Token(key.Generation, keyPath + ".generation");
+            Token(key.MapKey, keyPath + ".mapKey");
+            Require(key.MapKey != "generation", keyPath + ".mapKey", "reserved-generation-map-key");
+            Require(generations.Add(key.Generation), keyPath + ".generation", "duplicate-key-reference");
+            Require(mapKeys.Add(key.MapKey), keyPath + ".mapKey", "duplicate-key-reference");
         }
 
         Require(generations.SetEquals(readers), path + ".keyMap", "reader-generation-map-mismatch");
@@ -152,7 +189,7 @@ public static partial class RouteCatalogValidator
         string operation = declaration.Kind switch
         {
             "command" => EventStoreOperationIdentifiers.DomainServiceProcess,
-            "query" => EventStoreOperationIdentifiers.DomainServiceQuery,
+            "query" => declaration.Execution?.TargetKind == "projection-actor" ? EventStoreOperationIdentifiers.ProjectionQuery : EventStoreOperationIdentifiers.DomainServiceQuery,
             _ => EventStoreOperationIdentifiers.DomainServiceProject,
         };
         Require(declaration.Operation == operation, path + ".operation", "invalid-target-operation");
@@ -164,7 +201,7 @@ public static partial class RouteCatalogValidator
         }
         else
         {
-            Require(declaration.MessageType == "*" || IsMatch(declaration.MessageType, NamePattern()), path + ".messageType", "missing-or-invalid-message-type");
+            Require(declaration.MessageType == "*" || (declaration.Execution is null ? IsMatch(declaration.MessageType, NamePattern()) : IsDiscriminator(declaration.MessageType)), path + ".messageType", "missing-or-invalid-message-type");
         }
 
         if (declaration.Kind == "command")
@@ -173,7 +210,7 @@ public static partial class RouteCatalogValidator
         }
         else
         {
-            Require((declaration.Kind == "projection" && declaration.ProjectionType == "*") || IsMatch(declaration.ProjectionType, NamePattern()),
+            Require((declaration.Kind == "query" && declaration.Execution?.QueryKind == "computed" && declaration.ProjectionType is null) || (declaration.Kind == "projection" && declaration.ProjectionType == "*") || IsMatch(declaration.ProjectionType, NamePattern()),
                 path + ".projectionType", "missing-or-invalid-projection-type");
         }
 
@@ -183,10 +220,41 @@ public static partial class RouteCatalogValidator
         // Every command needs its own AD-17 declaration and AD-25 join; v1 forbids grouped command policies.
         Require(!fallback || declaration.Kind != "command", path + ".fallbackTypes", "command-requires-exact-declaration");
         var types = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string type in declaration.FallbackTypes)
+        for (int index = 0; index < declaration.FallbackTypes.Count; index++)
         {
-            Name(type, path + ".fallbackTypes");
-            Require(types.Add(type), path + ".fallbackTypes", "duplicate-fallback-type");
+            string type = declaration.FallbackTypes[index];
+            string typePath = $"{path}.fallbackTypes[{index}]";
+            Name(type, typePath);
+            Require(types.Add(type), typePath, "duplicate-fallback-type");
+        }
+
+        if (declaration.Execution is { } execution)
+        {
+            Discriminator(execution.HandlerType, path + ".execution.handlerType");
+            Require(execution.TargetKind is "domain-service" or "projection-actor", path + ".execution.targetKind", "unsupported-target-kind");
+            Require(execution.TargetKind == "projection-actor" ? execution.ActorType == "ProjectionActor" : execution.ActorType is null, path + ".execution.actorType", "invalid-actor-type");
+            Require(!execution.RequiresDelegatedContext || (declaration.Kind == "query" && execution.TargetKind == "domain-service"), path + ".execution.requiresDelegatedContext", "invalid-delegated-context");
+            Require(execution.TargetKind != "projection-actor" || declaration.Kind == "query", path + ".execution.targetKind", "actor-requires-query");
+            Require(execution.AliasPolicy == "exact" || (execution.AliasPolicy == "clr-short-name-v1" && declaration.Kind == "command"), path + ".execution.aliasPolicy", "unsupported-alias-policy");
+            Require(!fallback, path + ".fallbackTypes", "execution-requires-exact-handler");
+            List(execution.Aliases, path + ".execution.aliases", allowEmpty: false);
+            Require(execution.Aliases.Distinct(StringComparer.Ordinal).Count() == execution.Aliases.Count, path + ".execution.aliases", "duplicate-handler-alias");
+            foreach (string alias in execution.Aliases)
+            {
+                Discriminator(alias, path + ".execution.aliases");
+                Require(execution.AliasPolicy != "clr-short-name-v1" || CommandDiscriminatorCompatibility.LookupKey(alias) == alias, path + ".execution.aliases", "alias-is-not-lookup-key");
+            }
+            Require(execution.Aliases.Contains(declaration.Kind == "projection" ? declaration.ProjectionType! : declaration.MessageType!, StringComparer.Ordinal), path + ".execution.aliases", "missing-primary-alias");
+            Require(declaration.Kind == "query" ? execution.QueryKind is "projection" or "computed" : execution.QueryKind is null, path + ".execution.queryKind", "invalid-query-kind");
+            Require(execution.TargetKind != "projection-actor" || execution.QueryKind == "projection", path + ".execution.queryKind", "actor-requires-projection");
+            List(execution.ProjectionOutputs, path + ".execution.projectionOutputs", allowEmpty: declaration.Kind != "projection");
+            Require(declaration.Kind == "projection" || execution.ProjectionOutputs.Count == 0, path + ".execution.projectionOutputs", "unexpected-projection-outputs");
+            var outputs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string output in execution.ProjectionOutputs)
+            {
+                Name(output, path + ".execution.projectionOutputs");
+                Require(outputs.Add(output), path + ".execution.projectionOutputs", "duplicate-projection-output");
+            }
         }
 
         if (declaration.PlatformAdmission is { } admission)
@@ -204,15 +272,24 @@ public static partial class RouteCatalogValidator
         Require(descriptor.Version > 0, path + ".version", "invalid-descriptor-version");
         List(descriptor.Fields, path + ".fields", allowEmpty: false);
         var names = new HashSet<string>(StringComparer.Ordinal);
-        foreach (IdempotencyDescriptorField field in descriptor.Fields)
+        for (int index = 0; index < descriptor.Fields.Count; index++)
         {
-            Name(field.Name, path + ".fields.name");
-            Require(names.Add(field.Name), path + ".fields.name", "duplicate-descriptor-field");
-            Require(field.Type is "string" or "int64" or "boolean" or "string-list", path + ".fields.type", "unsupported-descriptor-type");
+            IdempotencyDescriptorField field = descriptor.Fields[index];
+            string fieldPath = $"{path}.fields[{index}]";
+            Name(field.Name, fieldPath + ".name");
+            Require(names.Add(field.Name), fieldPath + ".name", "duplicate-descriptor-field");
+            Require(field.Type is "string" or "int64" or "boolean" or "string-list", fieldPath + ".type", "unsupported-descriptor-type");
         }
     }
 
+    private static bool IsDiscriminator(string? value) => value is { Length: > 0 and <= 512 }
+        && value.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-' or '+');
+
+    private static void Discriminator(string? value, string path) => Require(IsDiscriminator(value), path, "missing-or-invalid-discriminator");
+
     private static void Name(string? value, string path) => Require(IsMatch(value, NamePattern()), path, "missing-or-invalid-name");
+
+    private static void AppId(string? value, string path) => Require(IsMatch(value, DomainPattern()), path, "missing-or-invalid-name");
 
     private static void Domain(string? value, string path) => Require(value is { Length: > 0 and <= 64 } && DomainPattern().IsMatch(value), path, "missing-or-invalid-domain");
 
@@ -223,7 +300,10 @@ public static partial class RouteCatalogValidator
     private static void List<T>(IReadOnlyList<T>? list, string path, bool allowEmpty = true)
     {
         Require(list is not null && list.Count <= 4096 && (allowEmpty || list.Count > 0), path, "missing-or-invalid-list");
-        Require(list.All(item => item is not null), path, "null-entry");
+        for (int index = 0; index < list.Count; index++)
+        {
+            Require(list[index] is not null, $"{path}[{index}]", "null-entry");
+        }
     }
 
     private static void Require([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string path, string code)

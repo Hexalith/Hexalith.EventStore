@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Routing;
 
 /// <summary>A deployment binding joined to exactly one declaration.</summary>
@@ -10,6 +12,7 @@ namespace Hexalith.EventStore.Contracts.Routing;
 /// <param name="CredentialKind">Target credential matching the declaration.</param>
 /// <param name="Operation">Target operation matching the declaration.</param>
 /// <param name="IsRuntimeOverride">Whether this binding is a Development-only explicit override.</param>
+/// <param name="ResolverTenantPattern">Observed resolver scope in schema v2: exact historical tenant or wildcard. Never a synthesized request scope.</param>
 public sealed record RouteCatalogEntry(
     string RouteId,
     long Generation,
@@ -19,4 +22,5 @@ public sealed record RouteCatalogEntry(
     string ContractVersion,
     string CredentialKind,
     string Operation,
-    bool IsRuntimeOverride);
+    bool IsRuntimeOverride,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ResolverTenantPattern = null);

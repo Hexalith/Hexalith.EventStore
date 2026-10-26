@@ -5,6 +5,128 @@ namespace Hexalith.EventStore.Contracts.Tests.Routing;
 public class RouteCatalogValidatorTests
 {
     [Theory]
+    [InlineData("same-reference", false)]
+    [InlineData("consumer", true)]
+    [InlineData("store", true)]
+    [InlineData("name", true)]
+    public void SecretGenerationMarkersAgreeForEachConsumerReference(string difference, bool accepted)
+    {
+        RouteCatalogEnvelope valid = RouteCatalogCodec.Decode(RouteCatalogCodecTests.FixtureBytes());
+        RouteCatalogValidator.Validate(valid); // The fixture shares a reference and marker between commands.
+        IdempotencyCatalogEntry changed = valid.Idempotency[1] with { SecretMapGeneration = "map-v3" };
+        changed = difference switch
+        {
+            "consumer" => changed with { ConsumerAppId = "another-consumer" },
+            "store" => changed with { SecretStore = "another-store" },
+            "name" => changed with { LogicalSecretName = "another-map" },
+            _ => changed,
+        };
+        changed = changed with { ContentDigest = RouteCatalogCodec.ComputeIdempotencyEntryDigest(changed) };
+        RouteCatalogEnvelope candidate = valid with { Idempotency = [valid.Idempotency[0], changed] };
+        if (accepted)
+        {
+            RouteCatalogValidator.Validate(RouteCatalogCodec.Seal(candidate));
+        }
+        else
+        {
+            Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.Seal(candidate)).Diagnostics.Single()
+                .ShouldBe(new RouteCatalogDiagnostic("$.idempotency[1].secretMapGeneration", "conflicting-secret-map-generation"));
+        }
+    }
+
+    [Theory]
+    [InlineData("billing--orders", true)]
+    [InlineData("-billing", false)]
+    [InlineData("billing-", false)]
+    [InlineData("Billing", false)]
+    [InlineData("billing/orders", false)]
+    public void TargetAndConsumerAppIdsAcceptInternalHyphensOnly(string appId, bool valid)
+        => AssertAppId(appId, valid);
+
+    [Theory]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public void TargetAndConsumerAppIdsPreserveLengthBounds(int length, bool valid)
+        => AssertAppId(new string('a', length), valid);
+
+    [Theory]
+    [InlineData("reader-token", "$.idempotency[0].readerDigestKeyGenerations[1]", "missing-or-invalid-token")]
+    [InlineData("reader-duplicate", "$.idempotency[0].readerDigestKeyGenerations[1]", "duplicate-generation")]
+    [InlineData("reader-null", "$.idempotency[0].readerDigestKeyGenerations[1]", "null-entry")]
+    [InlineData("key-token", "$.idempotency[0].keyMap[1].mapKey", "missing-or-invalid-token")]
+    [InlineData("key-generation", "$.idempotency[0].keyMap[1].generation", "missing-or-invalid-token")]
+    [InlineData("key-duplicate", "$.idempotency[0].keyMap[1].mapKey", "duplicate-key-reference")]
+    [InlineData("key-null", "$.idempotency[0].keyMap[1]", "null-entry")]
+    [InlineData("reserved-key", "$.idempotency[0].keyMap[1].mapKey", "reserved-generation-map-key")]
+    [InlineData("fallback-token", "$.declarations[4].fallbackTypes[1]", "missing-or-invalid-name")]
+    [InlineData("fallback-duplicate", "$.declarations[4].fallbackTypes[1]", "duplicate-fallback-type")]
+    [InlineData("fallback-ambiguous", "$.declarations[5].fallbackTypes[0]", "ambiguous-fallback")]
+    [InlineData("fallback-null", "$.declarations[4].fallbackTypes[1]", "null-entry")]
+    [InlineData("field-name", "$.idempotency[0].descriptorSchema.fields[1].name", "missing-or-invalid-name")]
+    [InlineData("field-type", "$.idempotency[0].descriptorSchema.fields[1].type", "unsupported-descriptor-type")]
+    [InlineData("field-duplicate", "$.idempotency[0].descriptorSchema.fields[1].name", "duplicate-descriptor-field")]
+    [InlineData("field-null", "$.idempotency[0].descriptorSchema.fields[1]", "null-entry")]
+    public void NestedSemanticFailuresLocateTheExactElementWithoutValues(string scenario, string path, string code)
+    {
+        RouteCatalogEnvelope valid = RouteCatalogCodec.Decode(RouteCatalogCodecTests.FixtureBytes());
+        RouteCatalogValidator.Validate(valid);
+        RouteContractDeclaration[] declarations = valid.Declarations.ToArray();
+        IdempotencyCatalogEntry entry = valid.Idempotency[0];
+        string[] readers = entry.ReaderDigestKeyGenerations.ToArray();
+        DigestKeyMapReference[] keys = entry.KeyMap.ToArray();
+        IdempotencyDescriptorField[] fields = entry.DescriptorSchema.Fields.ToArray();
+        string[] fallbacks = declarations[4].FallbackTypes.ToArray();
+        switch (scenario)
+        {
+            case "reader-token": readers[1] = "never print this"; break;
+            case "reader-duplicate": readers[1] = readers[0]; break;
+            case "reader-null": readers[1] = null!; break;
+            case "key-token": keys[1] = keys[1] with { MapKey = "never print this" }; break;
+            case "key-generation": keys[1] = keys[1] with { Generation = "never print this" }; break;
+            case "key-duplicate": keys[1] = keys[1] with { MapKey = keys[0].MapKey }; break;
+            case "key-null": keys[1] = null!; break;
+            case "reserved-key": keys[1] = keys[1] with { MapKey = "generation" }; break;
+            case "fallback-token": fallbacks[1] = "never print this"; break;
+            case "fallback-duplicate": fallbacks[1] = fallbacks[0]; break;
+            case "fallback-ambiguous": declarations = [.. declarations, declarations[4] with { RouteId = "overlap" }]; break;
+            case "fallback-null": fallbacks[1] = null!; break;
+            case "field-name": fields[1] = fields[1] with { Name = "never print this" }; break;
+            case "field-type": fields[1] = fields[1] with { Type = "never print this" }; break;
+            case "field-duplicate": fields[1] = fields[1] with { Name = fields[0].Name }; break;
+            case "field-null": fields[1] = null!; break;
+        }
+
+        declarations[4] = declarations[4] with { FallbackTypes = fallbacks };
+        entry = entry with { ReaderDigestKeyGenerations = readers, KeyMap = keys, DescriptorSchema = entry.DescriptorSchema with { Fields = fields } };
+        RouteCatalogEnvelope candidate = valid with { Declarations = declarations, Idempotency = [entry, valid.Idempotency[1]] };
+        RouteCatalogValidationException failure = Should.Throw<RouteCatalogValidationException>(() => RouteCatalogValidator.Validate(candidate));
+        failure.Diagnostics.Single().ShouldBe(new RouteCatalogDiagnostic(path, code));
+        failure.Message.ShouldBe($"Route catalog rejected: {path}: {code}");
+        failure.InnerException.ShouldBeNull();
+    }
+
+    private static void AssertAppId(string appId, bool accepted)
+    {
+        RouteCatalogEnvelope valid = RouteCatalogCodec.Decode(RouteCatalogCodecTests.FixtureBytes());
+        RouteCatalogValidator.Validate(valid);
+        RouteCatalogEnvelope changedRoute = valid with { Routes = [valid.Routes[0] with { AppId = appId }, .. valid.Routes.Skip(1)] };
+        IdempotencyCatalogEntry changedConsumer = valid.Idempotency[0] with { ConsumerAppId = appId };
+        if (accepted)
+        {
+            RouteCatalogValidator.Validate(RouteCatalogCodec.Seal(changedRoute));
+            changedConsumer = changedConsumer with { ContentDigest = RouteCatalogCodec.ComputeIdempotencyEntryDigest(changedConsumer) };
+            RouteCatalogValidator.Validate(RouteCatalogCodec.Seal(valid with { Idempotency = [changedConsumer, valid.Idempotency[1]] }));
+        }
+        else
+        {
+            Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.Seal(changedRoute)).Diagnostics.Single()
+                .ShouldBe(new RouteCatalogDiagnostic("$.routes[0].appId", "missing-or-invalid-name"));
+            Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.ComputeIdempotencyEntryDigest(changedConsumer)).Diagnostics.Single()
+                .ShouldBe(new RouteCatalogDiagnostic("$.idempotencyEntry.consumerAppId", "missing-or-invalid-name"));
+        }
+    }
+
+    [Theory]
     [InlineData(64, true)]
     [InlineData(65, false)]
     public void DomainLengthMatchesRuntimeDeclarationsAndIdempotencyMetadata(int length, bool valid)

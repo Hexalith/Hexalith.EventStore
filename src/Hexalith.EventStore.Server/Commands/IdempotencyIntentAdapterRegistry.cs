@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
@@ -45,11 +46,28 @@ public sealed class IdempotencyIntentAdapterRegistry : IIdempotencyIntentAdapter
             IdempotencyReplayRetentionTier retentionTier = adapter.RetentionTier;
             ValidateAdapter(commandType, adapterId, operationId, descriptorVersion, retentionTier);
             if (!registered.TryAdd(
-                commandType,
+                adapter is IDeclaredIdempotencyIntentAdapter declared ? declared.Declaration.Route.Domain + "|" + commandType : commandType,
                 (adapter, adapterId, operationId, descriptorVersion, retentionTier)))
             {
                 throw new InvalidOperationException(
                     "Multiple trusted idempotency adapters are registered for one command type.");
+            }
+        }
+
+        IIdempotencyIntentAdapter[] materialized = registered.Values.Select(value => value.Adapter).ToArray();
+        foreach (IDeclaredIdempotencyIntentAdapter declared in materialized.OfType<IDeclaredIdempotencyIntentAdapter>())
+        {
+            RouteCatalogValidator.ValidateDeclaration(declared.Declaration.Route);
+            foreach (IIdempotencyIntentAdapter other in materialized.Where(other => !ReferenceEquals(other, declared)))
+            {
+                bool overlaps = other is IDeclaredIdempotencyIntentAdapter scoped
+                    ? scoped.Declaration.Route.Domain == declared.Declaration.Route.Domain
+                        && scoped.Declaration.Route.Execution!.Aliases.Any(alias => CommandDiscriminatorCompatibility.Matches(declared.Declaration.Route, alias))
+                    : CommandDiscriminatorCompatibility.Matches(declared.Declaration.Route, other.CommandType);
+                if (overlaps)
+                {
+                    throw new InvalidOperationException("Ambiguous trusted adapter registrations overlap a declared handler.");
+                }
             }
         }
 
@@ -61,7 +79,10 @@ public sealed class IdempotencyIntentAdapterRegistry : IIdempotencyIntentAdapter
     public TrustedIdempotencyDescriptor Resolve(SubmitCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        if (!_adapters.TryGetValue(command.CommandType, out var registration))
+        var registration = _adapters.Values.SingleOrDefault(value => value.Adapter is IDeclaredIdempotencyIntentAdapter declared
+            && declared.Declaration.Route.Domain == command.Domain
+            && CommandDiscriminatorCompatibility.Matches(declared.Declaration.Route, command.CommandType));
+        if (registration.Adapter is null && !_adapters.TryGetValue(command.CommandType, out registration))
         {
             throw new InvalidOperationException(
                 "No trusted idempotency adapter is registered for the command type.");
@@ -74,7 +95,7 @@ public sealed class IdempotencyIntentAdapterRegistry : IIdempotencyIntentAdapter
                 command.Domain,
                 command.AggregateId,
                 command.Payload,
-                command.Extensions))
+                command.Extensions) { AuthenticatedSubject = command.AuthenticatedSubject })
             ?? throw new InvalidOperationException("The trusted idempotency adapter returned no canonical intent.");
         ValidateIntent(intent);
         return new TrustedIdempotencyDescriptor(

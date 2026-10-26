@@ -1,7 +1,7 @@
 namespace Hexalith.EventStore.Contracts.Routing;
 
-/// <summary>Closed schema v1 construction envelope. Possession of this envelope grants no activation or signing authority.</summary>
-/// <param name="SchemaVersion">Exactly 1.</param>
+/// <summary>Closed schema v1/v2 construction envelope. Possession of this envelope grants no activation or signing authority.</summary>
+/// <param name="SchemaVersion">Exactly 1 for the original shape, or 2 for explicit handler and resolver-scope metadata.</param>
 /// <param name="Generation">Positive complete catalog generation.</param>
 /// <param name="Profile">Explicit composition profile.</param>
 /// <param name="AllowRuntimeOverrides">May be true only for the exact Development profile.</param>

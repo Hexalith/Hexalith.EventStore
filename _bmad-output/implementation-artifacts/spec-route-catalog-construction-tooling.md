@@ -76,6 +76,7 @@ Full sources are in the investigation. `C=src/Hexalith.EventStore.Contracts`, `D
 ## Spec Change Log
 
 - 2026-10-26: Implemented the bounded construction delivery. Kept the parent story and sprint row in-progress; complete Development generation, runtime parity, activation, and 2.14 adoption remain outside this delivery.
+- 2026-10-26: Reopened the bounded item after a follow-up audit identified unhandled CLI path arguments and the remaining obsolete AD-36 operation-vocabulary owner. Preserved the existing baseline and frozen intent; implemented the two corrections and focused regression coverage for parent review.
 
 
 ## Review Triage Log
@@ -95,6 +96,28 @@ Three independent review layers completed on 2026-10-26. Edge-case review return
 | B8 | CLI output replacement can destroy previous valid bytes | medium | File.WriteAllBytes truncates the destination before write completion; its IOException handler cannot restore it. Patch a temporary sibling write followed by replacement, preserving previous output on failure. |
 | B9 | CLI tests mutate shared build assets | medium | RunToolAsync executes dotnet run against shared project obj directories; the recorded NETSDK1047 packaging collision demonstrates interference. Patch the invocation to use isolated build artifacts and verify the CLI test. |
 | B10 | Conditional query response loses default producer paging | medium | QueriesController only guards request policy inputs/version/warnings before 304; producer Paging survives normalization but has no 304 carrier in EventStoreGatewayClient. This is in concurrent query/provenance work, outside this item's explicit no-runtime-change intent. Defer with exact consumer evidence; preserve that work unchanged. |
+| F1 | Invalid CLI file arguments escape bounded handling | confirmed, fixed | Empty paths raise ArgumentException outside the original IO/authorization filter. Read/write boundaries now reject empty or whitespace-only paths consistently, and the file-error handler includes ArgumentException. Eighteen subprocess checks cover every file argument position with empty/space/tab paths, exact exit 3/error text, preserved output, and no temporary output remnants. |
+| F2 | AD-36 still assigns operation vocabulary to ServiceDefaults | confirmed, fixed | Corrected only the obsolete ownership sentence: Contracts owns identifiers; ServiceDefaults retains compatible forwarding constants and assertion/authentication responsibilities. Recorded the correction and unchanged AD-26 subject in the architecture memlog. |
+
+
+Follow-up review of the complete baseline diff (2026-10-26): each finding was classified before grouping. Existing query work is excluded by the frozen no-runtime-change intent. Catalog patches add no public surface and correct demonstrated failures within the existing validation/diagnostic contract.
+
+| ID | Verdict | Evidence and route |
+| --- | --- | --- |
+| R2B1 | medium | Flattened colon-delimited appsettings paths load in the host but disappear from the inspection inventory. Patch: explicitly reject this unsupported form with a bounded diagnostic, including flattened overlays; do not claim an accurate empty/stale inventory. |
+| R2B2 | medium | Two entries for one consumer/store/logical map can carry different expected map-generation markers, while DaprSecretIdempotencyDigestKeyProvider reads one generation field from that map. Patch: reject conflicting markers for that same reference. |
+| R2B3 | medium | KeyMap accepts the literal generation key, but the existing provider reserves it for its marker and ValidateIdempotencyAdmissionOptions rejects that key version. Patch: reject the reserved map-key collision. |
+| R2B4 | medium | The resolver's domain-derived app ID accepts consecutive internal hyphens, while catalog AppId/ConsumerAppId and inspection reject them. Patch only app-identity validation; preserve other identifier grammars and existing length bounds. |
+| R2B5 | medium | Carried B10: producer paging can be lost on a bodyless 304; unchanged source and claim, previously deferred outside the tooling intent. Do not fix or defer it again. |
+| R2B6 | low | Semantic collection paths omit the failing element index, making large descriptor/key lists harder to correct. Patch the diagnostic indices directly and cover their exact safe paths. |
+| R2B7 | false | A query ProjectionType is also ETag/read metadata; not every query requires a named projection dispatcher. Current computed/live query paths and the construction contract do not require a query-to-projection-entry join. Full runtime discovery/parity is explicitly pending in the parent story; adding a mandatory join would invent a constraint. |
+| R2B8 | low | The byte limit is a wire/output-size limit, not a promised heap budget for arbitrary in-memory objects. The offline CLI bounds input bytes; constructing thousands of nested lists programmatically is not ordinary use. Reject the proposed new aggregate-budget machinery under the low-impact complexity rule. |
+| R2B9 | low | Inspection expands a local registration inventory into field diagnostics; arbitrarily many public-API layers can grow the report. No normal four-binding profile has this issue and the CLI bounds both files. Reject new truncation/report-budget behavior under the low-impact complexity rule. |
+| R2B10 | low | CLI authors must calculate schema/entry digests before generation but usage lacks the order. Patch a concise shared-codec authoring example; never duplicate canonicalization or invent policy values. |
+| R2E1 | medium | Reviewer reproduced InvalidOperationException from invalid UTF-8/unpaired-surrogate property names while RejectDuplicates reads JsonProperty.Name; ReadClosedDocument only catches JsonException. Patch the parser failure translation and prove library/CLI safe failures. |
+| R2E2 | medium | Carried B10: same unchanged producer-paging loss on 304, already deferred; no second patch or ledger entry. |
+| R2V1 | medium | Pre-verified: oversized source-file cases never reach Encode's output-size guard. Patch a valid under-limit construction input that expands above 4 MiB, asserting size-limit, exit 2, no new output, and preservation of existing bytes. |
+| R2V2 | medium | Carried B10: same producer-paging loss, already deferred; no second patch or ledger entry. |
 
 ## Verification
 
@@ -176,3 +199,40 @@ Final source boundary: `54733d1b928c41f1e9fdf46841d043c8d482d648` plus the revie
 **3,548 passed, four existing skips, zero failures.** Contracts completed in 190.6 seconds; Client in 34.5 seconds; ServiceDefaults in 0.6 seconds. Client's final full run includes CLI generation/validation, rejection/output-preservation cases, and actual-profile inspection. Golden bytes/root and the four-binding/52-gap inventory remain unchanged. `git diff --check` and `bash scripts/check-committed-files.sh` passed; the latter checked 9,128 tracked entries. Final local logs are temporary at `/tmp/catalog-final-verification-9ux5m1dh`; no evidence packet was committed. CI was not invoked and no CI URL is claimed.
 
 The bounded item is done. Full Story 5.12 and its sprint row remain in-progress pending actual declarations, complete Development generation, and runtime parity; 2.14 stays backlog. The canonical deployment catalog remains absent. Git history mutations were not performed, following the workspace preservation instruction.
+
+### Follow-up audit corrections (2026-10-26)
+
+The earlier completion was reopened for F1/F2. Source revision is `dcd8b34976d51f447c19b4f84e1198b5950d454d` plus these six-file working-tree corrections. The implementation adds bounded file-path rejection and corrects AD-36 ownership; the completed configuration-casing/selector fixes and frozen spec intent are unchanged. No baseline revision, runtime behavior, dependency, or submodule was changed, and no files were staged, committed, or pushed.
+
+```bash
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -v quiet
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*Routing.DevelopmentRouteCatalogBuilderTests'
+git diff --check
+bash scripts/check-committed-files.sh
+```
+
+The build exited 0 with zero warnings/errors in 23.66 seconds. All **37 focused tests passed**, with zero skips/failures, in 10.387 seconds. The existing CLI integration test builds the file tool once into isolated temporary artifacts and now includes 18 empty/space/tab path cases across generation input/output, validation input, and both inspection inputs. Each returned exactly `Route catalog file access failed.` with exit 3 and preserved existing catalog bytes without creating an absent output or leaving temporary siblings. Its positive fixture generation/validation and real-profile four-binding/52-gap inspection also passed. Both repository checks passed; the tracked-file guard checked 9,128 entries.
+
+The previously recorded full suites were not repeated for this tool-only code correction and documentation alignment; no catalog/runtime/authentication implementation changed. CI was not invoked and no new CI URL is claimed. The bounded item remains in-progress for parent review of these corrections. The complete Development catalog and runtime parity stay unchecked in Story 5.12, its sprint row remains in-progress, and 2.14 stays pending. The canonical deployment catalog remains absent.
+
+
+### Follow-up review closure and final verification (2026-10-26)
+
+All three review layers completed. R2B1–R2B4, R2B6, R2B10, R2E1 and R2V1 were patched and inspected by the parent; R2B7–R2B9 were rejected with the evidence above. The repeated producer-paging finding retains its existing deferred disposition; no duplicate ledger entry was added. Frozen intent and the original baseline remain unchanged.
+
+The patch rejects malformed Unicode property names with safe codec diagnostics, rejects unsupported flattened configuration properties, requires one generation marker per consumer/store/map reference, rejects the reserved generation map key, accepts runtime-compatible internal hyphens in app IDs, indexes nested semantic diagnostics, and documents digest preparation. Regression coverage proves the encoded-output limit separately from the input limit. Golden bytes/root and the four-binding/52-gap inspection remain unchanged. Focused suites passed 104 Contracts and 52 Client tests with no skips or failures.
+
+Parent reran the following commands serially on `dcd8b34976d51f447c19b4f84e1198b5950d454d` plus these reviewed working-tree changes:
+
+```bash
+dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -v quiet
+dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -v quiet
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll
+dotnet build tests/Hexalith.EventStore.ServiceDefaults.Tests/Hexalith.EventStore.ServiceDefaults.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -v quiet
+dotnet tests/Hexalith.EventStore.ServiceDefaults.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.Tests.dll
+```
+
+All three builds exited 0 with zero warnings/errors. Contracts: 1,345 passed, two existing package-inventory skips (190.167 s). Client: 2,232 passed, two existing Dapr live-test skips (33.777 s). ServiceDefaults: 16 passed (0.518 s). Total: **3,593 passed, four existing skips, zero failures**. Logs are local scratch at `/tmp/catalog-followup-validation-ch8ke1uy`; CI was not invoked and no CI URL is claimed.
+
+The bounded tooling item is done after follow-up review. Story 5.12 remains in-progress pending approved real declarations, complete Development generation, and runtime parity. No deployment catalog was generated and no Git history or submodule mutation was performed.

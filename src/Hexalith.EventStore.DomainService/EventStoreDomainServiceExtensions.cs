@@ -525,7 +525,8 @@ public static class EventStoreDomainServiceExtensions {
              IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
              IServiceProviderIsKeyedService keyedServices,
              [FromServices] DomainProjectionCatalogRegistry catalogRegistry,
-             IEnumerable<DomainProjectionOwnerProofRegistration> ownerProofRegistrations) => {
+             IEnumerable<DomainProjectionOwnerProofRegistration> ownerProofRegistrations,
+             IEnumerable<LegacyProjectionCatalogRegistration> legacyCatalogRegistrations) => {
                 DomainProjectionIdentityOptions identity = projectionIdentityOptions.Value;
                 AdminOperationalIndexMetadata.Response response;
                 if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)) {
@@ -565,6 +566,7 @@ public static class EventStoreDomainServiceExtensions {
                     response = DomainProjectionOwnerProof.BindMetadata(response, ownerProofRegistrations, legacyProjectionHandlers, namedProjectionHandlers);
                     response = DomainProjectionReplayRecovery.BindMetadata(app.Services, response, namedProjectionHandlers);
                 }
+                response = LegacyProjectionCatalogRegistration.Bind(response, legacyCatalogRegistrations);
                 RegisterNamedProjectionCatalog(response, catalogRegistry);
                 return Results.Ok(response);
             })

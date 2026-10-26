@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Routing;
 
-/// <summary>Catalog-specific, closed v1 canonical UTF-8 codec and SHA-256 preimages.</summary>
+/// <summary>Catalog-specific, closed v1/v2 canonical UTF-8 codec and SHA-256 preimages.</summary>
 /// <remarks>
 /// Objects use ordinal property ordering, BCL default JSON string escaping, decimal integers,
 /// explicit nulls, no whitespace/BOM, and no trailing newline. Collections are ordered by RouteId,
@@ -83,7 +83,7 @@ public static class RouteCatalogCodec
             RejectDuplicates(document.RootElement);
             return document.RootElement.Deserialize<T>(Options) ?? throw Failure("$", "missing-document");
         }
-        catch (JsonException)
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
         {
             throw Failure("$", "invalid-json-or-closed-schema");
         }
@@ -107,7 +107,7 @@ public static class RouteCatalogCodec
         return normalized;
     }
 
-    /// <summary>Hashes a validated explicit contract declaration using the v1 declaration preimage.</summary>
+    /// <summary>Hashes a validated explicit contract declaration using its schema-versioned declaration preimage.</summary>
     public static string ComputeDeclarationDigest(RouteContractDeclaration declaration)
     {
         if (declaration is null)
@@ -116,7 +116,7 @@ public static class RouteCatalogCodec
         }
 
         RouteCatalogValidator.ValidateDeclaration(declaration);
-        return Hash(new { purpose = "route-declaration", schemaVersion = 1, declaration = Normalize(declaration) });
+        return Hash(new { purpose = "route-declaration", schemaVersion = declaration.Execution is null ? 1 : 2, declaration = Normalize(declaration) });
     }
 
     /// <summary>Hashes a validated static descriptor schema, never an intent or key value.</summary>
@@ -258,6 +258,11 @@ public static class RouteCatalogCodec
     private static RouteContractDeclaration Normalize(RouteContractDeclaration declaration) => declaration with
     {
         FallbackTypes = declaration.FallbackTypes.Order(StringComparer.Ordinal).ToArray(),
+        Execution = declaration.Execution is { } execution ? execution with
+        {
+            Aliases = execution.Aliases.Order(StringComparer.Ordinal).ToArray(),
+            ProjectionOutputs = execution.ProjectionOutputs.Order(StringComparer.Ordinal).ToArray(),
+        } : null,
     };
 
     private static IdempotencyDescriptorSchema Normalize(IdempotencyDescriptorSchema schema) => schema with

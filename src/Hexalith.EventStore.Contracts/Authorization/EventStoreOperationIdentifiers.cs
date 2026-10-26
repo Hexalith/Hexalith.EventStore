@@ -5,6 +5,9 @@ namespace Hexalith.EventStore.Contracts.Authorization;
 /// </summary>
 public static class EventStoreOperationIdentifiers
 {
+    /// <summary>Execute a projection query through ProjectionActor.QueryAsync; catalog metadata only.</summary>
+    public const string ProjectionQuery = "projection:query";
+
     /// <summary>Process a command through <c>POST /process</c>.</summary>
     public const string DomainServiceProcess = "domain-service:process";
 

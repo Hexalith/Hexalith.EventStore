@@ -261,7 +261,12 @@ public class CommandsController(
             UserId: userId,
             Extensions: extensions,
             IsGlobalAdmin: IsGlobalAdministrator(User),
-            IdempotencyKey: request.IdempotencyKey);
+            IdempotencyKey: request.IdempotencyKey)
+        {
+            AuthenticatedSubject = workloadOnly
+                ? boundPrincipalId ?? User.FindFirst(EventStoreWorkloadAuthenticationDefaults.ActorBindingClaimType)?.Value
+                : User.FindFirst("sub")?.Value,
+        };
 
         if (!workloadOnly && string.Equals(request.Domain, HumanAuthorityReceiptCodec.Audience, StringComparison.OrdinalIgnoreCase))
         {
