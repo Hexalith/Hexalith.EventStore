@@ -471,6 +471,218 @@ public partial class QueriesControllerTests {
 
     // ===== Gate 1: ETag pre-check tests =====
 
+    [Theory]
+    [InlineData("persisted-opaque-validator")]
+    [InlineData("persisted,opaque,validator")]
+    public async Task Submit_OpaqueProducerETagMatches_RoutesBefore304AndPreservesIndependentMetadata(string producerETag) {
+        DateTimeOffset servedAt = new(2026, 10, 25, 8, 30, 0, TimeSpan.FromHours(2));
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(
+                ETag: producerETag,
+                IsStale: true,
+                IsDegraded: true,
+                ProjectionVersion: "model-version-42",
+                ServedAt: servedAt,
+                WarningCodes: [QueryWarningCodes.DegradedSearch, "source.warning-2"]) {
+                Lifecycle = ProjectionLifecycleState.Current,
+            }));
+        IETagService eTagService = Substitute.For<IETagService>();
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        IActionResult result = await controller.Submit(CreateTestRequest(), $"\"{producerETag}\"", CancellationToken.None);
+
+        result.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status304NotModified);
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = await eTagService.DidNotReceiveWithAnyArgs().GetCurrentETagAsync(default!, default!, default);
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{producerETag}\"");
+        controller.Response.Headers["X-Hexalith-Projection-Version"].ToString().ShouldBe("model-version-42");
+        controller.Response.Headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+        controller.Response.Headers["X-Hexalith-Is-Stale"].ToString().ShouldBe("false");
+        controller.Response.Headers["X-Hexalith-Is-Degraded"].ToString().ShouldBe("true");
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe("Current");
+        controller.Response.Headers["X-Hexalith-Warning-Codes"].ToString().ShouldBe("degraded_search,source.warning-2");
+    }
+
+    [Theory]
+    [InlineData("miss")]
+    [InlineData("weak")]
+    [InlineData("wildcard")]
+    [InlineData("malformed")]
+    [InlineData("unquoted")]
+    [InlineData("too-many")]
+    [InlineData("payload")]
+    [InlineData("policy")]
+    public async Task Submit_OpaqueProducerETagWithUnsupportedConditionalShape_Returns200(string kind) {
+        const string ProducerETag = "opaque-producer";
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: ProducerETag)));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = kind switch {
+            "payload" => CreateTestRequest(JsonSerializer.SerializeToElement(new { filter = "active" })),
+            "policy" => CreateTestRequest() with { Paging = new QueryPagingOptions(PageSize: 25) },
+            _ => CreateTestRequest(),
+        };
+        string header = kind switch {
+            "miss" => "\"other-producer\"",
+            "weak" => $"W/\"{ProducerETag}\"",
+            "wildcard" => "*",
+            "malformed" => $"\"{ProducerETag}",
+            "unquoted" => ProducerETag,
+            "too-many" => string.Join(",", Enumerable.Repeat($"\"{ProducerETag}\"", 11)),
+            _ => $"\"{ProducerETag}\"",
+        };
+
+        (await controller.Submit(request, header, CancellationToken.None)).ShouldBeOfType<OkObjectResult>();
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_TenOpaqueProducerValidatorsWithMatch_Returns304() {
+        const string ProducerETag = "opaque-producer";
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: ProducerETag)));
+        QueriesController controller = CreateController(mediator);
+        string header = string.Join(",", Enumerable.Repeat("\"other\"", 9).Append($"\"{ProducerETag}\""));
+
+        (await controller.Submit(CreateTestRequest(), header, CancellationToken.None))
+            .ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status304NotModified);
+    }
+
+    [Theory]
+    [InlineData("garbage")]
+    [InlineData("\"unterminated")]
+    [InlineData("*")]
+    [InlineData("W/\"weak\"")]
+    [InlineData("")]
+    [InlineData("\"other\" trailing")]
+    public async Task Submit_MatchingValidatorBeforeMalformedTail_Returns200(string tail) {
+        string validator = GenerateTestETag();
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: validator)));
+        QueriesController controller = CreateController(mediator);
+
+        (await controller.Submit(CreateTestRequest(), $"\"{validator}\",{tail}", CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>();
+        AnalyzeHeader($"\"{validator}\",{tail}").ProjectionType.ShouldBeNull();
+    }
+
+    [Fact]
+    public void AnalyzeHeaderProjectionTypes_OverLimitMixedList_ReturnsNoAnalysis() {
+        string header = string.Join(",", new[] { $"\"{GenerateTestETag("orders")}\"", $"\"{GenerateTestETag("counter")}\"" }
+            .Concat(Enumerable.Repeat("\"opaque\"", 9)));
+
+        HeaderProjectionTypeAnalysis analysis = AnalyzeHeader(header);
+
+        analysis.ProjectionType.ShouldBeNull();
+        analysis.HasMixedProjectionTypes.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("token")]
+    [InlineData("count")]
+    [InlineData("size")]
+    public async Task Submit_WarningsWithoutSafeHeaderRepresentation_Retains200Evidence(string kind) {
+        string[] warnings = kind switch {
+            "count" => Enumerable.Repeat("warning", 17).ToArray(),
+            "size" => [new string('x', 4097)],
+            _ => ["invalid,warning"],
+        };
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: "opaque", WarningCodes: warnings)));
+        QueriesController controller = CreateController(mediator);
+
+        SubmitQueryResponse response = (await controller.Submit(CreateTestRequest(), "\"opaque\"", CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<SubmitQueryResponse>();
+
+        response.Metadata.ShouldNotBeNull().WarningCodes.ShouldBe(warnings);
+        controller.Response.Headers["X-Hexalith-Warning-Codes"].ToString().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(QueryResponseProvenance.HandlerComputed)]
+    [InlineData(QueryResponseProvenance.Unknown)]
+    [InlineData((QueryResponseProvenance)99)]
+    public async Task Submit_OpaqueValidatorWithoutProjectionProvenance_CannotCreateAuthority(QueryResponseProvenance provenance) {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", JsonSerializer.SerializeToElement(new { }), "orders",
+                new QueryResponseMetadata(ETag: "opaque-producer", ProjectionVersion: "v42", IsStale: false) {
+                    Provenance = provenance,
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        QueriesController controller = CreateController(mediator);
+
+        IActionResult result = await controller.Submit(CreateTestRequest(), "\"opaque-producer\"", CancellationToken.None);
+
+        SubmitQueryResponse response = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<SubmitQueryResponse>();
+        response.Metadata.ShouldNotBeNull().ProjectionVersion.ShouldBeNull();
+        controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
+        controller.Response.Headers["X-Hexalith-Projection-Version"].ToString().ShouldBeEmpty();
+        controller.Response.Headers["X-Hexalith-Is-Stale"].ToString().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("whitespace")]
+    [InlineData("oversized")]
+    [InlineData("control")]
+    [InlineData("unicode")]
+    [InlineData("leading-space")]
+    [InlineData("trailing-space")]
+    public async Task Submit_NonRoundTrippableProducerVersion_Retains200PayloadAndVersion(string kind) {
+        string version = kind switch {
+            "oversized" => new string('x', 4097),
+            "control" => "version\r\ninjected",
+            "unicode" => "modèle-v42",
+            "leading-space" => " version-42",
+            "trailing-space" => "version-42 ",
+            _ => " ",
+        };
+        DateTimeOffset servedAt = DateTimeOffset.Parse("2026-10-25T08:30:00+00:00", System.Globalization.CultureInfo.InvariantCulture);
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(JsonSerializer.SerializeToElement(new { value = 42 }), metadata: new QueryResponseMetadata(
+                ETag: "opaque-producer", ProjectionVersion: version, ServedAt: servedAt)));
+        QueriesController controller = CreateController(mediator);
+
+        SubmitQueryResponse response = (await controller.Submit(CreateTestRequest(), "\"opaque-producer\"", CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<SubmitQueryResponse>();
+        response.Payload.GetProperty("value").GetInt32().ShouldBe(42);
+        response.Metadata.ShouldNotBeNull().ProjectionVersion.ShouldBe(version);
+        response.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        response.Metadata.IsNotModified.ShouldBe(false);
+        controller.Response.Headers["X-Hexalith-Projection-Version"].ToString().ShouldBeEmpty();
+        controller.Response.Headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Theory]
+    [InlineData("absent")]
+    [InlineData("empty")]
+    [InlineData("max-length")]
+    [InlineData("comma")]
+    [InlineData("internal-space")]
+    public async Task Submit_AbsentOrLosslessProducerVersion_Preserves304Behavior(string kind) {
+        string? version = kind switch {
+            "absent" => null,
+            "empty" => string.Empty,
+            "max-length" => new string('x', 4096),
+            "comma" => "model,version-42",
+            _ => "model version-42",
+        };
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: "opaque-producer", ProjectionVersion: version)));
+        QueriesController controller = CreateController(mediator);
+
+        (await controller.Submit(CreateTestRequest(), "\"opaque-producer\"", CancellationToken.None))
+            .ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status304NotModified);
+        controller.Response.Headers["X-Hexalith-Projection-Version"].ToString().ShouldBe(version ?? string.Empty);
+    }
+
     [Fact]
     public async Task Submit_IfNoneMatchMatches_Returns304() {
         // Arrange — use self-routing ETag so decode succeeds
@@ -894,16 +1106,18 @@ public partial class QueriesControllerTests {
         statusResult.StatusCode.ShouldBe(304);
     }
 
-    [Fact]
-    public async Task Submit_MultiValueHeaderWithMixedProjectionTypes_SkipsGate1Returns200() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Submit_MultiValueHeaderWithMixedProjectionTypes_SkipsGate1Returns200(bool hasProducerETag) {
         // Arrange — mixed projections in a multi-value header must fail open to avoid false 304s
         string ordersETag = GenerateTestETag("orders");
         string countersETag = GenerateTestETag("counter");
-        string responseETag = GenerateTestETag("orders");
+        string responseETag = ordersETag;
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(CreateProjectionResult(resultPayload, metadata: new QueryResponseMetadata(ETag: hasProducerETag ? responseETag : null)));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(responseETag);
@@ -919,7 +1133,8 @@ public partial class QueriesControllerTests {
         // Assert
         _ = actionResult.ShouldBeOfType<OkObjectResult>();
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{responseETag}\"");
-        _ = await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
+        _ = await eTagService.Received(hasProducerETag ? 0 : 1)
+            .GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
     [Fact]

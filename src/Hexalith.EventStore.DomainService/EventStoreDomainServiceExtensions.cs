@@ -287,7 +287,10 @@ public static class EventStoreDomainServiceExtensions {
                 // Wire administrator flags are untrusted: rebuild them from the domain's current authorization. An
                 // unavailable verifier is a bounded 503 before any domain work, never a raw server error.
                 DomainServiceRequest verified;
+                CompleteCommandSource? completeSource;
                 try {
+                    // Authenticate the original wire request before trusted administrator normalization changes its digest.
+                    completeSource = DomainServiceRequestRouter.AdmitCompleteSource(serviceProvider, request);
                     verified = await DomainServiceAdministratorAssertions
                         .RebuildAsync(serviceProvider, request, cancellationToken)
                         .ConfigureAwait(false);
@@ -295,11 +298,12 @@ public static class EventStoreDomainServiceExtensions {
                 catch (DomainServiceAdministratorVerificationException) {
                     return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
                 }
+                catch (UnauthorizedAccessException) { return Results.StatusCode(StatusCodes.Status403Forbidden); }
 
                 DomainServiceWireResult result;
                 try
                 {
-                    result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, verified, cancellationToken).ConfigureAwait(false);
+                    result = await DomainServiceRequestRouter.ProcessAdmittedSourceAsync(serviceProvider, verified, completeSource, cancellationToken).ConfigureAwait(false);
                 }
                 catch (DomainServiceTrustedEffectAuditUnavailableException)
                 {
@@ -521,7 +525,8 @@ public static class EventStoreDomainServiceExtensions {
              IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
              IServiceProviderIsKeyedService keyedServices,
              [FromServices] DomainProjectionCatalogRegistry catalogRegistry,
-             IEnumerable<DomainProjectionOwnerProofRegistration> ownerProofRegistrations) => {
+             IEnumerable<DomainProjectionOwnerProofRegistration> ownerProofRegistrations,
+             IEnumerable<LegacyProjectionCatalogRegistration> legacyCatalogRegistrations) => {
                 DomainProjectionIdentityOptions identity = projectionIdentityOptions.Value;
                 AdminOperationalIndexMetadata.Response response;
                 if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)) {
@@ -561,6 +566,7 @@ public static class EventStoreDomainServiceExtensions {
                     response = DomainProjectionOwnerProof.BindMetadata(response, ownerProofRegistrations, legacyProjectionHandlers, namedProjectionHandlers);
                     response = DomainProjectionReplayRecovery.BindMetadata(app.Services, response, namedProjectionHandlers);
                 }
+                response = LegacyProjectionCatalogRegistration.Bind(response, legacyCatalogRegistrations);
                 RegisterNamedProjectionCatalog(response, catalogRegistry);
                 return Results.Ok(response);
             })

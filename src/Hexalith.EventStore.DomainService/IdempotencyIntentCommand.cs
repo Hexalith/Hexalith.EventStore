@@ -15,4 +15,8 @@ public sealed record IdempotencyIntentCommand(
     string Domain,
     string AggregateId,
     byte[] Payload,
-    IReadOnlyDictionary<string, string>? Extensions);
+    IReadOnlyDictionary<string, string>? Extensions)
+{
+    /// <summary>Gets the authenticated acting subject supplied by the trusted command context, never envelope extensions.</summary>
+    public string? AuthenticatedSubject { get; init; }
+}

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj" />
+    <ProjectReference Include="../../src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj" />
+    <ProjectReference Include="$(HexalithTenantsBasePath)/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj" Condition="'$(HexalithTenantsFromSource)' == 'true'" />
+    <PackageReference Include="Hexalith.Tenants.Server" Condition="'$(HexalithTenantsFromSource)' != 'true'" />
+  </ItemGroup>
+</Project>

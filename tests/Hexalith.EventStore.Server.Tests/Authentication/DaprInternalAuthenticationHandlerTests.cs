@@ -1,10 +1,13 @@
 extern alias eventstore;
 
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.DomainService;
@@ -81,6 +84,75 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
             Audience, AllowedCaller, [EventStoreWorkloadOperations.TrustedEffect], bindings: bindings), includeChannelToken: true);
         using HttpResponseMessage denied = await client.SendAsync(wrongOperation, TestContext.Current.CancellationToken);
         denied.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    /// <summary>The actual domain issuer's signed status grant crosses receiving authentication and exact binding checks.</summary>
+    /// <param name="scenario">The exact grant or refused binding under test.</param>
+    /// <param name="expectedStatus">The receiving HTTP outcome.</param>
+    /// <param name="expectedReads">The number of admitted message-primary status reads.</param>
+    [Theory]
+    [InlineData("valid", HttpStatusCode.OK, 1)]
+    [InlineData("audience", HttpStatusCode.Unauthorized, 0)]
+    [InlineData("operation", HttpStatusCode.Forbidden, 0)]
+    [InlineData("tenant", HttpStatusCode.Forbidden, 0)]
+    [InlineData("domain", HttpStatusCode.NotFound, 1)]
+    [InlineData("missing-credentials", HttpStatusCode.Unauthorized, 0)]
+    public async Task RealDomainIssuerStatusGrantIsValidatedByReceivingAuthentication(
+        string scenario, HttpStatusCode expectedStatus, int expectedReads)
+    {
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string correlation = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
+        _factory.StatusStore.ReadStatusAsync("tenant-a", message, Arg.Any<CancellationToken>()).Returns(
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow, "entry-1", null,
+                "InvalidTimeEntryRejection", null, null, message, correlation) { Domain = "timesheets" });
+        var services = new ServiceCollection();
+        services.AddLogging();
+        string? signingKey = null;
+        if (scenario != "missing-credentials")
+        {
+            signingKey = AuthenticationTestEnvironment.SigningKey;
+        }
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Authentication:JwtBearer:Issuer"] = WorkloadAssertionTestTokens.Issuer,
+            ["Authentication:JwtBearer:Audience"] = "hexalith-eventstore",
+            ["Authentication:JwtBearer:SigningKey"] = signingKey,
+            ["Authentication:JwtBearer:AllowedAlgorithms:0"] = "HS256",
+            ["Authentication:WorkloadIssuer:Workload"] = AllowedCaller,
+        }).Build());
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Development);
+        services.AddSingleton(environment);
+        services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri("http://localhost/"))
+            .AddEventStoreGatewayMultiDomainWorkloadTransport(["timesheets", "projects"], scenario == "audience" ? "foreign-gateway" : Audience);
+        await using ServiceProvider domainService = services.BuildServiceProvider();
+        string? assertion = await domainService.GetRequiredService<IEventStoreGatewayWorkloadAssertionSource>().IssueAsync(
+            scenario == "operation" ? EventStoreGatewayWorkloadOperations.CommandSubmit : EventStoreGatewayWorkloadOperations.CommandStatus,
+            scenario == "tenant" ? "tenant-b" : "tenant-a", scenario == "domain" ? "projects" : "timesheets",
+            TestContext.Current.CancellationToken);
+        if (scenario == "missing-credentials") { assertion.ShouldBeNull(); }
+        else { assertion.ShouldNotBeNull(); }
+        using HttpClient client = _factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/workload/tenant-a/{message}");
+        AddInternalHeaders(request, assertion, includeChannelToken: true);
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(expectedStatus);
+        await _factory.StatusStore.Received(expectedReads).ReadStatusAsync("tenant-a", message, Arg.Any<CancellationToken>());
+        _factory.StatusStore.ReceivedCalls().Count().ShouldBe(expectedReads);
+        if (expectedStatus == HttpStatusCode.OK)
+        {
+            CommandStatusQueryResponse status = (await response.Content.ReadFromJsonAsync<CommandStatusQueryResponse>(
+                TestContext.Current.CancellationToken)).ShouldNotBeNull();
+            status.IsRejected.ShouldBeTrue();
+            status.TenantId.ShouldBe("tenant-a");
+            status.Domain.ShouldBe("timesheets");
+            status.MessageId.ShouldBe(message);
+            status.CorrelationId.ShouldBe(correlation);
+        }
+        else
+        {
+            (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldNotContain("InvalidTimeEntryRejection");
+        }
     }
 
     /// <summary>A valid signed workload command crosses the real MediatR authorization pipeline.</summary>
@@ -616,6 +688,8 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
 
         public ICommandRouter CommandRouter { get; } = Substitute.For<ICommandRouter>();
 
+        public ICommandStatusStore StatusStore { get; } = Substitute.For<ICommandStatusStore>();
+
         public CapturingLoggerProvider Logs { get; } = new();
 
         public void Reset()
@@ -624,6 +698,9 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
             Proof.ClearReceivedCalls();
             Router.ClearReceivedCalls();
             CommandRouter.ClearReceivedCalls();
+            StatusStore.ClearReceivedCalls();
+            StatusStore.ReadStatusAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult<CommandStatusRecord?>(null));
             Logs.Clear();
             _ = Admission.AdmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>())
                 .Returns(call => new TrustedEffectAdmission(call.ArgAt<TrustedEffectSubmission>(0), call.ArgAt<TrustedEffectContext>(1), "DIGEST"));
@@ -649,6 +726,7 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
                 services.RemoveAll<ITrustedEffectGatewayProof>();
                 services.RemoveAll<ITrustedEffectRouter>();
                 services.RemoveAll<ICommandRouter>();
+                services.RemoveAll<ICommandStatusStore>();
                 services.RemoveAll<Hexalith.EventStore.Server.Projections.IProjectionActivationOutbox>();
                 services.RemoveAll<ICommandCorrelationIndex>();
                 _ = services.AddSingleton(Substitute.For<Hexalith.EventStore.Server.Projections.IProjectionActivationOutbox>());
@@ -657,6 +735,7 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
                 _ = services.AddSingleton(Proof);
                 _ = services.AddSingleton(Router);
                 _ = services.AddSingleton(CommandRouter);
+                _ = services.AddSingleton(StatusStore);
             });
         }
     }

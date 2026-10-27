@@ -9,6 +9,12 @@ namespace Hexalith.EventStore.Client.Projections;
 public sealed record ReadModelEntry<TValue>(TValue? Value, string? ETag)
     where TValue : class
 {
+    /// <summary>Gets the effective physical generation observed by the epoch coordinator.</summary>
+    public long? SourceGeneration { get; init; }
+
+    /// <summary>Gets the observed copy-on-write pointer ETag, including an effective deletion.</summary>
+    public string? PointerETag { get; init; }
+
     /// <summary>SDK-owned source expiry evidence for shared inheritance; absent on legacy implementations.</summary>
     internal DateTimeOffset? ExpiresAtUtc { get; init; }
 }

@@ -13,6 +13,9 @@ namespace Hexalith.EventStore.ServiceDefaults.Authentication;
 /// </summary>
 public static partial class JwtBearerAuthenticationContract
 {
+    /// <summary>The existing human permission claim. Platform admission requires an exact declared permission; enforcement belongs to the consuming boundary.</summary>
+    public const string HumanPermissionClaimType = "eventstore:permission";
+
     private static readonly HashSet<string> SupportedAsymmetricAlgorithms = new(StringComparer.Ordinal)
     {
         SecurityAlgorithms.RsaSha256,

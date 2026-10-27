@@ -184,3 +184,20 @@ validated before the first storage write. Malformed combined plans therefore
 leave no staged values. Staging storage failures preserve their structured SDK
 retryable or indeterminate outcomes in both ordinary and streamed rebuild
 routes; preparation exceptions do not escape the dispatch outcome protocol.
+
+Generation staging retains its default 512-KiB canonical-manifest and 32-operation
+group limits. An additive explicit byte-budget overload and
+`DomainProjectionRebuildPlan.GenerationStagingMaxCanonicalManifestBytes` support
+previously accepted larger individual immutable values, capped at the unchanged
+1-MiB hard recovery ceiling. Conservative group partitions stay unchanged when
+all values already fit, preserving earlier staging identities on retry. All groups are measured with base64 encoding and scope overhead
+and preflighted against effective store limits before the first write.
+
+`IReadModelRecoveryScopeStore.SettleRecoveryScopeAsync` finishes registered committed
+attempts and releases proven terminal registrations for one exact aggregate.
+It preserves Prepared work, including guarded rebuilds, and never uses erasure
+retirement for ordinary delivery recovery. Discoverable enrollment performs this
+settlement before adding another active registration. Both store profiles retain
+matching participant counts, terminal fences and content-free manifest barriers;
+all discoverable batches obey the hard recovery limits even when guarded ownership
+permits `RetainManifestForRecovery=false`.

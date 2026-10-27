@@ -10,7 +10,7 @@ public static class CommandSourceAuthorityBinding
 {
     /// <summary>The signed complete-source request digest claim.</summary>
     public const string DigestClaim = EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix + "complete-command-source-v1";
-    /// <summary>The exact source actor binding.</summary>
+    /// <summary>The exact aggregate component, jointly scoped by the mandatory tenant and domain bindings.</summary>
     public const string SourceClaim = EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix + "command-source";
     /// <summary>The enrolled current source epoch binding.</summary>
     public const string EpochClaim = EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix + "command-source-epoch";
@@ -28,7 +28,7 @@ public static class CommandSourceAuthorityBinding
         {
             [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = request.Command.TenantId,
             [EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] = request.Command.Domain,
-            [SourceClaim] = request.CompleteSource.Identity.ActorId,
+            [SourceClaim] = request.CompleteSource.Identity.AggregateId,
             [EpochClaim] = request.CompleteSource.AuthorityRevision,
             [MethodClaim] = "process",
             // Normalize the object-valued CurrentState through a JSON element on both sides of the wire.

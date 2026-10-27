@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
+    <ProjectReference Include="../../tools/Hexalith.EventStore.CatalogConstruction/Hexalith.EventStore.CatalogConstruction.csproj" />
     <ProjectReference Include="$(HexalithTenantsBasePath)/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" Condition="'$(HexalithTenantsFromSource)' == 'true'" />
     <PackageReference Include="Hexalith.Tenants.Contracts" Condition="'$(HexalithTenantsFromSource)' != 'true'" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore\Hexalith.EventStore.csproj">
@@ -35,6 +36,7 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Compile Include="../Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs" Link="Projections/RecordingDaprClient.cs" />
+    <Compile Include="../Hexalith.EventStore.ServiceDefaults.Tests/Authentication/CommandSourceAuthorityTests.cs" Link="Authentication/CommandSourceAuthorityTests.cs" />
     <Compile Include="../Hexalith.EventStore.PayloadProtection.Tests/InteractionOccurrenceProtectorFixture.cs" Link="Security/InteractionOccurrenceProtectorFixture.cs" />
     <Compile Include="../Hexalith.EventStore.PayloadProtection.Tests/InteractionOccurrenceTestKeys.cs" Link="Security/InteractionOccurrenceTestKeys.cs" />
   </ItemGroup>

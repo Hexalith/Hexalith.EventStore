@@ -12,7 +12,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.DomainService.Tests;
 
-public sealed class CompleteCommandSourceTests
+public sealed partial class CompleteCommandSourceTests
 {
     [Fact]
     public async Task EnrolledDomainRejectsMissingSourceBeforeResolvingDomainProcessor()

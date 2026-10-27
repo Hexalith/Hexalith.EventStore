@@ -392,6 +392,10 @@ public static class AdminOperationalIndexMetadata {
         IReadOnlyList<string> AggregateTypes,
         IReadOnlyList<string> ProjectionNames,
         IReadOnlyList<string> QueryTypes) {
+        /// <summary>Gets metadata-only outputs per custom legacy dispatcher; outputs are not named dispatch capabilities.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyDictionary<string, IReadOnlyList<string>>? LegacyProjectionOutputs { get; init; }
+
         /// <summary>Gets explicitly enrolled read-only source-guard proof descriptors by exact named route.</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IReadOnlyDictionary<string, ProjectionSourceGuardCapability>? SourceGuardCapabilities { get; init; }

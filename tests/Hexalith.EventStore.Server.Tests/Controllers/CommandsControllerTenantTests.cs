@@ -37,6 +37,16 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 /// Replaces the 7 characterization tests that tested inline tenant checks removed in 17-3.
 /// </summary>
 public class CommandsControllerTenantTests {
+    [Fact]
+    public async Task Submit_GlobalAdministratorCommandCapturesAuthenticatedSubjectWithoutReceiptOrExtensionFallback()
+    {
+        (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(CreateAuthenticatedPrincipal("test-tenant"));
+        await controller.Submit(CreateTestRequest(domain: "global-administrators", commandType: "set-global-administrator",
+            extensions: new() { ["subject"] = "spoofed" }), TestContext.Current.CancellationToken);
+        await mediator.Received(1).Send(Arg.Is<SubmitCommand>(command => command.AuthenticatedSubject == "test-user"
+            && command.HumanAuthority == null), Arg.Any<CancellationToken>());
+    }
+
     private static SubmitCommandRequest CreateTestRequest(
         string tenant = "test-tenant",
         string domain = "test-domain",

@@ -222,6 +222,11 @@ public class EventStoreGatewayClientTests {
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-1\"");
             response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
             response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, "Current");
+            response.Headers.Add("X-Hexalith-Projection-Version", "model-v42");
+            response.Headers.Add("X-Hexalith-Served-At", "2026-10-25T08:30:00.0000000+02:00");
+            response.Headers.Add("X-Hexalith-Is-Stale", "true");
+            response.Headers.Add("X-Hexalith-Is-Degraded", "false");
+            response.Headers.Add("X-Hexalith-Warning-Codes", "degraded_search,source.warning-2");
             return Task.FromResult(response);
         });
 
@@ -236,6 +241,11 @@ public class EventStoreGatewayClientTests {
         result.Metadata.ETag.ShouldBe("etag-1");
         result.Metadata.IsNotModified.ShouldBe(true);
         result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
+        result.Metadata.ProjectionVersion.ShouldBe("model-v42");
+        result.Metadata.ServedAt.ShouldBe(new DateTimeOffset(2026, 10, 25, 8, 30, 0, TimeSpan.FromHours(2)));
+        result.Metadata.IsStale.ShouldBe(false);
+        result.Metadata.IsDegraded.ShouldBe(false);
+        result.Metadata.WarningCodes.ShouldBe([QueryWarningCodes.DegradedSearch, "source.warning-2"]);
         _ = observedRequest.ShouldNotBeNull();
         observedRequest.Headers.TryGetValues("If-None-Match", out IEnumerable<string>? values).ShouldBeTrue();
         _ = values.ShouldNotBeNull();
@@ -353,6 +363,9 @@ public class EventStoreGatewayClientTests {
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-typed\"");
             response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
             response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, "Current");
+            response.Headers.Add("X-Hexalith-Projection-Version", "independent,version");
+            response.Headers.Add("X-Hexalith-Served-At", "2026-10-25T06:30:00.0000000+00:00");
+            response.Headers.Add("X-Hexalith-Warning-Codes", "degraded_search,source.warning-2");
             return Task.FromResult(response);
         });
 
@@ -368,6 +381,130 @@ public class EventStoreGatewayClientTests {
         result.Metadata.IsNotModified.ShouldBe(true);
         result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
+        result.Metadata.ProjectionVersion.ShouldBe("independent,version");
+        result.Metadata.ServedAt.ShouldBe(new DateTimeOffset(2026, 10, 25, 6, 30, 0, TimeSpan.Zero));
+        result.Metadata.WarningCodes.ShouldBe([QueryWarningCodes.DegradedSearch, "source.warning-2"]);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("empty")]
+    [InlineData("oversized")]
+    [InlineData("control")]
+    [InlineData("duplicate")]
+    [InlineData("conflicting")]
+    public async Task SubmitQueryAsync_NotModifiedWithInvalidMetadataHeaders_OmitsInvalidEvidence(string kind) {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.ETag = new EntityTagHeaderValue("\"opaque-validator\"");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            if (kind != "missing") {
+                foreach ((string name, string valid, string other) in new[] {
+                    ("X-Hexalith-Projection-Version", "version-42", "version-43"),
+                    ("X-Hexalith-Served-At", "2026-10-25T06:30:00.0000000+00:00", "2026-10-25T06:31:00.0000000+00:00"),
+                    ("X-Hexalith-Is-Stale", "false", "true"),
+                    ("X-Hexalith-Is-Degraded", "false", "true"),
+                    ("X-Hexalith-Warning-Codes", "warning_one", "warning_two"),
+                }) {
+                    string[] values = kind switch {
+                        "empty" => [" "],
+                        "oversized" => [new string('x', 4097)],
+                        "control" => ["invalid\r\nvalue"],
+                        "conflicting" => [valid, other],
+                        _ => [valid, valid],
+                    };
+                    response.Headers.TryAddWithoutValidation(name, values).ShouldBeTrue();
+                }
+            }
+
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest(), "opaque-validator");
+
+        result.IsNotModified.ShouldBeTrue();
+        result.ETag.ShouldBe("opaque-validator");
+        QueryResponseMetadata metadata = result.Metadata.ShouldNotBeNull();
+        metadata.ProjectionVersion.ShouldBeNull();
+        metadata.ServedAt.ShouldBeNull();
+        metadata.IsStale.ShouldBeNull();
+        metadata.IsDegraded.ShouldBeNull();
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        metadata.WarningCodes.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("invalid token")]
+    [InlineData("warning,,other")]
+    [InlineData("warning,other,")]
+    [InlineData("one,two,three,four,five,six,seven,eight,nine,ten,eleven,twelve,thirteen,fourteen,fifteen,sixteen,seventeen")]
+    public async Task SubmitQueryAsync_NotModifiedWithMalformedWarnings_OmitsOnlyWarnings(string warnings) {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.ETag = new EntityTagHeaderValue("\"opaque-validator\"");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, "Current");
+            response.Headers.Add("X-Hexalith-Projection-Version", "independent,version");
+            response.Headers.Add("X-Hexalith-Warning-Codes", warnings);
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        QueryResponseMetadata metadata = (await client.SubmitQueryAsync(CreateQueryRequest(), "opaque-validator"))
+            .Metadata.ShouldNotBeNull();
+
+        metadata.WarningCodes.ShouldBeNull();
+        metadata.ProjectionVersion.ShouldBe("independent,version");
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
+    }
+
+    [Theory]
+    [InlineData("TRUE", "False", "2026-10-25T06:30:00Z")]
+    [InlineData("1", "0", "not-a-timestamp")]
+    public async Task SubmitQueryAsync_NotModifiedWithMalformedTypedHeaders_PreservesIndependentVersion(
+        string stale, string degraded, string servedAt) {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.ETag = new EntityTagHeaderValue("\"opaque-validator\"");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add("X-Hexalith-Projection-Version", new string('v', 4096));
+            response.Headers.Add("X-Hexalith-Served-At", servedAt);
+            response.Headers.Add("X-Hexalith-Is-Stale", stale);
+            response.Headers.Add("X-Hexalith-Is-Degraded", degraded);
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult<CounterDto> result = await client.SubmitQueryAsync<CounterDto>(CreateQueryRequest(), "opaque-validator");
+
+        QueryResponseMetadata metadata = result.Metadata.ShouldNotBeNull();
+        metadata.ProjectionVersion.ShouldBe(new string('v', 4096));
+        metadata.ServedAt.ShouldBeNull();
+        metadata.IsStale.ShouldBeNull();
+        metadata.IsDegraded.ShouldBeNull();
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_NotModifiedWithoutLifecycle_PreservesLegacyFlagsWithoutCreatingLifecycle() {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.ETag = new EntityTagHeaderValue("\"opaque-validator\"");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add("X-Hexalith-Is-Stale", "false");
+            response.Headers.Add("X-Hexalith-Is-Degraded", "true");
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        QueryResponseMetadata metadata = (await client.SubmitQueryAsync(CreateQueryRequest(), "opaque-validator"))
+            .Metadata.ShouldNotBeNull();
+
+        metadata.IsStale.ShouldBe(false);
+        metadata.IsDegraded.ShouldBe(true);
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        ProjectionLifecyclePolicy.IsProjectionConfirmed(metadata.Provenance, metadata.Lifecycle).ShouldBeFalse();
     }
 
     [Theory]
@@ -832,8 +969,10 @@ public class EventStoreGatewayClientTests {
         ex.CorrelationId.ShouldBe("corr-semantic");
     }
 
-    [Fact]
-    public async Task SubmitQueryAsync_WithUnquotedIfNoneMatch_SendsQuotedHeader() {
+    [Theory]
+    [InlineData("etag-1", "\"etag-1\"")]
+    [InlineData("\"opaque,validator\"", "\"opaque,validator\"")]
+    public async Task SubmitQueryAsync_WithSupportedIfNoneMatch_SendsQuotedHeader(string ifNoneMatch, string expectedHeader) {
         HttpRequestMessage? observedRequest = null;
         using HttpClient httpClient = CreateClient(request => {
             observedRequest = request;
@@ -841,12 +980,42 @@ public class EventStoreGatewayClientTests {
         });
         var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
 
-        _ = await client.SubmitQueryAsync(CreateQueryRequest(), "etag-1");
+        _ = await client.SubmitQueryAsync(CreateQueryRequest(), ifNoneMatch);
 
         _ = observedRequest.ShouldNotBeNull();
         observedRequest.Headers.TryGetValues("If-None-Match", out IEnumerable<string>? values).ShouldBeTrue();
         _ = values.ShouldNotBeNull();
-        values.Single().ShouldBe("\"etag-1\"");
+        values.Single().ShouldBe(expectedHeader);
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_CommaValidatorFromResponse_IsReusableOnNextRequest() {
+        int requests = 0;
+        using HttpClient httpClient = CreateClient(request => {
+            requests++;
+            HttpResponseMessage response;
+            if (requests == 1) {
+                response = Json(HttpStatusCode.OK,
+                    """{"correlationId":"corr-1","payload":{"count":3},"metadata":{"provenance":"ProjectionBacked"}}""");
+            }
+            else {
+                request.Headers.IfNoneMatch.Single().Tag.ShouldBe("\"opaque,validator\"");
+                response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            }
+
+            response.Headers.ETag = new EntityTagHeaderValue("\"opaque,validator\"");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult original = await client.SubmitQueryAsync(CreateQueryRequest());
+        EventStoreQueryResult reused = await client.SubmitQueryAsync(CreateQueryRequest(), original.ETag);
+
+        original.ETag.ShouldBe("opaque,validator");
+        reused.IsNotModified.ShouldBeTrue();
+        reused.ETag.ShouldBe(original.ETag);
+        requests.ShouldBe(2);
     }
 
     [Fact]

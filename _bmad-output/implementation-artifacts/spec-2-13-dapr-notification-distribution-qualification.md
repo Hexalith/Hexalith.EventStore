@@ -2,7 +2,7 @@
 title: 'Dapr Notification Distribution Qualification'
 type: 'feature'
 created: '2026-10-11'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'f2b480b68a8bd5369b3cdf550340e0fadfb2332b'
@@ -46,15 +46,15 @@ context:
 - `src/Hexalith.EventStore/Controllers/ProjectionNotificationController.cs`, `DaprProjectionChangeNotifier.cs` — signed Dapr callback and local broadcast; preserve provenance.
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRRedisBackplaneRuntimeProofTests.cs` — client/negative-control patterns; no sidecars or persisted change. `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs` — two-process sidecar blueprint; shadow host is not proof.
 - `src/Hexalith.EventStore.AppHost/Program.cs`, `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`, `deploy/dapr/subscription-projection-changed.yaml` — one-host profile and subscription assets.
-- `src/Hexalith.EventStore/Hexalith.EventStore.csproj`, `src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj` — both carry the Redis package. `docs/architecture/dapr-infrastructure-exceptions.yaml` has no accepted exception.
+- `src/Hexalith.EventStore/Hexalith.EventStore.csproj`, `src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj` — both carry the Redis package. `docs/architecture/dapr-infrastructure-exceptions.yaml` holds the register; `docs/concepts/dapr-infrastructure-boundary.md`, `_bmad-output/planning-artifacts/architecture.md` (AD-34 current state, freshness signals, open-issues row) and `prd.md` §8.4 state the disposition.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `_bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md` — compare exact Redis, Dapr pub/sub and `bindings.azure.signalr` profiles across negotiation, targeting, fan-out, ordering, recovery, auth, credentials, cost, and rollback; mark unsupported/unrun rows.
-- [ ] `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs`, `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs` — run two hosts with independent sidecars, shared app identity, per-host clients, projection trigger/readback, signal/detail bounds, and reconnect/duplicate/outage/denial cases; retain logs and component identity.
-- [ ] `src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs`, `SignalROptions.cs`, both host `.csproj` files, `src/Hexalith.EventStore.AppHost/Program.cs`, `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`, and `deploy/dapr/subscription-projection-changed.yaml` — change atomically only after a candidate and profile pass; record any additional selected deployment component path before editing it.
-- [ ] `docs/concepts/dapr-infrastructure-boundary.md`, `docs/architecture/dapr-infrastructure-exceptions.yaml`, `_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md`, `_bmad-output/implementation-artifacts/sprint-status.yaml` — record disposition and 3.17 handoff; accept an exception only after owner and Security/Operations/Test approval. Otherwise retain backlog.
+- [x] `_bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md` — compare exact Redis, Dapr pub/sub and `bindings.azure.signalr` profiles across negotiation, targeting, fan-out, ordering, recovery, auth, credentials, cost, and rollback; mark unsupported/unrun rows. (Removed under AD-12; summarized in the story's Disposition.)
+- [x] `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs`, `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs` — run two hosts with independent sidecars, shared app identity, per-host clients, projection trigger/readback, signal/detail bounds, and reconnect/duplicate/outage/denial cases. Final run at `c5d1c280d`: 112 passed, 1 failed (full-class sidecar readiness); recorded in the story.
+- [x] `src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs`, `SignalROptions.cs`, both host `.csproj` files, `src/Hexalith.EventStore.AppHost/Program.cs`, `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`, and `deploy/dapr/subscription-projection-changed.yaml` — not applicable: no candidate and profile passed, so nothing changes. These files stay as they are under the accepted exception.
+- [x] `docs/concepts/dapr-infrastructure-boundary.md`, `docs/architecture/dapr-infrastructure-exceptions.yaml`, `_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md`, `_bmad-output/implementation-artifacts/sprint-status.yaml` — record the owner-accepted exception (2026-10-25, single-maintainer-attested) and the 3.17 handoff; story and sprint row `done`.
 
 **Acceptance Criteria:**
 - Given both candidates and Redis, when Architecture/Security/Test review the matrix, then every operation has exact-profile evidence or a named gap, alternative, and owner.
@@ -64,157 +64,23 @@ context:
 
 ## Implementation Notes
 
-### Current continuation: October 25 unchanged local qualification
+### Owner disposition — 2026-10-25 (supersedes every continuation note)
 
-The October 23 evidence-storage decision in architecture AD-12 supersedes the
-packet-writing instructions in the dated continuations below. Record new commands,
-results, source revision and CI run identity in the original story's Verification
-section; do not restore deleted evidence files or introduce new committed packets
-or packet validators. The dated continuation scopes and their historical failures
-remain historical context, including both failed projection regressions and the
-Redis binary-identity ambiguity.
+The owner chose the frozen intent's exception branch: "If neither passes, record gaps and seek a scoped exception decision." No Dapr candidate passed on an installable runtime and production profile, and the owner accepted a scoped exception for the opt-in Redis backplane. The project has one maintainer, so the decision is labelled `single-maintainer-attested`. The three blocking gaps were tenant-topic enrollment, reused-endpoint restart on stock daprd, and no AD-26 production profile.
 
-The former frontmatter context report was deleted by
-`6a0b6441f6d78a3007678a1d0ec336e9cb8ff961`. Its complete historical contents were
-read without restoring it using
-`git show bbfd0fada14ce11e137365637238af4fec2f7f7f:_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-restart-trace.md`.
-The replacement context entry binds the current evidence-storage policy.
+This change is documentation and tracking only:
 
-This continuation verifies the unchanged, explicitly selected retirement runtime
-and the existing application proofs. Passing current runs cannot establish the
-cause or resolution of the historical failures. Implement a correction only after
-reproducing and establishing its mechanism. Keep the installed runtime, dependencies,
-production graphs, frozen intent, original story's backlog status, in-progress spec/sprint
-row and empty exception register unchanged.
+- Move `signalr-replica-distribution` into `accepted_exceptions`. Record its exact paths, package, configuration keys, alternatives, the grants it withholds and a removal trigger.
+- Update the boundary guide, the architecture/PRD status sentences and the story's Disposition.
+- Mark the sprint row `done`.
 
-### Active continuation: shared-channel concurrency safety
+No source, test, project, AppHost or deployment file changes. The final run at `c5d1c280d` is the evidence. The only new run is the transport-independent hub and backplane-wiring unit tests on that build: 39 passed. The exception grants no production eligibility, because AD-26 still decides the replica posture.
 
-Measured continuation decision: the first concurrency packet demonstrates that
-retained eviction cancels held actor/reminder/stream RPC attempts. Its evaluated
-TransientFailure-only ResetConnectBackoff alternative passes fixed-loopback
-controls and all six distribution cases, but a pinned grpc-go resolver-churn race
-probe reports concurrent map access and a fatal error. Preserve that candidate
-and all measurements as limited/rejected wider-profile evidence. This supports
-evaluating a second runtime-only correction in a second disposable tree and
-`evidence/story-2-13/runs-2026-10-21-concurrency-retirement/`, without dependency
-updates or patches. The source-supported design may mark the failed pooled
-channel retired, exclude it from new leases, and close it only after the last
-active lease releases; the current caller must release exactly once. Qualify pool
-lifetime/concurrency and cancellation-guard discrimination, then the unchanged
-focused reused-endpoint case, complete distribution class without stopOnFail and
-relevant regressions. No ResetConnectBackoff call belongs in that candidate.
-The initial candidate's successes cannot erase either measured failure.
-
-
-Resume from `evidence/story-2-13/qualification-2026-10-21-runtime-recovery.md`,
-`evidence/story-2-13/review-2026-10-21-runtime-recovery/README.md` and
-`evidence/story-2-13/closing-after-review-2026-10-21.json`. The existing working
-tree is expressly authorized; preserve all prior work. This continuation only
-qualifies shared-channel concurrency safety of the isolated Dapr correction.
-
-The retained runtime destroys an Unavailable pooled actor channel. In a new
-disposable source tree, use controlled overlapping calls against the retained
-candidate source to measure whether that action interrupts other active actor
-invocations, remote reminders or actor streams. Distinguish a transport failure
-from Unavailable returned by a healthy server. Preserve the original acquired
-source, candidate source/binaries, reports and evidence packets byte-for-byte.
-Record new evidence only under `evidence/story-2-13/runs-2026-10-21-concurrency-safety/`
-and a new qualification report; `start-preservation.json` and `spec-before.source`
-already record parent start state. Never stage, commit, push or create a branch.
-
-Only evaluate an isolated correction after pinned runtime/dependency sources and
-measured failures support it. Retain complete before-build source inventories,
-exact patch, unchanged dependency/toolchain identities and binary hashes. Preserve
-caller cancellation/deadline semantics and the discriminating cancelled-Unavailable
-control from the retained review supplement (the old controls alone missed that
-regression). Keep retry/cancellation budgets, actor persistence before broadcast,
-authorization, serialized metadata bounds and the 15-second signal wait unchanged.
-The installed runtime and production graphs must remain unchanged. Launch-identity
-hardening is explicitly deferred unless required to establish trustworthy evidence.
-
-After any supported correction run focused concurrency controls and the reused-
-endpoint case, then the entire distribution class without stopping on failure,
-then relevant Go runtime and existing application regressions. Bind failures and
-passes to exact source/runtime/binary identities; successful reruns alone establish
-no resolution. Fresh-endpoint replacement is comparison evidence only. Preserve
-existing .NET binary identities unless a necessary rebuild is supported and
-recorded separately. Keep the existing Contracts validator blocker separate; do
-not weaken or exempt it. Reassess inotify restoration to 1,048,576 by observing
-accessible watches without disturbing unrelated processes; retain blockers and
-every ceiling change. Use the permitted Aspire workflow for lifecycle operations
-and capture exact owned-process/resource identities and cleanup observations.
-
-The spec and sprint row remain in-progress, original story backlog, and
-`accepted_exceptions: []`. No completion/review advancement, production transition,
-runtime installation, owner approval or qualification/disposition gate is implied
-by local qualification. Whole-story gated tasks remain unchecked. This user scope
-overrides any generic workflow instruction to complete gated production work.
-
-
-### Active continuation: isolated reused-endpoint runtime correction
-
-The user resumes from `evidence/story-2-13/qualification-2026-10-21-restart-trace.md`
-and authorizes local evaluation of an isolated Dapr runtime or configuration
-correction for the reused-endpoint remote-actor recovery failure. Use the retained
-failures, successful TCP probes and pinned runtime sources to establish the pooled
-gRPC reconnect/backoff mechanism before implementing a correction. Preserve the
-installed runtime, production graphs, dependencies, historical packets and frozen
-baseline. A candidate runtime may be built in a disposable local directory and
-selected explicitly for the test fixture only; retain exact source revision,
-patch, toolchain/dependency and executable hashes, command receipts, failures and
-passes in a new packet. A fresh internal endpoint remains comparison evidence and
-does not resolve reused-endpoint recovery. Do not infer resolution from passing
-reruns alone. Preserve authorization, serialized metadata bounds, cancellation
-budgets, actor-persistence-before-broadcast ordering and the 15-second signal
-deadline. Run the focused reused-endpoint case first, then the complete distribution
-class without `-stopOnFail`, then relevant regressions. Report the existing
-Contracts validator blocker separately. Reassess restoration of the temporary
-inotify ceiling to 1,048,576 without disturbing unrelated processes and retain any
-restoration blocker. Keep this spec and its sprint row in-progress, the original
-story backlog and `accepted_exceptions: []`. Production qualification, approval,
-rollback and disposition tasks remain gated; this continuation must stop short of
-whole-story completion and must not advance a completion/review status merely
-because its local evaluation finishes. Record supported corrections and unresolved
-gaps candidly, including any inability to build or qualify an isolated runtime.
-
-### Active continuation: October 21 restart timeout investigation
-
-The user explicitly resumed the existing dirty working tree from
-`evidence/story-2-13/qualification-2026-10-21-blackhole.md`. Preserve that work
-and every historical packet. This continuation focuses only on the unresolved
-first-host signal timeout after the second replica restarts. Use the existing
-failure capture to reproduce and trace Dapr delivery →
-`ProjectionNotificationController` → `ETagActor.RegenerateAsync` → SignalR
-broadcast. Establish the cause before changing behavior. Implement a fix only
-when justified by retained evidence; do not infer resolution from passing
-reruns alone. Preserve authorization, metadata bounds, caller cancellation
-budgets, and the 15-second signal deadline. Retain failures and passes on their
-exact source and binary identities in a new continuation packet (never rewrite
-the blackhole packet). Include actor/controller/broadcaster sources in new
-identity captures. Run the focused restart case, then the full distribution
-class. Report the existing Contracts validator blocker separately. Production
-graph/profile changes remain gated; keep the active spec and sprint row
-in-progress and the original backlog story uncompleted until all remaining
-qualification and approval requirements pass. Do not execute gated production
-tasks or claim whole-story completion during this focused continuation.
-
-- The [qualification packet](evidence/story-2-13/qualification.md) records a passing test-only two-host, two-sidecar exact-topic Dapr proof, a real projection-triggered signal with projection-backed readback, and a scoped Redis exception proposal that has **not** been accepted.
-- The shipped Redis Streams wildcard subscription did not deliver concrete tenant topics. Dynamic tenant subscription, real projection-triggered detail, full outage/freshness and rollback behavior, and owner approvals remain open. No production profile or backplane dependency changed; the original story remains backlog.
-- The ordinary Aspire regression test body passed, but collection teardown failed while restoring the shared writer-protocol marker. The packet records the exact result and unresolved lock interference. The local inotify limit also remains elevated while unrelated processes hold more watches than the original limit.
-- The [2026-10-19 continuation](evidence/story-2-13/qualification-2026-10-19.md) records a separate run-start revision, current runtime identities, expanded two-host denial/bounds/reconciliation scenarios, retained component bytes and redacted logs, and the unresolved serialized-versus-key/value metadata ceiling. It does not change the frozen baseline, accept an exception, or authorize the atomic runtime transition. Historical teardown and machine-state observations above remain historical; current results and cleanup are bound by the continuation.
-- The [2026-10-20 continuation](evidence/story-2-13/qualification-2026-10-20.md) enforces the user-confirmed serialized metadata contract and records passing final-source tests: 93 focused cases, both two-host Dapr scenarios, real-projection composition, ordinary Direct regression, and the retained Redis baseline. Replica restart now proves fresh authorization/rejoin, persisted Dapr reconciliation, and per-host rejection of three oversized serialized vectors beside an exact-boundary control. Exact tested spec/profile bytes, superseded failures, commands and assembly identities are retained separately. Dynamic topics, real projection detail, production profile, broader outage/freshness, transition/rollback and owner disposition gates remain open; the original story remains backlog.
-- The [network-fault continuation](evidence/story-2-13/qualification-2026-10-20-network.md) isolates both sidecars' Redis connections through a disposable loopback proxy. The selected test paths are `SignalRDaprDistributionFixture.cs`, `SignalRDaprDistributionRuntimeProofTests.cs`, and the new `SignalRDaprNetworkFaultProxy.cs`; generated component files remain fixture-only. The user identified self-hosted Kubernetes at `192.168.1.30` as the MVP production target and excluded Azure/AWS from MVP. Cloud binding behavior remains a comparison-only unrun candidate, not a service-provisioning prerequisite. Read-only cluster observations and local network-fault qualification do not select or authorize a production notification profile.
-- The same continuation evaluates a fixture-only exact-topic catalog rollout for a previously absent tenant. It retains before/after subscriptions, reloads both sidecars, preserves host/client identities, and uses an unpublished fresh control topic after reload. Operator-managed catalog rollout is distinct from automatic tenant discovery; no shipped subscription, catalog, or deployment path changes. Before the additive detail slice, `ProjectionResponse` and actor-owned `ProjectionState` carried no scoped detail, and the post-persistence calls in `EventReplayProjectionActor` selected only the signal overload.
-- The story authorizes the additive real-detail implementation choice; no separate owner decision is required merely to choose an optional domain-provided hint. Selected paths before that slice are `Contracts/Projections/ProjectionResponse.cs`, `Server/Actors/ProjectionState.cs`, `EventReplayProjectionActor.cs`, `.ReplayPublication.cs`, a new `.Notifications.cs` partial, `Server/Projections/ProjectionUpdateOrchestrator.cs` and `.LegacyReplay.cs`, the sample `CounterProjectionHandler.cs`, the real-projection integration proof, and their focused contract/state/actor/sample compatibility tests. Null detail fields must preserve legacy JSON and DataContract shape, bounded metadata must be copied before actor persistence, scope must not alter trusted tenant/projection routing, and authoritative candidate fingerprints remain derived from model bytes alone. No provider/profile transition is selected by this slice.
-
-The final local continuation passed the full Debug graph, 186 focused detail/compatibility cases, real two-host projection signal/detail/readback and tenant denials, ordinary Direct regression, and 182 supporting client/credential cases. The four-scenario network/catalog/runtime run also passed against its separately retained earlier source/binary identity. Optional legacy projection-response detail is implemented; named v2 outcomes are unchanged. Remaining gates are the selected production runtime/durable broker/enrolled issuer, shipped enrollment, canonical completion/freshness fault profile, atomic graph transition/rollback and authorized disposition. Story status and whole-task checkboxes remain open; no exception or production profile is accepted.
-
-The [October 21 local continuation](evidence/story-2-13/qualification-2026-10-21-blackhole.md) adds silent bidirectional traffic discard beside connection reset in the existing test-only network proxy and distribution runtime proof. Both cases pass under a declared auxiliary AppHost/sample topology, with unchanged caller cancellation/readback limits, fresh two-host delivery and tenant denials. The full Debug source-reference graph passes. An unchanged focused replica-restart run passes, but two broader runs time out at the first-host post-restart signal; that intermittent delivery gap and the separate standalone startup failure remain retained. Run-start revision is `7217b5bf740b80ae92858378785b496e6b564285`; the frozen baseline is unchanged. Current Story 3.21 inputs still select no production broker/profile. Production runtime/broker/issuer, canonical completion/freshness, atomic transition/rollback and authorized disposition remain required gates; no whole-story checkbox or completion status is advanced.
-
-The local restart diagnostic phase adds failure-only evidence retention in the existing fixture/runtime proof and targeted controller receipt logging in `SignalRDaprDistributionNode.cs`. Failed captures are explicitly separate from passed assertions; the signal wait remains 15 seconds and capture has its own bounded budget. New fixture/runner captures retain MSBuild inputs with a `.source` suffix and explicit original-path mappings. Earlier new-packet file names may be transformed with recorded aliases while their bytes and emitted manifests remain unchanged; historical packets remain untouched.
+The dated continuation notes from October 19–25 are superseded. They are in Git history at `c5d1c280d8c1c1a207cd159d817f614e93c93130`.
 
 ## Spec Change Log
 
+- 2026-10-25 — Owner decision: accept a scoped exception for the opt-in SignalR Redis backplane instead of another local requalification run. The tasks were rewritten to the exception branch and the stale continuation notes were replaced. Frozen intent is unchanged.
 - 2026-10-25 — Replaced the deleted frontmatter report with the approved evidence-storage
   policy and documented its read-only historical retrieval. New unchanged-runtime
   qualification results belong in the original story's Verification section under
@@ -413,15 +279,147 @@ append-only story history. Concurrent HEAD
 the tested revision and this continuation's reviewed changes. No runtime tests
 were repeated for documentation corrections.
 
+### October 25 6ca1b4cb continuation review
+
+Review covers only this continuation's Verification append in the original story,
+against run-start `6ca1b4cb9d422017138541036b3c23397265de98`. The frozen baseline,
+intent, statuses and whole-story gates remain unchanged. Edge-case and
+verification-gap reviewers found no additional issues. Command counts, timestamps,
+output hashes and failure descriptions matched the local receipts.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| 6ca1b4cb Blind 1: outage publication outcomes omitted | medium | patch | Reset and blackhole manifests retain `DaprException` after 70.4399 ms and cancellation after 1,999.8448 ms, respectively. Add these measurements beside read cancellation bounds so publication failure can be assessed independently. |
+| 6ca1b4cb Blind 2: catalog restart requirement compressed | low | patch | `ReloadSidecarsAsync` stops both sidecars and then starts both. Name that sequence explicitly rather than implying live subscription refresh. |
+| 6ca1b4cb Blind 3: fresh-endpoint comparison identities omitted | low | patch | The fresh-endpoint manifest records original host/sidecar PIDs 63452/63565, replacements 64827/80045 and internal port 34867 to 44529. Retain them beside the reused-endpoint rows without claiming that comparison resolves reused-endpoint failures. |
+| 6ca1b4cb Blind 4: client dependency versions omitted | medium | patch | The integration dependency manifest's recorded hash still matches current bytes and names Dapr.Client 1.18.10 and Microsoft.AspNetCore.SignalR.Client 10.0.13. Add those exercised client identities without claiming complete dependency coherence. |
+| 6ca1b4cb Blind 5: final documentation check results implicit | low | patch | The implementation handoff reports both post-append checks passed. State those outcomes explicitly and run the narrow policy/whitespace checks again after review corrections. |
+
+These corrections use existing receipts and source; no runtime rerun or behavioral
+change is required. The stable real-projection failures, both Redis failures and
+all historical/production gates remain open. This local documentation review
+advances no completion/review status or approval. Final parent policy checks
+passed (9,091 tracked entries), as did `git diff --check`. Parent preservation
+checks confirmed the original story prefix, frozen intent, spec baseline/status,
+sprint row and exception register; run-start HEAD remained unchanged.
+
+### October 25 dee84974 continuation review
+
+Review covers only this continuation's Verification append in the original story,
+against run-start `dee8497458bfc92e094ac66fb977b2eddabd6c93`. The frozen baseline,
+intent, statuses and whole-story gates remain unchanged. Edge-case and
+verification-gap reviewers found no additional issues.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| dee84974 Blind 1: shared-endpoint topology understated | medium | patch | The in-distribution process receipt includes six additional auxiliary app identities on placement/scheduler endpoints 50005/50006. Corrected the participant list; bounded observations still establish no exclusive topology. |
+| dee84974 Blind 2: scenario capture mapping omitted | low | patch | Nine manifests exist, including two reused-endpoint runs and catalog before/after captures. Added their exact temporary relative paths beside the measurements. |
+| dee84974 Blind 3: Redis comparison observations omitted | medium | patch | The existing report records distinct origin/target PIDs, 21 ms signal delivery, the disabled-backplane control and a 5,747.1851 ms fail-open diagnostic. Added those observations with transport-only and source-drift limits. |
+| dee84974 Blind 4: denial coverage summary imprecise | low | patch | Passing source includes malformed-tenant and replacement-identity denied-rejoin assertions. Enumerated exercised denials and distinguished the unestablished conflicting-claim and in-place revocation cases; no missing test is claimed fixed. |
+| dee84974 Blind 5: inherited Contracts blocker unidentified | low | patch | Read-only historical retrieval identifies the Release command, 2,348 passes/1 failure/2 skips and 10,898 package-authority errors in retained MSBuild evidence. Added that identity without asserting a current Contracts failure or rerun. |
+
+These corrections use existing receipts and test source; no runtime tests were
+repeated. Parent checks independently confirmed all 550 measured output identities
+match across all ten test boundaries. Concurrent commit
+`8fb04342d487e8ec1df80a15a75f967227201294` was observed after the measured commands;
+it is outside the tested revision and this continuation's reviewed changes.
+Review logging is the only change to this spec. Local passes supply no CI result,
+historical failure resolution, production qualification or approval.
+
+### October 25 2696cf21 continuation review
+
+Review covers this continuation's Verification append in the original story,
+against run-start `2696cf21b3ed243f75c74feab5b947697e876d74`. The five test
+commands ran at `12784fde729a4756564ae388fb6c2217c7323446`; this does not
+establish build/source correspondence to that revision. Frozen intent, baseline,
+statuses and whole-story gates remain unchanged. Edge-case and verification-gap
+reviewers found no additional issues.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| 2696cf21 Blind 1: Platform cohort identity | medium | patch | Build receipts name `c4fad9cd10491547a2b3e94c108442eff38a6edd`; every test receipt names `5fa798f7d860a021feb8cccc35331271e3c9c802`. Distinguished these cohorts in the story. |
+| 2696cf21 Blind 2: build-to-test source drift | medium | patch | Comparing build-after with first-test-before finds 13 changed source files and unchanged outputs. Recorded that boundary and denied correspondence of the reused binaries to the later source revision. |
+| 2696cf21 Blind 3: auxiliary host exit omitted | low | patch | Both support describes report EventStore Finished with exit 134 and its sidecar exit 0. Retained those codes without inferring their cause from successful stop commands. |
+| 2696cf21 Blind 4: process scan coverage | low | patch | The temporary observer matches EventStore paths and Dapr, excluding Tenants application hosts. Narrowed the absence claim to the inspected process families. |
+| 2696cf21 Blind 5: catalog outcomes omitted | low | patch | Before/after manifests retain absent new-tenant delivery, two added exact subscriptions, unchanged host identities and both readbacks at version/ETag 2. Added these observations to the story. |
+
+These are documentation corrections from existing receipts and source, requiring
+no runtime rerun or behavioral change. Stable test-boundary identities do not
+resolve build-to-test drift, historical failures or production/disposition gates.
+All five corrections were checked against existing receipts; no new finding was
+deferred. Final parent policy checks passed (9,096 tracked entries), as did
+`git diff --check`. The original story prefix, frozen intent, spec baseline/status,
+sprint file and exception register were preserved.
+
+### October 25 c5d1c280 continuation review
+
+Review covers this continuation's Verification append in the original story at
+`c5d1c280d8c1c1a207cd159d817f614e93c93130`. The frozen historical baseline,
+intent, statuses and whole-story gates remain unchanged. Edge-case and
+verification-gap reviewers found no additional issues.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| c5d1c280 Blind 1: timeout wording | low | patch | The full-distribution log contains `TimeoutException`; clarify that no timeout budget was increased, preserving the failed execution. |
+| c5d1c280 Blind 2: executable inventory scope | low | patch | The recorder hashes selected daprd, installed daprd and Aspire CLI only. Name those executables rather than implying Dapr CLI or .NET installation hash coverage. |
+| c5d1c280 Blind 3: negative-delivery observation bounds | low | patch | Outage denials use four concurrent one-second reads. Catalog denials use two concurrent one-second detail reads followed by two concurrent one-second signal observations. State those limits beside the results. |
+| c5d1c280 Blind 4: catalog topic/hash correspondence | low | patch | The after-rollout manifest binds both subscription hashes to exact added/fresh topic names. Include those names and its relative locator for traceability. |
+
+These documentation corrections use existing receipts and test source. No runtime
+tests are repeated. Parent comparison independently confirms all 17,613 measured
+source/configuration entries and 550 outputs match the post-build snapshot across
+all twelve test boundaries. The full distribution class remains 5 passed / 1
+failed despite the passing focused catalog recheck; no cause, correction,
+production qualification or completion is inferred. Review logging is the only
+change to this spec.
+
+### October 25 owner-disposition review
+
+This review covers the exception disposition in the working tree against `c5d1c280d8c1c1a207cd159d817f614e93c93130`. That is narrower than the frozen baseline, matching the scope of earlier continuation reviews. The earlier subsections describe their own runs and predate this disposition. No intent_gap or bad_spec entry arose, so every surviving entry was patched or deferred.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| Verification other 1: sprint row not `done` | low | patch | `sprint-status.yaml:92` still read `in-progress` with stale comments. Comments replaced; the status is synced to `done` in the finalize step. |
+| Verification other 2: allowed paths omit key readers | medium | patch | `SignalRRuntimeProofEndpoints.cs:113-120` reads both keys; `ValidateSignalROptions.cs` and `SignalRRuntimeProofIdentity.cs` handle the option. Added all three to `allowed_paths`; corrected the story and architecture wording. |
+| Edge 1: same allowed-paths gap | medium | patch | Duplicate of Verification other 2. |
+| Edge 2: no exact package or Redis version | medium | patch | The PRD §8.4 exact-version rule applies. Added package `10.0.13`, its Builds pin path and the tested Redis `6.2.21`. |
+| Edge 3: Redis outage fail-open not recorded | low | patch | `SignalRServiceCollectionExtensions.cs:52` sets `AbortOnConnectFail = false`; the final run measured HTTP 200 with `FailOpenFailure`. Added `outage_behavior`. |
+| Edge 4: earlier Redis proof failures undisclosed | low | patch | The 6ca1b4cb run recorded two readiness-cancellation failures. Disclosed in the Disposition. |
+| Edge 5: gaps unowned after `done` | medium | patch | AC4/AC5 partials and harness flakes had no ledger entry. Added one consolidated `deferred-work.md` entry. |
+| Edge 6: trigger needs all conditions | low | patch | Now review on any change, remove only when all hold. |
+| Edge 7: other docs still say unresolved | medium | patch | Updated `architecture-overview.md` (3 lines), `epics.md:335` and the Story 3.17 AC and task text. |
+| Edge 8: acceptance is retroactive under AD-34 | medium | patch | AD-34 requires a decision before introduction; Redis already shipped. Added `retroactive: true` with a note. |
+| Edge 9: `1.18.x` generalization | low | patch | Only stock `1.18.7` was tested. Wording corrected in the register and story. |
+| Edge 10: env-only key untested | false | reject | `SignalRServiceCollectionExtensions.cs:46-47` falls back to `EVENTSTORE_SIGNALR_REDIS` when the option is null, so no bad outcome occurs. |
+| Edge 11: removed runtime/topology requalification clause | medium | patch | Restored package-version, Redis-major and replica-topology changes as review triggers. |
+| Edge 12: sprint row | low | patch | Duplicate of Verification other 1. |
+| Edge 13: architecture open-issues row says register empty | medium | patch | Row at `architecture.md:566` updated. |
+| Edge 14: retained path's outage behavior implied qualified | medium | patch | Same root cause as Edge 3; the AC4 row now states that the Redis path fails open. |
+| Edge 15: Azure binding never run | low | patch | Records that it was not run and was excluded by the owner's 2026-10-20 scope decision. |
+| Blind 1: tracker statuses disagree | low | patch | Duplicate of Verification other 1. |
+| Blind 2: architecture contradictions | medium | patch | Open-issues row fixed; "This rule itself accepts no exception". |
+| Blind 3: stale docs and story handoff | medium | patch | Same as Edge 7, plus the story's Verification Handoff rewritten to the current state. |
+| Blind 4: allowed paths and "listed above" wording | medium | patch | Same as Verification other 2. |
+| Blind 5: operator guides present production backplane | medium | defer | The 2026-05-03 guides already contradicted AD-26, so this is pre-existing; logged in `deferred-work.md`. The register now says `channelPrefix` sharing grants nothing extra. |
+| Blind 6: acceptance table overclaims | medium | patch | AC2 notes no Dapr design was selected; AC3 notes the patched-runtime dependency; added the 5/1 class result and the catalog-test recheck. |
+| Blind 7: gaps unowned | medium | patch | Duplicate of Edge 5. |
+| Blind 8: restart-gap evidence missing from record | medium | patch | Added the `bbfd0fada` restart-trace pointer (verified present), the `1.18.7` scope and the patched-sidecar note. |
+| Blind 9: actor defect beyond SignalR | medium | defer | Pre-existing runtime defect; the deferred entry now routes it to AD-26 and the open-issues table. |
+| Blind 10: trigger, purpose, single-replica rationale | medium | patch | Added `purpose` and named the probe test in the trigger. |
+| Blind 11: credential boundary, versions, status | medium | patch | Added `credential_boundary` and versions. The top-level `status` stays Story 3.17's schema field. |
+| Blind 12: stock-runtime probe left undecided | low | patch | The handoff and trigger name it as the probe and state the environment requirement. |
+| Blind 13: older subsection contradicted by this diff | low | reject | The fix edits this build's spec; this subsection records the disposition. |
+| Blind 14: counts and dates | low | patch / reject | Story run date added. The spec count wording and command results are rejected as spec edits; results are logged below. |
+| Blind 15: history-rewrite fragility and wording | medium | patch | The deferred entry now describes the daprd patch and says to report it upstream before the rewrite; "nine runs" and "preceding" wording corrected. |
+
+After patching, the register parsed, `bash scripts/check-committed-files.sh` passed, and `git diff --check` passed.
+
 ## Verification
 
-The October 25 executed commands, counts, UTC intervals and local-only limitations
-are recorded in the [original story's Verification section](2-13-dapr-notification-distribution-qualification.md#verification--october-25-unchanged-local-continuation).
-They do not replace historical failures, a CI run, Go requalification, the failed
-complete source-reference dependency graph, or the gated production disposition.
+The final runtime results, commands, counts and UTC intervals at `c5d1c280d8c1c1a207cd159d817f614e93c93130` are in the [story's Verification section](2-13-dapr-notification-distribution-qualification.md#verification--october-25-c5d1c280-continuation). No CI run is linked. This disposition changes documentation only.
 
 **Commands:**
-- `aspire run` then `aspire describe` — establish baseline resource state before code edits.
-- `dotnet build tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj -c Debug` — compile the focused proof project; invoke the built xUnit v3 executable with `-class` for focused runtime proof.
-- `dotnet build Hexalith.EventStore.slnx -c Debug -m:1` — verify both host graphs; run relevant test projects individually and record exact commands/results in the packet.
+- `python3 -c "import yaml; yaml.safe_load(open('docs/architecture/dapr-infrastructure-exceptions.yaml'))"` — the register parses.
+- `bash scripts/check-committed-files.sh` — the committed-files guard passes.
 - `git diff --check` — no whitespace errors.
+- `tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests -class '*ProjectionChangedHubTests' -class '*SignalRBackplaneWiringTests' -class '*SignalRHubEndpointTests'` — 39 passed, 0 failed (2026-10-25 17:36:20–17:36:22 UTC).

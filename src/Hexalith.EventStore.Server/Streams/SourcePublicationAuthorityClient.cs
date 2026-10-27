@@ -21,6 +21,7 @@ public sealed class SourcePublicationAuthorityClient(IActorProxyFactory proxies,
     /// <summary>Looks up the exact original independently of primary namespace/index state or the original caller.</summary>
     public Task<T?> LookupAsync<T>(SourcePublicationAuthorityEnrollment enrollment, string key, CancellationToken cancellationToken = default)
     { ArgumentNullException.ThrowIfNull(enrollment); ArgumentException.ThrowIfNullOrWhiteSpace(key); return CallAsync<T?>(enrollment, "lookup", key, cancellationToken); }
+    /// <summary>Calls one exact role-bound journal operation through the installed Dapr transport.</summary>
     internal async Task<T?> CallAsync<T>(SourcePublicationAuthorityEnrollment enrollment, string method, object body, CancellationToken cancellationToken = default)
     {
         var issuer = method switch

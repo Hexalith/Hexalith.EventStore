@@ -8,12 +8,28 @@ public static class ReadModelGenerationStaging
     /// <param name="scope">The stable aggregate and operation identity.</param>
     /// <param name="operations">The disjoint immutable generation writes.</param>
     /// <param name="cancellationToken">Cancels bounded staging work.</param>
-    public static async Task StageAsync(IReadModelBatchStore store, ReadModelBatchScope scope,
+    public static Task StageAsync(IReadModelBatchStore store, ReadModelBatchScope scope,
         IEnumerable<ReadModelBatchOperation> operations, CancellationToken cancellationToken = default)
+        => StageAsync(store, scope, operations, 512 * 1024, cancellationToken);
+
+    /// <summary>Stages immutable values using an explicit finite canonical-byte budget and at most 32 operations per group.</summary>
+    /// <param name="store">The owning SDK batch store; its effective limits are preflighted for every group.</param>
+    /// <param name="scope">The stable aggregate and operation identity.</param>
+    /// <param name="operations">The disjoint immutable generation writes.</param>
+    /// <param name="maxCanonicalManifestBytes">The complete encoded manifest budget, at most the SDK hard recovery ceiling of 1 MiB.</param>
+    /// <param name="cancellationToken">Cancels bounded staging work.</param>
+    public static async Task StageAsync(IReadModelBatchStore store, ReadModelBatchScope scope,
+        IEnumerable<ReadModelBatchOperation> operations, int maxCanonicalManifestBytes, CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxCanonicalManifestBytes, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxCanonicalManifestBytes, ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes);
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(operations);
+        // Preserve the existing conservative partition identities whenever every value fits.
+        // An explicit larger ceiling admits only an oversized individual immutable value;
+        // it never repacks previously resumable 512-KiB groups into different manifests.
+        int groupBudget = Math.Min(512 * 1024, maxCanonicalManifestBytes);
         var batches = new List<ReadModelBatch>();
         var keys = new HashSet<string>(StringComparer.Ordinal);
         var group = new List<ReadModelBatchOperation>();
@@ -34,13 +50,15 @@ public static class ReadModelGenerationStaging
                 AddGroup();
             }
             group.Add(operation);
-            if (ReadModelBatchFingerprint.BuildCanonicalManifest(CreateGroup()).Length > 512 * 1024)
+            if (ReadModelBatchFingerprint.BuildCanonicalManifest(CreateGroup()).Length > groupBudget)
             {
                 group.RemoveAt(group.Count - 1);
                 if (group.Count != 0) AddGroup();
                 group.Add(operation);
-                if (ReadModelBatchFingerprint.BuildCanonicalManifest(CreateGroup()).Length > 512 * 1024)
+                int singleBytes = ReadModelBatchFingerprint.BuildCanonicalManifest(CreateGroup()).Length;
+                if (singleBytes > maxCanonicalManifestBytes)
                     throw new ArgumentException("A generation value exceeds its bounded group.", nameof(operations));
+                if (singleBytes > groupBudget) AddGroup();
             }
         }
         if (group.Count != 0)

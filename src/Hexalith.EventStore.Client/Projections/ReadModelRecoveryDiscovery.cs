@@ -77,6 +77,24 @@ internal static class ReadModelRecoveryDiscovery
             throw new InvalidOperationException("recovery-scope-conflict");
     }
 
+    internal static async Task<ReadModelPendingBatchRecoveryResult> SettleAsync(IReadModelBatchStateAccessor accessor,
+        ReadModelBatchOptions options, ILogger logger, ReadModelBatchScope scope, CancellationToken token)
+    {
+        try
+        {
+            scope.Validate();
+            var (directory, _) = await ReadAsync(accessor, scope, token).ConfigureAwait(false);
+            foreach (ReadModelRecoveryRegistration entry in directory.Entries)
+            {
+                if (!await new ReadModelBatchProtocol(accessor, options, logger).SettleRegisteredAsync(entry, token).ConfigureAwait(false))
+                    return new(false, "recovery-incomplete");
+            }
+            return new(true, WasRecovered: directory.Entries.Length != 0);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { return new(false, "recovery-unavailable"); }
+    }
+
     internal static async Task<ReadModelPendingBatchRecoveryResult> RetireAsync(IReadModelBatchStateAccessor accessor,
         ReadModelBatchOptions options, ILogger logger, ReadModelBatchScope scope, CancellationToken token)
     {

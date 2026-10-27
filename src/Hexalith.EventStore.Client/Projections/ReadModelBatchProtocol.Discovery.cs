@@ -73,6 +73,78 @@ internal sealed partial class ReadModelBatchProtocol
         return new(marker.Status == ReadModelBatchMarkerStatus.Completed ? ReadModelBatchStagingStatus.Committed : ReadModelBatchStagingStatus.Aborted, fingerprint);
     }
 
+    private async Task<bool> ReleaseTerminalRegistrationAsync(ReadModelBatchScope scope, string fingerprint, CancellationToken token)
+    {
+        var decision = await ReadRecoveryDecisionAsync(_accessor, scope, fingerprint, token).ConfigureAwait(false);
+        if (decision.Status is not (ReadModelBatchStagingStatus.Committed or ReadModelBatchStagingStatus.Aborted)) return false;
+        await ReadModelRecoveryDiscovery.RemoveAsync(_accessor, scope, fingerprint, token).ConfigureAwait(false);
+        return true;
+    }
+
+    private async Task<bool> ClearRecoveryAnchorAsync(ReadModelBatchScope scope, string fingerprint, CancellationToken token)
+    {
+        RawStateEntry row = await _accessor.ReadAsync(scope.ComputeMarkerKey(), token).ConfigureAwait(false);
+        ReadModelBatchMarker? marker = row.Exists ? ReadModelBatchMarker.ReadBoundedProof(row.Value) : null;
+        if (marker is null || marker.ScopeHash != scope.ComputeScopeHash() || marker.BatchId != scope.BatchId
+            || marker.Fingerprint != fingerprint || marker.Status is not (ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted)) return false;
+        if (marker.RecoveryAnchor is null) return true;
+        marker.RecoveryAnchor = null;
+        if (await _accessor.TryWriteAsync(scope.ComputeMarkerKey(), SerializeMarker(marker), row.ETag, token).ConfigureAwait(false)) return true;
+        row = await _accessor.ReadAsync(scope.ComputeMarkerKey(), token).ConfigureAwait(false);
+        marker = row.Exists ? ReadModelBatchMarker.ReadBoundedProof(row.Value) : null;
+        return marker is not null && marker.Fingerprint == fingerprint && marker.RecoveryAnchor is null
+            && marker.Status is ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted;
+    }
+
+    internal async Task<bool> SettleRegisteredAsync(ReadModelRecoveryRegistration entry, CancellationToken token)
+    {
+        RawStateEntry row = await _accessor.ReadAsync(entry.Scope.ComputeMarkerKey(), token).ConfigureAwait(false);
+        // Enrollment precedes preparation. Neither a missing marker nor a Prepared marker is
+        // permission to commit/abort another delivery or a guarded rebuild.
+        if (!row.Exists) return true;
+        ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadBoundedProof(row.Value);
+        if (marker is null || marker.ScopeHash != entry.Scope.ComputeScopeHash()
+            || marker.BatchId != entry.Scope.BatchId || marker.Fingerprint != entry.Fingerprint) return false;
+        if (marker.Status is ReadModelBatchMarkerStatus.Prepared or ReadModelBatchMarkerStatus.Aborting) return true;
+        if (marker.Status == ReadModelBatchMarkerStatus.Committed)
+        {
+            ReadModelBatch? batch = await ReadPreparedRecoveryBatchAsync(_accessor, entry.Scope, token).ConfigureAwait(false);
+            if (batch is null || batch.Operations.Count != entry.OperationCount) return false;
+            Initialize(batch, null, token);
+            if (!await CompactAndCompleteAsync(token).ConfigureAwait(false)) return false;
+        }
+        else if (marker.Status is ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted)
+        {
+            // The immutable barrier deliberately precedes the final anchor compaction. Its
+            // bounded terminal proof survives a crash after reclaiming the original manifest.
+            if (marker.RecoveryAnchor is not null)
+                return await RetireRegisteredAsync(entry, token).ConfigureAwait(false);
+            var decision = await ReadRecoveryDecisionAsync(_accessor, entry.Scope, entry.Fingerprint, token).ConfigureAwait(false);
+            if (decision.Status is ReadModelBatchStagingStatus.Committed or ReadModelBatchStagingStatus.Aborted)
+                return await ReleaseTerminalRegistrationAsync(entry.Scope, entry.Fingerprint, token).ConfigureAwait(false);
+            if (!await VerifyTerminalOriginalAsync(entry, marker, token).ConfigureAwait(false)) return false;
+        }
+        else return false;
+        return await RetireRegisteredAsync(entry, token).ConfigureAwait(false);
+    }
+
+    private async Task<bool> VerifyTerminalOriginalAsync(ReadModelRecoveryRegistration entry, ReadModelBatchMarker marker, CancellationToken token)
+    {
+        // A transaction's Completed receipt precedes physical read-back proof. Preserve its
+        // immutable original until every operation has been independently verified.
+        RawStateEntry original = await _accessor.ReadAsync(ReadModelBatchKeys.ManifestKey(entry.Scope.ComputeScopeHash()), token).ConfigureAwait(false);
+        if (!original.Exists || original.Value.Span.SequenceEqual(ReadModelRecoveryDiscovery.RetiredManifest)) return false;
+        using JsonDocument document = JsonDocument.Parse(original.Value);
+        bool retained = document.RootElement.TryGetProperty("recoverable", out JsonElement recoverable) && recoverable.GetBoolean();
+        var batch = ReadModelBatchManifestCodec.Decode(original.Value, entry.Scope, marker.OwnerSelection, marker.OwnerSelections,
+            entry.Fingerprint, retained);
+        if (!batch.DiscoverableRecovery || batch.Operations.Count != entry.OperationCount) return false;
+        Initialize(batch, null, token);
+        return marker.Status != ReadModelBatchMarkerStatus.Completed
+            || _options.GetProfile(entry.Scope.StoreName) != ReadModelBatchStoreProfile.TransactionQualified
+            || await VerifyOperationKeysAsync(token).ConfigureAwait(false);
+    }
+
     internal async Task<bool> RetireRegisteredAsync(ReadModelRecoveryRegistration entry, CancellationToken token)
     {
         ReadModelBatchScope scope = entry.Scope;
@@ -106,8 +178,17 @@ internal sealed partial class ReadModelBatchProtocol
             marker = ParseMarker((await _accessor.ReadAsync(scope.ComputeMarkerKey(), token).ConfigureAwait(false)).Value);
         }
         if (marker?.Status is not (ReadModelBatchMarkerStatus.Aborted or ReadModelBatchMarkerStatus.Completed)) return false;
+        if (marker.RetainedParticipantCount != entry.OperationCount) return false;
+        if (marker.Status == ReadModelBatchMarkerStatus.Completed
+            && _options.GetProfile(scope.StoreName) == ReadModelBatchStoreProfile.TransactionQualified
+            && (await ReadRecoveryDecisionAsync(_accessor, scope, entry.Fingerprint, token).ConfigureAwait(false)).Status != ReadModelBatchStagingStatus.Committed
+            && !await VerifyTerminalOriginalAsync(entry, marker, token).ConfigureAwait(false)) return false;
+        if (marker.RecoveryAnchor is not null
+            && (!await FinishRecoveryAnchorAsync(_accessor, marker, scope, null, token, _options.TimeProvider).ConfigureAwait(false)
+                || !await ClearRecoveryAnchorAsync(scope, entry.Fingerprint, token).ConfigureAwait(false))) return false;
         var fence = new ReadModelBatchTerminalFence(scope, entry.Fingerprint, [], 2, marker.Status, entry.OperationCount);
         return await fence.SealAsync(_accessor, token).ConfigureAwait(false)
-            && await ReclaimOriginalManifestAsync(_accessor, scope.ComputeScopeHash(), entry.Fingerprint, token).ConfigureAwait(false);
+            && await ReclaimOriginalManifestAsync(_accessor, scope.ComputeScopeHash(), entry.Fingerprint, token).ConfigureAwait(false)
+            && await ReleaseTerminalRegistrationAsync(scope, entry.Fingerprint, token).ConfigureAwait(false);
     }
 }

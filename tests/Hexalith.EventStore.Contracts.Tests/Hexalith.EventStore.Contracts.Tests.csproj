@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Routing/Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Security/Fixtures/PayloadProtectionV2/**/*.json"
           CopyToOutputDirectory="PreserveNewest"
           TargetPath="Fixtures/PayloadProtectionV2/%(Filename)%(Extension)" />

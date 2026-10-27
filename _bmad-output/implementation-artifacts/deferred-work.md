@@ -6123,3 +6123,29 @@ status: open
 - source_spec: `spec-8-5-policy-and-key-lifecycle-mechanics.md`
   summary: Preserve warning-free source compatibility for the concurrent query failure-reason aliases or obtain explicit compatibility-change authorization.
   evidence: Review pass 2 P2-B9; QueryAdapterFailureReason adds Obsolete to the historical constants, so existing callers with warnings as errors fail with CS0618. The source last changed in external commit f26ecc6d215da0d86325343371cf76a5c74483e2 and is outside the payload-protection implementation.
+
+## Deferred from: owner disposition of spec-2-13-dapr-notification-distribution-qualification.md (2026-10-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
+  summary: Make the shipped projection-changed subscription deliver tenant topics on Redis Streams, or document that the `PubSub` transport needs exact per-tenant subscriptions.
+  evidence: `deploy/dapr/subscription-projection-changed.yaml` subscribes to `*.*.projection-changed`, but `pubsub.redis` treats it as one literal stream. Story 2.13 runs delivered no concrete `{tenantId}.{projectionType}.projection-changed` topic through it, so a `PubSub`-transport deployment with this asset receives no projection notifications. `Direct` remains the default and only production-eligible transport (architecture, freshness signals).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
+  summary: Report upstream, then track, the stock daprd 1.18.x failure of remote actor calls after a peer restarts on the same internal endpoint.
+  evidence: In Story 2.13's reused-endpoint restart case, the surviving host's remote ETag actor invocation failed with stock daprd. Only a disposable daprd with pooled-channel retirement passed (SHA-256 `a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6`; patch at `6a0b6441f~1:_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-concurrency-retirement/candidate-from-upstream.patch`). The patch retires a pooled actor gRPC channel after a call on it fails with gRPC status Unavailable, excludes it from new leases and closes it after its last active lease is released, so the surviving host reconnects instead of reusing the broken channel. This affects any cross-host actor call, not only notifications, so architecture AD-26 and its open-issues table should record it as a multi-replica risk. It is also a removal-trigger input for the `signalr-replica-distribution` exception. The planned `main` history rewrite would erase the patch file, so file the upstream report before it.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
+  summary: Own the gaps that remained when Story 2.13 closed by exception: canonical UI freshness states under notification faults, conflicting tenant claims and in-place revocation for hub joins, and the Tier-3 harness flakes.
+  evidence: The story's acceptance table marks AC4 partly met (canonical `Stale`/`Degraded`/`Unavailable`/`Unknown` states were not exercised) and AC5 without conflicting-claim or revocation cases. The final run's full distribution class failed once when a sidecar did not become ready within 60 seconds, and the auxiliary topology's EventStore resource finished with exit 134. Story 2.14 (canonical tenant boundary) and the UX freshness owner are candidate owners.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
+  summary: Align the operator guides with AD-26 and the accepted exception, which grant the SignalR Redis backplane no production eligibility.
+  evidence: `docs/guides/configuration-reference.md`, `docs/guides/deployment-docker-compose.md` and `docs/operations/redis-signalr-channel-isolation.md` (2026-05-03 decision) present the backplane for staging and production multi-instance use. Architecture AD-26 already said Redis is Development/test only, so the contradiction predates Story 2.13's disposition.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-route-catalog-construction-tooling.md`
+  summary: Preserve producer paging metadata when an otherwise conditional query response would return 304.
+  evidence: Concurrent QueriesController changes gate 304 on request policy inputs, projection version, and warnings, but not normalized producer Metadata.Paging; a producer may apply default paging with an opaque ETag while the request has no policy inputs. EventStoreGatewayClient constructs 304 metadata without Paging, losing cursor/count data. This is outside the catalog tooling's explicit no-runtime-change intent; add a default-producer-paging conditional-response test and retain a 200 body or a complete carrier.
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Make independently committed owner-deadline tests deterministic under loaded CI.
+  evidence: DomainService.Tests/QueryAuthorityCorrectionTests.OwnerDeadlines.cs starts a two-second caller timer before RSA generation and client setup, then requires it to remain uncancelled; setup/scheduler delay can violate that assumption independently of the owner deadline.

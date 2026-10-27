@@ -27,7 +27,26 @@ public static class DomainServiceRequestRouter {
     public static async Task<DomainServiceWireResult> ProcessAsync(
         IServiceProvider serviceProvider,
         DomainServiceRequest request,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default)
+        => await ProcessAdmittedSourceAsync(serviceProvider, request, AdmitCompleteSource(serviceProvider, request), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Authenticates the original request before trusted administrator normalization.</summary>
+    internal static CompleteCommandSource? AdmitCompleteSource(IServiceProvider serviceProvider, DomainServiceRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(serviceProvider); ArgumentNullException.ThrowIfNull(request);
+        var options = serviceProvider.GetService<CompleteCommandSourceVerificationOptions>();
+        if (request.CompleteSource is null && options?.RequiredDomains.Contains(request.Command.Domain, StringComparer.Ordinal) != true) return null;
+        var http = serviceProvider.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()?.HttpContext;
+        string? platform = options?.PlatformWorkloadId
+            ?? serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>()?["EventStore:CompleteCommandSource:PlatformWorkloadId"];
+        if (http is null || string.IsNullOrWhiteSpace(platform)) throw new UnauthorizedAccessException("CompleteCommandSourceDenied");
+        return new CompleteCommandSourceVerifier(serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System).Verify(request, http.User, platform);
+    }
+
+    /// <summary>Routes trusted normalized input while exposing its previously admitted source only for this invocation.</summary>
+    internal static async Task<DomainServiceWireResult> ProcessAdmittedSourceAsync(IServiceProvider serviceProvider,
+        DomainServiceRequest request, CompleteCommandSource? completeSource, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
@@ -40,17 +59,6 @@ public static class DomainServiceRequestRouter {
                 "CapabilityMismatch: this domain route has no authenticated versioned command-state intake.");
         }
 
-        CompleteCommandSource? completeSource = null;
-        var completeOptions = serviceProvider.GetService<CompleteCommandSourceVerificationOptions>();
-        if (request.CompleteSource is not null || completeOptions?.RequiredDomains.Contains(request.Command.Domain, StringComparer.Ordinal) == true)
-        {
-            var http = serviceProvider.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()?.HttpContext;
-            string? platform = completeOptions?.PlatformWorkloadId
-                ?? serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>()?["EventStore:CompleteCommandSource:PlatformWorkloadId"];
-            if (http is null || string.IsNullOrWhiteSpace(platform)) throw new UnauthorizedAccessException("CompleteCommandSourceDenied");
-            completeSource = new CompleteCommandSourceVerifier(serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System)
-                .Verify(request, http.User, platform);
-        }
         CompleteCommandSource? previousSource = CompleteCommandSourceContext.Set(completeSource);
         try
         {
