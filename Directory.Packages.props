@@ -13,4 +13,8 @@
   <Import Project="$(Hexalith2BuildPackageProps)" Condition="Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'" />
   <Import Project="$(Hexalith3BuildPackageProps)" Condition="Exists('$(Hexalith3BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'" />
   <Import Project="$(Hexalith4BuildPackageProps)" Condition="'$(HexalithVersionsLoaded)' != 'true'" />
+  <!-- Temporary package-only Story 5.12 bridge; shipped consumers retain the published pins. -->
+  <ItemGroup Condition="'$(CatalogCandidateTenantsVersion)' != '' and ('$(MSBuildProjectName)' == 'Hexalith.EventStore.CatalogConstruction' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.Tests' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.QueryRouting.Tests' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.LiveSidecar.Tests' or '$(MSBuildProjectName)' == 'routing-catalog.cs')">
+    <PackageVersion Update="Hexalith.Tenants.Contracts;Hexalith.Tenants.Server" Version="$(CatalogCandidateTenantsVersion)" />
+  </ItemGroup>
 </Project>

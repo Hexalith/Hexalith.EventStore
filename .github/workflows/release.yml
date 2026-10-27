@@ -133,6 +133,9 @@ jobs:
         run: npm ci
       - name: Verify npm dependency provenance and signatures
         run: npm audit signatures
+      - name: Prepare unpublished catalog test dependencies
+        # Temporary package-only preparation; every publication/source gate remains mandatory.
+        run: bash scripts/prepare-catalog-packages.sh
       - name: Restore
         run: dotnet restore Hexalith.EventStore.slnx
       - name: Build
@@ -225,7 +228,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .hexalith/release-evidence/**
+          path: |
+            .hexalith/release-evidence/**
+            TestResults/catalog-package-bootstrap/manifest.json
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 30

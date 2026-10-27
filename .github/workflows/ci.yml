@@ -65,6 +65,7 @@ jobs:
       build-timeout-minutes: 180
       test-platform: microsoft-testing-platform
       run-consumer-validation: true
+      package-prepare-script: scripts/prepare-catalog-packages.sh
       unit-test-projects: |
         tests/Hexalith.EventStore.Client.Tests
         tests/Hexalith.EventStore.ServiceDefaults.Tests

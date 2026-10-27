@@ -1,5 +1,13 @@
 <Project>
 
+  <!-- Temporary package-only bridge for Story 5.12's release-order dependency. Only the
+       nonpackable catalog consumers may select candidate Tenants packages. Shipped packages,
+       including Admin.Server, retain their published centrally governed dependency versions. -->
+  <Target Name="ValidateCatalogCandidateConsumer" BeforeTargets="CollectPackageReferences"
+          Condition="'$(CatalogCandidateTenantsVersion)' != '' and ('$(MSBuildProjectName)' == 'Hexalith.EventStore.CatalogConstruction' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.Tests' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.QueryRouting.Tests' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.LiveSidecar.Tests' or '$(MSBuildProjectName)' == 'routing-catalog.cs')">
+    <Error Condition="'$(IsPackable)' != 'false'" Text="Candidate catalog dependencies are restricted to nonpackable consumers." />
+  </Target>
+
   <!-- Local source graphs must use one EventStore assembly identity across the root and Tenants
        edges. Tenants keeps its own published package pin; this metadata applies only to source refs. -->
   <ItemGroup Condition="'$(HexalithTenantsFromSource)' == 'true'">

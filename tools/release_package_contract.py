@@ -346,6 +346,8 @@ def read_package_metadata(package_path: pathlib.Path) -> PackageMetadata:
             for dependency in dependency_elements:
                 dependency_id = (dependency.attrib.get("id") or "").strip()
                 dependency_version = (dependency.attrib.get("version") or "").strip() or None
+                if dependency_version and "-story512." in dependency_version:
+                    raise ValueError(f"{package_path.name} contains an unpublished catalog candidate dependency: {dependency_id}")
                 if not dependency_id or not _PACKAGE_ID_PATTERN.fullmatch(dependency_id):
                     raise ValueError(
                         f"{package_path.name} contains an invalid dependency id: "
