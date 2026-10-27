@@ -733,6 +733,8 @@ public sealed class ReleasePackageManifestTests
     [InlineData("full-history-checkout")]
     [InlineData("misplaced-shallow-depth")]
     [InlineData("checkout-env-shallow-depth")]
+    [InlineData("published-shallow-history")]
+    [InlineData("published-missing-history")]
     [InlineData("release-coupling-workflow")]
     [InlineData("release-coupling-project")]
     public void Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(string mutation)
@@ -776,6 +778,16 @@ public sealed class ReleasePackageManifestTests
                 "        with:\n          # This test-only lane does not read Git history. Any history-reading step added\n          # here must also change this checkout to fetch-depth: 0.\n          fetch-depth: 1\n          submodules: false",
                 "        env:\n          fetch-depth: 1\n        with:\n          # This test-only lane does not read Git history. Any history-reading step added\n          # here must also change this checkout to fetch-depth: 0.\n          submodules: false",
                 StringComparison.Ordinal),
+            "published-shallow-history" => integration.Replace(
+                ExtractTopLevelWorkflowJobBlock(integration, "published-compatibility"),
+                ExtractTopLevelWorkflowJobBlock(integration, "published-compatibility")
+                    .Replace("fetch-depth: 0", "fetch-depth: 1", StringComparison.Ordinal),
+                StringComparison.Ordinal),
+            "published-missing-history" => integration.Replace(
+                ExtractTopLevelWorkflowJobBlock(integration, "published-compatibility"),
+                ExtractTopLevelWorkflowJobBlock(integration, "published-compatibility")
+                    .Replace("          fetch-depth: 0\n", string.Empty, StringComparison.Ordinal),
+                StringComparison.Ordinal),
             "release-coupling-workflow" => integration,
             "release-coupling-project" => integration,
             _ => throw new InvalidOperationException($"Unknown mutation: {mutation}"),
@@ -793,7 +805,7 @@ public sealed class ReleasePackageManifestTests
                 StringComparison.Ordinal)
             : daprInit;
 
-        if (mutation is "missing-cli-tag" or "missing-runtime-tag" or "runtime-uses-cli-pin" or "full-history-checkout" or "misplaced-shallow-depth" or "checkout-env-shallow-depth")
+        if (mutation is "missing-cli-tag" or "missing-runtime-tag" or "runtime-uses-cli-pin" or "full-history-checkout" or "misplaced-shallow-depth" or "checkout-env-shallow-depth" or "published-shallow-history" or "published-missing-history")
         {
             mutatedIntegration.ShouldNotBe(
                 integration,
@@ -1071,9 +1083,16 @@ public sealed class ReleasePackageManifestTests
         string docs = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
         string[] deferredProjects = DeferredTestLaneProjects(docs);
 
+        // Executable fixtures belong to their materializing test lane, not a standalone xUnit suite.
+        Dictionary<string, string> fixtureOwners = new(StringComparer.Ordinal)
+        {
+            ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Domain"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
+            ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Host"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
+            ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Probe"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
+        };
+
         string[] ignoredProjects = ["tests/Hexalith.EventStore.Client.TestContracts", "tests/Hexalith.EventStore.TestSubscriber"];
-        string[] discovered = Directory
-            .EnumerateFiles(Path.Combine(root, "tests"), "*.csproj", SearchOption.AllDirectories)
+        string[] discovered = TrackedTestProjectFiles(root)
             .Select(path => Path.GetDirectoryName(Path.GetRelativePath(root, path))!.Replace('\\', '/'))
             .Where(project => !ignoredProjects.Contains(project, StringComparer.Ordinal))
             .Order(StringComparer.Ordinal)
@@ -1082,12 +1101,13 @@ public sealed class ReleasePackageManifestTests
         List<string> unclassified = [];
         foreach (string project in discovered)
         {
-            bool classified = ci.Contains(project, StringComparison.Ordinal)
-                || integration.Contains(project, StringComparison.Ordinal)
-                || advisory.Contains(project, StringComparison.Ordinal)
-                || payloadProtection.Contains(project, StringComparison.Ordinal)
-                || payloadProtectionLifecycle.Contains(project, StringComparison.Ordinal)
-                || deferredProjects.Contains(project, StringComparer.Ordinal);
+            string laneProject = fixtureOwners.GetValueOrDefault(project, project);
+            bool classified = ci.Contains(laneProject, StringComparison.Ordinal)
+                || integration.Contains(laneProject, StringComparison.Ordinal)
+                || advisory.Contains(laneProject, StringComparison.Ordinal)
+                || payloadProtection.Contains(laneProject, StringComparison.Ordinal)
+                || payloadProtectionLifecycle.Contains(laneProject, StringComparison.Ordinal)
+                || deferredProjects.Contains(laneProject, StringComparer.Ordinal);
             if (!classified)
             {
                 unclassified.Add(project);
@@ -1740,6 +1760,34 @@ public sealed class ReleasePackageManifestTests
         return [.. violations];
     }
 
+    private static string[] TrackedTestProjectFiles(string root)
+    {
+        using Process process = new()
+        {
+            StartInfo = new ProcessStartInfo("git")
+            {
+                WorkingDirectory = root,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add("ls-files");
+        process.StartInfo.ArgumentList.Add("--");
+        process.StartInfo.ArgumentList.Add("tests/**/*.csproj");
+        process.Start().ShouldBeTrue();
+        Task<string> output = process.StandardOutput.ReadToEndAsync();
+        Task<string> error = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(30_000))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException("Tracked test-project discovery did not finish within thirty seconds.");
+        }
+        process.ExitCode.ShouldBe(0, error.GetAwaiter().GetResult());
+        return output.GetAwaiter().GetResult().Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(path => Path.Combine(root, path)).ToArray();
+    }
+
     private static (int ExitCode, string Output, string Error) RunPackageValidator(
         string validator,
         string packageDirectory)
@@ -1944,6 +1992,20 @@ public sealed class ReleasePackageManifestTests
         string normalizedIntegration = integration
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace('\r', '\n');
+        string publishedJob = ExtractTopLevelWorkflowJobBlock(normalizedIntegration, "published-compatibility");
+        Match publishedCheckout = Regex.Match(publishedJob,
+            @"(?ms)^      - name: Checkout exact executor and comparison tags\n(?<body>.*?)(?=^      - |\z)");
+        publishedCheckout.Success.ShouldBeTrue("Published qualification must check out its executor and comparison history.");
+        Regex.Matches(publishedCheckout.Groups["body"].Value,
+            @"(?m)^          fetch-depth: 0[ \t]*(?:#.*)?$").Count.ShouldBe(1,
+            "Published qualification requires full comparison history in its checkout mapping.");
+        string liveJob = ExtractTopLevelWorkflowJobBlock(normalizedIntegration, "live-sidecar");
+        Regex.IsMatch(liveJob, @"(?m)^[ \t]*DAPR_(?:CLI|RUNTIME)_VERSION:").ShouldBeFalse(
+            "The live-sidecar job must inherit its independently pinned workflow Dapr versions.");
+        MatchCollection workflowEnvironments = Regex.Matches(normalizedIntegration,
+            @"(?ms)^env:[ \t]*\n(?<body>.*?)(?=^[A-Za-z][A-Za-z0-9_-]*:|\z)");
+        workflowEnvironments.Count.ShouldBe(1);
+        string workflowEnvironment = workflowEnvironments[0].Groups["body"].Value;
         MatchCollection repositoryCheckoutHeaders = Regex.Matches(
             normalizedIntegration,
             @"(?m)^      - name: Checkout repository[ \t]*(?:#.*)?$");
@@ -1964,14 +2026,10 @@ public sealed class ReleasePackageManifestTests
         repositoryCheckoutActions.Count.ShouldBe(1, "The repository checkout step must use exactly one pinned checkout action.");
         repositoryCheckoutActions[0].Groups["sha"].Value.ShouldBe(CheckoutActionSha);
 
-        MatchCollection workflowFetchDepths = Regex.Matches(
-            normalizedIntegration,
+        MatchCollection checkoutFetchDepths = Regex.Matches(
+            repositoryCheckoutStep,
             @"(?m)^[ \t]*fetch-depth:[ \t]*(?<depth>[^#\r\n]+?)[ \t]*(?:#.*)?$");
-        workflowFetchDepths
-            .Select(match => match.Groups["depth"].Value)
-            .ShouldBe(
-                ["0", "1"],
-                "integration.yml declares full history for published-compatibility and a shallow live-sidecar checkout.");
+        checkoutFetchDepths.Count.ShouldBe(1, "The live-sidecar repository checkout must declare exactly one history depth.");
 
         MatchCollection repositoryCheckoutWithHeaders = Regex.Matches(
             repositoryCheckoutStep,
@@ -2001,7 +2059,7 @@ public sealed class ReleasePackageManifestTests
             "The test-only live-sidecar lane requires only the explicitly shallow checked-out commit.");
 
         MatchCollection daprCliVersions = Regex.Matches(
-            integration,
+            workflowEnvironment,
             @"(?m)^[ \t]*DAPR_CLI_VERSION:[ \t]*'(?<version>[^']+)'[ \t]*(?:#.*)?$");
         daprCliVersions.Count.ShouldBe(1, "integration.yml must declare exactly one Dapr CLI pin.");
         daprCliVersions[0].Groups["version"].Value.ShouldBe(
@@ -2009,13 +2067,12 @@ public sealed class ReleasePackageManifestTests
             "The Dapr CLI pin must be the installable CLI release used by dapr/setup-dapr.");
 
         MatchCollection daprRuntimeVersions = Regex.Matches(
-            integration,
+            workflowEnvironment,
             @"(?m)^[ \t]*DAPR_RUNTIME_VERSION:[ \t]*'(?<version>[^']+)'[ \t]*(?:#.*)?$");
-        daprRuntimeVersions
-            .Select(match => match.Groups["version"].Value)
-            .ShouldBe(
-                ["1.18.2", "1.18.4"],
-                "The workflow runtime pin stays 1.18.2 for the live sidecar, and published-compatibility pins 1.18.4 on its own job.");
+        daprRuntimeVersions.Count.ShouldBe(1, "integration.yml must declare exactly one Dapr runtime pin.");
+        daprRuntimeVersions[0].Groups["version"].Value.ShouldBe(
+            "1.18.2",
+            "The live-sidecar runtime must remain independently pinned to Dapr runtime 1.18.2.");
 
         integration.ShouldContain("version: ${{ env.DAPR_CLI_VERSION }}");
         integration.ShouldContain("runtime-version: ${{ env.DAPR_RUNTIME_VERSION }}");
