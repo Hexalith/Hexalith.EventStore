@@ -89,3 +89,44 @@ digests = dict(root=hashlib.sha256(canonical(envelope)).hexdigest(), routeFacet=
                idempotencyFacet=envelope["idempotencyFacetDigest"], declaration=routes[0]["declarationDigest"],
                descriptor=idempotency[0]["descriptorDigest"], idempotencyEntry=idempotency[0]["contentDigest"])
 (ROOT / "Digests.json").write_text(json.dumps(digests, indent=2) + "\n")
+
+
+# V2 vectors use an independent construction, leaving every v1 byte above unchanged.
+def execution(handler, aliases, target="domain-service", query=None, outputs=(), actor=None, delegated=False):
+    return dict(handlerType=handler, aliasPolicy="clr-short-name-v1" if query is None and not outputs else "exact",
+                aliases=sorted(aliases), targetKind=target, queryKind=query,
+                projectionOutputs=sorted(outputs), actorType=actor, requiresDelegatedContext=delegated)
+
+
+v2_declarations = [dict(d) for d in declarations[:-1]]
+v2_declarations[0]["execution"] = execution("Fixture.CreateCounter", ["CreateCounter", "create-counter"])
+v2_declarations[1]["operation"] = "projection:query"
+v2_declarations[1]["execution"] = execution("Fixture.CounterQuery", ["get-counter-status"],
+                                          "projection-actor", "projection", actor="ProjectionActor")
+v2_declarations[2]["execution"] = execution("Fixture.CounterProjection", ["counter"],
+                                          outputs=["counter", "counter-audit"])
+v2_declarations[3]["execution"] = execution("Fixture.CreateTenant", ["CreateTenant", "create-tenant"])
+v2_computed = declaration("tenant-authority", "query", "tenants", "Fixture.ResolveAuthority.v1", None)
+v2_computed["execution"] = execution("Fixture.ResolveAuthority", ["Fixture.ResolveAuthority.v1"],
+                                    query="computed", delegated=True)
+v2_declarations.append(v2_computed)
+v2_routes = [dict(routeId=d["routeId"], generation=7,
+                  declarationDigest=digest(dict(purpose="route-declaration", schemaVersion=2, declaration=d)),
+                  appId="fixture-eventstore" if d["execution"]["targetKind"] == "projection-actor" else
+                  ("fixture-tenants" if d["domain"] == "tenants" else "fixture-counter"),
+                  method="QueryAsync" if d["execution"]["targetKind"] == "projection-actor" else d["operation"].split(":")[1],
+                  contractVersion="v1", credentialKind=d["credentialKind"], operation=d["operation"],
+                  isRuntimeOverride=False, resolverTenantPattern="system" if d["domain"] == "tenants" else "*")
+             for d in v2_declarations]
+v2_envelope = dict(schemaVersion=2, generation=7, profile="Development", allowRuntimeOverrides=False,
+                   declarations=v2_declarations, routes=v2_routes, idempotency=idempotency)
+v2_envelope["routeFacetDigest"] = digest(dict(purpose="route-facet", schemaVersion=2, generation=7,
+                                             declarations=v2_declarations, routes=v2_routes))
+v2_envelope["idempotencyFacetDigest"] = digest(dict(purpose="idempotency-facet", schemaVersion=2,
+                                                   generation=7, entries=idempotency))
+(ROOT / "V2CanonicalCatalog.json").write_bytes(canonical(v2_envelope))
+v2_digests = dict(root=hashlib.sha256(canonical(v2_envelope)).hexdigest(),
+                  routeFacet=v2_envelope["routeFacetDigest"], idempotencyFacet=v2_envelope["idempotencyFacetDigest"],
+                  declarations={r["routeId"]: r["declarationDigest"] for r in v2_routes},
+                  idempotencyEntries={i["routeId"]: i["contentDigest"] for i in idempotency})
+(ROOT / "V2Digests.json").write_text(json.dumps(v2_digests, indent=2) + "\n")

@@ -1,0 +1,16 @@
+{
+  "root": "c8b28c28e017154f6ecf6f69a60e89448a9df7d4a4161809f4aeda8c398ec049",
+  "routeFacet": "eda1af4d9a86cd6c8a6c2bf4ce73cf065a34a6f8ec1bb44f7ac9bbf186a6d6ea",
+  "idempotencyFacet": "32c6ec0583df790769e0291c6e263bddd27bd8810009b334fa64d939f4a99c51",
+  "declarations": {
+    "counter-create": "0a64dfc03635f50c78535434b4b802414b278dbf74f2d24c60fe96df6e3c7258",
+    "counter-get": "e0f3d4df254d850b36e3cfd31a5cb0718e03232550a3e7c627e3e3e2e71b2b3d",
+    "counter-project": "af20441824bf59472a9f66c6a4e0bc9ee4d04ecdd645d323f2cecdea2725714b",
+    "platform-tenant-create": "04c18161537f37799ce6eb3ab3c3e5ba910b0b2c0795b333e38a93a095ece781",
+    "tenant-authority": "0cf14803333a93fae69aabdd8f907fdf58c837a279af9190c79eb61f1a1392a0"
+  },
+  "idempotencyEntries": {
+    "counter-create": "61a34efa07de16a03fb30e6149754c27eeab5cbe7688252ef98b69da0e0c6c84",
+    "platform-tenant-create": "ce09c9f99011132de8e086bafc12735b83edac9b131bda2479850d715d41dbc7"
+  }
+}

@@ -19,7 +19,14 @@ public static class DomainCatalogCapabilities
         var routes = new List<RouteContractDeclaration>();
         foreach (Type type in types.Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IDomainQueryHandler).IsAssignableFrom(type)))
         {
-            if (type.GetProperty("CatalogDeclaration", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) is not RouteContractDeclaration route
+            object? metadata;
+            try { metadata = type.GetProperty("CatalogDeclaration", BindingFlags.Public | BindingFlags.Static)?.GetValue(null); }
+            catch (Exception exception) when (exception is TargetInvocationException or TypeInitializationException or AmbiguousMatchException
+                or MemberAccessException or TargetException or ArgumentException or NotSupportedException or TypeLoadException or FileNotFoundException or FileLoadException)
+            {
+                throw new RouteCatalogValidationException([new("$.capabilities.queries", "unavailable-compiled-handler-metadata")]);
+            }
+            if (metadata is not RouteContractDeclaration route
                 || route.Kind != "query" || route.Execution?.TargetKind != "domain-service")
                 throw new RouteCatalogValidationException([new("$.capabilities.queries", "missing-actual-handler-declaration")]);
             RouteCatalogValidator.ValidateDeclaration(route);

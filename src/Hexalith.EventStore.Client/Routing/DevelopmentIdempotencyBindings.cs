@@ -9,6 +9,10 @@ public static class DevelopmentIdempotencyBindings
     public static IdempotencyCatalogEntry Bind(CommandIntentDeclaration declaration, long generation)
     {
         ArgumentNullException.ThrowIfNull(declaration);
+        RouteCatalogValidator.ValidateDescriptor(declaration.DescriptorSchema);
+        IdempotencyDescriptorField? subject = declaration.DescriptorSchema.Fields.SingleOrDefault(field => field.Name == "acting-subject");
+        if (declaration.RequiresAuthenticatedSubject ? subject?.Type != "string" : subject is not null)
+            throw new ArgumentException("Authenticated-subject policy must agree with the reserved acting-subject string descriptor.", nameof(declaration));
         var entry = new IdempotencyCatalogEntry(declaration.Route.RouteId, generation, declaration.Route.Domain,
             declaration.Route.MessageType!, declaration.AdapterId, declaration.OperationId, declaration.PolicyVersion,
             declaration.DescriptorSchema, RouteCatalogCodec.ComputeDescriptorDigest(declaration.DescriptorSchema),

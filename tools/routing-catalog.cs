@@ -11,6 +11,8 @@ using Hexalith.EventStore.CatalogConstruction;
 using Hexalith.EventStore.Contracts.Routing;
 
 // Repository-local offline developer tool. No operator service, activation, or signing authority.
+// The current Development profile is incomplete: development/check-development reject its
+// unbounded query fallback. The retained 29-route file is an unactivated declaration candidate.
 // dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true -- development . deploy/dapr/eventstore-routing-catalog.json
 // dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true -- check-development . deploy/dapr/eventstore-routing-catalog.json
 // dotnet run tools/routing-catalog.cs -p:UseHexalithProjectReferences=true -- generate INPUT OUTPUT

@@ -6,6 +6,63 @@ public class RouteCatalogValidatorTests
 {
     [Theory]
     [InlineData("same-reference", false)]
+    [InlineData("same-generation", true)]
+    [InlineData("consumer", true)]
+    [InlineData("store", true)]
+    [InlineData("name", true)]
+    public void SharedMapKeyUsesOneGenerationAcrossCommands(string difference, bool accepted)
+    {
+        RouteCatalogEnvelope valid = RouteCatalogCodec.Decode(RouteCatalogCodecTests.FixtureBytes());
+        RouteCatalogValidator.Validate(valid);
+        IdempotencyCatalogEntry changed = valid.Idempotency[1];
+        if (difference != "same-generation") changed = changed with
+        {
+            ActiveDigestKeyGeneration = "other-" + changed.ActiveDigestKeyGeneration,
+            ReaderDigestKeyGenerations = changed.ReaderDigestKeyGenerations.Select(generation => "other-" + generation).ToArray(),
+            KeyMap = changed.KeyMap.Select(key => key with { Generation = "other-" + key.Generation }).ToArray(),
+        };
+        changed = difference switch
+        {
+            "consumer" => changed with { ConsumerAppId = "another-consumer" },
+            "store" => changed with { SecretStore = "another-store" },
+            "name" => changed with { LogicalSecretName = "another-map" },
+            _ => changed,
+        };
+        changed = changed with { ContentDigest = RouteCatalogCodec.ComputeIdempotencyEntryDigest(changed) };
+        RouteCatalogEnvelope candidate = valid with { Idempotency = [valid.Idempotency[0], changed] };
+        if (accepted) RouteCatalogValidator.Validate(RouteCatalogCodec.Seal(candidate));
+        else Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.Seal(candidate)).Diagnostics.Single()
+            .ShouldBe(new RouteCatalogDiagnostic("$.idempotency[1].keyMap[0].generation", "conflicting-secret-map-key-generation"));
+    }
+
+    [Theory]
+    [InlineData("same-reference", false)]
+    [InlineData("same-key", true)]
+    [InlineData("consumer", true)]
+    [InlineData("store", true)]
+    [InlineData("name", true)]
+    public void SharedGenerationUsesOneMapKeyAcrossCommands(string difference, bool accepted)
+    {
+        RouteCatalogEnvelope valid = RouteCatalogCodec.Decode(RouteCatalogCodecTests.FixtureBytes());
+        RouteCatalogValidator.Validate(valid);
+        IdempotencyCatalogEntry changed = valid.Idempotency[1];
+        changed = changed with { KeyMap = changed.KeyMap.Select(key => key with { MapKey = difference == "same-key" ? key.MapKey : "other-" + key.MapKey }).ToArray() };
+        changed = difference switch
+        {
+            "consumer" => changed with { ConsumerAppId = "another-consumer" },
+            "store" => changed with { SecretStore = "another-store" },
+            "name" => changed with { LogicalSecretName = "another-map" },
+            _ => changed,
+        };
+        changed = changed with { ContentDigest = RouteCatalogCodec.ComputeIdempotencyEntryDigest(changed) };
+        RouteCatalogEnvelope candidate = valid with { Idempotency = [valid.Idempotency[0], changed] };
+        if (accepted) RouteCatalogValidator.Validate(RouteCatalogCodec.Seal(candidate));
+        else Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.Seal(candidate)).Diagnostics.Single()
+            .ShouldBe(new RouteCatalogDiagnostic("$.idempotency[1].keyMap[0].mapKey", "conflicting-secret-map-key"));
+    }
+
+    [Theory]
+    [InlineData("same-reference", false)]
     [InlineData("consumer", true)]
     [InlineData("store", true)]
     [InlineData("name", true)]

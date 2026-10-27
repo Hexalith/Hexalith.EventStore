@@ -36,6 +36,86 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 public sealed class WorkloadGatewayControllerTests
 {
     [Fact]
+    public async Task WorkloadActorBindingReachesDeclaredIntentAndActorlessCallsReject()
+    {
+        var registry = new Hexalith.EventStore.Server.Commands.IdempotencyIntentAdapterRegistry(
+            Hexalith.Tenants.Server.Routing.TenantIntentAdapters.Create(), new());
+        var intents = new List<byte[]>();
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            intents.Add(registry.Resolve(call.Arg<SubmitCommand>()).CanonicalIntent);
+            return new SubmitCommandResult("correlation-1");
+        });
+        foreach (string actor in new[] { "operator-1", "operator-2" })
+        {
+            CommandsController controller = CommandController(mediator, "tenant-a", actor);
+            ClaimsIdentity identity = (ClaimsIdentity)controller.User.Identity!;
+            identity.RemoveClaim(identity.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)!);
+            identity.AddClaim(new(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType, "global-administrators"));
+            (await controller.SubmitWorkload(SubjectSensitiveRequest() with { Extensions = null }, TestContext.Current.CancellationToken)).ShouldBeOfType<AcceptedResult>();
+            System.Text.Encoding.UTF8.GetString(intents[^1]).ShouldContain(actor);
+            System.Text.Encoding.UTF8.GetString(intents[^1]).ShouldNotContain("spoofed-subject");
+        }
+        intents[0].ShouldNotBe(intents[1]);
+        CommandsController actorless = CommandController(mediator, "tenant-a");
+        ClaimsIdentity actorlessIdentity = (ClaimsIdentity)actorless.User.Identity!;
+        actorlessIdentity.RemoveClaim(actorlessIdentity.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)!);
+        actorlessIdentity.AddClaim(new(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType, "global-administrators"));
+        actorlessIdentity.AddClaim(new(ClaimTypes.NameIdentifier, "workload:timesheets"));
+        actorlessIdentity.AddClaim(new("sub", "workload:timesheets"));
+        (await actorless.SubmitWorkload(SubjectSensitiveRequest(), TestContext.Current.CancellationToken)).ShouldBeOfType<ForbidResult>();
+        await Should.ThrowAsync<InvalidOperationException>(() => actorless.SubmitWorkload(SubjectSensitiveRequest() with { Extensions = null }, TestContext.Current.CancellationToken));
+        intents.Count.ShouldBe(2);
+        await mediator.Received(1).Send(Arg.Is<SubmitCommand>(command => command.AuthenticatedSubject == null), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SignedBoundPrincipalReachesDeclaredIntentAndChangesItsIdentity()
+    {
+        using RSA rsa = RSA.Create(2048);
+        string privateKey = Convert.ToBase64String(rsa.ExportPkcs8PrivateKey());
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Authentication:BoundStreamRead:PublicKeys:timesheets"] = Convert.ToBase64String(rsa.ExportSubjectPublicKeyInfo()),
+            ["Authentication:BoundCommand:AllowedDomains:timesheets"] = "global-administrators",
+        }).Build();
+        var registry = new Hexalith.EventStore.Server.Commands.IdempotencyIntentAdapterRegistry(
+            Hexalith.Tenants.Server.Routing.TenantIntentAdapters.Create(), new());
+        var intents = new List<byte[]>();
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            intents.Add(registry.Resolve(call.Arg<SubmitCommand>()).CanonicalIntent);
+            return new SubmitCommandResult("correlation-1");
+        });
+        var controller = new CommandsController(mediator,
+            new ExtensionMetadataSanitizer(Options.Create(new ExtensionMetadataOptions())),
+            NullLogger<CommandsController>.Instance, configuration: configuration)
+        {
+            ControllerContext = new ControllerContext { HttpContext = Context("tenant-a", "ignored-claim-actor") },
+        };
+        controller.Request.Scheme = "https";
+        controller.Request.Host = new HostString("localhost");
+        ((ClaimsIdentity)controller.User.Identity!).AddClaim(new(ClaimTypes.NameIdentifier, "workload:timesheets"));
+        foreach (string actor in new[] { "signed-actor-1", "signed-actor-2" })
+        {
+            var request = new BoundWorkloadCommandRequest(SubjectSensitiveRequest(), actor);
+            controller.Request.Headers[BoundWorkloadCommandProof.HeaderName] = BoundWorkloadCommandProof.Issue(request, "timesheets", privateKey, DateTimeOffset.UtcNow);
+            (await controller.SubmitBoundWorkload(request, TestContext.Current.CancellationToken)).ShouldBeOfType<AcceptedResult>();
+            System.Text.Encoding.UTF8.GetString(intents[^1]).ShouldContain(actor);
+            System.Text.Encoding.UTF8.GetString(intents[^1]).ShouldNotContain("ignored-claim-actor");
+            System.Text.Encoding.UTF8.GetString(intents[^1]).ShouldNotContain("spoofed-subject");
+            (await controller.SubmitBoundWorkload(request with { PrincipalId = "unsigned-substitution" }, TestContext.Current.CancellationToken)).ShouldBeOfType<ForbidResult>();
+        }
+        intents.Count.ShouldBe(2);
+        intents[0].ShouldNotBe(intents[1]);
+    }
+
+    private static SubmitCommandRequest SubjectSensitiveRequest() => new("message-123", "tenant-a", "global-administrators", "target-1", "set-global-administrator",
+        JsonSerializer.SerializeToElement(new { UserId = "target-user" }), Extensions: new() { ["subject"] = "spoofed-subject" });
+
+    [Fact]
     public void Workload_routes_require_distinct_signed_operation_policies()
     {
         typeof(CommandsController).GetMethod(nameof(CommandsController.SubmitWorkload))!

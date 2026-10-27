@@ -1,4 +1,6 @@
 using System.Text;
+using System.Text.Json;
+using System.Security.Cryptography;
 using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Routing;
 
@@ -6,6 +8,32 @@ namespace Hexalith.EventStore.Contracts.Tests.Routing;
 
 public class RouteCatalogV2Tests
 {
+    [Fact]
+    public void IndependentV2VectorsBindEveryExecutionFieldAndFacet()
+    {
+        string directory = Path.Combine(AppContext.BaseDirectory, "Routing", "Fixtures");
+        byte[] bytes = File.ReadAllBytes(Path.Combine(directory, "V2CanonicalCatalog.json"));
+        using JsonDocument digests = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(directory, "V2Digests.json")));
+        JsonElement expected = digests.RootElement;
+        string root = expected.GetProperty("root").GetString()!;
+        RouteCatalogEnvelope catalog = RouteCatalogCodec.Decode(bytes, root);
+        RouteCatalogCodec.Encode(catalog).ShouldBe(bytes);
+        RouteCatalogCodec.ComputeRootDigest(catalog).ShouldBe(root);
+        Convert.ToHexStringLower(SHA256.HashData(bytes)).ShouldBe(root);
+        catalog.RouteFacetDigest.ShouldBe(expected.GetProperty("routeFacet").GetString());
+        catalog.IdempotencyFacetDigest.ShouldBe(expected.GetProperty("idempotencyFacet").GetString());
+        foreach (RouteContractDeclaration declaration in catalog.Declarations)
+            RouteCatalogCodec.ComputeDeclarationDigest(declaration).ShouldBe(expected.GetProperty("declarations").GetProperty(declaration.RouteId).GetString());
+        foreach (IdempotencyCatalogEntry entry in catalog.Idempotency)
+            RouteCatalogCodec.ComputeIdempotencyEntryDigest(entry).ShouldBe(expected.GetProperty("idempotencyEntries").GetProperty(entry.RouteId).GetString());
+        catalog.Declarations.Single(d => d.RouteId == "counter-create").Execution!.Aliases.ShouldBe(["CreateCounter", "create-counter"]);
+        catalog.Declarations.Single(d => d.RouteId == "counter-get").Execution!.ActorType.ShouldBe("ProjectionActor");
+        catalog.Declarations.Single(d => d.RouteId == "tenant-authority").Execution!.RequiresDelegatedContext.ShouldBeTrue();
+        catalog.Declarations.Single(d => d.RouteId == "counter-project").Execution!.ProjectionOutputs.ShouldBe(["counter", "counter-audit"]);
+        catalog.Routes.Single(r => r.RouteId == "tenant-authority").ResolverTenantPattern.ShouldBe("system");
+        catalog.Routes.Single(r => r.RouteId == "counter-get").ResolverTenantPattern.ShouldBe("*");
+    }
+
     [Fact]
     public void ActorAndComputedQueriesRoundTripWithoutInventingProjectionTargets()
     {

@@ -112,6 +112,8 @@ public static partial class RouteCatalogValidator
         Require(bound.Count == declarations.Count, "$.routes", "missing-binding");
         var commands = new HashSet<string>(StringComparer.Ordinal);
         var secretMapGenerations = new Dictionary<(string Consumer, string Store, string Name), string>();
+        var secretMapKeys = new Dictionary<(string Consumer, string Store, string Name, string Generation), string>();
+        var secretKeyGenerations = new Dictionary<(string Consumer, string Store, string Name, string MapKey), string>();
         for (int index = 0; index < envelope.Idempotency.Count; index++)
         {
             IdempotencyCatalogEntry entry = envelope.Idempotency[index];
@@ -125,6 +127,18 @@ public static partial class RouteCatalogValidator
             Require(!secretMapGenerations.TryGetValue(secretReference, out string? generation) || generation == entry.SecretMapGeneration,
                 path + ".secretMapGeneration", "conflicting-secret-map-generation");
             secretMapGenerations[secretReference] = entry.SecretMapGeneration;
+            for (int keyIndex = 0; keyIndex < entry.KeyMap.Count; keyIndex++)
+            {
+                DigestKeyMapReference key = entry.KeyMap[keyIndex];
+                var reference = (entry.ConsumerAppId, entry.SecretStore, entry.LogicalSecretName, key.Generation);
+                Require(!secretMapKeys.TryGetValue(reference, out string? mapKey) || mapKey == key.MapKey,
+                    $"{path}.keyMap[{keyIndex}].mapKey", "conflicting-secret-map-key");
+                secretMapKeys[reference] = key.MapKey;
+                var keyReference = (entry.ConsumerAppId, entry.SecretStore, entry.LogicalSecretName, key.MapKey);
+                Require(!secretKeyGenerations.TryGetValue(keyReference, out string? keyGeneration) || keyGeneration == key.Generation,
+                    $"{path}.keyMap[{keyIndex}].generation", "conflicting-secret-map-key-generation");
+                secretKeyGenerations[keyReference] = key.Generation;
+            }
             Require(entry.ContentDigest == RouteCatalogCodec.ComputeIdempotencyEntryDigest(entry), path + ".contentDigest", "idempotency-content-digest-mismatch");
         }
 

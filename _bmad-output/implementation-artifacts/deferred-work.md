@@ -6145,3 +6145,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-route-catalog-construction-tooling.md`
   summary: Preserve producer paging metadata when an otherwise conditional query response would return 304.
   evidence: Concurrent QueriesController changes gate 304 on request policy inputs, projection version, and warnings, but not normalized producer Metadata.Paging; a producer may apply default paging with an opaque ETag while the request has no policy inputs. EventStoreGatewayClient constructs 304 metadata without Paging, losing cursor/count data. This is outside the catalog tooling's explicit no-runtime-change intent; add a default-producer-paging conditional-response test and retain a 200 body or a complete carrier.
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Make independently committed owner-deadline tests deterministic under loaded CI.
+  evidence: DomainService.Tests/QueryAuthorityCorrectionTests.OwnerDeadlines.cs starts a two-second caller timer before RSA generation and client setup, then requires it to remain uncancelled; setup/scheduler delay can violate that assumption independently of the owner deadline.

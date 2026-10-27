@@ -18,11 +18,32 @@ public sealed class DeclaredIdempotencyIntentAdapter<TCommand> : IDeclaredIdempo
     {
         ArgumentNullException.ThrowIfNull(declaration);
         ArgumentNullException.ThrowIfNull(semanticFields);
+        declaration = declaration with
+        {
+            Route = declaration.Route with
+            {
+                FallbackTypes = Array.AsReadOnly(declaration.Route.FallbackTypes.ToArray()),
+                Execution = declaration.Route.Execution is { } execution ? execution with
+                {
+                    Aliases = Array.AsReadOnly(execution.Aliases.ToArray()),
+                    ProjectionOutputs = Array.AsReadOnly(execution.ProjectionOutputs.ToArray()),
+                } : null,
+            },
+            DescriptorSchema = declaration.DescriptorSchema with
+            {
+                Fields = Array.AsReadOnly(declaration.DescriptorSchema.Fields.ToArray()),
+            },
+        };
         RouteCatalogValidator.ValidateDeclaration(declaration.Route);
         RouteCatalogValidator.ValidateDescriptor(declaration.DescriptorSchema);
         if (declaration.DescriptorSchema.Fields.Count(field => field.Name == "target" && field.Type == "string") != 1)
         {
             throw new ArgumentException("The descriptor must declare the canonical target as a string.", nameof(declaration));
+        }
+        IdempotencyDescriptorField? subject = declaration.DescriptorSchema.Fields.SingleOrDefault(field => field.Name == "acting-subject");
+        if (declaration.RequiresAuthenticatedSubject ? subject?.Type != "string" : subject is not null)
+        {
+            throw new ArgumentException("Authenticated-subject policy must agree with the reserved acting-subject string descriptor.", nameof(declaration));
         }
         if (declaration.Route.Kind != "command" || declaration.Route.Execution?.HandlerType != typeof(TCommand).FullName)
         {

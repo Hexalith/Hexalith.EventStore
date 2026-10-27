@@ -1,5 +1,6 @@
 using System.Text;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Client.Routing;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.DomainService;
@@ -13,6 +14,46 @@ namespace Hexalith.EventStore.Sample.Tests;
 public class SampleCatalogTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SubjectFlagMustExactlyAgreeWithTheHashedDescriptor(bool requiresSubject)
+    {
+        CommandIntentDeclaration template = SampleCatalog.Commands.Single(command => command.Route.Execution!.HandlerType == typeof(IncrementCounter).FullName);
+        CommandIntentDeclaration valid = template with
+        {
+            RequiresAuthenticatedSubject = requiresSubject,
+            DescriptorSchema = template.DescriptorSchema with
+            {
+                Fields = requiresSubject ? [new("target", "string"), new("acting-subject", "string")] : [new("target", "string")],
+            },
+        };
+        var adapter = new DeclaredIdempotencyIntentAdapter<IncrementCounter>(valid, _ => new Dictionary<string, object?>());
+        var command = new IdempotencyIntentCommand(adapter.CommandType, "tenant-a", "counter", "counter-1", "{}"u8.ToArray(), null) { AuthenticatedSubject = "trusted-actor" };
+        Encoding.UTF8.GetString(adapter.CreateIntent(command).SemanticPayload).ShouldBe(requiresSubject ? "{\"acting-subject\":\"trusted-actor\"}" : "{}");
+        string digest = RouteCatalogCodec.ComputeDescriptorDigest(valid.DescriptorSchema);
+        DevelopmentIdempotencyBindings.Bind(valid, 1).DescriptorDigest.ShouldBe(digest);
+        CommandIntentDeclaration toggled = valid with { RequiresAuthenticatedSubject = !requiresSubject };
+        RouteCatalogCodec.ComputeDescriptorDigest(toggled.DescriptorSchema).ShouldBe(digest);
+        Should.Throw<ArgumentException>(() => new DeclaredIdempotencyIntentAdapter<IncrementCounter>(toggled, _ => new Dictionary<string, object?>()));
+        Should.Throw<ArgumentException>(() => DevelopmentIdempotencyBindings.Bind(toggled, 1));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReservedSubjectDescriptorMustBeAString(bool requiresSubject)
+    {
+        CommandIntentDeclaration template = SampleCatalog.Commands.Single(command => command.Route.Execution!.HandlerType == typeof(IncrementCounter).FullName);
+        CommandIntentDeclaration invalid = template with
+        {
+            RequiresAuthenticatedSubject = requiresSubject,
+            DescriptorSchema = template.DescriptorSchema with { Fields = [new("target", "string"), new("acting-subject", "boolean")] },
+        };
+        Should.Throw<ArgumentException>(() => new DeclaredIdempotencyIntentAdapter<IncrementCounter>(invalid, _ => new Dictionary<string, object?> { ["acting-subject"] = true }));
+        Should.Throw<ArgumentException>(() => DevelopmentIdempotencyBindings.Bind(invalid, 1));
+    }
+
+    [Theory]
     [InlineData("missing")]
     [InlineData("boolean")]
     public void TypedAdapterRequiresCanonicalStringTargetDescriptor(string change)
@@ -24,6 +65,56 @@ public class SampleCatalogTests
         IdempotencyDescriptorField[] fields = change == "missing" ? [new("value", "string")] : [new("target", "boolean")];
         CommandIntentDeclaration invalid = valid with { DescriptorSchema = valid.DescriptorSchema with { Fields = fields } };
         Should.Throw<ArgumentException>(() => new DeclaredIdempotencyIntentAdapter<IncrementCounter>(invalid, _ => new Dictionary<string, object?>()));
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("boolean")]
+    public void AuthenticatedSubjectRequiresItsStringDescriptorAtConstruction(string change)
+    {
+        CommandIntentDeclaration template = SampleCatalog.Commands.Single(command => command.Route.Execution!.HandlerType == typeof(IncrementCounter).FullName);
+        CommandIntentDeclaration valid = template with
+        {
+            RequiresAuthenticatedSubject = true,
+            DescriptorSchema = template.DescriptorSchema with { Fields = [new("target", "string"), new("acting-subject", "string")] },
+        };
+        var adapter = new DeclaredIdempotencyIntentAdapter<IncrementCounter>(valid, _ => new Dictionary<string, object?>());
+        var command = new IdempotencyIntentCommand(adapter.CommandType, "tenant-a", "counter", "counter-1", "{}"u8.ToArray(), null) { AuthenticatedSubject = "trusted-actor" };
+        Encoding.UTF8.GetString(adapter.CreateIntent(command).SemanticPayload).ShouldBe("{\"acting-subject\":\"trusted-actor\"}");
+        CommandIntentDeclaration invalid = valid with
+        {
+            DescriptorSchema = valid.DescriptorSchema with
+            {
+                Fields = change == "missing" ? [new("target", "string")] : [new("target", "string"), new("acting-subject", "boolean")],
+            },
+        };
+        Should.Throw<ArgumentException>(() => new DeclaredIdempotencyIntentAdapter<IncrementCounter>(invalid, _ => new Dictionary<string, object?>()));
+    }
+
+    [Fact]
+    public void TypedAdapterSnapshotsAllNestedOwnerCollections()
+    {
+        CommandIntentDeclaration template = SampleCatalog.Commands.Single(command => command.Route.Execution!.HandlerType == typeof(IncrementCounter).FullName);
+        var aliases = template.Route.Execution!.Aliases.ToList();
+        var fallbacks = new List<string>();
+        var outputs = new List<string>();
+        var fields = template.DescriptorSchema.Fields.ToList();
+        CommandIntentDeclaration mutable = template with
+        {
+            Route = template.Route with { FallbackTypes = fallbacks, Execution = template.Route.Execution with { Aliases = aliases, ProjectionOutputs = outputs } },
+            DescriptorSchema = template.DescriptorSchema with { Fields = fields },
+        };
+        var adapter = new DeclaredIdempotencyIntentAdapter<IncrementCounter>(mutable, _ => new Dictionary<string, object?>());
+        string routeDigest = RouteCatalogCodec.ComputeDeclarationDigest(adapter.Declaration.Route);
+        string schemaDigest = RouteCatalogCodec.ComputeDescriptorDigest(adapter.Declaration.DescriptorSchema);
+        aliases.Clear(); aliases.Add("Bogus"); fallbacks.Add("Bogus"); outputs.Add("invented-output"); fields.Clear(); fields.Add(new("invented", "boolean"));
+        RouteCatalogCodec.ComputeDeclarationDigest(adapter.Declaration.Route).ShouldBe(routeDigest);
+        RouteCatalogCodec.ComputeDescriptorDigest(adapter.Declaration.DescriptorSchema).ShouldBe(schemaDigest);
+        var command = new IdempotencyIntentCommand("IncrementCounter", "tenant-a", "counter", "counter-1", "{}"u8.ToArray(), null);
+        Encoding.UTF8.GetString(adapter.CreateIntent(command).SemanticPayload).ShouldBe("{}");
+        Should.Throw<InvalidOperationException>(() => adapter.CreateIntent(command with { CommandType = "Bogus" }));
+        Should.Throw<NotSupportedException>(() => ((IList<string>)adapter.Declaration.Route.Execution!.Aliases).Add("Bogus"));
+        Should.Throw<NotSupportedException>(() => ((IList<IdempotencyDescriptorField>)adapter.Declaration.DescriptorSchema.Fields).Clear());
     }
 
     [Fact]

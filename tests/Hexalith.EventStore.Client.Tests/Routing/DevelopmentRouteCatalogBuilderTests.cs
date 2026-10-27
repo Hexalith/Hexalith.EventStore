@@ -306,6 +306,63 @@ public class DevelopmentRouteCatalogBuilderTests
             exit.ShouldBe(2, log);
             File.ReadAllBytes(output).ShouldBe(expected);
 
+            // Real Development construction binds only its bounded retained configuration bytes.
+            string profile = Path.Combine(directory, "development-profile");
+            string settings = Path.Combine(profile, "src", "Hexalith.EventStore");
+            Directory.CreateDirectory(settings);
+            string baseSettings = Path.Combine(settings, "appsettings.json");
+            string developmentSettings = Path.Combine(settings, "appsettings.Development.json");
+            File.Copy(SettingsPath("appsettings.json"), baseSettings);
+            File.Copy(SettingsPath("appsettings.Development.json"), developmentSettings);
+            string developmentOutput = Path.Combine(directory, "development.json");
+            (exit, log) = await RunToolAsync(tool, "development", profile, developmentOutput);
+            exit.ShouldBe(2, log);
+            log.Trim().ShouldBe("Route catalog rejected: $.developmentProfile: unrepresented-unbounded-query-fallback");
+            File.Exists(developmentOutput).ShouldBeFalse();
+            byte[] developmentExpected = File.ReadAllBytes(Path.Combine(FindRoot(), "deploy", "dapr", "eventstore-routing-catalog.json"));
+            File.WriteAllBytes(developmentOutput, developmentExpected);
+            foreach (string mode in new[] { "development", "check-development" })
+            {
+                (exit, log) = await RunToolAsync(tool, mode, profile, developmentOutput);
+                exit.ShouldBe(2, log);
+                log.Trim().ShouldBe("Route catalog rejected: $.developmentProfile: unrepresented-unbounded-query-fallback");
+                File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
+            }
+            foreach (string source in new[] { baseSettings, developmentSettings })
+            {
+                byte[] retained = File.ReadAllBytes(source);
+                foreach (string failure in new[] { "conversion", "oversized" })
+                {
+                    if (failure == "conversion")
+                    {
+                        var configuration = System.Text.Json.Nodes.JsonNode.Parse(retained)!;
+                        configuration["EventStore"]!["DomainServices"]!["InvocationTimeoutSeconds"] = "never-print-this-conversion-value";
+                        File.WriteAllText(source, configuration.ToJsonString());
+                    }
+                    else
+                    {
+                        using var oversizedSettings = new FileStream(source, FileMode.Create, FileAccess.Write);
+                        oversizedSettings.SetLength(RouteCatalogCodec.MaximumByteLength + 1L);
+                    }
+                    foreach (string mode in new[] { "development", "check-development" })
+                    {
+                        (exit, log) = await RunToolAsync(tool, mode, profile, developmentOutput);
+                        exit.ShouldBe(2, log);
+                        log.Trim().ShouldBe(failure == "conversion"
+                            ? "Route catalog rejected: $.developmentProfile.configuration: invalid-configuration"
+                            : "Route catalog rejected: $.developmentProfile: size-limit");
+                        log.ShouldNotContain("never-print-this-conversion-value");
+                        File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
+                        Directory.GetFiles(directory, ".routing-catalog-*.tmp").ShouldBeEmpty();
+                    }
+                    File.WriteAllBytes(source, retained);
+                }
+            }
+            (exit, log) = await RunToolAsync(tool, "check-development", profile, developmentOutput);
+            exit.ShouldBe(2, log);
+            log.Trim().ShouldBe("Route catalog rejected: $.developmentProfile: unrepresented-unbounded-query-fallback");
+            File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
+
             // Every file argument rejects empty/blank paths with a bounded error and preserves existing output.
             foreach (string invalidPath in new[] { string.Empty, " ", "\t" })
             {
