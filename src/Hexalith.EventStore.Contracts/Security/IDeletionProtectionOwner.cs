@@ -21,6 +21,9 @@ public interface IDeletionProtectionOwner
     /// <summary>Reads only the exact retained original issued-but-blocked phase and outcome, never advancing an ordinal.</summary>
     Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability, CancellationToken cancellationToken = default)
         => Task.FromResult<DeletionBlockedReplacementResult?>(null);
+    /// <summary>Reads only the exact retained reservation request and reserved/consumed outcome without recovery or mutation; omitted implementations remain unavailable.</summary>
+    Task<DeletionReservedManifestOriginal?> ReadReservedManifestOriginalAsync(string tenantId, string batchId, string reservationReceiptId, CancellationToken cancellationToken = default)
+        => Task.FromResult<DeletionReservedManifestOriginal?>(null);
     /// <summary>Reads/reconciles only exact original durable result; absence or unavailable state grants no effect.</summary>
     Task<DeletionConsumptionOutcome> LookupAsync(string tenantId, string batchId, CancellationToken cancellationToken = default);
 }

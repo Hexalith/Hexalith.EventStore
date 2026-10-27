@@ -1,0 +1,9 @@
+{
+  "src/Hexalith.EventStore.Contracts/Security/DeletionReservedManifestOriginal.cs": "c856abee86255c547c31008bbbaa1476889ebbc200fb3de85966e02efd5e5d7f",
+  "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs": "a0be5745aaf69a5ffb2a40653c2b2860cdbac919fc7889d3d17c65a526e67e78",
+  "src/Hexalith.EventStore.Server/Security/IDeletionConsumptionActor.cs": "29fc0f05ffe7e1282e27590266320cda8461d2ae1b9f1f4703090e3c66f83f55",
+  "src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs": "0c96b4e2cca1b091f1314bebb39a040d47e64453c4c1d1fe557357b6299805b8",
+  "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs": "791d22ef0aa77f1912b23c330ebba906333619796173f2aef8fe0357e7580635",
+  "tests/Hexalith.EventStore.Server.Tests/Security/DeletionReservedManifestOriginalTests.cs": "650f7b600451baca9442743f76f8a6b3895596d125cfe62e76c7ae3f4bffa841",
+  "tests/Hexalith.EventStore.Server.Tests/Security/ReservedManifestUnavailableOwner.cs": "7297f9b185125d27b7cfdbd41b33edab6d66e316b406a8027e21f409d077d329"
+}

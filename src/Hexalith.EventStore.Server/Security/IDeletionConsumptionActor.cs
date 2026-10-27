@@ -20,6 +20,8 @@ public interface IDeletionConsumptionActor : IActor
     Task<DeletionConsumptionOutcome> ReconcileBlockedReplacementAsync(DeletionBlockedReplacementReconciliation request);
     /// <summary>Reads the exact retained original no-effect reconciliation and outcome.</summary>
     Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability);
+    /// <summary>Reads only an exact retained reserved/consumed request and receipt without reconciliation, recovery or physical work.</summary>
+    Task<DeletionReservedManifestOriginal?> ReadReservedManifestOriginalAsync(string tenantId, string batchId, string reservationReceiptId);
     /// <summary>Reads current independently anchored same-batch/global-key comparison without any effect.</summary>
     Task<DeletionActivationComparison?> ReadActivationComparisonAsync(string tenantId, string batchId, string replacementKeyVersion);
     /// <summary>Reads exact durable batch outcome; reserved recovery only completes the original reservation.</summary>

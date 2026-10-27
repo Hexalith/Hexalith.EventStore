@@ -1,0 +1,6 @@
+[
+  "dotnet",
+  "/tmp/hexalith-reserved-original-20261027/bin/Hexalith.EventStore.Server.Tests/debug/Hexalith.EventStore.Server.Tests.dll",
+  "-class",
+  "Hexalith.EventStore.Server.Tests.Security.PublishedTrustOwnerStateAuthorityTests"
+]

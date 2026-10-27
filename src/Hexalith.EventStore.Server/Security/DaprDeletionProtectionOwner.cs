@@ -34,6 +34,15 @@ public sealed class DaprDeletionProtectionOwner(string tenantId, IActorProxyFact
     public Task<DeletionConsumptionOutcome> LookupAsync(string requestedTenant, string batchId, CancellationToken cancellationToken = default)
         => InvokeAsync(requestedTenant, actor => actor.LookupAsync(requestedTenant, batchId), cancellationToken);
     /// <inheritdoc/>
+    public async Task<DeletionReservedManifestOriginal?> ReadReservedManifestOriginalAsync(string requestedTenant, string batchId, string reservationReceiptId, CancellationToken cancellationToken = default)
+    {
+        if (requestedTenant != tenantId) { throw new ArgumentException("Private protection tenant mismatch."); }
+        using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
+        var result = await deadline.ReadAsync(_ => proxies.CreateActorProxy<IDeletionConsumptionActor>(new(DeletionConsumptionActor.GetActorId(tenantId)), DeletionConsumptionActor.ActorTypeName)
+            .ReadReservedManifestOriginalAsync(requestedTenant, batchId, reservationReceiptId)).ConfigureAwait(false);
+        deadline.ThrowIfCancellationRequested(); return result;
+    }
+    /// <inheritdoc/>
     public async Task<DeletionActivationComparison?> ReadActivationComparisonAsync(string requestedTenant, string batchId, string replacementKeyVersion, CancellationToken cancellationToken = default)
     {
         if (requestedTenant != tenantId) { throw new ArgumentException("Private protection tenant mismatch."); }
