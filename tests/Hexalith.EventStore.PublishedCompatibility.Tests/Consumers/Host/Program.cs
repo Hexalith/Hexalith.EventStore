@@ -44,7 +44,7 @@ builder.Services.AddSingleton<Hexalith.EventStore.Server.Identity.IIdentityAdmis
 builder.Configuration["EventStore:DataProtection:PersistToStateStore"] = "true";
 builder.Configuration["EventStore:DataProtection:StateKey"] = "p1r:cursor-keys";
 builder.Services.AddEventStoreDataProtection(builder.Configuration, "p1r-counter");
-builder.Configuration["APP_API_TOKEN"] = "p1r-synthetic-app-token";
+ArgumentException.ThrowIfNullOrWhiteSpace(builder.Configuration["APP_API_TOKEN"]);
 builder.Configuration["EventStore:Reminders:ActorTypeName"] = "P1RReminderActor";
 builder.Configuration["EventStore:Reminders:Workload"] = "p1r-fixture";
 builder.Configuration["EventStore:Reminders:Purposes:" + Hexalith.EventStore.Contracts.Effects.EffectKindCatalog.DateResume] = "qualification";

@@ -581,6 +581,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         int domainPort = Port();
         _domainPort = domainPort;
         int grpc = Port();
+        string appApiToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         string components = Path.Combine(runtime.Root, "components");
         Directory.CreateDirectory(components);
         await File.WriteAllTextAsync(Path.Combine(components, "state.yaml"), $"apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n  - name: redisHost\n    value: 127.0.0.1:{_redisPort}\n  - name: actorStateStore\n    value: \"true\"\n  - name: keyPrefix\n    value: appid\n");
@@ -589,7 +590,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             ["ASPNETCORE_URLS"] = "http://127.0.0.1:" + _hostPort,
             ["P1R_DOMAIN_URL"] = "http://127.0.0.1:" + domainPort,
             ["DAPR_HTTP_PORT"] = _sidecarPort.ToString(), ["DAPR_GRPC_PORT"] = grpc.ToString(),
-            ["ASPNETCORE_ENVIRONMENT"] = "Testing", ["APP_API_TOKEN"] = "p1r-synthetic-app-token",
+            ["ASPNETCORE_ENVIRONMENT"] = "Testing", ["APP_API_TOKEN"] = appApiToken,
             ["P1R_QUERY_SIGNING_KEY_PATH"] = _querySigningKeyPath,
         };
         PublishedScenarioTests.ActiveAssertions?.Record("runtime-profile", JsonSerializer.Serialize(new
@@ -609,11 +610,15 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             JsonElement identity = await GetAsync("http://127.0.0.1:" + port + "/identity");
             PublishedScenarioTests.ActiveAssertions?.Record("loaded-" + build.Role, identity.GetRawText());
         }
+        var sidecarEnvironment = new Dictionary<string, string>
+        {
+            ["APP_API_TOKEN"] = appApiToken,
+        };
         _writers.Add(runtime.Start(new(Path.Combine(_binaries, "daprd"), ["--app-id", _appId, "--app-port", _hostPort.ToString(),
             "--app-channel-address", "127.0.0.1", "--dapr-http-port", _sidecarPort.ToString(), "--dapr-grpc-port", grpc.ToString(),
             "--dapr-internal-grpc-port", Port().ToString(), "--metrics-port", Port().ToString(), "--profile-port", Port().ToString(),
             "--placement-host-address", "127.0.0.1:" + _placementPort, "--scheduler-host-address", "127.0.0.1:" + _schedulerPort, "--resources-path", components,
-            "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1), new Dictionary<string, string> { ["APP_API_TOKEN"] = "p1r-synthetic-app-token" })));
+            "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1), sidecarEnvironment)));
         await WaitHttpAsync("http://127.0.0.1:" + _sidecarPort + "/v1.0/healthz");
         await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
     }
