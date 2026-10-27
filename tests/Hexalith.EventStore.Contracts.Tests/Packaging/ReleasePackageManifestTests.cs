@@ -1967,7 +1967,11 @@ public sealed class ReleasePackageManifestTests
         MatchCollection workflowFetchDepths = Regex.Matches(
             normalizedIntegration,
             @"(?m)^[ \t]*fetch-depth:[ \t]*(?<depth>[^#\r\n]+?)[ \t]*(?:#.*)?$");
-        workflowFetchDepths.Count.ShouldBe(1, "integration.yml must declare exactly one checkout history depth.");
+        workflowFetchDepths
+            .Select(match => match.Groups["depth"].Value)
+            .ShouldBe(
+                ["0", "1"],
+                "integration.yml declares full history for published-compatibility and a shallow live-sidecar checkout.");
 
         MatchCollection repositoryCheckoutWithHeaders = Regex.Matches(
             repositoryCheckoutStep,
@@ -2007,10 +2011,11 @@ public sealed class ReleasePackageManifestTests
         MatchCollection daprRuntimeVersions = Regex.Matches(
             integration,
             @"(?m)^[ \t]*DAPR_RUNTIME_VERSION:[ \t]*'(?<version>[^']+)'[ \t]*(?:#.*)?$");
-        daprRuntimeVersions.Count.ShouldBe(1, "integration.yml must declare exactly one Dapr runtime pin.");
-        daprRuntimeVersions[0].Groups["version"].Value.ShouldBe(
-            "1.18.2",
-            "The live-sidecar runtime must remain independently pinned to Dapr runtime 1.18.2.");
+        daprRuntimeVersions
+            .Select(match => match.Groups["version"].Value)
+            .ShouldBe(
+                ["1.18.2", "1.18.4"],
+                "The workflow runtime pin stays 1.18.2 for the live sidecar, and published-compatibility pins 1.18.4 on its own job.");
 
         integration.ShouldContain("version: ${{ env.DAPR_CLI_VERSION }}");
         integration.ShouldContain("runtime-version: ${{ env.DAPR_RUNTIME_VERSION }}");

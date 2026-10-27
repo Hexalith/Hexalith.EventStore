@@ -266,6 +266,9 @@ public sealed partial class ContractsPackageDependencyTests
         {
             RepositoryRoot = root,
             CatalogPath = catalogPath,
+            ExcludedPath = useApprovedException
+                ? new[] { "eng/CatalogCandidateTenants.props" }
+                : Array.Empty<string>(),
         }));
         string invocation = "$parameters = Get-Content -LiteralPath '" + argumentFile.Replace("'", "''", StringComparison.Ordinal)
             + "' -Raw | ConvertFrom-Json -AsHashtable\n& '" + validatorPath.Replace("'", "''", StringComparison.Ordinal)

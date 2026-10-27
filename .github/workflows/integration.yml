@@ -48,6 +48,10 @@ jobs:
         run: docker pull redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf
       # The suite downloads checksum-verified 1.18.4 binaries into invocation scratch.
       # It never runs dapr init or changes another job's installed runtime/backend.
+      # The runner materializes and builds these consumer projects inside the lane:
+      # tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Domain
+      # tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Host
+      # tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Probe
       - name: Build the isolated qualification runner
         run: |
           dotnet build tests/Hexalith.EventStore.PublishedCompatibility.Tests/Hexalith.EventStore.PublishedCompatibility.Tests.csproj \

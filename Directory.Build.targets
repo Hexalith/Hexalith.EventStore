@@ -1,8 +1,9 @@
 <Project>
 
-  <!-- Temporary package-only bridge for Story 5.12's release-order dependency. Only the
-       nonpackable catalog consumers may select candidate Tenants packages. Shipped packages,
-       including Admin.Server, retain their published centrally governed dependency versions. -->
+  <!-- Temporary package-only bridge for Story 5.12's release-order dependency. The
+       candidate PackageVersion lives in an excluded props file so shipped pins stay
+       in the shared catalog. Only the nonpackable catalog consumers may select it. -->
+  <Import Project="eng/CatalogCandidateTenants.props" Condition="Exists('eng/CatalogCandidateTenants.props')" />
   <Target Name="ValidateCatalogCandidateConsumer" BeforeTargets="CollectPackageReferences"
           Condition="'$(CatalogCandidateTenantsVersion)' != '' and ('$(MSBuildProjectName)' == 'Hexalith.EventStore.CatalogConstruction' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.Tests' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.QueryRouting.Tests' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.LiveSidecar.Tests' or '$(MSBuildProjectName)' == 'routing-catalog.cs')">
     <Error Condition="'$(IsPackable)' != 'false'" Text="Candidate catalog dependencies are restricted to nonpackable consumers." />
