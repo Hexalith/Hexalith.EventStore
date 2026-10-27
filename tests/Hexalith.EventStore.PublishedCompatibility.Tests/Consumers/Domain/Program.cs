@@ -33,9 +33,15 @@ builder.Services.AddScoped<Hexalith.EventStore.DomainService.IDomainQueryHandler
 WebApplication app = builder.Build();
 app.MapGet("/identity", () => new { identities = ConsumerIdentity.Read() });
 #if SELECTED
-app.MapGet("/stats", () => new { applyCalls = CounterState.ApplyCalls, handleCalls = CounterProcessor.HandleCalls, queryReads = AuthorizedCounterQueryHandler.Reads });
+app.MapGet("/stats", () => new { applyCalls = CounterState.ApplyCalls, handleCalls = CounterProcessor.HandleCalls,
+    queryReads = AuthorizedCounterQueryHandler.Reads, queryRequests = QueryTransportCounters.Requests });
+app.MapGet("/query-types", (IEnumerable<Hexalith.EventStore.DomainService.IDomainQueryHandler> handlers) =>
+    handlers.Where(handler => handler.Domain == "counter").Select(handler => handler.QueryType).Distinct(StringComparer.Ordinal).ToArray());
 app.MapPost("/query", async (Hexalith.EventStore.Contracts.Queries.QueryEnvelope query, HttpContext context) =>
-    await Hexalith.EventStore.DomainService.DomainQueryDispatcher.ExecuteAsync(context.RequestServices, query, context.RequestAborted));
+{
+    QueryTransportCounters.Record();
+    return await Hexalith.EventStore.DomainService.DomainQueryDispatcher.ExecuteAsync(context.RequestServices, query, context.RequestAborted);
+});
 #else
 app.MapGet("/stats", () => new { applyCalls = CounterState.ApplyCalls, handleCalls = CounterProcessor.HandleCalls });
 #endif

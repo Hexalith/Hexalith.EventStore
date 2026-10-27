@@ -8,6 +8,13 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <summary>Owns finite commands, inherited process identities, and label-scoped containers for one invocation.</summary>
 internal sealed class QualificationRuntime : IAsyncDisposable
 {
+    /// <summary>Limits container diagnostics to identity, image, start/running state and the exact ownership label.</summary>
+    internal const string ContainerIdentityFormat = """[{"Id":{{json .Id}},"Name":{{json .Name}},"Image":{{json .Image}},"Config":{"Image":{{json .Config.Image}},"Labels":{"p1r.owner":{{json (index .Config.Labels "p1r.owner")}}}},"State":{"StartedAt":{{json .State.StartedAt}},"Running":{{json .State.Running}}}}]""";
+
+    private readonly object _gate = new();
+    private readonly Action? _beforeProcessStart;
+    private readonly Func<string, Task>? _beforeContainerRemoval;
+    private int _nextReceipt;
     private readonly List<OwnedProcess> _processes = [];
     private readonly HashSet<string> _containerNames = new(StringComparer.Ordinal);
     private readonly HashSet<string> _volumeNames = new(StringComparer.Ordinal);
@@ -25,16 +32,23 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     internal string Root { get; }
 
     /// <summary>Gets measured command observations.</summary>
-    internal IReadOnlyList<CommandObservation> Commands => _commands;
+    internal IReadOnlyList<CommandObservation> Commands { get { lock (_gate) return _commands.ToArray(); } }
 
     /// <summary>Gets every cleanup failure, including failures from earlier cleanup passes.</summary>
     internal IReadOnlyList<string> CleanupFailures => _cleanupFailures;
 
     /// <summary>Initializes invocation storage before any external resource is created.</summary>
-    internal QualificationRuntime()
+    /// <param name="beforeProcessStart">An optional deterministic fixture seam inside atomic launch admission.</param>
+    /// <param name="beforeContainerRemoval">An optional fixture seam after ownership verification and before immutable-ID removal.</param>
+    internal QualificationRuntime(Action? beforeProcessStart = null, Func<string, Task>? beforeContainerRemoval = null)
     {
-        Root = Path.Combine(Path.GetTempPath(), Id);
-        Directory.CreateDirectory(Root);
+        _beforeProcessStart = beforeProcessStart;
+        _beforeContainerRemoval = beforeContainerRemoval;
+        string parent = Environment.GetEnvironmentVariable("P1R_QUALIFICATION_SCRATCH_ROOT")
+            ?? (OperatingSystem.IsLinux() ? "/var/tmp/hexalith-eventstore-qualification" : Path.Combine(Path.GetTempPath(), "hexalith-eventstore-qualification"));
+        Root = Path.Combine(parent, Id);
+        if (OperatingSystem.IsWindows()) Directory.CreateDirectory(Root);
+        else Directory.CreateDirectory(Root, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
     /// <summary>Computes a stable lowercase SHA-256 identity.</summary>
@@ -47,86 +61,121 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     /// <summary>Starts an operation and immediately records ownership before any cancellable await.</summary>
     internal OwnedProcess Start(QualificationCommand command)
     {
-        if (_stopping && !IsCleanupCommand(command)) throw new ObjectDisposedException(nameof(QualificationRuntime), "Owned launches are closed once cleanup starts.");
-        if (!_cleaning) TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
-        var start = new ProcessStartInfo(command.FileName)
+        lock (_gate)
         {
-            WorkingDirectory = command.WorkingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            RedirectStandardInput = command.Input is not null,
-            UseShellExecute = false,
-        };
-        foreach (string argument in command.Arguments) start.ArgumentList.Add(argument);
-        start.Environment["P1R_QUALIFICATION_OWNER"] = Id;
-        string marker = Guid.NewGuid().ToString("N");
-        start.Environment["P1R_COMMAND_OWNER"] = marker;
-        start.Environment["DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER"] = "1";
-        start.Environment["MSBUILDDISABLENODEREUSE"] = "1";
-        if (command.Environment is not null)
-            foreach ((string key, string value) in command.Environment) start.Environment[key] = value;
-        var process = new Process { StartInfo = start };
-        DateTimeOffset attempted = DateTimeOffset.UtcNow;
-        try
-        {
-            if (!process.Start()) throw new InvalidOperationException("Process creation returned false.");
+            if (_stopping && !IsCleanupCommand(command)) throw new ObjectDisposedException(nameof(QualificationRuntime), "Owned launches are closed once cleanup starts.");
+            if (!_cleaning) TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+            var start = new ProcessStartInfo(command.FileName)
+            {
+                WorkingDirectory = command.WorkingDirectory,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = command.Input is not null,
+                UseShellExecute = false,
+            };
+            foreach (string argument in command.Arguments) start.ArgumentList.Add(argument);
+            string marker = Guid.NewGuid().ToString("N");
+            start.Environment["DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER"] = "1";
+            start.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+            if (command.Environment is not null)
+                foreach ((string key, string value) in command.Environment) start.Environment[key] = value;
+            start.Environment["P1R_QUALIFICATION_OWNER"] = Id;
+            start.Environment["P1R_COMMAND_OWNER"] = marker;
+            var process = new Process { StartInfo = start };
+            DateTimeOffset attempted = DateTimeOffset.UtcNow;
+            try
+            {
+                _beforeProcessStart?.Invoke();
+                if (!process.Start()) throw new InvalidOperationException("Process creation returned false.");
+            }
+            catch (Exception error)
+            {
+                File.WriteAllText(Path.Combine(Root, "startup-failure-" + Guid.NewGuid().ToString("N") + ".json"), JsonSerializer.Serialize(new
+                    { command, started = attempted, ended = DateTimeOffset.UtcNow, exitCode = (int?)null, error = error.GetType().FullName, error.Message }));
+                process.Dispose();
+                throw;
+            }
+            var owned = new OwnedProcess(process, new(process.StandardOutput), new(process.StandardError), marker, command);
+            _processes.Add(owned);
+            owned.OverflowCleanup = ObserveOverflowAsync(command, owned, attempted);
+            File.WriteAllText(Path.Combine(Root, $"process-{process.Id}-start.json"), JsonSerializer.Serialize(new { command, started = DateTimeOffset.UtcNow, process.Id, marker }));
+            return owned;
         }
-        catch (Exception error)
-        {
-            File.WriteAllText(Path.Combine(Root, "startup-failure-" + Guid.NewGuid().ToString("N") + ".json"), JsonSerializer.Serialize(new
-                { command, started = attempted, ended = DateTimeOffset.UtcNow, exitCode = (int?)null, error = error.GetType().FullName, error.Message }));
-            process.Dispose();
-            throw;
-        }
-        var owned = new OwnedProcess(process, process.StandardOutput.ReadToEndAsync(), process.StandardError.ReadToEndAsync(), marker);
-        _processes.Add(owned);
-        File.WriteAllText(Path.Combine(Root, $"process-{process.Id}-start.json"), JsonSerializer.Serialize(new { command, started = DateTimeOffset.UtcNow, process.Id, marker }));
-        if (command.Input is not null)
-        {
-            process.StandardInput.Write(command.Input);
-            process.StandardInput.Close();
-        }
-        return owned;
     }
 
     /// <summary>Runs an operation with an independent finite deadline and retains failed command observations.</summary>
     internal async Task<CommandObservation> RunAsync(QualificationCommand command, CancellationToken cancellationToken = default)
     {
+        if (Path.GetFileName(command.FileName) == "docker" && command.Arguments.FirstOrDefault() == "inspect"
+            && !command.Arguments.Contains("--format", StringComparer.Ordinal) && !command.Arguments.Contains("-f", StringComparer.Ordinal))
+            command = command with { Arguments = ["inspect", "--format", ContainerIdentityFormat, .. command.Arguments.Skip(1)] };
         DateTimeOffset began = DateTimeOffset.UtcNow;
-        OwnedProcess owned = Start(command);
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,
             _cleaning ? CancellationToken.None : TestContext.Current.CancellationToken);
         deadline.CancelAfter(command.Timeout);
+        OwnedProcess owned = Start(command);
         try
         {
+            if (command.Input is not null)
+            {
+                await owned.Process.StandardInput.WriteAsync(command.Input.AsMemory(), deadline.Token);
+                await owned.Process.StandardInput.FlushAsync(deadline.Token);
+                owned.Process.StandardInput.Close();
+            }
+            await Task.WhenAny(owned.Process.WaitForExitAsync(deadline.Token), owned.OverflowCleanup).WaitAsync(deadline.Token);
+            if (owned.Overflowed)
+            {
+                await owned.OverflowCleanup;
+                throw new InvalidOperationException("Command output exceeded its bounded capture limit.");
+            }
             await owned.Process.WaitForExitAsync(deadline.Token);
         }
         catch (OperationCanceledException)
         {
             await StopAsync(owned);
             await StopMarkedAsync(owned.Marker);
-            await Task.WhenAll(owned.Output, owned.Error).WaitAsync(TimeSpan.FromSeconds(10));
-            var interrupted = new CommandObservation(command, began, DateTimeOffset.UtcNow, -1,
-                await owned.Output, await owned.Error, Hash(Encoding.UTF8.GetBytes(await owned.Output + await owned.Error)));
-            _commands.Add(interrupted);
-            await SaveObservationAsync(interrupted);
+            try { await Task.WhenAll(owned.Output, owned.Error).WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (Exception) { /* The failed observation below still binds any completed output. */ }
+            await RecordFailedAsync(command, owned, began, "Command input/execution was interrupted or exceeded its deadline.");
             throw new TimeoutException($"Command interrupted or exceeded {command.Timeout}: {command.FileName} {string.Join(' ', command.Arguments)}");
+        }
+        catch (IOException)
+        {
+            await StopAsync(owned);
+            await StopMarkedAsync(owned.Marker);
+            await RecordFailedAsync(command, owned, began, "Command standard-input delivery failed because its pipe closed.");
+            throw;
         }
         // An exited launcher may leave a detached child holding its redirected pipes.
         try { await Task.WhenAll(owned.Output, owned.Error).WaitAsync(TimeSpan.FromSeconds(5)); }
         catch (TimeoutException)
         {
             await StopMarkedAsync(owned.Marker);
-            await Task.WhenAll(owned.Output, owned.Error).WaitAsync(TimeSpan.FromSeconds(10));
+            try { await Task.WhenAll(owned.Output, owned.Error).WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (Exception) { /* Preserve failed output ownership even when a pipe cannot be drained. */ }
+            await RecordFailedAsync(command, owned, began, "Detached descendants retained command output handles after parent exit.");
             throw new InvalidOperationException("Detached descendants retained command output handles after parent exit.");
         }
-        string output = await owned.Output;
-        string error = await owned.Error;
+        if (owned.Overflowed)
+        {
+            await owned.OverflowCleanup;
+            throw new InvalidOperationException("Command output exceeded its bounded capture limit.");
+        }
+        string output = Redact(command, await owned.Output);
+        string error = Redact(command, await owned.Error);
         var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, owned.Process.ExitCode,
             output, error, Hash(Encoding.UTF8.GetBytes(output + error)));
-        _commands.Add(observation);
-        await SaveObservationAsync(observation);
+        if (owned.TryRecord()) await SaveObservationAsync(observation);
         return observation;
+    }
+
+    private async Task RecordFailedAsync(QualificationCommand command, OwnedProcess owned, DateTimeOffset began, string failure)
+    {
+        if (!owned.TryRecord()) return;
+        string output = Redact(command, owned.StandardOutput.Snapshot());
+        string error = Redact(command, owned.StandardError.Snapshot()) + "\n" + failure;
+        var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, -1, output, error, Hash(Encoding.UTF8.GetBytes(output + error)), owned.Overflowed);
+        await SaveObservationAsync(observation);
     }
 
     /// <summary>Runs a command that must succeed, preserving exact nonzero diagnostics on failure.</summary>
@@ -160,21 +209,25 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     }
 
     /// <summary>Stops one directly owned process while output drains remain active.</summary>
-    internal static async Task StopAsync(OwnedProcess owned)
+    internal static async Task StopAsync(OwnedProcess owned, CancellationToken cancellationToken = default)
     {
-        if (!owned.Process.HasExited) owned.Process.Kill(entireProcessTree: true);
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        if (!owned.Process.HasExited) owned.Process.Kill(entireProcessTree: false);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(15));
         await owned.Process.WaitForExitAsync(deadline.Token);
     }
 
     /// <summary>Continues all cleanup attempts, verifies absence, and preserves shared identities on every pass.</summary>
     internal async Task CleanupAsync()
     {
-        _stopping = true;
-        _cleaning = true;
+        lock (_gate)
+        {
+            _stopping = true;
+            _cleaning = true;
+        }
         try
         {
-        foreach (OwnedProcess owned in _processes.ToArray())
+        foreach (OwnedProcess owned in ProcessSnapshot())
         {
             try { await StopAsync(owned); }
             catch (Exception error) { _cleanupFailures.Add($"process {owned.Process.Id}: {error.Message}"); }
@@ -190,12 +243,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
             {
                     try
                     {
-                        string start = File.ReadAllText($"/proc/{pid}/stat").Split(')')[^1].Split(' ', StringSplitOptions.RemoveEmptyEntries)[19];
-                        using Process process = Process.GetProcessById(pid);
-                        string current = File.ReadAllText($"/proc/{pid}/stat").Split(')')[^1].Split(' ', StringSplitOptions.RemoveEmptyEntries)[19];
-                        if (start == current && MarkedProcesses().Contains(pid)) process.Kill(entireProcessTree: true);
-                        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                        await process.WaitForExitAsync(deadline.Token);
+                        await StopMarkedProcessAsync(pid, marker: null);
                     }
                     catch (ArgumentException) { }
                     catch (FileNotFoundException) { }
@@ -204,13 +252,13 @@ internal sealed class QualificationRuntime : IAsyncDisposable
             }
                 await Task.Delay(100);
         }
-        foreach (OwnedProcess process in _processes.ToArray())
+        foreach (OwnedProcess process in ProcessSnapshot())
         {
             try
             {
                 await Task.WhenAll(process.Output, process.Error).WaitAsync(TimeSpan.FromSeconds(5));
                 await File.WriteAllTextAsync(Path.Combine(Root, $"process-{process.Process.Id}.log"),
-                    await process.Output + "\n" + await process.Error);
+                    Redact(process.Command, await process.Output + "\n" + await process.Error));
             }
             catch (Exception error) { _cleanupFailures.Add("Bounded output drain: " + error.Message); }
         }
@@ -228,7 +276,9 @@ internal sealed class QualificationRuntime : IAsyncDisposable
                 string? label = json.RootElement[0].GetProperty("Config").GetProperty("Labels")
                     .GetProperty("p1r.owner").GetString();
                 if (label != Id) throw new InvalidOperationException("Container ownership label changed; removal refused.");
-                await RequireAsync("docker", ["rm", "-fv", name], timeout: TimeSpan.FromSeconds(30));
+                string containerId = json.RootElement[0].GetProperty("Id").GetString()!;
+                if (_beforeContainerRemoval is not null) await _beforeContainerRemoval(containerId);
+                await RequireAsync("docker", ["rm", "-fv", containerId], timeout: TimeSpan.FromSeconds(30));
                 CommandObservation absent = await RunAsync(new("docker", ["inspect", name], Root, TimeSpan.FromSeconds(15)));
                 if (absent.ExitCode == 0 || !absent.StandardError.Contains("no such object:", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Owned container absence was not established: " + absent.StandardError);
@@ -284,7 +334,43 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     public async ValueTask DisposeAsync() => await CleanupAsync();
 
     private async Task SaveObservationAsync(CommandObservation observation)
-        => await File.WriteAllTextAsync(Path.Combine(Root, $"command-{_commands.Count:D4}.json"), JsonSerializer.Serialize(observation));
+    {
+        int receipt = Interlocked.Increment(ref _nextReceipt);
+        lock (_gate) _commands.Add(observation);
+        await File.WriteAllTextAsync(Path.Combine(Root, $"command-{receipt:D6}.json"), JsonSerializer.Serialize(observation));
+    }
+
+    private OwnedProcess[] ProcessSnapshot()
+    {
+        lock (_gate) return _processes.ToArray();
+    }
+
+    private async Task ObserveOverflowAsync(QualificationCommand command, OwnedProcess owned, DateTimeOffset began)
+    {
+        Task finished = Task.WhenAll(owned.Output, owned.Error);
+        Task overflow = Task.WhenAny(owned.StandardOutput.Overflow, owned.StandardError.Overflow);
+        if (await Task.WhenAny(finished, overflow) != overflow && !owned.Overflowed) return;
+        try
+        {
+            await StopAsync(owned);
+            await StopMarkedAsync(owned.Marker);
+        }
+        catch (Exception error)
+        {
+            lock (_gate) _cleanupFailures.Add("Output overflow cleanup: " + error.Message);
+        }
+        await RecordFailedAsync(command, owned, began, "Command output exceeded the bounded capture limit; retained prefixes are incomplete and nonpassing.");
+    }
+
+    private static string Redact(QualificationCommand command, string value)
+    {
+        if (!string.IsNullOrEmpty(command.Input)) value = value.Replace(command.Input, "[REDACTED]", StringComparison.Ordinal);
+        if (command.Environment is not null)
+            foreach ((string name, string secret) in command.Environment)
+                if (secret.Length > 0 && new[] { "TOKEN", "SECRET", "PASSWORD", "PRIVATE" }.Any(part => name.Contains(part, StringComparison.OrdinalIgnoreCase)))
+                    value = value.Replace(secret, "[REDACTED]", StringComparison.Ordinal);
+        return value;
+    }
 
     private static bool IsCleanupCommand(QualificationCommand command)
         => command.FileName == "docker" && command.Arguments.Length > 0
@@ -315,16 +401,32 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         {
             try
             {
-                string environment = Encoding.UTF8.GetString(File.ReadAllBytes($"/proc/{pid}/environ"));
-                if (!environment.Split('\0').Contains("P1R_COMMAND_OWNER=" + marker, StringComparer.Ordinal)) continue;
-                using Process process = Process.GetProcessById(pid);
-                process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                await StopMarkedProcessAsync(pid, marker);
             }
             catch (ArgumentException) { }
             catch (FileNotFoundException) { }
             catch (DirectoryNotFoundException) { }
         }
+    }
+
+    private async Task StopMarkedProcessAsync(int pid, string? marker)
+    {
+        string path = $"/proc/{pid}";
+        string start = File.ReadAllText(Path.Combine(path, "stat")).Split(')')[^1].Split(' ', StringSplitOptions.RemoveEmptyEntries)[19];
+        bool Matches()
+        {
+            string[] environment = Encoding.UTF8.GetString(File.ReadAllBytes(Path.Combine(path, "environ"))).Split('\0');
+            return environment.Contains("P1R_QUALIFICATION_OWNER=" + Id, StringComparer.Ordinal)
+                && (marker is not null ? environment.Contains("P1R_COMMAND_OWNER=" + marker, StringComparer.Ordinal)
+                    : ProcessSnapshot().Any(owned => environment.Contains("P1R_COMMAND_OWNER=" + owned.Marker, StringComparer.Ordinal)));
+        }
+        if (!Matches()) return;
+        using Process process = Process.GetProcessById(pid);
+        _ = process.SafeHandle;
+        string current = File.ReadAllText(Path.Combine(path, "stat")).Split(')')[^1].Split(' ', StringSplitOptions.RemoveEmptyEntries)[19];
+        if (start != current || !Matches()) return;
+        process.Kill(entireProcessTree: false);
+        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
     }
 
     private async Task<string> ContainerInventoryAsync(bool excludeOwned)
@@ -333,7 +435,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         var inventory = new List<string>();
         foreach (string id in ids.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
-            string raw = await RequireAsync("docker", ["inspect", id]);
+            string raw = await RequireAsync("docker", ["inspect", "--format", ContainerIdentityFormat, id]);
             using JsonDocument json = JsonDocument.Parse(raw);
             JsonElement item = json.RootElement[0];
             if (excludeOwned && item.GetProperty("Config").GetProperty("Labels").ValueKind == JsonValueKind.Object

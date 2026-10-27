@@ -36,6 +36,7 @@ public sealed class PublishedScenarioTests
                 return "compatible";
             });
         }
+        await ExecuteLegacyConstructorsAsync(runtime, materializer.Builds, observations);
         foreach (string version in ConsumerMaterializer.Versions)
         {
             ConsumerBuild? probe = materializer.Builds.SingleOrDefault(build => build.Version == version && build.Role == "Probe" && build.Source is null);
@@ -97,7 +98,7 @@ public sealed class PublishedScenarioTests
             await ObserveAsync(observations, "query-wire", "real-signed-admission-and-refusals", async assertions =>
             {
                 JsonElement fixture = await ProbeAsync(runtime, selectedProbe, new { operation = "signed-query" });
-                foreach (string check in new[] { "verified", "missingRefused", "forgedRefused", "foreignTenantRefused" })
+                foreach (string check in new[] { "verified", "principalsBound", "missingRefused", "forgedRefused", "foreignTenantRefused" })
                     assertions.Check(fixture.GetProperty(check).GetBoolean(), "signed-query-" + check);
                 signedQuery = fixture.GetProperty("value").GetRawText();
                 assertions.Check(!string.IsNullOrWhiteSpace(fixture.GetProperty("value").GetProperty("identityAdmissionProof").GetString()), "nonnull-real-signed-admission");
@@ -155,8 +156,6 @@ public sealed class PublishedScenarioTests
             {
                 await using var drill = new QualificationRuntime();
                 await drill.CaptureSharedContainersAsync();
-                string name = drill.ReserveContainer("interrupted-create");
-                await drill.RequireAsync("docker", ["create", "--name", name, "--label", "p1r.owner=" + drill.Id, PublishedCluster.RedisImage]);
                 bool startupRefused = false;
                 try { drill.Start(new("/missing-p1r-executable", [], drill.Root, TimeSpan.FromSeconds(1))); }
                 catch (System.ComponentModel.Win32Exception) { startupRefused = true; }
@@ -171,11 +170,7 @@ public sealed class PublishedScenarioTests
                 }
                 catch (TimeoutException) { interrupted = true; }
                 assertions.Check(interrupted, "real-interruption-observed");
-                await drill.CleanupAsync();
-                await drill.CleanupAsync();
-                assertions.Check(drill.CleanupFailures.Count == 0, "repeated-cleanup-owned-absence-and-shared-preservation");
-                CommandObservation absent = await drill.RunAsync(new("docker", ["inspect", name], drill.Root, TimeSpan.FromSeconds(10)));
-                assertions.Check(absent.ExitCode != 0 && absent.StandardError.Contains("no such object:", StringComparison.OrdinalIgnoreCase), "interrupted-container-absent");
+                await ContainerCreationDrill.ExecuteAsync(drill, cancel, assertions);
                 return assertions.Failures.Count == 0 ? "compatible" : "unverified";
             });
         }
@@ -187,24 +182,46 @@ public sealed class PublishedScenarioTests
         await runtime.CleanupAsync();
         var cleanup = new MeasuredAssertions();
         cleanup.Check(runtime.CleanupFailures.Count == 0, "all-owned-resources-removed-shared-preserved");
+        cleanup.Check(runtime.Commands.All(command => !command.OutputTruncated), "all-command-output-within-retained-bounds");
         observations.Add(new("failure-cleanup", "matrix-cleanup-twice", cleanup.Failures.Count == 0 ? "passed" : "failed", "compatible", cleanup.Count, cleanup.Failures,
             Started: cleanupStarted, Ended: DateTimeOffset.UtcNow));
-        using JsonDocument executorInputs = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
-        string executor = executorInputs.RootElement.GetProperty("executor").GetString()!;
+        string serialized = await WriteSummaryAsync(runtime, observations, materializationFailure);
+        TestContext.Current.TestOutputHelper?.WriteLine(serialized);
+        observations.All(observation => observation.Passing).ShouldBeTrue("Every required published lane must pass compatibility; see " + runtime.Root);
+    }
+
+    /// <summary>Writes an honest nonqualifying summary when initial executor capture is unavailable.</summary>
+    internal static async Task<string> WriteSummaryAsync(QualificationRuntime runtime, List<ScenarioObservation> observations, string? materializationFailure)
+    {
+        JsonElement? executorInputs = null;
+        string? executor = null;
+        string? executorDiffHash = null;
+        try
+        {
+            using JsonDocument captured = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
+            executor = captured.RootElement.GetProperty("executor").GetString() ?? throw new InvalidOperationException("Captured executor is unknown.");
+            executorDiffHash = captured.RootElement.GetProperty("diffHash").GetString() ?? throw new InvalidOperationException("Captured executor diff is unknown.");
+            executorInputs = captured.RootElement.Clone();
+        }
+        catch (Exception error)
+        {
+            executor = null;
+            executorDiffHash = null;
+            observations.Add(new("provenance", "executor-input-capture", "unavailable", "unverified", 0, [],
+                materializationFailure ?? error.ToString()));
+        }
         var summary = new { selected = ConsumerMaterializer.SelectedVersion, source = ConsumerMaterializer.SelectedSource,
-            builds = ConsumerMaterializer.SelectedBuilds, executor, executorDiffHash = executorInputs.RootElement.GetProperty("diffHash").GetString(),
-            executorInputs = executorInputs.RootElement.Clone(),
+            builds = ConsumerMaterializer.SelectedBuilds, executor, executorDiffHash, executorInputs,
             assertions = observations.Sum(observation => observation.Assertions),
             passed = observations.Count(observation => observation.Execution == "passed"),
             failed = observations.Count(observation => observation.Execution == "failed"),
             unavailable = observations.Count(observation => observation.Execution == "unavailable"),
             incompatible = observations.Count(observation => observation.Compatibility == "incompatible"),
-            qualified = observations.All(observation => observation.Passing), p1rUsable = false, rollback = (string?)null,
+            qualified = executorInputs is not null && observations.All(observation => observation.Passing), p1rUsable = false, rollback = (string?)null,
             owners = "pending", conformance = "pending", observations };
         string serialized = JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(Path.Combine(runtime.Root, "summary.json"), serialized);
-        TestContext.Current.TestOutputHelper?.WriteLine(serialized);
-        observations.All(observation => observation.Passing).ShouldBeTrue("Every required published lane must pass compatibility; see " + runtime.Root);
+        return serialized;
     }
 
     /// <summary>Names every required scenario and independently selected addition.</summary>
@@ -265,7 +282,11 @@ public sealed class PublishedScenarioTests
     internal static void ValidateIdentity(ConsumerBuild build, JsonElement result, MeasuredAssertions assertions)
     {
         JsonElement[] identities = result.GetProperty("identities").EnumerateArray().ToArray();
-        assertions.Check(identities.Length == 5, "five-physically-loaded-packages");
+        string[] required = (build.Role == "Host" && build.Version == ConsumerMaterializer.SelectedVersion
+            ? ConsumerMaterializer.Packages.Append("Gateway") : ConsumerMaterializer.Packages)
+            .Select(name => "Hexalith.EventStore." + name).Order(StringComparer.Ordinal).ToArray();
+        string[] actual = identities.Select(identity => identity.GetProperty("name").GetString()!).Order(StringComparer.Ordinal).ToArray();
+        assertions.Check(actual.SequenceEqual(required, StringComparer.Ordinal), "distinct-exact-required-sdk-assembly-set");
         foreach (JsonElement identity in identities)
         {
             string path = identity.GetProperty("path").GetString()!;
@@ -285,8 +306,28 @@ public sealed class PublishedScenarioTests
                     "loaded-source-matches-archive-source");
                 string archiveDll = Path.Combine(build.Cache, package, build.Version, "lib", "net10.0", identity.GetProperty("name").GetString() + ".dll");
                 assertions.Check(File.Exists(archiveDll) && QualificationRuntime.Hash(File.ReadAllBytes(archiveDll)) == identity.GetProperty("sha256").GetString(), "loaded-bytes-from-restored-archive");
+                assertions.Check(build.VerifiedAssemblyHashes is not null
+                    && build.VerifiedAssemblyHashes.TryGetValue(identity.GetProperty("name").GetString()!, out string? verifiedHash)
+                    && verifiedHash == identity.GetProperty("sha256").GetString(), "loaded-bytes-from-independently-signature-verified-nupkg-entry");
             }
         }
+    }
+
+    /// <summary>Actually invokes the legacy three-argument constructor in every package/source probe.</summary>
+    internal static async Task ExecuteLegacyConstructorsAsync(QualificationRuntime runtime, IReadOnlyList<ConsumerBuild> builds, List<ScenarioObservation> observations)
+    {
+        foreach (ConsumerBuild probe in builds.Where(build => build.Role == "Probe"))
+            await ObserveAsync(observations, "legacy-metadata", Key(probe) + "-three-argument-constructor", async assertions =>
+            {
+                JsonElement result = (await ProbeAsync(runtime, probe, new { operation = "legacy-constructor" })).GetProperty("value");
+                assertions.Record("constructed-metadata", result.GetRawText());
+                assertions.Check(result.GetProperty("currentSequence").GetInt64() == 12, "constructor-preserves-sequence");
+                assertions.Check(result.GetProperty("lastModified").GetDateTimeOffset() == DateTimeOffset.UnixEpoch, "constructor-preserves-timestamp");
+                assertions.Check(result.GetProperty("eTag").GetString() == "old", "constructor-preserves-etag");
+                bool floor = result.TryGetProperty("retainedFloor", out JsonElement retained);
+                assertions.Check(probe.Version == "3.70.1" ? !floor : floor && retained.GetInt64() == 1, "constructor-default-floor-or-actual-old-api-absence");
+                return floor ? "compatible" : "incompatible";
+            });
     }
 
     private static string Key(ConsumerBuild build) => build.Version + "-" + (build.Source is null ? "package" : "source") + "-" + build.Role;
@@ -300,6 +341,10 @@ public sealed class PublishedScenarioTests
     /// <summary>Finds the owning repository without changing its Git state.</summary>
     internal static string FindRepository()
     {
+        string? configured = Environment.GetEnvironmentVariable("P1R_QUALIFICATION_REPOSITORY");
+        if (configured is not null)
+            return File.Exists(Path.Combine(configured, "Hexalith.EventStore.slnx")) ? Path.GetFullPath(configured)
+                : throw new DirectoryNotFoundException("The configured owning qualification repository does not contain its solution.");
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx"))) directory = directory.Parent;
         return directory?.FullName ?? throw new InvalidOperationException("Repository root not found.");

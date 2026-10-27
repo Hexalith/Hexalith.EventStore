@@ -25,11 +25,14 @@ public static class SignedQueryFixture
         var verifier = new IdentityAdmissionProof(provider.GetRequiredService<IOptionsMonitor<IdentityAdmissionOptions>>(), TimeProvider.System);
         var scope = new IdentityAdmissionScope("tenant-a", "counter", "counter-1", "get-counter", "corr", "corr", IdentityAdmissionProof.Digest([]));
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        string proof = signer.Sign(new IdentityAdmissionEvidence(scope, "fixture-workload", "actor", "actor", 1, true, now, now.AddMinutes(4), 1));
+        string proof = signer.Sign(new IdentityAdmissionEvidence(scope, "workload", "actor", "actor", 1, true, now, now.AddMinutes(4), 1));
         var query = new QueryEnvelope("tenant-a", "counter", "counter-1", "get-counter", [], "corr", "user", null, false, null,
             "actor", "workload", true, ["counter.read"], ["eventstore"], "delegation") { IdentityAdmissionProof = proof };
+        IdentityAdmissionEvidence? verified = verifier.Verify(proof, scope);
         return new { value = JsonSerializer.SerializeToElement(query, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
-            verified = verifier.Verify(proof, scope) is not null,
+            verified = verified is not null,
+            principalsBound = verified is not null && verified.SourceId == query.AuthenticatedWorkloadId
+                && verified.OperatorActorId == query.OriginalActorId && verified.TargetActorId == query.OriginalActorId,
             missingRefused = verifier.Verify(null, scope) is null,
             forgedRefused = verifier.Verify(proof + "forged", scope) is null,
             foreignTenantRefused = verifier.Verify(proof, scope with { TenantId = "tenant-b" }) is null,

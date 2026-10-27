@@ -32,9 +32,16 @@ builder.Services.AddSingleton<Hexalith.EventStore.Server.Commands.ICommandStatus
 #if FLOOR
 builder.Services.AddSingleton<Hexalith.EventStore.DomainService.IIdempotencyIntentAdapter, FixtureIntentAdapter>();
 builder.Services.AddSingleton<Hexalith.EventStore.Server.Commands.ITrustedEffectAdmissionPolicy, FixtureEffectPolicy>();
+builder.Services.AddSingleton<Hexalith.EventStore.Server.Commands.ITrustedEffectAuditSink, FixtureEffectAuditSink>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<ExecutionAuthorityRefusalObserver>();
 #endif
 #if SELECTED
+builder.Services.AddHttpClient();
+Hexalith.EventStore.Extensions.DomainQueryRoutingServiceCollectionExtensions.AddEventStoreDomainQueryRouting(builder.Services);
+builder.Services.AddSingleton<IDomainServiceResolver, FixtureQueryServiceResolver>();
 ManifestEvolutionFixture.Register(builder.Services);
+builder.Services.AddSingleton<Hexalith.EventStore.Server.Commands.ICommandAggregateTypeResolver, FixtureAggregateTypeResolver>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<ProductionRefusalObserver>();
 builder.Services.AddActors(options => options.Actors.RegisterActor<FixtureQueryActor>("P1RQueryActor"));
@@ -59,11 +66,15 @@ builder.Services.AddSingleton<IEventPublisher, BoundedEventPublisher>();
 builder.Services.AddSingleton<BoundedDeadLetterPublisher>();
 builder.Services.AddSingleton<IDeadLetterPublisher>(provider => provider.GetRequiredService<BoundedDeadLetterPublisher>());
 WebApplication app = builder.Build();
+#if FLOOR
+app.Services.GetRequiredService<ExecutionAuthorityRefusalObserver>().Start();
+#endif
 #if SELECTED
 app.Services.GetRequiredService<ProductionRefusalObserver>().Start();
 #endif
 app.MapActorsHandlers();
 CapabilityEndpoints.Map(app);
+CrossClientEndpoints.Map(app);
 #if SELECTED
 app.MapEventStoreReminders();
 ReminderEndpoints.Map(app);
@@ -86,7 +97,10 @@ app.MapPost("/evolution", async (JsonElement input, Dapr.Client.DaprClient clien
 });
 app.MapGet("/manifest", () => new { fingerprint = ManifestEvolutionFixture.Fingerprint, domain = "d", fromVersion = 1, currentVersion = 2, registered = true });
 app.MapGet("/manifest-refusal/{actorId}", (string actorId, ProductionRefusalObserver observer) =>
-    observer.Read(actorId) is JsonElement value ? Results.Json(value) : Results.NotFound());
+{
+    JsonElement? cause = observer.Read(actorId);
+    return Results.Json(new { observed = cause is not null, cause });
+});
 #endif
 app.MapGet("/identity", () => new { identities = ConsumerIdentity.Read() });
 app.MapPost("/status-fixture/{message}", async (string message, JsonElement input, Hexalith.EventStore.Server.Commands.ICommandStatusStore store) =>
@@ -120,14 +134,17 @@ app.MapPost("/writer-admission/{actorId}", async (string actorId, ILogger<EventP
     var protection = System.Reflection.DispatchProxy.Create<IEventPayloadProtectionService, ProtectionProbeProxy>();
     var positions = new PositionProbe();
     string? errorType = null;
+    string? errorMessage = null;
     try
     {
         await new EventPersister(state, logger, protection, positions).PersistEventsAsync(identity, "counter",
             new CommandEnvelope("probe", address[0], address[1], address[2], "Increment", "{}"u8.ToArray(), "corr", "cause", "user", null),
             Hexalith.EventStore.Contracts.Results.DomainResult.Success([new CounterIncremented()]), "v1");
     }
-    catch (Exception error) { errorType = error.GetType().FullName; }
-    return Results.Json(new { refused = errorType is not null, error = errorType,
+    catch (Exception error) { errorType = error.GetType().FullName; errorMessage = error.Message; }
+    bool expected = errorType == typeof(InvalidOperationException).FullName && errorMessage == "SourceHeadChanged: actor metadata has an invalid retained floor.";
+    return Results.Json(new { refused = expected, error = errorType, message = errorMessage,
+        code = expected ? "SourceHeadChanged" : "unexpected-fault", stage = expected ? "event-persister-metadata-floor-admission" : "unverified",
         protectionCalls = ((ProtectionProbeProxy)protection).Calls, allocations = positions.Calls, staging = ((DaprStateReaderProxy)state).StagingCalls });
 });
 app.MapPost("/execute/{actorId}", async (string actorId, JsonElement request, HttpDomainInvoker domain, BoundedDeadLetterPublisher deadLetters) =>

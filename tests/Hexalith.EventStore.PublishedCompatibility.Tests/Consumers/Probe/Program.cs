@@ -20,6 +20,10 @@ switch (operation)
     case "signed-query": result = SignedQueryFixture.Create(); break;
 #endif
     case "identity": result = new { identities = ConsumerIdentity.Read() }; break;
+    case "cross-client": result = await CrossClientFixture.ExecuteAsync(request); break;
+    case "legacy-constructor":
+        result = new { value = JsonSerializer.SerializeToElement(new AggregateMetadata(12, DateTimeOffset.UnixEpoch, "old"), json), identities = ConsumerIdentity.Read() };
+        break;
     case "cursor":
 #if FLOOR
         result = CursorFixture.Execute();

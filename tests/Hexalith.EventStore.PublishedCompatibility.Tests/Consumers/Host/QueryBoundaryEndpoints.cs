@@ -11,6 +11,7 @@ using Hexalith.EventStore.Client.Security;
 using Hexalith.EventStore.Server.Identity;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Queries;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace PublishedConsumer;
@@ -21,6 +22,15 @@ public static class QueryBoundaryEndpoints
     /// <summary>Maps the signed query and persisted cursor fixture endpoints.</summary>
     public static void Map(WebApplication app)
     {
+        app.MapPost("/declare-query-handlers", async (Dapr.Client.DaprClient client, IDomainQueryHandlerRegistry registry) =>
+        {
+            using var http = new HttpClient { BaseAddress = new Uri(Environment.GetEnvironmentVariable("P1R_DOMAIN_URL")!), Timeout = TimeSpan.FromSeconds(30) };
+            string[] types = (await http.GetFromJsonAsync<string[]>("/query-types"))!;
+            await client.SaveStateAsync("statestore", "admin:query-types:counter", types);
+            string[] persisted = (await client.GetStateAsync<string[]>("statestore", "admin:query-types:counter"))!;
+            return Results.Json(new { declared = types, persisted, supported = await registry.SupportsQueryAsync("counter", "get-counter"),
+                unknown = await registry.SupportsQueryAsync("counter", "undeclared-query"), registry = registry.GetType().FullName });
+        });
         app.MapPost("/project-model/{aggregate}", async (string aggregate, JsonElement input, IReadModelStore store) =>
         {
             long position = input.GetProperty("position").GetInt64();
@@ -35,7 +45,7 @@ public static class QueryBoundaryEndpoints
             return Results.Json(result);
         });
         app.MapPost("/query-route/{aggregate}", async (string aggregate, JsonElement input, IIdentityAdmissionSigner signer,
-            IActorProxyFactory actors, ILogger<QueryRouter> logger) =>
+            IActorProxyFactory actors, ILogger<QueryRouter> logger, IServiceProvider services) =>
         {
             var scope = new IdentityAdmissionScope("tenant-a", "counter", aggregate, "get-counter", "corr", "corr", IdentityAdmissionProof.Digest([]));
             DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -57,8 +67,11 @@ public static class QueryBoundaryEndpoints
                 query.UserId, ProjectionType: "counter", ProjectionActorType: "P1RQueryActor", OriginalActorId: query.OriginalActorId,
                 AuthenticatedWorkloadId: query.AuthenticatedWorkloadId, IsDelegated: query.IsDelegated, Scopes: query.Scopes,
                 Audience: query.Audience, DelegationId: query.DelegationId) { IdentityAdmissionProof = query.IdentityAdmissionProof };
-            QueryRouterResult routed = await new QueryRouter(actors, logger).RouteQueryAsync(request);
-            return Results.Json(new { routed.Success, payload = routed.Payload, routed.ErrorMessage });
+            bool declared = input.TryGetProperty("route", out JsonElement route) && route.GetString() == "declared-handler";
+            IQueryRouter router = declared ? services.GetRequiredService<IQueryRouter>() : new QueryRouter(actors, logger);
+            QueryRouterResult routed = await router.RouteQueryAsync(request);
+            return Results.Json(new { routed.Success, payload = routed.Payload, routed.ErrorMessage, router = router.GetType().FullName,
+                invoker = declared ? services.GetRequiredService<IDomainQueryInvoker>().GetType().FullName : null });
         });
         app.MapPost("/cursor-model/{aggregate}", async (string aggregate, JsonElement input, IReadModelStore store, IDataProtectionProvider keys) =>
         {

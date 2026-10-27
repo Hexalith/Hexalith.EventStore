@@ -13,8 +13,14 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <param name="ArchiveSources">The independently observed package source identities.</param>
 /// <param name="ResolvedVersions">The versions resolved by this consumer graph.</param>
 /// <param name="ProjectHash">The isolated project hash.</param>
+/// <param name="VerifiedAssemblyHashes">The DLL hashes from independently downloaded and signature-verified nupkg entries.</param>
+/// <param name="SdkPolicyHash">The exact global.json policy copied into the isolated build root.</param>
+/// <param name="SelectedSdk">The SDK selected by dotnet in that root before restore and build.</param>
+/// <param name="SdkPolicyOrigin">The owning repository or tagged-source policy path.</param>
 internal sealed record ConsumerBuild(string Role, string Version, string Configuration, string Project,
     string Assembly, string Cache, string AssetsHash, string LockHash, string? Source,
     IReadOnlyDictionary<string, string>? ArchiveSources = null,
     IReadOnlyDictionary<string, string>? ResolvedVersions = null,
-    string? ProjectHash = null);
+    string? ProjectHash = null,
+    IReadOnlyDictionary<string, string>? VerifiedAssemblyHashes = null,
+    string? SdkPolicyHash = null, string? SelectedSdk = null, string? SdkPolicyOrigin = null);

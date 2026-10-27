@@ -17,6 +17,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
     internal const string RedisImage = "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf";
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(45) };
     private readonly List<OwnedProcess> _writers = [];
+    private readonly HashSet<int> _allocatedPorts = [];
     private string _redis = string.Empty;
     private string _binaries = string.Empty;
     private int _redisPort;
@@ -29,6 +30,8 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
     private int _databaseNumber;
     private string _querySigningKeyPath = string.Empty;
     private string _queryVerificationKey = string.Empty;
+    private CancellationToken _operationCancellation;
+    private CancellationToken OperationCancellation => _operationCancellation.CanBeCanceled ? _operationCancellation : TestContext.Current.CancellationToken;
 
     /// <summary>Downloads private pinned binaries without touching the installed Dapr runtime.</summary>
     internal async Task InitializeAsync()
@@ -38,7 +41,11 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         {
             _querySigningKeyPath = Path.Combine(runtime.Root, "query-signing-key.pem");
             runtime.RegisterSensitivePath(_querySigningKeyPath);
-            await File.WriteAllTextAsync(_querySigningKeyPath, queryKey.ExportRSAPrivateKeyPem());
+            var keyOptions = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
+            if (!OperatingSystem.IsWindows()) keyOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            await using (var keyFile = new FileStream(_querySigningKeyPath, keyOptions))
+            await using (var writer = new StreamWriter(keyFile))
+                await writer.WriteAsync(queryKey.ExportRSAPrivateKeyPem());
             _queryVerificationKey = Convert.ToBase64String(Encoding.UTF8.GetBytes(queryKey.ExportRSAPublicKeyPem()));
         }
         _binaries = Path.Combine(runtime.Root, "dapr-1.18.4");
@@ -140,40 +147,11 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 });
             }
         }
-        foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host"))
-        {
-            ConsumerBuild domain = builds.Single(build => build.Role == "Domain" && build.Version == host.Version && build.Source == host.Source);
-            foreach (string invalid in new[] { "floor-0", "floor-14", "unreadable", "protected-mismatch", "unknown-type", "version-987" })
-            foreach (string tenant in new[] { "tenant-a", "tenant-b" })
-            {
-                await PublishedScenarioTests.ObserveAsync(observations, "invalid-evidence", host.Version + "-" + host.Configuration + "-" + invalid + "-" + tenant, async assertions =>
-                {
-                    await StartWriterAsync(host, domain);
-                    string actor = Address(tenant);
-                    await AppendAsync(actor, 2, assertions);
-                    await InvalidHistoryAsync(actor, invalid);
-                    var before = await InventoryAsync(actor, 3);
-                    await StartWriterAsync(host, domain);
-                    JsonElement reader = await GetAsync("http://127.0.0.1:" + _hostPort + "/reader/" + Uri.EscapeDataString(actor));
-                    assertions.Check(reader.TryGetProperty("ok", out _), "actual-versioned-reader-executed");
-                    JsonElement domainResult = await ReplayDomainFixtureAsync(actor);
-                    if (!invalid.StartsWith("floor-", StringComparison.Ordinal))
-                    {
-                        assertions.Check(!IsOk(domainResult), "actual-domain-invalid-replay-refused");
-                        if (domainResult.TryGetProperty("applyCalls", out JsonElement applied)) assertions.Check(applied.GetInt32() == 0, "whole-batch-admitted-before-apply");
-                        if (domainResult.TryGetProperty("handleCalls", out JsonElement handled)) assertions.Check(handled.GetInt32() == 0, "invalid-batch-never-handled");
-                    }
-                    JsonElement result = await ExecuteAsync(actor, true);
-                    assertions.Check(!IsOk(result), "invalid-history-typed-refusal");
-                    assertions.Check(result.TryGetProperty("error", out JsonElement error) && !string.IsNullOrWhiteSpace(error.GetString()), "typed-error-observed");
-                    assertions.Check(Equal(before, await InventoryAsync(actor, 3)), "refusal-preserves-domain-inventory");
-                    return IsOk(result) ? "incompatible" : "compatible";
-                });
-            }
-        }
+        await InvalidEvidenceCasesAsync(observations);
         await FloorBoundaryCasesAsync(observations);
         await RestoreCasesAsync(observations, selected);
         await CapabilityCasesAsync(observations);
+        await ExecuteCrossClientCasesAsync(observations);
         await PublishedScenarioTests.ObserveAsync(observations, "checkout", "package-to-exact-tag-source", async assertions =>
         {
             string actor = Address("tenant-a");
@@ -189,10 +167,163 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         });
     }
 
-    private async Task FloorBoundaryCasesAsync(List<ScenarioObservation> observations)
+    /// <summary>Executes actual independently versioned actor clients against opposite-version live hosts.</summary>
+    internal async Task ExecuteCrossClientCasesAsync(List<ScenarioObservation> observations)
     {
-        foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host"))
-        foreach (int floor in new[] { 0, 1, 5, 13, 14 })
+        var directions = new List<(ConsumerBuild Client, ConsumerBuild Host)>();
+        foreach (string old in new[] { "3.70.1", "3.110.0" })
+        {
+            directions.Add((Build("Probe", old), Build("Host", ConsumerMaterializer.SelectedVersion)));
+            directions.Add((Build("Probe", ConsumerMaterializer.SelectedVersion), Build("Host", old)));
+        }
+        directions.Add((Build("Probe", ConsumerMaterializer.SelectedVersion), Build("Host", ConsumerMaterializer.SelectedVersion, source: true)));
+        directions.Add((Build("Probe", ConsumerMaterializer.SelectedVersion, source: true), Build("Host", ConsumerMaterializer.SelectedVersion)));
+        foreach ((ConsumerBuild client, ConsumerBuild host) in directions)
+            await PublishedScenarioTests.ObserveAsync(observations, "mixed-api", "client-" + client.Version + "-" + client.Configuration + "-to-host-" + host.Version + "-" + host.Configuration, async assertions =>
+            {
+                ConsumerBuild domain = builds.Single(build => build.Role == "Domain" && build.Version == host.Version && build.Source == host.Source);
+                await StartWriterAsync(host, domain);
+                string actor = Address("tenant-a");
+                async Task<JsonElement> InvokeAsync(string action, JsonElement prepared)
+                {
+                    JsonElement result = await PublishedScenarioTests.ProbeAsync(runtime, client,
+                        new { operation = "cross-client", sidecar = "http://127.0.0.1:" + _sidecarPort, actor, action, prepared });
+                    PublishedScenarioTests.ValidateIdentity(client, result, assertions);
+                    assertions.Record("cross-client-" + action, result.GetRawText());
+                    return result;
+                }
+                JsonElement common = await InvokeAsync("common", JsonSerializer.SerializeToElement(new { supported = false }));
+                assertions.Check(IsOk(common) && common.GetProperty("outcome").GetProperty("accepted").GetBoolean()
+                    && common.GetProperty("outcome").GetProperty("before").GetInt64() == 0
+                    && common.GetProperty("outcome").GetProperty("sequence").GetInt64() == 1, "opposite-version-client-real-common-actor-append");
+                var baseline = await InventoryAsync(actor, 4);
+                assertions.Check(baseline[actor + ":events:1"] is not null, "cross-client-common-event-committed");
+                JsonElement prepared = await PostAsync("http://127.0.0.1:" + _hostPort + "/prepare-cross-client/" + actor.Split(':')[2], new { });
+                if (client.Version == "3.70.1" || host.Version == "3.70.1")
+                {
+                    foreach (string action in new[] { "fenced-valid", "trusted-valid" })
+                    {
+                        JsonElement refused = await InvokeAsync(action, prepared);
+                        bool missingClient = client.Version == "3.70.1" && !refused.GetProperty("supported").GetBoolean()
+                            && refused.GetProperty("code").GetString() == "client-contract-lacks-protected-methods"
+                            && refused.GetProperty("missingMethods").EnumerateArray().Select(value => value.GetString())
+                                .Order().SequenceEqual(new[] { "ProcessFencedCommandAsync", "ProcessTrustedEffectAsync" });
+                        string requestBody = action.StartsWith("fenced", StringComparison.Ordinal) ? "ProcessFencedCommandAsyncReqBody" : "ProcessTrustedEffectAsyncReqBody";
+                        bool missingHost = refused.TryGetProperty("actualType", out JsonElement actual)
+                            && actual.GetString() == typeof(System.Runtime.Serialization.SerializationException).FullName
+                            && refused.GetProperty("message").GetString()!.Contains("data of the 'urn:actors:" + requestBody + "' data contract.", StringComparison.Ordinal)
+                            && refused.GetProperty("message").GetString()!.Contains("The deserializer has no knowledge of any type that maps to this contract.", StringComparison.Ordinal);
+                        if (missingHost) assertions.Record("actual-host-protected-contract-refusal", JsonSerializer.Serialize(new
+                        {
+                            code = "host-remoting-contract-unavailable", stage = "actor-remoting-request-deserialization", requestBody,
+                            actualType = actual.GetString(), message = refused.GetProperty("message").GetString(),
+                        }));
+                        assertions.Check(!IsOk(refused) && (missingClient || missingHost), "opposite-version-actual-missing-protected-capability-" + action);
+                        assertions.Check(Equal(baseline, await InventoryAsync(actor, 4)), "missing-protected-operation-preserves-committed-bytes-" + action);
+                    }
+                    await StartWriterAsync(host, domain);
+                    JsonElement replay = await ExecuteAsync(actor, false);
+                    assertions.Check(IsOk(replay) && replay.GetProperty("count").GetInt32() == 1, "opposite-version-common-effect-survives-host-restart");
+                    return assertions.Failures.Count == 0 ? "incompatible" : "unverified";
+                }
+                foreach ((string action, string message) in new[]
+                {
+                    ("fenced-forged", "The idempotency execution fence is missing, stale, or invalid."),
+                    ("fenced-valid", ""),
+                    ("trusted-forged", "Trusted effect gateway proof is invalid."),
+                    ("trusted-valid", ""),
+                    ("trusted-replay", ""),
+                })
+                {
+                    var before = await InventoryAsync(actor, 4);
+                    JsonElement result = await InvokeAsync(action, prepared);
+                    var after = await InventoryAsync(actor, 4);
+                    if (action.EndsWith("forged", StringComparison.Ordinal))
+                    {
+                        assertions.Check(!IsOk(result) && result.GetProperty("actualType").GetString() == typeof(InvalidOperationException).FullName
+                            && result.GetProperty("message").GetString() == message, "cross-client-exact-security-refusal-" + action);
+                        assertions.Check(Equal(before, after), "cross-client-denial-preserves-committed-bytes-" + action);
+                    }
+                    else
+                    {
+                        int expectedSequence = action == "fenced-valid" ? 2 : 3;
+                        assertions.Check(IsOk(result) && result.GetProperty("outcome").GetProperty("accepted").GetBoolean()
+                            && result.GetProperty("outcome").GetProperty("sequence").GetInt32() == expectedSequence, "cross-client-protected-effect-committed-" + action);
+                        assertions.Check(after[actor + ":events:1"] == baseline[actor + ":events:1"]
+                            && after[actor + ":events:" + expectedSequence] is not null, "cross-client-preserves-prior-and-records-new-event-" + action);
+                        if (action == "trusted-replay") assertions.Check(result.GetProperty("outcome").GetProperty("replayed").GetBoolean()
+                            && Equal(before, after), "cross-client-effect-replay-is-byte-stable");
+                    }
+                }
+                var committed = await InventoryAsync(actor, 4);
+                await StartWriterAsync(host, domain);
+                JsonElement restarted = await ExecuteAsync(actor, false);
+                assertions.Check(IsOk(restarted) && restarted.GetProperty("count").GetInt32() == 3, "cross-client-protected-effects-survive-host-restart");
+                assertions.Check(Equal(committed, await InventoryAsync(actor, 4)), "cross-client-protected-restart-preserves-bytes");
+                return assertions.Failures.Count == 0 ? "compatible" : "unverified";
+            });
+    }
+
+    private async Task InvalidEvidenceCasesAsync(List<ScenarioObservation> observations, bool selectedOnly = false)
+    {
+        foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host" && (!selectedOnly || build.Version == ConsumerMaterializer.SelectedVersion)))
+        {
+            ConsumerBuild domain = builds.Single(build => build.Role == "Domain" && build.Version == host.Version && build.Source == host.Source);
+            foreach (string invalid in new[] { "floor-0", "floor-14", "unreadable", "protected-mismatch", "unknown-type", "version-987" })
+            foreach (string tenant in selectedOnly ? new[] { "tenant-a" } : new[] { "tenant-a", "tenant-b" })
+            {
+                await PublishedScenarioTests.ObserveAsync(observations, "invalid-evidence", host.Version + "-" + host.Configuration + "-" + invalid + "-" + tenant, async assertions =>
+                {
+                    await StartWriterAsync(host, domain);
+                    string actor = Address(tenant);
+                    await AppendAsync(actor, 2, assertions);
+                    await InvalidHistoryAsync(actor, invalid);
+                    var before = await InventoryAsync(actor, 3);
+                    await StartWriterAsync(host, domain);
+                    JsonElement reader = await GetAsync("http://127.0.0.1:" + _hostPort + "/reader/" + Uri.EscapeDataString(actor));
+                    assertions.Record("actual-versioned-reader-result", reader.GetRawText());
+                    bool ownsFloor = host.Version == ConsumerMaterializer.SelectedVersion && invalid.StartsWith("floor-", StringComparison.Ordinal);
+                    bool ownsVersion = host.Version == ConsumerMaterializer.SelectedVersion && invalid == "version-987";
+                    if (ownsFloor || ownsVersion)
+                    {
+                        string expected = ownsFloor ? "SourceHeadChanged: actor metadata has an invalid retained floor."
+                            : "RollbackReaderCapabilityHold: a typed reader cannot consume unsupported event metadata.";
+                        assertions.Check(!IsOk(reader) && reader.TryGetProperty("error", out JsonElement readerError)
+                            && readerError.GetString() == typeof(InvalidOperationException).FullName
+                            && reader.TryGetProperty("message", out JsonElement readerMessage) && readerMessage.GetString() == expected,
+                            "actual-reader-owned-metadata-refusal-type-and-code");
+                    }
+                    else
+                        assertions.Check(IsOk(reader) && reader.GetProperty("sequence").GetInt64() == 2 && reader.GetProperty("count").GetInt32() == 2,
+                            "raw-reader-does-not-claim-domain-payload-or-protection-decoding");
+                    JsonElement domainResult = await ReplayDomainFixtureAsync(actor);
+                    if (!invalid.StartsWith("floor-", StringComparison.Ordinal))
+                    {
+                        assertions.Check(!IsOk(domainResult), "actual-domain-invalid-replay-refused");
+                        if (domainResult.TryGetProperty("applyCalls", out JsonElement applied)) assertions.Check(applied.GetInt32() == 0, "whole-batch-admitted-before-apply");
+                        if (domainResult.TryGetProperty("handleCalls", out JsonElement handled)) assertions.Check(handled.GetInt32() == 0, "invalid-batch-never-handled");
+                    }
+                    JsonElement result = await ExecuteAsync(actor, true);
+                    assertions.Check(!IsOk(result), "invalid-history-typed-refusal");
+                    assertions.Check(result.TryGetProperty("error", out JsonElement error) && !string.IsNullOrWhiteSpace(error.GetString()), "typed-error-observed");
+                    assertions.Check(Equal(before, await InventoryAsync(actor, 3)), "refusal-preserves-domain-inventory");
+                    return assertions.Failures.Count == 0 && !IsOk(result) ? "compatible" : "unverified";
+                });
+            }
+        }
+    }
+
+    /// <summary>Executes only affected malformed reader/writer operations in the selected package and exact source.</summary>
+    internal async Task ExecuteSelectedMalformedBoundariesAsync(List<ScenarioObservation> observations)
+    {
+        await InvalidEvidenceCasesAsync(observations, selectedOnly: true);
+        await FloorBoundaryCasesAsync(observations, malformedOnly: true);
+    }
+
+    private async Task FloorBoundaryCasesAsync(List<ScenarioObservation> observations, bool malformedOnly = false)
+    {
+        foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host" && (!malformedOnly || build.Version == ConsumerMaterializer.SelectedVersion)))
+        foreach (int floor in malformedOnly ? new[] { 0, 14 } : new[] { 0, 1, 5, 13, 14 })
         {
             ConsumerBuild domain = builds.Single(build => build.Role == "Domain" && build.Version == host.Version && build.Source == host.Source);
             await PublishedScenarioTests.ObserveAsync(observations, floor is 0 or 14 ? "invalid-evidence" : "metadata-write",
@@ -221,7 +352,11 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 if (floor is 0 or 14)
                 {
                     JsonElement writer = await PostAsync("http://127.0.0.1:" + _hostPort + "/writer-admission/" + Uri.EscapeDataString(actor), new { });
-                    assertions.Check(writer.GetProperty("refused").GetBoolean(), "actual-writer-malformed-floor-refused");
+                    assertions.Record("actual-writer-admission-result", writer.GetRawText());
+                    assertions.Check(writer.GetProperty("refused").GetBoolean() && writer.GetProperty("error").GetString() == typeof(InvalidOperationException).FullName
+                        && writer.GetProperty("message").GetString() == "SourceHeadChanged: actor metadata has an invalid retained floor."
+                        && writer.GetProperty("code").GetString() == "SourceHeadChanged" && writer.GetProperty("stage").GetString() == "event-persister-metadata-floor-admission",
+                        "actual-writer-malformed-floor-production-type-code-stage");
                     foreach (string field in new[] { "protectionCalls", "allocations", "staging" })
                         assertions.Check(writer.GetProperty(field).GetInt32() == 0, "malformed-floor-before-" + field);
                     assertions.Check(Equal(before, await InventoryAsync(actor, 13)), "writer-admission-inventory-unchanged");
@@ -238,7 +373,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                     JsonElement replay = await ExecuteAsync(actor, false);
                     assertions.Check(IsOk(replay) && replay.GetProperty("count").GetInt32() == 13, "boundary-floor-fresh-replay");
                 }
-                return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
+                return assertions.Failures.Count == 0 ? "compatible" : "unverified";
             });
         }
     }
@@ -290,67 +425,10 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 }
                 return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
             });
-            await PublishedScenarioTests.ObserveAsync(observations, "mixed-api", host.Version + "-" + host.Configuration, async assertions =>
-            {
-                await StartWriterAsync(host, domain);
-                string actor = Address("tenant-a");
-                var before = await InventoryAsync(actor, 2);
-                JsonElement result = await PostAsync("http://127.0.0.1:" + _hostPort + "/capabilities/" + actor.Split(':')[2], new { });
-                bool supported = result.GetProperty("supported").GetBoolean();
-                if (!supported)
-                {
-                    assertions.Check(result.GetProperty("denial").GetString() == "incapable-published-endpoint", "typed-old-endpoint-refusal");
-                    assertions.Check(Equal(before, await InventoryAsync(actor, 2)), "unsupported-route-inventory-unchanged");
-                    return "incompatible";
-                }
-                foreach (string field in new[] { "stale", "forged", "completedStale", "accepted", "unauthorized", "forgedEffect", "replayed" })
-                    assertions.Check(result.TryGetProperty(field, out JsonElement value) && value.GetBoolean(), "actual-fenced-trusted-" + field);
-                assertions.Check(result.TryGetProperty("sequence", out JsonElement sequence) && sequence.GetInt64() == 2, "two-actual-persisted-effects");
-                assertions.Check(result.TryGetProperty("before", out JsonElement prior) && result.TryGetProperty("afterDenial", out JsonElement after) && prior.GetInt64() == after.GetInt64(), "denied-effects-preserve-sequence");
-                var committed = await InventoryAsync(actor, 2);
-                await StartWriterAsync(host, domain);
-                JsonElement replay = await ExecuteAsync(actor, false);
-                assertions.Check(IsOk(replay) && replay.GetProperty("count").GetInt32() == 2, "protected-effects-survive-fresh-processes");
-                assertions.Check(Equal(committed, await InventoryAsync(actor, 2)), "protected-effects-restart-preserves-bytes");
-                return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
-            });
+            await ExecuteSecurityBoundaryAsync(observations, host, domain);
             if (host.Version != ConsumerMaterializer.SelectedVersion) continue;
             await ExecuteQueryBoundaryAsync(observations, host, domain);
-            await PublishedScenarioTests.ObserveAsync(observations, "registered-evolution", host.Configuration + "-registered-manifest-production-hop", async assertions =>
-            {
-                await StartWriterAsync(host, domain);
-                JsonElement manifest = await GetAsync("http://127.0.0.1:" + _hostPort + "/manifest");
-                assertions.Check(manifest.GetProperty("registered").GetBoolean()
-                    && manifest.GetProperty("fingerprint").GetString()!.Length == 64, "manifest-candidate-registered-through-published-api");
-                string aggregate = Guid.NewGuid().ToString("N");
-                string actor = "tenant-a:d:" + aggregate;
-                await FixtureAsync(actor, new object[]
-                {
-                    new { operation = "upsert", key = actor + ":metadata", value = (object)new
-                        { currentSequence = 1, lastModified = DateTimeOffset.UnixEpoch, eTag = "p1r-manifest", retainedFloor = 1 } },
-                    new { operation = "upsert", key = actor + ":events:1", value = (object)new
-                        { messageId = "manifest-event", aggregateId = aggregate, aggregateType = "r", tenantId = "tenant-a", domain = "d",
-                            sequenceNumber = 1, globalPosition = 987, timestamp = DateTimeOffset.UnixEpoch, correlationId = "corr", causationId = "cause",
-                            userId = "fixture-user", domainServiceVersion = "v1", eventTypeName = "Legacy.Event", metadataVersion = 1,
-                            serializationFormat = "json", payload = Convert.ToBase64String("{}"u8.ToArray()), extensions = (object?)null } },
-                });
-                var before = await InventoryAsync(actor, 2);
-                await StartWriterAsync(host, domain);
-                JsonElement result = await ExecuteAsync(actor, true);
-                assertions.Check(!IsOk(result), "production-required-logical-hop-refused-without-bound-callable");
-                assertions.Check(result.TryGetProperty("error", out JsonElement error) && !string.IsNullOrWhiteSpace(error.GetString()), "typed-production-evolution-refusal");
-                JsonElement cause = await GetAsync("http://127.0.0.1:" + _hostPort + "/manifest-refusal/" + Uri.EscapeDataString(actor));
-                bool intendedHop = cause.GetProperty("code").GetString() == "missing-allow-listed-callable"
-                    && cause.GetProperty("stage").GetString() == "production-logical-event-upcast-binding"
-                    && cause.GetProperty("actor").GetString() == actor
-                    && cause.GetProperty("declaringType").GetString()!.StartsWith("Hexalith.EventStore.Client.Events.EventUpcastChainExecutor", StringComparison.Ordinal);
-                assertions.Check(intendedHop, "actual-production-hop-missing-callable-cause-and-stage");
-                assertions.Record("production-manifest-refusal", cause.GetRawText());
-                assertions.Check(Equal(before, await InventoryAsync(actor, 2)), "production-manifest-refusal-preserves-original-event-bytes");
-                JsonElement stats = await GetAsync("http://127.0.0.1:" + _domainPort + "/stats");
-                assertions.Check(stats.GetProperty("applyCalls").GetInt32() == 0 && stats.GetProperty("handleCalls").GetInt32() == 0, "manifest-refusal-before-domain-apply-handle");
-                return intendedHop && assertions.Failures.Count == 0 ? "incompatible" : "unverified";
-            });
+            await ExecuteManifestBoundaryAsync(observations, host, domain);
             await PublishedScenarioTests.ObserveAsync(observations, "registered-evolution", host.Configuration, async assertions =>
             {
                 await StartWriterAsync(host, domain);
@@ -367,25 +445,52 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 assertions.Check(Equal(before, await InventoryAsync(actor, 1)), "stored-event-inventory-unchanged");
                 return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
             });
+            await ExecuteNaturalReminderAsync(observations, host, domain);
+        }
+    }
+
+    private async Task ExecuteNaturalReminderAsync(List<ScenarioObservation> observations, ConsumerBuild host, ConsumerBuild domain)
+    {
             await PublishedScenarioTests.ObserveAsync(observations, "natural-reminder", host.Configuration, async assertions =>
             {
                 await StartWriterAsync(host, domain);
                 string aggregate = Guid.NewGuid().ToString("N");
                 string actor = "tenant-a:counter:" + aggregate;
-                DateTimeOffset due = DateTimeOffset.UtcNow.AddSeconds(15);
-                JsonElement registered = await PostAsync("http://127.0.0.1:" + _hostPort + "/reminder/" + aggregate, new { dueUtc = due });
-                assertions.Check(registered.GetProperty("accepted").GetBoolean() && registered.GetProperty("armed").GetInt32() == 1, "stream-derived-reminder-armed");
-                assertions.Check(registered.GetProperty("submitted").GetInt32() == 0, "submitted-zero-before-natural-delivery");
-                string name = registered.GetProperty("reminderName").GetString()!;
-                var before = await InventoryAsync(actor, 1);
-                await StartWriterAsync(host, domain);
-                JsonElement restarted = await GetAsync("http://127.0.0.1:" + _hostPort + "/reminder/" + aggregate + "/" + name);
-                assertions.Check(restarted.GetProperty("submitted").GetInt32() == 0, "submitted-zero-after-restart-before-due");
+                TimeSpan preparationBudget = TimeSpan.FromSeconds(60);
+                DateTimeOffset preparationStarted = DateTimeOffset.UtcNow;
+                DateTimeOffset due = preparationStarted.Add(preparationBudget).AddSeconds(20);
+                JsonElement restarted;
+                Dictionary<string, string?> before;
+                string name;
+                using (var preparation = CancellationTokenSource.CreateLinkedTokenSource(OperationCancellation))
+                {
+                    preparation.CancelAfter(preparationBudget);
+                    _operationCancellation = preparation.Token;
+                    try
+                    {
+                        JsonElement registered = await PostAsync("http://127.0.0.1:" + _hostPort + "/reminder/" + aggregate, new { dueUtc = due });
+                        assertions.Check(registered.GetProperty("accepted").GetBoolean() && registered.GetProperty("armed").GetInt32() == 1, "stream-derived-reminder-armed");
+                        assertions.Check(registered.GetProperty("submitted").GetInt32() == 0, "submitted-zero-before-natural-delivery");
+                        name = registered.GetProperty("reminderName").GetString()!;
+                        before = await InventoryAsync(actor, 1);
+                        await StartWriterAsync(host, domain);
+                        restarted = await GetAsync("http://127.0.0.1:" + _hostPort + "/reminder/" + aggregate + "/" + name);
+                        preparation.Token.ThrowIfCancellationRequested();
+                        assertions.Check(DateTimeOffset.UtcNow < due, "restart-and-zero-observation-completed-within-pre-due-budget");
+                        assertions.Check(restarted.GetProperty("submitted").GetInt32() == 0, "submitted-zero-after-restart-before-due");
+                        assertions.Record("bounded-reminder-registration-restart-window", JsonSerializer.Serialize(new
+                        {
+                            preparationStarted, preparationBudgetSeconds = preparationBudget.TotalSeconds,
+                            preparationFinished = DateTimeOffset.UtcNow, due, naturalDeliveryMarginSeconds = 20,
+                        }));
+                    }
+                    finally { _operationCancellation = default; }
+                }
                 DateTimeOffset deadline = due.AddSeconds(40);
                 JsonElement observed = restarted;
                 while (DateTimeOffset.UtcNow < deadline && observed.GetProperty("submitted").GetInt32() == 0)
                 {
-                    await Task.Delay(500, TestContext.Current.CancellationToken);
+                    await Task.Delay(500, OperationCancellation);
                     observed = await GetAsync("http://127.0.0.1:" + _hostPort + "/reminder/" + aggregate + "/" + name);
                 }
                 assertions.Check(observed.GetProperty("submitted").GetInt32() == 1, "natural-scheduler-delivery-persisted-submission");
@@ -394,14 +499,125 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 assertions.Check((await InventoryAsync(actor, 2)).GetValueOrDefault(actor + ":events:1") == before[actor + ":events:1"], "reminder-preserves-source-event-bytes");
                 return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
             });
-        }
     }
 
     /// <summary>Executes the same actual capability/addition operations with the selected consumers for focused diagnostics.</summary>
     internal Task ExecuteSelectedCapabilitiesAsync(List<ScenarioObservation> observations) => CapabilityCasesAsync(observations);
 
+    /// <summary>Executes only actual fenced/trusted security operations for each independently built host.</summary>
+    internal async Task ExecuteSecurityBoundariesAsync(List<ScenarioObservation> observations)
+    {
+        foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host"))
+            await ExecuteSecurityBoundaryAsync(observations, host,
+                builds.Single(build => build.Role == "Domain" && build.Version == host.Version && build.Source == host.Source));
+    }
+
+    private async Task ExecuteSecurityBoundaryAsync(List<ScenarioObservation> observations, ConsumerBuild host, ConsumerBuild domain)
+    {
+    await PublishedScenarioTests.ObserveAsync(observations, "mixed-api", host.Version + "-" + host.Configuration, async assertions =>
+    {
+        await StartWriterAsync(host, domain);
+        string actor = Address("tenant-a");
+        await AppendAsync(actor, 1, assertions);
+        var before = await InventoryAsync(actor, 4);
+        JsonElement result = await PostAsync("http://127.0.0.1:" + _hostPort + "/capabilities/" + actor.Split(':')[2], new { });
+        bool supported = result.GetProperty("supported").GetBoolean();
+        if (!supported)
+        {
+            assertions.Check(result.GetProperty("denial").GetString() == "incapable-published-endpoint", "typed-old-endpoint-refusal");
+            assertions.Check(Equal(before, await InventoryAsync(actor, 4)), "unsupported-route-inventory-unchanged");
+            return "incompatible";
+        }
+        assertions.Record("capability-security-observations", result.GetRawText());
+        if (result.TryGetProperty("error", out _))
+        {
+            assertions.Check(false, "capability-operation-completed-without-unrelated-fault");
+            return "unverified";
+        }
+        foreach ((string field, string code, string stage, string message) in new[]
+        {
+            ("stale", "stale-execution-authority", "execution-authority", "The idempotency execution authority is no longer current."),
+            ("forged", "invalid-execution-fence", "execution-fence-proof", "The idempotency execution fence is missing, stale, or invalid."),
+            ("completedStale", "completed-execution-authority", "execution-authority", "The idempotency execution authority is no longer current."),
+            ("unauthorized", "unauthorized-effect-delegation", "trusted-effect-delegation", "Synthetic trusted-effect delegation refused."),
+            ("forgedEffect", "invalid-effect-gateway-proof", "trusted-effect-gateway-proof", "Trusted effect gateway proof is invalid."),
+        })
+        {
+            JsonElement refusal = result.GetProperty(field);
+            assertions.Check(refusal.GetProperty("expected").GetBoolean() && refusal.GetProperty("actualType").GetString() == typeof(InvalidOperationException).FullName
+                && refusal.GetProperty("message").GetString() == message && refusal.GetProperty("code").GetString() == code
+                && refusal.GetProperty("stage").GetString() == stage, "actual-security-refusal-type-code-stage-" + field);
+            var prior = refusal.GetProperty("before").Deserialize<Dictionary<string, string?>>()!;
+            var after = refusal.GetProperty("after").Deserialize<Dictionary<string, string?>>()!;
+            assertions.Check(prior.Keys.Order().SequenceEqual(before.Keys.Order()) && prior[actor + ":metadata"] is not null
+                && prior[actor + ":events:1"] is not null, "complete-committed-inventory-before-" + field);
+            assertions.Check(Equal(prior, after), "denied-operation-preserves-committed-bytes-" + field);
+        }
+        assertions.Check(result.GetProperty("accepted").GetBoolean() && result.GetProperty("replayed").GetBoolean(), "actual-fenced-command-and-idempotent-effect-accepted");
+        assertions.Check(result.GetProperty("baseline").GetInt64() == 1 && result.GetProperty("sequence").GetInt64() == 3, "baseline-plus-two-actual-persisted-effects");
+        var committed = await InventoryAsync(actor, 4);
+        await StartWriterAsync(host, domain);
+        JsonElement replay = await ExecuteAsync(actor, false);
+        assertions.Check(IsOk(replay) && replay.GetProperty("count").GetInt32() == 3, "protected-effects-survive-fresh-processes");
+        assertions.Check(Equal(committed, await InventoryAsync(actor, 4)), "protected-effects-restart-preserves-bytes");
+        return assertions.Failures.Count == 0 ? "compatible" : "unverified";
+    });
+    }
+
+    /// <summary>Executes the actual required manifest hop independently for both selected consumer origins.</summary>
+    internal async Task ExecuteSelectedManifestAsync(List<ScenarioObservation> observations)
+    {
+        foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host" && build.Version == ConsumerMaterializer.SelectedVersion))
+            await ExecuteManifestBoundaryAsync(observations, host,
+                builds.Single(build => build.Role == "Domain" && build.Version == host.Version && build.Source == host.Source));
+    }
+
+    private async Task ExecuteManifestBoundaryAsync(List<ScenarioObservation> observations, ConsumerBuild host, ConsumerBuild domain)
+    {
+    await PublishedScenarioTests.ObserveAsync(observations, "registered-evolution", host.Configuration + "-registered-manifest-production-hop", async assertions =>
+    {
+        await StartWriterAsync(host, domain);
+        JsonElement manifest = await GetAsync("http://127.0.0.1:" + _hostPort + "/manifest");
+        assertions.Check(manifest.GetProperty("registered").GetBoolean()
+            && manifest.GetProperty("fingerprint").GetString()!.Length == 64, "manifest-candidate-registered-through-published-api");
+        string aggregate = Guid.NewGuid().ToString("N");
+        string actor = "tenant-a:d:" + aggregate;
+        await FixtureAsync(actor, new object[]
+        {
+            new { operation = "upsert", key = actor + ":metadata", value = (object)new
+                { currentSequence = 1, lastModified = DateTimeOffset.UnixEpoch, eTag = "p1r-manifest", retainedFloor = 1 } },
+            new { operation = "upsert", key = actor + ":events:1", value = (object)new
+                { messageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV", aggregateId = aggregate, aggregateType = "r", tenantId = "tenant-a", domain = "d",
+                    sequenceNumber = 1, globalPosition = 987, timestamp = DateTimeOffset.UnixEpoch, correlationId = "corr", causationId = "cause",
+                    userId = "fixture-user", domainServiceVersion = "v1", eventTypeName = "Legacy.Event", metadataVersion = 1,
+                    serializationFormat = "json", payload = Convert.ToBase64String("{}"u8.ToArray()), extensions = (object?)null } },
+        });
+        var before = await InventoryAsync(actor, 2);
+        await StartWriterAsync(host, domain);
+        JsonElement result = await ExecuteAsync(actor, true);
+        assertions.Record("production-manifest-command-result", result.GetRawText());
+        assertions.Check(!IsOk(result), "production-required-logical-hop-refused-without-bound-callable");
+        assertions.Check(result.TryGetProperty("error", out JsonElement error) && !string.IsNullOrWhiteSpace(error.GetString()), "typed-production-evolution-refusal");
+        JsonElement observation = await GetAsync("http://127.0.0.1:" + _hostPort + "/manifest-refusal/" + Uri.EscapeDataString(actor));
+        bool observed = observation.GetProperty("observed").GetBoolean();
+        assertions.Check(observed, "production-missing-callable-cause-was-observed");
+        JsonElement cause = observation.GetProperty("cause");
+        bool intendedHop = observed && cause.GetProperty("code").GetString() == "missing-allow-listed-callable"
+            && cause.GetProperty("stage").GetString() == "production-logical-event-upcast-binding"
+            && cause.GetProperty("actor").GetString() == actor
+            && cause.GetProperty("declaringType").GetString()!.StartsWith("Hexalith.EventStore.Client.Events.EventUpcastChainExecutor", StringComparison.Ordinal);
+        assertions.Check(intendedHop, "actual-production-hop-missing-callable-cause-and-stage");
+        assertions.Record("production-manifest-refusal", observation.GetRawText());
+        assertions.Check(Equal(before, await InventoryAsync(actor, 2)), "production-manifest-refusal-preserves-original-event-bytes");
+        JsonElement stats = await GetAsync("http://127.0.0.1:" + _domainPort + "/stats");
+        assertions.Check(stats.GetProperty("applyCalls").GetInt32() == 0 && stats.GetProperty("handleCalls").GetInt32() == 0, "manifest-refusal-before-domain-apply-handle");
+        return intendedHop && assertions.Failures.Count == 0 ? "incompatible" : "unverified";
+    });
+    }
+
     private async Task ExecuteQueryBoundaryAsync(List<ScenarioObservation> observations, ConsumerBuild host, ConsumerBuild domain)
     {
+        await ExecuteDeclaredHandlerBoundaryAsync(observations, host, domain);
         await PublishedScenarioTests.ObserveAsync(observations, "query-wire", host.Configuration + "-supported-handler-and-actor-routes", async assertions =>
         {
             await StartWriterAsync(host, domain);
@@ -460,10 +676,72 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         });
     }
 
+    /// <summary>Separately measures production declared-handler transport and natural Reminder delivery for both immutable origins.</summary>
+    internal async Task ExecuteReviewedQueryAndReminderBoundariesAsync(List<ScenarioObservation> observations)
+    {
+        foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host" && build.Version == ConsumerMaterializer.SelectedVersion))
+        {
+            ConsumerBuild domain = builds.Single(build => build.Role == "Domain" && build.Version == host.Version && build.Source == host.Source);
+            await ExecuteQueryBoundaryAsync(observations, host, domain);
+            await ExecuteNaturalReminderAsync(observations, host, domain);
+        }
+    }
+
+    private async Task ExecuteDeclaredHandlerBoundaryAsync(List<ScenarioObservation> observations, ConsumerBuild host, ConsumerBuild domain)
+    {
+        await PublishedScenarioTests.ObserveAsync(observations, "query-wire", host.Configuration + "-production-declared-handler-discovery-transport", async assertions =>
+        {
+            await StartWriterAsync(host, domain);
+            string aggregate = Guid.NewGuid().ToString("N");
+            JsonElement declaration = await PostAsync("http://127.0.0.1:" + _hostPort + "/declare-query-handlers", new { });
+            assertions.Record("production-handler-discovery", declaration.GetRawText());
+            assertions.Check(declaration.GetProperty("declared").EnumerateArray().Select(item => item.GetString()).SequenceEqual(new[] { "get-counter" })
+                && declaration.GetProperty("persisted").GetRawText() == declaration.GetProperty("declared").GetRawText(), "actual-domain-handler-declaration-persisted-through-dapr");
+            assertions.Check(declaration.GetProperty("supported").GetBoolean() && !declaration.GetProperty("unknown").GetBoolean()
+                && declaration.GetProperty("registry").GetString() == "Hexalith.EventStore.Queries.DaprDomainQueryHandlerRegistry", "production-registry-discovers-only-declared-query");
+            await PostAsync("http://127.0.0.1:" + _hostPort + "/project-model/" + aggregate, new { position = 987, sequence = 12 });
+            foreach (string mode in new[] { "valid", "missing", "forged", "foreign-tenant", "foreign-actor" })
+            {
+                JsonElement before = await GetAsync("http://127.0.0.1:" + _domainPort + "/stats");
+                JsonElement response = await PostAsync("http://127.0.0.1:" + _hostPort + "/query-route/" + aggregate,
+                    new { serializer = "json", route = "declared-handler", mode });
+                assertions.Record("production-handler-" + mode, response.GetRawText());
+                assertions.Check(response.GetProperty("router").GetString() == "Hexalith.EventStore.Queries.HandlerAwareQueryRouter"
+                    && response.GetProperty("invoker").GetString() == "Hexalith.EventStore.Queries.DaprDomainQueryInvoker", "actual-production-handler-router-and-invoker-" + mode);
+                JsonElement after = await GetAsync("http://127.0.0.1:" + _domainPort + "/stats");
+                assertions.Check(after.GetProperty("queryRequests").GetInt32() == before.GetProperty("queryRequests").GetInt32() + 1,
+                    "live-domain-http-transport-received-exact-query-" + mode);
+                if (mode == "valid")
+                {
+                    assertions.Check(response.GetProperty("success").GetBoolean(), "declared-handler-production-route-succeeds");
+                    if (response.GetProperty("success").GetBoolean())
+                    {
+                        JsonElement payload = response.GetProperty("payload");
+                        foreach ((string field, string expected) in new[] { ("originalActorId", "actor"), ("authenticatedWorkloadId", "workload"),
+                            ("delegationId", "delegation"), ("tenantId", "tenant-a"), ("correlationId", "corr") })
+                            assertions.Check(payload.GetProperty(field).GetString() == expected, "declared-handler-preserves-" + field);
+                        assertions.Check(payload.GetProperty("isDelegated").GetBoolean() && payload.GetProperty("scopes")[0].GetString() == "counter.read"
+                            && payload.GetProperty("audience")[0].GetString() == "eventstore", "declared-handler-preserves-dual-principal-authority");
+                        assertions.Check(!string.IsNullOrWhiteSpace(payload.GetProperty("identityAdmissionProof").GetString()), "nonnull-proof-crosses-production-router-invoker-and-transport");
+                        assertions.Check(payload.GetProperty("value").GetProperty("watermark").GetInt64() == 987, "declared-handler-reads-exact-durable-watermark");
+                    }
+                    assertions.Check(after.GetProperty("queryReads").GetInt32() == before.GetProperty("queryReads").GetInt32() + 1, "valid-declared-handler-reads-once-after-proof");
+                }
+                else
+                {
+                    assertions.Check(!response.GetProperty("success").GetBoolean() && response.GetProperty("errorMessage").GetString() == "protected-admission-refused",
+                        "exact-declared-handler-admission-refusal-" + mode);
+                    assertions.Check(after.GetProperty("queryReads").GetInt32() == before.GetProperty("queryReads").GetInt32(), "invalid-proof-before-declared-handler-read-" + mode);
+                }
+            }
+            return assertions.Failures.Count == 0 ? "compatible" : "unverified";
+        });
+    }
+
     private async Task<JsonElement> PostAsync(string address, object request)
     {
         DateTimeOffset began = DateTimeOffset.UtcNow;
-        using var response = await _http.PostAsJsonAsync(address, request, TestContext.Current.CancellationToken);
+        using var response = await _http.PostAsJsonAsync(address, request, OperationCancellation);
         string body = await response.Content.ReadAsStringAsync();
         PublishedScenarioTests.ActiveAssertions?.Record("http-post", JsonSerializer.Serialize(new { address, began, ended = DateTimeOffset.UtcNow,
             status = (int)response.StatusCode, requestHash = QualificationRuntime.Hash(JsonSerializer.SerializeToUtf8Bytes(request)), responseHash = QualificationRuntime.Hash(Encoding.UTF8.GetBytes(body)) }));
@@ -474,7 +752,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task<JsonElement> GetAsync(string address)
     {
-        using var response = await _http.GetAsync(address, TestContext.Current.CancellationToken);
+        using var response = await _http.GetAsync(address, OperationCancellation);
         response.EnsureSuccessStatusCode();
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         PublishedScenarioTests.ActiveAssertions?.Record("http-get:" + address, json.RootElement.GetRawText());
@@ -575,7 +853,9 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task StartWriterAsync(ConsumerBuild host, ConsumerBuild domain)
     {
+        OperationCancellation.ThrowIfCancellationRequested();
         await StopWritersAsync();
+        OperationCancellation.ThrowIfCancellationRequested();
         _hostPort = Port();
         _sidecarPort = Port();
         int domainPort = Port();
@@ -589,6 +869,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         {
             ["ASPNETCORE_URLS"] = "http://127.0.0.1:" + _hostPort,
             ["P1R_DOMAIN_URL"] = "http://127.0.0.1:" + domainPort,
+            ["P1R_DOMAIN_APP_ID"] = _appId + "-domain",
             ["DAPR_HTTP_PORT"] = _sidecarPort.ToString(), ["DAPR_GRPC_PORT"] = grpc.ToString(),
             ["ASPNETCORE_ENVIRONMENT"] = "Testing", ["APP_API_TOKEN"] = appApiToken,
             ["P1R_QUERY_SIGNING_KEY_PATH"] = _querySigningKeyPath,
@@ -609,6 +890,11 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         {
             JsonElement identity = await GetAsync("http://127.0.0.1:" + port + "/identity");
             PublishedScenarioTests.ActiveAssertions?.Record("loaded-" + build.Role, identity.GetRawText());
+            var admission = PublishedScenarioTests.ActiveAssertions ?? new MeasuredAssertions();
+            int failures = admission.Failures.Count;
+            PublishedScenarioTests.ValidateIdentity(build, identity, admission);
+            if (admission.Failures.Count != failures)
+                throw new InvalidOperationException("Live consumer identity does not match its independently verified build/archive inputs.");
         }
         var sidecarEnvironment = new Dictionary<string, string>
         {
@@ -620,7 +906,18 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             "--placement-host-address", "127.0.0.1:" + _placementPort, "--scheduler-host-address", "127.0.0.1:" + _schedulerPort, "--resources-path", components,
             "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1), sidecarEnvironment)));
         await WaitHttpAsync("http://127.0.0.1:" + _sidecarPort + "/v1.0/healthz");
-        await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
+        if (host.Version == ConsumerMaterializer.SelectedVersion)
+        {
+            int domainSidecarPort = Port();
+            _writers.Add(runtime.Start(new(Path.Combine(_binaries, "daprd"), ["--app-id", _appId + "-domain", "--app-port", domainPort.ToString(),
+                "--app-channel-address", "127.0.0.1", "--dapr-http-port", domainSidecarPort.ToString(), "--dapr-grpc-port", Port().ToString(),
+                "--dapr-internal-grpc-port", Port().ToString(), "--metrics-port", Port().ToString(), "--profile-port", Port().ToString(),
+                "--placement-host-address", "127.0.0.1:" + _placementPort, "--scheduler-host-address", "127.0.0.1:" + _schedulerPort,
+                "--resources-path", components,
+                "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1))));
+            await WaitHttpAsync("http://127.0.0.1:" + domainSidecarPort + "/v1.0/healthz");
+        }
+        await Task.Delay(TimeSpan.FromSeconds(1), OperationCancellation);
     }
 
     private async Task FreshDatabaseAsync(string? dump = null)
@@ -640,7 +937,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             CommandObservation ping = await runtime.RunAsync(new("docker", ["exec", _redis, "redis-cli", "PING"], runtime.Root, TimeSpan.FromSeconds(5)));
             if (ping.ExitCode == 0 && ping.StandardOutput.Trim() == "PONG") break;
             if (DateTimeOffset.UtcNow >= until) throw new TimeoutException("Owned Redis did not become ready.");
-            await Task.Delay(200, TestContext.Current.CancellationToken);
+            await Task.Delay(200, OperationCancellation);
         }
     }
 
@@ -694,7 +991,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task<JsonElement> ExecuteAsync(string actor, bool append)
     {
-        using HttpResponseMessage response = await _http.PostAsJsonAsync("http://127.0.0.1:" + _hostPort + "/execute/" + Uri.EscapeDataString(actor), new { append }, TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await _http.PostAsJsonAsync("http://127.0.0.1:" + _hostPort + "/execute/" + Uri.EscapeDataString(actor), new { append }, OperationCancellation);
         response.EnsureSuccessStatusCode();
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return json.RootElement.Clone();
@@ -702,13 +999,13 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task FixtureAsync(string actor, object operations)
     {
-        using HttpResponseMessage response = await _http.PostAsJsonAsync("http://127.0.0.1:" + _hostPort + "/fixture/" + Uri.EscapeDataString(actor), operations, TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await _http.PostAsJsonAsync("http://127.0.0.1:" + _hostPort + "/fixture/" + Uri.EscapeDataString(actor), operations, OperationCancellation);
         response.EnsureSuccessStatusCode();
     }
 
     private async Task<string?> ReadAsync(string actor, string key)
     {
-        using HttpResponseMessage response = await _http.GetAsync("http://127.0.0.1:" + _hostPort + "/read/" + Uri.EscapeDataString(actor) + "/" + Uri.EscapeDataString(key), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await _http.GetAsync("http://127.0.0.1:" + _hostPort + "/read/" + Uri.EscapeDataString(actor) + "/" + Uri.EscapeDataString(key), OperationCancellation);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync();
@@ -728,7 +1025,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task WaitHttpAsync(string address)
     {
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(OperationCancellation);
         deadline.CancelAfter(TimeSpan.FromSeconds(40));
         while (true)
         {
@@ -737,7 +1034,13 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             {
                 using HttpResponseMessage response = await _http.GetAsync(address, deadline.Token);
                 if (response.IsSuccessStatusCode) return;
-                if ((int)response.StatusCode >= 500) throw new InvalidOperationException("Host readiness returned " + response.StatusCode + ": " + await response.Content.ReadAsStringAsync(deadline.Token));
+                if ((int)response.StatusCode >= 500)
+                {
+                    string body = await response.Content.ReadAsStringAsync(deadline.Token);
+                    bool transientDaprReadiness = address.EndsWith("/v1.0/healthz", StringComparison.Ordinal)
+                        && body.Contains("ERR_HEALTH_NOT_READY", StringComparison.Ordinal);
+                    if (!transientDaprReadiness) throw new InvalidOperationException("Host readiness returned " + response.StatusCode + ": " + body);
+                }
             }
             catch (HttpRequestException) { }
             await Task.Delay(200, deadline.Token);
@@ -746,7 +1049,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task StopWritersAsync()
     {
-        foreach (OwnedProcess process in _writers.AsEnumerable().Reverse()) await QualificationRuntime.StopAsync(process);
+        foreach (OwnedProcess process in _writers.AsEnumerable().Reverse()) await QualificationRuntime.StopAsync(process, OperationCancellation);
         _writers.Clear();
     }
 
@@ -761,11 +1064,24 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private static string Address(string tenant) => tenant + ":counter:" + Guid.NewGuid().ToString("N");
 
-    private static int Port()
+    /// <summary>Selects an invocation-distinct loopback port with a finite collision retry budget.</summary>
+    /// <param name="selectPort">An optional deterministic candidate selector for collision regressions.</param>
+    internal int Port(Func<int>? selectPort = null)
     {
-        using var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        return ((IPEndPoint)listener.LocalEndpoint).Port;
+        for (int attempt = 0; attempt < 128; attempt++)
+        {
+            int candidate;
+            if (selectPort is not null) candidate = selectPort();
+            else
+            {
+                using var listener = new TcpListener(IPAddress.Loopback, 0);
+                listener.Start();
+                candidate = ((IPEndPoint)listener.LocalEndpoint).Port;
+            }
+            lock (_allocatedPorts)
+                if (_allocatedPorts.Add(candidate)) return candidate;
+        }
+        throw new InvalidOperationException("The bounded loopback port selection budget could not find an invocation-distinct port.");
     }
 
     /// <inheritdoc/>

@@ -35,10 +35,11 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
     internal List<string> Failures { get; } = [];
 
     /// <summary>Downloads and verifies all archives before building nine package consumers and three tagged-source consumers.</summary>
-    internal async Task MaterializeAsync(bool prerequisiteOnly = false)
+    internal async Task MaterializeAsync(bool prerequisiteOnly = false, bool selectedPairOnly = false)
     {
         _templates = Path.Combine(runtime.Root, "consumer-inputs");
-        string originalTemplates = Path.Combine(repository, "tests", "Hexalith.EventStore.PublishedCompatibility.Tests", "Consumers");
+        string originalTemplates = Environment.GetEnvironmentVariable("P1R_QUALIFICATION_CONSUMER_INPUTS")
+            ?? Path.Combine(repository, "tests", "Hexalith.EventStore.PublishedCompatibility.Tests", "Consumers");
         var templateHashes = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string original in Directory.EnumerateFiles(originalTemplates, "*", SearchOption.AllDirectories))
         {
@@ -70,11 +71,12 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
         await File.WriteAllTextAsync(capturedInputsPath + ".tmp", JsonSerializer.Serialize(new
         {
             executor, diffHash = QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(diff)), untrackedHashes, templateHashes,
+            consumerInputOrigin = Path.GetFullPath(originalTemplates),
             coordinatorHash = QualificationRuntime.Hash(await File.ReadAllBytesAsync(typeof(ConsumerMaterializer).Assembly.Location)),
             builds = (await runtime.RequireAsync("git", ["rev-parse", "HEAD"], Path.Combine(repository, "references", "Hexalith.Builds"))).Trim(),
         }));
         File.Move(capturedInputsPath + ".tmp", capturedInputsPath);
-        foreach (string version in prerequisiteOnly ? [SelectedVersion] : Versions)
+        foreach (string version in prerequisiteOnly || selectedPairOnly ? [SelectedVersion] : Versions)
         {
             try
             {
@@ -86,8 +88,9 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
                 throw new InvalidOperationException("Selected tag/source/Builds does not match the approved tuple.");
             var sources = new Dictionary<string, string>(StringComparer.Ordinal);
             var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
+            var assemblyHashes = new Dictionary<string, string>(StringComparer.Ordinal);
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-            foreach (string package in Packages)
+            foreach (string package in version == SelectedVersion ? [.. Packages, "Gateway"] : Packages)
             {
                 string id = "Hexalith.EventStore." + package;
                 string lower = id.ToLowerInvariant();
@@ -96,6 +99,11 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
                 await File.WriteAllBytesAsync(archive, bytes);
                 await runtime.RequireAsync("dotnet", ["nuget", "verify", archive, "--all"]);
                 using var zip = new ZipArchive(new MemoryStream(bytes));
+                ZipArchiveEntry assembly = zip.GetEntry("lib/net10.0/" + id + ".dll")
+                    ?? throw new InvalidOperationException("The verified archive lacks its required SDK DLL entry: " + id);
+                using var assemblyBytes = new MemoryStream();
+                using (Stream assemblyStream = assembly.Open()) await assemblyStream.CopyToAsync(assemblyBytes);
+                assemblyHashes.Add(id, QualificationRuntime.Hash(assemblyBytes.ToArray()));
                 ZipArchiveEntry nuspec = zip.Entries.Single(entry => entry.FullName.EndsWith(".nuspec", StringComparison.Ordinal));
                 using Stream stream = nuspec.Open();
                 XDocument xml = XDocument.Load(stream);
@@ -110,7 +118,7 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
                 sources.Add(id, archiveSource);
                 hashes.Add(id, QualificationRuntime.Hash(bytes));
             }
-            Coordinates.Add(new(version, tag, source, builds, sources, hashes));
+            Coordinates.Add(new(version, tag, source, builds, sources, hashes, assemblyHashes));
             foreach (string role in new[] { "Host", "Domain", "Probe" })
                 await TryBuildAsync(role, version, source: null);
             }
@@ -143,16 +151,19 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
     }
 
     /// <summary>Rejects project substitution, wrong versions and unresolved or extra EventStore package edges.</summary>
-    internal static void ValidateAssets(string assetsPath, string version, bool source, string? sourceRoot = null)
+    internal static void ValidateAssets(string assetsPath, string version, bool source, string? sourceRoot = null, string role = "Probe")
     {
         using JsonDocument assets = JsonDocument.Parse(File.ReadAllText(assetsPath));
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var required = new HashSet<string>((role == "Host" && version == SelectedVersion ? [.. Packages, "Gateway", "Admin.Abstractions"] : Packages)
+            .Select(name => "Hexalith.EventStore." + name), StringComparer.OrdinalIgnoreCase);
         foreach (JsonProperty library in assets.RootElement.GetProperty("libraries").EnumerateObject())
         {
             string type = library.Value.GetProperty("type").GetString()!;
             if (!source && type == "project") throw new InvalidOperationException("Published consumer contains a source project edge: " + library.Name);
-            if (!library.Name.StartsWith("Hexalith.EventStore.", StringComparison.Ordinal)) continue;
+            if (!library.Name.StartsWith("Hexalith.EventStore.", StringComparison.OrdinalIgnoreCase)) continue;
             string[] coordinate = library.Name.Split('/');
+            if (!required.Contains(coordinate[0])) throw new InvalidOperationException("Unexpected EventStore dependency: " + library.Name);
             if (!source && coordinate[1] != version) throw new InvalidOperationException("Mixed EventStore versions: " + library.Name);
             if (source)
             {
@@ -161,10 +172,10 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
                 if (!projectPath.StartsWith(Path.GetFullPath(sourceRoot) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
                     throw new InvalidOperationException("Unexpected source dependency outside the tagged tree: " + projectPath);
             }
-            names.Add(coordinate[0]);
+            if (!names.Add(coordinate[0])) throw new InvalidOperationException("Duplicate EventStore dependency: " + library.Name);
         }
-        foreach (string package in Packages)
-            if (!names.Contains("Hexalith.EventStore." + package)) throw new InvalidOperationException("Missing required package " + package);
+        if (!names.SetEquals(required)) throw new InvalidOperationException("Incomplete EventStore dependency closure for " + role + ": "
+            + string.Join(", ", required.Except(names, StringComparer.OrdinalIgnoreCase)));
     }
 
     private async Task<ConsumerBuild> BuildAsync(string role, string version, string? source)
@@ -179,6 +190,8 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
             File.Copy(origin, Path.Combine(root, Path.GetFileName(origin)));
         string project = Path.Combine(root, role + ".csproj");
         XDocument xml = XDocument.Load(project);
+        if (role == "Host" && version == SelectedVersion)
+            xml.Root!.Add(new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "Hexalith.EventStore.Gateway"))));
         foreach (XElement reference in xml.Descendants("PackageReference").ToArray())
         {
             string id = reference.Attribute("Include")!.Value;
@@ -187,24 +200,34 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
                 Path.Combine(source, "src", id, id + ".csproj"))));
         }
         string constants = version == "3.70.1" ? "LEGACY" : version == SelectedVersion ? "SELECTED;FLOOR" : "FLOOR";
+        if (role == "Host" && version == SelectedVersion) constants += ";GATEWAY";
         xml.Root!.Add(new XElement("PropertyGroup", new XElement("DefineConstants", constants)));
         xml.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(root, "Directory.Build.props"), "<Project />");
+        await File.WriteAllTextAsync(Path.Combine(root, "Directory.Build.props"), "<Project><PropertyGroup><NuGetAudit>true</NuGetAudit><NuGetAuditMode>all</NuGetAuditMode><NuGetAuditLevel>low</NuGetAuditLevel><WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors></PropertyGroup></Project>");
         await File.WriteAllTextAsync(Path.Combine(root, "Directory.Build.targets"), "<Project />");
         await File.WriteAllTextAsync(Path.Combine(root, "Directory.Packages.props"), "<Project><PropertyGroup><ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally></PropertyGroup></Project>");
         await File.WriteAllTextAsync(Path.Combine(root, "NuGet.Config"), "<configuration><packageSources><clear/><add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\"/></packageSources></configuration>");
         string cache = Path.Combine(root, "packages");
         var environment = new Dictionary<string, string> { ["CI"] = "true", ["NUGET_PACKAGES"] = cache };
         string configuration = source is null ? "Release" : "Debug";
-        string[] properties = ["-p:UseHexalithProjectReferences=false", "-p:NuGetAudit=false", "-p:MinVerVersionOverride=" + version];
+        string sdkOrigin = Path.Combine(source ?? repository, "global.json");
+        byte[] sdkPolicy = await File.ReadAllBytesAsync(sdkOrigin);
+        await File.WriteAllBytesAsync(Path.Combine(root, "global.json"), sdkPolicy);
+        string selectedSdk = (await runtime.RequireAsync("dotnet", ["--version"], root, environment: environment)).Trim();
+        ValidateSdkPolicy(sdkPolicy, selectedSdk);
+        string[] properties = ["-p:UseHexalithProjectReferences=false", "-p:MinVerVersionOverride=" + version];
         await runtime.RequireAsync("dotnet", ["restore", project, "--configfile", Path.Combine(root, "NuGet.Config"), "--packages", cache,
             "--use-lock-file", "-p:Configuration=" + configuration, .. properties], root, TimeSpan.FromMinutes(5), environment);
         string assets = Path.Combine(root, "obj", "project.assets.json");
-        ValidateAssets(assets, version, source is not null, source);
+        ValidateAssets(assets, version, source is not null, source, role);
         await runtime.RequireAsync("dotnet", ["restore", project, "--locked-mode", "--configfile", Path.Combine(root, "NuGet.Config"),
             "--packages", cache, "-p:Configuration=" + configuration, .. properties], root, TimeSpan.FromMinutes(5), environment);
         await runtime.RequireAsync("dotnet", ["build", project, "-c", configuration, "--no-restore", "-m:1", "-nr:false", .. properties],
             root, TimeSpan.FromMinutes(8), environment);
+        byte[] finalSdkPolicy = await File.ReadAllBytesAsync(Path.Combine(root, "global.json"));
+        if ((await runtime.RequireAsync("dotnet", ["--version"], root, environment: environment)).Trim() != selectedSdk
+            || !sdkPolicy.SequenceEqual(finalSdkPolicy))
+            throw new InvalidOperationException("The SDK selection or explicit policy changed during the isolated build.");
         using JsonDocument resolved = JsonDocument.Parse(await File.ReadAllTextAsync(assets));
         var resolvedVersions = resolved.RootElement.GetProperty("libraries").EnumerateObject()
             .Where(library => library.Name.StartsWith("Hexalith.EventStore.", StringComparison.Ordinal))
@@ -214,6 +237,20 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
             QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(root, "packages.lock.json"))),
             source is null ? null : SelectedSource,
             source is null ? Coordinates.Single(coordinate => coordinate.Version == version).ArchiveSources : null,
-            resolvedVersions, QualificationRuntime.Hash(await File.ReadAllBytesAsync(project)));
+            resolvedVersions, QualificationRuntime.Hash(await File.ReadAllBytesAsync(project)),
+            source is null ? Coordinates.Single(coordinate => coordinate.Version == version).AssemblyHashes : null,
+            QualificationRuntime.Hash(sdkPolicy), selectedSdk, sdkOrigin);
+    }
+
+    /// <summary>Refuses an SDK outside the copied repository's explicit latest-patch policy.</summary>
+    internal static void ValidateSdkPolicy(byte[] policy, string selected)
+    {
+        using JsonDocument json = JsonDocument.Parse(policy);
+        JsonElement sdk = json.RootElement.GetProperty("sdk");
+        Version required = Version.Parse(sdk.GetProperty("version").GetString()!);
+        if (sdk.GetProperty("rollForward").GetString() != "latestPatch" || !Version.TryParse(selected, out Version? actual)
+            || actual.Major != required.Major || actual.Minor != required.Minor
+            || actual.Build / 100 != required.Build / 100 || actual.Build < required.Build)
+            throw new InvalidOperationException("The selected SDK does not satisfy the copied repository latestPatch policy.");
     }
 }

@@ -8,5 +8,6 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <param name="StandardOutput">The retained standard output.</param>
 /// <param name="StandardError">The retained diagnostic output.</param>
 /// <param name="OutputHash">The SHA-256 of the observed output.</param>
+/// <param name="OutputTruncated">Whether a pipe exceeded its retained bound, making this observation explicitly nonpassing.</param>
 internal sealed record CommandObservation(QualificationCommand Command, DateTimeOffset Started,
-    DateTimeOffset Ended, int ExitCode, string StandardOutput, string StandardError, string OutputHash);
+    DateTimeOffset Ended, int ExitCode, string StandardOutput, string StandardError, string OutputHash, bool OutputTruncated = false);
