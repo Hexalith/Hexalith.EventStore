@@ -1,0 +1,14 @@
+{
+  "command": [
+    "dotnet",
+    "run",
+    "--project",
+    "/tmp/hexalith-reserved-original-json-equivalence/JsonEquivalence.csproj",
+    "--",
+    "/tmp/hexalith-reserved-original-before-review-bin",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/tests/reserved-manifest-original-2026-10-27/review/json-before"
+  ],
+  "harnessProject": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup><ItemGroup><FrameworkReference Include=\"Microsoft.AspNetCore.App\" /></ItemGroup></Project>\n",
+  "harnessSource": "using System.Reflection;\nusing System.Runtime.Loader;\nusing System.Text.Json;\nstring binaries = Path.GetFullPath(args[0]);\nstring output = Path.GetFullPath(args[1]); Directory.CreateDirectory(output);\nAssemblyLoadContext.Default.Resolving += (context, name) => File.Exists(Path.Combine(binaries, name.Name + \".dll\")) ? context.LoadFromAssemblyPath(Path.Combine(binaries, name.Name + \".dll\")) : null;\nvar tests = AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.Combine(binaries, \"Hexalith.EventStore.Server.Tests.dll\"));\nvar fixtureType = tests.GetType(\"Hexalith.EventStore.Server.Tests.Security.DeletionConsumptionFixture\", true)!;\nforeach (bool consumed in new[] { false, true })\n{\n    object fixture = Activator.CreateInstance(fixtureType, nonPublic: true)!;\n    fixtureType.GetProperty(\"LoseResponse\", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(fixture, !consumed);\n    object request = fixtureType.GetMethod(\"Request\", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, new object[] { \"batch-1\", \"key-v1\", 1L, null })!;\n    request.GetType().GetProperty(\"DetachedJws\")!.SetValue(request, \"exact-protected-header..exact-detached-signature\");\n    object actor = fixtureType.GetProperty(\"Actor\", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture)!;\n    async Task<object> Invoke(string method, params object[] parameters)\n    {\n        var task = (Task)actor.GetType().GetMethod(method)!.Invoke(actor, parameters)!; await task;\n        return task.GetType().GetProperty(\"Result\")!.GetValue(task)!;\n    }\n    await Invoke(\"RegisterAsync\", request);\n    object outcome = await Invoke(\"ReserveAndConsumeAsync\", request);\n    object receipt = outcome.GetType().GetProperty(\"ReceiptId\")!.GetValue(outcome)!;\n    object result = await Invoke(\"ReadReservedManifestOriginalAsync\", \"tenant-a\", \"batch-1\", receipt);\n    File.WriteAllText(Path.Combine(output, consumed ? \"consumed.json\" : \"reserved.json\"), JsonSerializer.Serialize(result, result.GetType()) + \"\\n\");\n}\n",
+  "purpose": "Capture pre-annotation JSON from preserved original verified binaries; no test/installed transport claim."
+}

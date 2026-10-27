@@ -22,6 +22,12 @@ public interface IDeletionProtectionOwner
     Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability, CancellationToken cancellationToken = default)
         => Task.FromResult<DeletionBlockedReplacementResult?>(null);
     /// <summary>Reads only the exact retained reservation request and reserved/consumed outcome without recovery or mutation; omitted implementations remain unavailable.</summary>
+    /// <remarks>
+    /// Null means a selection, permission, current-state check or actor entry deadline could not establish an original, or the optional port is omitted.
+    /// Invalid tenant/selection arguments, malformed retained state or failed owned capture, and state/authority/transport faults may throw instead;
+    /// these exceptions disclose no usable original and grant no effect. The private adapter propagates caller cancellation and its deadline as
+    /// <see cref="OperationCanceledException"/> and throws when bounded transport admission is saturated. Omitted implementations return null even for a cancelled token.
+    /// </remarks>
     Task<DeletionReservedManifestOriginal?> ReadReservedManifestOriginalAsync(string tenantId, string batchId, string reservationReceiptId, CancellationToken cancellationToken = default)
         => Task.FromResult<DeletionReservedManifestOriginal?>(null);
     /// <summary>Reads/reconciles only exact original durable result; absence or unavailable state grants no effect.</summary>

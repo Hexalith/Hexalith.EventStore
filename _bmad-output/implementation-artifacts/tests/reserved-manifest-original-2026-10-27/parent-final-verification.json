@@ -1,0 +1,66 @@
+{
+  "recordedAtUtc": "2026-10-27T18:44:09.573096+00:00",
+  "sourceScope": "Reviewed private read-only reservation-original accessor and required default-serializer metadata",
+  "ownerBaseline": "fd327dc553169128021ee447d2a2f247fe1c33e4",
+  "ownerCurrentHead": "b62a5f4b376fbd5994ef811f80d652e7c6e53f54",
+  "sourceFilesUnchanged": 12,
+  "sourceHashes": {
+    "src/Hexalith.EventStore.Contracts/Security/DeletionBatchCapabilityV1.cs": "99f7e91519068619bf65b52ec546d48e2ab7ee76813874a8eebd02f619805a84",
+    "src/Hexalith.EventStore.Contracts/Security/DeletionBatchConsumptionRequest.cs": "a3dc60fc75aa47edecc0bffe3b020f26da89ea7e3ef00503978769275b3762b4",
+    "src/Hexalith.EventStore.Contracts/Security/DeletionConsumptionOutcome.cs": "f69e25e77be81b1798602725cfbf026e0f84728689eec4b429cb4f22195f5660",
+    "src/Hexalith.EventStore.Contracts/Security/DeletionReservedManifestOriginal.cs": "6da278e0e7de8b9f21430ee0b1fbc85a6006605fd3591cdf6fd2c0d83bc32942",
+    "src/Hexalith.EventStore.Contracts/Security/DeletionTargetReceipt.cs": "a70219c4127e8e40b9046f4f05916298a2dabefc62835d9866d635d2e1ccd5d7",
+    "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs": "e74542e1418fa7547030118a7408b845c53f773e4a5863780975ba87ab177c04",
+    "src/Hexalith.EventStore.Contracts/Security/ProtectionTarget.cs": "84b5c6e62f27e337d3847d60359760cab71d3432a1e757d39ac3956621e39c04",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs": "07ae38dac48f962973de1da0a72695a870186ff9f6df2d9b6408c33b6355305b",
+    "src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs": "0c96b4e2cca1b091f1314bebb39a040d47e64453c4c1d1fe557357b6299805b8",
+    "src/Hexalith.EventStore.Server/Security/IDeletionConsumptionActor.cs": "62c30598d91cba741eb04913b552300483d5b3da509709c96b449df9cd388320",
+    "tests/Hexalith.EventStore.Server.Tests/Security/DeletionReservedManifestOriginalTests.cs": "b5908394bba1343efe29dd14ba3508b3dc32c6bdfd69d272f17f32efac3b10f2",
+    "tests/Hexalith.EventStore.Server.Tests/Security/ReservedManifestUnavailableOwner.cs": "7297f9b185125d27b7cfdbd41b33edab6d66e316b406a8027e21f409d077d329"
+  },
+  "passed": 257,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "notRun": 0,
+  "exitCode": 0,
+  "argv": [
+    "dotnet",
+    "/tmp/hexalith-reserved-original-20261027/bin/Hexalith.EventStore.Server.Tests/debug/Hexalith.EventStore.Server.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Security.DeletionReservedManifestOriginalTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Security.DeletionConsumptionActorTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Security.PublishedTrustOwnerStateAuthorityTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Security.PublishedTrustDeletionConsumptionAuthorityTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Security.PublishedTrustReplacementAuthorityTests",
+    "-xml",
+    "/tmp/agents-owner-prereq-reserved-final.xml"
+  ],
+  "loadedBinarySha256": {
+    "Hexalith.EventStore.Contracts": "10b75172227dd3d1604b59efce3136c11998e0f0974bdc0ce09ba0098c9ca3f9",
+    "Hexalith.EventStore.Server": "be1cc6f3445a8abf198850a13cc96c0177a4db50581270f35aba6ebf0e9bccb6",
+    "Hexalith.EventStore.Server.Tests": "15082efdc4f812f58b43233c9fc07b24badc6f53d290f516af29bbdf2453a26b"
+  },
+  "testCompileUsesRetainedDependencyAssets": true,
+  "normalFullTestGraphGate": "Blocked by concurrently changed Tenants routing references; preserved separately. Current Contracts/Server normal source builds passed.",
+  "normalGateBlocker": {
+    "commandFile": "build-initial-command.json",
+    "logFile": "build-initial.log",
+    "exitCode": 1,
+    "reason": "10 CS0234/CS0246 errors in current root-declared Tenants TenantCatalogDeclarations.cs: missing EventStore.Contracts.Routing declarations."
+  },
+  "jsonFixturesByteIdentical": true,
+  "ignoredRawLogsRemainLocalByOwnerPolicy": true,
+  "evidence": {
+    "parent-final.xml": "e983ecb74f7fd13d9ee923c8d12f1338ddc634c6db2d8a38cd96de22b4f65da4",
+    "parent-final.log": "1fb5a8eaebafea12ecf2542791085d2bf9f108c5e19e8e0db89725f7a37c5618"
+  },
+  "installedAcceptance": false,
+  "qualificationExecuted": false,
+  "manifestPublisherImplemented": false,
+  "commitCreatedByThisBuild": false
+}

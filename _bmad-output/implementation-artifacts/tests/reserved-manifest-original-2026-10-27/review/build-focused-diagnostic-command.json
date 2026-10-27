@@ -1,0 +1,16 @@
+[
+  "dotnet",
+  "build",
+  "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+  "-c",
+  "Debug",
+  "--artifacts-path",
+  "/tmp/hexalith-reserved-original-20261027",
+  "-m:1",
+  "-p:UseHexalithProjectReferences=true",
+  "-p:HexalithCommonsRoot=/home/administrator/projects/hexalith/agents/references/Hexalith.Commons",
+  "-p:HexalithPolymorphicSerializationsRoot=/home/administrator/projects/hexalith/agents/references/Hexalith.PolymorphicSerializations",
+  "-p:HexalithTenantsBasePath=/home/administrator/projects/hexalith/agents/references/Hexalith.Tenants/src",
+  "--no-restore",
+  "-p:BuildProjectReferences=false"
+]

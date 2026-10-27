@@ -38,7 +38,7 @@ public sealed class DaprDeletionProtectionOwner(string tenantId, IActorProxyFact
     {
         if (requestedTenant != tenantId) { throw new ArgumentException("Private protection tenant mismatch."); }
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
-        var result = await deadline.ReadAsync(_ => proxies.CreateActorProxy<IDeletionConsumptionActor>(new(DeletionConsumptionActor.GetActorId(tenantId)), DeletionConsumptionActor.ActorTypeName)
+        var result = await deadline.ReadWithAdmissionAsync(_ => proxies.CreateActorProxy<IDeletionConsumptionActor>(new(DeletionConsumptionActor.GetActorId(tenantId)), DeletionConsumptionActor.ActorTypeName)
             .ReadReservedManifestOriginalAsync(requestedTenant, batchId, reservationReceiptId)).ConfigureAwait(false);
         deadline.ThrowIfCancellationRequested(); return result;
     }

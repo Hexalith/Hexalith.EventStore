@@ -21,6 +21,7 @@ public interface IDeletionConsumptionActor : IActor
     /// <summary>Reads the exact retained original no-effect reconciliation and outcome.</summary>
     Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability);
     /// <summary>Reads only an exact retained reserved/consumed request and receipt without reconciliation, recovery or physical work.</summary>
+    /// <remarks>Unavailable selection/authority/currentness or an expired entry budget returns null. Invalid scope, malformed state/capture and dependency faults may throw without releasing an original.</remarks>
     Task<DeletionReservedManifestOriginal?> ReadReservedManifestOriginalAsync(string tenantId, string batchId, string reservationReceiptId);
     /// <summary>Reads current independently anchored same-batch/global-key comparison without any effect.</summary>
     Task<DeletionActivationComparison?> ReadActivationComparisonAsync(string tenantId, string batchId, string replacementKeyVersion);

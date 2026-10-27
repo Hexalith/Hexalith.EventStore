@@ -1,0 +1,369 @@
+{
+  "captureStartedAt": "2026-10-27T18:34:29.259148+00:00",
+  "captureCompletedAt": "2026-10-27T18:34:29.614041+00:00",
+  "timing": "Observed after all correction verification commands. Repositories are sampled sequentially; this is not an atomic snapshot or a pre-build pin and does not establish pre-build/during-build source invariance. Dependency identities describe current local sources and retained assets, not independently authenticated installed identities.",
+  "sourceRepositories": [
+    {
+      "repository": "Hexalith.EventStore",
+      "path": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore",
+      "observedAt": "2026-10-27T18:34:29.281885+00:00",
+      "head": "946f3ab523430f11bee7451d4ae38d3d324799f4",
+      "branch": "main",
+      "dirty": true,
+      "statusSha256": "724b4d5aacb4b8398b1abc2e4fedf2b66ff62ab0ab52f2ad29d08ffb6d392c58",
+      "statusEntryCount": 12,
+      "statusEntries": [
+        " M docs/implementation/reserved-manifest-original-delivery-2026-10-27.md",
+        " M src/Hexalith.EventStore.Contracts/Security/DeletionBatchCapabilityV1.cs",
+        " M src/Hexalith.EventStore.Contracts/Security/DeletionBatchConsumptionRequest.cs",
+        " M src/Hexalith.EventStore.Contracts/Security/DeletionConsumptionOutcome.cs",
+        " M src/Hexalith.EventStore.Contracts/Security/DeletionReservedManifestOriginal.cs",
+        " M src/Hexalith.EventStore.Contracts/Security/DeletionTargetReceipt.cs",
+        " M src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+        " M src/Hexalith.EventStore.Contracts/Security/ProtectionTarget.cs",
+        " M src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs",
+        " M src/Hexalith.EventStore.Server/Security/IDeletionConsumptionActor.cs",
+        " M tests/Hexalith.EventStore.Server.Tests/Security/DeletionReservedManifestOriginalTests.cs",
+        "?? _bmad-output/implementation-artifacts/tests/reserved-manifest-original-2026-10-27/review/"
+      ],
+      "omittedStatusEntries": 0,
+      "trackedDiffPaths": [
+        "docs/implementation/reserved-manifest-original-delivery-2026-10-27.md",
+        "src/Hexalith.EventStore.Contracts/Security/DeletionBatchCapabilityV1.cs",
+        "src/Hexalith.EventStore.Contracts/Security/DeletionBatchConsumptionRequest.cs",
+        "src/Hexalith.EventStore.Contracts/Security/DeletionConsumptionOutcome.cs",
+        "src/Hexalith.EventStore.Contracts/Security/DeletionReservedManifestOriginal.cs",
+        "src/Hexalith.EventStore.Contracts/Security/DeletionTargetReceipt.cs",
+        "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+        "src/Hexalith.EventStore.Contracts/Security/ProtectionTarget.cs",
+        "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs",
+        "src/Hexalith.EventStore.Server/Security/IDeletionConsumptionActor.cs",
+        "tests/Hexalith.EventStore.Server.Tests/Security/DeletionReservedManifestOriginalTests.cs"
+      ],
+      "omittedTrackedDiffPaths": 0,
+      "trackedDiffSha256": "079e7a5f70dd5edc4bbe4307c90f80dcd42f26959eddb0f428d06fc240074289"
+    },
+    {
+      "repository": "Hexalith.Builds",
+      "path": "/home/administrator/projects/hexalith/agents/references/Hexalith.Builds",
+      "observedAt": "2026-10-27T18:34:29.301726+00:00",
+      "head": "5808d3b1a860d3afb75440b9726fca06703d0146",
+      "branch": "main",
+      "dirty": false,
+      "statusSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "statusEntryCount": 0,
+      "statusEntries": [],
+      "omittedStatusEntries": 0,
+      "trackedDiffPaths": [],
+      "omittedTrackedDiffPaths": 0,
+      "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "repository": "Hexalith.Commons",
+      "path": "/home/administrator/projects/hexalith/agents/references/Hexalith.Commons",
+      "observedAt": "2026-10-27T18:34:29.312298+00:00",
+      "head": "1663028fb6d9f46a0bf17919edeb21bb99be1587",
+      "branch": "main",
+      "dirty": false,
+      "statusSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "statusEntryCount": 0,
+      "statusEntries": [],
+      "omittedStatusEntries": 0,
+      "trackedDiffPaths": [],
+      "omittedTrackedDiffPaths": 0,
+      "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "repository": "Hexalith.PolymorphicSerializations",
+      "path": "/home/administrator/projects/hexalith/agents/references/Hexalith.PolymorphicSerializations",
+      "observedAt": "2026-10-27T18:34:29.320909+00:00",
+      "head": "221ac4592ba908ae7661ba1fa9e2d1fcc23baee0",
+      "branch": "main",
+      "dirty": false,
+      "statusSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "statusEntryCount": 0,
+      "statusEntries": [],
+      "omittedStatusEntries": 0,
+      "trackedDiffPaths": [],
+      "omittedTrackedDiffPaths": 0,
+      "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "repository": "Hexalith.Tenants",
+      "path": "/home/administrator/projects/hexalith/agents/references/Hexalith.Tenants",
+      "observedAt": "2026-10-27T18:34:29.338711+00:00",
+      "head": "2cf3a9660f71f6877923772cd145aa6856907945",
+      "branch": "main",
+      "dirty": false,
+      "statusSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "statusEntryCount": 0,
+      "statusEntries": [],
+      "omittedStatusEntries": 0,
+      "trackedDiffPaths": [],
+      "omittedTrackedDiffPaths": 0,
+      "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "repository": "Hexalith.McpCli",
+      "path": "/home/administrator/projects/hexalith/agents/references/Hexalith.McpCli",
+      "observedAt": "2026-10-27T18:34:29.378902+00:00",
+      "head": "8bfd1e0592bfee258b381f41b098fe3b35170fdd",
+      "branch": "main",
+      "dirty": false,
+      "statusSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "statusEntryCount": 0,
+      "statusEntries": [],
+      "omittedStatusEntries": 0,
+      "trackedDiffPaths": [],
+      "omittedTrackedDiffPaths": 0,
+      "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "sourceHashesFile": "source-sha256.json",
+  "sourceFileCount": 12,
+  "projectAssets": [
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.Commons.UniqueIds/project.assets.json",
+      "sha256": "354933fbf5c1dea70de39270ac0f018761dd8033bf85ef28ac4817b49d31068f",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore/project.assets.json",
+      "sha256": "9a5cedc26532dd7a9fce98c396b8dc37a0ea82363b108110ce873bcdb63888a0",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Admin.Abstractions/project.assets.json",
+      "sha256": "331a161ffff96e3bdc9b599e78ed0100801b80fee3799bcf20828c037061fc35",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Client/project.assets.json",
+      "sha256": "696001e15ded877e9d6203f04f93d6a5b16dfd6893565316212453fe77e35067",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Contracts/project.assets.json",
+      "sha256": "050a7be8ad8632703f0ac75de3ec1111b8d7b022540dca6c6ddc508cf18bc75f",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.DomainService/project.assets.json",
+      "sha256": "55a3d5a3ebbda65c35c536ebab37b095cfb5befcd9e5924541c54ed749b8c9a5",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Gateway/project.assets.json",
+      "sha256": "77d832cc944499070871b396d18c2e71176c863e8f257a1271e3c05529bfd22b",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Sample/project.assets.json",
+      "sha256": "403a2730431d782d12e620021bef80b8b0451f0d3829f2e3e6e92e4f5b9c9a82",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Sample.Contracts/project.assets.json",
+      "sha256": "914766ebd2c051ab3212370fa425d0603164df09c0f0e2ab668f291c9734ccea",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Contracts/Hexalith.EventStore.Sample.Contracts.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Server/project.assets.json",
+      "sha256": "99c14868d653c41958ce6de27d618e54868d5258661829f10d6241317fbcb886",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Server.Tests/project.assets.json",
+      "sha256": "33730cd3a0cb529a4e81931a38eecf077eb86d23558477cdc9221eed5a4bd297",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.ServiceDefaults/project.assets.json",
+      "sha256": "4491636c53be1a7af2378883a98265451b7e853aed8e451fea91e9f0c7cbac70",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.EventStore.Testing/project.assets.json",
+      "sha256": "018b01356f47a698f6ead79c7caf7f6aa72541bfb490a6c32bd084ba91e7a6b3",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.McpCli.Abstractions/project.assets.json",
+      "sha256": "ba26e16a6827cf5842d8cf7603918cde85f887b4b37ada7233ae6c271bb96f05",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.McpCli/src/Hexalith.McpCli.Abstractions/Hexalith.McpCli.Abstractions.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.McpCli.Analyzers/project.assets.json",
+      "sha256": "9cdabe29bdd35750212679ac30e35349160a8ce523c4e4624b5ac5a07e32adf9",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.McpCli/src/Hexalith.McpCli.Analyzers/Hexalith.McpCli.Analyzers.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-20261027/obj/Hexalith.Tenants.Contracts/project.assets.json",
+      "sha256": "7bc93b3dba2e2f2414373d364d71bb00f6e885a5eb992f586af74f405e68f855",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.Commons.UniqueIds/project.assets.json",
+      "sha256": "56bfe33ddcbb065df608159b2dceb9837a4234b048231c940ef5e6e50618f0b3",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore/project.assets.json",
+      "sha256": "162a29461acc36fa60e5504ce8fdb0a4c4cfe67ff8a1da614c9a8ffc53a7854e",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Admin.Abstractions/project.assets.json",
+      "sha256": "6c43e1f92818346e28348113832456314edc95699d597c54878ce95c4ed94e9b",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Client/project.assets.json",
+      "sha256": "1d102e3ef73c5dffd177a3022894d04327f9051cfcc855883c879c4a820d1834",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Contracts/project.assets.json",
+      "sha256": "2dbc6eef9abae28274cda4a86acfe8e847904bf807349b0a185a1816cfc7a1f9",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.DomainService/project.assets.json",
+      "sha256": "f3b54f52f734c7be6e7900d3a3a1f7d042424cd7293f31026fbe9fe879807755",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Gateway/project.assets.json",
+      "sha256": "7dd0f006f0e22ade02f7ce9b538b81e3e8bcd03f7a5767c360834587142fa089",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Sample/project.assets.json",
+      "sha256": "7ea254383f4c47da4bf081aff54dac09530aa8cf7b270119f0b3e63239106503",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Sample.Contracts/project.assets.json",
+      "sha256": "50b72555646006b5e6a0f5cbbad444b4233faf9386bdd388f83329f170e48d82",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Contracts/Hexalith.EventStore.Sample.Contracts.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Server/project.assets.json",
+      "sha256": "1613a96be2d63da2d9de4187884df46e065e35cfe7ac8b544b658532a01831e9",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Server.Tests/project.assets.json",
+      "sha256": "10acd11288ff3695f1db1ec1c03c36d0ccffbc61c6d6dc707aa8fcb29327541d",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.ServiceDefaults/project.assets.json",
+      "sha256": "51edfdcab711b0bb7b15ec64744f45161705a746d0f4a87c5396d855eb9f99fe",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.EventStore.Testing/project.assets.json",
+      "sha256": "5a1dfa1979c18bb05b4c106b5c0289d66f5e70f81b629d34bf4d4a764cdd20bc",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.McpCli.Abstractions/project.assets.json",
+      "sha256": "0568b718a21306b49b9841e16eae6b57be096448caf32a92a84c56ac4ba98370",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.McpCli/src/Hexalith.McpCli.Abstractions/Hexalith.McpCli.Abstractions.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.McpCli.Analyzers/project.assets.json",
+      "sha256": "f6a7d8e9f72b4cd407e93d10f9f958a41b444c721a3b357b0428431ff2be1208",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.McpCli/src/Hexalith.McpCli.Analyzers/Hexalith.McpCli.Analyzers.csproj"
+    },
+    {
+      "path": "/tmp/hexalith-reserved-original-review-20261027/obj/Hexalith.Tenants.Contracts/project.assets.json",
+      "sha256": "58d27b141fc58601090e33130ba60d0a5d300d90f7f11311c6662655ba256bb4",
+      "projectPath": "/home/administrator/projects/hexalith/agents/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj"
+    }
+  ],
+  "sourceProjectPaths": [
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Contracts/Hexalith.EventStore.Sample.Contracts.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.McpCli/src/Hexalith.McpCli.Abstractions/Hexalith.McpCli.Abstractions.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.McpCli/src/Hexalith.McpCli.Analyzers/Hexalith.McpCli.Analyzers.csproj",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj"
+  ],
+  "toolchain": {
+    "sdkObserved": "10.0.402",
+    "runtimeInventoryObserved": [
+      "Microsoft.AspNetCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]",
+      "Microsoft.AspNetCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]",
+      "Microsoft.AspNetCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]",
+      "Microsoft.AspNetCore.App 10.0.13 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]",
+      "Microsoft.NETCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]",
+      "Microsoft.NETCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]",
+      "Microsoft.NETCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]",
+      "Microsoft.NETCore.App 10.0.13 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]"
+    ],
+    "sdkInventoryObserved": [
+      "10.0.302 [/home/administrator/.dotnet/sdk]",
+      "10.0.400 [/home/administrator/.dotnet/sdk]",
+      "10.0.401 [/home/administrator/.dotnet/sdk]",
+      "10.0.402 [/home/administrator/.dotnet/sdk]"
+    ],
+    "dotnetInfoFile": "dotnet-info.txt",
+    "dotnetInfoSha256": "6837ebd35d75c0fae6fb03056abc69db79ea278a2b46e828a7b123c197a1dcc3",
+    "dotnetExecutable": "/usr/lib/dotnet/dotnet",
+    "dotnetExecutableSha256": "bebf5e63396735bdc14caae72d50eaf2d145f9166d9d932b514ec2f9f8b94e2d",
+    "platformObserved": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "ownerGlobalJsonSha256": "4d68d33fed8fe6c461c285b1e8c6db3c58c7cd951a61c0c8e26f60fc0da507c7",
+    "selectedPackagesInRetainedTestAssets": {
+      "Dapr.Actors": "1.18.10",
+      "Microsoft.NET.Test.Sdk": "18.11.0",
+      "NSubstitute": "6.2.0",
+      "Shouldly": "4.3.0",
+      "xunit.v3": "4.0.2"
+    }
+  },
+  "finalObservedBinarySha256": {
+    "Hexalith.EventStore.Contracts": "10b75172227dd3d1604b59efce3136c11998e0f0974bdc0ce09ba0098c9ca3f9",
+    "Hexalith.EventStore.Server": "be1cc6f3445a8abf198850a13cc96c0177a4db50581270f35aba6ebf0e9bccb6",
+    "Hexalith.EventStore.Server.Tests": "15082efdc4f812f58b43233c9fc07b24badc6f53d290f516af29bbdf2453a26b"
+  },
+  "preservedBaselineMatchesOriginalVerification": {
+    "Hexalith.EventStore.Contracts": true,
+    "Hexalith.EventStore.Server": true,
+    "Hexalith.EventStore.Server.Tests": true
+  },
+  "normalGateBlocker": {
+    "commandFile": "build-initial-command.json",
+    "logFile": "build-initial.log",
+    "exitCode": 1,
+    "reason": "10 CS0234/CS0246 errors in current root-declared Tenants TenantCatalogDeclarations.cs: missing EventStore.Contracts.Routing declarations."
+  },
+  "focusedDiagnostic": {
+    "commandFile": "focused-final-command.json",
+    "logFile": "focused-final.log",
+    "total": 40,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 0,
+    "notRun": 0,
+    "exitCode": 0,
+    "buildProjectReferences": false,
+    "dependencyAssets": "Retained from originally complete isolated build; current affected Contracts/Server sources rebuilt normally."
+  },
+  "jsonEquivalenceFile": "json-equivalence.json",
+  "installedAcceptance": false,
+  "qualification": false,
+  "ciExecution": false,
+  "broaderFinalVerification": "Parent-owned; not rerun by this correction unit."
+}

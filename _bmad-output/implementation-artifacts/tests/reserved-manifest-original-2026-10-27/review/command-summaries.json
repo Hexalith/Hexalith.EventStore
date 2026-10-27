@@ -1,0 +1,436 @@
+{
+  "scope": "Retained local command outputs; no CI evidence. Initial source evidence is historical and corrected focused tests use diagnostic retained dependency assets.",
+  "commands": [
+    {
+      "stage": "before-review",
+      "rawLog": "build-final.log",
+      "rawLogSha256": "3fd2486b488c3975cd2f0b7f45152c59ad911424e62cd31d14ee1e5d49eed33e",
+      "rawLogBytes": 3635,
+      "rawLogLines": 32,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "build-final-result.json",
+      "commandFile": "build-final-command.json",
+      "commandSha256": "4494d907625a15abf8c12c938b4bce549a8a9e2957ebe33d5a84af1a1f1c19af",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "before-review",
+      "rawLog": "build-normal.log",
+      "rawLogSha256": "0bffaa6c528bd3bb56faa0f0756cc526084139f0863988b6903d8e5f3377c2cc",
+      "rawLogBytes": 6322,
+      "rawLogLines": 47,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "build-normal-result.json",
+      "commandFile": "build-normal-command.json",
+      "commandSha256": "4494d907625a15abf8c12c938b4bce549a8a9e2957ebe33d5a84af1a1f1c19af",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "before-review",
+      "rawLog": "final-DeletionConsumptionActorTests.log",
+      "rawLogSha256": "5545015afb8ca40aca2fb9e6601a907325f7f668c75e7057e0dafe9437e8ea21",
+      "rawLogBytes": 475,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "final-DeletionConsumptionActorTests-result.json",
+      "commandFile": "final-DeletionConsumptionActorTests-command.json",
+      "commandSha256": "700b39b8df6f54acaf76aeae0b23a7bdfb66852070bc1ea0074599857ac21cc9",
+      "tests": {
+        "total": 58,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "before-review",
+      "rawLog": "final-DeletionReservedManifestOriginalTests.log",
+      "rawLogSha256": "67a38f54a569aec353875fe34efb8d4327e5651621373a3daa0c2cb2641001da",
+      "rawLogBytes": 475,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "final-DeletionReservedManifestOriginalTests-result.json",
+      "commandFile": "final-DeletionReservedManifestOriginalTests-command.json",
+      "commandSha256": "b1ad24c704be5881d3992dd671eb0a9bfdd0c4852b605ea065f270cf30885198",
+      "tests": {
+        "total": 29,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "before-review",
+      "rawLog": "final-PublishedTrustDeletionConsumptionAuthorityTests.log",
+      "rawLogSha256": "297051b5f122aa7b2e853e83f7c0c81ac57c9433c630094a86327531274e672f",
+      "rawLogBytes": 475,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "final-PublishedTrustDeletionConsumptionAuthorityTests-result.json",
+      "commandFile": "final-PublishedTrustDeletionConsumptionAuthorityTests-command.json",
+      "commandSha256": "ad7be99fd1412266f16e1d7aef645ea50d7520bceacc841d68b80198b86aef74",
+      "tests": {
+        "total": 42,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "before-review",
+      "rawLog": "final-PublishedTrustOwnerStateAuthorityTests.log",
+      "rawLogSha256": "b7466c7253535e1eb1f2354a5d5622908549d879f3d6c76455ec23cb77819dc9",
+      "rawLogBytes": 475,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "final-PublishedTrustOwnerStateAuthorityTests-result.json",
+      "commandFile": "final-PublishedTrustOwnerStateAuthorityTests-command.json",
+      "commandSha256": "7f86035d9fb4edcdeb8d9be5f763ad209030eb89f32f8cfd489847acc2fecb67",
+      "tests": {
+        "total": 19,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "before-review",
+      "rawLog": "final-PublishedTrustReplacementAuthorityTests.log",
+      "rawLogSha256": "4c289e606f649c1bfb663b3d56d4a2779491d01c8167f639d51b94cd285d8600",
+      "rawLogBytes": 475,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "final-PublishedTrustReplacementAuthorityTests-result.json",
+      "commandFile": "final-PublishedTrustReplacementAuthorityTests-command.json",
+      "commandSha256": "817e80cf2e69f89d49c529262e3d50760e2f068f657cf1a74009ce442d14168d",
+      "tests": {
+        "total": 98,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "before-review",
+      "rawLog": "focused.log",
+      "rawLogSha256": "6c3b8588dcedf3579e6b9dcf686a14563c562dc8c54922d1df2eec92497ae2e8",
+      "rawLogBytes": 475,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "focused-result.json",
+      "commandFile": "focused-command.json",
+      "commandSha256": "b1ad24c704be5881d3992dd671eb0a9bfdd0c4852b605ea065f270cf30885198",
+      "tests": {
+        "total": 27,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-focused-diagnostic-corrected.log",
+      "rawLogSha256": "8d71be7a3c6b845d8e1ad83f5a6f7f6d2433e8a4bc272818298932a8b89cb564",
+      "rawLogBytes": 235,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/build-focused-diagnostic-corrected-result.json",
+      "commandFile": "review/build-focused-diagnostic-command.json",
+      "commandSha256": "b020ddce70e4cce54890feb84bb22a385c49aab13694af5ae15943492e9ddb63",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-focused-diagnostic.log",
+      "rawLogSha256": "7b49b8026d989c2086d0aa539649723c46bc3d624bf14b7dc1b7654bab0bec04",
+      "rawLogBytes": 4294,
+      "rawLogLines": 15,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 1,
+      "resultFile": "review/build-focused-diagnostic-result.json",
+      "commandFile": "review/build-focused-diagnostic-command.json",
+      "commandSha256": "b020ddce70e4cce54890feb84bb22a385c49aab13694af5ae15943492e9ddb63",
+      "build": {
+        "succeeded": false,
+        "warningCount": 0,
+        "errorCount": 4,
+        "errorCodes": [
+          "CA1062",
+          "CS0122",
+          "CS4014"
+        ]
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-focused-final.log",
+      "rawLogSha256": "e33f65bbac60e949268707218335f04fd4409757979f2dad75a2855fb9ea7ecd",
+      "rawLogBytes": 235,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/build-focused-final-result.json",
+      "commandFile": "review/build-focused-final-command.json",
+      "commandSha256": "b020ddce70e4cce54890feb84bb22a385c49aab13694af5ae15943492e9ddb63",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-focused-known-types.log",
+      "rawLogSha256": "8dffe31df80a3f7547ba9c4692cf6640c856525bfa1685dbdc9112100ad5a38a",
+      "rawLogBytes": 235,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/build-focused-known-types-result.json",
+      "commandFile": "review/build-focused-diagnostic-command.json",
+      "commandSha256": "b020ddce70e4cce54890feb84bb22a385c49aab13694af5ae15943492e9ddb63",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-focused-serializer.log",
+      "rawLogSha256": "74db95f528eb5eff1bd7ada42a3bbc13d58723ff3a30441c171ad83ea51f92cd",
+      "rawLogBytes": 235,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/build-focused-serializer-result.json",
+      "commandFile": "review/build-focused-diagnostic-command.json",
+      "commandSha256": "b020ddce70e4cce54890feb84bb22a385c49aab13694af5ae15943492e9ddb63",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-initial.log",
+      "rawLogSha256": "cd43e4b683d276967425491ebd8c6f5da2da573f6d3f91075e7d3ec42baca043",
+      "rawLogBytes": 14952,
+      "rawLogLines": 66,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 1,
+      "resultFile": "review/build-initial-result.json",
+      "commandFile": "review/build-initial-command.json",
+      "commandSha256": "acc25822859cb530a9c85a7cde8d1009d6f572b05ef3f35a2f87b705b1dcfaa4",
+      "build": {
+        "succeeded": false,
+        "warningCount": 0,
+        "errorCount": 10,
+        "errorCodes": [
+          "CS0234",
+          "CS0246"
+        ]
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-server-known-types.log",
+      "rawLogSha256": "c3614eac809367adb1251461ceab2af3e5f786e370dad3b96f27eff11b07d18a",
+      "rawLogBytes": 1059,
+      "rawLogLines": 14,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/build-server-known-types-result.json",
+      "commandFile": "review/build-server-command.json",
+      "commandSha256": "7958b96107e18efe57b9069629b33209230c6f0b2991bf607f046708c70f58af",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-server-serializer.log",
+      "rawLogSha256": "3ac785b7796159b4834c1e96b53940ed31dcb45f0068ad538c343af53bd61aa2",
+      "rawLogBytes": 1059,
+      "rawLogLines": 14,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/build-server-serializer-result.json",
+      "commandFile": "review/build-server-command.json",
+      "commandSha256": "7958b96107e18efe57b9069629b33209230c6f0b2991bf607f046708c70f58af",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/build-server.log",
+      "rawLogSha256": "fa348273fcd2053cdf1c2170d64674984c463285eb6c353028eac4f5f36dc1c8",
+      "rawLogBytes": 1316,
+      "rawLogLines": 16,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/build-server-result.json",
+      "commandFile": "review/build-server-command.json",
+      "commandSha256": "7958b96107e18efe57b9069629b33209230c6f0b2991bf607f046708c70f58af",
+      "build": {
+        "succeeded": true,
+        "warningCount": 0,
+        "errorCount": 0,
+        "errorCodes": []
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/focused-final.log",
+      "rawLogSha256": "30ed3a6e5d3988422a3e9330bdce459406f6202beef98d228075978a7d95a1dd",
+      "rawLogBytes": 475,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/focused-final-result.json",
+      "commandFile": "review/focused-final-command.json",
+      "commandSha256": "b1ad24c704be5881d3992dd671eb0a9bfdd0c4852b605ea065f270cf30885198",
+      "tests": {
+        "total": 40,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/focused-initial.log",
+      "rawLogSha256": "6104b983a940686772fdc974cb4cfe572abec14ba52670fcb14f9dcc369ac09e",
+      "rawLogBytes": 5054,
+      "rawLogLines": 35,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 1,
+      "resultFile": "review/focused-initial-result.json",
+      "commandFile": "review/focused-initial-command.json",
+      "commandSha256": "b1ad24c704be5881d3992dd671eb0a9bfdd0c4852b605ea065f270cf30885198",
+      "tests": {
+        "total": 40,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/json-baseline-corrected.log",
+      "rawLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rawLogBytes": 0,
+      "rawLogLines": 0,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/json-baseline-corrected-result.json",
+      "commandFile": "review/json-baseline-corrected-command.json",
+      "commandSha256": "b290efcb64dff920a94a85a46bca98a5e6ed666eec0d3bb42fee4a517cc7cee6"
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/json-baseline.log",
+      "rawLogSha256": "2d9cf616b160e413130ee79013a7a2135f8be439a189f8626b00014c35bc3984",
+      "rawLogBytes": 1532,
+      "rawLogLines": 12,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 134,
+      "resultFile": "review/json-baseline-result.json",
+      "commandFile": "review/json-baseline-command.json",
+      "commandSha256": "4c037d5873573b8da2b9326b4184494795bf79ca9cfabbe9fe700c09836763bf"
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/json-current.log",
+      "rawLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rawLogBytes": 0,
+      "rawLogLines": 0,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/json-current-result.json",
+      "commandFile": "review/json-current-command.json",
+      "commandSha256": "d66b77a5c42f20488ae881ed9d402ab9512e3f5bb1e4785dafd9ca22da32e6ec"
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/serializer-known-types.log",
+      "rawLogSha256": "9e8001dc4968ea80390b5f13ead580b2e3aea08bf1cf8365ed39f6684ff95268",
+      "rawLogBytes": 474,
+      "rawLogLines": 7,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 0,
+      "resultFile": "review/serializer-known-types-result.json",
+      "commandFile": "review/serializer-command.json",
+      "commandSha256": "04a705929d0a86ee04debb65de3275783d5b595be5af714c06d48b074c81ade7",
+      "tests": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "stage": "review-corrections",
+      "rawLog": "review/serializer.log",
+      "rawLogSha256": "09194ccaa88127c10c0aa002d2312798572d3adf98c4ad07384d9b8f83ee38fb",
+      "rawLogBytes": 6523,
+      "rawLogLines": 37,
+      "rawLogRetention": "Local file retained; *.log intentionally ignored by existing repository policy.",
+      "exitCode": 1,
+      "resultFile": "review/serializer-result.json",
+      "commandFile": "review/serializer-command.json",
+      "commandSha256": "04a705929d0a86ee04debb65de3275783d5b595be5af714c06d48b074c81ade7",
+      "tests": {
+        "total": 2,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      }
+    }
+  ]
+}

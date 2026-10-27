@@ -1,7 +1,10 @@
 using System.Text.Json;
+using System.Reflection;
+using System.Runtime.Serialization;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
+using Hexalith.EventStore.Client.Streams;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Security;
 using Hexalith.EventStore.Testing.Fakes;
@@ -11,13 +14,16 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Security;
 
 /// <summary>Read-only retained reservation source checks with synthetic independent authority and backend; no installed qualification.</summary>
+[Collection("NativeCaptureAdmission")]
 public sealed class DeletionReservedManifestOriginalTests
 {
     /// <summary>Reserved and terminal originals survive serialized actor reconstruction without changing any durable byte or revising the retained outcome.</summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ExactReservedAndConsumedOriginalsSurviveReconstruction(bool consumed)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ExactReservedAndConsumedOriginalsSurviveReconstruction(bool consumed, bool providerPresent)
     {
         var f = new DeletionConsumptionFixture { LoseResponse = !consumed };
         var request = DeletionConsumptionFixture.Request() with { DetachedJws = "complete.protected-header..unchanged-signature" };
@@ -28,7 +34,7 @@ public sealed class DeletionReservedManifestOriginalTests
         string before = DurableBytes(restored);
         var manager = ReadOnlyManager(restored);
         f.Provider.ClearReceivedCalls(); f.Authority.ClearReceivedCalls();
-        var actor = DeletionConsumptionFixture.Create(manager, f.Authority, f.Provider);
+        var actor = DeletionConsumptionFixture.Create(manager, f.Authority, providerPresent ? f.Provider : null);
         var result = (await actor.ReadReservedManifestOriginalAsync("tenant-a", request.Capability.BatchId, outcome.ReceiptId!)).ShouldNotBeNull();
         JsonSerializer.Serialize(result.Original).ShouldBe(JsonSerializer.Serialize(request));
         JsonSerializer.Serialize(result.Outcome).ShouldBe(JsonSerializer.Serialize(outcome));
@@ -36,6 +42,31 @@ public sealed class DeletionReservedManifestOriginalTests
         result.Outcome.OwnerRevision.ShouldBe(outcome.OwnerRevision);
         DurableBytes(restored).ShouldBe(before);
         await AssertReadOnlyAsync(f, manager);
+    }
+
+    /// <summary>The Dapr remoting serializer preserves the complete reserved/consumed result graph without borrowing the owner's vectors; no live transport is exercised.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DaprTransportSerializerRoundTripPreservesCompleteOriginal(bool consumed)
+    {
+        var f = new DeletionConsumptionFixture { LoseResponse = !consumed };
+        var request = DeletionConsumptionFixture.Request() with { DetachedJws = "exact-protected-header..exact-detached-signature" };
+        await f.Actor.RegisterAsync(request); var outcome = await f.Actor.ReserveAndConsumeAsync(request);
+        var original = (await f.Actor.ReadReservedManifestOriginalAsync("tenant-a", request.Capability.BatchId, outcome.ReceiptId!)).ShouldNotBeNull();
+        new ActorProxyOptions().UseJsonSerialization.ShouldBeFalse();
+        new ActorRuntimeOptions().UseJsonSerialization.ShouldBeFalse();
+        var providerType = typeof(ActorProxy).Assembly.GetType("Dapr.Actors.Communication.ActorMessageBodyDataContractSerializationProvider", throwOnError: true)!;
+        var provider = Activator.CreateInstance(providerType, nonPublic: true);
+        var factory = providerType.GetMethod("CreateMessageBodyDataContractSerializer", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var serializer = (DataContractSerializer)factory.Invoke(provider, [typeof(DeletionReservedManifestOriginal), new[] { typeof(DeletionReservedManifestOriginal) }])!;
+        using var stream = new MemoryStream(); serializer.WriteObject(stream, original); stream.Position = 0;
+        var copy = ((DeletionReservedManifestOriginal?)serializer.ReadObject(stream)).ShouldNotBeNull();
+        JsonSerializer.Serialize(copy).ShouldBe(JsonSerializer.Serialize(original));
+        copy.Original.DetachedJws.ShouldBe(request.DetachedJws); copy.Original.Targets.ShouldBe(request.Targets);
+        copy.Outcome.TargetReceipts.ShouldBe(outcome.TargetReceipts);
+        ReferenceEquals(copy.Original.Targets, original.Original.Targets).ShouldBeFalse();
+        ReferenceEquals(copy.Outcome.TargetReceipts, original.Outcome.TargetReceipts).ShouldBeFalse();
     }
 
     /// <summary>An ordinary lookup would start the retained NotStarted reservation; this accessor does not invoke either physical port.</summary>
@@ -272,6 +303,109 @@ public sealed class DeletionReservedManifestOriginalTests
         DurableBytes(f.Backend).ShouldBe(before); f.Provider.ReceivedCalls().ShouldBeEmpty();
     }
 
+    /// <summary>A genuine reservation receipt grants no access to another batch through either the actor or its private adapter.</summary>
+    [Fact]
+    public async Task ValidReservationReceiptRequiresExactBatchThroughActorAndAdapter()
+    {
+        var f = new DeletionConsumptionFixture { LoseResponse = true }; var request = DeletionConsumptionFixture.Request();
+        var other = DeletionConsumptionFixture.Request("other-batch", targets: [new("tenant-a", "other-interaction", "other-alias")]);
+        await f.Actor.RegisterAsync(request); var reserved = await f.Actor.ReserveAndConsumeAsync(request);
+        await f.Actor.RegisterAsync(other); var otherReserved = await f.Actor.ReserveAndConsumeAsync(other);
+        otherReserved.Status.ShouldBe(DeletionConsumptionStatus.ConsumptionReserved); otherReserved.ReceiptId.ShouldNotBe(reserved.ReceiptId);
+        string before = DurableBytes(f.Backend); var manager = ReadOnlyManager(f.Backend);
+        var actor = DeletionConsumptionFixture.Create(manager, f.Authority, f.Provider); var proxies = Substitute.For<IActorProxyFactory>();
+        proxies.CreateActorProxy<IDeletionConsumptionActor>(Arg.Any<ActorId>(), Arg.Any<string>()).Returns(actor);
+        var adapter = new DaprDeletionProtectionOwner("tenant-a", proxies, TimeProvider.System);
+        f.Provider.ClearReceivedCalls(); f.Authority.ClearReceivedCalls();
+        (await adapter.ReadReservedManifestOriginalAsync("tenant-a", request.Capability.BatchId, reserved.ReceiptId!, TestContext.Current.CancellationToken)).ShouldNotBeNull();
+        (await adapter.ReadReservedManifestOriginalAsync("tenant-a", other.Capability.BatchId, reserved.ReceiptId!, TestContext.Current.CancellationToken)).ShouldBeNull();
+        (await actor.ReadReservedManifestOriginalAsync("tenant-a", request.Capability.BatchId, reserved.ReceiptId!)).ShouldNotBeNull();
+        (await actor.ReadReservedManifestOriginalAsync("tenant-a", other.Capability.BatchId, reserved.ReceiptId!)).ShouldBeNull();
+        DurableBytes(f.Backend).ShouldBe(before); await AssertReadOnlyAsync(f, manager);
+    }
+
+    /// <summary>Faults are propagated instead of converted to an absence claim; malformed retained state also cannot disclose an original or perform effects.</summary>
+    [Theory]
+    [InlineData("state")]
+    [InlineData("permission")]
+    [InlineData("anchor")]
+    [InlineData("malformed-ledger")]
+    [InlineData("malformed-request")]
+    public async Task DependencyAndCaptureFaultsThrowWithoutOriginalOrEffects(string failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        var f = new DeletionConsumptionFixture { LoseResponse = true }; var request = DeletionConsumptionFixture.Request();
+        await f.Actor.RegisterAsync(request); var reserved = await f.Actor.ReserveAndConsumeAsync(request);
+        if (failure.StartsWith("malformed", StringComparison.Ordinal))
+        {
+            var saved = f.Backend.CommittedState.Single(); var state = saved.Value.ShouldBeOfType<DeletionConsumptionLedger>();
+            state = failure == "malformed-ledger" ? state with { TenantId = "tenant-b" }
+                : state with { Batches = state.Batches.Select(batch => batch with { Current = batch.Current with { DetachedJws = "" } }).ToArray() };
+            await f.Backend.SetStateAsync(saved.Key, state, TestContext.Current.CancellationToken); await f.Backend.SaveStateAsync(TestContext.Current.CancellationToken);
+        }
+        var manager = ReadOnlyManager(f.Backend);
+        if (failure == "state") { manager.TryGetStateAsync<DeletionConsumptionLedger>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromException<ConditionalValue<DeletionConsumptionLedger>>(new IOException("Synthetic state read fault."))); }
+        if (failure == "permission") { f.Authority.AuthorizeOperationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromException<bool>(new IOException("Synthetic permission fault."))); }
+        if (failure == "anchor") { f.Authority.ValidateStateAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromException<bool>(new IOException("Synthetic anchor fault."))); }
+        string before = DurableBytes(f.Backend); f.Provider.ClearReceivedCalls(); f.Authority.ClearReceivedCalls();
+        var actor = DeletionConsumptionFixture.Create(manager, f.Authority, f.Provider);
+        Func<Task> read = async () => { _ = await actor.ReadReservedManifestOriginalAsync("tenant-a", request.Capability.BatchId, reserved.ReceiptId!); };
+        if (failure == "malformed-ledger") { await Should.ThrowAsync<InvalidOperationException>(read); }
+        else if (failure == "malformed-request") { await Should.ThrowAsync<ArgumentException>(read); }
+        else { await Should.ThrowAsync<IOException>(read); }
+        DurableBytes(f.Backend).ShouldBe(before); await AssertReadOnlyAsync(f, manager);
+    }
+
+    /// <summary>Sixteen abandoned noncooperative RPCs retain admission until completion; saturation never invokes the proxy or actor and completion releases every slot.</summary>
+    [Fact]
+    public async Task PrivateAdapterAdmissionBoundsUnfinishedCallsUntilActualCompletion()
+    {
+        var proxies = Substitute.For<IActorProxyFactory>(); var actor = Substitute.For<IDeletionConsumptionActor>();
+        proxies.CreateActorProxy<IDeletionConsumptionActor>(Arg.Any<ActorId>(), Arg.Any<string>()).Returns(actor);
+        var started = System.Threading.Channels.Channel.CreateUnbounded<bool>();
+        var release = new TaskCompletionSource<DeletionReservedManifestOriginal?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var probeRelease = new TaskCompletionSource<DeletionReservedManifestOriginal?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var currentRelease = release;
+        actor.ReadReservedManifestOriginalAsync("tenant-a", "batch-1", "reservation-1").Returns(_ => { started.Writer.TryWrite(true); return currentRelease.Task; });
+        var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow); var adapter = new DaprDeletionProtectionOwner("tenant-a", proxies, clock);
+        var probes = new List<Task<DeletionReservedManifestOriginal?>>();
+        try
+        {
+            for (int index = 0; index < 16; index++)
+            {
+                var pending = adapter.ReadReservedManifestOriginalAsync("tenant-a", "batch-1", "reservation-1", TestContext.Current.CancellationToken);
+                await started.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+                clock.Advance(TimeSpan.FromSeconds(30));
+                await Should.ThrowAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            }
+            for (int attempt = 0; attempt < 3; attempt++)
+            { await Should.ThrowAsync<AuthoritativeStreamReadAdmissionException>(() => adapter.ReadReservedManifestOriginalAsync("tenant-a", "batch-1", "reservation-1", TestContext.Current.CancellationToken)); }
+            actor.ReceivedCalls().Count().ShouldBe(16); proxies.ReceivedCalls().Count().ShouldBe(16);
+            release.TrySetResult(null);
+            currentRelease = probeRelease;
+            for (int index = 0; index < 16; index++)
+            {
+                Task<DeletionReservedManifestOriginal?>? admitted = null;
+                for (int attempt = 0; attempt < 1000 && admitted is null; attempt++)
+                {
+                    var pending = adapter.ReadReservedManifestOriginalAsync("tenant-a", "batch-1", "reservation-1", TestContext.Current.CancellationToken);
+                    if (pending.IsFaulted && pending.Exception!.InnerException is AuthoritativeStreamReadAdmissionException)
+                    { await Should.ThrowAsync<AuthoritativeStreamReadAdmissionException>(() => pending); await Task.Delay(1, TestContext.Current.CancellationToken); }
+                    else { admitted = pending; probes.Add(pending); }
+                }
+                _ = admitted.ShouldNotBeNull();
+                await started.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            }
+            actor.ReceivedCalls().Count().ShouldBe(32); proxies.ReceivedCalls().Count().ShouldBe(32);
+            await Should.ThrowAsync<AuthoritativeStreamReadAdmissionException>(() => adapter.ReadReservedManifestOriginalAsync("tenant-a", "batch-1", "reservation-1", TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            release.TrySetResult(null); probeRelease.TrySetResult(null);
+            await Task.WhenAll(probes).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+    }
+
     /// <summary>Caller cancellation and the adapter deadline cannot disclose a result from a stalled private transport.</summary>
     [Theory]
     [InlineData("before")]
@@ -304,6 +438,8 @@ public sealed class DeletionReservedManifestOriginalTests
     {
         IDeletionProtectionOwner owner = new ReservedManifestUnavailableOwner();
         (await owner.ReadReservedManifestOriginalAsync("tenant-a", "batch-1", "reservation-1", TestContext.Current.CancellationToken)).ShouldBeNull();
+        using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+        (await owner.ReadReservedManifestOriginalAsync("tenant-a", "batch-1", "reservation-1", cancellation.Token)).ShouldBeNull();
     }
 
     private static string DurableBytes(InMemoryStateManager backend) => JsonSerializer.Serialize(backend.CommittedState);

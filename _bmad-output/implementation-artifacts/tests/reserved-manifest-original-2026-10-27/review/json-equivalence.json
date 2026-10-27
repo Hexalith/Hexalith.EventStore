@@ -1,0 +1,18 @@
+{
+  "baseline": "Preserved originally verified unannotated source binaries; binary hashes in baseline-binaries.json",
+  "scope": "These reserved/consumed complete result fixtures, including all six annotated nested record types; no general pre-build invariance claim.",
+  "results": {
+    "reserved.json": {
+      "byteIdentical": true,
+      "baselineSha256": "315da0e877d1849182f9fd2245552d1fe27dfbdc6937660a86fe0db473826cb3",
+      "currentSha256": "315da0e877d1849182f9fd2245552d1fe27dfbdc6937660a86fe0db473826cb3",
+      "bytes": 1103
+    },
+    "consumed.json": {
+      "byteIdentical": true,
+      "baselineSha256": "ca8b869efb15b2b9e94f68ab272d14ec9564c0866d1a1f483ea889566c973bf1",
+      "currentSha256": "ca8b869efb15b2b9e94f68ab272d14ec9564c0866d1a1f483ea889566c973bf1",
+      "bytes": 1428
+    }
+  }
+}

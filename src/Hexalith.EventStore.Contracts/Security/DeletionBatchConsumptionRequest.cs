@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Security;
 
 /// <summary>Exact signed active attestation plus independently committed guard issue/dispatch evidence and sorted immutable targets.</summary>
@@ -7,4 +9,7 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="DispatchReceiptId">Exact conditional committed guard dispatch receipt.</param>
 /// <param name="DispatchGuardRevision">Successful dispatch revision.</param>
 /// <param name="Targets">Exact complete sorted manifest.</param>
-public sealed record DeletionBatchConsumptionRequest(DeletionBatchCapabilityV1 Capability, string DetachedJws, long CommittedIssuedGuardRevision, string DispatchReceiptId, long DispatchGuardRevision, IReadOnlyList<ProtectionTarget> Targets);
+[DataContract]
+public sealed record DeletionBatchConsumptionRequest([property: DataMember] DeletionBatchCapabilityV1 Capability, [property: DataMember] string DetachedJws,
+    [property: DataMember] long CommittedIssuedGuardRevision, [property: DataMember] string DispatchReceiptId, [property: DataMember] long DispatchGuardRevision,
+    [property: DataMember] IReadOnlyList<ProtectionTarget> Targets);

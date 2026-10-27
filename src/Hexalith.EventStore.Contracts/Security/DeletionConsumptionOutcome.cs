@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Security;
 
 /// <summary>Opaque exact owner outcome with durable receipt, key block-set revision and original ordered target vector.</summary>
@@ -11,4 +13,8 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="BlockedKeyVersion">Exact compromised version.</param>
 /// <param name="RevocationRevision">Exact authenticated key revocation revision.</param>
 /// <param name="TargetReceipts">Original ordered irreversible vector.</param>
-public sealed record DeletionConsumptionOutcome(string TenantId, string BatchId, DeletionConsumptionStatus Status, long OwnerRevision, long KeyBlockSetRevision, string? ReceiptId, DeletionConsumptionBlockReason? BlockReason, string? BlockedKeyVersion, long? RevocationRevision, IReadOnlyList<DeletionTargetReceipt> TargetReceipts);
+[DataContract]
+public sealed record DeletionConsumptionOutcome([property: DataMember] string TenantId, [property: DataMember] string BatchId,
+    [property: DataMember] DeletionConsumptionStatus Status, [property: DataMember] long OwnerRevision, [property: DataMember] long KeyBlockSetRevision,
+    [property: DataMember] string? ReceiptId, [property: DataMember] DeletionConsumptionBlockReason? BlockReason, [property: DataMember] string? BlockedKeyVersion,
+    [property: DataMember] long? RevocationRevision, [property: DataMember] IReadOnlyList<DeletionTargetReceipt> TargetReceipts);

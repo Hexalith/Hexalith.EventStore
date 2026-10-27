@@ -1,0 +1,17 @@
+{
+  "Hexalith.EventStore.ServiceDefaults.dll": "2365e813e424a7f2547dedf454ac9679d83c71dc1e0679b57aef31773e548aae",
+  "Hexalith.EventStore.Server.Tests.dll": "626bd35d7b6c7c3ceb1afb00366f7f666ce9de92b21202ea7b8512d21edfda1d",
+  "Hexalith.EventStore.DomainService.dll": "cb9baa9af7a5a2bdde9887380d1d790e7c8731bca18191f26827592aeef2782c",
+  "Hexalith.Commons.UniqueIds.dll": "41e84bbfb1b0cd8957ab5125347f3f88880a391cb299e20cb566c64f276d1eb7",
+  "Hexalith.EventStore.Admin.Abstractions.dll": "9478a7366f9bfa369aabce35971f6180c8e1891b68ecbf3e698f124e69586027",
+  "Hexalith.McpCli.Abstractions.dll": "971a5a69f8425c8b15f7f5d566d8e7d12f73a021c61dbc583ea1b61a5ed7f750",
+  "Hexalith.EventStore.Server.dll": "ad00262cc90148af89d59df6a4798092fde7e79b80df4148dec5c3170a3f9311",
+  "Hexalith.EventStore.Testing.dll": "4866a86fac6fc752b2bde28b8c179002e952a3c526b6d9cd19396c29fa50facb",
+  "Hexalith.EventStore.Client.dll": "b589050f2db526123c8ae924628492d2c6649d261416f4bd29b5ef56ecbcdf97",
+  "Hexalith.EventStore.Gateway.dll": "f59f9f28fea21441e6712a469759c452f920155830ca78d09447d11d30d7fbbe",
+  "Hexalith.EventStore.Contracts.dll": "532c4deb125b3a0b129b11d6661dcd786736056f189e116ab6ef5c95fbfc4775",
+  "Hexalith.Tenants.Contracts.dll": "67273f1fbdaea45ba4e04ea171857b0e2daf6951f52495d87462609b0b4a7719",
+  "Hexalith.EventStore.dll": "3535171c7b4ce4e192cfa382d7d7f7afbcd1a7d437aade2587cd7557166761da",
+  "Hexalith.EventStore.Sample.dll": "11a8cb4f2cbff011fb57cf3f6693014a94ef6339a1bcccd3380abca538cb78f7",
+  "Hexalith.EventStore.Sample.Contracts.dll": "0320d23ea5888291cba0b74d30fdbb8ec7f36d7d693ad586feee4967b5edee25"
+}

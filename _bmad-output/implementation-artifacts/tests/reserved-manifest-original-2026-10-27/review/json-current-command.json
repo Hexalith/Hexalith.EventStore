@@ -1,0 +1,9 @@
+[
+  "dotnet",
+  "run",
+  "--project",
+  "/tmp/hexalith-reserved-original-json-equivalence/JsonEquivalence.csproj",
+  "--",
+  "/tmp/hexalith-reserved-original-20261027/bin/Hexalith.EventStore.Server.Tests/debug",
+  "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/tests/reserved-manifest-original-2026-10-27/review/json-after"
+]

@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Security;
 
 /// <summary>The register's closed non-expiring V1 destruction-capability payload. It contains no successful committed issue revision or renewal field.</summary>
@@ -15,6 +17,9 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="AttestationOrdinal">Original or expected successor active attestation ordinal.</param>
 /// <param name="SigningAttemptOrdinal">Monotonic pre-issue signing attempt.</param>
 /// <param name="CapabilityKeyVersion">Exact per-tenant deletion-capability key version.</param>
-public sealed record DeletionBatchCapabilityV1(string Issuer, string Audience, string TenantId, string DeletionRequestId,
-    string DestructionSealId, string BatchKind, long BatchOrdinal, string BatchId, string ManifestDigest, string GuardStreamId,
-    long IntendedIssuedGuardRevision, long AttestationOrdinal, long SigningAttemptOrdinal, string CapabilityKeyVersion);
+[DataContract]
+public sealed record DeletionBatchCapabilityV1([property: DataMember] string Issuer, [property: DataMember] string Audience,
+    [property: DataMember] string TenantId, [property: DataMember] string DeletionRequestId, [property: DataMember] string DestructionSealId,
+    [property: DataMember] string BatchKind, [property: DataMember] long BatchOrdinal, [property: DataMember] string BatchId,
+    [property: DataMember] string ManifestDigest, [property: DataMember] string GuardStreamId, [property: DataMember] long IntendedIssuedGuardRevision,
+    [property: DataMember] long AttestationOrdinal, [property: DataMember] long SigningAttemptOrdinal, [property: DataMember] string CapabilityKeyVersion);

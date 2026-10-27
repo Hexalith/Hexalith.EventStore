@@ -1,0 +1,34 @@
+{
+  "scope": "Inspected owning source and SDK defaults only. No installed host/proxy configuration or live transport is inferred.",
+  "observations": [
+    "EventStore protection opt-in registers the actor without overriding serializer options.",
+    "Owning EventStore AddActors source has no UseJsonSerialization setting.",
+    "Platform qualification composition selects ActorProxy.DefaultProxyFactory and ActorProxy.Create without explicit serializer options.",
+    "Focused test asserts ActorProxyOptions and ActorRuntimeOptions defaults select DataContract, then obtains the actual Dapr 1.18.10 provider-created serializer by reflection."
+  ],
+  "sources": {
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Configuration/InteractionPayloadProtectionServiceCollectionExtensions.cs": "0fac45ea4d13c1b19f0d880e34d6e1293c5c4ad750a7523da0680c38dd9061d7",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs": "e41e1d289076a7539a171e90a376db55f4964cecb63ef46af70947cf41b138f6",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs": "791d22ef0aa77f1912b23c330ebba906333619796173f2aef8fe0357e7580635",
+    "/home/administrator/projects/hexalith/agents/references/Hexalith.Platform/src/Hexalith.Platform.Protection/QualificationGuardProductionComposition.cs": "51bd505a3f3a7e727f623c70ad0f9a79b323d656a9fa40932bd2168e625e8026"
+  },
+  "serializerAssembly": {
+    "path": "/home/administrator/.nuget/packages/dapr.actors/1.18.10/lib/net10.0/Dapr.Actors.dll",
+    "sha256": "98d77fb28b39fe6832e06cb2bd66d58024b9587411b04965da385909f32a9dfa"
+  },
+  "annotatedRecordTypes": [
+    "DeletionReservedManifestOriginal",
+    "DeletionBatchConsumptionRequest",
+    "DeletionBatchCapabilityV1",
+    "DeletionConsumptionOutcome",
+    "ProtectionTarget",
+    "DeletionTargetReceipt"
+  ],
+  "newDtoKnownTypes": [
+    "ReadOnlyCollection<ProtectionTarget>",
+    "ReadOnlyCollection<DeletionTargetReceipt>"
+  ],
+  "publicMembersChanged": false,
+  "transportDefaultsChanged": false,
+  "jsonComparison": "json-equivalence.json"
+}
