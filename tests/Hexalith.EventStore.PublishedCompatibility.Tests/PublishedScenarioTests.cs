@@ -182,10 +182,11 @@ public sealed class PublishedScenarioTests
         var cleanup = new MeasuredAssertions();
         cleanup.Check(runtime.CleanupFailures.Count == 0, "all-owned-resources-removed-shared-preserved");
         observations.Add(new("failure-cleanup", "matrix-cleanup-twice", cleanup.Failures.Count == 0 ? "passed" : "failed", "compatible", cleanup.Count, cleanup.Failures));
-        string executor = (await runtime.RequireAsync("git", ["rev-parse", "HEAD"], repository)).Trim();
-        string diff = await runtime.RequireAsync("git", ["diff", "--binary", "HEAD"], repository);
+        using JsonDocument executorInputs = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
+        string executor = executorInputs.RootElement.GetProperty("executor").GetString()!;
         var summary = new { selected = ConsumerMaterializer.SelectedVersion, source = ConsumerMaterializer.SelectedSource,
-            builds = ConsumerMaterializer.SelectedBuilds, executor, executorDiffHash = QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(diff)),
+            builds = ConsumerMaterializer.SelectedBuilds, executor, executorDiffHash = executorInputs.RootElement.GetProperty("diffHash").GetString(),
+            executorInputs = executorInputs.RootElement.Clone(),
             assertions = observations.Sum(observation => observation.Assertions),
             passed = observations.Count(observation => observation.Execution == "passed"),
             failed = observations.Count(observation => observation.Execution == "failed"),

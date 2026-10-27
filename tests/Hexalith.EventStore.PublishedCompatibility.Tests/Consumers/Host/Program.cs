@@ -35,6 +35,13 @@ builder.Services.AddSingleton<Hexalith.EventStore.Server.Commands.ITrustedEffect
 #endif
 #if SELECTED
 ManifestEvolutionFixture.Register(builder.Services);
+builder.Services.AddActors(options => options.Actors.RegisterActor<FixtureQueryActor>("P1RQueryActor"));
+builder.Services.Configure<Hexalith.EventStore.Server.Identity.IdentityAdmissionSigningOptions>(options =>
+    options.PrivateKeyPem = File.ReadAllText(Environment.GetEnvironmentVariable("P1R_QUERY_SIGNING_KEY_PATH")!));
+builder.Services.AddSingleton<Hexalith.EventStore.Server.Identity.IIdentityAdmissionSigner, Hexalith.EventStore.Server.Identity.IdentityAdmissionSigner>();
+builder.Configuration["EventStore:DataProtection:PersistToStateStore"] = "true";
+builder.Configuration["EventStore:DataProtection:StateKey"] = "p1r:cursor-keys";
+builder.Services.AddEventStoreDataProtection(builder.Configuration, "p1r-counter");
 builder.Configuration["APP_API_TOKEN"] = "p1r-synthetic-app-token";
 builder.Configuration["EventStore:Reminders:ActorTypeName"] = "P1RReminderActor";
 builder.Configuration["EventStore:Reminders:Workload"] = "p1r-fixture";
@@ -55,6 +62,7 @@ CapabilityEndpoints.Map(app);
 #if SELECTED
 app.MapEventStoreReminders();
 ReminderEndpoints.Map(app);
+QueryBoundaryEndpoints.Map(app);
 app.MapPost("/evolution", async (JsonElement input, Dapr.Client.DaprClient client) =>
 {
     string key = "p1r:evolution:" + Guid.NewGuid().ToString("N");

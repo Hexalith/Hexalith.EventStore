@@ -19,10 +19,26 @@ builder.Services.AddEventStoreClient<CounterProcessor>();
 builder.Services.AddEventStoreClient<EvolutionAggregate>();
 builder.Services.AddKnownEventPayload<EvolvedIncremented>();
 builder.Services.AddEventPayloadUpcaster<IncrementUpcaster>();
+builder.Services.AddSingleton(new Dapr.Client.DaprClientBuilder().Build());
+builder.Services.AddEventStoreReadModelStore();
+builder.Services.Configure<Hexalith.EventStore.Client.Security.IdentityAdmissionOptions>(options =>
+{
+    options.VerificationKeyPem = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(Environment.GetEnvironmentVariable("P1R_QUERY_VERIFICATION_KEY")!));
+    options.AuthorityRevision = 1;
+});
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<Hexalith.EventStore.Client.Security.IIdentityAdmissionProof, Hexalith.EventStore.Client.Security.IdentityAdmissionProof>();
+builder.Services.AddScoped<Hexalith.EventStore.DomainService.IDomainQueryHandler, AuthorizedCounterQueryHandler>();
 #endif
 WebApplication app = builder.Build();
 app.MapGet("/identity", () => new { identities = ConsumerIdentity.Read() });
+#if SELECTED
+app.MapGet("/stats", () => new { applyCalls = CounterState.ApplyCalls, handleCalls = CounterProcessor.HandleCalls, queryReads = AuthorizedCounterQueryHandler.Reads });
+app.MapPost("/query", async (Hexalith.EventStore.Contracts.Queries.QueryEnvelope query, HttpContext context) =>
+    await Hexalith.EventStore.DomainService.DomainQueryDispatcher.ExecuteAsync(context.RequestServices, query, context.RequestAborted));
+#else
 app.MapGet("/stats", () => new { applyCalls = CounterState.ApplyCalls, handleCalls = CounterProcessor.HandleCalls });
+#endif
 #if SELECTED
 app.MapPost("/evolution", async (JsonElement input, EvolutionAggregate aggregate) =>
 {

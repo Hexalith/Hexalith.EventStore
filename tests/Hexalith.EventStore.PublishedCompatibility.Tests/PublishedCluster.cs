@@ -24,11 +24,20 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
     private int _sidecarPort;
     private string _appId = string.Empty;
     private int _databaseNumber;
+    private string _querySigningKeyPath = string.Empty;
+    private string _queryVerificationKey = string.Empty;
 
     /// <summary>Downloads private pinned binaries without touching the installed Dapr runtime.</summary>
     internal async Task InitializeAsync()
     {
         await runtime.CaptureSharedContainersAsync();
+        using (RSA queryKey = RSA.Create(2048))
+        {
+            _querySigningKeyPath = Path.Combine(runtime.Root, "query-signing-key.pem");
+            runtime.RegisterSensitivePath(_querySigningKeyPath);
+            await File.WriteAllTextAsync(_querySigningKeyPath, queryKey.ExportRSAPrivateKeyPem());
+            _queryVerificationKey = Convert.ToBase64String(Encoding.UTF8.GetBytes(queryKey.ExportRSAPublicKeyPem()));
+        }
         _binaries = Path.Combine(runtime.Root, "dapr-1.18.4");
         Directory.CreateDirectory(_binaries);
         using var download = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
@@ -434,8 +443,11 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             ["P1R_DOMAIN_URL"] = "http://127.0.0.1:" + domainPort,
             ["DAPR_HTTP_PORT"] = _sidecarPort.ToString(), ["DAPR_GRPC_PORT"] = grpc.ToString(),
             ["ASPNETCORE_ENVIRONMENT"] = "Testing", ["APP_API_TOKEN"] = "p1r-synthetic-app-token",
+            ["P1R_QUERY_SIGNING_KEY_PATH"] = _querySigningKeyPath,
         };
-        _writers.Add(runtime.Start(new("dotnet", [domain.Assembly, "--urls", "http://127.0.0.1:" + domainPort], Path.GetDirectoryName(domain.Project)!, TimeSpan.FromMinutes(1))));
+        _writers.Add(runtime.Start(new("dotnet", [domain.Assembly, "--urls", "http://127.0.0.1:" + domainPort], Path.GetDirectoryName(domain.Project)!, TimeSpan.FromMinutes(1),
+            new Dictionary<string, string> { ["P1R_QUERY_VERIFICATION_KEY"] = _queryVerificationKey,
+                ["DAPR_HTTP_PORT"] = _sidecarPort.ToString(), ["DAPR_GRPC_PORT"] = grpc.ToString() })));
         _writers.Add(runtime.Start(new("dotnet", [host.Assembly], Path.GetDirectoryName(host.Project)!, TimeSpan.FromMinutes(1), environment)));
         await WaitHttpAsync("http://127.0.0.1:" + domainPort + "/identity");
         await WaitHttpAsync("http://127.0.0.1:" + _hostPort + "/identity");
