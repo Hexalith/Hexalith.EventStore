@@ -266,6 +266,27 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host"))
         {
             ConsumerBuild domain = builds.Single(build => build.Role == "Domain" && build.Version == host.Version && build.Source == host.Source);
+            await PublishedScenarioTests.ObserveAsync(observations, "mixed-api", host.Version + "-" + host.Configuration + "-persisted-status-tristate", async assertions =>
+            {
+                await StartWriterAsync(host, domain);
+                string prefix = "status-" + Guid.NewGuid().ToString("N");
+                var expected = new Dictionary<string, bool?> { [prefix + "-legacy"] = null, [prefix + "-terminal"] = false, [prefix + "-automatic"] = true };
+                var original = new Dictionary<string, string>();
+                foreach ((string message, bool? retryable) in expected)
+                {
+                    JsonElement value = await PostAsync("http://127.0.0.1:" + _hostPort + "/status-fixture/" + message, new { retryable });
+                    original.Add(message, value.GetRawText());
+                    assertions.Check(value.TryGetProperty("retryable", out JsonElement flag) && (retryable is null
+                        ? flag.ValueKind == JsonValueKind.Null : flag.ValueKind is JsonValueKind.True or JsonValueKind.False && flag.GetBoolean() == retryable.Value), "persisted-status-tristate-" + retryable);
+                }
+                await StartWriterAsync(host, domain);
+                foreach ((string message, string prior) in original)
+                {
+                    JsonElement restored = await GetAsync("http://127.0.0.1:" + _hostPort + "/status-fixture/" + message);
+                    assertions.Check(restored.GetRawText() == prior, "status-tristate-fresh-process-readback");
+                }
+                return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
+            });
             await PublishedScenarioTests.ObserveAsync(observations, "mixed-api", host.Version + "-" + host.Configuration, async assertions =>
             {
                 await StartWriterAsync(host, domain);
@@ -291,6 +312,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
             });
             if (host.Version != ConsumerMaterializer.SelectedVersion) continue;
+            await ExecuteQueryBoundaryAsync(observations, host, domain);
             await PublishedScenarioTests.ObserveAsync(observations, "registered-evolution", host.Configuration + "-registered-manifest-production-hop", async assertions =>
             {
                 await StartWriterAsync(host, domain);
@@ -363,6 +385,69 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
             });
         }
+    }
+
+    /// <summary>Executes the same actual capability/addition operations with the selected consumers for focused diagnostics.</summary>
+    internal Task ExecuteSelectedCapabilitiesAsync(List<ScenarioObservation> observations) => CapabilityCasesAsync(observations);
+
+    private async Task ExecuteQueryBoundaryAsync(List<ScenarioObservation> observations, ConsumerBuild host, ConsumerBuild domain)
+    {
+        await PublishedScenarioTests.ObserveAsync(observations, "query-wire", host.Configuration + "-supported-handler-and-actor-routes", async assertions =>
+        {
+            await StartWriterAsync(host, domain);
+            string aggregate = Guid.NewGuid().ToString("N");
+            string projection = "http://127.0.0.1:" + _hostPort + "/project-model/" + aggregate;
+            JsonElement applied = await PostAsync(projection, new { position = 987, sequence = 12 });
+            assertions.Check(applied.GetProperty("watermark").GetInt64() == 987 && applied.GetProperty("sequence").GetInt64() == 12, "read-model-durably-applied-987-distinct-from-sequence12");
+            JsonElement duplicate = await PostAsync(projection, new { position = 987, sequence = 12 });
+            assertions.Check(duplicate.GetProperty("count").GetInt32() == 1, "duplicate-projection-delivery-converges");
+            foreach (string serializer in new[] { "json", "xml" })
+            {
+                JsonElement response = await PostAsync("http://127.0.0.1:" + _hostPort + "/query-route/" + aggregate, new { serializer, mode = "valid" });
+                assertions.Check(response.GetProperty("success").GetBoolean(), "supported-" + serializer + "-query-route-succeeded");
+                if (response.GetProperty("success").GetBoolean())
+                {
+                    JsonElement payload = response.GetProperty("payload");
+                    foreach ((string field, string expected) in new[] { ("originalActorId", "actor"), ("authenticatedWorkloadId", "workload"),
+                        ("delegationId", "delegation"), ("tenantId", "tenant-a"), ("correlationId", "corr") })
+                        assertions.Check(payload.GetProperty(field).GetString() == expected, serializer + "-handler-preserves-" + field);
+                    assertions.Check(payload.GetProperty("isDelegated").GetBoolean(), serializer + "-delegation-preserved");
+                    assertions.Check(payload.GetProperty("scopes")[0].GetString() == "counter.read" && payload.GetProperty("audience")[0].GetString() == "eventstore", serializer + "-scopes-audience-preserved");
+                    assertions.Check(!string.IsNullOrWhiteSpace(payload.GetProperty("identityAdmissionProof").GetString()), serializer + "-real-signed-proof-reaches-handler");
+                    assertions.Check(payload.GetProperty("value").GetProperty("watermark").GetInt64() == 987, serializer + "-handler-reads-durable-watermark");
+                }
+                JsonElement before = await GetAsync("http://127.0.0.1:" + _domainPort + "/stats");
+                foreach (string mode in new[] { "missing", "forged", "foreign-tenant", "foreign-actor" })
+                {
+                    JsonElement denied = await PostAsync("http://127.0.0.1:" + _hostPort + "/query-route/" + aggregate, new { serializer, mode });
+                    assertions.Check(!denied.GetProperty("success").GetBoolean(), serializer + "-protected-query-refuses-" + mode);
+                }
+                JsonElement after = await GetAsync("http://127.0.0.1:" + _domainPort + "/stats");
+                assertions.Check(after.GetProperty("queryReads").GetInt32() == before.GetProperty("queryReads").GetInt32(), serializer + "-denied-before-read-model-access");
+            }
+            return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
+        });
+        await PublishedScenarioTests.ObserveAsync(observations, "projection-wire", host.Configuration + "-durably-applied-watermark-cursor", async assertions =>
+        {
+            await StartWriterAsync(host, domain);
+            string aggregate = Guid.NewGuid().ToString("N");
+            await PostAsync("http://127.0.0.1:" + _hostPort + "/project-model/" + aggregate, new { position = 987, sequence = 12 });
+            JsonElement first = await PostAsync("http://127.0.0.1:" + _hostPort + "/cursor-model/" + aggregate, new { mode = "valid" });
+            string cursor = first.GetProperty("cursor").GetString()!;
+            assertions.Check(first.GetProperty("decoded").GetBoolean() && first.GetProperty("position").GetString() == "987", "cursor-from-durably-applied-positive-watermark");
+            await StartWriterAsync(host, domain);
+            JsonElement restarted = await PostAsync("http://127.0.0.1:" + _hostPort + "/cursor-model/" + aggregate, new { mode = "valid", cursor });
+            assertions.Check(restarted.GetProperty("decoded").GetBoolean() && restarted.GetProperty("model").GetProperty("watermark").GetInt64() == 987, "persisted-model-watermark-and-sdk-keyring-survive-restart");
+            foreach (string mode in new[] { "foreign-actor", "foreign-tenant", "foreign-domain", "changed-filter", "changed-query", "tampered" })
+            {
+                JsonElement denied = await PostAsync("http://127.0.0.1:" + _hostPort + "/cursor-model/" + aggregate, new { mode, cursor });
+                assertions.Check(!denied.GetProperty("decoded").GetBoolean(), "durable-cursor-refuses-" + mode);
+            }
+            await PostAsync("http://127.0.0.1:" + _hostPort + "/project-model/" + aggregate, new { position = 988, sequence = 13 });
+            JsonElement advanced = await PostAsync("http://127.0.0.1:" + _hostPort + "/cursor-model/" + aggregate, new { mode = "valid", cursor });
+            assertions.Check(!advanced.GetProperty("decoded").GetBoolean(), "old-cursor-refuses-after-durably-applied-watermark-advances");
+            return assertions.Failures.Count == 0 ? "compatible" : "incompatible";
+        });
     }
 
     private async Task<JsonElement> PostAsync(string address, object request)

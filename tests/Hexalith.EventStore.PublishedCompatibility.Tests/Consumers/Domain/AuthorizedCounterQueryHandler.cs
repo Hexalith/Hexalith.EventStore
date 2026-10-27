@@ -30,7 +30,7 @@ public sealed class AuthorizedCounterQueryHandler(IIdentityAdmissionProof proof,
         {
             value, query.OriginalActorId, query.AuthenticatedWorkloadId, query.IsDelegated, query.DelegationId,
             query.Scopes, query.Audience, query.TenantId, query.CorrelationId, query.IdentityAdmissionProof,
-        }), projectionType: "counter");
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web)), projectionType: "counter");
     }
 }
 #endif

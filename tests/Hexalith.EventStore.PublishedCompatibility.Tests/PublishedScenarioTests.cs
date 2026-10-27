@@ -212,6 +212,7 @@ public sealed class PublishedScenarioTests
         try
         {
             string compatibility = await operation(assertions);
+            if (assertions.Failures.Count > 0 && compatibility == "compatible") compatibility = "unverified";
             observations.Add(new(scenario, name, assertions.Failures.Count == 0 && assertions.Count > 0 ? "passed" : "failed",
                 compatibility, assertions.Count, assertions.Failures));
         }

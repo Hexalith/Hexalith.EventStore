@@ -50,7 +50,7 @@ public static class QueryBoundaryEndpoints
             {
                 IWireQueryActor actor = actors.CreateActorProxy<IWireQueryActor>(new ActorId("counter:" + query.TenantId), "P1RQueryActor");
                 QueryResult response = await actor.QueryAsync(query);
-                return Results.Json(new { response.Success, payload = response.GetPayload(), response.ErrorMessage });
+                return Results.Json(new { response.Success, payload = response.Success ? response.GetPayload() : (JsonElement?)null, response.ErrorMessage });
             }
             var request = new SubmitQuery(query.TenantId, query.Domain, query.AggregateId, query.QueryType, query.Payload, query.CorrelationId,
                 query.UserId, ProjectionType: "counter", ProjectionActorType: "P1RQueryActor", OriginalActorId: query.OriginalActorId,

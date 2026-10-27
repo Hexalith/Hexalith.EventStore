@@ -82,6 +82,18 @@ app.MapPost("/evolution", async (JsonElement input, Dapr.Client.DaprClient clien
 app.MapGet("/manifest", () => new { fingerprint = ManifestEvolutionFixture.Fingerprint, domain = "d", fromVersion = 1, currentVersion = 2, registered = true });
 #endif
 app.MapGet("/identity", () => new { identities = ConsumerIdentity.Read() });
+app.MapPost("/status-fixture/{message}", async (string message, JsonElement input, Hexalith.EventStore.Server.Commands.ICommandStatusStore store) =>
+{
+    bool? retryable = input.GetProperty("retryable").ValueKind == JsonValueKind.Null ? null : input.GetProperty("retryable").GetBoolean();
+    var wire = JsonSerializer.SerializeToElement(new { status = Hexalith.EventStore.Contracts.Commands.CommandStatus.Completed,
+        timestamp = DateTimeOffset.UnixEpoch, aggregateId = "fixture-counter", eventCount = 1, messageId = message,
+        correlationId = "corr", retryable, recoveryReasonCode = retryable is null ? null : "p1r-fixture", drainAttemptCount = retryable is null ? (int?)null : 1 });
+    var status = wire.Deserialize<Hexalith.EventStore.Contracts.Commands.CommandStatusRecord>(new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+    await store.WriteStatusAsync("tenant-a", message, status);
+    return Results.Json(await store.ReadStatusAsync("tenant-a", message));
+});
+app.MapGet("/status-fixture/{message}", async (string message, Hexalith.EventStore.Server.Commands.ICommandStatusStore store) =>
+    Results.Json(await store.ReadStatusAsync("tenant-a", message)));
 app.MapGet("/reader/{actorId}", async (string actorId, ILogger<EventStreamReader> logger) =>
 {
     string[] address = actorId.Split(':');
@@ -130,6 +142,9 @@ app.MapPost("/execute/{actorId}", async (string actorId, JsonElement request, Ht
 });
 app.MapPost("/fixture/{actorId}", async (string actorId, JsonElement request) =>
 {
+    foreach (JsonElement operation in request.EnumerateArray())
+        if (!operation.GetProperty("key").GetString()!.StartsWith(actorId + ":", StringComparison.Ordinal)) return Results.BadRequest();
+    _ = await Proxy(actorId).GetCurrentSequenceAsync();
     var operations = request.EnumerateArray().Select(operation => new
     {
         operation = operation.GetProperty("operation").GetString(),
@@ -137,7 +152,7 @@ app.MapPost("/fixture/{actorId}", async (string actorId, JsonElement request) =>
     }).ToArray();
     using var http = Sidecar();
     using var response = await http.PostAsJsonAsync("/v1.0/actors/AggregateActor/" + Uri.EscapeDataString(actorId) + "/state", operations);
-    response.EnsureSuccessStatusCode();
+    if (!response.IsSuccessStatusCode) throw new InvalidOperationException("Dapr fixture transaction failed: " + response.StatusCode + ":" + await response.Content.ReadAsStringAsync());
     return Results.Ok();
 });
 app.MapGet("/read/{actorId}/{key}", async (string actorId, string key) =>

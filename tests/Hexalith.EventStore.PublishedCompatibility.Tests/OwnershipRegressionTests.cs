@@ -119,6 +119,22 @@ public sealed class OwnershipRegressionTests
         new ScenarioObservation("control", "exception", "failed", "compatible", 4, []).Passing.ShouldBeFalse();
     }
 
+    /// <summary>A failed invariant cannot leave a compatible claim on its case observation.</summary>
+    [Fact]
+    public async Task FailedInvariantDowngradesCompatibilityAsync()
+    {
+        var cases = new List<ScenarioObservation>();
+        await PublishedScenarioTests.ObserveAsync(cases, "boundary", "failed-invariant", assertions =>
+        {
+            assertions.Check(false, "measured-failure");
+            return Task.FromResult("compatible");
+        });
+        cases.ShouldHaveSingleItem().Execution.ShouldBe("failed");
+        cases[0].Compatibility.ShouldBe("unverified");
+        cases[0].Assertions.ShouldBe(1);
+        cases[0].Passing.ShouldBeFalse();
+    }
+
     /// <summary>Physically identified DLL observations with a wrong source, version or configuration refuse admission.</summary>
     [Theory]
     [InlineData("source", "loaded-source-matches-archive-source")]

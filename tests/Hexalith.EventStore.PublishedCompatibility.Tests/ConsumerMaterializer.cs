@@ -53,12 +53,22 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
         var untrackedHashes = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string path in untracked.Split('\0', StringSplitOptions.RemoveEmptyEntries))
             untrackedHashes.Add(path, QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(repository, path))));
-        await File.WriteAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json"), JsonSerializer.Serialize(new
+        string capturedHead = (await runtime.RequireAsync("git", ["rev-parse", "HEAD"], repository)).Trim();
+        string capturedDiff = await runtime.RequireAsync("git", ["diff", "--binary", "HEAD"], repository);
+        string capturedUntracked = await runtime.RequireAsync("git", ["ls-files", "--others", "--exclude-standard", "-z"], repository);
+        if (capturedHead != executor || capturedDiff != diff || capturedUntracked != untracked)
+            throw new InvalidOperationException("Executor inputs changed during capture; no execution provenance can be bound.");
+        foreach ((string path, string hash) in untrackedHashes)
+            if (QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(repository, path))) != hash)
+                throw new InvalidOperationException("An untracked executor input changed during capture: " + path);
+        string capturedInputsPath = Path.Combine(runtime.Root, "executor-inputs.json");
+        await File.WriteAllTextAsync(capturedInputsPath + ".tmp", JsonSerializer.Serialize(new
         {
             executor, diffHash = QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(diff)), untrackedHashes, templateHashes,
             coordinatorHash = QualificationRuntime.Hash(await File.ReadAllBytesAsync(typeof(ConsumerMaterializer).Assembly.Location)),
             builds = (await runtime.RequireAsync("git", ["rev-parse", "HEAD"], Path.Combine(repository, "references", "Hexalith.Builds"))).Trim(),
         }));
+        File.Move(capturedInputsPath + ".tmp", capturedInputsPath);
         foreach (string version in prerequisiteOnly ? [SelectedVersion] : Versions)
         {
             try

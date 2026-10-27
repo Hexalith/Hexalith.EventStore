@@ -496,3 +496,39 @@ Architecture, Epic 2/5 context and Stories 5.12/5.13/2.14/2.15 now distinguish a
 The [bounded amendment](spec-5-12-declaration-delivery-and-runtime-certification-split.md) is complete after three independent review layers, individual triage and direct corrections. The final parent run passed both Debug/source builds with zero warnings/errors and **93 focused cases** (Client 52, Server declaration parity 37, unchanged gateway fallback probes 4), with no failures/skips. Repeated generation/checking/validation passed with unchanged candidate bytes; drift and strict completeness checks retained their exact exit-2 failures. Configuration-output collisions are rejected without changing either input, and cancelled construction does not return a catalog. Exact final commands, logs, stream outputs and byte-preservation assertions are in `/tmp/story-5-12-split-parent-final-results.json`; the bounded spec records all review verdicts and evidence. No new review deferral remains.
 
 Local declaration construction, CLI separation and declared-target validation tasks are complete. The parent story/sprint row remain **in-progress** for the separate open package/CI and existing validation delivery gate. Story 5.13 now explicitly owns runtime authority, request-level undeclared-target rejection after readiness, stable declared targets or rejection during metadata outages/stale caches across commit/rollback, exhaustive runtime parity and cross-host activation agreement. The known strict fallback rejection remains in place; it is not converted into a runtime success by declaration delivery. Story 2.14 remains draft/pending with its inventory, migration, compatibility and assurance prerequisites unchanged. No runtime, dependency, deployment, activation or Git-history mutation was performed.
+
+### Implementation handoff verification (2026-10-27)
+
+The complete spec and every frontmatter context file were loaded before inspecting the existing implementation. The approved local construction/schema/codec/declaration/runtime-split work is already implemented; this continuation adds verification evidence only. EventStore advanced externally from `6701537dbe9893ebd8426e3bc5890a35a05bab0a` to `4dc256c4db7a0ba88efdbbe0f6bcbcf047c09d34` during inspection; the final Tenants checkout is `2cf3a9660f71f6877923772cd145aa6856907945`. Concurrent published-compatibility changes were preserved. The original baselines, frozen intent, catalog bytes, package pins and story statuses remain unchanged.
+
+All three individual Debug/source builds exited 0 with zero warnings/errors. The four focused test invocations exited 0: **235 passed, zero failures and zero skips**. Commands ran serially from the EventStore root, without version overrides or gate exclusions:
+
+| Build command | Test command | Passed |
+| --- | --- | ---: |
+| `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -m:1 -v quiet` | `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class '*Routing.*' -noLogo` | 142 |
+| `dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -m:1 -v quiet` | `dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*Routing.DevelopmentRouteCatalogBuilderTests' -noLogo` | 52 |
+| `dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -m:1 -v quiet` | `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*DevelopmentRouteCatalogParityTests' -noLogo` | 37 |
+| Uses the preceding Server build | `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -method '*CatalogCompletenessCannotCertifyGatewayActorFallback' -noLogo` | 4 |
+
+Build/test logs are `/tmp/story-5-12-handoff-{contracts,client,server}-{build,tests}.log` and `/tmp/story-5-12-handoff-gateway-tests.log`. These checks cover retained independent v1/v2 vectors and malformed inputs, actual CLI positive/drift/error/output-preservation controls, compiled owner/adapter/capability/configuration parity, cancellation, and the existing permissive gateway fallback probes. No runtime authority is inferred from them.
+
+Direct serial CLI controls used `dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true --` followed by each exact argument list below:
+
+```text
+development /home/administrator/projects/hexalith/eventstore /tmp/story-5-12-handoff-generated-1.json
+development /home/administrator/projects/hexalith/eventstore /tmp/story-5-12-handoff-generated-2.json
+check-development /home/administrator/projects/hexalith/eventstore /home/administrator/projects/hexalith/eventstore/deploy/dapr/eventstore-routing-catalog.json
+validate /home/administrator/projects/hexalith/eventstore/deploy/dapr/eventstore-routing-catalog.json c156ce0b68bab43f561805db9cd02714d123026d388f65c764d7b6fa4e3b7308
+check-development-runtime /home/administrator/projects/hexalith/eventstore
+```
+
+The first four exited 0 with root `c156ce0b68bab43f561805db9cd02714d123026d388f65c764d7b6fa4e3b7308`; both generated outputs equal the retained file byte for byte. Declaration commands explicitly report runtime certification, secret availability and activation as unverified. The final command exited 2 with exactly `Route catalog rejected: $.developmentProfile: unrepresented-unbounded-query-fallback`. The retained file was unchanged. Exact arguments, exit codes, stdout and stderr are in `/tmp/story-5-12-handoff-cli-results.json`. Independent v1/v2 fixture hashes remain `d30010c9b1017f29c5ae9da9a39289d8865bfce91bd153b6000beaad0248f4c0` and `c8b28c28e017154f6ecf6f69a60e89448a9df7d4a4161809f4aeda8c398ec049`.
+
+The package delivery blocker was reproduced against the current checkout with isolated artifacts, without changing any dependency or publishing packages:
+
+- From EventStore, `dotnet build tools/Hexalith.EventStore.CatalogConstruction/Hexalith.EventStore.CatalogConstruction.csproj -c Debug -p:UseHexalithProjectReferences=false --artifacts-path /tmp/story-5-12-handoff-root-package-check -m:1 -v quiet` exited 1, zero warnings/two CS0234 errors: the pinned Tenants.Contracts and Tenants.Server packages lack their `Routing` namespaces. Log: `/tmp/story-5-12-handoff-root-package.log`.
+- From `references/Hexalith.Tenants`, `dotnet build src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj -c Debug -p:UseHexalithProjectReferences=false --artifacts-path /tmp/story-5-12-handoff-tenants-package-check -m:1 -v quiet` exited 1, zero warnings/ten CS0234/CS0246 errors: pinned EventStore.Contracts lacks `Routing`, `CommandIntentDeclaration`, `RouteContractDeclaration` and `IdempotencyDescriptorField`. Log: `/tmp/story-5-12-handoff-tenants-package.log`.
+
+`git diff --check` passed. `bash scripts/check-committed-files.sh` passed all 9,232 tracked entries; its log is `/tmp/story-5-12-handoff-committed-files.log`.
+
+These current narrow failures preserve the open release-order gate: publish the required EventStore APIs, consume/release the Tenants declarations, then validate the existing package-mode CI lanes. Publication and pin changes remain outside this approved implementation. No broad suite or CI was rerun, and the historical unrelated Tenants documentation-test failure remains separate. Story 5.12 stays **in-progress**; no package/CI success, production readiness, key availability, deployment or activation is claimed.

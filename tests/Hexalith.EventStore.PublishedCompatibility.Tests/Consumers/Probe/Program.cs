@@ -34,6 +34,12 @@ switch (operation)
         result = new { value = JsonSerializer.SerializeToElement(metadata, json), identities = ConsumerIdentity.Read() };
         break;
     }
+    case "status":
+    {
+        var status = JsonSerializer.Deserialize<Hexalith.EventStore.Contracts.Commands.CommandStatusRecord>(request.GetProperty("value").GetString()!, json)!;
+        result = new { value = JsonSerializer.SerializeToElement(status, json), identities = ConsumerIdentity.Read() };
+        break;
+    }
     case "wire":
     {
         Type type = request.GetProperty("kind").GetString() == "query" ? typeof(QueryEnvelope) : typeof(ProjectionEventDto);
