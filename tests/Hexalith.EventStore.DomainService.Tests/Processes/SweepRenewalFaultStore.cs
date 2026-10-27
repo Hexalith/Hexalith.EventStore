@@ -9,10 +9,14 @@ internal sealed class SweepRenewalFaultStore(InMemoryReadModelStore inner) : IRe
 {
     private readonly TaskCompletionSource _renewalEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _sourceReleased = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _renewalFaulted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _armed;
 
     /// <summary>The held renewal has reached its state write.</summary>
     public Task RenewalEntered => _renewalEntered.Task;
+
+    /// <summary>The detached renewal worker has executed its synthetic fault.</summary>
+    public Task RenewalFaulted => _renewalFaulted.Task;
 
     /// <summary>Whether the renewal fault fired.</summary>
     public bool Fired { get; private set; }
@@ -39,6 +43,7 @@ internal sealed class SweepRenewalFaultStore(InMemoryReadModelStore inner) : IRe
             _renewalEntered.TrySetResult();
             await _sourceReleased.Task.ConfigureAwait(false);
             Fired = true;
+            _renewalFaulted.TrySetResult();
             throw new InvalidOperationException("Synthetic renewal failure after source completion.");
         }
         bool saved = await inner.TrySaveAsync(storeName, key, value, etag, cancellationToken).ConfigureAwait(false);

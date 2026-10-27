@@ -63,6 +63,7 @@ public sealed class ProcessSweepRenewalTests
                 await faulting.RenewalEntered.WaitAsync(cancellation.Token);
                 releaseTranslation.TrySetResult();
                 _ = await pass;
+                await faulting.RenewalFaulted.WaitAsync(cancellation.Token);
                 faulting.Fired.ShouldBeTrue();
                 ProcessSourceState persisted = await checkpoints.GetAsync(source);
                 persisted.Checkpoint.ShouldBe(2);

@@ -1,6 +1,0 @@
-<Project>
-  <!-- Story 5.12 candidate pins. This file is the only approved package-authority exclusion. -->
-  <ItemGroup Condition="'$(CatalogCandidateTenantsVersion)' != '' and ('$(MSBuildProjectName)' == 'Hexalith.EventStore.CatalogConstruction' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.Tests' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.QueryRouting.Tests' or '$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.LiveSidecar.Tests' or '$(MSBuildProjectName)' == 'routing-catalog.cs')">
-    <PackageVersion Update="Hexalith.Tenants.Contracts;Hexalith.Tenants.Server" Version="$(CatalogCandidateTenantsVersion)" />
-  </ItemGroup>
-</Project>
