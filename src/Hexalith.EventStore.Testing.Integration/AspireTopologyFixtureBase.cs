@@ -67,7 +67,7 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
     /// <summary>Gets the resources to start, wait on, and create clients for.</summary>
     protected abstract IReadOnlyList<AspireResource> Resources { get; }
 
-    /// <summary>Gets extra AppHost command-line arguments (placement/scheduler are added automatically).</summary>
+    /// <summary>Gets extra AppHost command-line arguments; placement/scheduler defaults are added only when omitted.</summary>
     protected virtual IReadOnlyList<string> ExtraAppArgs => [];
 
     /// <summary>Gets the overall startup timeout for build + graph evaluation + start.</summary>
@@ -101,6 +101,26 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
                 $"No HTTP client was created for resource '{resourceName}'. Ensure InitializeAsync has completed and the resource is declared in {nameof(Resources)}.");
     }
 
+    /// <summary>Adds prerequisite endpoints only when the caller did not explicitly select the setting.</summary>
+    /// <param name="extraArgs">AppHost arguments, including empty endpoint values selecting an owned topology.</param>
+    /// <param name="placementPort">The probed placement listener.</param>
+    /// <param name="schedulerPort">The probed scheduler listener.</param>
+    /// <returns>Arguments preserving explicit endpoint selections and supplying omitted defaults.</returns>
+    internal static string[] WithControlPlaneDefaults(IReadOnlyList<string> extraArgs, int placementPort, int schedulerPort)
+    {
+        List<string> arguments = [.. extraArgs];
+        foreach ((string key, int port) in new[] { ("Dapr:PlacementHostAddress", placementPort), ("Dapr:SchedulerHostAddress", schedulerPort) })
+        {
+            if (!extraArgs.Any(argument => string.Equals(argument, "--" + key, StringComparison.OrdinalIgnoreCase)
+                || argument.StartsWith("--" + key + "=", StringComparison.OrdinalIgnoreCase)))
+            {
+                arguments.Add($"--{key}=localhost:{port}");
+            }
+        }
+
+        return [.. arguments];
+    }
+
     /// <inheritdoc/>
     public async ValueTask InitializeAsync() {
         AcquireDaprFixtureLock();
@@ -121,12 +141,7 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
             // prerequisite probe found reachable. Without this the sidecars fall back to the daprd default
             // (localhost:50005/:50006); under a containerized `dapr init` (host ports 6050/6060) the actor
             // runtime can never reach placement, so the host blocks during startup and never serves /alive.
-            string[] args =
-            [
-                .. ExtraAppArgs,
-                $"--Dapr:PlacementHostAddress=localhost:{PlacementPort}",
-                $"--Dapr:SchedulerHostAddress=localhost:{SchedulerPort}",
-            ];
+            string[] args = WithControlPlaneDefaults(ExtraAppArgs, PlacementPort, SchedulerPort);
 
             _builder = await DistributedApplicationTestingBuilder
                 .CreateAsync<TAppHost>(args, startupCts.Token)

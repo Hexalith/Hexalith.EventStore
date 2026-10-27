@@ -330,7 +330,7 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
 | recoveryReasonCode | string?  | Bounded recovery reason, such as `drain_publish_failed` or `drain_attempts_exhausted`; null when not recorded. See [Drain Failure Reason Codes](../operations/drain-failure-reason-codes.md). |
 | drainAttemptCount  | integer? | Recorded drain attempts for the persisted range; may be zero before the first retry, or null when not recorded. |
 
-`retryable`, `recoveryReasonCode` and `drainAttemptCount` are optional advisory fields. They describe recovery of the existing command, not permission to submit a new mutation. A `PublishFailed` response with `retryable: true` can later recover; continue observing that command under a bounded client polling policy. The server currently classifies every `PublishFailed` as terminal and omits its `Retry-After` header, even when recovery is armed or durably tracked. Recovery tracking does not promise that a reminder is currently registered or that a retry will occur by a deadline. A null recovery field is unknown, not a permanent-failure signal; ordinary new records can also leave these fields null.
+`retryable`, `recoveryReasonCode` and `drainAttemptCount` are optional advisory fields. They describe recovery of the existing command, not permission to submit a new mutation. A `PublishFailed` response with `retryable: true` can later recover; continue observing that command under a bounded client polling policy. The status endpoint advertises `Retry-After: 1` for `PublishFailed` only when `retryable` is explicitly `true`, indicating armed recovery. False and null do not advertise a polling interval; null is unknown. Recovery tracking does not promise that a retry will occur by a deadline. A null recovery field is unknown, not a permanent-failure signal; ordinary new records can also leave these fields null.
 
 `committedEventSequence` and `domain` are optional fields. The sequence is null for a no-op, a rejection, a legacy status, or a recovery whose command-specific range cannot be verified. Publication recovery reports the sequence when the persisted envelopes match the drain record's command causation, including a stale-checkpoint handoff that carries that causation on the drain record. A drain record written before that field existed can still report the sequence when its recoverable idempotency record supplies the same verified causation. Actor-written processing and terminal records retain the command domain even when they reject or cannot provide sequence proof. The first `Received` status and drain publication-failure or exhaustion advisories omit `domain`, as do legacy records and concurrency-conflict rejections written by the API or the submit handler. A consumer must verify the command identity and aggregate scope before using the sequence as projection evidence; an aggregate's current head is not command-specific proof.
 
@@ -380,7 +380,7 @@ Before command resume, stale-checkpoint handoff or reminder publication, EventSt
 
 ### Status Lifecycle
 
-Poll `/api/v1/commands/status/{messageId}` at the interval indicated by the `Retry-After` response header (typically 1 second) while in flight. The terminal classifications below describe the status enum; for `PublishFailed`, also inspect the optional recovery fields and polling caveat above.
+Poll `/api/v1/commands/status/{messageId}` at the interval indicated by the `Retry-After` response header (typically 1 second) while in flight. The terminal classifications below describe the status enum; for `PublishFailed`, also inspect the optional recovery fields and polling policy above.
 
 1. **Received** (0) — Command accepted by API, queued for processing
 2. **Processing** (1) — Actor activated, domain service invocation started
@@ -388,7 +388,7 @@ Poll `/api/v1/commands/status/{messageId}` at the interval indicated by the `Ret
 4. **EventsPublished** (3) — Events published to pub/sub topic
 5. **Completed** (4) — Terminal success — events stored and published
 6. **Rejected** (5) — Terminal — domain rejected the command (business rule violation)
-7. **PublishFailed** (6) — Terminal — events stored but pub/sub delivery failed
+7. **PublishFailed** (6) — Terminal enum classification — events stored but pub/sub delivery failed; continue bounded observation when `retryable: true` advertises `Retry-After`
 8. **TimedOut** (7) — Terminal — processing exceeded configured timeout
 
 Terminal states: Completed, Rejected, PublishFailed, TimedOut. See [Command Lifecycle](../concepts/command-lifecycle.md) for the full processing pipeline explanation.
@@ -485,7 +485,7 @@ All commands progress through 8 possible states:
 
 **Replayable states:** Rejected, PublishFailed, TimedOut (all terminal failures).
 
-Poll the status endpoint at the interval indicated by the `Retry-After` response header (typically 1 second) while in flight. For `PublishFailed`, the enum classification does not establish permanent failure: consult the optional recovery fields and [polling caveat](#response--200-ok-1) before stopping observation or considering replay.
+Poll the status endpoint at the interval indicated by the `Retry-After` response header (typically 1 second) while in flight. For `PublishFailed`, the enum classification does not establish permanent failure: consult the optional recovery fields and [record-aware polling policy](#response--200-ok-1) before stopping observation or considering replay.
 
 For the full processing pipeline explanation, see [Command Lifecycle](../concepts/command-lifecycle.md).
 

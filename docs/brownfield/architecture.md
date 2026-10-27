@@ -150,7 +150,7 @@ orchestrator over a checkpointed 5-step pipeline — `PipelineState` persisted f
 - **Concurrency retry**: optimistic concurrency via metadata ETag; retries on `ConcurrencyConflictException` up to `CommandConcurrencyOptions.MaxPersistenceConflictRetries`; surfaced as HTTP **409**.
 - **Dead-letter routing**: infrastructure failures at steps 3–5 route to `IDeadLetterPublisher` (CloudEvents type `deadletter.command.failed`).
 
-**Command status lifecycle** (`CommandStatus` enum): `Received → Processing → EventsStored → EventsPublished → Completed`, or terminal `Rejected / PublishFailed / TimedOut`. Clients retain the submitted `messageId` and poll `GET /api/v1/commands/status/{messageId}`; non-terminal states return `Retry-After`.
+**Command status lifecycle** (`CommandStatus` enum): `Received → Processing → EventsStored → EventsPublished → Completed`, or terminal `Rejected / PublishFailed / TimedOut`. Clients retain the submitted `messageId` and poll `GET /api/v1/commands/status/{messageId}`; non-terminal states return `Retry-After`. The endpoint also returns `Retry-After: 1` for `PublishFailed` with `Retryable == true` (armed publication recovery). False or null omits the interval; null remains unknown. This record-aware polling policy preserves the enum terminal/replay classifications and does not imply success, permission to resubmit, or a retry deadline.
 
 ## 6. Query Pipeline & Caching
 

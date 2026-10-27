@@ -159,14 +159,17 @@ public class CommandRecoveryIntegrityTests
         statuses.GetStatusHistory(command.TenantId, command.MessageId).Count.ShouldBe(writes);
     }
 
-    [Fact]
-    public async Task Fresh_omitted_causation_survives_crash_before_terminal_commit_and_resumes_exact_range()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t\r\n")]
+    public async Task Fresh_omitted_causation_survives_crash_before_terminal_commit_and_resumes_exact_range(string? causationId)
     {
         var state = new FaultInjectingActorStateManager();
         state.FaultOnCall("SaveState", 3, new OperationCanceledException("crash before terminal"));
         var statuses = new InMemoryCommandStatusStore();
         var original = CreateActor(state, statuses);
-        CommandEnvelope command = Command();
+        CommandEnvelope command = Command(causationId: causationId);
         await Should.ThrowAsync<OperationCanceledException>(() => original.Actor.ProcessCommandAsync(command));
         var checkpoint = (PipelineState)state.CommittedState[ActorIdentity + ":pipeline:" + command.CorrelationId];
         checkpoint.CausationId.ShouldBe(command.MessageId);
@@ -178,6 +181,48 @@ public class CommandRecoveryIntegrityTests
         recreated.Publisher.PublishCalls.ShouldHaveSingleItem().Events.Select(e => e.SequenceNumber).ShouldBe(new long[] { 1, 2 });
         await recreated.Invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
         ((IdempotencyRecord)state.CommittedState["idempotency:command-1"]).Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t\r\n")]
+    public async Task Blank_causation_publication_recovery_preserves_durable_owner_and_completes_exact_range(string? causationId)
+    {
+        var state = new FaultInjectingActorStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        var timers = new RegisteredReminderHarness();
+        var original = CreateActor(state, statuses, timers.Manager);
+        original.Publisher.SetupFailure("publication unavailable");
+        CommandEnvelope command = Command(causationId: causationId);
+        CommandProcessingResult processing = await original.Actor.ProcessCommandAsync(command);
+        state.CommittedState.ContainsKey(UnpublishedEventsRecord.GetStateKey(command.MessageId))
+            .ShouldBeTrue(processing.ToString());
+
+        var drain = (UnpublishedEventsRecord)state.CommittedState[UnpublishedEventsRecord.GetStateKey(command.MessageId)];
+        drain.CausationId.ShouldBe(command.MessageId);
+        drain.MessageId.ShouldBe(command.MessageId);
+        drain.StartSequence.ShouldBe(1);
+        drain.EndSequence.ShouldBe(2);
+        drain.ReminderArmedAt.ShouldNotBeNull();
+        ((UnpublishedPublicationIndex)state.CommittedState[UnpublishedPublicationIndex.StateKey]).Entries
+            .ShouldHaveSingleItem().MessageId.ShouldBe(command.MessageId);
+        ((IdempotencyRecord)state.CommittedState[IdempotencyChecker.GetRecordKey(command.MessageId)])
+            .CausationId.ShouldBe(command.MessageId);
+        timers.RegisteredNames.ShouldContain(UnpublishedEventsRecord.GetReminderName(command.MessageId));
+        ((int)state.CommittedState["pending_command_count"]).ShouldBe(1);
+
+        var recreated = CreateActor(state, statuses, timers.Manager);
+        await recreated.Actor.ReceiveReminderAsync(UnpublishedEventsRecord.GetReminderName(command.MessageId), [], TimeSpan.Zero, TimeSpan.Zero);
+        recreated.Publisher.PublishCalls.ShouldHaveSingleItem().Events.Select(item => item.SequenceNumber).ShouldBe(new long[] { 1, 2 });
+        recreated.Publisher.PublishCalls.Single().Events.ShouldAllBe(item => item.CausationId == command.MessageId);
+        await recreated.Invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        state.CommittedState.ContainsKey(UnpublishedEventsRecord.GetStateKey(command.MessageId)).ShouldBeFalse();
+        ((UnpublishedPublicationIndex)state.CommittedState[UnpublishedPublicationIndex.StateKey]).Entries.ShouldBeEmpty();
+        ((int)state.CommittedState["pending_command_count"]).ShouldBe(0);
+        CommandStatusRecord completed = (await statuses.ReadStatusAsync(command.TenantId, command.MessageId)).ShouldNotBeNull();
+        completed.Status.ShouldBe(CommandStatus.Completed);
+        completed.CommittedEventSequence.ShouldBe(2);
     }
 
     [Theory]

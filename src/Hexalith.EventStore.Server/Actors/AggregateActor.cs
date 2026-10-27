@@ -5276,7 +5276,7 @@ public partial class AggregateActor(
         ArgumentNullException.ThrowIfNull(command);
         return new CommandProcessingIdentity(
             command.MessageId,
-            command.CausationId ?? command.MessageId,
+            string.IsNullOrWhiteSpace(command.CausationId) ? command.MessageId : command.CausationId,
             command.CommandType);
     }
 

@@ -44,11 +44,12 @@ public class CommandStatusController(
     /// *Terminal states* (polling should stop):
     /// - **Completed**: Full pipeline completed successfully
     /// - **Rejected**: Domain business rule rejection
-    /// - **PublishFailed**: Event publication failed after retry exhaustion
+    /// - **PublishFailed** with Retryable false or null: no polling interval is advertised
     /// - **TimedOut**: Processing exceeded timeout threshold
     ///
-    /// Terminal states mean the command has reached its final outcome. In-flight states indicate
-    /// the consumer should continue polling with the Retry-After interval.
+    /// PublishFailed with Retryable true also advertises Retry-After while recovery is armed.
+    /// Null recovery metadata is unknown. These fields do not imply success, a retry deadline,
+    /// or permission to resubmit. Enum terminal and replay classifications remain compatible.
     /// </remarks>
     /// <response code="200">Command status found. See response body for current state.</response>
     /// <response code="400">Bad request. Invalid message or correlation identifier format.</response>
@@ -215,7 +216,7 @@ public class CommandStatusController(
             && string.Equals(record.Domain,
                 User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
                 StringComparison.Ordinal)
-            ? Ok(CommandStatusResponse.FromRecord(messageId, record, tenant))
+            ? CreateStatusResult(tenant, messageId, record, Activity.Current)
             : NotFound();
     }
 
@@ -231,7 +232,7 @@ public class CommandStatusController(
             tenant,
             record.Status);
 
-        if (!record.Status.IsTerminal()) {
+        if (!record.Status.IsTerminal() || (record.Status == CommandStatus.PublishFailed && record.Retryable == true)) {
             Response.Headers["Retry-After"] = "1";
         }
 

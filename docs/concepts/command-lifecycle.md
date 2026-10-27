@@ -198,7 +198,7 @@ There are two separate dead-letter concepts. EventStore command infrastructure d
 
 ## Phase 5: Terminal States
 
-After the actor pipeline completes, the command reaches one of four terminal states:
+The pipeline distinguishes logical outcomes from advisory publication recovery:
 
 | State | Meaning |
 |-------|---------|
@@ -206,6 +206,8 @@ After the actor pipeline completes, the command reaches one of four terminal sta
 | **Rejected** | The domain rejected the command (a valid outcome, not an error) — rejection events are still persisted and published |
 | **PublishFailed** | Events persisted but pub/sub delivery failed — an `UnpublishedEventsRecord` is stored for background drain recovery |
 | **Failed** | An infrastructure error prevented processing (state store unavailable, actor crash, etc.) |
+
+`PublishFailed` retains its terminal enum/replay classification for compatibility, but publication drain can later complete the existing command. The status endpoint advertises `Retry-After: 1` only when that record has `Retryable == true` (armed recovery). False or null omits the interval; null is unknown. Continue bounded observation when recovery is armed, without inferring success, a retry deadline, or permission to submit a new command.
 
 At terminal state, admission stores the exact logical result, including deterministic rejection/failure classification and whether a public payload was withheld. An authorized equivalent retry receives that exact mapping without consulting advisory status or archive stores.
 

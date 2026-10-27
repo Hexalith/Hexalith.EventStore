@@ -5,6 +5,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Http;
@@ -40,6 +41,55 @@ public class CommandStatusControllerTests {
         response.Domain.ShouldBe("tenants");
         response.AggregateId.ShouldBe("aggregate");
         response.TenantId.ShouldBe("tenant-a");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(null)]
+    public async Task GetStatus_PublishFailed_advertises_polling_only_for_armed_recovery(bool? retryable)
+    {
+        SetupHttpContext("tenant-a");
+        var record = new CommandStatusRecord(CommandStatus.PublishFailed, DateTimeOffset.UtcNow,
+            "aggregate", 2, null, "publication unavailable", null) { Retryable = retryable };
+        await _statusStore.WriteStatusAsync("tenant-a", CorrelationId, record, CancellationToken.None);
+
+        CommandStatusResponse response = (await _controller.GetStatus(CorrelationId, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<CommandStatusResponse>();
+
+        response.Status.ShouldBe("PublishFailed");
+        response.Retryable.ShouldBe(retryable);
+        _controller.Response.Headers.ContainsKey("Retry-After").ShouldBe(retryable == true);
+        if (retryable == true) { _controller.Response.Headers["Retry-After"].ToString().ShouldBe("1"); }
+        CommandStatus.PublishFailed.IsTerminal().ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(null)]
+    public async Task GetWorkloadStatus_UsesTheSameRecordAwarePublicationPollingPolicy(bool? retryable)
+    {
+        SetupHttpContext("tenant-a");
+        var identity = (ClaimsIdentity)_controller.User.Identity!;
+        identity.AddClaims([
+            new Claim(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, "caller"),
+            new Claim(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType, "tenant-a"),
+            new Claim(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType, "tenants"),
+        ]);
+        var record = new CommandStatusRecord(CommandStatus.PublishFailed, DateTimeOffset.UtcNow,
+            "aggregate", 2, null, "publication unavailable", null, CorrelationId, CorrelationId)
+        {
+            Domain = "tenants",
+            Retryable = retryable,
+        };
+        await _statusStore.WriteStatusAsync("tenant-a", CorrelationId, record, CancellationToken.None);
+
+        CommandStatusResponse response = (await _controller.GetWorkloadStatus("tenant-a", CorrelationId, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<CommandStatusResponse>();
+        response.Status.ShouldBe("PublishFailed");
+        response.Retryable.ShouldBe(retryable);
+        _controller.Response.Headers.ContainsKey("Retry-After").ShouldBe(retryable == true);
     }
 
     [Fact]
