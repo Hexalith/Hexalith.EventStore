@@ -18,6 +18,86 @@ public sealed class AuthoritativeContentStoreTests
     private static readonly ClaimsPrincipal _principal = new(new ClaimsIdentity([new Claim("tenant", "tenant-a")], "test"));
     private static readonly byte[] _bytes = [0, 255, 1, 2, 128, 10];
 
+    [Theory]
+    [InlineData(false, "read-only")]
+    [InlineData(true, "read-only")]
+    [InlineData(false, "task")]
+    [InlineData(true, "task")]
+    [InlineData(false, "future-fence")]
+    [InlineData(true, "future-fence")]
+    public async Task TaskSealRequiresTaskAndFenceBoundMutationAuthority(bool completion, string denial)
+    {
+        using var dapr = new RecordingDaprClient { PersistTypedState = true };
+        var authority = new ContentTestAuthority { ReadOnly = denial == "read-only", SealTask = "task-a", SealFence = 1 };
+        var store = Store(dapr, authority);
+        string task = denial == "task" ? "task-other" : "task-a";
+        long fence = denial == "future-fence" ? 2 : 1;
+        int writes = dapr.TrySaveByteOperations.Count;
+        await Should.ThrowAsync<UnauthorizedAccessException>(() => completion
+            ? store.TrySealTaskForCompletionAsync(_principal, _scope, task, fence)
+            : store.TryQuiesceTaskLeaseAsync(_principal, _scope, task, fence));
+        dapr.TrySaveByteOperations.Count.ShouldBe(writes);
+    }
+
+    [Fact]
+    public async Task CleanLeaseReleaseAllowsOnlyAHigherFenceAndCompletionRemainsTerminal()
+    {
+        using var dapr = new RecordingDaprClient { PersistTypedState = true };
+        var authority = new ContentTestAuthority(); var store = Store(dapr, authority);
+        (await store.TryQuiesceTaskLeaseAsync(_principal, _scope, "task-a", 1)).ShouldBeTrue();
+        await Should.ThrowAsync<ContentConflictException>(() => store.UploadAsync(_principal,
+            UploadRequest(_bytes) with { LeaseFence = 1 }, new MemoryStream(_bytes)));
+        ContentReceipt receipt = await store.UploadAsync(_principal, UploadRequest(_bytes) with { LeaseFence = 2 }, new MemoryStream(_bytes));
+        (await store.TryQuiesceTaskLeaseAsync(_principal, _scope, "task-a", 2)).ShouldBeFalse();
+        await store.PrepareAsync(_principal, Publication("new-lease", receipt) with { LockFence = 2 });
+        authority.Outcome = ContentPublicationOutcome.Accepted;
+        (await store.TrySealTaskForCompletionAsync(_principal, _scope, "task-a", 2)).ShouldBeTrue();
+        await Should.ThrowAsync<ContentConflictException>(() => store.UploadAsync(_principal,
+            UploadRequest(_bytes) with { LeaseFence = 3 }, new MemoryStream(_bytes)));
+    }
+
+    [Fact]
+    public async Task CompletionSealRejectsAPreparationAlreadyInFlight()
+    {
+        using var dapr = new RecordingDaprClient { PersistTypedState = true };
+        var authority = new ContentTestAuthority(); var store = Store(dapr, authority);
+        var receipt = await UploadAsync(store); await store.PrepareAsync(_principal, Publication("accepted", receipt));
+        authority.Outcome = ContentPublicationOutcome.Accepted; await store.RecoverAsync(_principal, _scope, "accepted");
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        authority.BeforePreparation = async () => { entered.SetResult(); await resume.Task; };
+        Task racing = store.PrepareAsync(_principal, Publication("racing", receipt) with { Changes = [Change(receipt) with { Version = 2 }] });
+        await entered.Task;
+        (await store.TrySealTaskForCompletionAsync(_principal, _scope, "task-a", 1)).ShouldBeTrue();
+        resume.SetResult(); await Should.ThrowAsync<ContentConflictException>(() => racing);
+    }
+
+    [Fact]
+    public async Task CompletionSealRejectsPendingStagedAndRacingAdmissionsButPreservesPublishedBytes()
+    {
+        using var dapr = new RecordingDaprClient { PersistTypedState = true };
+        var authority = new ContentTestAuthority();
+        var store = Store(dapr, authority);
+        ContentReceipt receipt = await UploadAsync(store);
+        (await store.TrySealTaskForCompletionAsync(_principal, _scope, "task-a", 1)).ShouldBeFalse();
+        await store.PrepareAsync(_principal, Publication("native", receipt));
+        (await store.TrySealTaskForCompletionAsync(_principal, _scope, "task-a", 1)).ShouldBeFalse();
+        authority.Outcome = ContentPublicationOutcome.Accepted;
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        authority.BeforeUpload = async () => { entered.SetResult(); await resume.Task; };
+        Task<ContentReceipt> racing = UploadAsync(store, [9, 8, 7]);
+        await entered.Task;
+        (await store.TrySealTaskForCompletionAsync(_principal, _scope, "task-a", 1)).ShouldBeTrue();
+        (await Store(dapr, authority).TrySealTaskForCompletionAsync(_principal, _scope, "task-a", 1)).ShouldBeTrue();
+        authority.BeforeUpload = null; resume.SetResult();
+        await Should.ThrowAsync<ContentConflictException>(() => racing);
+        await Should.ThrowAsync<ContentConflictException>(() => UploadAsync(store, [9, 8, 7]));
+        await Should.ThrowAsync<ContentConflictException>(() => store.PrepareAsync(_principal,
+            Publication("late", receipt) with { Changes = [Change(receipt) with { Version = 2 }] }));
+        (await store.ReadAsync(_principal, Read())).Bytes.ShouldBe(_bytes);
+    }
+
     [Fact]
     public async Task ActualBytesAreVerifiedAndRecoveredAtomicallyAfterStoreReplacement()
     {

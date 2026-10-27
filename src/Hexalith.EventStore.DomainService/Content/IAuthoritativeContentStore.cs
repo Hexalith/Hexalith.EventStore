@@ -27,6 +27,15 @@ public interface IAuthoritativeContentStore
     /// <summary>Lists current visible immutable bindings after current authorization and pending reconciliation.</summary>
     Task<IReadOnlyList<ContentBinding>> ListAsync(ClaimsPrincipal principal, ContentScope scope, CancellationToken cancellationToken = default);
 
+    /// <summary>Atomically blocks a clean released lease fence without terminally closing its logical task.</summary>
+    Task<bool> TryQuiesceTaskLeaseAsync(ClaimsPrincipal principal, ContentScope scope, string taskId, long leaseFence, CancellationToken cancellationToken = default)
+        => Task.FromResult(false);
+
+    /// <summary>Atomically seals a source-confirmed task against new uploads/preparations only when no staged or unresolved work remains.</summary>
+    /// <remarks>Older providers fail closed until they implement this authoritative capability.</remarks>
+    Task<bool> TrySealTaskForCompletionAsync(ClaimsPrincipal principal, ContentScope scope, string taskId, long leaseFence, CancellationToken cancellationToken = default)
+        => Task.FromResult(false);
+
     /// <summary>Lists metadata-only upload recovery/disposition candidates, including interrupted reserved uploads.</summary>
     Task<IReadOnlyList<ContentUploadStatus>> ListUploadsAsync(ClaimsPrincipal principal, ContentScope scope, CancellationToken cancellationToken = default);
 

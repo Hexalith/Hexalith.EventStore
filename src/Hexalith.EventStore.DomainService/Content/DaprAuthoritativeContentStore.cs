@@ -64,6 +64,9 @@ public sealed class DaprAuthoritativeContentStore : IAuthoritativeContentStore
             // Reserve first: replacement processes can discover every possible body, including an interrupted upload.
             await MutateAsync(request.Scope, ledger =>
             {
+                if (request.TaskId is { } task && (ledger.SealedTasks.Contains(task)
+                    || ledger.QuiescedTaskFences.TryGetValue(task, out long releasedFence) && (request.LeaseFence is null || request.LeaseFence <= releasedFence)))
+                    throw new ContentConflictException();
                 ContentStoredUpload? retry = request.UploadId is null ? null : ledger.Uploads.Values.FirstOrDefault(upload => upload.UploadId == request.UploadId && upload.TaskId == request.TaskId);
                 if (retry is not null)
                 {
@@ -151,6 +154,8 @@ public sealed class DaprAuthoritativeContentStore : IAuthoritativeContentStore
                     if (!Equivalent(retry.Request, canonical)) throw new ContentConflictException();
                     return ledger;
                 }
+                if (ledger.SealedTasks.Contains(canonical.TaskId)
+                    || ledger.QuiescedTaskFences.GetValueOrDefault(canonical.TaskId, 0) >= canonical.LockFence) throw new ContentConflictException();
                 if (ledger.Publications.Count >= _options.MaximumEntries || ledger.Bindings.Count + canonical.Changes.Count > _options.MaximumEntries
                     || ledger.Publications.Values.Any(static publication => publication.Outcome == ContentPublicationOutcome.Pending))
                     throw new ContentConflictException();
@@ -223,6 +228,53 @@ public sealed class DaprAuthoritativeContentStore : IAuthoritativeContentStore
                 .Where(binding => binding.ReceiptId is { } id && ledger.Uploads.TryGetValue(id, out ContentStoredUpload? upload) && !upload.Erased && !upload.Erasing)
                 .OrderBy(static binding => binding.FileId, StringComparer.Ordinal)
                 .Select(binding => new ContentBinding(binding, ledger.Uploads[binding.ReceiptId!].Receipt)).ToArray();
+        }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> TrySealTaskForCompletionAsync(ClaimsPrincipal principal, ContentScope scope, string taskId, long leaseFence, CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(leaseFence);
+        return SealTaskAsync(principal, scope, taskId, leaseFence, true, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> TryQuiesceTaskLeaseAsync(ClaimsPrincipal principal, ContentScope scope, string taskId, long leaseFence, CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(leaseFence);
+        return SealTaskAsync(principal, scope, taskId, leaseFence, false, cancellationToken);
+    }
+
+    private Task<bool> SealTaskAsync(ClaimsPrincipal principal, ContentScope scope, string taskId, long leaseFence, bool completion, CancellationToken cancellationToken)
+        => RunAsync(async token =>
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(taskId);
+            if (taskId.Length > 128) throw new ArgumentOutOfRangeException(nameof(taskId));
+            await AuthorizeAsync(principal, scope, ContentOperation.Prepare, new ContentTaskSealRequest(taskId, leaseFence, completion), token).ConfigureAwait(false);
+            await RecoverPendingAsync(scope, token).ConfigureAwait(false);
+            await AuthorizeAsync(principal, scope, ContentOperation.Prepare, new ContentTaskSealRequest(taskId, leaseFence, completion), token).ConfigureAwait(false);
+            bool ready = false;
+            await MutateAsync(scope, ledger =>
+            {
+                ready = ledger.SealedTasks.Contains(taskId)
+                    || !ledger.Publications.Values.Any(publication => publication.Outcome == ContentPublicationOutcome.Pending)
+                    && ledger.Uploads.Values.Where(upload => upload.TaskId == taskId && !upload.Erased).All(upload =>
+                        upload.Complete && ledger.Publications.Values.Any(publication => publication.Request.TaskId == taskId
+                            && publication.Outcome == ContentPublicationOutcome.Accepted
+                            && publication.Request.Changes.Any(change => change.ReceiptId == upload.Receipt.Id)));
+                if (ready && !completion)
+                {
+                    if (!ledger.QuiescedTaskFences.ContainsKey(taskId) && ledger.QuiescedTaskFences.Count >= _options.MaximumEntries) throw new ContentUnavailableException();
+                    ledger.QuiescedTaskFences[taskId] = Math.Max(leaseFence, ledger.QuiescedTaskFences.GetValueOrDefault(taskId, 0));
+                }
+                else if (ready)
+                {
+                    if (!ledger.SealedTasks.Contains(taskId) && ledger.SealedTasks.Count >= _options.MaximumEntries) throw new ContentUnavailableException();
+                    ledger.SealedTasks.Add(taskId);
+                }
+                return ledger;
+            }, token).ConfigureAwait(false);
+            await AuthorizeAsync(principal, scope, ContentOperation.Prepare, new ContentTaskSealRequest(taskId, leaseFence, completion), token).ConfigureAwait(false);
+            return ready;
         }, cancellationToken);
 
     /// <inheritdoc/>
@@ -458,7 +510,7 @@ public sealed class DaprAuthoritativeContentStore : IAuthoritativeContentStore
         ContentLedger ledger = value ?? ContentLedger.Empty();
         if (ledger.Schema != 1 || ledger.Uploads is null || ledger.Publications is null || ledger.Bindings is null || ledger.Tombstones is null
             || ledger.Uploads.Count > _options.MaximumEntries || ledger.Publications.Count > _options.MaximumEntries
-            || ledger.Bindings.Count > _options.MaximumEntries)
+            || ledger.Bindings.Count > _options.MaximumEntries || ledger.SealedTasks is null || ledger.SealedTasks.Count > _options.MaximumEntries || ledger.QuiescedTaskFences is null || ledger.QuiescedTaskFences.Count > _options.MaximumEntries)
             throw new ContentUnavailableException();
         return (ledger, etag);
     }

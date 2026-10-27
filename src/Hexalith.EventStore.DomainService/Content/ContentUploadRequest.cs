@@ -7,4 +7,8 @@ namespace Hexalith.EventStore.DomainService.Content;
 /// <param name="ExpectedLength">Expected exact byte length.</param>
 /// <param name="MediaType">Expected content type.</param>
 /// <param name="UploadId">Optional stable opaque intent identity, scoped to tenant/workspace/task; equivalent retries reuse one receipt.</param>
-public sealed record ContentUploadRequest(ContentScope Scope, string? TaskId, string ExpectedSha256, long ExpectedLength, string MediaType, string? UploadId = null);
+public sealed record ContentUploadRequest(ContentScope Scope, string? TaskId, string ExpectedSha256, long ExpectedLength, string MediaType, string? UploadId = null)
+{
+    /// <summary>Gets the owner-issued lease fence when upload admission belongs to a renewable task lease.</summary>
+    public long? LeaseFence { get; init; }
+}

@@ -7,9 +7,14 @@ namespace Hexalith.EventStore.DomainService.Tests.Content;
 internal sealed class ContentTestAuthority : IContentAuthority
 {
     public bool Deny { get; set; }
+    public bool ReadOnly { get; set; }
+    public string? SealTask { get; set; }
+    public long? SealFence { get; set; }
     public bool DenyInspection { get; set; }
     public bool DenyOrdinaryRead { get; set; }
     public bool RejectBytes { get; set; }
+    public Func<Task>? BeforeUpload { get; set; }
+    public Func<Task>? BeforePreparation { get; set; }
     public bool RejectPreparation { get; set; }
     public Func<long, CancellationToken, Task<bool>>? SealAsync { get; set; }
     public bool RejectDispositionRead { get; set; }
@@ -21,19 +26,23 @@ internal sealed class ContentTestAuthority : IContentAuthority
     public Task AuthorizeAsync(ClaimsPrincipal principal, ContentScope scope, ContentOperation operation, object resource, CancellationToken cancellationToken)
     {
         AuthorizationCount++;
+        if (ReadOnly && operation != ContentOperation.Read
+            || resource is ContentTaskSealRequest seal && (operation != ContentOperation.Prepare
+                || SealTask is { } task && seal.TaskId != task || SealFence is { } fence && seal.LeaseFence != fence))
+            throw new UnauthorizedAccessException();
         if (Deny || operation == ContentOperation.InspectUpload && DenyInspection || operation == ContentOperation.Read && DenyOrdinaryRead
             || principal.FindFirst("tenant")?.Value != scope.TenantId) throw new UnauthorizedAccessException();
         return Task.CompletedTask;
     }
-    public Task ValidateUploadAsync(ClaimsPrincipal principal, ContentUploadRequest request, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
+    public async Task ValidateUploadAsync(ClaimsPrincipal principal, ContentUploadRequest request, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
     {
+        if (BeforeUpload is { } before) await before().ConfigureAwait(false);
         if (RejectBytes) throw new UnauthorizedAccessException();
-        return Task.CompletedTask;
     }
-    public Task ValidatePreparationAsync(ClaimsPrincipal principal, ContentPublicationRequest request, CancellationToken cancellationToken)
+    public async Task ValidatePreparationAsync(ClaimsPrincipal principal, ContentPublicationRequest request, CancellationToken cancellationToken)
     {
+        if (BeforePreparation is { } before) await before().ConfigureAwait(false);
         if (RejectPreparation) throw new ContentConflictException();
-        return Task.CompletedTask;
     }
     public Task<ContentPublicationOutcome> GetPublicationOutcomeAsync(ContentPublicationRequest request, CancellationToken cancellationToken)
         => Task.FromResult(Outcomes.GetValueOrDefault(request.CommandId, Outcome));
