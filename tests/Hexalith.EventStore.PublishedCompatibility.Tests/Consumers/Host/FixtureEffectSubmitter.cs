@@ -9,8 +9,11 @@ using Hexalith.EventStore.Server.Commands;
 namespace PublishedConsumer;
 
 /// <summary>Signs admitted fixture effects and submits to the real target actor receipt inbox.</summary>
+/// <param name="policy">The bounded fixture admission policy.</param>
+/// <param name="proof">The actual gateway proof signer.</param>
 public sealed class FixtureEffectSubmitter(ITrustedEffectAdmissionPolicy policy, ITrustedEffectGatewayProof proof) : ITrustedEffectSubmitter
 {
+    /// <inheritdoc/>
     public async Task<TrustedEffectResult> SubmitAsync(TrustedEffectSubmission submission, TrustedEffectContext context, CancellationToken cancellationToken = default)
     {
         TrustedEffectAdmission admission = await policy.PrepareAsync(submission, context, cancellationToken);

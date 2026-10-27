@@ -7,9 +7,12 @@ namespace PublishedConsumer;
 /// <summary>Uses the SDK's real command-state rehydrator before exposing observed state or producing an event.</summary>
 public sealed class CounterProcessor : DomainProcessorBase<CounterState>
 {
+    /// <summary>Gets the value reconstructed by the SDK before handling.</summary>
     public int ObservedCount { get; private set; }
+    /// <summary>Gets the number of actual command handler invocations.</summary>
     public static int HandleCalls { get; private set; }
 
+    /// <inheritdoc/>
     protected override Task<DomainResult> HandleAsync(CommandEnvelope command, CounterState? currentState)
     {
         ObservedCount = currentState?.Count ?? 0;

@@ -18,6 +18,7 @@ namespace PublishedConsumer;
 /// <summary>Drives real query router/actor/handler routes and cursors bound to a durably applied read model.</summary>
 public static class QueryBoundaryEndpoints
 {
+    /// <summary>Maps the signed query and persisted cursor fixture endpoints.</summary>
     public static void Map(WebApplication app)
     {
         app.MapPost("/project-model/{aggregate}", async (string aggregate, JsonElement input, IReadModelStore store) =>
@@ -48,7 +49,7 @@ public static class QueryBoundaryEndpoints
             if (mode == "foreign-actor") query = query with { OriginalActorId = "other" };
             if (input.GetProperty("serializer").GetString() == "xml")
             {
-                IWireQueryActor actor = actors.CreateActorProxy<IWireQueryActor>(new ActorId("counter:" + query.TenantId), "P1RQueryActor");
+                Hexalith.EventStore.Server.Actors.IDaprProjectionActor actor = actors.CreateActorProxy<Hexalith.EventStore.Server.Actors.IDaprProjectionActor>(new ActorId("counter:" + query.TenantId), "P1RQueryActor");
                 QueryResult response = await actor.QueryAsync(query);
                 return Results.Json(new { response.Success, payload = response.Success ? response.GetPayload() : (JsonElement?)null, response.ErrorMessage });
             }

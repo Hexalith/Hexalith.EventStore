@@ -5,6 +5,8 @@ using System.Xml.Linq;
 namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 
 /// <summary>Builds independent package Release and exact-tag source Debug consumers outside repository inheritance.</summary>
+/// <param name="runtime">The invocation owner.</param>
+/// <param name="repository">The owning repository root.</param>
 internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string repository)
 {
     private string _templates = string.Empty;
@@ -36,7 +38,7 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
     internal async Task MaterializeAsync(bool prerequisiteOnly = false)
     {
         _templates = Path.Combine(runtime.Root, "consumer-inputs");
-        string originalTemplates = Path.Combine(AppContext.BaseDirectory, "Consumers");
+        string originalTemplates = Path.Combine(repository, "tests", "Hexalith.EventStore.PublishedCompatibility.Tests", "Consumers");
         var templateHashes = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string original in Directory.EnumerateFiles(originalTemplates, "*", SearchOption.AllDirectories))
         {
@@ -61,6 +63,9 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
         foreach ((string path, string hash) in untrackedHashes)
             if (QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(repository, path))) != hash)
                 throw new InvalidOperationException("An untracked executor input changed during capture: " + path);
+        foreach ((string path, string hash) in templateHashes)
+            if (QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(originalTemplates, path))) != hash)
+                throw new InvalidOperationException("A consumer template changed during executor capture: " + path);
         string capturedInputsPath = Path.Combine(runtime.Root, "executor-inputs.json");
         await File.WriteAllTextAsync(capturedInputsPath + ".tmp", JsonSerializer.Serialize(new
         {

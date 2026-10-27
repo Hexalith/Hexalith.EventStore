@@ -7,9 +7,12 @@ namespace PublishedConsumer;
 /// <summary>Adapts Dapr-owned addressed fixture reads to the published reader; every mutation refuses.</summary>
 public class DaprStateReaderProxy : DispatchProxy
 {
+    /// <summary>Gets or sets the exact actor whose fixture state may be read.</summary>
     public string ActorId { get; set; } = string.Empty;
+    /// <summary>Gets the number of refused mutation attempts.</summary>
     public int StagingCalls { get; private set; }
 
+    /// <summary>Creates a read-only adapter for the addressed Dapr actor fixture.</summary>
     public static IActorStateManager Create(string actor)
     {
         IActorStateManager manager = Create<IActorStateManager, DaprStateReaderProxy>();
@@ -17,6 +20,7 @@ public class DaprStateReaderProxy : DispatchProxy
         return manager;
     }
 
+    /// <inheritdoc/>
     protected override object? Invoke(MethodInfo? method, object?[]? arguments)
     {
         string key = (string)arguments![0]!;

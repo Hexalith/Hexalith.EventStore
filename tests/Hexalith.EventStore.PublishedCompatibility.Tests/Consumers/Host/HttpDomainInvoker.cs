@@ -11,8 +11,10 @@ namespace PublishedConsumer;
 /// <summary>Transports the real actor's replay input to a physically separate versioned SDK domain process.</summary>
 public sealed class HttpDomainInvoker : IDomainServiceInvoker
 {
+    /// <summary>Gets the actual folded count returned by the separate domain process for each actor.</summary>
     public ConcurrentDictionary<string, int> Observations { get; } = new(StringComparer.Ordinal);
 
+    /// <inheritdoc/>
     public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default)
     {
         using var client = new HttpClient { BaseAddress = new Uri(Environment.GetEnvironmentVariable("P1R_DOMAIN_URL")!), Timeout = TimeSpan.FromSeconds(30) };
@@ -26,6 +28,7 @@ public sealed class HttpDomainInvoker : IDomainServiceInvoker
     }
 
 #if SELECTED
+    /// <inheritdoc/>
     public Task<DomainResult> InvokeTrustedEffectAsync(CommandEnvelope command, object? state, bool includeState,
         string? profile, Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin origin, CancellationToken cancellationToken = default)
         => InvokeAsync(command, state, cancellationToken);

@@ -13,6 +13,7 @@ namespace PublishedConsumer;
 /// <summary>Creates real signed admission evidence with an invocation-local private key kept only in memory.</summary>
 public static class SignedQueryFixture
 {
+    /// <summary>Signs and verifies exact query admission with an ephemeral in-memory RSA key.</summary>
     public static object Create()
     {
         using RSA key = RSA.Create(2048);

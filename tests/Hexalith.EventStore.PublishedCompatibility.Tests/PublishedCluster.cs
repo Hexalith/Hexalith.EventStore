@@ -9,8 +9,11 @@ using System.Text.Json.Nodes;
 namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 
 /// <summary>Runs versioned actors in a private Dapr 1.18.4/Redis topology, including provider-level fresh-database restores.</summary>
+/// <param name="runtime">The invocation owner.</param>
+/// <param name="builds">The independently materialized consumers.</param>
 internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyList<ConsumerBuild> builds) : IAsyncDisposable
 {
+    /// <summary>Binds the original Redis image by its immutable digest.</summary>
     internal const string RedisImage = "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf";
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(45) };
     private readonly List<OwnedProcess> _writers = [];
@@ -336,10 +339,17 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 JsonElement result = await ExecuteAsync(actor, true);
                 assertions.Check(!IsOk(result), "production-required-logical-hop-refused-without-bound-callable");
                 assertions.Check(result.TryGetProperty("error", out JsonElement error) && !string.IsNullOrWhiteSpace(error.GetString()), "typed-production-evolution-refusal");
+                JsonElement cause = await GetAsync("http://127.0.0.1:" + _hostPort + "/manifest-refusal/" + Uri.EscapeDataString(actor));
+                bool intendedHop = cause.GetProperty("code").GetString() == "missing-allow-listed-callable"
+                    && cause.GetProperty("stage").GetString() == "production-logical-event-upcast-binding"
+                    && cause.GetProperty("actor").GetString() == actor
+                    && cause.GetProperty("declaringType").GetString()!.StartsWith("Hexalith.EventStore.Client.Events.EventUpcastChainExecutor", StringComparison.Ordinal);
+                assertions.Check(intendedHop, "actual-production-hop-missing-callable-cause-and-stage");
+                assertions.Record("production-manifest-refusal", cause.GetRawText());
                 assertions.Check(Equal(before, await InventoryAsync(actor, 2)), "production-manifest-refusal-preserves-original-event-bytes");
                 JsonElement stats = await GetAsync("http://127.0.0.1:" + _domainPort + "/stats");
                 assertions.Check(stats.GetProperty("applyCalls").GetInt32() == 0 && stats.GetProperty("handleCalls").GetInt32() == 0, "manifest-refusal-before-domain-apply-handle");
-                return "incompatible";
+                return intendedHop && assertions.Failures.Count == 0 ? "incompatible" : "unverified";
             });
             await PublishedScenarioTests.ObserveAsync(observations, "registered-evolution", host.Configuration, async assertions =>
             {
@@ -452,9 +462,13 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task<JsonElement> PostAsync(string address, object request)
     {
+        DateTimeOffset began = DateTimeOffset.UtcNow;
         using var response = await _http.PostAsJsonAsync(address, request, TestContext.Current.CancellationToken);
+        string body = await response.Content.ReadAsStringAsync();
+        PublishedScenarioTests.ActiveAssertions?.Record("http-post", JsonSerializer.Serialize(new { address, began, ended = DateTimeOffset.UtcNow,
+            status = (int)response.StatusCode, requestHash = QualificationRuntime.Hash(JsonSerializer.SerializeToUtf8Bytes(request)), responseHash = QualificationRuntime.Hash(Encoding.UTF8.GetBytes(body)) }));
         response.EnsureSuccessStatusCode();
-        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        using JsonDocument json = JsonDocument.Parse(body);
         return json.RootElement.Clone();
     }
 
@@ -463,24 +477,36 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         using var response = await _http.GetAsync(address, TestContext.Current.CancellationToken);
         response.EnsureSuccessStatusCode();
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        PublishedScenarioTests.ActiveAssertions?.Record("http-get:" + address, json.RootElement.GetRawText());
         return json.RootElement.Clone();
     }
 
     private async Task RestoreCasesAsync(List<ScenarioObservation> observations, ConsumerBuild selected)
     {
-        foreach (string old in new[] { "3.70.1", "3.110.0" })
+        foreach (string target in new[] { "3.70.1", "3.110.0", ConsumerMaterializer.SelectedVersion, "tagged-source" })
         foreach (string scenario in new[] { "post-upgrade-restore", "pre-upgrade-restore" })
         {
-            await PublishedScenarioTests.ObserveAsync(observations, scenario, old, async assertions =>
+            if (scenario == "pre-upgrade-restore" && target is not ("3.70.1" or "3.110.0")) continue;
+            await PublishedScenarioTests.ObserveAsync(observations, scenario, target, async assertions =>
             {
                 bool containment = scenario == "pre-upgrade-restore";
-                ConsumerBuild writer = containment ? Build("Host", old) : selected;
-                await StartWriterAsync(writer, Build("Domain", writer.Version));
+                ConsumerBuild targetHost = Build("Host", target);
+                ConsumerBuild targetDomain = Build("Domain", target);
+                ConsumerBuild writer = containment ? targetHost : selected;
+                await StartWriterAsync(writer, Build("Domain", writer.Version, source: writer.Source is not null));
                 string actor = Address("tenant-a");
                 string other = "tenant-b:" + actor.Split(':', 2)[1];
                 await AppendAsync(actor, 12, assertions);
                 await AppendAsync(other, 3, assertions);
                 if (!containment) await ConfigureHistoryAsync(actor, "metadata-write");
+                if (!containment)
+                {
+                    using JsonDocument prepared = JsonDocument.Parse((await ReadAsync(actor, actor + ":metadata"))!);
+                    assertions.Check(prepared.RootElement.GetProperty("retainedFloor").GetInt64() == 5
+                        && prepared.RootElement.GetProperty("sourceProof").GetProperty("retainedFloor").GetInt64() == 5
+                        && prepared.RootElement.GetProperty("sourceProof").GetProperty("headSequence").GetInt64() == 12,
+                        "provider-backup-has-coherent-floor-five-head-twelve-proof");
+                }
                 var before = await InventoryAsync(actor, 12);
                 var isolated = await InventoryAsync(other, 3);
                 await StopWritersAsync();
@@ -489,27 +515,63 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 await runtime.RequireAsync("docker", ["exec", _redis, "redis-cli", "SAVE"]);
                 await runtime.RequireAsync("docker", ["cp", _redis + ":/data/dump.rdb", dump]);
                 string hash = QualificationRuntime.Hash(await File.ReadAllBytesAsync(dump));
+                assertions.Record("provider-backup", JsonSerializer.Serialize(new { sourceContainer = _redis, hash, bytes = new FileInfo(dump).Length }));
                 assertions.Check(new FileInfo(dump).Length > 0 && hash.Length == 64, "actual-provider-backup-hash");
+                if (containment)
+                {
+                    await StartWriterAsync(selected, Build("Domain", selected.Version));
+                    JsonElement later = await ExecuteAsync(actor, true);
+                    assertions.Check(IsOk(later) && later.GetProperty("sequence").GetInt64() == 13, "selected-writer-committed-after-pre-upgrade-backup");
+                    assertions.Check(await ReadAsync(actor, actor + ":events:13") is not null, "later-selected-event-existed-before-containment-restore");
+                    await StopWritersAsync();
+                }
                 await FreshDatabaseAsync(dump);
                 File.Delete(dump);
                 assertions.Check(!File.Exists(dump), "dump-destroyed-after-restore");
-                await StartWriterAsync(Build("Host", old), Build("Domain", old));
+                await StartWriterAsync(targetHost, targetDomain);
                 assertions.Check(Equal(before, await InventoryAsync(actor, 12)), "fresh-database-restored-inventory");
                 assertions.Check(Equal(isolated, await InventoryAsync(other, 3)), "fresh-database-restored-second-tenant");
+                if (containment) assertions.Check(await ReadAsync(actor, actor + ":events:13") is null, "containment-restores-earlier-point-and-cannot-claim-rpo-zero");
                 JsonElement result = await ExecuteAsync(actor, !containment);
-                assertions.Check(IsOk(result) && result.GetProperty("count").GetInt32() == 12, "old-host-rehydration");
+                assertions.Check(IsOk(result) && result.GetProperty("count").GetInt32() == 12, "restored-target-host-rehydration");
                 bool floor = containment || IsOk(result) && result.GetProperty("metadata").TryGetProperty("retainedFloor", out JsonElement retained) && retained.GetInt64() == 5;
                 if (!containment && IsOk(result))
                 {
                     assertions.Check(result.GetProperty("sequence").GetInt64() == 13, "restored-database-actual-append");
-                    await StartWriterAsync(Build("Host", old), Build("Domain", old));
+                    assertions.Check(floor, "restored-writer-preserves-floor-five");
+                    var appended = await InventoryAsync(actor, 13);
+                    foreach ((string key, string? value) in before.Where(pair => !pair.Key.EndsWith(":metadata", StringComparison.Ordinal)))
+                        assertions.Check(appended.GetValueOrDefault(key) == value, "restore-append-preserves-prior-event-or-snapshot-" + key);
+                    assertions.Check(Equal(isolated, await InventoryAsync(other, 3)), "restore-append-preserves-second-tenant");
+                    assertions.Check(Enumerable.Range(1, 4).All(sequence => appended[actor + ":events:" + sequence] is null)
+                        && Enumerable.Range(5, 9).All(sequence => appended[actor + ":events:" + sequence] is not null)
+                        && await ReadAsync(actor, actor + ":events:14") is null, "restore-append-exact-retained-event-set-five-through-thirteen");
+                    string eventThirteenHash = appended[actor + ":events:13"]!;
+                    assertions.Check(eventThirteenHash.Length == 64, "restore-new-event-thirteen-hash-observed");
+                    using JsonDocument eventThirteen = JsonDocument.Parse((await ReadAsync(actor, actor + ":events:13"))!);
+                    assertions.Check(result.GetProperty("metadata").TryGetProperty("sourceProof", out JsonElement proof)
+                        && proof.GetProperty("headSequence").GetInt64() == 13 && proof.GetProperty("retainedFloor").GetInt64() == 5
+                        && proof.GetProperty("headMessageId").GetString() == eventThirteen.RootElement.GetProperty("messageId").GetString(),
+                        "restore-append-preserves-coherent-source-proof-coordinates");
+                    await StartWriterAsync(targetHost, targetDomain);
                     JsonElement restart = await ExecuteAsync(actor, false);
-                    assertions.Check(IsOk(restart) && restart.GetProperty("count").GetInt32() == 13, "restored-append-restarts");
+                    assertions.Check(IsOk(restart) && restart.GetProperty("count").GetInt32() == 13
+                        && restart.GetProperty("sequence").GetInt64() == 13, "restored-append-restarts-with-folded-count-thirteen");
+                    assertions.Check(IsOk(restart) && restart.GetProperty("metadata").TryGetProperty("retainedFloor", out JsonElement restartedFloor)
+                        && restartedFloor.GetInt64() == 5, "restored-floor-five-survives-fresh-restart");
+                    var restarted = await InventoryAsync(actor, 13);
+                    assertions.Check(Equal(appended, restarted), "restore-restart-preserves-entire-committed-inventory-and-snapshot");
+                    assertions.Check(restarted[actor + ":events:13"] == eventThirteenHash, "restore-restart-preserves-new-event-thirteen-hash");
+                    assertions.Check(Equal(isolated, await InventoryAsync(other, 3)), "restore-restart-preserves-second-tenant");
                 }
                 return !containment && floor && assertions.Failures.Count == 0 ? "compatible" : "incompatible";
             });
         }
     }
+
+    /// <summary>Runs the actual provider restores independently for focused recovery verification.</summary>
+    internal Task ExecuteProviderRestoresAsync(List<ScenarioObservation> observations)
+        => RestoreCasesAsync(observations, Build("Host", ConsumerMaterializer.SelectedVersion));
 
     private async Task StartWriterAsync(ConsumerBuild host, ConsumerBuild domain)
     {
@@ -530,12 +592,23 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             ["ASPNETCORE_ENVIRONMENT"] = "Testing", ["APP_API_TOKEN"] = "p1r-synthetic-app-token",
             ["P1R_QUERY_SIGNING_KEY_PATH"] = _querySigningKeyPath,
         };
+        PublishedScenarioTests.ActiveAssertions?.Record("runtime-profile", JsonSerializer.Serialize(new
+        {
+            appId = _appId, runtime = "1.18.4", redisImage = RedisImage, redisContainer = _redis,
+            componentHash = QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(components, "state.yaml"))),
+            daprdHash = QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(_binaries, "daprd"))), host, domain,
+        }));
         _writers.Add(runtime.Start(new("dotnet", [domain.Assembly, "--urls", "http://127.0.0.1:" + domainPort], Path.GetDirectoryName(domain.Project)!, TimeSpan.FromMinutes(1),
             new Dictionary<string, string> { ["P1R_QUERY_VERIFICATION_KEY"] = _queryVerificationKey,
                 ["DAPR_HTTP_PORT"] = _sidecarPort.ToString(), ["DAPR_GRPC_PORT"] = grpc.ToString() })));
         _writers.Add(runtime.Start(new("dotnet", [host.Assembly], Path.GetDirectoryName(host.Project)!, TimeSpan.FromMinutes(1), environment)));
         await WaitHttpAsync("http://127.0.0.1:" + domainPort + "/identity");
         await WaitHttpAsync("http://127.0.0.1:" + _hostPort + "/identity");
+        foreach ((ConsumerBuild build, int port) in new[] { (host, _hostPort), (domain, domainPort) })
+        {
+            JsonElement identity = await GetAsync("http://127.0.0.1:" + port + "/identity");
+            PublishedScenarioTests.ActiveAssertions?.Record("loaded-" + build.Role, identity.GetRawText());
+        }
         _writers.Add(runtime.Start(new(Path.Combine(_binaries, "daprd"), ["--app-id", _appId, "--app-port", _hostPort.ToString(),
             "--app-channel-address", "127.0.0.1", "--dapr-http-port", _sidecarPort.ToString(), "--dapr-grpc-port", grpc.ToString(),
             "--dapr-internal-grpc-port", Port().ToString(), "--metrics-port", Port().ToString(), "--profile-port", Port().ToString(),
@@ -644,6 +717,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             string? raw = await ReadAsync(actor, key);
             result.Add(key, raw is null ? null : QualificationRuntime.Hash(Encoding.UTF8.GetBytes(raw)));
         }
+        PublishedScenarioTests.ActiveAssertions?.Record("inventory:" + actor, JsonSerializer.Serialize(new { fixture = actor, appId = _appId, database = _redis, hashes = result }));
         return result;
     }
 

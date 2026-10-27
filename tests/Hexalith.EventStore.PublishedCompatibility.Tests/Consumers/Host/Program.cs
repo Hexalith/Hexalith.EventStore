@@ -35,6 +35,8 @@ builder.Services.AddSingleton<Hexalith.EventStore.Server.Commands.ITrustedEffect
 #endif
 #if SELECTED
 ManifestEvolutionFixture.Register(builder.Services);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<ProductionRefusalObserver>();
 builder.Services.AddActors(options => options.Actors.RegisterActor<FixtureQueryActor>("P1RQueryActor"));
 builder.Services.Configure<Hexalith.EventStore.Server.Identity.IdentityAdmissionSigningOptions>(options =>
     options.PrivateKeyPem = File.ReadAllText(Environment.GetEnvironmentVariable("P1R_QUERY_SIGNING_KEY_PATH")!));
@@ -57,6 +59,9 @@ builder.Services.AddSingleton<IEventPublisher, BoundedEventPublisher>();
 builder.Services.AddSingleton<BoundedDeadLetterPublisher>();
 builder.Services.AddSingleton<IDeadLetterPublisher>(provider => provider.GetRequiredService<BoundedDeadLetterPublisher>());
 WebApplication app = builder.Build();
+#if SELECTED
+app.Services.GetRequiredService<ProductionRefusalObserver>().Start();
+#endif
 app.MapActorsHandlers();
 CapabilityEndpoints.Map(app);
 #if SELECTED
@@ -80,6 +85,8 @@ app.MapPost("/evolution", async (JsonElement input, Dapr.Client.DaprClient clien
         persistedBytesUnchanged = original.SequenceEqual(before) && before.SequenceEqual(after) });
 });
 app.MapGet("/manifest", () => new { fingerprint = ManifestEvolutionFixture.Fingerprint, domain = "d", fromVersion = 1, currentVersion = 2, registered = true });
+app.MapGet("/manifest-refusal/{actorId}", (string actorId, ProductionRefusalObserver observer) =>
+    observer.Read(actorId) is JsonElement value ? Results.Json(value) : Results.NotFound());
 #endif
 app.MapGet("/identity", () => new { identities = ConsumerIdentity.Read() });
 app.MapPost("/status-fixture/{message}", async (string message, JsonElement input, Hexalith.EventStore.Server.Commands.ICommandStatusStore store) =>

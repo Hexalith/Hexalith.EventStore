@@ -11,8 +11,10 @@ namespace PublishedConsumer;
 /// <summary>Registers a two-version manifest through the published service API, retaining its real missing-callable boundary.</summary>
 public static class ManifestEvolutionFixture
 {
+    /// <summary>Gets the fingerprint computed by the loaded production registry codec.</summary>
     public static string Fingerprint { get; private set; } = string.Empty;
 
+    /// <summary>Registers the bounded two-version manifest through the public SDK API.</summary>
     public static void Register(IServiceCollection services)
     {
         var fixture = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "RegistryFixture.json")))!;

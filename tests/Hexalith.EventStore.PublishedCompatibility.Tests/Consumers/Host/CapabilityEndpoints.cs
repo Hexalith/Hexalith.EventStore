@@ -13,6 +13,7 @@ namespace PublishedConsumer;
 /// <summary>Executes real actor fence/effect operations or exposes an old process's typed unsupported boundary.</summary>
 public static class CapabilityEndpoints
 {
+    /// <summary>Maps the fenced command and trusted-effect fixture endpoints.</summary>
     public static void Map(WebApplication app)
     {
         app.MapPost("/capabilities/{aggregate}", async (string aggregate, IServiceProvider services) =>

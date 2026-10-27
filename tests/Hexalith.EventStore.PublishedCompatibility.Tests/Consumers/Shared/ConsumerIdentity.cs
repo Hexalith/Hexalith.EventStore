@@ -6,6 +6,7 @@ namespace PublishedConsumer;
 /// <summary>Reports physical identities from the running process rather than build metadata alone.</summary>
 internal static class ConsumerIdentity
 {
+    /// <summary>Reads the running process's physical EventStore assembly identities.</summary>
     internal static object[] Read() => new[] { "Client", "Contracts", "DomainService", "Server", "ServiceDefaults" }
         .Select(name => Assembly.Load("Hexalith.EventStore." + name))
         .Select(assembly => (object)new

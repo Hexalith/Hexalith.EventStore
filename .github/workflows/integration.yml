@@ -67,6 +67,9 @@ jobs:
             TestResults/published-compatibility/**/*.trx
             /tmp/p1r-*/summary.json
             /tmp/p1r-*/scenarios.ndjson
+            /tmp/p1r-*/focused-summary.json
+            /tmp/p1r-*/startup-failure-*.json
+            /tmp/p1r-*/late-descendant-cleanup.json
             /tmp/p1r-*/materialized-inputs.json
             /tmp/p1r-*/executor-inputs.json
             /tmp/p1r-*/cleanup.json

@@ -7,6 +7,16 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <summary>Exercises real process/container failure paths and fail-closed input admission.</summary>
 public sealed class OwnershipRegressionTests
 {
+    /// <summary>Once cleanup closes ownership, a late worker cannot start a new untracked process.</summary>
+    [Fact]
+    public async Task LateLaunchAfterCleanupIsRejectedAsync()
+    {
+        await using var runtime = new QualificationRuntime();
+        await runtime.CleanupAsync();
+        Should.Throw<ObjectDisposedException>(() => runtime.Start(new("sleep", ["120"], runtime.Root, TimeSpan.FromSeconds(1))));
+        await runtime.CleanupAsync();
+        runtime.CleanupFailures.ShouldBeEmpty();
+    }
     /// <summary>A detached descendant retaining redirected pipes cannot escape the finite command boundary.</summary>
     [Fact]
     public async Task DetachedDescendantWithInheritedOutputIsTerminatedAsync()

@@ -7,6 +7,7 @@ namespace PublishedConsumer;
 /// <summary>Executes the actual cursor codec with all authoritative scope coordinates and negative bindings.</summary>
 public static class CursorFixture
 {
+    /// <summary>Exercises the actual cursor codec and all scope-binding refusal controls.</summary>
     public static object Execute()
     {
         var codec = new QueryCursorCodec(new EphemeralDataProtectionProvider(), "p1r-counter");

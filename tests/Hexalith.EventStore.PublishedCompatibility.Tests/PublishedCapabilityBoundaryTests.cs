@@ -16,6 +16,7 @@ public sealed class PublishedCapabilityBoundaryTests
         await materializer.MaterializeAsync(prerequisiteOnly: true);
         materializer.Failures.ShouldBeEmpty();
         var observations = new List<ScenarioObservation>();
+        PublishedScenarioTests.RegisterObservationLog(observations, Path.Combine(runtime.Root, "scenarios.ndjson"));
         await using (var cluster = new PublishedCluster(runtime, materializer.Builds))
         {
             await cluster.InitializeAsync();

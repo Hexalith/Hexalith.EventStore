@@ -14,6 +14,7 @@ namespace PublishedConsumer;
 /// <summary>Registers a real stream-derived Reminder and reads its persisted natural-delivery disposition.</summary>
 public static class ReminderEndpoints
 {
+    /// <summary>Maps the natural Reminder fixture endpoints.</summary>
     public static void Map(WebApplication app)
     {
         app.MapPost("/reminder/{aggregate}", async (string aggregate, JsonElement input, IReminderRegistrar registrar) =>

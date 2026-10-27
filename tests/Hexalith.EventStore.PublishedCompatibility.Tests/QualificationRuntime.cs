@@ -16,6 +16,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     private readonly HashSet<string> _sensitivePaths = new(StringComparer.Ordinal);
     private string? _sharedContainers;
     private bool _cleaning;
+    private bool _stopping;
 
     /// <summary>Gets the invocation's unique ownership marker.</summary>
     internal string Id { get; } = "p1r-" + Guid.NewGuid().ToString("N");
@@ -46,6 +47,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     /// <summary>Starts an operation and immediately records ownership before any cancellable await.</summary>
     internal OwnedProcess Start(QualificationCommand command)
     {
+        if (_stopping && !IsCleanupCommand(command)) throw new ObjectDisposedException(nameof(QualificationRuntime), "Owned launches are closed once cleanup starts.");
         if (!_cleaning) TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         var start = new ProcessStartInfo(command.FileName)
         {
@@ -64,7 +66,18 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         if (command.Environment is not null)
             foreach ((string key, string value) in command.Environment) start.Environment[key] = value;
         var process = new Process { StartInfo = start };
-        process.Start();
+        DateTimeOffset attempted = DateTimeOffset.UtcNow;
+        try
+        {
+            if (!process.Start()) throw new InvalidOperationException("Process creation returned false.");
+        }
+        catch (Exception error)
+        {
+            File.WriteAllText(Path.Combine(Root, "startup-failure-" + Guid.NewGuid().ToString("N") + ".json"), JsonSerializer.Serialize(new
+                { command, started = attempted, ended = DateTimeOffset.UtcNow, exitCode = (int?)null, error = error.GetType().FullName, error.Message }));
+            process.Dispose();
+            throw;
+        }
         var owned = new OwnedProcess(process, process.StandardOutput.ReadToEndAsync(), process.StandardError.ReadToEndAsync(), marker);
         _processes.Add(owned);
         File.WriteAllText(Path.Combine(Root, $"process-{process.Id}-start.json"), JsonSerializer.Serialize(new { command, started = DateTimeOffset.UtcNow, process.Id, marker }));
@@ -157,6 +170,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     /// <summary>Continues all cleanup attempts, verifies absence, and preserves shared identities on every pass.</summary>
     internal async Task CleanupAsync()
     {
+        _stopping = true;
         _cleaning = true;
         try
         {
@@ -166,17 +180,29 @@ internal sealed class QualificationRuntime : IAsyncDisposable
             catch (Exception error) { _cleanupFailures.Add($"process {owned.Process.Id}: {error.Message}"); }
         }
         // The marker is inherited across fork/exec and setsid. Scan independently of the parent lifetime.
-        foreach (int pid in MarkedProcesses())
+            DateTimeOffset descendantDeadline = DateTimeOffset.UtcNow.AddSeconds(15);
+            int emptyPasses = 0;
+            while (DateTimeOffset.UtcNow < descendantDeadline && emptyPasses < 2)
         {
-            try
+                List<int> descendants = MarkedProcesses();
+                emptyPasses = descendants.Count == 0 ? emptyPasses + 1 : 0;
+                foreach (int pid in descendants)
             {
-                using Process process = Process.GetProcessById(pid);
-                if (MarkedProcesses().Contains(pid)) process.Kill(entireProcessTree: true);
-                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                await process.WaitForExitAsync(deadline.Token);
+                    try
+                    {
+                        string start = File.ReadAllText($"/proc/{pid}/stat").Split(')')[^1].Split(' ', StringSplitOptions.RemoveEmptyEntries)[19];
+                        using Process process = Process.GetProcessById(pid);
+                        string current = File.ReadAllText($"/proc/{pid}/stat").Split(')')[^1].Split(' ', StringSplitOptions.RemoveEmptyEntries)[19];
+                        if (start == current && MarkedProcesses().Contains(pid)) process.Kill(entireProcessTree: true);
+                        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                        await process.WaitForExitAsync(deadline.Token);
+                    }
+                    catch (ArgumentException) { }
+                    catch (FileNotFoundException) { }
+                    catch (DirectoryNotFoundException) { }
+                    catch (Exception error) { _cleanupFailures.Add($"descendant {pid}: {error.Message}"); }
             }
-            catch (ArgumentException) { }
-            catch (Exception error) { _cleanupFailures.Add($"descendant {pid}: {error.Message}"); }
+                await Task.Delay(100);
         }
         foreach (OwnedProcess process in _processes.ToArray())
         {
@@ -259,6 +285,11 @@ internal sealed class QualificationRuntime : IAsyncDisposable
 
     private async Task SaveObservationAsync(CommandObservation observation)
         => await File.WriteAllTextAsync(Path.Combine(Root, $"command-{_commands.Count:D4}.json"), JsonSerializer.Serialize(observation));
+
+    private static bool IsCleanupCommand(QualificationCommand command)
+        => command.FileName == "docker" && command.Arguments.Length > 0
+            && (command.Arguments[0] is "inspect" or "ps" or "rm"
+                || command.Arguments[0] == "volume" && command.Arguments.Length > 1 && command.Arguments[1] is "inspect" or "rm");
 
     private List<int> MarkedProcesses()
     {

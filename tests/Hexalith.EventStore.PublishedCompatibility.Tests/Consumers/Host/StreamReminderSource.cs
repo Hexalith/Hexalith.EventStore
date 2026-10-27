@@ -9,6 +9,7 @@ namespace PublishedConsumer;
 /// <summary>Re-folds the committed schedule event on every registration/callback; a second committed event consumes it.</summary>
 public sealed class StreamReminderSource : IReminderIntentSource
 {
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<ReminderIntent>> GetCurrentIntentsAsync(ReminderTarget target, CancellationToken cancellationToken = default)
     {
         string actor = target.Tenant + ":" + target.Domain + ":" + target.Aggregate;
@@ -26,6 +27,7 @@ public sealed class StreamReminderSource : IReminderIntentSource
             { SourceMessageId = streamEvent.RootElement.GetProperty("messageId").GetString() }];
     }
 
+    /// <inheritdoc/>
     public ReminderCommand TranslateDueIntent(ReminderIntent intent) => new("Increment", intent.Payload);
 }
 #endif

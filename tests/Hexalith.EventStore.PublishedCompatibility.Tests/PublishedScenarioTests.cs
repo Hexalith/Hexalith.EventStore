@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Runtime.CompilerServices;
 
 using Shouldly;
 
@@ -7,16 +8,20 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <summary>Runs the approved immutable-package matrix; failures remain ordinary failing test results.</summary>
 public sealed class PublishedScenarioTests
 {
-    private static string? _observationLog;
+    private static readonly ConditionalWeakTable<List<ScenarioObservation>, string> _observationLogs = new();
+    private static readonly AsyncLocal<MeasuredAssertions?> _activeAssertions = new();
+
+    /// <summary>Gets the currently executing case's measurement scope.</summary>
+    internal static MeasuredAssertions? ActiveAssertions => _activeAssertions.Value;
     /// <summary>Measures every required scenario and both additions without advancing owner or readiness decisions.</summary>
     [Fact]
     public async Task Published31282QualificationMatrixAsync()
     {
         await using var runtime = new QualificationRuntime();
-        _observationLog = Path.Combine(runtime.Root, "scenarios.ndjson");
         string repository = FindRepository();
         var materializer = new ConsumerMaterializer(runtime, repository);
         var observations = new List<ScenarioObservation>();
+        RegisterObservationLog(observations, Path.Combine(runtime.Root, "scenarios.ndjson"));
         string? materializationFailure = null;
         try { await materializer.MaterializeAsync(); }
         catch (Exception error) { materializationFailure = error.ToString(); }
@@ -177,11 +182,13 @@ public sealed class PublishedScenarioTests
         foreach (string scenario in RequiredScenarios)
             if (!observations.Any(observation => observation.Scenario == scenario))
                 observations.Add(new(scenario, "required-lane", "unavailable", "unverified", 0, [], materializationFailure ?? "Required execution did not complete."));
+        DateTimeOffset cleanupStarted = DateTimeOffset.UtcNow;
         await runtime.CleanupAsync();
         await runtime.CleanupAsync();
         var cleanup = new MeasuredAssertions();
         cleanup.Check(runtime.CleanupFailures.Count == 0, "all-owned-resources-removed-shared-preserved");
-        observations.Add(new("failure-cleanup", "matrix-cleanup-twice", cleanup.Failures.Count == 0 ? "passed" : "failed", "compatible", cleanup.Count, cleanup.Failures));
+        observations.Add(new("failure-cleanup", "matrix-cleanup-twice", cleanup.Failures.Count == 0 ? "passed" : "failed", "compatible", cleanup.Count, cleanup.Failures,
+            Started: cleanupStarted, Ended: DateTimeOffset.UtcNow));
         using JsonDocument executorInputs = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
         string executor = executorInputs.RootElement.GetProperty("executor").GetString()!;
         var summary = new { selected = ConsumerMaterializer.SelectedVersion, source = ConsumerMaterializer.SelectedSource,
@@ -200,38 +207,52 @@ public sealed class PublishedScenarioTests
         observations.All(observation => observation.Passing).ShouldBeTrue("Every required published lane must pass compatibility; see " + runtime.Root);
     }
 
+    /// <summary>Names every required scenario and independently selected addition.</summary>
     internal static readonly string[] RequiredScenarios = ["provenance", "legacy-metadata", "metadata-read", "metadata-write", "full-replay",
         "snapshot-tail", "retained-covered", "retained-uncovered", "missing-event", "invalid-evidence", "query-wire", "projection-wire",
         "mixed-api", "checkout", "post-upgrade-restore", "pre-upgrade-restore", "failure-cleanup", "natural-reminder", "registered-evolution"];
 
+    /// <summary>Executes one case and preserves its assertions, timing, measurements, and disposition.</summary>
     internal static async Task ObserveAsync(List<ScenarioObservation> observations, string scenario, string name,
         Func<MeasuredAssertions, Task<string>> operation)
     {
         TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         var assertions = new MeasuredAssertions();
+        DateTimeOffset began = DateTimeOffset.UtcNow;
+        MeasuredAssertions? previous = _activeAssertions.Value;
+        _activeAssertions.Value = assertions;
         try
         {
             string compatibility = await operation(assertions);
             if (assertions.Failures.Count > 0 && compatibility == "compatible") compatibility = "unverified";
             observations.Add(new(scenario, name, assertions.Failures.Count == 0 && assertions.Count > 0 ? "passed" : "failed",
-                compatibility, assertions.Count, assertions.Failures));
+                compatibility, assertions.Count, assertions.Failures, Measurements: assertions.Measurements, Started: began, Ended: DateTimeOffset.UtcNow));
         }
         catch (Exception error)
         {
-            observations.Add(new(scenario, name, "failed", "unverified", assertions.Count, assertions.Failures, error.ToString()));
+            observations.Add(new(scenario, name, "failed", "unverified", assertions.Count, assertions.Failures, error.ToString(), assertions.Measurements, began, DateTimeOffset.UtcNow));
         }
-        if (_observationLog is not null)
-            await File.AppendAllTextAsync(_observationLog, JsonSerializer.Serialize(observations[^1]) + "\n");
+        finally { _activeAssertions.Value = previous; }
+        if (_observationLogs.TryGetValue(observations, out string? observationLog))
+            await File.AppendAllTextAsync(observationLog, JsonSerializer.Serialize(observations[^1]) + "\n");
     }
 
+    /// <summary>Binds incremental output to one list, so separate test executions cannot append to another invocation.</summary>
+    internal static void RegisterObservationLog(List<ScenarioObservation> observations, string path) => _observationLogs.Add(observations, path);
+
+    /// <summary>Invokes a physically independent consumer and records its exact command observation.</summary>
     internal static async Task<JsonElement> ProbeAsync(QualificationRuntime runtime, ConsumerBuild build, object request)
     {
         string[] arguments = build.Role == "Probe" ? [build.Assembly] : [build.Assembly, "--identity"];
         string raw = await runtime.RequireAsync("dotnet", arguments, Path.GetDirectoryName(build.Project),
             TimeSpan.FromSeconds(30), input: JsonSerializer.Serialize(request));
+        CommandObservation command = runtime.Commands[^1];
+        ActiveAssertions?.Record("probe-command", JsonSerializer.Serialize(new { command.Command, command.Started, command.Ended, command.ExitCode, command.OutputHash }));
+        ActiveAssertions?.Record("consumer-build", JsonSerializer.Serialize(build));
         return ParseProbeOutput(raw);
     }
 
+    /// <summary>Requires exactly one well-formed structured consumer result.</summary>
     internal static JsonElement ParseProbeOutput(string raw)
     {
         string[] lines = raw.Split('\n').Where(line => line.StartsWith("P1R_RESULT ", StringComparison.Ordinal)).ToArray();
@@ -240,6 +261,7 @@ public sealed class PublishedScenarioTests
         return json.RootElement.Clone();
     }
 
+    /// <summary>Checks physically loaded versions, configuration, source, paths, and archive bytes.</summary>
     internal static void ValidateIdentity(ConsumerBuild build, JsonElement result, MeasuredAssertions assertions)
     {
         JsonElement[] identities = result.GetProperty("identities").EnumerateArray().ToArray();
@@ -275,6 +297,7 @@ public sealed class PublishedScenarioTests
         effectiveEventContractType = "counter-incremented", effectivePayloadVersion = 1, effectiveSerializationFormat = "json",
         effectivePayload = "e30=", storedEventTypeName = "event", storedDigest = "AQI=", registryFingerprint = "registry", isAdapted = false });
 
+    /// <summary>Finds the owning repository without changing its Git state.</summary>
     internal static string FindRepository()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
