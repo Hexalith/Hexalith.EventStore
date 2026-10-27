@@ -218,14 +218,13 @@ public class DevelopmentRouteCatalogParityTests
     }
 
     [Fact]
-    public async Task CompiledOwnersRemainAnIncompleteUnactivatedDeclarationCandidate()
+    public async Task CompiledOwnersGenerateStableDeclarationsMatchingRetainedCandidate()
     {
         string root = Root();
         byte[] retained = File.ReadAllBytes(Path.Combine(root, "deploy/dapr/eventstore-routing-catalog.json"));
-        RouteCatalogEnvelope first = RouteCatalogCodec.Decode(retained);
+        RouteCatalogEnvelope first = await DevelopmentCatalogProfile.BuildDeclarationsAsync(root, TestContext.Current.CancellationToken);
         for (int attempt = 0; attempt < 2; attempt++)
-            (await Should.ThrowAsync<RouteCatalogValidationException>(() => DevelopmentCatalogProfile.BuildAsync(root, TestContext.Current.CancellationToken)))
-                .Diagnostics.Single().Code.ShouldBe("unrepresented-unbounded-query-fallback");
+            RouteCatalogCodec.Encode(await DevelopmentCatalogProfile.BuildDeclarationsAsync(root, TestContext.Current.CancellationToken)).ShouldBe(retained);
         RouteCatalogCodec.ComputeRootDigest(first).ShouldBe("c156ce0b68bab43f561805db9cd02714d123026d388f65c764d7b6fa4e3b7308");
         first.Declarations.Select(RouteCatalogCodec.ComputeDeclarationDigest).Order(StringComparer.Ordinal)
             .ShouldBe(DevelopmentCatalogProfile.Declarations.Select(RouteCatalogCodec.ComputeDeclarationDigest).Order(StringComparer.Ordinal));
@@ -234,6 +233,7 @@ public class DevelopmentRouteCatalogParityTests
             .ShouldBe(owners.Select(adapter => DevelopmentIdempotencyBindings.Bind(adapter.Declaration, first.Generation))
                 .Select(RouteCatalogCodec.ComputeIdempotencyEntryDigest).Order(StringComparer.Ordinal));
         first.SchemaVersion.ShouldBe(2);
+        first.Routes.Count.ShouldBe(29);
         first.Idempotency.Count.ShouldBe(17);
         first.Declarations.Count(d => d.Kind == "query").ShouldBe(9);
         first.Declarations.Count(d => d.Kind == "projection").ShouldBe(3);
@@ -241,6 +241,25 @@ public class DevelopmentRouteCatalogParityTests
         first.Routes.Single(r => r.RouteId == "counter-status-query").Method.ShouldBe("QueryAsync");
         first.Idempotency.All(i => i.KeyMap.All(k => k.MapKey == k.Generation)).ShouldBeTrue();
         RouteCatalogCodec.Encode(first).ShouldBe(retained);
+    }
+
+    [Fact]
+    public async Task AlreadyCancelledConstructionRejectsInsteadOfReturningDeclarations()
+    {
+        await DevelopmentCatalogProfile.BuildDeclarationsAsync(Root(), TestContext.Current.CancellationToken);
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        OperationCanceledException failure = await Should.ThrowAsync<OperationCanceledException>(
+            () => DevelopmentCatalogProfile.BuildDeclarationsAsync(Root(), cancelled.Token));
+        failure.CancellationToken.ShouldBe(cancelled.Token);
+    }
+
+    [Fact]
+    public async Task SuccessfulDeclarationConstructionDoesNotCertifyRuntimeCompleteness()
+    {
+        await DevelopmentCatalogProfile.BuildDeclarationsAsync(Root(), TestContext.Current.CancellationToken);
+        (await Should.ThrowAsync<RouteCatalogValidationException>(() => DevelopmentCatalogProfile.BuildAsync(Root(), TestContext.Current.CancellationToken)))
+            .Diagnostics.Single().Code.ShouldBe("unrepresented-unbounded-query-fallback");
     }
 
     [Theory]
@@ -252,6 +271,7 @@ public class DevelopmentRouteCatalogParityTests
     {
         DevelopmentCatalogCapabilities valid = DevelopmentCatalogProfile.ObserveCapabilities();
         DevelopmentCatalogProfile.ValidateCapabilities(DevelopmentCatalogProfile.Declarations, valid);
+        await DevelopmentCatalogProfile.BuildDeclarationsAsync(Root(), TestContext.Current.CancellationToken, valid);
         DevelopmentCatalogCapabilities invalid = change switch
         {
             "missing-query" => valid with { HandlerQueries = valid.HandlerQueries.Skip(1).ToArray() },
@@ -259,8 +279,13 @@ public class DevelopmentRouteCatalogParityTests
             "missing-projection" => valid with { Projections = valid.Projections.Skip(1).ToArray() },
             _ => valid with { Projections = [valid.Projections[0] with { Execution = valid.Projections[0].Execution! with { ProjectionOutputs = ["changed"] } }, .. valid.Projections.Skip(1)] },
         };
-        (await Should.ThrowAsync<RouteCatalogValidationException>(() => DevelopmentCatalogProfile.BuildAsync(Root(), TestContext.Current.CancellationToken, invalid)))
-            .Diagnostics.Single().Code.ShouldBe("missing-ambiguous-or-drifted-capability-evidence");
+        foreach (Func<Task<RouteCatalogEnvelope>> build in new Func<Task<RouteCatalogEnvelope>>[]
+        {
+            () => DevelopmentCatalogProfile.BuildDeclarationsAsync(Root(), TestContext.Current.CancellationToken, invalid),
+            () => DevelopmentCatalogProfile.BuildAsync(Root(), TestContext.Current.CancellationToken, invalid),
+        })
+            (await Should.ThrowAsync<RouteCatalogValidationException>(build))
+                .Diagnostics.Single().Code.ShouldBe("missing-ambiguous-or-drifted-capability-evidence");
     }
 
     [Theory]
@@ -334,6 +359,8 @@ public class DevelopmentRouteCatalogParityTests
             File.Copy(Path.Combine(Root(), "src/Hexalith.EventStore/appsettings.json"), Path.Combine(directory, "appsettings.json"));
             var development = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(Root(), "src/Hexalith.EventStore/appsettings.Development.json")))!;
             var services = development["EventStore"]!["DomainServices"]!;
+            File.WriteAllText(Path.Combine(directory, "appsettings.Development.json"), development.ToJsonString());
+            await DevelopmentCatalogProfile.BuildDeclarationsAsync(temporary, TestContext.Current.CancellationToken);
             if (change == "dynamic") services["ConfigStoreName"] = "runtime-config";
             else if (change == "target") services["Registrations"]!["*|counter|v1"]!["AppId"] = "different-app";
             else if (change == "extra-version")
@@ -353,14 +380,19 @@ public class DevelopmentRouteCatalogParityTests
                 };
             }
             File.WriteAllText(Path.Combine(directory, "appsettings.Development.json"), development.ToJsonString());
-            (await Should.ThrowAsync<RouteCatalogValidationException>(() => DevelopmentCatalogProfile.BuildAsync(temporary, TestContext.Current.CancellationToken)))
-                .Diagnostics.Single().Code.ShouldBe(change switch
-                {
-                    "dynamic" => "unbounded-dynamic-configuration",
-                    "target" => "configured-binding-target-drift",
-                    "extra-version" => "undeclared-configured-contract-version",
-                    _ => "undeclared-resolver-tenant-scope",
-                });
+            foreach (Func<Task<RouteCatalogEnvelope>> build in new Func<Task<RouteCatalogEnvelope>>[]
+            {
+                () => DevelopmentCatalogProfile.BuildDeclarationsAsync(temporary, TestContext.Current.CancellationToken),
+                () => DevelopmentCatalogProfile.BuildAsync(temporary, TestContext.Current.CancellationToken),
+            })
+                (await Should.ThrowAsync<RouteCatalogValidationException>(build))
+                    .Diagnostics.Single().Code.ShouldBe(change switch
+                    {
+                        "dynamic" => "unbounded-dynamic-configuration",
+                        "target" => "configured-binding-target-drift",
+                        "extra-version" => "undeclared-configured-contract-version",
+                        _ => "undeclared-resolver-tenant-scope",
+                    });
         }
         finally { Directory.Delete(temporary, recursive: true); }
     }

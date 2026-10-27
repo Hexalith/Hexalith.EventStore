@@ -11,10 +11,12 @@ using Hexalith.EventStore.CatalogConstruction;
 using Hexalith.EventStore.Contracts.Routing;
 
 // Repository-local offline developer tool. No operator service, activation, or signing authority.
-// The current Development profile is incomplete: development/check-development reject its
-// unbounded query fallback. The retained 29-route file is an unactivated declaration candidate.
+// Development construction/checking verify declarations. The separate compiled-profile boundary
+// rejects the unbounded query fallback pending 5.13; it inspects no running deployment or catalog file.
+// The retained 29-route file is an unactivated runtime candidate.
 // dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true -- development . deploy/dapr/eventstore-routing-catalog.json
 // dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true -- check-development . deploy/dapr/eventstore-routing-catalog.json
+// dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true -- check-development-runtime .
 // dotnet run tools/routing-catalog.cs -p:UseHexalithProjectReferences=true -- generate INPUT OUTPUT
 // dotnet run tools/routing-catalog.cs -p:UseHexalithProjectReferences=true -- validate CATALOG [ROOT_SHA256]
 // dotnet run tools/routing-catalog.cs -p:UseHexalithProjectReferences=true -- inspect APPSETTINGS DEVELOPMENT
@@ -34,13 +36,23 @@ try
 {
     if (args is ["development" or "check-development", string repositoryRoot, string catalogPath])
     {
-        RouteCatalogEnvelope actual = await DevelopmentCatalogProfile.BuildAsync(Path.GetFullPath(repositoryRoot)).ConfigureAwait(false);
+        string root = Path.GetFullPath(repositoryRoot);
+        if (args[0] == "development") ValidateDevelopmentOutputPath(root, catalogPath);
+        RouteCatalogEnvelope actual = await DevelopmentCatalogProfile.BuildDeclarationsAsync(root).ConfigureAwait(false);
         byte[] bytes = RouteCatalogCodec.Encode(actual);
         if (args[0] == "development") WriteAtomically(catalogPath, bytes);
         else if (!ReadBounded(catalogPath).Span.SequenceEqual(bytes))
             throw new RouteCatalogValidationException([new("$", "development-catalog-drift")]);
         Console.WriteLine(RouteCatalogCodec.ComputeRootDigest(actual));
-        Console.Error.WriteLine("Development construction only: secret availability and catalog activation are unverified.");
+        Console.Error.WriteLine("Development declarations verified; runtime certification, secret availability and catalog activation are unverified.");
+        return 0;
+    }
+
+    if (args is ["check-development-runtime", string runtimeRepositoryRoot])
+    {
+        RouteCatalogEnvelope actual = await DevelopmentCatalogProfile.BuildAsync(Path.GetFullPath(runtimeRepositoryRoot)).ConfigureAwait(false);
+        Console.WriteLine(RouteCatalogCodec.ComputeRootDigest(actual));
+        Console.Error.WriteLine("Development compiled-profile completeness check passed; running deployments, supplied catalog files, secret availability and activation are unverified.");
         return 0;
     }
 
@@ -69,7 +81,7 @@ try
         return 2;
     }
 
-    Console.Error.WriteLine("Usage: development ROOT OUTPUT | check-development ROOT CATALOG | generate INPUT OUTPUT | validate CATALOG [ROOT_SHA256] | inspect APPSETTINGS DEVELOPMENT");
+    Console.Error.WriteLine("Usage: development ROOT OUTPUT | check-development ROOT CATALOG | check-development-runtime ROOT | generate INPUT OUTPUT | validate CATALOG [ROOT_SHA256] | inspect APPSETTINGS DEVELOPMENT");
     return 64;
 }
 catch (RouteCatalogValidationException exception)
@@ -81,6 +93,19 @@ catch (Exception exception) when (exception is IOException or UnauthorizedAccess
 {
     Console.Error.WriteLine("Route catalog file access failed.");
     return 3;
+}
+
+static void ValidateDevelopmentOutputPath(string repositoryRoot, string outputPath)
+{
+    ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+    string destination = Path.GetFullPath(outputPath);
+    StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+    foreach (string name in new[] { "appsettings.json", "appsettings.Development.json" })
+    {
+        string input = Path.GetFullPath(Path.Combine(repositoryRoot, "src", "Hexalith.EventStore", name));
+        if (string.Equals(destination, input, comparison))
+            throw new RouteCatalogValidationException([new("$", "development-output-input-overlap")]);
+    }
 }
 
 static ReadOnlyMemory<byte> ReadBounded(string path)

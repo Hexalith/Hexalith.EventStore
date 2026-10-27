@@ -26,6 +26,56 @@ env:
   UseHexalithProjectReferences: 'false'
 
 jobs:
+  published-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DAPR_RUNTIME_VERSION: '1.18.4'
+    steps:
+      - name: Checkout exact executor and comparison tags
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+      - name: Initialize only root Builds dependency
+        run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
+      - name: Initialize .NET
+        uses: ./references/Hexalith.Builds/Github/initialize-dotnet
+        with:
+          global-json-file: global.json
+      - name: Pull the original qualified Redis profile
+        run: docker pull redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf
+      # The suite downloads checksum-verified 1.18.4 binaries into invocation scratch.
+      # It never runs dapr init or changes another job's installed runtime/backend.
+      - name: Build the isolated qualification runner
+        run: |
+          dotnet build tests/Hexalith.EventStore.PublishedCompatibility.Tests/Hexalith.EventStore.PublishedCompatibility.Tests.csproj \
+            --configuration Release -m:1 -p:UseHexalithProjectReferences=false \
+            -p:UseMicrosoftTestingPlatformRunner=true
+      - name: Run isolated published qualification and ownership regressions
+        run: |
+          dotnet tests/Hexalith.EventStore.PublishedCompatibility.Tests/bin/Release/net10.0/Hexalith.EventStore.PublishedCompatibility.Tests.dll \
+            --results-directory TestResults/published-compatibility \
+            --report-xunit-trx --report-xunit-trx-filename published-compatibility.trx
+      - name: Upload measured outcomes and bounded command logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: published-compatibility-results
+          path: |
+            TestResults/published-compatibility/**/*.trx
+            /tmp/p1r-*/summary.json
+            /tmp/p1r-*/scenarios.ndjson
+            /tmp/p1r-*/materialized-inputs.json
+            /tmp/p1r-*/executor-inputs.json
+            /tmp/p1r-*/cleanup.json
+            /tmp/p1r-*/command-*.json
+            /tmp/p1r-*/process-*.json
+            /tmp/p1r-*/process-*.log
+          if-no-files-found: error
+          retention-days: 7
+
   live-sidecar:
     runs-on: ubuntu-latest
     # The six serial owner-replacement cases add substantial work to the live

@@ -60,6 +60,7 @@
     <Project Path="tests/Hexalith.EventStore.Operations.Tests/Hexalith.EventStore.Operations.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.ProviderVerification/Hexalith.EventStore.ProviderVerification.csproj" />
     <Project Path="tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.PublishedCompatibility.Tests/Hexalith.EventStore.PublishedCompatibility.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.QueryRouting.Tests/Hexalith.EventStore.QueryRouting.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj" />

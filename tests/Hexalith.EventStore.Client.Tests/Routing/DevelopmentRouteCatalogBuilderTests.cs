@@ -315,19 +315,49 @@ public class DevelopmentRouteCatalogBuilderTests
             File.Copy(SettingsPath("appsettings.json"), baseSettings);
             File.Copy(SettingsPath("appsettings.Development.json"), developmentSettings);
             string developmentOutput = Path.Combine(directory, "development.json");
-            (exit, log) = await RunToolAsync(tool, "development", profile, developmentOutput);
-            exit.ShouldBe(2, log);
-            log.Trim().ShouldBe("Route catalog rejected: $.developmentProfile: unrepresented-unbounded-query-fallback");
-            File.Exists(developmentOutput).ShouldBeFalse();
             byte[] developmentExpected = File.ReadAllBytes(Path.Combine(FindRoot(), "deploy", "dapr", "eventstore-routing-catalog.json"));
-            File.WriteAllBytes(developmentOutput, developmentExpected);
-            foreach (string mode in new[] { "development", "check-development" })
+            for (int attempt = 0; attempt < 2; attempt++)
             {
-                (exit, log) = await RunToolAsync(tool, mode, profile, developmentOutput);
-                exit.ShouldBe(2, log);
-                log.Trim().ShouldBe("Route catalog rejected: $.developmentProfile: unrepresented-unbounded-query-fallback");
+                (exit, log) = await RunToolAsync(tool, "development", profile, developmentOutput);
+                exit.ShouldBe(0, log);
+                log.ShouldContain("c156ce0b68bab43f561805db9cd02714d123026d388f65c764d7b6fa4e3b7308");
+                log.ShouldContain("Development declarations verified; runtime certification, secret availability and catalog activation are unverified.");
                 File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
             }
+            (exit, log) = await RunToolAsync(tool, "check-development", profile, developmentOutput);
+            exit.ShouldBe(0, log);
+            log.ShouldContain("runtime certification, secret availability and catalog activation are unverified.");
+
+            byte[] originalBase = File.ReadAllBytes(baseSettings);
+            byte[] originalDevelopment = File.ReadAllBytes(developmentSettings);
+            foreach (string input in new[] { baseSettings, developmentSettings })
+            {
+                foreach (string destination in new[] { input, Path.Combine(settings, "..", "Hexalith.EventStore", ".", Path.GetFileName(input)) })
+                {
+                    (exit, log) = await RunToolAsync(tool, "development", profile, destination);
+                    exit.ShouldBe(2, log);
+                    log.Trim().ShouldBe("Route catalog rejected: $: development-output-input-overlap");
+                    File.ReadAllBytes(baseSettings).ShouldBe(originalBase);
+                    File.ReadAllBytes(developmentSettings).ShouldBe(originalDevelopment);
+                    File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
+                    Directory.GetFiles(settings, ".routing-catalog-*.tmp").ShouldBeEmpty();
+                }
+            }
+            (exit, log) = await RunToolAsync(tool, "development", profile, developmentOutput);
+            exit.ShouldBe(0, log);
+            File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
+
+            byte[] drifted = [.. developmentExpected, (byte)'\n'];
+            File.WriteAllBytes(developmentOutput, drifted);
+            (exit, log) = await RunToolAsync(tool, "check-development", profile, developmentOutput);
+            exit.ShouldBe(2, log);
+            log.Trim().ShouldBe("Route catalog rejected: $: development-catalog-drift");
+            File.ReadAllBytes(developmentOutput).ShouldBe(drifted);
+            File.WriteAllBytes(developmentOutput, developmentExpected);
+            (exit, log) = await RunToolAsync(tool, "check-development-runtime", profile);
+            exit.ShouldBe(2, log);
+            log.Trim().ShouldBe("Route catalog rejected: $.developmentProfile: unrepresented-unbounded-query-fallback");
+            File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
             foreach (string source in new[] { baseSettings, developmentSettings })
             {
                 byte[] retained = File.ReadAllBytes(source);
@@ -344,9 +374,10 @@ public class DevelopmentRouteCatalogBuilderTests
                         using var oversizedSettings = new FileStream(source, FileMode.Create, FileAccess.Write);
                         oversizedSettings.SetLength(RouteCatalogCodec.MaximumByteLength + 1L);
                     }
-                    foreach (string mode in new[] { "development", "check-development" })
+                    foreach (string mode in new[] { "development", "check-development", "check-development-runtime" })
                     {
-                        (exit, log) = await RunToolAsync(tool, mode, profile, developmentOutput);
+                        string[] arguments = mode == "check-development-runtime" ? [mode, profile] : [mode, profile, developmentOutput];
+                        (exit, log) = await RunToolAsync(tool, arguments);
                         exit.ShouldBe(2, log);
                         log.Trim().ShouldBe(failure == "conversion"
                             ? "Route catalog rejected: $.developmentProfile.configuration: invalid-configuration"
@@ -359,8 +390,8 @@ public class DevelopmentRouteCatalogBuilderTests
                 }
             }
             (exit, log) = await RunToolAsync(tool, "check-development", profile, developmentOutput);
-            exit.ShouldBe(2, log);
-            log.Trim().ShouldBe("Route catalog rejected: $.developmentProfile: unrepresented-unbounded-query-fallback");
+            exit.ShouldBe(0, log);
+            log.ShouldContain("runtime certification, secret availability and catalog activation are unverified.");
             File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
 
             // Every file argument rejects empty/blank paths with a bounded error and preserves existing output.
@@ -374,6 +405,11 @@ public class DevelopmentRouteCatalogBuilderTests
                     ["validate", invalidPath],
                     ["inspect", invalidPath, SettingsPath("appsettings.Development.json")],
                     ["inspect", SettingsPath("appsettings.json"), invalidPath],
+                    ["development", invalidPath, developmentOutput],
+                    ["check-development", invalidPath, developmentOutput],
+                    ["development", profile, invalidPath],
+                    ["check-development", profile, invalidPath],
+                    ["check-development-runtime", invalidPath],
                 })
                 {
                     (exit, log) = await RunToolAsync(tool, arguments);
@@ -381,6 +417,7 @@ public class DevelopmentRouteCatalogBuilderTests
                     log.Trim().ShouldBe("Route catalog file access failed.");
                     File.Exists(absent).ShouldBeFalse();
                     File.ReadAllBytes(output).ShouldBe(expected);
+                    File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
                     Directory.GetFiles(directory, ".routing-catalog-*.tmp").ShouldBeEmpty();
                 }
             }

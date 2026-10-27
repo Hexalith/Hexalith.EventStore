@@ -24,10 +24,19 @@ public static class DevelopmentCatalogProfile
     /// <summary>Gets the complete owner declarations.</summary>
     public static IReadOnlyList<RouteContractDeclaration> Declarations => [.. SampleCatalog.Routes, .. TenantCatalogDeclarations.Routes];
 
-    /// <summary>Verifies the candidate; construction fails while the gateway query fallback remains unbounded.</summary>
+    /// <summary>Checks the compiled Development profile's completeness boundary pending 5.13; inspects no running deployment or supplied catalog file and rejects the known unbounded query fallback.</summary>
     public static async Task<RouteCatalogEnvelope> BuildAsync(string repositoryRoot, CancellationToken cancellationToken = default, DevelopmentCatalogCapabilities? capabilities = null)
     {
+        RouteCatalogEnvelope catalog = await BuildDeclarationsAsync(repositoryRoot, cancellationToken, capabilities).ConfigureAwait(false);
+        ValidateQueryFallbackBoundary();
+        return catalog;
+    }
+
+    /// <summary>Builds verified owner declarations and bindings without certifying runtime completeness, secret availability, or activation.</summary>
+    public static async Task<RouteCatalogEnvelope> BuildDeclarationsAsync(string repositoryRoot, CancellationToken cancellationToken = default, DevelopmentCatalogCapabilities? capabilities = null)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryRoot);
+        cancellationToken.ThrowIfCancellationRequested();
         capabilities ??= ObserveCapabilities();
         ValidateCapabilities(Declarations, capabilities);
         string basePath = Path.Combine(repositoryRoot, "src/Hexalith.EventStore/appsettings.json");
@@ -84,9 +93,10 @@ public static class DevelopmentCatalogProfile
             bindings.Add(new(declaration.RouteId, actor ? "eventstore" : app,
                 actor ? "QueryAsync" : declaration.Kind switch { "command" => "process", "query" => "query", _ => "project" }, "v1", false, tenantPattern));
         }
-        ValidateQueryFallbackBoundary();
-        return DevelopmentRouteCatalogBuilder.Build(new(1, false, declarations, bindings,
+        RouteCatalogEnvelope catalog = DevelopmentRouteCatalogBuilder.Build(new(1, false, declarations, bindings,
             adapters.Select(adapter => DevelopmentIdempotencyBindings.Bind(adapter.Declaration, 1)).ToArray()));
+        cancellationToken.ThrowIfCancellationRequested();
+        return catalog;
     }
 
     /// <summary>Refuses undeclared or ambiguous actual Handle payloads before constructing a profile.</summary>

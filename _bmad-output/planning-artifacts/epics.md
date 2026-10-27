@@ -358,7 +358,7 @@ Operators can rely on stable event identity, durable idempotency admission, dete
 Tenants and administrators receive consistent fail-closed authentication, authorization, tenant isolation, internal endpoint protection, and runtime topology enforcement.
 **Primary users:** Tenant administrators, security engineers, and platform operators
 **FRs covered:** FR26, FR28, FR32
-**Story set:** 5.1–5.14; backlog 5.11 owns G-AUTH-HOSTS and NFR3's all-host conformance slice (`sprint-change-proposal-2026-10-07.md`). Backlog 5.12 and 5.13 own the AD-33 route and idempotency catalog: schema, codec, and envelope ahead of Stories 2.14 and 2.15, then activation; 5.14 owns NFR1's AD-16 authenticated-fallback and Dapr framework-route slice (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
+**Story set:** 5.1–5.14; backlog 5.11 owns G-AUTH-HOSTS and NFR3's all-host conformance slice (`sprint-change-proposal-2026-10-07.md`). Stories 5.12 and 5.13 own the AD-33 route and idempotency catalog: declaration/schema/codec delivery and declared-target parity ahead of Stories 2.14 and 2.15, subject to their remaining gates, then runtime enforcement, exhaustive runtime parity and activation; 5.14 owns NFR1's AD-16 authenticated-fallback and Dapr framework-route slice (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
 **Cross-cutting coverage:** NFR1-NFR4, NFR16-NFR17
 **Implementation notes:** Land Phase 0 safe fixes before any dependent surface regardless of epic numbering. Treat application authorization, AppHost topology, DAPR YAML, scopes, ACLs, and denial evidence as one aligned security posture.
 
@@ -2059,7 +2059,7 @@ So that mixed-case, missing, conflicting, or reserved tenants can never cross a 
 
 **Architecture constraints:** AD-27 (`Contracts` owns the canonicalizer and grammar), AD-10, AD-28, and AD-11 (NFR12 classification of the `system` migration).
 
-**Dependencies:** Story 2.12; Story 5.12 (catalog schema and codec for the cataloged platform-operation scope); a Story 9.1 authorization record for gate G-TENANT. Tenants-host changes land in the Tenants repository under its owner. Boundary with Story 5.10: Story 5.10 keeps the guard against provisioning `system` as a managed tenant; this story owns request-boundary rejection, the distinct platform-operation scope, and the migration of existing `system` usage. Boundary with Story 5.2: Story 5.2 keeps Admin endpoint authorization and tenant-filter behavior; this story replaces only the tenant comparison with the shared canonicalizer (owner option 4b).
+**Dependencies:** Story 2.12; accepted Story 5.12 declaration/schema/codec delivery for the cataloged platform-operation scope, subject to its package/validation delivery gate; a Story 9.1 authorization record for gate G-TENANT. Story 5.13 owns runtime authority, exhaustive runtime parity and activation; consuming accepted declarations does not require that activation. Owner-approved migration/inventory, NFR12 compatibility and assurance prerequisites remain open, so this amendment does not automatically unblock Story 2.14. Tenants-host changes land in the Tenants repository under its owner. Boundary with Story 5.10: Story 5.10 keeps the guard against provisioning `system` as a managed tenant; this story owns request-boundary rejection, the distinct platform-operation scope, and the migration of existing `system` usage. Boundary with Story 5.2: Story 5.2 keeps Admin endpoint authorization and tenant-filter behavior; this story replaces only the tenant comparison with the shared canonicalizer (owner option 4b).
 
 **Acceptance Criteria:**
 
@@ -2100,7 +2100,7 @@ So that a correlation identifier can never address a status resource.
 
 **Architecture constraints:** AD-17 and AD-32 (correlation is never status identity).
 
-**Dependencies:** Story 5.12 (catalog schema and codec); a Story 9.1 authorization record for gate G-STATUS-ID. Until the owner resolves the AD-17 carrier assumption through `bmad-architecture`, each contract's `Contracts` declaration stays the sole source of its MessageId version, and the manifest this story validates is derived from those declarations and fails on drift.
+**Dependencies:** Accepted Story 5.12 declaration/schema/codec delivery, subject to its package/validation delivery gate; a Story 9.1 authorization record for gate G-STATUS-ID. Each contract's `Contracts` declaration is the sole source of its MessageId version, and the manifest this story validates is derived from those declarations and fails on drift. Story 5.13 owns runtime authority, exhaustive runtime parity and activation; declaration consumption does not require that activation and does not waive NFR12 compatibility, assurance or this story's other gates. No automatic unblocking follows from the 2026-10-27 amendment.
 
 **Acceptance Criteria:**
 
@@ -4802,13 +4802,13 @@ So that no host validates tokens with a weaker, hand-rolled subset.
 
 As a platform maintainer,
 I want one versioned `Contracts` schema and canonical codec for the deployable route and idempotency catalog envelope,
-So that the gateway, admission, dispatchers, and deployment ACLs resolve every message to exactly one app ID, method, and contract version from the same bytes.
+So that declared executable targets and policies share deterministic bytes that downstream boundary work and later runtime activation can consume.
 
-**Requirements coverage:** Supporting FR12, FR15, FR27, FR32, NFR2, and NFR12. No primary FR or NFR claim. Owns the schema, codec, and envelope of the architecture gate row "Canonical routing/idempotency catalog envelope"; Story 5.13 owns its activation.
+**Requirements coverage:** Supporting FR12, FR15, FR27, FR32, NFR2, and NFR12. No primary FR or NFR claim. Owns schema, codec, validator, declared Development/test envelope construction and declared-target parity for the architecture gate row "Canonical routing/idempotency catalog envelope"; Story 5.13 owns runtime enforcement, exhaustive runtime parity and activation.
 
 **Architecture constraints:** AD-33 (`Contracts` owns the schema and codec), AD-25 (idempotency facet), AD-9, AD-17, and AD-27.
 
-**Dependencies:** A Story 9.1 authorization record for gates G-TENANT and G-STATUS-ID, whose owning Stories 2.14 and 2.15 depend on this story. The Platform deployment owner owns the signed or content-bound production instance; this story ships the schema, codec, validator, and the Development/test instance. **Assumption boundary:** the spine tags three catalog fields `[ASSUMPTION]`: the MessageId-version digest (AD-17), the platform-operation namespace (AD-27), and the admitted credential kind with its required operation (AD-33). This story adds none of them as a field until the owner resolves the matching assumption through `bmad-architecture`.
+**Dependencies:** A Story 9.1 authorization record for gates G-TENANT and G-STATUS-ID, whose owning Stories 2.14 and 2.15 consume the accepted declaration/schema/codec delivery, subject to remaining package, migration, compatibility and assurance gates. The Platform deployment owner owns the signed or content-bound production instance. The owner-resolved fields include each command's MessageId version/declaration digest, the platform-operation namespace and required human permission, and the target hop's credential kind/operation; Contracts owns identifiers and ServiceDefaults retains authentication and compatible forwarding constants. Package/validation delivery remains open; no runtime authority or automatic downstream unblocking follows from construction.
 
 **Acceptance Criteria:**
 
@@ -4824,8 +4824,13 @@ So that the gateway, admission, dispatchers, and deployment ACLs resolve every m
 
 **Given** the repository's `Contracts` route declarations
 **When** `deploy/dapr/eventstore-routing-catalog.json` is generated for the Development/test profile
-**Then** its routes equal what Development resolves from those declarations, and a guard fails when a declaration and the committed envelope diverge
-**And** production readiness still fails until Story 5.13 activates an instance.
+**Then** repeated generation produces the retained canonical bytes after checking compiled aggregate inventories, policies, packaged capability declarations, configuration and declared resolver targets, and exact-byte checking rejects drift
+**And** Tenants executable query-handler registration parity is independently proven by `Hexalith.Tenants.IntegrationTests`' existing `DomainServiceEndpointsTests.RegisteredQueryInstancesMatchEveryPackagedDeclaration` and missing-registration controls; construction consumes `TenantCatalogCapabilities` and does not load or inspect that executable host on each generation. Successful declaration generation/checking leaves runtime certification, secret availability and activation unverified.
+
+**Given** the current open query/projection/actor fallback or unavailable handler metadata
+**When** strict runtime completeness is checked
+**Then** it remains rejected through the retained completeness path and actual gateway fallback probes
+**And** Story 5.13 owns closing runtime enforcement/exhaustive parity and activation; declaration success grants no runtime or production readiness.
 
 **Given** the validator's rejection paths
 **When** its tests run
@@ -4834,13 +4839,15 @@ So that the gateway, admission, dispatchers, and deployment ACLs resolve every m
 
 **Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 1). The schema, codec, and envelope file are absent.
 
+**Current reconciliation (2026-10-27):** In-progress. The 29-route declared Development inventory and 17 command policies are constructed from compiled owners. Declaration delivery and strict runtime certification are separate under the owner-approved amendment; the strict check remains rejected. Package/validation delivery gates remain open, and the amendment does not complete the parent story or change downstream statuses. The 2026-10-07 reconciliation above is historical.
+
 ### Story 5.13: Route Catalog Activation And Topology Binding
 
 As a deployment owner,
 I want every required host to load and validate one catalog generation before it is committed, and to roll back as a unit,
 So that the gateway, admission, dispatchers, AppHost, and deployment ACLs can never route the same message differently.
 
-**Requirements coverage:** Supporting FR27, FR32, and NFR17. No primary FR or NFR claim. Owns activation for the architecture gate row "Canonical routing/idempotency catalog envelope".
+**Requirements coverage:** Supporting FR27, FR32, and NFR17. No primary FR or NFR claim. Owns runtime catalog authority, rejection of undeclared runtime targets, exhaustive runtime parity and activation for the architecture gate row "Canonical routing/idempotency catalog envelope".
 
 **Architecture constraints:** AD-33 (activation), AD-9, AD-12, AD-25, and AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`).
 
@@ -4853,10 +4860,20 @@ So that the gateway, admission, dispatchers, AppHost, and deployment ACLs can ne
 **Then** activation runs prepare, ready, and commit: every required host loads and validates the same root and facet digests before the deployment owner commits, and any failure rolls back to the prior complete generation
 **And** a duplicate, missing, or ambiguous entry, unsupported override, partial generation, signature or trust failure, or fingerprint mismatch fails readiness on every host.
 
-**Given** the AppHost, deployment ACLs, gateway, admission, and domain and projection dispatchers
-**When** the topology check runs
-**Then** each reports the root digest it activated, and all of them match
-**And** an ACL operation or app ID that the activated catalog does not declare fails the check.
+**Given** the AppHost, deployment ACLs, gateway, every generated API host enumerated by the AD-26 profile, admission, and domain and projection dispatchers
+**When** exhaustive runtime parity and the topology check run
+**Then** every required host agrees on declared targets and the activated root/facet digests
+**And** undeclared query, projection or actor targets, caller-supplied target overrides outside the catalog, or an undeclared ACL operation/app ID fail readiness before downstream dispatch.
+
+**Given** readiness has already succeeded for the committed generation
+**When** a request names an undeclared query, projection or actor target or supplies a target override outside that catalog
+**Then** the request itself is rejected before any downstream domain, projection or actor invocation
+**And** rejection does not depend on a later readiness or topology check.
+
+**Given** unavailable handler metadata, including a missing entry, metadata-read failure or cached absence for a declared handler query, or a stale positive handler-capability cache from another generation
+**When** runtime routing and readiness are qualified through generation prepare, commit and rollback
+**Then** dispatch uses the committed generation's declared target or the request is rejected before another target is invoked; a stale positive cache cannot revive a target from a prior or rolled-back generation
+**And** no silent actor/projection fallback is permitted; tests prove these cache/outage cases beside healthy-metadata controls, preserve the actual fallback probes, and establish cross-host generation/target agreement rather than relying only on a query-name allowlist.
 
 **Given** a multi-host drill on the production-equivalent profile
 **When** a host fails during prepare, during ready, and after commit
@@ -4869,6 +4886,8 @@ So that the gateway, admission, dispatchers, AppHost, and deployment ACLs can ne
 **And** the activated root digest is the only catalog identity the Story 3.19 profile may bind.
 
 **Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 1).
+
+**Owner scope amendment (2026-10-27):** Runtime enforcement, exhaustive parity, metadata-outage target stability or rejection and cross-host agreement belong here alongside activation. Story 5.12 declaration checks may pass independently while its retained strict runtime gate rejects the current fallback. This planning amendment changes no runtime, dependency, deployment, readiness or story status.
 
 ### Story 5.14: Authenticated Fallback And Dapr Framework-Route Protection On Every HTTP Host
 

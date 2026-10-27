@@ -22,6 +22,8 @@ context:
 
 **Owner decisions (2026-10-25):** Complete 5.12 first, limited to its schema, codec, validator and Development/test catalog; activation stays in 5.13. Then make one coordinated SemVer-major explicit-scope transition across controlled consumers. Preserve existing storage identities and writable platform administration. Inventory actual managed-`system` use before retiring it: unused/retired history remains readable; active use requires owner reconciliation, never automatic freezing. Keep this draft pending the prerequisite and that inventory.
 
+**Owner scope amendment (2026-10-27):** The 5.12 prerequisite is accepted declaration/schema/codec delivery and parity of declared executable targets/policies, subject to its package/validation delivery gate. Declaration construction/checking may pass independently of strict runtime certification. Story 5.13 owns runtime catalog authority, rejection of undeclared query/projection/actor targets, exhaustive runtime parity, metadata-outage target stability or rejection, cross-host agreement and activation. Consuming declarations does not require that activation or grant runtime authority. Keep this spec draft/pending: the managed-`system` inventory, owner-approved migration, NFR12 classification and assurance gates remain required; no automatic unblocking follows from this amendment.
+
 ## Boundaries & Constraints
 
 **Always:** Apply AD-27 lowercase normalization and its 1–64-character grammar to request tenants and grants. Require one explicit request scope; grants authorize it but never select it. Preserve operation authorization, workload resource bindings, and distinct audit ownership. Consume Story 5.12's schema/codec; Story 2.12 is done. Obtain owner approval of the migration and classify public changes under NFR12 before implementation.
@@ -52,7 +54,7 @@ Exact paths, callers, tests and migration inventory are in [the investigation](i
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] This spec and `T/docs/audit-stream-rollout.md` — after 5.12, inventory deployed managed-`system` use, record migration/classifications and reconcile its policy. Keep platform administration writable on existing storage; no active tenant retirement is approved.
+- [ ] This spec and `T/docs/audit-stream-rollout.md` — after accepted 5.12 declaration/schema/codec delivery (including its package/validation gate), inventory deployed managed-`system` use, record migration/classifications and reconcile its policy. Keep platform administration writable on existing storage; no active tenant retirement is approved.
 - [ ] `C/Identity/TenantCanonicalizer.cs` (new), `C/Rest/RestTenantSource.cs`, `C/Rest/RestApiAttribute.cs` — define shared boundary validation and approved explicit-scope metadata using 5.12 declarations.
 - [ ] `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` — validate selected scope/grants and forward canonical values; add compiled matrix tests.
 - [ ] `G/Authorization/`, `G/Pipeline/AuthorizationBehavior.cs`, `G/Controllers/`, `G/SignalRHub/ProjectionChangedHub.cs` — update inventoried callers, including actor prechecks, status and replay tenant discovery; preserve their separate operation/identifier policies.
@@ -68,6 +70,8 @@ Exact paths, callers, tests and migration inventory are in [the investigation](i
 ## Implementation Notes
 
 ## Spec Change Log
+
+- 2026-10-27: Applied the owner-approved declaration/runtime split to this frozen prerequisite only. Story 5.13 retains strict runtime enforcement, exhaustive parity and activation, including stable declared targets or rejection during metadata outages. Existing migration/inventory, compatibility, assurance and package gates remain open; status stays draft.
 
 ## Review Triage Log
 
