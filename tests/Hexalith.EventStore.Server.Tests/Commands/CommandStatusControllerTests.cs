@@ -186,10 +186,9 @@ public class CommandStatusControllerTests {
     /// <summary>
     /// Every supported ambiguity shape gives general remediation without disclosing matched records.
     /// </summary>
-    /// <param name="matchKind">The second tenant's direct, indexed, or legacy lookup shape.</param>
+    /// <param name="matchKind">The direct or legacy collision shape.</param>
     [Theory]
     [InlineData("direct")]
-    [InlineData("indexed")]
     [InlineData("legacy")]
     public async Task GetStatus_CrossTenantAmbiguity_ReturnsScopeAwareSupportSafeGuidance(string matchKind)
     {
@@ -202,16 +201,11 @@ public class CommandStatusControllerTests {
                 "private-aggregate-a", 1, null, null, null,
                 matchKind == "legacy" ? null : lookupId, "private-correlation-a"),
             CancellationToken.None);
-        string secondKey = matchKind == "indexed" ? otherMessageId : lookupId;
-        await store.WriteStatusAsync("tenant-b", secondKey,
+        await store.WriteStatusAsync("tenant-b", lookupId,
             new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow,
                 "private-aggregate-b", 1, null, null, null,
-                matchKind == "legacy" ? null : secondKey, "private-correlation-b"),
+                matchKind == "legacy" ? null : lookupId, "private-correlation-b"),
             CancellationToken.None);
-        if (matchKind == "indexed")
-        {
-            _ = await index.AddAsync("tenant-b", lookupId, otherMessageId);
-        }
         var controller = CreateController(store, index, "tenant-a", "tenant-b");
 
         IActionResult result = await controller.GetStatus(lookupId, CancellationToken.None);
@@ -228,6 +222,91 @@ public class CommandStatusControllerTests {
         problem.Detail.ShouldNotContain(otherMessageId);
         problem.Extensions.Keys.ShouldBe(["correlationId"]);
         controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task GetStatus_ExactMessageWinsAcrossTenantOrderingAndAmbiguousIndexes(bool reverseOrder, bool ambiguous)
+    {
+        const string lookupId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string indexedMessage = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
+        var store = new InMemoryCommandStatusStore();
+        var index = new InMemoryCommandCorrelationIndex();
+        await store.WriteStatusAsync("exact-tenant", lookupId,
+            new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow,
+                "exact-aggregate", 1, null, null, null, lookupId, "trace"), CancellationToken.None);
+        await store.WriteStatusAsync("compat-tenant", indexedMessage,
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow,
+                "other-aggregate", 1, null, null, null, indexedMessage, lookupId), CancellationToken.None);
+        _ = await index.AddAsync("compat-tenant", lookupId, indexedMessage);
+        if (ambiguous)
+        {
+            _ = await index.AddAsync("compat-tenant", lookupId, "another-message");
+        }
+        var controller = CreateController(store, index, reverseOrder
+            ? ["compat-tenant", "exact-tenant"] : ["exact-tenant", "compat-tenant"]);
+
+        CommandStatusResponse response = (await controller.GetStatus(lookupId, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<CommandStatusResponse>();
+        response.MessageId.ShouldBe(lookupId);
+        response.TenantId.ShouldBe("exact-tenant");
+        response.AggregateId.ShouldBe("exact-aggregate");
+    }
+
+    [Fact]
+    public async Task GetStatus_ExactMessageDeduplicatesClaimsAndSkipsCompatibilityReads()
+    {
+        ICommandStatusStore store = Substitute.For<ICommandStatusStore>();
+        ICommandCorrelationIndex index = Substitute.For<ICommandCorrelationIndex>();
+        store.ReadStatusAsync("tenant-a", CorrelationId, Arg.Any<CancellationToken>())
+            .Returns(new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow,
+                "aggregate", 1, null, null, null, CorrelationId, "trace"));
+        var controller = CreateController(store, index, "tenant-a", "tenant-a", "tenant-b");
+
+        (await controller.GetStatus(CorrelationId, CancellationToken.None)).ShouldBeOfType<OkObjectResult>();
+        _ = await store.Received(1).ReadStatusAsync("tenant-a", CorrelationId, Arg.Any<CancellationToken>());
+        _ = await store.Received(1).ReadStatusAsync("tenant-b", CorrelationId, Arg.Any<CancellationToken>());
+        _ = await index.DidNotReceive().ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await store.DidNotReceive().ReadStatusAsync("tenant-secret", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetStatus_CompatibilityCollisionsRemainAmbiguousWithoutExactMessages(bool reverseOrder)
+    {
+        var store = new InMemoryCommandStatusStore();
+        var index = new InMemoryCommandCorrelationIndex();
+        foreach (string tenant in new[] { "tenant-a", "tenant-b" })
+        {
+            string messageId = "message-" + tenant;
+            await store.WriteStatusAsync(tenant, messageId,
+                new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow,
+                    "aggregate", 1, null, null, null, messageId, CorrelationId), CancellationToken.None);
+            _ = await index.AddAsync(tenant, CorrelationId, messageId);
+        }
+        var controller = CreateController(store, index, reverseOrder
+            ? ["tenant-b", "tenant-a"] : ["tenant-a", "tenant-b"]);
+
+        (await controller.GetStatus(CorrelationId, CancellationToken.None))
+            .ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+    }
+
+    [Fact]
+    public async Task GetStatus_CompatibilityDeduplicatesClaims()
+    {
+        var store = new InMemoryCommandStatusStore();
+        var index = new InMemoryCommandCorrelationIndex();
+        await store.WriteStatusAsync("tenant-a", "message-a",
+            new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow,
+                "aggregate", 1, null, null, null, "message-a", CorrelationId), CancellationToken.None);
+        _ = await index.AddAsync("tenant-a", CorrelationId, "message-a");
+        var controller = CreateController(store, index, "tenant-a", "tenant-a");
+
+        (await controller.GetStatus(CorrelationId, CancellationToken.None)).ShouldBeOfType<OkObjectResult>();
     }
 
     [Fact]

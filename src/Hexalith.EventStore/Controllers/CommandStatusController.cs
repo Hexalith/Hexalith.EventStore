@@ -95,6 +95,7 @@ public class CommandStatusController(
             var tenantClaims = User.FindAll("eventstore:tenant")
                 .Select(c => c.Value)
                 .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Distinct(StringComparer.Ordinal)
                 .ToList();
 
             if (tenantClaims.Count == 0) {
@@ -111,24 +112,40 @@ public class CommandStatusController(
                     requestCorrelationId);
             }
 
-            var matches = new List<(string Tenant, string MessageId, CommandStatusRecord Record)>();
-            var legacyMatches = new List<(string Tenant, CommandStatusRecord Record)>();
+            var directRecords = new List<(string Tenant, CommandStatusRecord? Record)>();
+            var exactMatches = new List<(string Tenant, CommandStatusRecord Record)>();
 
-            // Search only authorized tenants. Message-primary records are authoritative; the
-            // bounded index is the sole compatibility lookup for a correlation identifier.
-            foreach (string tenant in tenantClaims) {
+            // Establish exact message identity across every distinct authorized scope before
+            // consulting compatibility evidence. A correlation collision cannot mask an exact ID.
+            foreach (string tenant in tenantClaims)
+            {
                 _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant));
-
                 CommandStatusRecord? directRecord = await statusStore
                     .ReadStatusAsync(tenant, messageId, cancellationToken)
                     .ConfigureAwait(false);
-
+                directRecords.Add((tenant, directRecord));
                 if (directRecord is not null
-                    && string.Equals(directRecord.MessageId, messageId, StringComparison.Ordinal)) {
-                    matches.Add((tenant, messageId, directRecord));
-                    continue;
+                    && string.Equals(directRecord.MessageId, messageId, StringComparison.Ordinal))
+                {
+                    exactMatches.Add((tenant, directRecord));
                 }
+            }
 
+            if (exactMatches.Count > 1)
+            {
+                return CreateAmbiguityProblemDetails(requestCorrelationId);
+            }
+
+            if (exactMatches.Count == 1)
+            {
+                (string tenant, CommandStatusRecord record) = exactMatches[0];
+                return CreateStatusResult(tenant, messageId, record, activity);
+            }
+
+            var matches = new List<(string Tenant, string MessageId, CommandStatusRecord Record)>();
+            var legacyMatches = new List<(string Tenant, CommandStatusRecord Record)>();
+            foreach ((string tenant, CommandStatusRecord? directRecord) in directRecords)
+            {
                 if (correlationIndex is not null) {
                     CommandCorrelationResolution resolution = await correlationIndex
                         .ResolveAsync(tenant, messageId, cancellationToken)
