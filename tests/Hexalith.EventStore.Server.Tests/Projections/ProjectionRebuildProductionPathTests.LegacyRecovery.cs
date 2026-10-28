@@ -151,12 +151,14 @@ public sealed partial class ProjectionRebuildProductionPathTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task LegacyFallback_IndependentWorkersRespectOriginalIntentClaimAndExpiredWorkerCannotRepublish(bool expireFirstClaim)
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task LegacyFallback_IndependentWorkersRespectOriginalIntentClaimAndExpiredWorkerCannotRepublish(bool expireFirstClaim, bool writerActive)
     {
         using var fixture = new LegacyReplayProductionHarness();
-        await fixture.InitializeAsync(257).ConfigureAwait(true);
+        await fixture.InitializeAsync(257, writerActive).ConfigureAwait(true);
         ProjectionActivationWorkItem sampled = (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true))!;
         var paused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -173,7 +175,8 @@ public sealed partial class ProjectionRebuildProductionPathTests
         await fixture.DeliverReplicaAsync(expireFirstClaim ? claimed : sampled).ConfigureAwait(true);
         if (expireFirstClaim)
         {
-            (await fixture.Rows.ReadAsync(fixture.Identity, "counter").ConfigureAwait(true)).State!.LastDeliveredSequence.ShouldBe(257);
+            if (writerActive) (await fixture.Rows.ReadAsync(fixture.Identity, "counter").ConfigureAwait(true)).State!.LastDeliveredSequence.ShouldBe(257);
+            (await ((IProjectionDeliveryCheckpointStore)fixture.Checkpoints).ReadDeliveredSequenceAsync(fixture.Identity, "counter").ConfigureAwait(true)).ShouldBe(257);
             (await fixture.Model.InspectProjectionRebuildAsync(new(frozen.OperationId)).ConfigureAwait(true)).Status
                 .ShouldBe(ProjectionRebuildInspectionStatus.Promoted);
         }
@@ -186,7 +189,8 @@ public sealed partial class ProjectionRebuildProductionPathTests
         resume.SetResult();
         await first.ConfigureAwait(true);
         fixture.Http.Preparations.Count.ShouldBe(expireFirstClaim ? 2 : 1);
-        (await fixture.Rows.ReadAsync(fixture.Identity, "counter").ConfigureAwait(true)).State!.LastDeliveredSequence.ShouldBe(257);
+        if (writerActive) (await fixture.Rows.ReadAsync(fixture.Identity, "counter").ConfigureAwait(true)).State!.LastDeliveredSequence.ShouldBe(257);
+        (await ((IProjectionDeliveryCheckpointStore)fixture.Checkpoints).ReadDeliveredSequenceAsync(fixture.Identity, "counter").ConfigureAwait(true)).ShouldBe(257);
         (await fixture.Model.ReadProjectionStateAsync().ConfigureAwait(true))!.GetState().GetProperty("count").GetInt32().ShouldBe(257);
         (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true)).ShouldBeNull();
         await fixture.Notifications.Received(1).NotifyProjectionChangedAsync("counter", "tenant-a",

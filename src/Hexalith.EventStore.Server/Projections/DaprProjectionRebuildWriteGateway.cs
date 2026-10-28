@@ -45,6 +45,14 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
     }
 
     /// <inheritdoc/>
+    public Task<bool> ReconcileBoundReplayCompletionAsync(string actorId, ProjectionReplayPublicationRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return CreatePublicationProxy(actorId).ReconcileBoundReplayCompletionAsync(request).WaitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<ProjectionRebuildInspection> InspectAsync(string actorId, string operationId,
         CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();

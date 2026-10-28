@@ -339,6 +339,7 @@ public sealed partial class ProjectionRebuildProductionPathTests
         (await ((IProjectionDeliveryCheckpointStore)fixture.Checkpoints).ReadDeliveredSequenceAsync(fixture.Identity, "counter")
             .ConfigureAwait(true)).ShouldBe(checkpointBefore);
         fixture.Http.Preparations.Count.ShouldBe(2);
+        fixture.BoundReconciliations.ShouldBe(writerActive ? 0 : 1);
         (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true)).ShouldBeNull();
         await fixture.Notifications.Received(1).NotifyProjectionChangedAsync("counter", "tenant-a",
             Arg.Any<string?>(), Arg.Any<CancellationToken>()).ConfigureAwait(true);

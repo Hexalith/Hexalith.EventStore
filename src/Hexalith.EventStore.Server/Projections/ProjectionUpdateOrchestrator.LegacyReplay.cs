@@ -108,7 +108,16 @@ internal partial class ProjectionUpdateOrchestrator
             {
                 ProjectionRebuildInspection persisted = await inspection.InspectAsync(actorId, intent.OperationId, cancellationToken).ConfigureAwait(false);
                 if (persisted.Status == ProjectionRebuildInspectionStatus.Conflict)
-                    throw new ProjectionDeliveryHistoryValidationException("delivery_reconciliation_required");
+                {
+                    // A retained duplicate may reference an earlier completed operation.
+                    // Only the unactivated equal-checkpoint path may retry its strict readback;
+                    // the actor conflict remains authoritative for every publication path.
+                    ProjectionDeliveryStateReadResult priorScope = await deliveryStateStore!.ReadAsync(identity, intent.ProjectionType!, cancellationToken).ConfigureAwait(false);
+                    if (priorScope.WriterProtocolV2Active || !CanPublishLegacyScope(priorScope)
+                        || priorScope.Classification == ProjectionDeliveryStateClassification.Current || deliveryCheckpointStore is null
+                        || await deliveryCheckpointStore.ReadDeliveredSequenceAsync(identity, intent.ProjectionType!, cancellationToken).ConfigureAwait(false) != head)
+                        throw new ProjectionDeliveryHistoryValidationException("delivery_reconciliation_required");
+                }
                 candidate = persisted.State;
             }
             if (candidate is null)
@@ -199,13 +208,25 @@ internal partial class ProjectionUpdateOrchestrator
                     if (checkpoint == head)
                     {
                         // A duplicate wake-up must settle the exact completed publication;
-                        // staging a new operation at that head would retain a leased stale intent.
+                        // missing proof cannot authorize staging a replacement at that head.
                         finalization = new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
-                        completed = await publication.ReadReplayCompletionAsync(actorId!, bound with { State = null },
-                            finalization.Token).ConfigureAwait(false);
-                        if (completed) return true;
-                        finalization.Dispose();
-                        finalization = null;
+                        using var reconciliation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, finalization.Token);
+                        CancellationToken proofToken = reconciliation.Token;
+                        SourceProofInspection currentSource = await source.InspectSourceProofAsync().WaitAsync(proofToken).ConfigureAwait(false);
+                        if (currentSource.Status == SourceProofInspectionStatus.Invalid || currentSource.Erased || !currentSource.Exists
+                            || currentSource.CurrentSequence < head || anchor is not null && (currentSource.Proof is not { } currentAnchor
+                                || currentAnchor.SourceIncarnation != anchor.SourceIncarnation || currentAnchor.RetainedFloor > 1
+                                || currentAnchor.HeadSequence == head && (currentAnchor.CumulativeDigest != anchor.CumulativeDigest
+                                    || currentAnchor.HeadMessageId != headId))) return true;
+                        (ProjectionEventDto[] _, string currentFingerprint, string currentHeadId) = await ReadLegacyReplayPrefixAsync(
+                            source, identity, head, anchor, false, proofToken).ConfigureAwait(false);
+                        if (currentFingerprint != fingerprint || currentHeadId != headId)
+                            throw new ProjectionDeliveryHistoryValidationException("source_conflict");
+                        bool reconciled = await publication.ReconcileBoundReplayCompletionAsync(actorId!, bound with { State = null },
+                            proofToken).ConfigureAwait(false);
+                        proofToken.ThrowIfCancellationRequested();
+                        completed = reconciled;
+                        return true;
                     }
                 }
                 ProjectionRebuildInspection staged = await publication.StageReplayAsync(actorId!, bound, cancellationToken).ConfigureAwait(false);

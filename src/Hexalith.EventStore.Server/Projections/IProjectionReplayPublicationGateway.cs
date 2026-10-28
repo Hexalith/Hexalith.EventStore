@@ -20,4 +20,8 @@ internal interface IProjectionReplayPublicationGateway
     /// <summary>Verifies an exact already completed prefix/model through its owning actor without repair.</summary>
     Task<bool> ReadReplayCompletionAsync(string actorId, ProjectionReplayPublicationRequest request,
         CancellationToken cancellationToken);
+
+    /// <summary>Requires complete receipt, fence, source and selected-model proof before settling unactivated-writer work.</summary>
+    Task<bool> ReconcileBoundReplayCompletionAsync(string actorId, ProjectionReplayPublicationRequest request,
+        CancellationToken cancellationToken);
 }

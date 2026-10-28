@@ -11,6 +11,33 @@ namespace Hexalith.EventStore.Server.Actors;
 public partial class EventReplayProjectionActor
 {
     /// <inheritdoc/>
+    public async Task<bool> ReconcileBoundReplayCompletionAsync(ProjectionReplayPublicationRequest request)
+    {
+        AggregateIdentity identity = ValidatePublication(request);
+        await ClearPublicationCacheAsync().ConfigureAwait(false);
+        if (!await OwnsPublicationAsync(identity, request).ConfigureAwait(false)) return false;
+        ConditionalValue<ProjectionRebuildPromotionReceipt> saved = await ReadPublicationStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
+        if (!saved.HasValue || saved.Value.PublicationBinding is not { } binding
+            || saved.Value.SelectedReplayFence is not { } selected
+            || string.IsNullOrWhiteSpace(binding.OperationId)
+            || saved.Value.OperationId != binding.OperationId || selected.OperationId != binding.OperationId
+            || selected.SourceActorId != identity.ActorId || selected.ProjectionName != binding.ProjectionName
+            || selected.HeadSequence != binding.HeadSequence || saved.Value.PublicationFloor != binding
+            || binding != request.Binding with { OperationId = binding.OperationId }
+            || saved.Value.SelectedStateFingerprint != binding.CandidateFingerprint) return false;
+        ConditionalValue<ProjectionRebuildCandidate> candidate = await ReadPublicationStateAsync<ProjectionRebuildCandidate>(ProjectionRebuildCandidateKey).ConfigureAwait(false);
+        if (candidate.HasValue) return false;
+        ConditionalValue<ProjectionState> live = await ReadPublicationStateAsync<ProjectionState>(ProjectionStateKey).ConfigureAwait(false);
+        if (!live.HasValue || !MatchesPublicationState(live.Value, binding)) return false;
+        if (saved.Value.Completed) return true;
+        // Only the original unfinished publication may compact its existing receipt.
+        // A duplicate operation has no authority to finish or replace another intent.
+        return binding == request.Binding && saved.Value.PromotedState is { } promoted
+            && MatchesPublicationState(promoted, binding)
+            && await FinalizeReplayAsync(request).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> ReadReplayCompletionAsync(ProjectionReplayPublicationRequest request)
     {
         AggregateIdentity identity = ValidatePublication(request);

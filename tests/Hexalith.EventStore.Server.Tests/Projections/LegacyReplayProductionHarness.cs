@@ -62,6 +62,9 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
     internal Func<Task>? AfterStage { get; set; }
     internal Func<Task>? AfterPromotion { get; set; }
     internal Func<Task>? BeforeLease { get; set; }
+    internal Func<ProjectionReplayPublicationRequest, CancellationToken, Task>? BeforeReconciliation { get; set; }
+    internal int StagedPublications { get; private set; }
+    internal int BoundReconciliations { get; private set; }
     internal int ReleasedWrites { get; private set; }
     internal bool PublicationMethodUnavailable { get; set; }
     internal INamedProjectionDispatchCoordinator? NamedCoordinator { get; set; }
@@ -213,6 +216,7 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
     public async Task<ProjectionRebuildInspection> StageReplayAsync(string actorId, ProjectionReplayPublicationRequest request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        StagedPublications++;
         if (PublicationMethodUnavailable) throw MissingActorMethod();
         ProjectionRebuildInspection result = await Model.StageReplayAsync(request).ConfigureAwait(false);
         if (AfterStage is { } action) { AfterStage = null; await action().ConfigureAwait(false); }
@@ -234,6 +238,15 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
     { cancellationToken.ThrowIfCancellationRequested(); return Model.FinalizeReplayAsync(request).WaitAsync(cancellationToken); }
     public Task<bool> ReadReplayCompletionAsync(string actorId, ProjectionReplayPublicationRequest request, CancellationToken cancellationToken)
     { cancellationToken.ThrowIfCancellationRequested(); return Model.ReadReplayCompletionAsync(request).WaitAsync(cancellationToken); }
+    public async Task<bool> ReconcileBoundReplayCompletionAsync(string actorId, ProjectionReplayPublicationRequest request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        BoundReconciliations++;
+        if (PublicationMethodUnavailable) throw MissingActorMethod();
+        if (BeforeReconciliation is { } action) await action(request, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Model.ReconcileBoundReplayCompletionAsync(request).WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
     public Task<ProjectionRebuildInspection> InspectAsync(string actorId, string operationId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
