@@ -9,6 +9,19 @@ namespace Hexalith.EventStore.Server.Security;
 public sealed class DaprDeletionProtectionOwner(string tenantId, IActorProxyFactory proxies, TimeProvider clock) : IDeletionProtectionOwner
 {
     /// <inheritdoc/>
+    public Task<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?> ReadRegistrationOriginalAsync(DeletionBatchConsumptionRequest request, CancellationToken cancellationToken = default)
+    { ArgumentNullException.ThrowIfNull(request); return ReadOriginalAsync(request.Capability.TenantId, actor => actor.ReadRegistrationOriginalAsync(DeletionConsumptionIdentity.Capture(request)), cancellationToken); }
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?> ReadReservationOriginalAsync(DeletionBatchConsumptionRequest request, CancellationToken cancellationToken = default)
+    { ArgumentNullException.ThrowIfNull(request); return ReadOriginalAsync(request.Capability.TenantId, actor => actor.ReadReservationOriginalAsync(DeletionConsumptionIdentity.Capture(request)), cancellationToken); }
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOriginal<DeletionBatchBlockRequest>?> ReadBlockOriginalAsync(DeletionBatchBlockRequest request, CancellationToken cancellationToken = default)
+    { ArgumentNullException.ThrowIfNull(request); return ReadOriginalAsync(request.TenantId, actor => actor.ReadBlockOriginalAsync(request), cancellationToken); }
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOriginal<DeletionReattestationActivation>?> ReadActivationOriginalAsync(DeletionReattestationActivation activation, CancellationToken cancellationToken = default)
+    { ArgumentNullException.ThrowIfNull(activation); return ReadOriginalAsync(activation.Replacement.Capability.TenantId,
+        actor => actor.ReadActivationOriginalAsync(activation with { Replacement = DeletionConsumptionIdentity.Capture(activation.Replacement) }), cancellationToken); }
+    /// <inheritdoc/>
     public Task<DeletionConsumptionOutcome> RegisterAsync(DeletionBatchConsumptionRequest request, CancellationToken cancellationToken = default)
     { ArgumentNullException.ThrowIfNull(request); return InvokeAsync(request.Capability.TenantId, actor => actor.RegisterAsync(request), cancellationToken); }
     /// <inheritdoc/>
@@ -57,5 +70,21 @@ public sealed class DaprDeletionProtectionOwner(string tenantId, IActorProxyFact
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         var result = await deadline.ReadAsync(_ => operation(proxies.CreateActorProxy<IDeletionConsumptionActor>(new(DeletionConsumptionActor.GetActorId(tenantId)), DeletionConsumptionActor.ActorTypeName))).ConfigureAwait(false);
         deadline.ThrowIfCancellationRequested(); return result;
+    }
+    private async Task<DeletionConsumptionOriginal<TRequest>?> ReadOriginalAsync<TRequest>(string requestedTenant,
+        Func<IDeletionConsumptionActor, Task<DeletionConsumptionOriginal<TRequest>?>> operation, CancellationToken cancellationToken)
+    {
+        if (requestedTenant != tenantId) { throw new ArgumentException("Private protection tenant mismatch."); }
+        using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
+        try
+        {
+            var result = await deadline.ReadWithAdmissionAsync(_ => operation(proxies.CreateActorProxy<IDeletionConsumptionActor>(
+                new(DeletionConsumptionActor.GetActorId(tenantId)), DeletionConsumptionActor.ActorTypeName))).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested(); deadline.ThrowIfCancellationRequested(); return result;
+        }
+        catch (Exception)
+        {
+            cancellationToken.ThrowIfCancellationRequested(); throw;
+        }
     }
 }

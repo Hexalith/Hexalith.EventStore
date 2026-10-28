@@ -6,6 +6,14 @@ namespace Hexalith.EventStore.Server.Security;
 /// <summary>Private same-tenant linearizable post-dispatch protection owner; never expose to public or Workflow principals.</summary>
 public interface IDeletionConsumptionActor : IActor
 {
+    /// <summary>Reads only the exact retained original registration and original outcome; never reconciles state or performs physical work.</summary>
+    Task<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?> ReadRegistrationOriginalAsync(DeletionBatchConsumptionRequest request);
+    /// <summary>Reads only the original reservation and its original outcome, including after consumption; never performs physical recovery.</summary>
+    Task<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?> ReadReservationOriginalAsync(DeletionBatchConsumptionRequest request);
+    /// <summary>Reads only the exact retained admission request and its immutable result; digest-only historical entries deny.</summary>
+    Task<DeletionConsumptionOriginal<DeletionBatchBlockRequest>?> ReadBlockOriginalAsync(DeletionBatchBlockRequest request);
+    /// <summary>Reads only the exact retained successful or blocked activation and its original result.</summary>
+    Task<DeletionConsumptionOriginal<DeletionReattestationActivation>?> ReadActivationOriginalAsync(DeletionReattestationActivation activation);
     /// <summary>Registers only the independently verified exact active signed batch/dispatch.</summary>
     Task<DeletionConsumptionOutcome> RegisterAsync(DeletionBatchConsumptionRequest request);
     /// <summary>Atomically orders the irreversible original reservation against authenticated cancellation.</summary>

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.Server.Security;
@@ -9,4 +10,12 @@ namespace Hexalith.EventStore.Server.Security;
 internal sealed record DeletionConsumptionBatch(DeletionBatchConsumptionRequest Original, DeletionBatchConsumptionRequest Current, DeletionConsumptionOutcome Outcome)
 {
     public DeletionBlockedReplacementReconciliation? BlockedReplacement { get; init; }
+
+    /// <summary>Original registration outcome; absent historical records remain unavailable to exact-original readers.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DeletionConsumptionOutcome? RegistrationOutcome { get; init; }
+
+    /// <summary>Original irreversible reservation outcome, retained unchanged after physical completion.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DeletionConsumptionOutcome? ReservationOutcome { get; init; }
 }

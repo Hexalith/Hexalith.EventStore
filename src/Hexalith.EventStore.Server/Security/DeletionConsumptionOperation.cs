@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.Server.Security;
@@ -12,4 +13,8 @@ internal sealed record DeletionConsumptionOperation(string OperationId, string R
     public DeletionBlockedReplacementReconciliation? BlockedReplacementOriginal { get; init; }
     /// <summary>Exact original fully dispatched activation, retained when replacement compromise wins its compare.</summary>
     public DeletionReattestationActivation? ActivationOriginal { get; init; }
+
+    /// <summary>Complete original admission request; an old digest alone does not provide an original read.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DeletionBatchBlockRequest? AdmissionBlockOriginal { get; init; }
 }

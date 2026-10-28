@@ -3,6 +3,18 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <summary>Private transport-neutral existing atomic protection owner seam; signature-only callers have no destruction authority.</summary>
 public interface IDeletionProtectionOwner
 {
+    /// <summary>Reads the exact original registration and its original outcome without mutation or recovery; missing historical originals deny.</summary>
+    Task<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?> ReadRegistrationOriginalAsync(DeletionBatchConsumptionRequest request, CancellationToken cancellationToken = default)
+        => Task.FromResult<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?>(null);
+    /// <summary>Reads the exact original irreversible reservation, retaining its original revision after consumption; never starts or recovers physical work.</summary>
+    Task<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?> ReadReservationOriginalAsync(DeletionBatchConsumptionRequest request, CancellationToken cancellationToken = default)
+        => Task.FromResult<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?>(null);
+    /// <summary>Reads the exact retained admission block request and its original winning or already-reserved outcome, with no effect.</summary>
+    Task<DeletionConsumptionOriginal<DeletionBatchBlockRequest>?> ReadBlockOriginalAsync(DeletionBatchBlockRequest request, CancellationToken cancellationToken = default)
+        => Task.FromResult<DeletionConsumptionOriginal<DeletionBatchBlockRequest>?>(null);
+    /// <summary>Reads the exact retained successful or replacement-key-blocked activation and its immutable outcome, with no effect.</summary>
+    Task<DeletionConsumptionOriginal<DeletionReattestationActivation>?> ReadActivationOriginalAsync(DeletionReattestationActivation activation, CancellationToken cancellationToken = default)
+        => Task.FromResult<DeletionConsumptionOriginal<DeletionReattestationActivation>?>(null);
     /// <summary>Registers exact online guard-issued/dispatch-authorized batch without reservation.</summary>
     Task<DeletionConsumptionOutcome> RegisterAsync(DeletionBatchConsumptionRequest request, CancellationToken cancellationToken = default);
     /// <summary>Serializes irreversible original all-target reservation with hold/integrity/key blocks.</summary>

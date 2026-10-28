@@ -1,0 +1,669 @@
+{
+  "schema": "ext-protection-1-owner-delivery-audit/v1",
+  "observedAt": "2026-10-28T00:07:34.186524+00:00",
+  "disposition": "BlockedNotSubmitted",
+  "dependencyId": "EXT-PROTECTION-1",
+  "acceptedStatus": "Uncommitted",
+  "dependencyAvailable": false,
+  "liveReady": false,
+  "qualificationPassed": false,
+  "liveExecuted": false,
+  "cohortExecuted": false,
+  "nativeExecuted": false,
+  "attemptReserved": false,
+  "completeImmutableOwnerTarget": null,
+  "acceptedIntegrationDate": null,
+  "proposedIntegrationDate": "2026-11-02",
+  "proposedDateAccepted": false,
+  "currentRegisterRecord": {
+    "Owner": "EventStore Maintainer",
+    "Repository": "Hexalith.EventStore",
+    "RequiredArtifact": "A production payload-protection engine behind the existing EventStore hooks, applied field-level to a `ProtectedContent` envelope so every other event field stays plaintext and a destroyed-key field unprotects as the typed value `Erased` without breaking replay: one data-encryption key per `AgentInteraction`, plus an explicit provider-neutral `TargetProtectionKeyAlias` that lets a target-limited creation-outbox `ProtectedContent` field owned by `ConversationAgentState` select that exact interaction DEK without deriving it from the directory aggregate identity, wrapped by a per-tenant key-encryption key custodied through `EXT-SECRETS-1`. The custodian exposes `WrapDek`, `UnwrapDek`, `PinDek`, `UnpinDek`, per-key `DestroyDek`, and an atomic `DestroyDekManifest(BatchId, ManifestDigest, SortedTenantInteractionAliasTargets, GuardCapability)` operation. The batch identity and signed capability are deterministic and target-bound. The capability is non-expiring and revocable, carries its signing-key version, and that version remains verifiable for the full retention of the batch identity and terminal outcome, including exact retry/lookup after consumption or revocation; there is no expiry or renewal path and restore reuses the same identity. Consumption is single-use and all-or-none, returns an ordered irreversible per-target receipt vector, exact retry/lookup returns that vector, a changed target/digest conflicts, and `BlockDeletionBatchConsumption` races `ReserveAndConsumeDeletionBatch` at the same protection owner so exactly one wins. Each first previously uncovered complete protection target `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)` uses one guard-issued batch for its ProtectionFence-assigned monotonic containment ordinal and immutable singleton target manifest; later violation resources for that same target receive coverage links only, no ProtectionFence event alone is a guard capability, and distinct uncovered targets receive distinct ordinals/batches. Hold pinning rejects both per-key and manifest destruction; sealed envelopes remain sealed on broker/read models, `PayloadUnprotectionOutcome` is unreadable after erasure, and snapshot/replay caches inherit the DEK (AD-22, AD-27). The shipped no-op default is not acceptable for content-bearing workflows (AD-14).",
+    "TargetVersionOrCommit": "TBD",
+    "TargetIntegrationDate": "TBD",
+    "CompatibilityContractAndVerificationCommand": "Contract: an owner-supplied executable command must prove at minimum (1) seal with plaintext-absence proof, (2) unseal with payload equality, (3) irreversible erase with typed `Erased` replay, (4) hold pin rejecting erase until authorized unpin, and (5) engine identity/version reporting equal to the exact committed target, with per-tenant isolation and restore-cannot-revive behavior. It must seal the directory creation-outbox field through the target alias and exercise a multi-interaction `DestroyDekManifest`: deterministic single-use batch identity, exact sorted target binding, all targets destroyed or none, ordered per-key receipts, byte-identical retry and lost-result lookup, changed-manifest conflict, duplicate-consumption denial with exact prior result, hold-pin rejection, and a protection-owner `BlockDeletionBatchConsumption`-versus-`ReserveAndConsumeDeletionBatch` race with exactly one winner, plus capability non-expiry across delayed dispatch/restore and signing-key verification until terminal batch state. A containment batch is accepted only with the exact guard-issued capability for its ProtectionFence-assigned singleton ordinal/manifest; response loss uses exact issuance and protection lookup, exact duplicates reuse it, concurrent distinct targets remain distinct, and containment ordinals cannot reuse the accepted-set batch. Replay must yield typed `Erased` from both source outbox and target events. Negative fixtures cover cross-tenant alias substitution, changed payload/manifest, partial-provider failure, snapshot/cache replay, backup, restore, and stale or revoked guard capability. Command: `TBD`.",
+    "RequiredEvidenceLevel": "Levels 4 and 5",
+    "AcceptedStatus": "Uncommitted",
+    "ConsumingStories": "5.6, 5.8, 6.1–6.4, 6.8, 7.1–7.4, 7.7, 8.1–8.3, 8.8; `RQ-1`"
+  },
+  "fullProtectionContract": "### EXT-PROTECTION-1 — EventStore Payload-Protection Engine\n\n| Commitment field | Value |\n| --- | --- |\n| `Owner` | EventStore Maintainer |\n| `Repository` | `Hexalith.EventStore` |\n| `RequiredArtifact` | A production payload-protection engine behind the existing EventStore hooks, applied field-level to a `ProtectedContent` envelope so every other event field stays plaintext and a destroyed-key field unprotects as the typed value `Erased` without breaking replay: one data-encryption key per `AgentInteraction`, plus an explicit provider-neutral `TargetProtectionKeyAlias` that lets a target-limited creation-outbox `ProtectedContent` field owned by `ConversationAgentState` select that exact interaction DEK without deriving it from the directory aggregate identity, wrapped by a per-tenant key-encryption key custodied through `EXT-SECRETS-1`. The custodian exposes `WrapDek`, `UnwrapDek`, `PinDek`, `UnpinDek`, per-key `DestroyDek`, and an atomic `DestroyDekManifest(BatchId, ManifestDigest, SortedTenantInteractionAliasTargets, GuardCapability)` operation. The batch identity and signed capability are deterministic and target-bound. The capability is non-expiring and revocable, carries its signing-key version, and that version remains verifiable for the full retention of the batch identity and terminal outcome, including exact retry/lookup after consumption or revocation; there is no expiry or renewal path and restore reuses the same identity. Consumption is single-use and all-or-none, returns an ordered irreversible per-target receipt vector, exact retry/lookup returns that vector, a changed target/digest conflicts, and `BlockDeletionBatchConsumption` races `ReserveAndConsumeDeletionBatch` at the same protection owner so exactly one wins. Each first previously uncovered complete protection target `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)` uses one guard-issued batch for its ProtectionFence-assigned monotonic containment ordinal and immutable singleton target manifest; later violation resources for that same target receive coverage links only, no ProtectionFence event alone is a guard capability, and distinct uncovered targets receive distinct ordinals/batches. Hold pinning rejects both per-key and manifest destruction; sealed envelopes remain sealed on broker/read models, `PayloadUnprotectionOutcome` is unreadable after erasure, and snapshot/replay caches inherit the DEK (AD-22, AD-27). The shipped no-op default is not acceptable for content-bearing workflows (AD-14). |\n| `TargetVersionOrCommit` | `TBD` |\n| `TargetIntegrationDate` | `TBD` |\n| `CompatibilityContractAndVerificationCommand` | Contract: an owner-supplied executable command must prove at minimum (1) seal with plaintext-absence proof, (2) unseal with payload equality, (3) irreversible erase with typed `Erased` replay, (4) hold pin rejecting erase until authorized unpin, and (5) engine identity/version reporting equal to the exact committed target, with per-tenant isolation and restore-cannot-revive behavior. It must seal the directory creation-outbox field through the target alias and exercise a multi-interaction `DestroyDekManifest`: deterministic single-use batch identity, exact sorted target binding, all targets destroyed or none, ordered per-key receipts, byte-identical retry and lost-result lookup, changed-manifest conflict, duplicate-consumption denial with exact prior result, hold-pin rejection, and a protection-owner `BlockDeletionBatchConsumption`-versus-`ReserveAndConsumeDeletionBatch` race with exactly one winner, plus capability non-expiry across delayed dispatch/restore and signing-key verification until terminal batch state. A containment batch is accepted only with the exact guard-issued capability for its ProtectionFence-assigned singleton ordinal/manifest; response loss uses exact issuance and protection lookup, exact duplicates reuse it, concurrent distinct targets remain distinct, and containment ordinals cannot reuse the accepted-set batch. Replay must yield typed `Erased` from both source outbox and target events. Negative fixtures cover cross-tenant alias substitution, changed payload/manifest, partial-provider failure, snapshot/cache replay, backup, restore, and stale or revoked guard capability. Command: `TBD`. |\n| `RequiredEvidenceLevel` | Levels 4 and 5 |\n| `AcceptedStatus` | `Uncommitted` |\n| `ConsumingStories` | 5.6, 5.8, 6.1–6.4, 6.8, 7.1–7.4, 7.7, 8.1–8.3, 8.8; `RQ-1` |\n\n**Required v21 manifest-destruction extension:** The engine verifies the complete `DeletionBatchCapabilityV1` JWS against the committed anchor/audience and performs a linearizable exact `GovernanceScopeGuard` lookup at consumption; signature-only or batch-issue-only acceptance is forbidden. The lookup must confirm the same batch/manifest, one active unrevoked attestation, and an exact `DeletionBatchDispatchAuthorized` receipt whose conditional guard commit ordered every earlier post-start hold or compromise before dispatch. Open/missing/mismatched/hold-allowed evidence that preceded dispatch, a stale dispatch, unavailable lookup, or compromised/replaced attestation performs no destruction. A later hold ordered after successful dispatch cannot cancel the possibly begun batch but remains restrictive for other batches, purge, and completion. Emergency key revocation blocks the old attestation before consume; same-batch re-attestation is accepted only after the guard atomically makes it the sole active credential and records a successor dispatch authorization. The protection owner indexes terminal destruction by complete `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)`: a later different BatchId for the exact already-destroyed target returns authenticated `AlreadyDestroyedByBatch(OriginalBatchId, OriginalPerTargetReceipt)`, while changed/cross-tenant targets conflict. Same-alias distinct-resource tests before/after original consumption, hold/dispatch/consume ordering, online-lookup races, compromise/re-attestation, lost acknowledgement, and restore are mandatory.\n\n**Required v23 protection-owner extension:** The engine owns the only post-dispatch cancel-versus-consume state machine. It atomically orders `BlockDeletionBatchConsumption` (admission-integrity or registrar-authenticated per-tenant/key-version compromise) against `ReserveAndConsumeDeletionBatch`; only `Unconsumed` may become `ConsumptionReserved`, and that reservation is the irreversible instant for those cancellation reasons. The owner returns authenticated blocked/reserved/consumed/revoked outcomes and exact lookup after loss; a pending/unknown block performs no new effect. `ConsumptionReserved` recovery completes the same all-or-none batch or returns its terminal vector, never a new authorization. Re-attestation begins only from the exact capability-compromise block, remains blocked while the guard replaces the attestation and issues a successor dispatch, and reopens only when `ActivateReattestedDeletionBatch` conditionally consumes those receipts at the same owner while atomically requiring absence of a replacement-key block at the activation identity's expected tenant-key block-set revision. If that key block exists or wins the compare, activation returns `ActivationBlockedByReplacementKeyCompromise(NewKeyVersion, NewRevocationRevision, NewBlockReceiptId)` and leaves/places the batch in that exact new-key `ConsumptionBlocked` state for another same-batch re-attestation; it never clears a global tenant-key block. Admission-integrity blocks never reopen. The target index is complete `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)`: later violation resources use coverage links and never receive another ordinal/batch; `AlreadyDestroyedByBatch` is exact-target defense in depth, not successor authority. Fixtures cover registration arriving before/at/after reserve; a second compromise before replacement, before dispatch, before/at activation, and after activation before reserve; block delivery/mirror loss; exact activation lookup; no false replacement; restore; and tenant/key/attestation/dispatch/revision substitution.\n\n*Added 2026-09-09 by the architecture update: the 2026-09-09 verified-current review found that the EventStore checkout carries only the protection hooks and a no-op default, so the AD-22 key hierarchy has no owner without this record.*\n",
+  "authorities": {
+    "register": {
+      "path": "/home/administrator/projects/hexalith/agents/_bmad-output/planning-artifacts/external-dependency-register.md",
+      "exists": true,
+      "sha256": "5bf35ac2857664c0589966a10944cd66278af85242c7c1f08e31ae29aa40e8a2"
+    },
+    "platformCurrentReport": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/story-5-4-owner-continuation-2026-10-26/README.md",
+      "exists": true,
+      "sha256": "bbec0a5205664e14e0b675389251757836ae5d75f13bebb3b8e00fffa529e396"
+    },
+    "platformRegistrationPublication": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/custody-registration-publication-2026-10-27/README.md",
+      "exists": true,
+      "sha256": "7631f0136f9eb64258419c3b2d1ced13b2e9e8a37b4783bd86f831ee6b7cae87"
+    }
+  },
+  "observedSourceOnly": {
+    "eventstore": {
+      "path": "/home/administrator/projects/hexalith/eventstore",
+      "head": "eff7066ed5c8c7ec57e1b42862fddee479044134",
+      "branch": "main",
+      "workingTreeStatus": "M _bmad-output/implementation-artifacts/spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md\n M _bmad-output/implementation-artifacts/spec-ext-protection-1-owner-delivery.md\n M src/Hexalith.EventStore.Contracts/Security/DeletionBatchBlockRequest.cs\n M src/Hexalith.EventStore.Contracts/Security/DeletionReattestationActivation.cs\n M src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs\n M src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs\n M src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs\n M src/Hexalith.EventStore.Server/Security/DeletionConsumptionBatch.cs\n M src/Hexalith.EventStore.Server/Security/DeletionConsumptionOperation.cs\n M src/Hexalith.EventStore.Server/Security/IDeletionConsumptionActor.cs\n?? docs/implementation/ext-protection-1-delivery-2026-10-28.md\n?? src/Hexalith.EventStore.Contracts/Security/DeletionConsumptionOriginal.cs\n?? tests/Hexalith.EventStore.Server.Tests/Security/DeletionConsumptionOriginalTests.cs",
+      "completeAcceptedTarget": false
+    },
+    "platformSibling": {
+      "path": "/home/administrator/projects/hexalith/platform",
+      "head": "b742b1b7a496ac72d6961ca6db5213d3df42d234",
+      "branch": "main",
+      "workingTreeStatus": "M _bmad-output/implementation-artifacts/spec-ext-secrets-1-isolated-custody-maintenance-recovery-hardening.md\n M eng/ext-secrets-1/maintain_isolated_custody.py\n M eng/ext-secrets-1/test_maintain_isolated_custody.py\n m references/Hexalith.Builds\n m references/Hexalith.ChatBot\n m references/Hexalith.Conversations",
+      "completeAcceptedTarget": false
+    },
+    "platformRootReference": {
+      "path": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Platform",
+      "head": "9ead86f9061695bf3e30bcb0e020c0b830ddaf7e",
+      "branch": "main",
+      "workingTreeStatus": "",
+      "completeAcceptedTarget": false
+    }
+  },
+  "candidateVerification": {
+    "workingDirectory": "/home/administrator/projects/hexalith/agents",
+    "command": "python3 ../eventstore/tools/verify-ext-protection-1.py --mode Live --profile /home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json --evidence-root /home/administrator/hexalith-protection-evidence/ext-protection-1/attempts",
+    "executed": false,
+    "requiredAcceptedProtectionProfileSha256": null
+  },
+  "observedPlan": {
+    "path": "/home/administrator/projects/hexalith/eventstore/tools/ext-protection-1/plan.json",
+    "exists": true,
+    "sha256": "c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c",
+    "cases": 41,
+    "qualified": false,
+    "sourceResult": {
+      "mode": "Source",
+      "cases": 41,
+      "planSha256": "c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c",
+      "liveExecuted": false
+    }
+  },
+  "installedBindings": {
+    "protectionProfile": {
+      "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json",
+      "exists": false,
+      "sha256": null
+    },
+    "engineBinary": null,
+    "roles": {
+      "executor": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      },
+      "observer": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      },
+      "enrollment": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      }
+    },
+    "capabilityTrust": null,
+    "missingCapabilityTrustEntryFields": [
+      "audience",
+      "issuer",
+      "keyFamily",
+      "keyVersion",
+      "publicAnchorFile",
+      "publicAnchorId",
+      "publicAnchorSha256",
+      "publicAnchorVersion",
+      "tenantId",
+      "trustProfileRevision"
+    ],
+    "requiredInstalledBindingFields": {
+      "IndependentDaprAuthorityBinding": [
+        "AppId",
+        "CredentialReference",
+        "PublicKeyPem",
+        "EnrollmentId",
+        "Scope",
+        "CurrentTrustRevision"
+      ],
+      "CustodyInteractionBindingResource": [
+        "Component",
+        "Key",
+        "OwnerScope",
+        "Authority",
+        "Metadata"
+      ],
+      "CustodyInteractionMaterialProfile": [
+        "Registration",
+        "KeyUse",
+        "DigestReference"
+      ],
+      "productionAuthority": [
+        "independent owner genesis/current-head and original archives outside application restore",
+        "current exact tenant and scope grants/revocation",
+        "actual native holder/copy/backup/restore/survivor closure inventory and receipts",
+        "actual private executor/observer/enrollment identities and installed image/ACL/engine/trust pins"
+      ]
+    },
+    "retainedPlatformPacketHashes": {
+      "providerProfile": null,
+      "custodyConfiguration": null,
+      "authorityEnrollment": null,
+      "publicTrust": null,
+      "executorAnchor": null,
+      "observerAnchor": null,
+      "enrollmentAnchor": null,
+      "hostInstalledProfile": null,
+      "protectionInstalledProfile": null,
+      "installedImageInventory": null,
+      "physicalQualificationPlan": null,
+      "jointConfiguration": null
+    },
+    "observationLimit": "These nulls are observed in the retained current Platform owner packet; this checkpoint made no remote installation query and asserts no complete inventory of every external installation."
+  },
+  "retainedNegativeControl": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/option-a-feasibility-20261018T113800Z-1dbe62f55af0434684a9602a3824bfe9/raft-probe-attempt-6.result.json",
+    "exists": true,
+    "sha256": "6efa381bc70b3de57a24142e5e679f53781c7f89d5ab6740fb7664966f30888e",
+    "disposition": "ObservedRevival",
+    "g1Qualified": false,
+    "nativeRerun": false
+  },
+  "deliveredEventStoreSource": {
+    "members": [
+      "ReadRegistrationOriginalAsync(DeletionBatchConsumptionRequest)",
+      "ReadReservationOriginalAsync(DeletionBatchConsumptionRequest)",
+      "ReadBlockOriginalAsync(DeletionBatchBlockRequest)",
+      "ReadActivationOriginalAsync(DeletionReattestationActivation)"
+    ],
+    "semantics": "Typed original input and immutable commit outcome; reservation read returns the reservation commit without a terminal vector. Separate existing ReadReservedManifestOriginalAsync reads retained reserved/consumed state. All new reads use only settled stored state and current exact owner authority, never reconciliation, enrollment or native effect. Missing historical originals return null. Registration/reservation nullable slots are omitted when absent so old JSON/hash bytes are preserved. Block full originals are newly retained; successful/blocked activation originals already existed.",
+    "requiredNewPrivateOperationGrants": [
+      "ReadDeletionRegistrationOriginal",
+      "ReadDeletionReservationOriginal",
+      "ReadDeletionBlockOriginal",
+      "ReadDeletionActivationOriginal"
+    ],
+    "consumerIntegration": "Platform is unchanged. Its consumers must adopt these optional new reads at a coordinated accepted source/package target and independently install exact scoped grants."
+  },
+  "currentPlatformSourceApis": [
+    {
+      "path": "CustodyLifecycleClient.cs",
+      "members": [
+        "WrapAsync",
+        "UnwrapAsync",
+        "CompleteKeyUseAsync",
+        "ExecuteLifecycleAsync",
+        "LookupOriginalAsync",
+        "LookupRegistrationOriginalAsync",
+        "ExecuteManifestAsync",
+        "ExecuteManifestOriginalAsync"
+      ],
+      "finding": "Actual authenticated Dapr lifecycle client exists; source presence is not installed six-operation/physical qualification."
+    },
+    {
+      "path": "DaprCustodyOriginalLocators.cs",
+      "members": [
+        "ICustodyKeyRegistrationSource.FindAsync(CustodyKeyObjectIdentity, token)",
+        "ICustodyReservedManifestSource.FindAsync(reservationReceiptId, token)"
+      ],
+      "finding": "Concrete restricted independent-authority original locators now exist; complete originals remain subject to custody verification. Registration publication now has a verified original receiver; installed mappings/trust remain required."
+    },
+    {
+      "path": "CustodyInteractionProtectionBindingSource.cs",
+      "members": [
+        "FindRetainedAsync",
+        "TryAcquireEncryptionLeaseAsync",
+        "TryAcquireCompletionLeaseAsync",
+        "ReadErasureAsync"
+      ],
+      "finding": "Concrete exact retained binding, independently anchored encryption/completion leases, pending-original recovery and erasure reading now exist."
+    },
+    {
+      "path": "CustodyInteractionOccurrenceKeyProvider.cs",
+      "members": [
+        "IInteractionOccurrenceKeyProvider",
+        "ResolveDigestAsync",
+        "AcquireEncryptionLeaseAsync",
+        "ResolveRootAsync",
+        "IsCurrentAsync",
+        "CompleteDisposedUsesAsync"
+      ],
+      "finding": "Direct Platform provider supplies single-owned root buffer and independent native holder-completion path. It bypasses the older candidate-delivery adapter, which still explicitly refuses material-copy use."
+    },
+    {
+      "path": "Fr34ProductionComposition.cs",
+      "members": [
+        "Create(... actualRegistry, inventory, inventoryAuthority, bindings, materials, clock, dynamicEnrollment)"
+      ],
+      "finding": "Concrete opt-in owning-process source composition exists. No default DI or production installation is changed by this checkpoint."
+    },
+    {
+      "path": "DaprFr34OccurrenceEnrollment.cs",
+      "members": [
+        "fr34-resolve-occurrence",
+        "fr34-occurrence-lease",
+        "fr34-material-use",
+        "fr34-material-release",
+        "fr34-pending-material",
+        "fr34-read-erasure"
+      ],
+      "finding": "Current authenticated finite occurrence/lease/material/erasure producer client exists; it grants no caller enrollment authority."
+    }
+  ],
+  "gapDisposition": {
+    "G1": {
+      "status": "Open",
+      "name": "G1",
+      "measurementSource": null,
+      "missingInput": "ExternalProtocolDependentSource.CanonicalProtectionOwnerSixOperationAndAtomicManifestNativeOriginalAdapter",
+      "reason": "CustodyLifecycleClient and DaprAtomicDeletionManifestProvider execute the six operations and read exact results. They cannot enumerate native holders/pins or independently authenticate the native all-or-none physical destruction vector for the complete owner plan.",
+      "sourceDependencyClassification": "ExternalProtocolDependentSource",
+      "availableMeasurementSources": [
+        "src/Hexalith.Platform.Secrets.Runtime/CustodyLifecycleClient.cs",
+        "src/Hexalith.Platform.Protection/DaprAtomicDeletionManifestProvider.cs"
+      ],
+      "absentPublicProtocol": "No published API enumerates every native material holder, immutable effective-pin original and physical manifest-copy terminal receipt across backups."
+    },
+    "G2": {
+      "status": "Open",
+      "name": "G2",
+      "measurementSource": null,
+      "missingInput": "ExternalProtocolDependentSource.CanonicalProtectionOwnerInstalledAuthorityTrustAndNonrollbackProofAdapter",
+      "reason": "CustodyOwnerAuthority, independent authenticated receivers and guard installation authorities are shipped. Current exact-operation/state calls do not enumerate installed issuer identities, actual ACLs, outside-restore placement or every revocation/activation authority original.",
+      "sourceDependencyClassification": "ExternalProtocolDependentSource",
+      "availableMeasurementSources": [
+        "src/Hexalith.Platform.Secrets.Runtime/CustodyOwnerAuthority.cs",
+        "src/Hexalith.Platform.Secrets.Runtime/IndependentAuthorityReceiver.cs",
+        "src/Hexalith.Platform.Protection/CustodyGuardedStateInstallation.cs",
+        "src/Hexalith.Platform.Protection/CustodyGovernanceGuardInstallation.cs"
+      ],
+      "absentPublicProtocol": "No selected native deployment/ACL/outside-restore journal attestation or complete issuer/permission enumeration API exists."
+    },
+    "G3": {
+      "status": "Open",
+      "name": "G3",
+      "measurementSource": null,
+      "missingInput": "ExternalProtocolDependentSource.CanonicalProtectionOwnerPhysicalClosureAndRestoreProofAdapter",
+      "reason": "Actual lifecycle and exact canary reads are shipped. They do not observe terminal native physical deletion, all tainted/alternate holders, independent restore exclusion or survivor recovery under the actual selected fault controller.",
+      "sourceDependencyClassification": "ExternalProtocolDependentSource",
+      "availableMeasurementSources": [
+        "src/Hexalith.Platform.Secrets.Runtime/CustodyLifecycleClient.cs",
+        "src/Hexalith.Platform.Protection/Fr34IndependentOriginalCollector.cs"
+      ],
+      "absentPublicProtocol": "No selected complete holder/copy census, native terminal deletion provenance, restore-barrier or survivor-recovery-control receipt API exists."
+    },
+    "G4": {
+      "status": "Open",
+      "name": "G4",
+      "measurementSource": null,
+      "missingInput": "ExternalProtocolDependentSource.CanonicalProtectionOwnerMixedRootSnapshotAndScheduledRecoveryOriginalAdapter",
+      "reason": "The actual EventStore snapshot source validates nested/array explicit targets and binds supported single-target snapshots to the exact enrolled interaction. Mixed-root snapshots refuse before effects. Complete multi-root representation, completion, selective replay and installed scheduler/writer/restore histories remain unresolved.",
+      "sourceDependencyClassification": "ExternalProtocolDependentSource",
+      "availableMeasurementSources": [
+        "src/Hexalith.Platform.Protection/EventStoreFr34CanaryEngine.cs",
+        "src/Hexalith.Platform.Protection/QualificationNativeSourceReader.cs"
+      ],
+      "absentPublicProtocol": "No approved complete per-root snapshot binding/coverage/completion/restore representation or actual writer/anchor/scheduler fault-control history is selected."
+    },
+    "G5": {
+      "status": "Open",
+      "name": "G5",
+      "measurementSource": null,
+      "missingInput": "ExternalProtocolDependentSource.CanonicalProtectionOwnerCompleteFortyOneCaseNativeFixtureAdapter",
+      "reason": "Authenticated executor/observer/enrollment receiving programs and retained originals are shipped. Their signatures do not identify a complete native installed EventStore 41-case execution/provenance inventory or prove current program/ACL/engine installation.",
+      "sourceDependencyClassification": "ExternalProtocolDependentSource",
+      "availableMeasurementSources": [
+        "src/Hexalith.Platform.Protection/QualificationOwnerDriverExecutable.cs",
+        "src/Hexalith.Platform.Protection/JointPhaseSourceExecutable.cs",
+        "src/Hexalith.Platform.Secrets.Runtime/QualificationOwnerOperationHandler.cs"
+      ],
+      "absentPublicProtocol": "No selected complete native owner41-case original inventory, independent role installation/ACL attestation or all native case resource/control mapping exists."
+    },
+    "G6": {
+      "status": "Open",
+      "name": "G6",
+      "measurementSource": null,
+      "missingInput": "ExternalProtocolDependentSource.CanonicalProtectionOwnerCompleteSigningAppendCurrentnessAndPhysicalProvenanceAdapter",
+      "reason": "The new four EventStore operation-original ports now expose retained registration, reservation, admission-block and successful/blocked activation inputs and immutable outcomes. Platform consumers and independent exact read grants are unchanged. Complete guard outcome enumeration and actual native append/control/physical provenance correlation remain unresolved.",
+      "sourceDependencyClassification": "ExternalProtocolDependentSource",
+      "availableMeasurementSources": [
+        "src/Hexalith.Platform.Protection/QualificationGuardedOriginalReader.cs",
+        "src/Hexalith.Platform.Protection/QualificationDirectoryBoundaryOriginalReader.cs",
+        "src/Hexalith.Platform.Protection/QualificationGuardOriginalReader.cs",
+        "src/Hexalith.Platform.Protection/QualificationNativeSourceReader.cs"
+      ],
+      "absentPublicProtocol": "DaprGuardedStateTransaction exposes LookupByIntent/LookupOriginal/ReadGuard without complete outcome-key enumeration. No complete native append-to-joint-mutation/resource proof API is selected; Platform must adopt the new optional EventStore operation-original ports under independent grants."
+    },
+    "G7": {
+      "status": "Open",
+      "name": "G7",
+      "measurementSource": null,
+      "missingInput": "ExternalProtocolDependentSource.CanonicalProtectionOwnerAcceptedArtifactAndPackageLaneClosureAdapter",
+      "reason": "Strict coordinated packet/date/raw-byte and source pin admission is shipped. Source hashes cannot manufacture an independently accepted owner target/date, package-lane locked artifact or actual installed engine/role/trust provenance.",
+      "sourceDependencyClassification": "ExternalProtocolDependentSource",
+      "availableMeasurementSources": [
+        "eng/ext-secrets-1/coordinated_packets.py",
+        "eng/ext-secrets-1/prepare_acceptance.py"
+      ],
+      "absentPublicProtocol": "No current independently accepted complete canonical owner target/date/artifact-and-package-lane closure original or installed artifact attestation is supplied."
+    }
+  },
+  "integrationAssessment": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/integration-assessment.json",
+    "exists": true,
+    "sha256": "82d1a21fe0c835a1204a1c529a4b9890b106e806c477160eef44a9cd34e10dfa"
+  },
+  "verificationManifest": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/verification-manifest-final.json",
+    "exists": true,
+    "sha256": "9d672bb82c4912f3fa921adaf7b1ba956b15db256c0fd583612822d25bd4f3b9"
+  },
+  "sourceFiles": {
+    "src/Hexalith.EventStore.Contracts/Security/DeletionConsumptionOriginal.cs": "572b9b1774ef7dff4c1f202870c40fdd4e3c352217c334aa96bc96ce691db194",
+    "src/Hexalith.EventStore.Contracts/Security/DeletionBatchBlockRequest.cs": "e2728eb65c3d5564e4a8a4d4ac919e95e42907fdb0878b0fbb66039f7da85754",
+    "src/Hexalith.EventStore.Contracts/Security/DeletionReattestationActivation.cs": "fbc44dae34ca16f3228e394b36e8769da9c43d40f0a5c02d2fc81322bf40a8d8",
+    "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs": "dbd237ea5f6a0874251d1b62f502cf88529b4ee91ed113e9f518f67caf954632",
+    "src/Hexalith.EventStore.Server/Security/IDeletionConsumptionActor.cs": "04d0eb5df6e87d359fb28f5428f0658857b0303aacbf626e65e7a7ef2b67878d",
+    "src/Hexalith.EventStore.Server/Security/DeletionConsumptionBatch.cs": "c8afc3f07f5c8c2aa65ce258cbc35087704548327900fa23fbf8f67f6bd52bbc",
+    "src/Hexalith.EventStore.Server/Security/DeletionConsumptionOperation.cs": "66aaa810df70223a7dd4d86c72f2602aeb2f6630b83501593b0e4bf3e3586be6",
+    "src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs": "61b69529a05f5487eaeab246620eba2f35c655774c69ed595cd929387f81554e",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs": "f21ae6b2f45da7a02dfb14c8dfd5e6e1f46a5d2ea1fa4047660940dedfd0afbf",
+    "tests/Hexalith.EventStore.Server.Tests/Security/DeletionConsumptionOriginalTests.cs": "172676d5375e4c0d8c73184640ffb399170473ca5a958cfc62202309ac2fd24b"
+  },
+  "localDebugBinariesOnly": {
+    "src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "aaea521a3e3f0ac7605f838031b49f7cd1ed0c3674924ef327248a03dda57aea",
+    "src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "b72f8c05b81d40be487935f978ac06404ff30ad6c435eedfec533b14703ae7dd",
+    "src/Hexalith.EventStore.PayloadProtection/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.dll": "c4d7bf40127f798a2c892d6558944c663a01f7c561c296058fe1ee789a45454a",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll": "fca5826dbdf66cc840fc7dcb407ddf005d951de6a3025051320067587a42c1ff",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll": "c210662bec2463f1f4a85558a84c0d04634de41f3db5dce1b92cd3ce96df9a93"
+  },
+  "currentComponentVerification": [
+    {
+      "name": "server-tests-final",
+      "command": {
+        "argv": [
+          "dotnet",
+          "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.DeletionConsumptionOriginalTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.DeletionConsumptionActorTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.DeletionReservedManifestOriginalTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.PublishedTrustDeletionConsumptionAuthorityTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.PublishedTrustOwnerStateAuthorityTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.InteractionProtectionPersistenceTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.InteractionProtectionActorRecoveryTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.InteractionPayloadProtectionServiceTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Events.SnapshotManagerTests"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-28T00:01:25.092961+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "startedAt": "2026-10-28T00:01:25.092961+00:00",
+        "finishedAt": "2026-10-28T00:01:27.995155+00:00",
+        "logSha256": "f0d0fba1e762e8fd572a4fe565adaa0eba1f6381da463cd6e38f2dbdda3aa06f",
+        "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/server-tests-final.log"
+      },
+      "passed": 316
+    },
+    {
+      "name": "payload-tests-01",
+      "command": {
+        "argv": [
+          "dotnet",
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+          "-class",
+          "Hexalith.EventStore.PayloadProtection.Tests.InteractionSnapshotProtectionTests",
+          "-class",
+          "Hexalith.EventStore.PayloadProtection.Tests.InteractionPayloadProtectionServiceTests"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-27T23:52:32.348106+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "startedAt": "2026-10-27T23:52:32.348106+00:00",
+        "finishedAt": "2026-10-27T23:52:32.851486+00:00",
+        "logSha256": "dec09e49f921384922b134ce1552088d289580fc8f072edfd2d53db71670b1d9",
+        "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/payload-tests-01.log"
+      },
+      "passed": 43
+    },
+    {
+      "name": "offline-verifier-tests",
+      "command": {
+        "argv": [
+          "env",
+          "CustomAfterMicrosoftCommonProps=/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/source-build-input.props",
+          "python3",
+          "-m",
+          "unittest",
+          "tools.tests.test_ext_protection_1",
+          "tools.tests.test_ext_protection_1_cross_language",
+          "-q"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-27T23:59:25.744276+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "startedAt": "2026-10-27T23:59:25.744276+00:00",
+        "finishedAt": "2026-10-27T23:59:37.149305+00:00",
+        "logSha256": "fa63b8ce2b476340dfe6df6b7bb5b79c8e19ae6726f41cd1a07ae03404360bfd",
+        "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/offline-verifier-tests.log"
+      },
+      "passed": 66
+    },
+    {
+      "name": "parent-replacement-tests",
+      "command": {
+        "argv": [
+          "dotnet",
+          "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.PublishedTrustReplacementAuthorityTests"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-28T00:08:18.725550+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "startedAt": "2026-10-28T00:08:18.725550+00:00",
+        "finishedAt": "2026-10-28T00:08:22.072512+00:00",
+        "logSha256": "03af32e897b6ffc1ae6ed8e2bd366731e6787765a0bacff2982a1c1b47bceb60",
+        "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/parent-replacement-tests.log"
+      },
+      "passed": 98
+    }
+  ],
+  "componentTestsPassed": 523,
+  "newOriginalReadCases": 40,
+  "buildCommands": [
+    {
+      "name": "server-build-final",
+      "command": {
+        "argv": [
+          "dotnet",
+          "build",
+          "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+          "-c",
+          "Debug",
+          "--no-restore",
+          "-p:UseHexalithProjectReferences=true",
+          "-p:CustomAfterMicrosoftCommonProps=/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/source-build-input.props",
+          "-m:1"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-28T00:00:37.963241+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "startedAt": "2026-10-28T00:00:37.963241+00:00",
+        "finishedAt": "2026-10-28T00:01:07.739122+00:00",
+        "logSha256": "85de2819c2b7c3e628a47b08a85de2da2efded5e443f2e0b9ebaae7a399925db",
+        "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/server-build-final.log"
+      }
+    },
+    {
+      "name": "payload-build-01",
+      "command": {
+        "argv": [
+          "dotnet",
+          "build",
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+          "-c",
+          "Debug",
+          "-p:UseHexalithProjectReferences=true",
+          "-p:CustomAfterMicrosoftCommonProps=/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/source-build-input.props",
+          "-m:1"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-27T23:51:11.104671+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "startedAt": "2026-10-27T23:51:11.104671+00:00",
+        "finishedAt": "2026-10-27T23:51:19.280134+00:00",
+        "logSha256": "6e044ba0245845c28597c0e1ec00a1bb8b1a3448cab8b06db389759b1e56b02b",
+        "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/payload-build-01.log"
+      }
+    }
+  ],
+  "initialFailedRegression": {
+    "name": "originals-tests-01",
+    "command": {
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Security.DeletionConsumptionOriginalTests"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "startedAt": "2026-10-27T23:55:51.850418+00:00"
+    },
+    "result": {
+      "exitCode": 1,
+      "startedAt": "2026-10-27T23:55:51.850418+00:00",
+      "finishedAt": "2026-10-27T23:55:52.747545+00:00",
+      "logSha256": "9ecc4bab2d752a279c1cfad921090b1e148258bf4f87b3d5838ab1976ccb0452",
+      "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/originals-tests-01.log"
+    }
+  },
+  "evidenceDirectory": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb",
+  "parentCurrentSourceDiff": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/current-source.diff",
+    "exists": true,
+    "sha256": "19cbb48dd10cd9ee50a54d5a3c3221d8be98deafafd8ee3a82b1d4091b3dd0e1"
+  },
+  "parentHistoricalDiffCapture": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/parent-diff-capture.log",
+    "exists": true,
+    "sha256": "fe166b859f69eae7eddeddfd580070ca383c464777cfe2e2c1b0d0606a05e1b5"
+  },
+  "parentHistoricalDiffFailure": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/parent-baseline-diff-failure.json",
+    "exists": true,
+    "sha256": "c6360c8930e78837d565826c4580d8cd21fa82b716902d0963260290eefb294e"
+  },
+  "reviewScope": "Parent inspected the complete current ten-file source/test correction. Historical baseline diff is retained, not claimed reviewed. Full build workflow/installed matrix remain incomplete.",
+  "priorAttemptsPreserved": true,
+  "priorDeliveryPacket": {
+    "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-delivery-2026-10-25-resumed.json",
+    "exists": true,
+    "sha256": "a6c112813a9a18041efcc3d055f203203beb65e43937cda731514a2d5f6dd5c3"
+  },
+  "preservedPriorOwnerRecords": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-delivery-2026-10-25-resumed.json",
+      "exists": true,
+      "sha256": "a6c112813a9a18041efcc3d055f203203beb65e43937cda731514a2d5f6dd5c3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-delivery-2026-10-25-resumed.md",
+      "exists": true,
+      "sha256": "3046235a53c76f25f9503010612bcccd5fb832700da0368c6b2a7dd03fa0741a"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-delivery-2026-10-25.json",
+      "exists": true,
+      "sha256": "839d22de1a6ecde5e7bb302689f404d22819ab014d175977aeb3ae61dfbfde99"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-delivery-2026-10-25.md",
+      "exists": true,
+      "sha256": "dd14a953584af5354c66844d70a2598077d863482aa647bf29ed6c402ad8f55f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-owner-acceptance.md",
+      "exists": true,
+      "sha256": "0c288144cbe605280da96bf93a00a657dfda451cd8919a5ecc32e004d9a6fcc1"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-verifier-protocol.md",
+      "exists": true,
+      "sha256": "2c3c0c18e475af60d27fe47d6282e51e535ba5d592b05238f43ffacd8cbcafab"
+    }
+  ],
+  "frozenIntentSha256": "f368586c94007880a5921bbe44e5590ccb8fe88550ded75734c5b3632b7e5da7",
+  "baselineCommitPreserved": "9b062d0d4f506bf45b7fdcd8e54189599a36ff9b",
+  "fullDeliveryTasksComplete": false,
+  "specStatus": "in-progress",
+  "installedIntegrationSchedule": {
+    "status": "NotSchedulable",
+    "date": null,
+    "reason": "Complete immutable target, actual installed profile/roles/trust, physical qualification and explicit owner acceptance remain absent."
+  },
+  "executionBoundary": [
+    "No Live/Full/cohort/Agents consumer execution",
+    "No AppHost restart",
+    "No infrastructure/native/spending/enrollment action",
+    "No Platform/Agents/plan/golden/default-DI/dependency-pointer/lock mutation",
+    "No Git mutation"
+  ],
+  "concurrentWorkPreserved": "_bmad-output/implementation-artifacts/spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md",
+  "parentHistoricalDiffArtifact": {
+    "encoding": "gzip",
+    "artifact": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/baseline.diff.gz",
+    "uncompressedSha256": "cf1024c537edd8376dece5543aa684ad339ea5a0c495f0e286be521d9a3da335",
+    "uncompressedBytes": 3715801875,
+    "compressedBytes": 674433836,
+    "roundtripVerified": true,
+    "note": "Only duplicate raw files created by this parent were removed after verified lossless compression; no prior evidence was changed.",
+    "compressedBinding": {
+      "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/baseline.diff.gz",
+      "sha256": "659a9b05b8a324663d6d73350c9f66724626511780d86b079c112c3aae359a95",
+      "bytes": 674433836
+    }
+  },
+  "parentPublicationVerification": "/home/administrator/hexalith-protection-evidence/ext-protection-1/checkpoint-20261027T235104Z-7d8b3efb/publication-verification.json"
+}
