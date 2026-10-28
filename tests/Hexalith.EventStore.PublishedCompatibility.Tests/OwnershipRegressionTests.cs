@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Shouldly;
@@ -14,17 +15,21 @@ public sealed class OwnershipRegressionTests
         await using var runtime = new QualificationRuntime();
         if (!OperatingSystem.IsWindows())
             File.GetUnixFileMode(runtime.Root).ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-        const string secret = "app-channel-token-sentinel-493815";
+        string appApiToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+        var environment = new Dictionary<string, string>
+        {
+            ["APP_API_TOKEN"] = appApiToken,
+        };
         const string input = "private-input-sentinel-52980";
         await runtime.RunAsync(new("python3", ["-c", "import os,sys; print(sys.stdin.read()); print(os.environ['APP_API_TOKEN'])"],
-            runtime.Root, TimeSpan.FromSeconds(10), new Dictionary<string, string> { ["APP_API_TOKEN"] = secret }, input));
+            runtime.Root, TimeSpan.FromSeconds(10), environment, input));
         Should.Throw<System.ComponentModel.Win32Exception>(() => runtime.Start(new("/missing-p1r-private-binary", [], runtime.Root,
-            TimeSpan.FromSeconds(1), new Dictionary<string, string> { ["APP_API_TOKEN"] = secret }, input)));
+            TimeSpan.FromSeconds(1), environment, input)));
         await runtime.CleanupAsync();
         foreach (string file in Directory.EnumerateFiles(runtime.Root))
         {
             string retained = await File.ReadAllTextAsync(file);
-            retained.ShouldNotContain(secret);
+            retained.ShouldNotContain(appApiToken);
             retained.ShouldNotContain(input);
         }
         runtime.CleanupFailures.ShouldBeEmpty();
