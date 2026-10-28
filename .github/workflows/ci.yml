@@ -65,7 +65,6 @@ jobs:
       build-timeout-minutes: 180
       test-platform: microsoft-testing-platform
       run-consumer-validation: true
-      package-prepare-script: scripts/prepare-catalog-packages.sh
       unit-test-projects: |
         tests/Hexalith.EventStore.Client.Tests
         tests/Hexalith.EventStore.ServiceDefaults.Tests
@@ -110,6 +109,9 @@ jobs:
 
       - name: Run generated API smoke preflight regression
         run: bash scripts/tests/generated-api-smoke-preflight.test.sh
+
+      - name: Verify package publication dependency guards
+        run: python3 -m unittest discover -s tools/tests -p test_release_package_contract.py
 
       - name: Restore Contracts tests
         run: >-
