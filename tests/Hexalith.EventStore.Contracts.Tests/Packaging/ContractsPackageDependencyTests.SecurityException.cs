@@ -20,6 +20,10 @@ public sealed partial class ContractsPackageDependencyTests
         string root = FindRepositoryRoot();
         string catalog = ResolveSharedPackageVersionsPath(root,
             XDocument.Load(Path.Combine(root, "Directory.Packages.props")));
+        string optionsVersion = XDocument.Load(catalog).Descendants("PackageVersion")
+            .Single(element => element.Attribute("Include")?.Value == "Microsoft.Extensions.Options")
+            .Attribute("Version").ShouldNotBeNull().Value;
+        string differentOptionsVersion = optionsVersion == "0.0.0" ? "0.0.1" : "0.0.0";
         string directory = Path.Combine(Path.GetTempPath(), "eventstore-authority-checks-" + Guid.NewGuid().ToString("N"));
         string fixture = Path.Combine(directory, "consumer");
         Directory.CreateDirectory(fixture);
@@ -62,7 +66,7 @@ public sealed partial class ContractsPackageDependencyTests
                 string imported = Path.Combine(directory, "unapproved.props");
                 new XDocument(new XElement("Project", new XElement("ItemGroup",
                     new XElement("PackageVersion", new XAttribute("Update", "Microsoft.Extensions.Options"),
-                        new XAttribute("Version", "10.0.14"))))).Save(imported);
+                        new XAttribute("Version", differentOptionsVersion))))).Save(imported);
                 project.Add(new XElement("Import", new XAttribute("Project", imported)));
             }
             new XDocument(project).Save(Path.Combine(fixture, "Consumer.csproj"));
@@ -81,7 +85,7 @@ public sealed partial class ContractsPackageDependencyTests
             }
             else
             {
-                error.ShouldContain("resolves 'Microsoft.Extensions.Options' to '10.0.14' instead of '10.0.13'");
+                error.ShouldContain($"resolves 'Microsoft.Extensions.Options' to '{differentOptionsVersion}' instead of '{optionsVersion}'");
             }
         }
         finally
