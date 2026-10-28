@@ -196,6 +196,17 @@ internal partial class ProjectionUpdateOrchestrator
                     if (scope.Classification == ProjectionDeliveryStateClassification.Current || deliveryCheckpointStore is null) return true;
                     long checkpoint = await deliveryCheckpointStore.ReadDeliveredSequenceAsync(identity, route, cancellationToken).ConfigureAwait(false);
                     if (checkpoint > head) throw new ProjectionDeliveryHistoryValidationException("checkpoint_drift");
+                    if (checkpoint == head)
+                    {
+                        // A duplicate wake-up must settle the exact completed publication;
+                        // staging a new operation at that head would retain a leased stale intent.
+                        finalization = new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
+                        completed = await publication.ReadReplayCompletionAsync(actorId!, bound with { State = null },
+                            finalization.Token).ConfigureAwait(false);
+                        if (completed) return true;
+                        finalization.Dispose();
+                        finalization = null;
+                    }
                 }
                 ProjectionRebuildInspection staged = await publication.StageReplayAsync(actorId!, bound, cancellationToken).ConfigureAwait(false);
                 if (staged.Status is not ProjectionRebuildInspectionStatus.Staged and not ProjectionRebuildInspectionStatus.Promoted) return true;

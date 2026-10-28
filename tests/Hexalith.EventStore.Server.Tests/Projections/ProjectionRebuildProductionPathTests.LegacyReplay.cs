@@ -279,16 +279,75 @@ public sealed partial class ProjectionRebuildProductionPathTests
     }
 
     [Fact]
-    public async Task LegacyFallback_RepeatedCompletedTriggerReadsExactSelectedProofWithoutAnotherPublication()
+    public async Task LegacyFallback_UnactivatedWriterResumesOriginalPublicationAfterFinalizationFails()
     {
         using var fixture = new LegacyReplayProductionHarness();
-        await fixture.InitializeAsync(2).ConfigureAwait(true);
+        await fixture.InitializeAsync(2, writerActive: false).ConfigureAwait(true);
+        fixture.ModelState.FaultOnCall("SaveState", 3, new IOException("publication-finalization-unavailable"));
         await fixture.DeliverAsync().ConfigureAwait(true);
+        (await ((IProjectionDeliveryCheckpointStore)fixture.Checkpoints).ReadDeliveredSequenceAsync(fixture.Identity, "counter")
+            .ConfigureAwait(true)).ShouldBe(2);
+        ProjectionLegacyDeliveryIntent intent = (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true))!
+            .LegacyDelivery.ShouldNotBeNull();
+        fixture.Clock.Advance(TimeSpan.FromMinutes(6));
+        await fixture.DeliverAsync().ConfigureAwait(true);
+        fixture.Http.Preparations.Count.ShouldBe(1);
+        (await fixture.Model.InspectProjectionRebuildAsync(new(intent.OperationId)).ConfigureAwait(true)).Status
+            .ShouldBe(ProjectionRebuildInspectionStatus.Promoted);
+        (await fixture.Model.ReadProjectionStateAsync().ConfigureAwait(true))!.GetState().GetProperty("count").GetInt32().ShouldBe(2);
+        (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true)).ShouldBeNull();
+        await fixture.Notifications.Received(1).NotifyProjectionChangedAsync("counter", "tenant-a",
+            Arg.Any<string?>(), Arg.Any<CancellationToken>()).ConfigureAwait(true);
+    }
+
+    [Fact]
+    public async Task LegacyFallback_UnactivatedCompletedTriggerWithMismatchedSelectedStateRetainsIntent()
+    {
+        using var fixture = new LegacyReplayProductionHarness();
+        await fixture.InitializeAsync(2, writerActive: false).ConfigureAwait(true);
+        await fixture.DeliverAsync().ConfigureAwait(true);
+        await fixture.ModelState.SetStateAsync(EventReplayProjectionActor.ProjectionStateKey,
+            ProjectionState.FromJsonElement("counter", fixture.Identity.TenantId,
+                JsonSerializer.SerializeToElement(new { count = 999 }))).ConfigureAwait(true);
+        await fixture.ModelState.SaveStateAsync().ConfigureAwait(true);
         await fixture.Outbox.EnsureAsync(fixture.Identity).ConfigureAwait(true);
         await fixture.DeliverAsync().ConfigureAwait(true);
+        (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true))!.LegacyDelivery.ShouldNotBeNull();
+        (await fixture.Model.ReadProjectionStateAsync().ConfigureAwait(true))!.GetState().GetProperty("count").GetInt32().ShouldBe(999);
+        (await ((IProjectionDeliveryCheckpointStore)fixture.Checkpoints).ReadDeliveredSequenceAsync(fixture.Identity, "counter")
+            .ConfigureAwait(true)).ShouldBe(2);
+        await fixture.Notifications.Received(1).NotifyProjectionChangedAsync("counter", "tenant-a",
+            Arg.Any<string?>(), Arg.Any<CancellationToken>()).ConfigureAwait(true);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LegacyFallback_RepeatedCompletedTriggerReadsExactSelectedProofWithoutAnotherPublication(bool writerActive)
+    {
+        using var fixture = new LegacyReplayProductionHarness();
+        await fixture.InitializeAsync(2, writerActive).ConfigureAwait(true);
+        await fixture.DeliverAsync().ConfigureAwait(true);
+        string selectedBefore = JsonSerializer.Serialize(fixture.ModelState.CommittedState);
+        int savesBefore = fixture.ModelState.CommittedSnapshots.Count;
+        long checkpointBefore = await ((IProjectionDeliveryCheckpointStore)fixture.Checkpoints)
+            .ReadDeliveredSequenceAsync(fixture.Identity, "counter").ConfigureAwait(true);
+        await fixture.Outbox.EnsureAsync(fixture.Identity).ConfigureAwait(true);
+        await fixture.DeliverAsync().ConfigureAwait(true);
+        JsonSerializer.Serialize(fixture.ModelState.CommittedState).ShouldBe(selectedBefore);
+        fixture.ModelState.CommittedSnapshots.Count.ShouldBe(savesBefore);
+        (await ((IProjectionDeliveryCheckpointStore)fixture.Checkpoints).ReadDeliveredSequenceAsync(fixture.Identity, "counter")
+            .ConfigureAwait(true)).ShouldBe(checkpointBefore);
         fixture.Http.Preparations.Count.ShouldBe(2);
         (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true)).ShouldBeNull();
         await fixture.Notifications.Received(1).NotifyProjectionChangedAsync("counter", "tenant-a",
+            Arg.Any<string?>(), Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        await fixture.AppendAsync(1).ConfigureAwait(true);
+        await fixture.Outbox.EnsureAsync(fixture.Identity).ConfigureAwait(true);
+        await fixture.DeliverAsync().ConfigureAwait(true);
+        (await fixture.Model.ReadProjectionStateAsync().ConfigureAwait(true))!.GetState().GetProperty("count").GetInt32().ShouldBe(3);
+        (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true)).ShouldBeNull();
+        await fixture.Notifications.Received(2).NotifyProjectionChangedAsync("counter", "tenant-a",
             Arg.Any<string?>(), Arg.Any<CancellationToken>()).ConfigureAwait(true);
     }
 }
