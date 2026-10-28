@@ -276,6 +276,83 @@ public class DevelopmentRouteCatalogBuilderTests
     }
 
     [Fact]
+    public async Task FileToolResolvesParentAliasesBeforeCheckingDevelopmentInputOverlap()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "route-catalog-alias-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string tool = await BuildToolAsync(Path.Combine(directory, "artifacts"));
+            string profile = Path.Combine(directory, "profile");
+            string settings = Path.Combine(profile, "src", "Hexalith.EventStore");
+            Directory.CreateDirectory(settings);
+            string[] names = ["appsettings.json", "appsettings.Development.json"];
+            byte[][] original = names.Select(name => File.ReadAllBytes(SettingsPath(name))).ToArray();
+            for (int index = 0; index < names.Length; index++)
+            {
+                File.WriteAllBytes(Path.Combine(settings, names[index]), original[index]);
+            }
+
+            string settingsAlias = Path.Combine(directory, "settings-alias");
+            string sourceAlias = Path.Combine(directory, "source-alias");
+            string nestedAlias = Path.Combine(directory, "nested-alias");
+            string profileAlias = Path.Combine(directory, "profile-alias");
+            Directory.CreateSymbolicLink(settingsAlias, settings);
+            Directory.CreateSymbolicLink(sourceAlias, Path.Combine("profile", "src"));
+            Directory.CreateSymbolicLink(nestedAlias, Path.Combine(sourceAlias, "Hexalith.EventStore"));
+            Directory.CreateSymbolicLink(profileAlias, profile);
+            byte[] expected = File.ReadAllBytes(Path.Combine(FindRoot(), "deploy", "dapr", "eventstore-routing-catalog.json"));
+            string retainedCatalog = Path.Combine(directory, "retained.json");
+            File.WriteAllBytes(retainedCatalog, expected);
+
+            foreach (string name in names)
+            {
+                foreach ((string root, string parent) in new[]
+                {
+                    (profile, settingsAlias),
+                    (profile, Path.Combine(sourceAlias, "Hexalith.EventStore")),
+                    (profile, nestedAlias),
+                    (profileAlias, settings),
+                })
+                {
+                    (int exit, string log) = await RunToolAsync(tool, "development", root, Path.Combine(parent, name));
+                    exit.ShouldBe(2, log);
+                    log.Trim().ShouldBe("Route catalog rejected: $: development-output-input-overlap");
+                    for (int index = 0; index < names.Length; index++)
+                    {
+                        File.ReadAllBytes(Path.Combine(settings, names[index])).ShouldBe(original[index]);
+                    }
+                    File.ReadAllBytes(retainedCatalog).ShouldBe(expected);
+                    Directory.GetFiles(directory, ".routing-catalog-*.tmp", SearchOption.AllDirectories).ShouldBeEmpty();
+                }
+            }
+
+            string outputDirectory = Path.Combine(directory, "output");
+            string outputAlias = Path.Combine(directory, "output-alias");
+            Directory.CreateDirectory(outputDirectory);
+            Directory.CreateSymbolicLink(outputAlias, "output");
+            foreach (string name in names)
+            {
+                string output = Path.Combine(outputAlias, name);
+                File.WriteAllText(output, "previous-catalog-sentinel");
+                (int exit, string log) = await RunToolAsync(tool, "development", profileAlias, output);
+                exit.ShouldBe(0, log);
+                File.ReadAllBytes(Path.Combine(outputDirectory, name)).ShouldBe(expected);
+            }
+            for (int index = 0; index < names.Length; index++)
+            {
+                File.ReadAllBytes(Path.Combine(settings, names[index])).ShouldBe(original[index]);
+            }
+            File.ReadAllBytes(retainedCatalog).ShouldBe(expected);
+            Directory.GetFiles(directory, ".routing-catalog-*.tmp", SearchOption.AllDirectories).ShouldBeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task FileToolGeneratesAndValidatesFixturesAndRefusesIncompleteInputs()
     {
         string directory = Path.Combine(Path.GetTempPath(), "route-catalog-" + Guid.NewGuid().ToString("N"));

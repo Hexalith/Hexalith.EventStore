@@ -6149,3 +6149,33 @@ status: open
 - source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
   summary: Make independently committed owner-deadline tests deterministic under loaded CI.
   evidence: DomainService.Tests/QueryAuthorityCorrectionTests.OwnerDeadlines.cs starts a two-second caller timer before RSA generation and client setup, then requires it to remain uncancelled; setup/scheduler delay can violate that assumption independently of the owner deadline.
+
+## Deferred from: final package-delivery review of Story 5.12 (2026-10-28)
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Reject overlap between certified abort-repair Values and SourceGuards before reserving the epoch.
+  evidence: Final review R6B1/R6E3: SharedProjectionEpochCoordinator.AbortRepair.cs validates uniqueness only within each list; a present guarded value can be deleted, then every later source check fails. Independently authored c613e55ae is outside the catalog/bounded-replay intent; test rejection without epoch mutation.
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Require successful immutable abort-repair certificate retention before deleting certified metadata.
+  evidence: Final review R6B2: a false TrySaveAsync followed by an absent evidence-key re-read still reaches deletion. The epoch receipt does not establish separate certificate retention across later epoch advancement. This is independent certified-abort recovery work; add the absent-after-failed-write fault control.
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Apply certified abort-repair request bounds before cloning or serializing the whole request.
+  evidence: Final review R6B3: RepairAbortMetadataAsync serializes/deserializes before IsValidAbortRepairRequest enforces 256 KiB, so oversized OriginalJson/guard collections allocate an unbounded duplicate first. Independent recovery API; use early shape/size checks and bounded serialization.
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Validate persisted content task seals and quiesced fences before accepting a loaded ledger.
+  evidence: Final review R6B9: DaprAuthoritativeContentStore.ReadLedgerAsync checks only null/count for SealedTasks and QuiescedTaskFences; invalid task IDs/nonpositive fences survive, and a malformed released fence can permit an older positive preparation. Independent content storage owner should add malformed-ledger no-write controls.
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Move independently committed reserved-manifest raw test dumps to scratch and retain concise test/CI provenance.
+  evidence: Final review R6B11: 59 files under _bmad-output/implementation-artifacts/tests/reserved-manifest-original-2026-10-27 contain command/result/XML evidence committed by 39a3d4dc. Repository proof policy says tests plus CI and local scratch; the path-pattern guard misses this directory. Preserve owner files until their owner performs relocation; no 5.12 delivery-generated evidence is added.
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Make the independent 6.1 PublishedCompatibility CI pipeline propagate the test exit and resolve its actual failed qualification.
+  evidence: Final review R6E1: integration.yml lines62-68 use dotnet piped to tee under default bash -e without pipefail; failed run40653940590 actually has49 pass/1 fail and239 observations with74 failures. Shell control maps producer exit41 to0 without pipefail and preserves41 with it. Effective main policy requires live-sidecar but not this separately owned lane; do not treat its green badge as acceptance or weaken historical compatibility assertions.
+
+- source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
+  summary: Add a no-write regression for content preparation at a successfully quiesced lease fence.
+  evidence: Pre-verified final review R6G1: AuthoritativeContentStoreTests.CleanLeaseReleaseAllowsOnlyAHigherFenceAndCompletionRemainsTerminal covers stale Upload and higher-fence Prepare, but no new Prepare at released fence1. Removing the QuiescedTaskFences guard in PrepareAsync leaves existing tests green. Independent content-lease owner should assert ContentConflictException, unchanged persisted state, and higher-fence success.

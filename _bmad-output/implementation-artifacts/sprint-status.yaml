@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-25
+# last_updated: 2026-10-28
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-10-26
+last_updated: 2026-10-28
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -187,7 +187,7 @@ development_status:
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07-architecture-routing): AD-33 catalog
   # schema/codec/envelope (before 2.14 and 2.15) and activation; AD-16 fallback and Dapr
   # framework-route protection on every HTTP host.
-  5-12-route-and-idempotency-catalog-schema-codec-and-envelope: in-progress
+  5-12-route-and-idempotency-catalog-schema-codec-and-envelope: done
   5-13-route-catalog-activation-and-topology-binding: backlog
   5-14-authenticated-fallback-and-dapr-framework-route-protection: backlog
   epic-5-retrospective: optional

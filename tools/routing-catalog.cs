@@ -98,13 +98,30 @@ catch (Exception exception) when (exception is IOException or UnauthorizedAccess
 static void ValidateDevelopmentOutputPath(string repositoryRoot, string outputPath)
 {
     ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
-    string destination = Path.GetFullPath(outputPath);
+    string destination = ResolveParentAliases(outputPath);
     StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
     foreach (string name in new[] { "appsettings.json", "appsettings.Development.json" })
     {
-        string input = Path.GetFullPath(Path.Combine(repositoryRoot, "src", "Hexalith.EventStore", name));
+        string input = ResolveParentAliases(Path.Combine(repositoryRoot, "src", "Hexalith.EventStore", name));
         if (string.Equals(destination, input, comparison))
             throw new RouteCatalogValidationException([new("$", "development-output-input-overlap")]);
+    }
+
+    static string ResolveParentAliases(string path)
+    {
+        string fullPath = Path.GetFullPath(path);
+        return Path.Combine(ResolveDirectory(Path.GetDirectoryName(fullPath)!, 40), Path.GetFileName(fullPath));
+    }
+
+    static string ResolveDirectory(string path, int remainingLinks)
+    {
+        var directory = new DirectoryInfo(path);
+        if (directory.Parent is not { } parent) return directory.FullName;
+        string resolved = Path.Combine(ResolveDirectory(parent.FullName, remainingLinks), directory.Name);
+        FileSystemInfo? target = new DirectoryInfo(resolved).ResolveLinkTarget(returnFinalTarget: true);
+        if (target is null) return resolved;
+        if (remainingLinks == 0) throw new IOException();
+        return ResolveDirectory(target.FullName, remainingLinks - 1);
     }
 }
 
