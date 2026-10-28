@@ -35,7 +35,7 @@ public partial class EventReplayProjectionActor(
     IETagService eTagService,
     IProjectionChangeNotifier projectionChangeNotifier,
     ILogger<EventReplayProjectionActor> logger)
-    : CachingProjectionActor(host, eTagService, logger), IProjectionWriteActor, IProjectionRebuildWriteActor, IProjectionRebuildInspectionActor, IProjectionReplayPublicationActor {
+    : CachingProjectionActor(host, eTagService, logger), IProjectionWriteActor, IProjectionRebuildWriteActor, IProjectionRebuildInspectionActor, IProjectionReplayPublicationActor, IProjectionBoundReplayCompletionActor {
     private IProjectionLifecycleGateway? _publicationLifecycle;
 
     /// <summary>Creates a projection actor with actor-owned lifecycle-fenced replay publication.</summary>

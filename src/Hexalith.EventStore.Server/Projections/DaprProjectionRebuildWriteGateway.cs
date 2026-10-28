@@ -49,7 +49,10 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return CreatePublicationProxy(actorId).ReconcileBoundReplayCompletionAsync(request).WaitAsync(cancellationToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
+        IProjectionBoundReplayCompletionActor proxy = actorProxyFactory.CreateActorProxy<IProjectionBoundReplayCompletionActor>(
+            new ActorId(actorId), QueryRouter.ProjectionActorTypeName);
+        return proxy.ReconcileBoundReplayCompletionAsync(request).WaitAsync(cancellationToken);
     }
 
     /// <inheritdoc/>

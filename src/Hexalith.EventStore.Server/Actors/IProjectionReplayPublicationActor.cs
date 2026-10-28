@@ -16,7 +16,4 @@ public interface IProjectionReplayPublicationActor : IActor
 
     /// <summary>Verifies an already selected exact prefix/model without creating a new receipt or publication.</summary>
     Task<bool> ReadReplayCompletionAsync(ProjectionReplayPublicationRequest request);
-
-    /// <summary>Verifies a fully bound completed receipt, or finalizes only its exact original unfinished publication.</summary>
-    Task<bool> ReconcileBoundReplayCompletionAsync(ProjectionReplayPublicationRequest request);
 }
