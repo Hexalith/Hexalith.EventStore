@@ -6217,3 +6217,7 @@ status: open
 
 - Stale-primary recovery bundled in 5.13 fix commit `71829366d` (`DeletionConsumptionActor`, `InteractionOccurrenceRegistryActor`, `PublishedTrustDeletionConsumptionAuthority.ReadCurrentOriginalAsync`, public default members `IAnchoredStateTransitionAuthority.ReadCurrentOriginalAsync` and `IInteractionProtectionBindingProvider.ResolveErasedStoredAsync`, `tools/ext_protection_1.py` mixed-snapshot validation) is not 5.13 scope. Owner chose to move it to the ext-protection story; the public Contracts members need that story's owner approval.
 - No test exercises `ReadCurrentOriginalAsync` recovery (digest, scope, tenant/epoch, revision, post-persist revalidation guards; zero/one/many owner selection). Add actor tests with the relocated code.
+
+## Deferred from: code review of spec-5-14-authenticated-fallback-and-dapr-framework-route-protection.md, chunk A (2026-10-29)
+
+- `DaprSidecarChannelAuthenticationHandler` fails any request carrying an `Authorization` header with `CredentialConflict` (`src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprSidecarChannelAuthenticationHandler.cs:38`). Severity unverified (would be medium): Dapr service invocation forwards caller headers, so a channel-only route reached by a caller that also sends a bearer would be denied. Settle by confirming in chunks B/C that `ProjectionNotificationController` callers and the Operations relay never combine the channel scheme with a bearer.

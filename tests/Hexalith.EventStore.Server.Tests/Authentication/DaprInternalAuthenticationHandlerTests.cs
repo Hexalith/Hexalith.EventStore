@@ -503,9 +503,8 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     }
 
     /// <summary>
-    /// Story 5.5 (P-11): outside Development, a host without <c>APP_API_TOKEN</c> verifies no channel at all
-    /// (<see cref="DaprAppChannelTokenStatus.Unconfigured"/>); only Development without a token is
-    /// <see cref="DaprAppChannelTokenStatus.NotRequired"/>.
+    /// Story 5.5 (P-11), Story 5.14: in every environment, including Development, a host without
+    /// <c>APP_API_TOKEN</c> verifies no channel at all (<see cref="DaprAppChannelTokenStatus.Unconfigured"/>) and admits nothing.
     /// </summary>
     /// <param name="configured">The configured token, or <see langword="null"/>.</param>
     /// <param name="isDevelopment">Whether the host runs in Development.</param>
@@ -515,14 +514,14 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     [InlineData("   ", false, DaprAppChannelTokenStatus.Unconfigured)]
     [InlineData(null, true, DaprAppChannelTokenStatus.Unconfigured)]
     [InlineData("configured", false, DaprAppChannelTokenStatus.Missing)]
-    public void AppChannelToken_IsUnconfiguredOutsideDevelopment(string? configured, bool isDevelopment, DaprAppChannelTokenStatus expected)
+    public void AppChannelToken_IsUnconfiguredInEveryEnvironment(string? configured, bool isDevelopment, DaprAppChannelTokenStatus expected)
     {
         var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
 
         DaprAppChannelTokenStatus status = DaprAppChannelToken.Verify(context.Request, configured, isDevelopment);
 
         status.ShouldBe(expected);
-        DaprAppChannelToken.IsAdmitted(status).ShouldBe(expected == DaprAppChannelTokenStatus.NotRequired);
+        DaprAppChannelToken.IsAdmitted(status).ShouldBeFalse();
     }
 
     /// <summary>
@@ -564,18 +563,22 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
             && message.Contains($"Reason={WorkloadAuthenticationReasons.ChannelUnconfigured}", StringComparison.Ordinal));
     }
 
-    /// <summary>Readiness fails without a configured channel secret in Production.</summary>
+    /// <summary>Readiness fails without a configured channel secret in Production and Development alike.</summary>
+    /// <param name="environmentName">The host environment.</param>
     /// <param name="configuredToken">The configured token.</param>
     /// <param name="expectedStatus">The expected readiness status.</param>
     [Theory]
-    [InlineData(null, HealthStatus.Unhealthy)]
-    [InlineData("configured-token", HealthStatus.Healthy)]
-    public async Task AppChannelReadiness_ProductionRequiresConfiguredSecret(
+    [InlineData("Production", null, HealthStatus.Unhealthy)]
+    [InlineData("Production", "configured-token", HealthStatus.Healthy)]
+    [InlineData("Development", null, HealthStatus.Unhealthy)]
+    [InlineData("Development", "configured-token", HealthStatus.Healthy)]
+    public async Task AppChannelReadiness_RequiresConfiguredSecretInEveryEnvironment(
+        string environmentName,
         string? configuredToken,
         HealthStatus expectedStatus)
     {
         IHostEnvironment environment = Substitute.For<IHostEnvironment>();
-        environment.EnvironmentName.Returns(Environments.Production);
+        environment.EnvironmentName.Returns(environmentName);
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { [DaprAppChannelTokenValidator.ConfigurationKey] = configuredToken })
             .Build();

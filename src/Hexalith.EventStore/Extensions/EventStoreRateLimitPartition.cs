@@ -28,7 +28,7 @@ internal static class EventStoreRateLimitPartition {
 
         // Rate limiting precedes endpoint authorization, so verify the configured secret directly rather
         // than trusting the current principal or waiting for the endpoint's channel policy to authenticate.
-        // NotRequired (Development without a token) must never mint an actor partition.
+        // A legacy unverified channel claim (never emitted any more) must never mint an actor partition.
         IConfiguration configuration = context.RequestServices.GetRequiredService<IConfiguration>();
         if (DaprAppChannelToken.Verify(context.Request, configuration[DaprAppChannelToken.ConfigurationKey], isDevelopment: false)
             != DaprAppChannelTokenStatus.Valid)

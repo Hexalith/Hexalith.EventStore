@@ -191,3 +191,26 @@ The exact capacity-method exclusion and earlier 180-second exit 124 remain discl
 `git diff --check` and `bash scripts/check-committed-files.sh` passed again (9,492 tracked files). CI remains unrun, with no CI link or production qualification claimed. This spec is **done for the approved bounded milestone**; parent Story 5.14 remains open for actor-peer/execution-context qualification, resumable audit and external/UI conformance.
 
 The workflow's local commit is prepared in an isolated checkout on `fix/story-5-14-http-host-protection`, preserving the shared main checkout and unrelated edits. Exact candidate validation with the repository-pinned commitlint **21.1.0** succeeded: `node node_modules/@commitlint/cli/cli.js --edit /tmp/story514-commit-message.txt --verbose` reported zero problems and zero warnings (`/tmp/story514-commitlint-preflight.log`). No push or pull-request mutation is part of this run.
+
+### Review Findings
+
+Code review 2026-10-29, chunk A of 4 (`src/Hexalith.EventStore.ServiceDefaults`, baseline `5945ba8b3`..`7e136f7e0`). Chunks B (Gateway/SDK/REST generator/Sample), C (Operations/Admin) and D (tests/docs) are not yet reviewed.
+
+- [x] [Review][Patch] Development readiness reports configured while the channel now rejects tokenless deliveries — `DaprAppChannelTokenValidator.IsConfigured` still returns true under `IsDevelopment()`, so `DaprAppChannelTokenHealthCheck` reports Healthy with no `APP_API_TOKEN` while every channel-protected delivery gets 401. Drop the Development exemption from `IsConfigured`, update the `IsValid`/`IsConfigured` docs, and add a Development/no-token readiness case beside `AppChannelReadiness_ProductionRequiresConfiguredSecret`. [src/Hexalith.EventStore/Authentication/DaprAppChannelTokenValidator.cs:27]
+- [x] [Review][Patch] Stale Development-exemption surface — `DaprAppChannelTokenStatus.NotRequired` and `DevelopmentUnverifiedChannel` are never produced or admitted, yet docs/tests still describe them as reachable (`DaprInternalAuthenticationHandlerTests.cs:~525` asserts `IsAdmitted == (expected == NotRequired)`; `EventStoreRateLimitPartitionTests.cs:48` builds a channel from the unreachable value; rate-limit partition comment). Correct the comments/tests; keep the public enum member. [src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprAppChannelToken.cs:49]
+- [x] [Review][Defer] Channel handler fails any request carrying `Authorization` (unverified, would be medium) [src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprSidecarChannelAuthenticationHandler.cs:38] — deferred: no `RequireEventStoreChannel` route in this chunk is shown to receive a caller bearer. Settle in chunks B/C by confirming `ProjectionNotificationController` (service-invocation) and the Operations relay never present the channel scheme alongside a bearer.
+
+#### Rejected
+
+- `false` — Per-request `ValidateAsync` skips fallback/human-policy checks for late endpoints: it re-checks both on every call (`EventStoreHttpEndpointInventory.cs:28-37`).
+- `false` — Options validator `services.Any` is registration-order dependent: it runs at `ValidateOnStart` over the final collection, and `MapWorkloadAuthority` plus the startup validator each guard independently.
+- `false` — Middleware 404 before `UseRouting`: `Program.cs:38` runs `UseRouting` before `UseEventStoreHumanSurface` (:45) and `UseEventStoreHttpHostSecurity` (:52); an ordering mistake fails loudly closed.
+- `false` — Swagger guard bypass via casing/encoded/dot segments: `PathString.StartsWithSegments` is case-insensitive and the path is decoded and normalised before it.
+- `false` — Human requirement fails open when `Resource` is not `HttpContext`: ASP.NET Core 10 endpoint authorization always supplies `HttpContext`, and `IsHuman` still gates the principal.
+- `false` — No tests for the new behaviour: they are in chunk D (`HttpHostSecurityTests*.cs`), outside this diff.
+- `low` — `/Health` and `/health/` return 403 instead of probing: fails closed per the spec's exact-match rule; probes use the literal paths.
+- `low` — `GetValue<bool>` throws `FormatException` on non-boolean `Enabled`: fails loudly at startup, which is acceptable.
+- `low` — Per-request inventory allocations and string-based `Dapr.ITopicMetadata` check: no demonstrated impact; a cache would add complexity.
+- `low` — Fixed framework-route list may miss other `/dapr/*` routes: unreachable here; topic metadata covers subscribed handlers.
+- `low` — Embedded-authority token route 400s behind a TLS-terminating proxy: affects only explicitly nonconforming Development fixtures and fails loudly.
+- `low` — Missing `WWW-Authenticate` on the Swagger 401, duplicated header-count checks, null-`effective` message wording: cosmetic.
