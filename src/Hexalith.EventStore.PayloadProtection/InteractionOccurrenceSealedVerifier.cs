@@ -35,7 +35,7 @@ public static class InteractionOccurrenceSealedVerifier
             else
             {
                 manifest = ProtectedPathManifestCodec.Create([string.Empty], snapshot: true, cancellationToken: cancellationToken);
-                var snapshot = JsonSerializer.Deserialize<ProtectedSnapshotPayloadV2>(sealedResult.PayloadBytes) ?? throw new PayloadProtectionFormatException();
+                var snapshot = JsonSerializer.Deserialize(sealedResult.PayloadBytes, InteractionSnapshotJsonContext.Default.ProtectedSnapshotPayloadV2) ?? throw new PayloadProtectionFormatException();
                 opened = await core.TryUnprotectSnapshotAsync(snapshot, context, Resolve, cancellationToken).ConfigureAwait(false);
             }
             clear = opened.PayloadBytes;

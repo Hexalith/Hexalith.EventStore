@@ -59,6 +59,15 @@ public static class DeletionBatchCapabilityIdentity
     /// <summary>Deterministic exact original signing request identity shared by signer and append guard.</summary>
     public static string SigningRequestId(DeletionBatchCapabilityV1 payload)
         => Convert.ToHexString(SHA256.HashData(CanonicalPayload(payload)));
+    /// <summary>Exact digest of the retained detached signed artifact.</summary>
+    public static string SignedArtifactDigest(string detachedJws)
+    { ArgumentException.ThrowIfNullOrWhiteSpace(detachedJws); return Convert.ToHexString(SHA256.HashData(StrictUtf8.GetBytes(detachedJws))); }
+    /// <summary>Exact original issue operation shared by guard lookup and source preparation.</summary>
+    public static string IssueOperationId(string signingRequestId, string detachedJwsDigest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(signingRequestId); ArgumentException.ThrowIfNullOrWhiteSpace(detachedJwsDigest);
+        return "issue-" + Convert.ToHexString(SHA256.HashData(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new[] { signingRequestId, detachedJwsDigest })));
+    }
     private static void String(StringBuilder text, string value)
     {
         ArgumentNullException.ThrowIfNull(value);

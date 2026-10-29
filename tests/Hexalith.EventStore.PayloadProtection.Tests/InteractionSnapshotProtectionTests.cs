@@ -58,7 +58,7 @@ public sealed class InteractionSnapshotProtectionTests
         fixture.Occurrences.OwnedBuffers.All(static bytes => bytes.All(static value => value == 0)).ShouldBeTrue();
     }
 
-    /// <summary>Another interaction, alias or tenant cannot be placed under the first root, even in nested content values.</summary>
+    /// <summary>Unavailable mixed-entry binding refuses before registry/key effects; foreign tenants and nested target substitution refuse before binding.</summary>
     [Theory]
     [InlineData("interaction-a", "interaction-b", false)]
     [InlineData("alias-a", "alias-b", false)]
@@ -66,7 +66,7 @@ public sealed class InteractionSnapshotProtectionTests
     [InlineData("interaction-a", "interaction-b", true)]
     [InlineData("alias-a", "alias-b", true)]
     [InlineData("tenant-a", "tenant-b", true)]
-    public async Task MixedTargetsDenyBeforeAnyAuthorityOrKeyCall(string before, string after, bool insideValue)
+    public async Task UnavailableMixedEntryBindingDeniesBeforeRegistryOrKeyEffects(string before, string after, bool insideValue)
     {
         var fixture = Create();
         string second = Expand(insideValue ? "TARGET" : "ENVELOPE").Replace(before, after, StringComparison.Ordinal);
@@ -75,11 +75,30 @@ public sealed class InteractionSnapshotProtectionTests
             : "{\"Requests\":[ENVELOPE,{\"Nested\":[" + second + "]}]}";
         await Should.ThrowAsync<InvalidOperationException>(() => fixture.Service.ProtectSnapshotAsync(fixture.Binding.Identity.Owner,
             State(template), StateType, Occurrence(fixture.Binding), TestContext.Current.CancellationToken));
-        fixture.Bindings.ReceivedCalls().ShouldBeEmpty();
+        if (!insideValue && before != "tenant-a")
+        { fixture.Bindings.ReceivedCalls().Single().GetMethodInfo().Name.ShouldBe(nameof(IInteractionProtectionBindingProvider.ResolveSnapshotEntriesAsync)); }
+        else { fixture.Bindings.ReceivedCalls().ShouldBeEmpty(); }
         fixture.Occurrences.Registry.ReceivedCalls().ShouldBeEmpty();
         fixture.Occurrences.OwnedBuffers.ShouldBeEmpty();
         fixture.Occurrences.Keys.Leases.ShouldBe(0);
         fixture.Occurrences.Record.ShouldBeNull();
+    }
+
+    /// <summary>Malformed reserved content cannot remain plaintext in the skeleton beside otherwise valid mixed entries.</summary>
+    [Theory]
+    [InlineData("{\"ProtectedContent\":{\"Target\":{\"TenantId\":\"tenant-a\",\"AgentInteractionId\":\"interaction-c\",\"targetprotectionkeyalias\":\"alias-c\"},\"Value\":\"must-not-leak\"}}")]
+    [InlineData("{\"ProtectedContent\":null}")]
+    [InlineData("{\"protectedcontent\":ENVELOPE}")]
+    [InlineData("{\"ProtectedContent\":{\"Target\":TARGET,\"Value\":{\"Nested\":TARGET}}}")]
+    public async Task MalformedMixedEntryCannotEnterThePlaintextSkeleton(string malformed)
+    {
+        var fixture = Create();
+        string second = Expand("ENVELOPE").Replace("interaction-a", "interaction-b", StringComparison.Ordinal);
+        string source = "{\"Entries\":[{\"ProtectedContent\":ENVELOPE},{\"ProtectedContent\":" + second + "}," + malformed + "]}";
+        await Should.ThrowAsync<Exception>(() => fixture.Service.ProtectSnapshotAsync(fixture.Binding.Identity.Owner, State(source), StateType,
+            Occurrence(fixture.Binding), TestContext.Current.CancellationToken));
+        fixture.Bindings.ReceivedCalls().ShouldBeEmpty(); fixture.Occurrences.Registry.ReceivedCalls().ShouldBeEmpty();
+        fixture.Occurrences.OwnedBuffers.ShouldBeEmpty(); fixture.Occurrences.Keys.Leases.ShouldBe(0);
     }
 
     /// <summary>Even a single foreign-tenant target is rejected before consulting a binding authority.</summary>

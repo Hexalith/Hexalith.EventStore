@@ -37,7 +37,7 @@ public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transa
             deadline.ThrowIfCancellationRequested();
             if (authority is null || payload is null || signingRequestId != DeletionBatchCapabilityIdentity.SigningRequestId(payload)
                 || detachedJwsDigest is not { Length: 64 } || !detachedJwsDigest.All(char.IsAsciiHexDigit)) { return null; }
-            string operationId = "issue-" + Hash(new[] { signingRequestId, detachedJwsDigest });
+            string operationId = DeletionBatchCapabilityIdentity.IssueOperationId(signingRequestId, detachedJwsDigest);
             var original = await deadline.ReadAsync(token => transaction.LookupOriginalAsync(payload.TenantId, operationId, Hash(new { Payload = payload, signingRequestId, detachedJwsDigest }), token)).ConfigureAwait(false);
             if (original.Status != GuardedStateCommitStatus.Committed || original.Receipt is null) { return null; }
             var proof = JsonSerializer.Deserialize<GovernanceProtocolReceipt>(original.Receipt.Outcome);

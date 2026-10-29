@@ -610,6 +610,8 @@ def native_json_bytes(value):
     """Default native record serialization in its declared property order, after closed-schema validation."""
     if value is None:
         return b'null'
+    if type(value) is bool:
+        return b'true' if value else b'false'
     if isinstance(value, str):
         return native_json_string(value, identity=False).encode('ascii')
     if type(value) is int:
@@ -979,8 +981,39 @@ def bind_hold_originals(observation):
                  and receipt['GuardHighWater'] == hold['holdRevision'] and receipt['Status'] == 'Committed']
         dispatches = [receipt for receipt in parsed if receipt['OperationId'] == hold['dispatchOperationId']
                       and receipt['GuardHighWater'] == hold['dispatchRevision'] and receipt['Status'] == 'Committed']
-        require(len(holds) == 1 and len(dispatches) == 1 and holds[0]['ReceiptId'] != dispatches[0]['ReceiptId'], 'HOLD_ORIGINAL_SUBSTITUTED')
-        require((holds[0]['GuardHighWater'] > dispatches[0]['GuardHighWater']) == hold['dispatchWon'], 'HOLD_ORIGINAL_SUBSTITUTED')
+        require(len(holds) == 1, 'HOLD_ORIGINAL_SUBSTITUTED')
+        if hold.get('dispatchStatus', 'Committed') == 'Committed':
+            require(len(dispatches) == 1 and holds[0]['ReceiptId'] != dispatches[0]['ReceiptId'], 'HOLD_ORIGINAL_SUBSTITUTED')
+            require((holds[0]['GuardHighWater'] > dispatches[0]['GuardHighWater']) == hold['dispatchWon'], 'HOLD_ORIGINAL_SUBSTITUTED')
+            continue
+        # A hold-winning guard compare has no committed dispatch receipt. Require the
+        # independent receiving owner's exact persisted attempt, rather than invent one.
+        require(hold['dispatchStatus'] in ('Blocked', 'Stale') and hold['dispatchWon'] is False and not dispatches, 'HOLD_REFUSAL_INVALID')
+        attempts = observation.get('guardAttempts')
+        require(isinstance(attempts, list) and attempts, 'HOLD_ATTEMPT_ORIGINAL_MISSING')
+        candidates = []
+        for attempt in attempts:
+            native_record(attempt, 'Transition TargetMutationDigest BeforeRevision AfterRevision Receipt', 'HOLD_ATTEMPT_SCHEMA_INVALID')
+            transition, receipt = attempt['Transition'], attempt['Receipt']
+            native_record(transition, 'TenantId OperationId Operation ExpectedGuardRevision EpochId DeletionRequestId Scope Write Repair Ordinal Hold Batch AuthorizationId ReferenceId BridgeOriginal RevocationReceipt', 'HOLD_ATTEMPT_SCHEMA_INVALID')
+            native_record(receipt, fields, 'HOLD_ATTEMPT_SCHEMA_INVALID')
+            ordinal(attempt['BeforeRevision'], maximum=MAX_NATIVE_LONG)
+            ordinal(attempt['AfterRevision'], attempt['BeforeRevision'], MAX_NATIVE_LONG)
+            ordinal(transition.get('ExpectedGuardRevision'), maximum=MAX_NATIVE_LONG)
+            require(isinstance(attempt['TargetMutationDigest'], str) and re.fullmatch('[A-F0-9]{64}', attempt['TargetMutationDigest']), 'HOLD_ATTEMPT_INTENT_INVALID')
+            intent = hashlib.sha256(native_json_bytes({'Transition': transition, 'TargetMutationDigest': attempt['TargetMutationDigest']})).hexdigest().upper()
+            require(receipt['IntentDigest'] == intent and receipt['OperationId'] == transition.get('OperationId')
+                    and attempt['BeforeRevision'] <= receipt['GuardHighWater'] <= attempt['AfterRevision'], 'HOLD_ATTEMPT_INTENT_INVALID')
+            if receipt['OperationId'] == hold['dispatchOperationId']:
+                candidates.append(attempt)
+        require(len(candidates) == 1, 'HOLD_ATTEMPT_ORIGINAL_AMBIGUOUS')
+        attempt = candidates[0]
+        transition, receipt = attempt['Transition'], attempt['Receipt']
+        require(type(transition.get('Operation')) is int and transition['Operation'] == 21
+                and receipt['Status'] == hold['dispatchStatus'] and receipt['GuardHighWater'] == hold['dispatchRevision']
+                and hold['holdRevision'] <= receipt['GuardHighWater'] and transition['ExpectedGuardRevision'] <= hold['holdRevision']
+                and (receipt['Status'] != 'Stale' or transition['ExpectedGuardRevision'] < receipt['GuardHighWater'])
+                and (receipt['Status'] != 'Blocked' or transition['ExpectedGuardRevision'] == receipt['GuardHighWater']), 'HOLD_REFUSAL_ORDER_INVALID')
 
 
 def bind_pin_originals(observation, targets):
@@ -1051,6 +1084,10 @@ def bind_activation_original(observation):
 
 def bind_replacement_original(observation):
     """Reject a blocked-activation summary whose native activation original was substituted."""
+    if observation.get('rejectedUnissuedOriginal') is not None or observation.get('blockedReplacementOriginal') is not None:
+        return bind_rejected_replacement_original(observation)
+    if observation.get('postActivationBlockOriginal') is not None:
+        return bind_post_activation_block_original(observation)
     value = observation['activationOutcome']
     original = observation.get('activationOriginal')
     native_record(original, 'OperationId NewBlockReceiptId NewKeyVersion RevocationRevision BatchId', 'ACTIVATION_ORIGINAL_SCHEMA_INVALID')
@@ -1065,6 +1102,198 @@ def bind_replacement_original(observation):
             'ACTIVATION_ORIGINAL_SUBSTITUTED')
 
 
+def ordered_blocked_replacement(value):
+    """Reconstruct only declared native record property order; role transport canonicalizes wire object order."""
+    fields = 'OperationId CompromiseBlockReceiptId ExpectedKeyBlockSetRevision GuardReplacementReceiptId Capability DetachedJws SigningRequestId CommittedIssuedGuardRevision Targets RevocationReceipt'.split()
+    require(isinstance(value, dict) and set(value) in (set(fields), set(fields) | {'UnissuedProof'}), 'REJECTED_REPLACEMENT_SCHEMA_INVALID')
+    result = {key: value[key] for key in fields}
+    cap_fields = 'Issuer Audience TenantId DeletionRequestId DestructionSealId BatchKind BatchOrdinal BatchId ManifestDigest GuardStreamId IntendedIssuedGuardRevision AttestationOrdinal SigningAttemptOrdinal CapabilityKeyVersion'.split()
+    result['Capability'] = {key: value['Capability'][key] for key in cap_fields}
+    result['Targets'] = [{key: target[key] for key in ('TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias')} for target in value['Targets']]
+    revocation = value['RevocationReceipt']
+    native_record(revocation, 'Envelope OwnerRevision KeyBlockSetRevision ReceiptId AffectedBatchIds', 'REJECTED_REVOCATION_SCHEMA_INVALID')
+    envelope_fields = 'Issuer Audience TenantId KeyFamily KeyVersion RevocationRevision TrustProfileRevision EventIdentity SignatureDigest'.split()
+    native_record(revocation['Envelope'], ' '.join(envelope_fields), 'REJECTED_REVOCATION_SCHEMA_INVALID')
+    result['RevocationReceipt'] = {key: ({field: revocation[key][field] for field in envelope_fields} if key == 'Envelope' else revocation[key])
+                                   for key in ('Envelope', 'OwnerRevision', 'KeyBlockSetRevision', 'ReceiptId', 'AffectedBatchIds')}
+    if value.get('UnissuedProof') is not None:
+        proof = value['UnissuedProof']
+        proof_fields = 'Transition TargetMutationDigest Refusal CurrentGuardRevision CurrentGuardStateDigest CurrentGuardStateBytes'.split()
+        native_record(proof, ' '.join(proof_fields), 'REJECTED_NO_ISSUE_SCHEMA_INVALID')
+        command_fields = 'TenantId OperationId Operation ExpectedGuardRevision EpochId DeletionRequestId Scope Write Repair Ordinal Hold Batch AuthorizationId ReferenceId BridgeOriginal RevocationReceipt'.split()
+        batch_fields = 'BatchId BatchKind BatchOrdinal Targets ManifestDigest AttestationOrdinal CapabilityKeyVersion AttestationDigest ProtectionOutcome ProtectionReceiptId TargetReceiptIds BlockSetRevision Capability DetachedJws SigningRequestId'.split()
+        receipt_fields = 'OperationId IntentDigest Status GuardHighWater AcceptedAtAdmissionFenceOrdinal ReferenceId ReceiptId AdmissionAttributionsJson AcceptedWriteResourceId AcceptedWriteFacts AcceptedTargetMutationDigest Capability SigningRequestId DetachedJwsDigest'.split()
+        command = native_record(proof['Transition'], ' '.join(command_fields), 'REJECTED_NO_ISSUE_SCHEMA_INVALID')
+        batch = native_record(command['Batch'], ' '.join(batch_fields), 'REJECTED_NO_ISSUE_SCHEMA_INVALID')
+        receipt = native_record(proof['Refusal'], ' '.join(receipt_fields), 'REJECTED_NO_ISSUE_SCHEMA_INVALID')
+        ordered_command = {key: command[key] for key in command_fields}
+        ordered_batch = {key: batch[key] for key in batch_fields}
+        ordered_batch['Capability'] = {key: batch['Capability'][key] for key in cap_fields}
+        ordered_batch['Targets'] = [{key: target[key] for key in ('TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias')} for target in batch['Targets']]
+        ordered_command['Batch'] = ordered_batch
+        ordered_receipt = {key: receipt[key] for key in receipt_fields}
+        ordered_receipt['Capability'] = {key: receipt['Capability'][key] for key in cap_fields}
+        result['UnissuedProof'] = {'Transition': ordered_command, 'TargetMutationDigest': proof['TargetMutationDigest'], 'Refusal': ordered_receipt,
+                                  'CurrentGuardRevision': proof['CurrentGuardRevision'], 'CurrentGuardStateDigest': proof['CurrentGuardStateDigest'], 'CurrentGuardStateBytes': proof['CurrentGuardStateBytes']}
+    return result
+
+
+def bind_rejected_replacement_original(observation):
+    unissued = observation.get('rejectedUnissuedOriginal') is not None
+    original = observation.get('rejectedUnissuedOriginal') if unissued else observation.get('blockedReplacementOriginal')
+    native_record(original, 'Original Outcome IssuedRequest', 'REJECTED_REPLACEMENT_SCHEMA_INVALID')
+    phase = ordered_blocked_replacement(original['Original'])
+    outcome, issued = original['Outcome'], original['IssuedRequest']
+    native_record(outcome, 'TenantId BatchId Status OwnerRevision KeyBlockSetRevision ReceiptId BlockReason BlockedKeyVersion RevocationRevision TargetReceipts', 'REJECTED_OWNER_SCHEMA_INVALID')
+    capture_consumption_request(issued)
+    cap, old = phase['Capability'], issued['Capability']
+    immutable = CAPABILITY_FIELDS - {'IntendedIssuedGuardRevision', 'AttestationOrdinal', 'SigningAttemptOrdinal', 'CapabilityKeyVersion'}
+    require(all(cap[key] == old[key] for key in immutable) and cap['AttestationOrdinal'] == old['AttestationOrdinal'] + 1
+            and cap['CapabilityKeyVersion'] != old['CapabilityKeyVersion'] and phase['Targets'] == issued['Targets'], 'REJECTED_ISSUED_CREDENTIAL_CHANGED')
+    require(type(outcome['Status']) is int and outcome['Status'] == 6 and outcome['BlockReason'] == 1 and outcome['TargetReceipts'] == []
+            and outcome['TenantId'] == cap['TenantId'] and outcome['BatchId'] == cap['BatchId']
+            and outcome['BlockedKeyVersion'] == cap['CapabilityKeyVersion'] and outcome['KeyBlockSetRevision'] == phase['ExpectedKeyBlockSetRevision'], 'REJECTED_OWNER_INVALID')
+    revocation = phase['RevocationReceipt']
+    require(revocation['Envelope']['TenantId'] == cap['TenantId'] and revocation['Envelope']['KeyVersion'] == cap['CapabilityKeyVersion']
+            and revocation['Envelope']['KeyFamily'] == 'DeletionBatchCapabilitySigningKey' and revocation['Envelope']['RevocationRevision'] == outcome['RevocationRevision']
+            and revocation['KeyBlockSetRevision'] <= phase['ExpectedKeyBlockSetRevision']
+            and revocation['ReceiptId'] == digest(native_json_bytes(revocation['Envelope'])).upper()
+            and sum(canonical(value) == canonical(revocation) for value in observation.get('ownerRevocations', [])) == 1
+            and sum(canonical(value) == canonical(revocation) for value in observation.get('guardRevocations', [])) == 1, 'REJECTED_REVOCATION_SUBSTITUTED')
+    batches = observation.get('ownerBatches', [])
+    require(len(batches) == 1 and canonical(batches[0]['Current']) == canonical(issued)
+            and canonical(batches[0]['BlockedReplacement']) == canonical(original['Original'])
+            and batches[0]['Outcome']['Status'] == 2 and batches[0]['Outcome']['ReceiptId'] == outcome['ReceiptId'], 'REJECTED_OWNER_ORIGINAL_SUBSTITUTED')
+    summary = observation['activationOutcome']
+    require(summary['status'] == 'ActivationBlockedByReplacementKeyCompromise' and summary['newBlockReceiptId'] == outcome['ReceiptId']
+            and summary['newKeyVersion'] == outcome['BlockedKeyVersion'] and summary['revocationRevision'] == outcome['RevocationRevision'], 'REJECTED_OUTCOME_SUBSTITUTED')
+    label = 'blocked-unissued-replacement' if unissued else 'blocked-issued-replacement'
+    require(outcome['ReceiptId'] == digest(native_json_bytes([phase['OperationId'], digest(native_json_bytes(phase)).upper(), label])).upper(), 'REJECTED_OWNER_RECEIPT_INVALID')
+    guard_batches = observation.get('guardBatches', [])
+    require(len(guard_batches) == 1, 'REJECTED_GUARD_ORIGINAL_MISSING')
+    batch = guard_batches[0]
+    if unissued:
+        proof = phase.get('UnissuedProof')
+        require(proof is not None and phase['CommittedIssuedGuardRevision'] == 0 and canonical(batch['Capability']) == canonical(old)
+                and batch['AttestationOrdinal'] == old['AttestationOrdinal'] and batch.get('RejectedUnissuedReplacement') == {'Original': original['Original'], 'Outcome': outcome}, 'REJECTED_UNISSUED_ORDINAL_CHANGED')
+        command, receipt = proof['Transition'], proof['Refusal']
+        try:
+            raw_state = base64.b64decode(proof['CurrentGuardStateBytes'], validate=True)
+            state = strict_json(raw_state)
+        except (ValueError, TypeError, UnicodeError):
+            raise Failed('REJECTED_NO_ISSUE_STATE_INVALID') from None
+        require(0 < len(raw_state) <= 8388608 and digest(raw_state).upper() == proof['CurrentGuardStateDigest']
+                and state['TenantId'] == cap['TenantId'] and state['Revision'] == proof['CurrentGuardRevision']
+                and cap['CapabilityKeyVersion'] in state['CompromisedKeyVersions'], 'REJECTED_NO_ISSUE_STATE_INVALID')
+        historical = [item for deletion in state['Deletions'] for item in deletion['Batches'] if item['BatchId'] == cap['BatchId']]
+        require(len(historical) == 1 and historical[0]['Capability'] == old and historical[0]['AttestationOrdinal'] == old['AttestationOrdinal']
+                and historical[0]['ProtectionReceiptId'] == phase['CompromiseBlockReceiptId']
+                and not any(item['Status'] == 'Committed' and item.get('SigningRequestId') == phase['SigningRequestId'] for item in state['Receipts'])
+                and canonical(revocation) in [canonical(item) for item in state['Revocations']], 'REJECTED_NO_ISSUE_FALSE_CREDENTIAL')
+        require(command['Operation'] == 23 and command['Batch']['Capability'] == cap and command['Batch']['DetachedJws'] == phase['DetachedJws']
+                and receipt['Status'] in ('Blocked', 'Stale') and receipt['ReceiptId'] == phase['GuardReplacementReceiptId']
+                and receipt['OperationId'] == command['OperationId'] and receipt['Capability'] == cap and receipt['SigningRequestId'] == phase['SigningRequestId']
+                and receipt['DetachedJwsDigest'] == digest(phase['DetachedJws'].encode()).upper()
+                and proof['TargetMutationDigest'] == digest(b'[]').upper() and proof['CurrentGuardRevision'] >= receipt['GuardHighWater']
+                and receipt['IntentDigest'] == digest(native_json_bytes({'Transition': command, 'TargetMutationDigest': proof['TargetMutationDigest']})).upper(), 'REJECTED_NO_ISSUE_SUBSTITUTED')
+        require(not any(value['Status'] == 'Committed' and value.get('SigningRequestId') == phase['SigningRequestId'] for value in observation['guardReceipts']), 'REJECTED_ATTEMPT_FALSE_ISSUE')
+    else:
+        require(phase.get('UnissuedProof') is None and phase['CommittedIssuedGuardRevision'] == batch['IssuedGuardRevision'] > 0
+                and batch['Capability'] == cap and phase['GuardReplacementReceiptId'] == batch['IssueReceiptId']
+                and batch['DispatchReceiptId'] == '' and batch['DispatchGuardRevision'] == 0, 'BLOCKED_UNDISPATCHED_ORIGINAL_INVALID')
+        require(sum(value['Status'] == 'Committed' and value['ReceiptId'] == phase['GuardReplacementReceiptId'] and value['Capability'] == cap
+                    and value['GuardHighWater'] == phase['CommittedIssuedGuardRevision'] for value in observation['guardReceipts']) == 1, 'BLOCKED_REPLACEMENT_ISSUE_MISSING')
+
+
+def bind_post_activation_block_original(observation):
+    value = native_record(observation.get('postActivationBlockOriginal'), 'Activation ActivatedOutcome RevocationReceipt BlockedOutcome', 'POST_ACTIVATION_BLOCK_SCHEMA_INVALID')
+    activation, activated, revocation, blocked = (value[key] for key in ('Activation', 'ActivatedOutcome', 'RevocationReceipt', 'BlockedOutcome'))
+    native_record(activation, 'OperationId CompromiseBlockReceiptId ExpectedKeyBlockSetRevision GuardReplacementReceiptId Replacement', 'POST_ACTIVATION_SCHEMA_INVALID')
+    native_owner_outcome(activated, 0)
+    native_record(blocked, 'TenantId BatchId Status OwnerRevision KeyBlockSetRevision ReceiptId BlockReason BlockedKeyVersion RevocationRevision TargetReceipts', 'POST_ACTIVATION_BLOCK_SCHEMA_INVALID')
+    native_record(revocation, 'Envelope OwnerRevision KeyBlockSetRevision ReceiptId AffectedBatchIds', 'POST_ACTIVATION_REVOCATION_SCHEMA_INVALID')
+    native_record(revocation['Envelope'], 'Issuer Audience TenantId KeyFamily KeyVersion RevocationRevision TrustProfileRevision EventIdentity SignatureDigest', 'POST_ACTIVATION_REVOCATION_SCHEMA_INVALID')
+    for key in ('OperationId', 'CompromiseBlockReceiptId', 'GuardReplacementReceiptId'):
+        identity_text(activation[key], byte_bound=True)
+    for key in ('OwnerRevision', 'KeyBlockSetRevision'):
+        ordinal(blocked[key], maximum=MAX_NATIVE_LONG)
+        ordinal(revocation[key], maximum=MAX_NATIVE_LONG)
+    capture_consumption_request(activation['Replacement'])
+    cap = activation['Replacement']['Capability']
+    request_fields = 'Capability DetachedJws CommittedIssuedGuardRevision DispatchReceiptId DispatchGuardRevision Targets'.split()
+    cap_fields = 'Issuer Audience TenantId DeletionRequestId DestructionSealId BatchKind BatchOrdinal BatchId ManifestDigest GuardStreamId IntendedIssuedGuardRevision AttestationOrdinal SigningAttemptOrdinal CapabilityKeyVersion'.split()
+    replacement = {key: activation['Replacement'][key] for key in request_fields}
+    replacement['Capability'] = {key: cap[key] for key in cap_fields}
+    replacement['Targets'] = [{key: target[key] for key in ('TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias')} for target in replacement['Targets']]
+    ordered = {key: activation[key] for key in ('OperationId', 'CompromiseBlockReceiptId', 'ExpectedKeyBlockSetRevision', 'GuardReplacementReceiptId', 'Replacement')}
+    ordered['Replacement'] = replacement
+    require(activated['ReceiptId'] == digest(native_json_bytes([activation['OperationId'], digest(native_json_bytes(ordered)).upper(), 'activation'])).upper(), 'POST_ACTIVATION_ORIGINAL_RECEIPT_INVALID')
+    owner = observation.get('ownerBatches')
+    require(isinstance(owner, list) and len(owner) == 1 and owner[0]['Current'] == activation['Replacement']
+            and owner[0]['Outcome'] == blocked and owner[0]['BlockedReplacement'] is None, 'POST_ACTIVATION_OWNER_ORIGINAL_INVALID')
+    require(activated['TenantId'] == blocked['TenantId'] == revocation['Envelope']['TenantId'] == cap['TenantId']
+            and revocation['Envelope']['KeyFamily'] == 'DeletionBatchCapabilitySigningKey'
+            and activated['TargetReceipts'] == [] and type(blocked['Status']) is int and type(blocked['BlockReason']) is int,
+            'POST_ACTIVATION_TENANT_OR_STATE_INVALID')
+    guard_batch = [batch for batch in observation.get('guardBatches', []) if batch.get('BatchId') == cap['BatchId']]
+    require(len(guard_batch) == 1 and guard_batch[0]['Capability'] == cap
+            and guard_batch[0]['IssueReceiptId'] == activation['GuardReplacementReceiptId']
+            and guard_batch[0]['DispatchReceiptId'] == replacement['DispatchReceiptId'], 'POST_ACTIVATION_GUARD_ORIGINAL_INVALID')
+    original = owner[0]['Original']['Capability']
+    logical = 'Issuer Audience TenantId DeletionRequestId DestructionSealId BatchKind BatchOrdinal BatchId ManifestDigest GuardStreamId'.split()
+    prior = [item for item in observation.get('ownerRevocations', []) if item['Envelope']['KeyVersion'] == original['CapabilityKeyVersion']
+             and cap['BatchId'] in item['AffectedBatchIds']]
+    require(all(original[key] == cap[key] for key in logical) and original['AttestationOrdinal'] + 1 == cap['AttestationOrdinal']
+            and len(prior) == 1 and prior[0]['KeyBlockSetRevision'] == activation['ExpectedKeyBlockSetRevision']
+            and prior[0]['OwnerRevision'] < activated['OwnerRevision']
+            and activation['CompromiseBlockReceiptId'] == digest(native_json_bytes([prior[0]['ReceiptId'], cap['BatchId']])).upper(),
+            'POST_ACTIVATION_PRIOR_BLOCK_INVALID')
+    require(activated['BatchId'] == blocked['BatchId'] == cap['BatchId'] and blocked['Status'] == 2 and blocked['BlockReason'] == 1
+            and blocked['BlockedKeyVersion'] == revocation['Envelope']['KeyVersion'] == cap['CapabilityKeyVersion']
+            and blocked['RevocationRevision'] == revocation['Envelope']['RevocationRevision'] and blocked['TargetReceipts'] == []
+            and revocation['OwnerRevision'] > activated['OwnerRevision'] and blocked['OwnerRevision'] == revocation['OwnerRevision']
+            and activation['ExpectedKeyBlockSetRevision'] == activated['KeyBlockSetRevision'] < revocation['KeyBlockSetRevision'] == blocked['KeyBlockSetRevision']
+            and cap['BatchId'] in revocation['AffectedBatchIds'] and blocked['ReceiptId'] == digest(native_json_bytes([revocation['ReceiptId'], cap['BatchId']])).upper()
+            and observation['activationOutcome']['status'] == 'ActivatedThenReplacementBlocked'
+            and observation['activationOutcome']['newBlockReceiptId'] == blocked['ReceiptId'] == observation['ownerOutcome']['receiptId']
+            and canonical(revocation) in [canonical(item) for item in observation.get('ownerRevocations', [])]
+            and canonical(revocation) in [canonical(item) for item in observation.get('guardRevocations', [])], 'POST_ACTIVATION_BLOCK_ORIGINAL_INVALID')
+
+
+def replacement_phase_evidence(observation, targets, snapshot):
+    """Validate historical issued authority and the rejected candidate separately; no unissued or undispatched candidate is represented as current dispatched authority."""
+    phase = observation.get('rejectedUnissuedOriginal') or observation.get('blockedReplacementOriginal')
+    native_record(phase, 'Original Outcome IssuedRequest', 'REJECTED_REPLACEMENT_SCHEMA_INVALID')
+    request, candidate = phase['IssuedRequest'], phase['Original']
+    old_signing, old_digest = validate_consumption_request(request, None, None, snapshot)
+    signing, signature = validate_capability_signature(candidate['Capability'], candidate['DetachedJws'], None, None, snapshot)
+    require(candidate['SigningRequestId'] == signing and canonical(request['Targets']) == canonical(targets)
+            and observation.get('consumptionRequests') == [request], 'REJECTED_REQUEST_INVENTORY_INVALID')
+    batch_values = observation.get('guardBatches')
+    require(isinstance(batch_values, list) and len(batch_values) == 1, 'REJECTED_GUARD_ORIGINAL_MISSING')
+    batch = batch_values[0]
+    fields = set('BatchId Kind Ordinal Targets ManifestDigest AttestationOrdinal CapabilityKeyVersion AttestationDigest IssueReceiptId DispatchReceiptId ProtectionOutcome ProtectionReceiptId TargetReceiptIds BlockSetRevision CoveredResourceIds Capability DetachedJws SigningRequestId IssuedGuardRevision DispatchGuardRevision'.split())
+    require(isinstance(batch, dict) and set(batch) in (fields, fields | {'RejectedUnissuedReplacement'})
+            and batch['BatchId'] == request['Capability']['BatchId'] and batch['ManifestDigest'] == request['Capability']['ManifestDigest']
+            and batch['Targets'] == request['Targets'], 'REJECTED_GUARD_SCHEMA_INVALID')
+    receipt_fields = 'OperationId IntentDigest Status GuardHighWater AcceptedAtAdmissionFenceOrdinal ReferenceId ReceiptId AdmissionAttributionsJson AcceptedWriteResourceId AcceptedWriteFacts AcceptedTargetMutationDigest Capability SigningRequestId DetachedJwsDigest'
+    receipts = observation.get('guardReceipts')
+    require(isinstance(receipts, list) and len(receipts) <= 2000, 'REJECTED_GUARD_RECEIPTS_MISSING')
+    seen = set()
+    for receipt in receipts:
+        native_record(receipt, receipt_fields, 'REJECTED_GUARD_RECEIPT_SCHEMA_INVALID')
+        require(receipt['ReceiptId'] not in seen, 'REJECTED_GUARD_RECEIPT_AMBIGUOUS')
+        seen.add(receipt['ReceiptId'])
+    for revision, receipt_id in ((request['CommittedIssuedGuardRevision'], None), (request['DispatchGuardRevision'], request['DispatchReceiptId'])):
+        originals = [value for value in receipts if value['Status'] == 'Committed' and value['GuardHighWater'] == revision
+                     and value['Capability'] == request['Capability'] and value['SigningRequestId'] == old_signing and value['DetachedJwsDigest'] == old_digest
+                     and value['ReferenceId'] == request['Capability']['BatchId'] and (receipt_id is None or value['ReceiptId'] == receipt_id)]
+        require(len(originals) == 1, 'REJECTED_PREDECESSOR_DISPATCH_ORIGINAL_MISSING')
+    bind_rejected_replacement_original(observation)
+    snapshot.recheck_pins()
+    return {request['Capability']['BatchId']: request}, []
+
+
 def bind_restore_originals(observation):
     """Reject a restore summary whose native copy originals were substituted."""
     copies = observation['copyStatesAfter']
@@ -1075,7 +1304,10 @@ def bind_restore_originals(observation):
         native_record(original, 'CopyId ReadOutcome Kind', 'RESTORE_ORIGINAL_SCHEMA_INVALID')
         identity_text(original['CopyId'], byte_bound=True)
         identity_text(original['ReadOutcome'])
-        require(original['Kind'] in ('backup', 'restored'), 'RESTORE_ORIGINAL_SUBSTITUTED')
+        require(original['Kind'] in ('source-outbox', 'target-event', 'snapshot', 'cache', 'backup', 'restored'), 'RESTORE_ORIGINAL_SUBSTITUTED')
+        if original['Kind'] not in ('backup', 'restored'):
+            records = [value for value in observation.get('records', []) if value.get('copyId') == original['CopyId']]
+            require(len(records) == 1 and records[0]['kind'] == original['Kind'], 'RESTORE_SOURCE_COPY_SUBSTITUTED')
         require(original['CopyId'] == copy['copyId'] and original['ReadOutcome'] == copy['readOutcome'], 'RESTORE_ORIGINAL_SUBSTITUTED')
         require(original['CopyId'] not in seen, 'RESTORE_ORIGINAL_SUBSTITUTED')
         seen.add(original['CopyId'])
@@ -1149,6 +1381,65 @@ def snapshot_record_envelopes(protected, target):
     return found
 
 
+def bind_snapshot_originals(observation):
+    """Bind mixed carriers to complete native source, registry, writer and composite-completion originals."""
+    mixed = {}
+    for record in observation['records']:
+        if record['kind'] in ('source-outbox', 'target-event'):
+            continue
+        carrier = strict_json(base64.b64decode(record['bytesBase64'], validate=True))
+        if carrier.get('Format') != 'json+pdenc-v2-entries':
+            continue
+        mixed[hashlib.sha256(native_json_bytes(carrier)).hexdigest().upper()] = carrier
+    if not mixed:
+        return
+    originals = observation.get('snapshotOriginals')
+    require(isinstance(originals, list) and len(originals) == len(mixed), 'SNAPSHOT_NATIVE_ORIGINALS_MISSING')
+    seen = set()
+    for original in originals:
+        native_record(original, 'CarrierSha256 Completion Entries', 'SNAPSHOT_NATIVE_ORIGINAL_SCHEMA_INVALID')
+        key = original['CarrierSha256']
+        require(key in mixed and key not in seen, 'SNAPSHOT_NATIVE_ORIGINAL_SUBSTITUTED')
+        seen.add(key)
+        carrier = mixed[key]
+        completion = original['Completion']
+        native_record(completion, 'Identity Occurrence OperationId KeyReference DekVersion LifecycleEpoch SnapshotEntries SnapshotContainerDigest SnapshotEntryManifest', 'SNAPSHOT_COMPLETION_SCHEMA_INVALID')
+        parent = completion['Occurrence']
+        native_record(parent, 'RecordSequence PayloadKind PayloadTypeId', 'SNAPSHOT_PARENT_SCHEMA_INVALID')
+        ordinal(parent['RecordSequence'], maximum=MAX_NATIVE_LONG)
+        require(parent['PayloadKind'] == 2 and parent['PayloadTypeId'] == carrier['SnapshotTypeId'], 'SNAPSHOT_PARENT_SUBSTITUTED')
+        digest = hashlib.sha256(base64.b64decode(carrier['SkeletonBytes'], validate=True)).hexdigest().upper()
+        entries = original['Entries']
+        require(completion['SnapshotContainerDigest'] == digest and isinstance(entries, list) and len(entries) == len(carrier['Entries'])
+                and isinstance(completion['SnapshotEntries'], list) and len(completion['SnapshotEntries']) == len(entries)
+                and completion['SnapshotEntryManifest'] == [{'Path': entry['Path'], 'Target': entry['Target']} for entry in carrier['Entries']], 'SNAPSHOT_COMPLETION_MANIFEST_INVALID')
+        for entry, sealed, child in zip(entries, carrier['Entries'], completion['SnapshotEntries']):
+            native_record(entry, 'Path SourceEnrollment RegistryOriginal WriterProof', 'SNAPSHOT_ENTRY_ORIGINAL_SCHEMA_INVALID')
+            native_record(child, 'Identity Occurrence OperationId KeyReference DekVersion LifecycleEpoch', 'SNAPSHOT_CHILD_COMPLETION_SCHEMA_INVALID')
+            enrollment, registry, writer = entry['SourceEnrollment'], entry['RegistryOriginal'], entry['WriterProof']
+            binding = enrollment['Binding']
+            source = enrollment.get('SnapshotEntry')
+            require(entry['Path'] == sealed['Path'] and source == {'Parent': parent, 'Path': sealed['Path'], 'ContainerDigest': digest, 'EntryCount': len(entries)}
+                    and binding['Identity']['Target'] == sealed['Target'] and binding['Identity']['Owner'] == completion['Identity']
+                    and binding['Identity']['Kind'] == 2 and binding['Identity']['Sequence'] == parent['RecordSequence']
+                    and binding['Identity']['PayloadTypeId'] == sealed['Protected']['SnapshotTypeId']
+                    and binding['KeyReference'] == sealed['KeyReference'], 'SNAPSHOT_SOURCE_ORIGINAL_SUBSTITUTED')
+            require(child == {'Identity': completion['Identity'], 'Occurrence': {'RecordSequence': parent['RecordSequence'], 'PayloadKind': 2,
+                    'PayloadTypeId': sealed['Protected']['SnapshotTypeId']}, 'OperationId': binding['OperationId'], 'KeyReference': binding['KeyReference'],
+                    'DekVersion': 1, 'LifecycleEpoch': binding['LifecycleEpoch']}, 'SNAPSHOT_CHILD_COMPLETION_SUBSTITUTED')
+            payload = native_json_bytes(sealed['Protected'])
+            require(registry['Request']['Identity'] == binding['Identity'] and registry['KeyReference'] == binding['KeyReference']
+                    and registry['WriterState'] == 2 and registry['WriterProofId'] == binding['OperationId']
+                    and registry['Sealed'] == {'KeyReference': binding['KeyReference'], 'PayloadBytes': base64.b64encode(payload).decode(),
+                                               'SerializationFormat': 'json+pdenc-v2', 'ProtectedPathCount': 1}, 'SNAPSHOT_REGISTRY_ORIGINAL_SUBSTITUTED')
+            native_record(writer, 'Binding SealedPayloadSha256 Persisted WriterRetired ReceiptId', 'SNAPSHOT_WRITER_SCHEMA_INVALID')
+            identity_text(writer['ReceiptId'], 'SNAPSHOT_WRITER_RECEIPT_INVALID', byte_bound=True)
+            require(writer['Binding'] == binding and writer['Persisted'] is True and writer['WriterRetired'] is True
+                    and writer['SealedPayloadSha256'] == hashlib.sha256(payload).hexdigest().upper(), 'SNAPSHOT_WRITER_ORIGINAL_SUBSTITUTED')
+        first = completion['SnapshotEntries'][0]
+        require(all(completion[field] == first[field] for field in ('Identity', 'OperationId', 'KeyReference', 'DekVersion', 'LifecycleEpoch')), 'SNAPSHOT_COMPOSITE_IDENTITY_SUBSTITUTED')
+
+
 def _evaluate(observation, case, targets, canary, commit, binary_sha, capability_trust, role_configs, budget):
     """Assert raw persisted state and ordered receipts; no aggregate pass booleans."""
     require(observation['engineSourceRevision'] == commit and observation['engineBinarySha256'] == binary_sha, 'ENGINE_IDENTITY_MISMATCH')
@@ -1159,7 +1450,10 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
     native_receipts, requests, capability_snapshot = [], {}, None
     if 'capability' in checks or 'receipts' in checks or 'signing-attempts' in checks or observation.get('consumptionRequests') is not None:
         capability_snapshot = validate_capability_trust(capability_trust, role_configs or {}, budget)
-        requests, native_receipts = original_evidence(observation, targets, capability_trust, role_configs or {}, 'receipts' in checks, budget, capability_snapshot)
+        if 'replacement-blocked' in checks and (observation.get('rejectedUnissuedOriginal') is not None or observation.get('blockedReplacementOriginal') is not None):
+            requests, native_receipts = replacement_phase_evidence(observation, targets, capability_snapshot)
+        else:
+            requests, native_receipts = original_evidence(observation, targets, capability_trust, role_configs or {}, 'receipts' in checks, budget, capability_snapshot)
     states = [r['state'] for r in roots]
     require(all(s in ('Active', 'Pinned', 'Destroyed') for s in states), 'ROOT_STATE_UNKNOWN')
     for record in observation['records']:
@@ -1191,6 +1485,7 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
         required_kinds.add('restored')
     expected_pairs = {(target_key(t), kind) for t in targets for kind in required_kinds}
     require(expected_pairs <= {(target_key(r['target']), r['kind']) for r in observation['records']}, 'SOURCE_TARGET_PROOF_MISSING')
+    bind_snapshot_originals(observation)
     if 'active' in checks:
         require(all(s in ('Active', 'Pinned') for s in states), 'UNEXPECTED_DESTRUCTION')
     if 'erased' in checks:
@@ -1224,7 +1519,8 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
         require(observation['ownerOutcome']['status'] == 'ConsumptionBlocked' and observation['ownerOutcome']['receiptId'], 'AUTHENTICATED_BLOCK_MISSING')
     if 'replacement-blocked' in checks:
         value = observation['activationOutcome']
-        require(value['status'] == 'ActivationBlockedByReplacementKeyCompromise' and value['newBlockReceiptId'] \
+        expected_status = 'ActivatedThenReplacementBlocked' if observation.get('postActivationBlockOriginal') is not None else 'ActivationBlockedByReplacementKeyCompromise'
+        require(value['status'] == expected_status and value['newBlockReceiptId'] \
                 and value['newKeyVersion'] == observation['ownerOutcome']['blockedKeyVersion'] \
                 and value['revocationRevision'] == observation['ownerOutcome']['revocationRevision'] \
                 and observation['ownerOutcome']['status'] == 'ConsumptionBlocked', 'REPLACEMENT_COMPROMISE_NOT_PRESERVED')
@@ -1240,11 +1536,13 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
         require(bool(observation['holdOrders']), 'HOLD_ORDER_PROOF_MISSING')
         for hold in observation['holdOrders']:
             require(hold['holdOperationId'] and hold['dispatchOperationId'], 'HOLD_ORDER_IDENTITY_MISSING')
+            refused_dispatch = hold.get('dispatchStatus', 'Committed') in ('Blocked', 'Stale')
             require(type(hold['dispatchWon']) is bool and type(hold['holdRevision']) is int
                     and type(hold['dispatchRevision']) is int and hold['holdRevision'] > 0
-                    and hold['dispatchRevision'] > 0 and hold['holdRevision'] != hold['dispatchRevision'],
+                    and hold['dispatchRevision'] > 0 and (refused_dispatch or hold['holdRevision'] != hold['dispatchRevision']),
                     'HOLD_ORDER_REVISION_INVALID')
-            require((hold['holdRevision'] > hold['dispatchRevision']) == hold['dispatchWon'], 'HOLD_DISPATCH_ORDER_MISMATCH')
+            require((hold['dispatchWon'] is False and hold['holdRevision'] <= hold['dispatchRevision']) if refused_dispatch
+                    else (hold['holdRevision'] > hold['dispatchRevision']) == hold['dispatchWon'], 'HOLD_DISPATCH_ORDER_MISMATCH')
         if 'race' in checks:
             # A hold that wins before dispatch never reaches the protection owner's
             # post-dispatch block/reserve race. Do not require a fabricated reservation.
@@ -1252,6 +1550,15 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
             dispatch_won = observation['holdOrders'][0]['dispatchWon']
             require(all(s == 'Destroyed' for s in states) if dispatch_won else all(s != 'Destroyed' for s in states),
                     'HOLD_RACE_STATE_CONTRADICTION')
+        if any(hold.get('dispatchStatus', 'Committed') != 'Committed' for hold in observation['holdOrders']):
+            hold_snapshot = capability_snapshot or validate_capability_trust(capability_trust, role_configs or {}, budget)
+            for attempt in observation.get('guardAttempts', []):
+                if attempt.get('Transition', {}).get('Operation') == 21:
+                    batch = attempt['Transition']['Batch']
+                    native_record(batch, 'BatchId BatchKind BatchOrdinal Targets ManifestDigest AttestationOrdinal CapabilityKeyVersion AttestationDigest ProtectionOutcome ProtectionReceiptId TargetReceiptIds BlockSetRevision Capability DetachedJws SigningRequestId', 'HOLD_DISPATCH_BATCH_INVALID')
+                    signing_id, signature_digest = validate_capability_signature(batch['Capability'], batch['DetachedJws'], None, None, hold_snapshot)
+                    require(batch['SigningRequestId'] == signing_id and batch['AttestationDigest'] == signature_digest
+                            and batch['BatchId'] == batch['Capability']['BatchId'] and batch['ManifestDigest'] == batch['Capability']['ManifestDigest'], 'HOLD_DISPATCH_BATCH_INVALID')
         bind_hold_originals(observation)
     if 'coverage' in checks or 'containment' in checks:
         groups = observation['targetCoverage']

@@ -156,7 +156,7 @@ public static class GovernanceScopeGuardReducer
                 if (deletion is null || !Authorized(GovernanceGuardOperation.CommitDestructionStart) || Text(deletion.SealId) || !CanSeal(deletion)
                     || !HoldAllows(deletion, evidence) || !ValidBatch(command.Batch!, state.TenantId) || authorization!.ManifestDigest != command.Batch!.ManifestDigest
                     || command.Batch.BatchKind != "AcceptedSet" || command.Batch.BatchOrdinal != 0) { return Denied(); }
-                string sealId = Hash(new[] { state.TenantId, deletion.RequestId, deletion.PredicateDigest, "DestructionSealed" });
+                string sealId = DestructionSealId(state.TenantId, deletion.RequestId, deletion.Scope);
                 if (command.Batch.BatchId != BatchId(deletion.RequestId, sealId, command.Batch)) { return Denied(); }
                 ReplaceDeletion(deletion with { SealId = sealId, Batches = [Batch(command.Batch, "AwaitingAttestation")] }); reference = sealId;
                 break;
@@ -225,13 +225,19 @@ public static class GovernanceScopeGuardReducer
                     || !CapabilityMatches(command.Batch, deletion)) { return Denied(); }
                 ReplaceBatch(batch with { AttestationOrdinal = command.Batch.AttestationOrdinal, CapabilityKeyVersion = command.Batch.CapabilityKeyVersion, AttestationDigest = command.Batch.AttestationDigest,
                     IssueReceiptId = ReceiptId(state, command, intentDigest, "Committed", next), DispatchReceiptId = "", ProtectionOutcome = "ReplacementAwaitingActivation", Capability = command.Batch.Capability,
-                    DetachedJws = command.Batch.DetachedJws, SigningRequestId = command.Batch.SigningRequestId, IssuedGuardRevision = next, DispatchGuardRevision = 0 });
+                    DetachedJws = command.Batch.DetachedJws, SigningRequestId = command.Batch.SigningRequestId, IssuedGuardRevision = next, DispatchGuardRevision = 0, RejectedUnissuedReplacement = null });
                 break;
             case GovernanceGuardOperation.RecordProtectionOutcome:
                 batch = FindBatch();
                 if (deletion is null || batch is null || !ExactAttestation(batch, command.Batch!) || !Text(command.Batch!.ProtectionReceiptId) || command.Batch.ProtectionReceiptId != evidence.AuthorityReceiptId
                     || Terminal(batch)) { return Denied(); }
-                if (command.Batch.ProtectionOutcome == "Activated")
+                if (command.Batch.ProtectionOutcome == "UnissuedReplacementBlocked")
+                {
+                    if (batch.ProtectionOutcome != "ConsumptionBlocked:CapabilityKeyCompromise" || !UnissuedReplacementProof(state, batch, command.Batch, evidence)) { return Denied(); }
+                    ReplaceBatch(batch with { ProtectionReceiptId = command.Batch.ProtectionReceiptId, BlockSetRevision = command.Batch.BlockSetRevision,
+                        RejectedUnissuedReplacement = evidence.ProtectionBlockedReplacement });
+                }
+                else if (command.Batch.ProtectionOutcome == "Activated")
                 {
                     if (batch.ProtectionOutcome != "ReplacementAwaitingActivation" || !Text(batch.DispatchReceiptId) || command.Batch.BlockSetRevision < batch.BlockSetRevision
                         || command.Batch.BlockSetRevision != batch.BlockSetRevision && !ActivationProof(batch, command.Batch, evidence)
@@ -313,6 +319,13 @@ public static class GovernanceScopeGuardReducer
     /// <summary>Canonical technical scope digest used by the owning transition and installed request.</summary>
     public static string PredicateDigest(GovernanceScopeV1 scope)
     { ArgumentNullException.ThrowIfNull(scope); return ValidScope(scope, scope.TenantId) ? Hash(scope) : throw new ArgumentException("Unsupported canonical scope."); }
+    /// <summary>Deterministic original seal identity shared with preparation; actual authority still requires the conditional destruction-start commit.</summary>
+    public static string DestructionSealId(string tenantId, string requestId, GovernanceScopeV1 scope)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId); ArgumentException.ThrowIfNullOrWhiteSpace(requestId); ArgumentNullException.ThrowIfNull(scope);
+        if (scope.TenantId != tenantId) { throw new ArgumentException("Foreign seal scope.", nameof(scope)); }
+        return Hash(new[] { tenantId, requestId, PredicateDigest(scope), "DestructionSealed" });
+    }
     /// <summary>Canonical sorted target manifest digest; provider-neutral complete identities are retained.</summary>
     public static string ManifestDigest(IReadOnlyList<GovernanceProtectionTarget> targets)
     { ArgumentNullException.ThrowIfNull(targets); return DeletionBatchCapabilityIdentity.TargetManifestDigest(targets.Select(value => new ProtectionTarget(value.TenantId, value.AgentInteractionId, value.TargetProtectionKeyAlias)).ToArray()); }
@@ -426,6 +439,28 @@ public static class GovernanceScopeGuardReducer
             && outcome.OwnerRevision > 0 && outcome.KeyBlockSetRevision == phase.ExpectedKeyBlockSetRevision && outcome.ReceiptId == command.ProtectionReceiptId
             && outcome.BlockReason == DeletionConsumptionBlockReason.CapabilityKeyCompromise && outcome.BlockedKeyVersion == batch.CapabilityKeyVersion
             && outcome.RevocationRevision == phase.RevocationReceipt.Envelope.RevocationRevision && outcome.TargetReceipts.Count == 0;
+    }
+    private static bool UnissuedReplacementProof(TenantGovernanceGuardState state, GovernanceBatchState batch, GovernanceBatchCommand command, GovernanceGuardEvidence evidence)
+    {
+        var original = evidence.ProtectionBlockedReplacement; var phase = original?.Original; var outcome = original?.Outcome;
+        if (phase?.UnissuedProof is not { } refused || outcome is null || batch.Capability is not { } issued
+            || phase.CompromiseBlockReceiptId != batch.ProtectionReceiptId || phase.CommittedIssuedGuardRevision != 0
+            || phase.Capability.AttestationOrdinal != batch.AttestationOrdinal + 1 || phase.Capability.BatchId != batch.BatchId
+            || phase.Capability.ManifestDigest != batch.ManifestDigest || phase.Capability.DestructionSealId != issued.DestructionSealId
+            || phase.Capability.DeletionRequestId != issued.DeletionRequestId || phase.Capability.TenantId != state.TenantId
+            || phase.GuardReplacementReceiptId != refused.Refusal.ReceiptId || refused.Refusal.Status is not ("Blocked" or "Stale")
+            || refused.Transition.Batch?.Capability != phase.Capability || refused.Refusal.SigningRequestId != phase.SigningRequestId
+            || refused.CurrentGuardRevision != state.Revision || refused.CurrentGuardStateDigest != Hash(state)
+            || !state.CompromisedKeyVersions.Contains(phase.Capability.CapabilityKeyVersion, StringComparer.Ordinal)
+            || !state.Revocations.Any(value => Hash(value) == Hash(phase.RevocationReceipt))
+            || state.Receipts.Any(value => value.Status == "Committed" && value.SigningRequestId == phase.SigningRequestId)
+            || !phase.Targets.SequenceEqual(batch.Targets.Select(target => new ProtectionTarget(target.TenantId, target.AgentInteractionId, target.TargetProtectionKeyAlias)))
+            || outcome.Status != DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise || outcome.TenantId != state.TenantId
+            || outcome.BatchId != batch.BatchId || outcome.BlockedKeyVersion != phase.Capability.CapabilityKeyVersion || outcome.RevocationRevision != phase.RevocationReceipt.Envelope.RevocationRevision
+            || outcome.BlockReason != DeletionConsumptionBlockReason.CapabilityKeyCompromise || outcome.TargetReceipts.Count != 0
+            || outcome.KeyBlockSetRevision != phase.ExpectedKeyBlockSetRevision || outcome.KeyBlockSetRevision != command.BlockSetRevision
+            || outcome.ReceiptId != command.ProtectionReceiptId || outcome.OwnerRevision <= 0) { return false; }
+        return outcome.ReceiptId == DeletionConsumptionIdentity.Digest(new[] { phase.OperationId, Hash(phase), "blocked-unissued-replacement" });
     }
     private static bool OriginalTerminalProof(GovernanceBatchState batch, GovernanceBatchCommand command, GovernanceGuardEvidence evidence)
     {

@@ -66,7 +66,7 @@ internal sealed class GuardedTransactionFixture
                     var cell = Stored.TryGetValue(operation.Key, out var bytes) ? JsonSerializer.Deserialize<GuardedStateCell>(bytes) : null;
                     if (cell?.Revision.ToString(CultureInfo.InvariantCulture) != operation.ETag) { throw new InvalidOperationException("Synthetic atomic ETag compare lost."); }
                 }
-                foreach (var operation in operations) { Stored[operation.Key] = operation.Value.ToArray(); }
+                foreach (var operation in operations) { Stored[operation.Key] = operation.Value?.ToArray() ?? throw new InvalidOperationException("Synthetic null transaction value."); }
                 CommittedTransactions++;
             }
             if (LoseAcknowledgement) { throw new IOException("Controlled commit succeeded before acknowledgement loss."); }

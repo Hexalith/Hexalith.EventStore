@@ -313,6 +313,20 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
             DeletionBatchCapabilityV1 capability = captured.Capability;
             TenantGovernanceGuardState? state = await ReadSnapshotAsync(capability.TenantId, cancellationToken).ConfigureAwait(false);
             GovernanceBatchState? batch = state is null ? null : SingleBatch(state, capability.BatchId);
+            if (captured.UnissuedProof is { } refused)
+            {
+                if (state is null || batch?.Capability is not { } issued || refused.CurrentGuardRevision != state.Revision
+                    || refused.CurrentGuardStateDigest != DeletionConsumptionIdentity.Digest(state) || batch.ProtectionOutcome != "ConsumptionBlocked:CapabilityKeyCompromise"
+                    || batch.ProtectionReceiptId != captured.CompromiseBlockReceiptId || capability.AttestationOrdinal != checked(batch.AttestationOrdinal + 1)
+                    || issued.TenantId != capability.TenantId || issued.DeletionRequestId != capability.DeletionRequestId || issued.DestructionSealId != capability.DestructionSealId
+                    || issued.BatchId != capability.BatchId || issued.ManifestDigest != capability.ManifestDigest || issued.BatchKind != capability.BatchKind || issued.BatchOrdinal != capability.BatchOrdinal
+                    || issued.GuardStreamId != capability.GuardStreamId || !SameTargets(batch.Targets, captured.Targets)
+                    || !state.CompromisedKeyVersions.Contains(capability.CapabilityKeyVersion, StringComparer.Ordinal)
+                    || !state.Revocations.Any(value => DeletionConsumptionIdentity.Digest(value) == DeletionConsumptionIdentity.Digest(captured.RevocationReceipt))
+                    || state.Receipts.Any(value => value.Status == "Committed" && (value.Capability == capability || value.SigningRequestId == captured.SigningRequestId))) { return false; }
+                return await _journal.VerifyTransitionAsync(Proof("blocked-replacement", capability.TenantId, capability.BatchId,
+                    state.Revision, DeletionConsumptionIdentity.Digest(captured)), cancellationToken).ConfigureAwait(false);
+            }
             if (state is null || batch is null
                 || !IssuedReplacement(state, batch, capability, captured.DetachedJws, captured.SigningRequestId,
                     captured.CommittedIssuedGuardRevision, captured.Targets)

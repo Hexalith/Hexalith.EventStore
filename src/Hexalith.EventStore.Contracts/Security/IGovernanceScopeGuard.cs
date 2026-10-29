@@ -9,4 +9,7 @@ public interface IGovernanceScopeGuard
     Task<GovernanceProtocolReceipt?> ExecuteAsync(GovernanceGuardTransition transition, IReadOnlyList<GuardedStateMutation> targets, CancellationToken cancellationToken = default);
     /// <summary>Reads exact irreversible original no-issue and current healthy successor basis; unknown or absence never proves it.</summary>
     Task<GovernanceSigningRecovery?> ReadNoIssueAsync(DeletionBatchCapabilityV1 payload, string signingRequestId, string detachedJwsDigest, CancellationToken cancellationToken = default);
+    /// <summary>Reads an exact independently retained refused replacement-issue attempt. Absence/unknown is never evidence of non-issue.</summary>
+    Task<GovernanceRejectedIssueOriginal?> ReadRejectedIssueAsync(DeletionBatchCapabilityV1 payload, string signingRequestId, string detachedJwsDigest, CancellationToken cancellationToken = default)
+        => Task.FromResult<GovernanceRejectedIssueOriginal?>(null);
 }

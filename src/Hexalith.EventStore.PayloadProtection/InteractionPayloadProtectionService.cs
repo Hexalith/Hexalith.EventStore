@@ -33,7 +33,7 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
         ArgumentNullException.ThrowIfNull(clock);
         _registry = registry;
         _bindings = bindings;
-        _protector = new(registry, keys, clock);
+        _protector = new(registry, keys, clock, typedConflicts: true);
         _snapshotEntries = new(registry, bindings, _protector);
     }
 
@@ -150,12 +150,15 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
     {
         PayloadUnprotectionOutcome outcome = await TryUnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes,
             serializationFormat, metadata, occurrenceContext, cancellationToken).ConfigureAwait(false);
-        if (outcome.UnreadableReason != UnreadableProtectedDataReason.KeyInvalidatedOrDeleted) { return new(outcome); }
+        if (outcome.IsReadable) { return new(outcome); }
         try
         {
-            InteractionProtectionBinding? binding = await AuthenticateStoredAsync(identity, occurrenceContext, payloadBytes,
-                serializationFormat, metadata, cancellationToken).ConfigureAwait(false);
+            InteractionProtectionBinding? binding = outcome.UnreadableReason == UnreadableProtectedDataReason.KeyInvalidatedOrDeleted
+                ? await AuthenticateStoredAsync(identity, occurrenceContext, payloadBytes, serializationFormat, metadata, cancellationToken).ConfigureAwait(false) : null;
+            if (binding is null && serializationFormat == "json+pdenc-v2" && metadata is { Scheme: "hexalith-pdenc-v2", KeyAlias: { } reference })
+            { binding = await _bindings.ResolveErasedStoredAsync(identity, occurrenceContext, payloadBytes, reference, cancellationToken).ConfigureAwait(false); }
             if (binding is null || !await _bindings.IsIrreversiblyErasedAsync(binding, cancellationToken).ConfigureAwait(false)) { return new(outcome); }
+            if (ReadTarget(payloadBytes) != binding.Identity.Target) { return new(outcome); }
             using BoundedJsonDocument document = BoundedJsonDocument.Inspect(payloadBytes, cancellationToken);
             BoundedJsonNode node = document.Resolve(ContentPath, cancellationToken: cancellationToken);
             byte[] erased = document.Rewrite([new JsonReplacement(node.Start, node.Length, "{\"State\":\"Erased\"}"u8.ToArray())], cancellationToken);

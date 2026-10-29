@@ -8,6 +8,7 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="PayloadBytes">The transformed payload bytes.</param>
 /// <param name="SerializationFormat">The serialization format associated with the transformed payload.</param>
 /// <param name="Metadata">Provider-neutral protection metadata describing how <paramref name="PayloadBytes"/> was produced.</param>
+[method: System.Text.Json.Serialization.JsonConstructor]
 public sealed record PayloadProtectionResult(
     byte[] PayloadBytes,
     string SerializationFormat,

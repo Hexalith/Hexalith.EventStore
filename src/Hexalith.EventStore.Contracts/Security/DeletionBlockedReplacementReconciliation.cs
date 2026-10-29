@@ -8,4 +8,9 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="Targets">Unchanged exact immutable manifest.</param><param name="RevocationReceipt">Exact independently retained successor-key revocation.</param>
 public sealed record DeletionBlockedReplacementReconciliation(string OperationId, string CompromiseBlockReceiptId, long ExpectedKeyBlockSetRevision,
     string GuardReplacementReceiptId, DeletionBatchCapabilityV1 Capability, string DetachedJws, string SigningRequestId,
-    long CommittedIssuedGuardRevision, IReadOnlyList<ProtectionTarget> Targets, DeletionCapabilityRevocationReceipt RevocationReceipt);
+    long CommittedIssuedGuardRevision, IReadOnlyList<ProtectionTarget> Targets, DeletionCapabilityRevocationReceipt RevocationReceipt)
+{
+    /// <summary>Discriminates a rejected unissued attempt. Its committed issue revision is zero and its guard reference is the exact refusal receipt; the issued attestation/ordinal remains unchanged.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public GovernanceRejectedIssueOriginal? UnissuedProof { get; init; }
+}

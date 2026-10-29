@@ -13,7 +13,6 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
     InteractionOccurrenceProtector protector)
 {
     internal const string Format = "json+pdenc-v2-entries";
-    private static readonly JsonSerializerOptions Transport = new() { PropertyNameCaseInsensitive = true, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
     internal static bool IsMixed(object state) => state is ProtectedSnapshotEntriesV2 || state is JsonElement element
         && element.ValueKind == JsonValueKind.Object && (element.TryGetProperty("Format", out var format) || element.TryGetProperty("format", out format))
         && format.ValueKind == JsonValueKind.String && format.GetString() == Format;
@@ -26,13 +25,13 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
         for (int index = 0; index < layout.Entries.Length; index++)
         {
             var binding = resolved[index]; var entry = layout.Entries[index];
-            byte[] fragment = JsonSerializer.SerializeToUtf8Bytes(new { ContainerDigest = layout.ContainerDigest, Value = layout.Values[index] });
+            byte[] fragment = JsonSerializer.SerializeToUtf8Bytes(new SnapshotEntryFragment(layout.ContainerDigest, layout.Values[index]), InteractionSnapshotJsonContext.Default.SnapshotEntryFragment);
             try
             {
                 var sealedValue = await protector.ProtectSnapshotAsync(fragment, binding.Identity, binding.DigestKeyVersion,
                     binding.ReservationAttemptOrdinal, binding.KeyReference, token).ConfigureAwait(false) ?? throw new InvalidOperationException("ProtectionAuthorityUnavailable");
                 if (sealedValue.KeyReference != binding.KeyReference || sealedValue.ProtectedPathCount != 1) { throw new PayloadProtectionFormatException(); }
-                var snapshot = JsonSerializer.Deserialize<ProtectedSnapshotPayloadV2>(sealedValue.PayloadBytes) ?? throw new PayloadProtectionFormatException();
+                var snapshot = JsonSerializer.Deserialize(sealedValue.PayloadBytes, InteractionSnapshotJsonContext.Default.ProtectedSnapshotPayloadV2) ?? throw new PayloadProtectionFormatException();
                 entries.Add(new(entry.Path, entry.Target, binding.KeyReference, snapshot));
                 completions.Add(Completion(binding));
             }
@@ -51,7 +50,8 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
     {
         try
         {
-            var carrier = state as ProtectedSnapshotEntriesV2 ?? ((JsonElement)state).Deserialize<ProtectedSnapshotEntriesV2>(Transport) ?? throw new PayloadProtectionFormatException();
+            if (state is JsonElement transport) { RejectCaseDuplicates(transport, 0); }
+            var carrier = state as ProtectedSnapshotEntriesV2 ?? ((JsonElement)state).Deserialize(InteractionSnapshotJsonContext.Default.ProtectedSnapshotEntriesV2) ?? throw new PayloadProtectionFormatException();
             if (carrier.Format != Format || carrier.SnapshotTypeId != parent.PayloadTypeId || carrier.Entries is not { Count: > 1 and <= 1000 }
                 || carrier.SkeletonBytes is null || metadata is not { State: PayloadProtectionState.Protected, Scheme: "hexalith-pdenc-v2" })
             { return Unreadable(metadata); }
@@ -64,18 +64,26 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
             for (int index = 0; index < resolved.Count; index++)
             {
                 var binding = resolved[index]; var entry = carrier.Entries[index];
+                var lost = await bindings.ResolveErasedStoredAsync(owner, InteractionSnapshotEntries.EntryOccurrence(parent, entry.Path),
+                    JsonSerializer.SerializeToUtf8Bytes(entry.Protected, InteractionSnapshotJsonContext.Default.ProtectedSnapshotPayloadV2), entry.KeyReference, token).ConfigureAwait(false);
+                if (lost is not null)
+                {
+                    if (lost != binding || !replay || !await bindings.IsIrreversiblyErasedAsync(binding, token).ConfigureAwait(false))
+                    { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted, metadata); }
+                    SnapshotEntryLayout.Replace(restored, entry.Path, JsonSerializer.SerializeToNode(new Erased(), InteractionSnapshotJsonContext.Default.Erased)); continue;
+                }
                 var original = await registry.LookupAsync(binding.Identity, token).ConfigureAwait(false);
                 if (entry.KeyReference != binding.KeyReference || original.Status != InteractionOccurrenceReservationStatus.Sealed
                     || original.Record is not { WriterState: InteractionOccurrenceWriterState.Active, Sealed: { } sealedValue } retained
                     || retained.Request.Identity != binding.Identity || retained.KeyReference != binding.KeyReference || retained.WriterProofId != binding.OperationId
                     || sealedValue.KeyReference != binding.KeyReference || sealedValue.SerializationFormat != "json+pdenc-v2"
-                    || JsonSerializer.Deserialize<ProtectedSnapshotPayloadV2>(sealedValue.PayloadBytes) != entry.Protected) { return Unreadable(metadata); }
+                    || JsonSerializer.Deserialize(sealedValue.PayloadBytes, InteractionSnapshotJsonContext.Default.ProtectedSnapshotPayloadV2) != entry.Protected) { return Unreadable(metadata); }
                 var opened = await protector.UnprotectAsync(binding.Identity, token).ConfigureAwait(false);
                 if (!opened.IsReadable)
                 {
                     if (!replay || !await bindings.IsIrreversiblyErasedAsync(binding, token).ConfigureAwait(false))
                     { return SnapshotUnprotectionOutcome.Unreadable(opened.UnreadableReason ?? UnreadableProtectedDataReason.ProviderUnavailable, metadata); }
-                    SnapshotEntryLayout.Replace(restored, entry.Path, JsonSerializer.SerializeToNode(new Erased())); continue;
+                    SnapshotEntryLayout.Replace(restored, entry.Path, JsonSerializer.SerializeToNode(new Erased(), InteractionSnapshotJsonContext.Default.Erased)); continue;
                 }
                 try
                 {
@@ -85,7 +93,7 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
                 }
                 finally { CryptographicOperations.ZeroMemory(opened.PayloadBytes!); }
             }
-            byte[] clear = JsonSerializer.SerializeToUtf8Bytes(restored);
+            byte[] clear = JsonSerializer.SerializeToUtf8Bytes(restored, InteractionSnapshotJsonContext.Default.JsonNode);
             try { return SnapshotUnprotectionOutcome.Readable(JsonSerializer.Deserialize(clear, type) ?? throw new PayloadProtectionFormatException(), metadata); }
             finally { CryptographicOperations.ZeroMemory(clear); }
         }
@@ -122,6 +130,17 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
     }
     private static PayloadProtectionCompletionContext Completion(InteractionProtectionBinding binding) => new(binding.Identity.Owner,
         new(binding.Identity.Sequence, binding.Identity.Kind, binding.Identity.PayloadTypeId), binding.OperationId, binding.KeyReference, 1, binding.LifecycleEpoch);
+    private static void RejectCaseDuplicates(JsonElement element, int depth)
+    {
+        if (depth > 64) { throw new PayloadProtectionFormatException(); }
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var property in element.EnumerateObject())
+            { if (!names.Add(property.Name)) { throw new PayloadProtectionFormatException(); } RejectCaseDuplicates(property.Value, depth + 1); }
+        }
+        else if (element.ValueKind == JsonValueKind.Array) { foreach (var child in element.EnumerateArray()) { RejectCaseDuplicates(child, depth + 1); } }
+    }
     private static SnapshotUnprotectionOutcome Unreadable(EventStorePayloadProtectionMetadata? metadata)
         => SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata);
 }

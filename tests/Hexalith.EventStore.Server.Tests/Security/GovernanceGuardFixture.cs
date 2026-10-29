@@ -51,44 +51,44 @@ internal sealed class GovernanceGuardFixture
         return batch with { BatchId = GovernanceScopeGuardReducer.BatchId("deletion-a", seal, batch) };
     }
     internal async Task<GovernanceProtocolReceipt> Apply(GovernanceGuardTransition command, IReadOnlyList<GuardedStateMutation>? targets = null)
-        => (await Owner.ExecuteAsync(command, targets ?? [], TestContext.Current.CancellationToken))!;
+        => (await Owner.ExecuteAsync(command, targets ?? [], TestContext.Current.CancellationToken).ConfigureAwait(false))!;
     internal async Task PrepareBoundAsync(bool seal = false, DirectoryWriteKind kind = DirectoryWriteKind.ContentAppend)
     {
-        OriginalAcceptance = await Apply(Command(GovernanceGuardOperation.AppendWrite, write: Facts(kind)), [new("original-source", 0, GuardedTransactionFixture.Hash([]), "sealed-original"u8.ToArray())]);
+        OriginalAcceptance = await Apply(Command(GovernanceGuardOperation.AppendWrite, write: Facts(kind)), [new("original-source", 0, GuardedTransactionFixture.Hash([]), "sealed-original"u8.ToArray())]).ConfigureAwait(false);
         _acceptedResources["resource-b"] = OriginalAcceptance;
         AppendResource = "resource-a";
-        _acceptedResources["resource-a"] = await Apply(Command(GovernanceGuardOperation.AppendWrite, write: Facts(kind)), [new("original-source-a", 0, GuardedTransactionFixture.Hash([]), "sealed-original-a"u8.ToArray())]);
+        _acceptedResources["resource-a"] = await Apply(Command(GovernanceGuardOperation.AppendWrite, write: Facts(kind)), [new("original-source-a", 0, GuardedTransactionFixture.Hash([]), "sealed-original-a"u8.ToArray())]).ConfigureAwait(false);
         AppendResource = "resource-b";
-        (await Apply(Command(GovernanceGuardOperation.AuthorizeAdmissionFence, scope: Scope, authorization: "admission-a"))).Status.ShouldBe("Committed");
-        (await Apply(Command(GovernanceGuardOperation.CommitAdmissionFence, scope: Scope, authorization: "admission-a"))).Status.ShouldBe("Committed");
-        await EffectiveAsync(); await BindAsync("binding-a", "cut-a", "token-a");
-        if (seal) { await SealAsync(); }
+        (await Apply(Command(GovernanceGuardOperation.AuthorizeAdmissionFence, scope: Scope, authorization: "admission-a")).ConfigureAwait(false)).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.CommitAdmissionFence, scope: Scope, authorization: "admission-a")).ConfigureAwait(false)).Status.ShouldBe("Committed");
+        await EffectiveAsync().ConfigureAwait(false); await BindAsync("binding-a", "cut-a", "token-a").ConfigureAwait(false);
+        if (seal) { await SealAsync().ConfigureAwait(false); }
     }
     internal async Task EffectiveAsync()
     {
         foreach (string owner in new[] { "directory", "interaction" })
-        { (await Apply(Command(GovernanceGuardOperation.RecordOwnerCycleEffective, ordinal: Ordinal(State.Deletions.Single().Ordinal, owner: owner)))).Status.ShouldBe("Committed"); }
+        { (await Apply(Command(GovernanceGuardOperation.RecordOwnerCycleEffective, ordinal: Ordinal(State.Deletions.Single().Ordinal, owner: owner))).ConfigureAwait(false)).Status.ShouldBe("Committed"); }
     }
     internal async Task BindAsync(string authorization, string cut, string token)
     {
         var ordinal = Ordinal(State.Deletions.Single().Ordinal, cut, token);
-        (await Apply(Command(GovernanceGuardOperation.AuthorizeContentBinding, ordinal: ordinal, authorization: authorization))).Status.ShouldBe("Committed");
-        (await Apply(Command(GovernanceGuardOperation.CommitContentBinding, ordinal: ordinal, authorization: authorization))).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.AuthorizeContentBinding, ordinal: ordinal, authorization: authorization)).ConfigureAwait(false)).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.CommitContentBinding, ordinal: ordinal, authorization: authorization)).ConfigureAwait(false)).Status.ShouldBe("Committed");
     }
     internal async Task SealAsync()
     {
         var batch = Batch();
-        (await Apply(Command(GovernanceGuardOperation.AuthorizeDestructionStart, batch: batch, authorization: "seal-a"))).Status.ShouldBe("Committed");
-        (await Apply(Command(GovernanceGuardOperation.CommitDestructionStart, batch: batch, authorization: "seal-a"))).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.AuthorizeDestructionStart, batch: batch, authorization: "seal-a")).ConfigureAwait(false)).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.CommitDestructionStart, batch: batch, authorization: "seal-a")).ConfigureAwait(false)).Status.ShouldBe("Committed");
     }
     internal async Task IssueConsumeAsync(GovernanceBatchCommand batch, string suffix)
     {
         batch = Attest(batch);
-        (await Apply(Command(GovernanceGuardOperation.RecordBatchIssued, batch: batch))).Status.ShouldBe("Committed");
-        (await Apply(Command(GovernanceGuardOperation.AuthorizeDispatch, batch: batch, authorization: "dispatch-" + suffix))).Status.ShouldBe("Committed");
-        (await Apply(Command(GovernanceGuardOperation.CommitDispatch, batch: batch, authorization: "dispatch-" + suffix))).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.RecordBatchIssued, batch: batch)).ConfigureAwait(false)).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.AuthorizeDispatch, batch: batch, authorization: "dispatch-" + suffix)).ConfigureAwait(false)).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.CommitDispatch, batch: batch, authorization: "dispatch-" + suffix)).ConfigureAwait(false)).Status.ShouldBe("Committed");
         batch = batch with { ProtectionOutcome = "Consumed", ProtectionReceiptId = "protection-" + suffix, TargetReceiptIds = batch.Targets.Select((_, index) => "target-" + suffix + index).ToArray() };
-        (await Apply(Command(GovernanceGuardOperation.RecordProtectionOutcome, batch: batch))).Status.ShouldBe("Committed");
+        (await Apply(Command(GovernanceGuardOperation.RecordProtectionOutcome, batch: batch)).ConfigureAwait(false)).Status.ShouldBe("Committed");
     }
     internal GovernanceBatchCommand Attest(GovernanceBatchCommand batch)
     {

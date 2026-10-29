@@ -28,4 +28,7 @@ public sealed record GovernanceBatchState(string BatchId, string Kind, long Ordi
     public long IssuedGuardRevision { get; init; }
     /// <summary>Actual successful exact active-attestation dispatch revision.</summary>
     public long DispatchGuardRevision { get; init; }
+    /// <summary>Exact rejected unissued successor and owner block. This optional phase never replaces Capability, issue/dispatch receipts or AttestationOrdinal.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public DeletionBlockedReplacementResult? RejectedUnissuedReplacement { get; init; }
 }

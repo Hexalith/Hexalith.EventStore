@@ -8,7 +8,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Private occurrence-safe candidate composition around the unchanged normative v2 core.
 /// It grants no production profile/credential authority; registry, exclusive invocation lease and exact root/DigestKey custody are all mandatory.</summary>
-internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegistry registry, IInteractionOccurrenceKeyProvider keys, TimeProvider clock)
+internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegistry registry, IInteractionOccurrenceKeyProvider keys, TimeProvider clock, bool typedConflicts = false)
 {
     private readonly PayloadProtectionCore _core = new();
 
@@ -95,6 +95,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
             string fingerprint = Fingerprint(digest!.Bytes, identity, manifest.Encoded, owned);
             var request = new InteractionOccurrenceRequest(identity, digestVersion, fingerprint, attempt, proposedReference);
             var reserved = await AwaitAsync(() => registry.ReserveAsync(request, CancellationToken.None), start, token).ConfigureAwait(false);
+            if (typedConflicts && reserved.Status == InteractionOccurrenceReservationStatus.Conflict) { throw new PayloadProtectionOccurrenceConflictException(); }
             var record = reserved.Record;
             if (record is null || record.Request.Identity != identity || record.Request.DigestKeyVersion != digestVersion
                 || record.Request.ContentIntentHmac != fingerprint || record.Request.ReservationAttemptOrdinal != attempt

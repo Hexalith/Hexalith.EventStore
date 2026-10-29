@@ -23,6 +23,6 @@ public static class InteractionSnapshotEntries
         if (parent.PayloadKind != PayloadProtectionPayloadKind.Snapshot || !path.StartsWith("/", StringComparison.Ordinal))
         { throw new ArgumentException("Exact bounded snapshot parent and value path required."); }
         AadCodec.ValidateSnapshotTypeId(parent.PayloadTypeId);
-        return parent with { PayloadTypeId = "hx-snapshot-v1:entry-" + Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new { parent.PayloadTypeId, path }))) };
+        return parent with { PayloadTypeId = "hx-snapshot-v1:entry-" + Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new SnapshotEntryOccurrenceIdentity(parent.PayloadTypeId, path), InteractionSnapshotJsonContext.Default.SnapshotEntryOccurrenceIdentity))) };
     }
 }

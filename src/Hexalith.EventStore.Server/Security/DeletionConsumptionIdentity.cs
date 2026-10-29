@@ -59,7 +59,8 @@ public static class DeletionConsumptionIdentity
     {
         ArgumentNullException.ThrowIfNull(request); var c = request.Capability;
         if (request.SigningRequestId != DeletionBatchCapabilityIdentity.SigningRequestId(c) || request.DetachedJws is not { Length: > 0 and <= 16384 }
-            || request.CommittedIssuedGuardRevision <= 0 || request.ExpectedKeyBlockSetRevision <= 0 || request.Targets is null || request.Targets.Count is < 1 or > 1000)
+            || (request.UnissuedProof is null ? request.CommittedIssuedGuardRevision <= 0 : request.CommittedIssuedGuardRevision != 0)
+            || request.ExpectedKeyBlockSetRevision <= 0 || request.Targets is null || request.Targets.Count is < 1 or > 1000)
         { throw new ArgumentException("Malformed blocked replacement."); }
         foreach (string text in new[] { request.OperationId, request.CompromiseBlockReceiptId, request.GuardReplacementReceiptId }) { Text(text); }
         var targets = new List<ProtectionTarget>();
@@ -75,7 +76,23 @@ public static class DeletionConsumptionIdentity
             || revocation.ReceiptId != Digest(revocation.Envelope) || revocation.KeyBlockSetRevision <= 0 || revocation.OwnerRevision <= 0
             || revocation.KeyBlockSetRevision > request.ExpectedKeyBlockSetRevision || revocation.AffectedBatchIds.Count > 1000)
         { throw new ArgumentException("Changed blocked replacement revocation."); }
-        return request with { Targets = targets.AsReadOnly(), RevocationReceipt = revocation with { AffectedBatchIds = Array.AsReadOnly(revocation.AffectedBatchIds.ToArray()) } };
+        GovernanceRejectedIssueOriginal? unissued = null;
+        if (request.UnissuedProof is { } refusal)
+        {
+            unissued = JsonSerializer.Deserialize<GovernanceRejectedIssueOriginal>(JsonSerializer.SerializeToUtf8Bytes(refusal))!;
+            var attempt = unissued.Transition; var result = unissued.Refusal; var batch = attempt.Batch;
+            if (attempt.Operation != GovernanceGuardOperation.ReplaceAttestation || attempt.TenantId != c.TenantId || attempt.DeletionRequestId != c.DeletionRequestId
+                || attempt.Scope is not null || attempt.Write is not null || attempt.Repair is not null || attempt.Ordinal is not null || attempt.Hold is not null
+                || attempt.BridgeOriginal is not null || attempt.RevocationReceipt is not null || batch?.Capability != c || batch.DetachedJws != request.DetachedJws
+                || batch.SigningRequestId != request.SigningRequestId || result.OperationId != attempt.OperationId || result.Status is not ("Blocked" or "Stale")
+                || result.Capability != c || result.SigningRequestId != request.SigningRequestId || result.DetachedJwsDigest != Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.DetachedJws)))
+                || result.ReceiptId != request.GuardReplacementReceiptId || unissued.TargetMutationDigest != Digest(Array.Empty<GuardedStateMutation>())
+                || result.IntentDigest != Digest(new { Transition = attempt, TargetMutationDigest = unissued.TargetMutationDigest })
+                || unissued.CurrentGuardRevision < result.GuardHighWater || unissued.CurrentGuardRevision <= 0 || unissued.CurrentGuardStateDigest is not { Length: 64 }
+                || unissued.CurrentGuardStateBytes is not { Length: > 0 and <= 8388608 } stateBytes || Convert.ToHexString(SHA256.HashData(stateBytes)) != unissued.CurrentGuardStateDigest)
+            { throw new ArgumentException("Malformed rejected unissued replacement proof."); }
+        }
+        return request with { Targets = targets.AsReadOnly(), RevocationReceipt = revocation with { AffectedBatchIds = Array.AsReadOnly(revocation.AffectedBatchIds.ToArray()) }, UnissuedProof = unissued };
     }
     internal static bool SameBatch(DeletionBatchConsumptionRequest original, DeletionBlockedReplacementReconciliation replacement)
     {
