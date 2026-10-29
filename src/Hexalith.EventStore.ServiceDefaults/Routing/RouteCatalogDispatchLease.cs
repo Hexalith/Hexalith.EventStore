@@ -38,10 +38,11 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
         lock (_stateGate) _retained = true;
     }
 
-    /// <summary>Awaits remote execution and retains this fence if transport completion cannot prove quiescence.</summary>
-    public async Task<T> InvokeRemoteAsync<T>(Func<Task<T>> invoke)
+    /// <summary>Awaits remote execution and retains this fence if transport completion cannot prove quiescence. A token already cancelled on entry throws before enrollment and retains nothing.</summary>
+    public async Task<T> InvokeRemoteAsync<T>(Func<Task<T>> invoke, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(invoke);
+        cancellationToken.ThrowIfCancellationRequested();
         RouteCatalogDispatchLease[] leases = [this];
         EnrollRemote(leases);
         try { return await invoke().ConfigureAwait(false); }

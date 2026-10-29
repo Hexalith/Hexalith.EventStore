@@ -1,6 +1,6 @@
 namespace Hexalith.EventStore.ServiceDefaults.Routing;
 
-/// <summary>Null-safe lease scope that tracks remote calls without treating local cancellation as ambiguity.</summary>
+/// <summary>Null-safe lease scope that tracks remote calls. Cancellation before a remote call starts retains nothing; once a call is in flight, any failure or cancellation retains the fence.</summary>
 public readonly struct RouteCatalogLeaseReleaser : IAsyncDisposable
 {
     private readonly RouteCatalogDispatchLease? _lease;

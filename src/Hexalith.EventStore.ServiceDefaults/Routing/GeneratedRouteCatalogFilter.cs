@@ -70,7 +70,7 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
             string domain = Read(metadata.ContractType, "Domain");
             string discriminator = Read(metadata.ContractType, metadata.Kind == "command" ? "CommandType" : "QueryType");
             var selected = lease.Snapshot.Resolve(metadata.Kind, tenant, domain, discriminator);
-            RouteContractDeclaration[] compiled = [.. CompiledRouteCatalogDeclarations.Read([metadata.ContractType.Assembly])
+            RouteContractDeclaration[] compiled = [.. CompiledDeclarations.GetOrAdd(metadata.ContractType.Assembly, static assembly => CompiledRouteCatalogDeclarations.Read([assembly]))
                 .Where(d => d.Kind == metadata.Kind && d.Domain == domain && CommandDiscriminatorCompatibility.Matches(d, discriminator))];
             if (compiled.Length != 1 || RouteCatalogCodec.ComputeDeclarationDigest(compiled[0]) != selected.Target.DeclarationDigest)
                 throw new RouteCatalogUnavailableException("The generated host's full compiled declaration digest differs from committed authority.");
@@ -93,6 +93,8 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
         => result is ChallengeResult or ForbidResult
             || result is IStatusCodeActionResult { StatusCode: >= 400 };
 
+    // Compiled owner declarations are fixed per assembly, so reflection and digesting run once.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Assembly, IReadOnlyList<RouteContractDeclaration>> CompiledDeclarations = new();
     private static readonly object LeaseKey = new();
     private static readonly object MetadataKey = new();
     private static readonly object LoggerKey = new();

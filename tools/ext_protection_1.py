@@ -1090,6 +1090,65 @@ def evaluate(observation, case, targets, canary, commit, binary_sha, capability_
     budget.remaining()
 
 
+def snapshot_record_envelopes(protected, target):
+    """Keep whole-state V2 compatibility; validate complete mixed-root geometry and unchanged per-entry V2 envelopes."""
+    if protected.get('Format') == 'json+pdenc-v2':
+        require(protected.get('SnapshotTypeId'), 'SNAPSHOT_ENVELOPE_INVALID')
+        return [protected['Envelope']]
+    require(set(protected) == {'Format', 'SnapshotTypeId', 'SkeletonBytes', 'Entries'}
+            and protected['Format'] == 'json+pdenc-v2-entries', 'SNAPSHOT_ENVELOPE_INVALID')
+    parent = protected['SnapshotTypeId']
+    require(isinstance(parent, str) and re.fullmatch(r'hx-snapshot-v1:[a-z0-9]+(?:-[a-z0-9]+)*', parent)
+            and len(parent) <= 128, 'SNAPSHOT_ENVELOPE_INVALID')
+    raw = base64.b64decode(protected['SkeletonBytes'], validate=True)
+    require(raw and len(raw) <= 1048576 and base64.b64encode(raw).decode() == protected['SkeletonBytes'], 'SNAPSHOT_SKELETON_INVALID')
+    skeleton = strict_json(raw)
+    geometry = []
+    def visit(node, path=''):
+        if isinstance(node, list):
+            for index, child in enumerate(node):
+                visit(child, path + '/' + str(index))
+        elif isinstance(node, dict):
+            addressed = node.get('Target')
+            if isinstance(addressed, dict) and 'TargetProtectionKeyAlias' in addressed and 'Value' in node:
+                require(set(node) == {'Target', 'Value'} and node['Value'] is None
+                        and set(addressed) == {'TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias'}
+                        and addressed['TenantId'] == target['TenantId'], 'SNAPSHOT_SKELETON_INVALID')
+                for value in addressed.values():
+                    identity_text(value, 'SNAPSHOT_TARGET_INVALID', byte_bound=True)
+                geometry.append((path + '/Value', addressed))
+            else:
+                for key, child in node.items():
+                    require(key.lower() != 'protectedcontent' or key == 'ProtectedContent', 'SNAPSHOT_SKELETON_INVALID')
+                    visit(child, path + '/' + key.replace('~', '~0').replace('/', '~1'))
+    visit(skeleton)
+    entries = protected['Entries']
+    require(isinstance(entries, list) and 2 <= len(entries) <= 1000 and len(entries) == len(geometry), 'SNAPSHOT_ENTRY_MANIFEST_INVALID')
+    found, paths = [], set()
+    for entry, (path, addressed) in zip(entries, geometry):
+        require(isinstance(entry, dict) and set(entry) == {'Path', 'Target', 'KeyReference', 'Protected'}
+                and entry['Path'] == path and path not in paths and len(path.encode()) <= 2048 and entry['Target'] == addressed
+                and isinstance(entry['KeyReference'], str) and re.fullmatch(r'[0-7][0-9A-HJKMNP-TV-Z]{25}', entry['KeyReference']), 'SNAPSHOT_ENTRY_MANIFEST_INVALID')
+        paths.add(path)
+        sealed = entry['Protected']
+        child_type = 'hx-snapshot-v1:entry-' + hashlib.sha256(native_json_bytes({'PayloadTypeId': parent, 'path': path})).hexdigest()
+        require(isinstance(sealed, dict) and set(sealed) == {'Format', 'SnapshotTypeId', 'Envelope'}
+                and sealed['Format'] == 'json+pdenc-v2' and sealed['SnapshotTypeId'] == child_type, 'SNAPSHOT_ENTRY_ENVELOPE_INVALID')
+        encoded = sealed['Envelope']
+        require(isinstance(encoded, str), 'SNAPSHOT_ENTRY_ENVELOPE_INVALID')
+        envelope = decode_base64url(encoded)
+        require(83 <= len(envelope) <= 1048658 and envelope[:8] == b'HXP2\x02\x01\x01\x01'
+                and int.from_bytes(envelope[8:10], 'big') == 28 and int.from_bytes(envelope[10:12], 'big') == 26
+                and int.from_bytes(envelope[12:16], 'big') > 0 and int.from_bytes(envelope[16:20], 'big') == 0
+                and envelope[20:24] == bytes((12, 16, 0, 0)) and 0 < int.from_bytes(envelope[24:28], 'big') <= 1048576
+                and len(envelope) == 82 + int.from_bytes(envelope[24:28], 'big')
+                and envelope[28:54] == entry['KeyReference'].encode('ascii'), 'PROTECTED_ENVELOPE_INVALID')
+        if addressed == target:
+            found.append(encoded)
+    require(found, 'SNAPSHOT_TARGET_PROOF_MISSING')
+    return found
+
+
 def _evaluate(observation, case, targets, canary, commit, binary_sha, capability_trust, role_configs, budget):
     """Assert raw persisted state and ordered receipts; no aggregate pass booleans."""
     require(observation['engineSourceRevision'] == commit and observation['engineBinarySha256'] == binary_sha, 'ENGINE_IDENTITY_MISMATCH')
@@ -1114,10 +1173,10 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
             require(content['Target'] == record['target'] and set(content['Value']) == {'$pdenc'}, 'PROTECTED_ENVELOPE_INVALID')
             encoded = content['Value']['$pdenc']
         else:
-            require(protected['Format'] == 'json+pdenc-v2' and protected['SnapshotTypeId'], 'SNAPSHOT_ENVELOPE_INVALID')
-            encoded = protected['Envelope']
-        envelope = base64.urlsafe_b64decode(encoded + '=' * (-len(encoded) % 4))
-        require(len(envelope) >= 83 and envelope[:8] == b'HXP2\x02\x01\x01\x01', 'PROTECTED_ENVELOPE_INVALID')
+            encoded_values = snapshot_record_envelopes(protected, record['target'])
+        for encoded in [encoded] if record['kind'] in ('source-outbox', 'target-event') else encoded_values:
+            envelope = base64.urlsafe_b64decode(encoded + '=' * (-len(encoded) % 4))
+            require(len(envelope) >= 83 and envelope[:8] == b'HXP2\x02\x01\x01\x01', 'PROTECTED_ENVELOPE_INVALID')
         require(record['protectedState'] == 'Sealed', 'DISTRIBUTION_NOT_SEALED')
     required_kinds = set()
     if 'SealDirectoryOutbox' in case['steps'] or 'SealAllTargets' in case['steps']:

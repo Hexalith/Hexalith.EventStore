@@ -139,7 +139,7 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         request.Headers.Remove(EpochHeader);
         request.Headers.TryAddWithoutValidation(RootHeader, lease.Snapshot.RootDigest);
         request.Headers.TryAddWithoutValidation(EpochHeader, lease.Snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        return await lease.InvokeRemoteAsync(() => invocation.SendAsync(request, cancellationToken)).ConfigureAwait(false);
+        return await lease.InvokeRemoteAsync(() => invocation.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
     private HttpMessageInvoker InvocationTransport() => _invocationTransport

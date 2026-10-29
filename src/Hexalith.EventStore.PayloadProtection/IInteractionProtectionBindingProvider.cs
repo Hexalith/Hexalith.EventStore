@@ -6,6 +6,10 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>Infrastructure authority for exact target/occurrence enrollment and source-writer completion. No permissive implementation is supplied.</summary>
 public interface IInteractionProtectionBindingProvider
 {
+    /// <summary>Authenticates exact committed source ciphertext after independently proved permanent custody loss. This never treats missing custody or an untrusted stored envelope as erased.</summary>
+    Task<InteractionProtectionBinding?> ResolveErasedStoredAsync(AggregateIdentity owner, PayloadProtectionOccurrenceContext occurrence,
+        byte[] sealedPayload, string keyReference, CancellationToken cancellationToken = default)
+        => Task.FromResult<InteractionProtectionBinding?>(null);
     /// <summary>Resolves the complete independently enrolled mixed-root entry manifest before root issue. Omitted implementations refuse; caller-supplied target/path data grants no authority.</summary>
     Task<IReadOnlyList<InteractionProtectionBinding>?> ResolveSnapshotEntriesAsync(AggregateIdentity owner, PayloadProtectionOccurrenceContext parent,
         string containerDigest, IReadOnlyList<SnapshotProtectionEntry> entries, bool writing, CancellationToken cancellationToken = default)

@@ -352,10 +352,16 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         // target. Missing or unsettled storage is unavailable until a separately authorized write settles it.
         await StateIoAsync(() => StateManager.ClearCacheAsync()).ConfigureAwait(false);
         var value = await StateIoAsync(() => StateManager.TryGetStateAsync<DeletionConsumptionLedger>(StateKey)).ConfigureAwait(false);
-        if (!value.HasValue || authority is null || await ReadPendingAsync().ConfigureAwait(false) is not null) { return null; }
-        var captured = await CaptureAsync(() => CaptureLedger(value.Value, tenant)).ConfigureAwait(false);
-        return await Budget.ReadAsync(token => authority.ValidateStateAsync(tenant, captured.Revision, DeletionConsumptionIdentity.Digest(captured), token)).ConfigureAwait(false)
-            ? captured : null;
+        if (authority is null || await ReadPendingAsync().ConfigureAwait(false) is not null) { return null; }
+        var captured = value.HasValue ? await CaptureAsync(() => CaptureLedger(value.Value, tenant)).ConfigureAwait(false) : null;
+        if (captured is not null && await Budget.ReadAsync(token => authority.ValidateStateAsync(tenant, captured.Revision, DeletionConsumptionIdentity.Digest(captured), token)).ConfigureAwait(false)) { return captured; }
+        // A surviving committed original can answer a stale primary read without changing either store or reconciling a pending candidate.
+        var original = await Budget.ReadAsync(token => authority.ReadCurrentOriginalAsync(PendingScope, token)).ConfigureAwait(false);
+        if (original is null || original.ScopeId != PendingScope || original.TargetBytes is not { Length: > 0 and <= RecoverableAnchoredState.MaximumPendingBytes }
+            || Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(original.TargetBytes)) != original.TargetDigest) { return null; }
+        var retained = await CaptureAsync(() => CaptureLedger(System.Text.Json.JsonSerializer.Deserialize<DeletionConsumptionLedger>(original.TargetBytes)!, tenant)).ConfigureAwait(false);
+        return retained.Revision == original.TargetRevision && DeletionConsumptionIdentity.Digest(retained) == original.TargetDigest
+            && await Budget.ReadAsync(token => authority.ValidateStateAsync(tenant, retained.Revision, original.TargetDigest, token)).ConfigureAwait(false) ? retained : null;
     }
     private async Task<DeletionConsumptionOriginal<DeletionBatchConsumptionRequest>?> ReadBatchOperationOriginalEntryAsync(DeletionBatchConsumptionRequest request, bool reservation)
     {
@@ -529,6 +535,23 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         var raw = value.HasValue ? value.Value : new DeletionConsumptionLedger(tenant, 0, 0, [], [], []);
         if (authority is null) { throw new InvalidOperationException("Independent protection authority is absent."); }
         var captured = await CaptureAsync(() => CaptureLedger(raw, tenant)).ConfigureAwait(false);
+        if (!await Budget.ReadAsync(token => authority.ValidateStateAsync(tenant, captured.Revision, DeletionConsumptionIdentity.Digest(captured), token)).ConfigureAwait(false))
+        {
+            var original = await Budget.ReadAsync(token => authority.ReadCurrentOriginalAsync(PendingScope, token)).ConfigureAwait(false);
+            if (original is not null && original.ScopeId == PendingScope && original.TargetRevision > captured.Revision
+                && original.TargetBytes is { Length: > 0 and <= RecoverableAnchoredState.MaximumPendingBytes }
+                && Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(original.TargetBytes)) == original.TargetDigest)
+            {
+                var current = await CaptureAsync(() => CaptureLedger(System.Text.Json.JsonSerializer.Deserialize<DeletionConsumptionLedger>(original.TargetBytes)!, tenant)).ConfigureAwait(false);
+                if (current.Revision == original.TargetRevision && DeletionConsumptionIdentity.Digest(current) == original.TargetDigest
+                    && await Budget.ReadAsync(token => authority.ValidateStateAsync(tenant, current.Revision, original.TargetDigest, token)).ConfigureAwait(false))
+                {
+                    captured = await PersistTargetAsync(current).ConfigureAwait(false);
+                    if (!await Budget.ReadAsync(token => authority.ValidateStateAsync(tenant, captured.Revision, DeletionConsumptionIdentity.Digest(captured), token)).ConfigureAwait(false))
+                    { throw new InvalidOperationException("Independent original changed during primary-store recovery."); }
+                }
+            }
+        }
         return await RecoverableAnchoredState.ReconcileAsync(PendingScope, captured, await ReadPendingAsync().ConfigureAwait(false),
             next => CaptureLedger(next, tenant), next => Budget.ReadAsync(token => authority.ValidateStateAsync(tenant, next.Revision, DeletionConsumptionIdentity.Digest(next), token)), new DeadlineDeletionConsumptionAuthority(authority, Budget),
             PersistTargetAsync, recoverAdmittedOriginal).ConfigureAwait(false);

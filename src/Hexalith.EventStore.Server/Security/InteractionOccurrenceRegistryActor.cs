@@ -97,6 +97,22 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
         if (state.TenantId != tenant) { return null; }
         try
         {
+        if (!await authority.ValidateStateAsync(tenant, epoch, state.Revision, Digest(state)).ConfigureAwait(false))
+        {
+            var original = await authority.ReadCurrentOriginalAsync(PendingScope).ConfigureAwait(false);
+            if (original is not null && original.ScopeId == PendingScope && original.TargetRevision > state.Revision
+                && original.TargetBytes is { Length: > 0 and <= RecoverableAnchoredState.MaximumPendingBytes }
+                && Convert.ToHexString(SHA256.HashData(original.TargetBytes)) == original.TargetDigest)
+            {
+                var current = CaptureState(JsonSerializer.Deserialize<InteractionOccurrenceRegistrySnapshot>(original.TargetBytes)!);
+                if (current.TenantId == tenant && current.EpochId == epoch && current.Revision == original.TargetRevision && Digest(current) == original.TargetDigest
+                    && await authority.ValidateStateAsync(tenant, epoch, current.Revision, original.TargetDigest).ConfigureAwait(false))
+                {
+                    state = await PersistTargetAsync(current).ConfigureAwait(false);
+                    if (!await authority.ValidateStateAsync(tenant, epoch, state.Revision, Digest(state)).ConfigureAwait(false)) { return null; }
+                }
+            }
+        }
         return await RecoverableAnchoredState.ReconcileAsync(PendingScope, state, await ReadPendingAsync().ConfigureAwait(false), CaptureState,
             value => authority.ValidateStateAsync(tenant, epoch, value.Revision, Digest(value)), authority, PersistTargetAsync, recoverAdmittedOriginal).ConfigureAwait(false);
         }

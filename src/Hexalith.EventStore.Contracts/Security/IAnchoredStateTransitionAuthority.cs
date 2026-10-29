@@ -6,6 +6,9 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// Exact retry reuses the original proof. Verification is a fresh independent read; neither pending bytes nor cached state are authority.</remarks>
 public interface IAnchoredStateTransitionAuthority
 {
+    /// <summary>Reads the independently retained exact current committed owner state after primary-store rollback. It cannot admit, advance or repeat an effect; omitted implementations return unknown.</summary>
+    Task<AnchoredStateTransition?> ReadCurrentOriginalAsync(string scopeId, CancellationToken cancellationToken = default)
+        => Task.FromResult<AnchoredStateTransition?>(null);
     /// <summary>Independently authenticates current permission for this exact original operation and durably retains its bounded transition before primary staging.</summary>
     /// <remarks>Admission does not advance the anchor. The qualified owner verifies original ownership/intent, scope, predecessor, target and bytes; store-supplied bytes alone cannot create permission. Exact retries retain the original independent admission.</remarks>
     Task<bool> AdmitTransitionAsync(AnchoredStateTransition transition, CancellationToken cancellationToken = default) => Task.FromResult(false);

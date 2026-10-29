@@ -12,10 +12,14 @@ public static class RouteCatalogRemoteExecution
         set => Active.Value = value;
     }
 
-    /// <summary>Enrolls before starting actual remote work and retains its durable fences on transport failure or cancellation.</summary>
-    public static async Task<T> InvokeAsync<T>(Func<Task<T>> invoke)
+    /// <summary>
+    /// Enrolls before starting actual remote work and retains its durable fences on transport failure or cancellation.
+    /// A token already cancelled on entry throws before enrollment, because no remote work has started.
+    /// </summary>
+    public static async Task<T> InvokeAsync<T>(Func<Task<T>> invoke, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(invoke);
+        cancellationToken.ThrowIfCancellationRequested();
         IRouteCatalogRemoteBoundary? boundary = Current;
         boundary?.Enroll();
         try { return await invoke().ConfigureAwait(false); }
@@ -24,9 +28,10 @@ public static class RouteCatalogRemoteExecution
     }
 
     /// <summary>Tracks actual remote work without a return value.</summary>
-    public static async Task InvokeAsync(Func<Task> invoke)
+    public static async Task InvokeAsync(Func<Task> invoke, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(invoke);
+        cancellationToken.ThrowIfCancellationRequested();
         IRouteCatalogRemoteBoundary? boundary = Current;
         boundary?.Enroll();
         try { await invoke().ConfigureAwait(false); }
