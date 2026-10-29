@@ -6212,3 +6212,8 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-dotnet-10-0-400-builds-and-packages.md`
   summary: EventStore route-catalog availability blocks administrator bootstrap despite green resource health checks.
   evidence: SDK 10.0.403 package-mode AppHost reports 30/30 Running+Healthy, but a 20.297230-second telemetry interval changes Error count from zero to five. Diagnostic repetition identifies four BootstrapGlobalAdmin RouteCatalogUnavailableException failures and one Tenants 503 retry. Sessions were cleaned up; zero-error runtime acceptance remains unproven and no catalog authority was bypassed.
+
+## Deferred from: code review of spec-5-13-route-catalog-activation-and-topology-binding (2026-10-29)
+
+- Stale-primary recovery bundled in 5.13 fix commit `71829366d` (`DeletionConsumptionActor`, `InteractionOccurrenceRegistryActor`, `PublishedTrustDeletionConsumptionAuthority.ReadCurrentOriginalAsync`, public default members `IAnchoredStateTransitionAuthority.ReadCurrentOriginalAsync` and `IInteractionProtectionBindingProvider.ResolveErasedStoredAsync`, `tools/ext_protection_1.py` mixed-snapshot validation) is not 5.13 scope. Owner chose to move it to the ext-protection story; the public Contracts members need that story's owner approval.
+- No test exercises `ReadCurrentOriginalAsync` recovery (digest, scope, tenant/epoch, revision, post-persist revalidation guards; zero/one/many owner selection). Add actor tests with the relocated code.
