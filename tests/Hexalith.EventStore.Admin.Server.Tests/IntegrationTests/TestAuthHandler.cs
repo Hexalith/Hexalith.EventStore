@@ -16,7 +16,7 @@ public class TestAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder) {
-    public const string SchemeName = "Test";
+    public const string SchemeName = "Bearer";
     public const string ClaimsHeader = "X-Test-Claims";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync() {

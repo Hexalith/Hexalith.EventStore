@@ -4,6 +4,8 @@ using Dapr.Client;
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 
 /// <summary>Records activation and persists an isolated generic-state marker for HTTP boundary controls.</summary>
+/// <param name="host">The isolated actor host.</param>
+/// <param name="client">The private state-store sidecar client.</param>
 public sealed class HttpHostSecurityLiveActor(ActorHost host, DaprClient client) : Actor(host), IHttpHostSecurityLiveActor
 {
     private static int _activations;

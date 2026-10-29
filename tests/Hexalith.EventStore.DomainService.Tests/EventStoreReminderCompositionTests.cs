@@ -192,7 +192,8 @@ public sealed class EventStoreReminderCompositionTests
 
         _ = app.UseEventStoreDomainService();
         _ = app.MapEventStoreReminders();
-        _ = app.MapGet("/custom", static () => Results.Ok());
+        _ = app.MapGet("/custom", static () => Results.Ok())
+            .RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload);
 
         CountReminderRoutes(app).ShouldBe(1);
         EventStoreDomainServiceEndpointInventory.Validate(

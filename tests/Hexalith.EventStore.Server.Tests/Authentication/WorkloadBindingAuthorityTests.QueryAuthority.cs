@@ -74,8 +74,8 @@ public sealed partial class WorkloadBindingAuthorityTests
         string json = WorkloadAuthorizationDetails.Encode(new("timesheets", EventStoreWorkloadOperations.DomainServiceQuery, bindings))
             .Replace("\"bindings\":{", "\"bindings\":{" + duplicate, StringComparison.Ordinal);
         WorkloadAuthorizationDetails.Decode(json).ShouldBeNull();
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
-        builder.WebHost.UseTestServer(); builder.Logging.ClearProviders(); builder.Services.AddSingleton(_authority);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        builder.WebHost.UseTestServer(); builder.Logging.ClearProviders(); EnrollNonconformingDevelopmentFixture(builder);
         await using WebApplication app = builder.Build();
         app.MapEventStoreWorkloadBindingAuthority();
         await app.StartAsync(TestContext.Current.CancellationToken);
@@ -115,7 +115,7 @@ public sealed partial class WorkloadBindingAuthorityTests
     }
 
     [Fact]
-    public async Task ProductionQueryAuthorityRunsThroughActualIssuerAndReceivingVerifierAndStopsNewIssuanceOnRevocation()
+    public async Task ProductionReceiverValidatesNonconformingFixtureIssuerAndStopsNewIssuanceOnRevocation()
     {
         var originating = new OriginatingQueryContext("actor", "original-client", true, "delegation-1", ["read", "resolve"], ["public-gateway"]);
         QueryEnvelope query = QueryAuthorityEnvelope() with
@@ -203,7 +203,7 @@ public sealed partial class WorkloadBindingAuthorityTests
         _options.Grants[0].NotBefore = earlier.AddMinutes(-1);
         IOptionsMonitor<WorkloadAuthorityOptions> expiredMonitor = Substitute.For<IOptionsMonitor<WorkloadAuthorityOptions>>();
         expiredMonitor.CurrentValue.Returns(_options);
-        var earlierAuthority = new WorkloadBindingAuthority(expiredMonitor, environment, new FakeTimeProvider(earlier));
+        var earlierAuthority = new WorkloadBindingAuthority(expiredMonitor, NonconformingDevelopmentEnvironment(), new FakeTimeProvider(earlier));
         var earlierDetails = new WorkloadAuthorizationDetails { Audience = request.Audience, Operation = request.Operation, Bindings = new(request.Bindings!) };
         string expiredToken = earlierAuthority.Issue("synthetic-client", _secret, Scope(earlierDetails), earlierDetails).ShouldNotBeNull();
         (await receiver.ValidateAsync("query-receiver", expiredToken, EventStoreWorkloadOperations.DomainServiceQuery,

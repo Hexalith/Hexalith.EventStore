@@ -15,6 +15,8 @@ internal sealed class RouteCatalogDevelopmentRedis : IAsyncDisposable
     private string? _containerId;
     private RouteCatalogDocker? _docker;
     internal RouteCatalogDocker Docker => _docker ?? throw new InvalidOperationException("The local Docker endpoint has not been captured.");
+    /// <summary>Gets the exact container identity checked before fixture cleanup.</summary>
+    internal string ContainerId => _containerId ?? throw new InvalidOperationException("The owned Redis has not started.");
     public string Endpoint { get; private set; } = "";
 
     public async Task StartAsync()

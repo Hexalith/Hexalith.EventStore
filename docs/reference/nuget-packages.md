@@ -209,6 +209,34 @@ When using a project reference during local development, reference the generator
                   ReferenceOutputAssembly="false" />
 ```
 
+Generated controllers now name the shared `EventStoreHuman` policy. When upgrading
+an existing generated API host, register shared HTTP security after its validated
+Bearer authentication and enroll the runtime boundary before authorization and
+endpoint execution:
+
+```csharp
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
+// Keep the host's existing shared JWT options validation and Bearer registration.
+builder.Services.AddEventStoreHttpHostSecurity();
+
+WebApplication app = builder.Build();
+app.UseRouting();
+app.UseEventStoreHttpHostSecurity();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+app.MapDefaultEndpoints();
+app.Run();
+```
+
+`AddAuthorization()` alone does not supply the generated policy. Omitting runtime
+enrollment fails startup. Every protected route must name a scheme-bound policy;
+unclassified routes cannot rely on an authenticated fallback. The only anonymous
+exceptions are exact health probes. Preserve the generated-action route-catalog
+validation and outbound gateway registration. The sample API is the runnable
+reference, with authenticated generated-host controls in `SampleApiHostMiddlewareTests`.
+
 ### Serving projection queries
 
 Install **Contracts** in the project that exposes a downstream projection query method contract. DAPR actor hosting projects add DAPR actor packages themselves; pure gateway, Contracts, and Parties-style downstream client projects do not need DAPR packages to consume Contracts or gateway DTOs.

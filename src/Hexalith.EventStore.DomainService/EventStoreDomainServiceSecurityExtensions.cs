@@ -96,6 +96,36 @@ public static class EventStoreDomainServiceSecurityExtensions
         return services;
     }
 
+    /// <summary>Retains canonical policy and POST catalog-guard validation for endpoints changed after startup.</summary>
+    internal static WebApplication UseEventStoreDomainServiceEndpointSecurity(this WebApplication app)
+    {
+        app.UseEventStoreHttpHostSecurity();
+        const string marker = "Hexalith.EventStore.DomainService.EndpointSecurity";
+        IDictionary<string, object?> properties = ((IApplicationBuilder)app).Properties;
+        if (properties.ContainsKey(marker))
+        {
+            return app;
+        }
+        properties[marker] = true;
+        app.Use(async (context, next) =>
+        {
+            if (context.GetEndpoint() is RouteEndpoint endpoint)
+            {
+                bool canonicalPostWithoutGuard = EventStoreDomainServiceRoutes.TryGet(endpoint.RoutePattern.RawText, out _)
+                    && (endpoint.Metadata.GetMetadata<IHttpMethodMetadata>() is not { } methods
+                        || methods.HttpMethods.Count == 0 || methods.HttpMethods.Contains(HttpMethods.Post, StringComparer.OrdinalIgnoreCase))
+                    && endpoint.Metadata.GetMetadata<DomainRouteCatalogGuardMetadata>() is null;
+                if (canonicalPostWithoutGuard || EventStoreDomainServiceEndpointInventory.Validate([endpoint], fallbackPolicy: null).Count > 0)
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
+            }
+            await next(context).ConfigureAwait(false);
+        });
+        return app;
+    }
+
     /// <summary>
     /// Requires the catalog policy of a canonical operational route on an endpoint.
     /// </summary>
@@ -132,8 +162,8 @@ public static class EventStoreDomainServiceSecurityExtensions
     }
 
     /// <summary>
-    /// Allows anonymous access to one literal GET or POST route. The startup inventory rejects a marker inherited
-    /// by another route, a route template, and any canonical or sidecar-originated endpoint.
+    /// Applies a legacy public-endpoint marker for source compatibility. Conforming host inventory rejects all
+    /// non-probe anonymous routes, including literal marked routes; this method grants no anonymous exception.
     /// </summary>
     /// <typeparam name="TBuilder">The endpoint convention builder type.</typeparam>
     /// <param name="builder">The endpoint convention builder.</param>

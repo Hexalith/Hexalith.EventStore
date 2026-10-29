@@ -151,9 +151,12 @@ internal static class DeadLetterOperationsEndpointExtensions
         int count = 100,
         string? continuationToken = null)
     {
+        int tenantValues = request.Query["tenantId"].Count;
+        bool globalAdminRead = tenantValues == 0 && tenantId is null
+            && OperationsHttpSecurityExtensions.IsAdministrator(request.HttpContext.User);
         if (!EventStoreHttpHostSecurityExtensions.IsHuman(request.HttpContext.User)
-            || request.Query["tenantId"].Count != 1
-            || !OperationsHttpSecurityExtensions.CanAccessTenant(request.HttpContext.User, tenantId))
+            || !globalAdminRead && (tenantValues != 1
+                || !OperationsHttpSecurityExtensions.CanAccessTenant(request.HttpContext.User, tenantId)))
         {
             return OpaqueForbidden();
         }

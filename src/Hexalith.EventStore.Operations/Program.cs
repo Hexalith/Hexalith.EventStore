@@ -12,7 +12,7 @@ using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Microsoft.Extensions.Options;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-string? appApiToken = DaprAppChannelSecurity.ValidateConfiguration(
+_ = DaprAppChannelSecurity.ValidateConfiguration(
     builder.Environment,
     builder.Configuration[DaprAppChannelSecurity.ConfigurationKey]);
 
@@ -37,6 +37,7 @@ app.UseRouting();
 app.UseEventStoreHttpHostSecurity();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseOperationsHumanRelayScope();
 
 app.MapDefaultEndpoints();
 app.MapDeadLetterOperations();

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Http;
@@ -31,14 +32,25 @@ public static class EventStoreHttpEndpointInventory
         {
             failures.Add("The host fallback must deny unclassified endpoints independently of credentials.");
         }
+        AuthorizationPolicy? human = await policies.GetPolicyAsync(EventStoreHttpHostSecurityExtensions.HumanPolicy).ConfigureAwait(false);
+        if (human is null || !human.Requirements.Any(static requirement => requirement is EventStoreHumanCredentialRequirement))
+        {
+            failures.Add("The named human policy must retain its human credential-kind requirement.");
+        }
         foreach (Endpoint endpoint in endpoints)
         {
             string route = (endpoint as RouteEndpoint)?.RoutePattern.RawText ?? endpoint.DisplayName ?? "endpoint";
             string label = route.StartsWith('/') ? route : "/" + route;
+            string frameworkRoute = "/" + route.Trim('/').ToLowerInvariant();
+            bool framework = frameworkRoute is "/dapr/subscribe" or "/dapr/config" or "/healthz"
+                || frameworkRoute.StartsWith("/actors/", StringComparison.Ordinal)
+                || endpoint.Metadata.Any(static item => item.GetType().GetInterfaces()
+                    .Any(static type => type.FullName == "Dapr.ITopicMetadata"));
             bool anonymous = endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null;
             if (anonymous)
             {
-                if (!IsProbe(route) || endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Count > 0)
+                if (framework || !IsProbe(route) || endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Count > 0
+                    || endpoint.Metadata.GetOrderedMetadata<AuthorizationPolicy>().Count > 0)
                 {
                     failures.Add($"{label}: only exact probes may be anonymous.");
                 }
@@ -52,16 +64,13 @@ public static class EventStoreHttpEndpointInventory
                 continue;
             }
 
-            bool framework = route.TrimStart('/') is "dapr/subscribe" or "dapr/config" or "healthz"
-                || route.TrimStart('/').StartsWith("actors/", StringComparison.OrdinalIgnoreCase)
-                || endpoint.Metadata.Any(static item => item.GetType().GetInterfaces()
-                    .Any(static type => type.FullName == "Dapr.ITopicMetadata"));
             if (framework && (data.Count != 1
                 || data[0].Policy != EventStoreWorkloadAuthenticationDefaults.SidecarChannelPolicy))
             {
                 failures.Add($"{label}: framework deliveries must require only the named channel policy.");
             }
 
+            bool unresolved = false;
             foreach (IAuthorizeData item in data)
             {
                 AuthorizationPolicy? policy = await policies.GetPolicyAsync(item.Policy!).ConfigureAwait(false);
@@ -69,17 +78,41 @@ public static class EventStoreHttpEndpointInventory
                     || !policy.Requirements.Any(static requirement => requirement is DenyAnonymousAuthorizationRequirement))
                 {
                     failures.Add($"{label}: named policies must require authentication and explicit schemes.");
+                    unresolved = true;
                     continue;
                 }
 
-                foreach (string scheme in policy.AuthenticationSchemes.Concat((item.AuthenticationSchemes ?? string.Empty)
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)))
+                if (item.Policy == EventStoreWorkloadAuthenticationDefaults.SidecarChannelPolicy
+                    && (policy.AuthenticationSchemes.Count != 1
+                        || policy.AuthenticationSchemes[0] != EventStoreWorkloadAuthenticationDefaults.SidecarChannelScheme
+                        || !policy.Requirements.OfType<ClaimsAuthorizationRequirement>()
+                            .Any(static requirement => requirement.ClaimType == EventStoreWorkloadAuthenticationDefaults.ChannelClaimType)))
                 {
-                    if (await schemes.GetSchemeAsync(scheme).ConfigureAwait(false) is null)
-                    {
-                        failures.Add($"{label}: an authentication scheme is not registered.");
-                    }
+                    failures.Add($"{label}: the channel policy must resolve exclusively to the channel scheme and claim.");
                 }
+            }
+            if (unresolved)
+            {
+                continue;
+            }
+            AuthorizationPolicy? effective = await AuthorizationPolicy.CombineAsync(policies, data,
+                endpoint.Metadata.GetOrderedMetadata<AuthorizationPolicy>()).ConfigureAwait(false);
+            string[] effectiveSchemes = effective?.AuthenticationSchemes.Distinct(StringComparer.Ordinal).ToArray() ?? [];
+            foreach (string scheme in effectiveSchemes)
+            {
+                if (await schemes.GetSchemeAsync(scheme).ConfigureAwait(false) is null)
+                {
+                    failures.Add($"{label}: an authentication scheme is not registered.");
+                }
+            }
+            if (effectiveSchemes.Contains(JwtBearerDefaults.AuthenticationScheme, StringComparer.Ordinal)
+                && effective?.Requirements.Any(static requirement => requirement is EventStoreHumanCredentialRequirement) != true)
+            {
+                failures.Add($"{label}: bearer policies must retain the human credential-kind requirement.");
+            }
+            if (effectiveSchemes.Length != 1)
+            {
+                failures.Add($"{label}: an operation must admit exactly one credential kind and scheme.");
             }
         }
         return failures;

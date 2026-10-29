@@ -16,6 +16,7 @@ namespace Hexalith.EventStore.Server.Tests;
 /// <summary>Verifies the gateway's effective endpoint inventory and protected documentation middleware.</summary>
 public sealed class HttpHostSecurityTests
 {
+    /// <summary>Verifies gateway Inventory Resolves Every Named Policy And Scheme.</summary>
     [Fact]
     public async Task GatewayInventoryResolvesEveryNamedPolicyAndScheme()
     {
@@ -26,6 +27,7 @@ public sealed class HttpHostSecurityTests
         (await EventStoreHttpEndpointInventory.ValidateAsync(endpoints, factory.Services).ConfigureAwait(true)).ShouldBeEmpty();
     }
 
+    /// <summary>Verifies documentation And Fallback Require Human Authentication.</summary>
     [Theory]
     [InlineData("/openapi/v1.json")]
     [InlineData("/swagger/index.html")]
@@ -37,6 +39,7 @@ public sealed class HttpHostSecurityTests
         ArgumentNullException.ThrowIfNull(path);
         await using var factory = new OpenApiWebApplicationFactory();
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        client.DefaultRequestHeaders.Authorization = null;
         using HttpResponseMessage denied = await client.GetAsync(path, TestContext.Current.CancellationToken).ConfigureAwait(true);
         denied.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
@@ -49,6 +52,7 @@ public sealed class HttpHostSecurityTests
         admitted.StatusCode.ShouldBe(path.StartsWith("/api/", StringComparison.Ordinal) ? HttpStatusCode.BadRequest : HttpStatusCode.OK);
     }
 
+    /// <summary>Verifies framework Routes Deny Direct Untokened Requests.</summary>
     [Theory]
     [InlineData("/dapr/subscribe")]
     [InlineData("/dapr/config")]
@@ -57,6 +61,7 @@ public sealed class HttpHostSecurityTests
     {
         await using var factory = new OpenApiWebApplicationFactory();
         using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = null;
         using HttpResponseMessage response = await client.GetAsync(path, TestContext.Current.CancellationToken).ConfigureAwait(true);
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }

@@ -8,6 +8,9 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.EventStore.RestApi.Generators.Tests;
 
 /// <summary>Supplies an explicit authenticated scheme only to the isolated generated-action catalog fixture.</summary>
+/// <param name="options">The fixture scheme options.</param>
+/// <param name="logger">The fixture logger factory.</param>
+/// <param name="encoder">The URL encoder.</param>
 internal sealed class CatalogFixtureAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {

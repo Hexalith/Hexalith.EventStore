@@ -24,11 +24,12 @@ using Shouldly;
 namespace Hexalith.EventStore.ServiceDefaults.Tests;
 
 /// <summary>Exercises the common boundary through real Kestrel HTTP requests.</summary>
-public sealed class HttpHostSecurityTests
+public sealed partial class HttpHostSecurityTests
 {
     private const string Channel = "story-514-real-channel-token";
     private const string SigningKey = "story-514-test-signing-key-at-least-32-bytes";
 
+    /// <summary>Verifies framework Delivery Requires Actual Channel Token In Development.</summary>
     [Theory]
     [InlineData(null, HttpStatusCode.Unauthorized)]
     [InlineData("wrong", HttpStatusCode.Unauthorized)]
@@ -49,6 +50,7 @@ public sealed class HttpHostSecurityTests
         (await EventStoreHttpEndpointInventory.ValidateAsync(Endpoints(app), app.Services).ConfigureAwait(true)).ShouldBeEmpty();
     }
 
+    /// <summary>Verifies framework Delivery Rejects Duplicate And Mixed Credentials Before Handler.</summary>
     [Theory]
     [InlineData("duplicate")]
     [InlineData("human")]
@@ -69,6 +71,7 @@ public sealed class HttpHostSecurityTests
         calls.ShouldBe(0);
     }
 
+    /// <summary>Verifies human Policy Admits Only Validated Human Credentials.</summary>
     [Theory]
     [InlineData("human", HttpStatusCode.OK)]
     [InlineData("anonymous", HttpStatusCode.Unauthorized)]
@@ -91,6 +94,7 @@ public sealed class HttpHostSecurityTests
         calls.ShouldBe(expected == HttpStatusCode.OK ? 1 : 0);
     }
 
+    /// <summary>Verifies anonymous Inventory Accepts Only Exact Probes.</summary>
     [Theory]
     [InlineData("/health", true)]
     [InlineData("/alive", true)]
@@ -116,6 +120,7 @@ public sealed class HttpHostSecurityTests
         }
     }
 
+    /// <summary>Verifies startup Rejects Missing Or Ineffective Classification.</summary>
     [Theory]
     [InlineData("unclassified")]
     [InlineData("unnamed")]
@@ -139,6 +144,7 @@ public sealed class HttpHostSecurityTests
         await Should.ThrowAsync<InvalidOperationException>(() => app.StartAsync(TestContext.Current.CancellationToken)).ConfigureAwait(true);
     }
 
+    /// <summary>Verifies late Unclassified Endpoint Denies Every Credential Before Handler.</summary>
     [Theory]
     [InlineData("anonymous")]
     [InlineData("human")]
@@ -161,6 +167,7 @@ public sealed class HttpHostSecurityTests
         (await EventStoreHttpEndpointInventory.ValidateAsync(Endpoints(app), app.Services).ConfigureAwait(true)).ShouldNotBeEmpty();
     }
 
+    /// <summary>Verifies conforming Host Rejects Embedded Authority Even With Fixture Flag.</summary>
     [Fact]
     public async Task ConformingHostRejectsEmbeddedAuthorityEvenWithFixtureFlag()
     {
@@ -170,6 +177,7 @@ public sealed class HttpHostSecurityTests
         await Should.ThrowAsync<InvalidOperationException>(() => app.StartAsync(TestContext.Current.CancellationToken)).ConfigureAwait(true);
     }
 
+    /// <summary>Verifies probe Request Path Must Match Exactly.</summary>
     [Theory]
     [InlineData("/health/", HttpStatusCode.Forbidden)]
     [InlineData("/Health", HttpStatusCode.Forbidden)]
@@ -184,6 +192,7 @@ public sealed class HttpHostSecurityTests
         response.StatusCode.ShouldBe(expected);
     }
 
+    /// <summary>Verifies replacing Denying Fallback Fails Startup.</summary>
     [Fact]
     public async Task ReplacingDenyingFallbackFailsStartup()
     {
@@ -193,6 +202,7 @@ public sealed class HttpHostSecurityTests
         await Should.ThrowAsync<InvalidOperationException>(() => app.StartAsync(TestContext.Current.CancellationToken)).ConfigureAwait(true);
     }
 
+    /// <summary>Verifies embedded Bootstrap Requires Explicit Nonconforming Development Fixture.</summary>
     [Theory]
     [InlineData("Production", true)]
     [InlineData("Development", false)]
@@ -204,6 +214,19 @@ public sealed class HttpHostSecurityTests
         builder.Services.AddEventStoreWorkloadBindingAuthority(builder.Configuration);
         await using WebApplication app = builder.Build();
         Should.Throw<Microsoft.Extensions.Options.OptionsValidationException>(() => app.MapEventStoreWorkloadBindingAuthority());
+    }
+
+    /// <summary>Verifies missing Runtime Inventory Enrollment Fails Startup.</summary>
+    [Fact]
+    public async Task MissingRuntimeInventoryEnrollmentFailsStartup()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
+        builder.Logging.ClearProviders();
+        builder.Services.AddEventStoreHttpHostSecurity();
+        await using WebApplication app = builder.Build();
+        app.MapGet("/unclassified", () => Results.Ok());
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() => app.StartAsync(TestContext.Current.CancellationToken)).ConfigureAwait(true);
+        failure.Message.ShouldContain("UseEventStoreHttpHostSecurity");
     }
 
     private static WebApplication Build(Action<IServiceCollection>? configure = null)

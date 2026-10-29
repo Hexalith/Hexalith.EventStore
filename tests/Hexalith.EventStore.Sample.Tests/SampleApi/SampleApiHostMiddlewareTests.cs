@@ -87,7 +87,6 @@ public sealed class SampleApiHostMiddlewareTests
             {
                 builder.ConfigureAppConfiguration(ConfigureSampleAuth)
                 .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>());
-                builder.ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>());
                 builder.ConfigureTestServices(services =>
                 {
                     services.RemoveAll<IEventStoreGatewayClient>();

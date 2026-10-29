@@ -1,3 +1,6 @@
+using Hexalith.EventStore.Admin.Server.Authorization;
+using Microsoft.AspNetCore.Authorization;
+
 using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Hexalith.EventStore.Admin.Server.Configuration;
@@ -29,6 +32,14 @@ builder.Services
     .AddJwtBearer();
 
 builder.Services.AddEventStoreHttpHostSecurity();
+builder.Services.PostConfigure<AuthorizationOptions>(options =>
+{
+    foreach (string name in new[] { AdminAuthorizationPolicies.ReadOnly, AdminAuthorizationPolicies.Operator, AdminAuthorizationPolicies.Admin })
+    {
+        options.AddPolicy(name, new AuthorizationPolicyBuilder(options.GetPolicy(name)!)
+            .Combine(EventStoreHttpHostSecurityExtensions.CreateHumanPolicy()).Build());
+    }
+});
 
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(AdminStreamsController).Assembly);

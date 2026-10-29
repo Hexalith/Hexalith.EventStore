@@ -1,5 +1,7 @@
 # EXT-PROTECTION-1 owner acceptance packet
 
+**Review-round-2 correction:** the unpublished loop-1 source candidates are withdrawn. Verified capacity, preflight, holder-proof and exact-recovery findings require another isolated re-derivation; the [authoritative Platform spec](../../../platform/_bmad-output/implementation-artifacts/spec-ext-protection-1-production-engine.md) records every individual verdict and preservation constraint. No complete replacement target, installed qualification or acceptance is asserted by the historical sections below. Status remains in-progress.
+
 ## Parent merged-source review candidates — 2026-10-29
 
 The corrected source and [parent validation](../../../platform/docs/implementation/ext-protection-1-parent-merged-2026-10-29/verification.json) are prepared for independent review. Platform `06751feca75a83c892d8cef53b35c7a2c5c58ddb` and EventStore `6068b7771372eb0b05ed60bc91002a1c6b4486ba` are complete unpublished local source candidates, retained as `refs/ext-protection-1/source-20261029-loop1` in each repository. [Exact source/blob coverage](../../../platform/docs/implementation/ext-protection-1-parent-merged-2026-10-29/source-candidates.json) includes all implementation/verifier corrections and their test dependencies. Neither shared main branch moved and unrelated dirty changes were excluded. Acceptance documents accompany the candidates separately. Proposed integration date is `2026-11-02`; neither target/date nor a profile is owner-accepted. The older candidate pair stays withdrawn.

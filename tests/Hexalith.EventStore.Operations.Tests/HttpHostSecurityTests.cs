@@ -27,11 +27,12 @@ using Shouldly;
 namespace Hexalith.EventStore.Operations.Tests;
 
 /// <summary>Verifies independent human JWT, operation, tenant, and channel checks before actor work.</summary>
-public sealed class HttpHostSecurityTests
+public sealed partial class HttpHostSecurityTests
 {
     private const string Channel = "story514-operations-channel";
     private const string Key = "story514-operations-signing-key-at-least-32-bytes";
 
+    /// <summary>Verifies rejected Credentials Produce Zero Actor Effects.</summary>
     [Theory]
     [InlineData("forged-caller")]
     [InlineData("invalid")]
@@ -69,6 +70,7 @@ public sealed class HttpHostSecurityTests
         actor.ReceivedCalls().ShouldBeEmpty();
     }
 
+    /// <summary>Verifies rejected Tenant Produces Zero Actor Effects.</summary>
     [Theory]
     [InlineData("tenant-b")]
     [InlineData("system")]
@@ -87,6 +89,7 @@ public sealed class HttpHostSecurityTests
         actor.ReceivedCalls().ShouldBeEmpty();
     }
 
+    /// <summary>Verifies valid Human Relay Preserves Tenant And Uses Validated Attribution.</summary>
     [Theory]
     [InlineData("retry")]
     [InlineData("skip")]
@@ -110,6 +113,7 @@ public sealed class HttpHostSecurityTests
         action.MessageIds.ShouldBe(["message-a"]);
     }
 
+    /// <summary>Verifies list Requires One Explicit Authorized Tenant.</summary>
     [Theory]
     [InlineData("/internal/dead-letters", false)]
     [InlineData("/internal/dead-letters?tenantId=tenant-a&tenantId=tenant-a", false)]
@@ -126,6 +130,7 @@ public sealed class HttpHostSecurityTests
         actor.ReceivedCalls().Count().ShouldBe(allowed ? 1 : 0);
     }
 
+    /// <summary>Verifies every Operations Endpoint Has Resolved Named Classification.</summary>
     [Fact]
     public async Task EveryOperationsEndpointHasResolvedNamedClassification()
     {
@@ -137,7 +142,23 @@ public sealed class HttpHostSecurityTests
         alive.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
-    private static WebApplicationFactory<Program> Factory(IDeadLetterDrainActor actor)
+    /// <summary>Verifies duplicate Action Scope Rejects Before Actor Work.</summary>
+    [Theory]
+    [InlineData("{\"tenantId\":\"tenant-a\",\"tenantId\":\"tenant-a\",\"messageIds\":[\"message-a\"]}")]
+    [InlineData("{\"tenantId\":\"tenant-b\",\"TenantId\":\"tenant-a\",\"messageIds\":[\"message-a\"]}")]
+    public async Task DuplicateActionScopeRejectsBeforeActorWork(string body)
+    {
+        IDeadLetterDrainActor actor = Substitute.For<IDeadLetterDrainActor>();
+        await using WebApplicationFactory<Program> factory = Factory(actor);
+        using HttpClient client = factory.CreateClient();
+        using var request = Authorized(HttpMethod.Post, "/internal/dead-letters/retry");
+        request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        actor.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    private static WebApplicationFactory<Program> Factory(IDeadLetterDrainActor actor, int maxActionItems = 100)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
@@ -148,6 +169,7 @@ public sealed class HttpHostSecurityTests
                 ["Authentication:JwtBearer:Issuer"] = "story514",
                 ["Authentication:JwtBearer:Audience"] = "operations",
                 ["Authentication:JwtBearer:SigningKey"] = Key,
+                ["EventStoreOperations:MaxActionItems"] = maxActionItems.ToString(System.Globalization.CultureInfo.InvariantCulture),
             }));
             builder.ConfigureTestServices(services =>
             {
@@ -168,12 +190,13 @@ public sealed class HttpHostSecurityTests
         return request;
     }
 
-    private static string Token(string scenario = "valid")
+    private static string Token(string scenario = "valid", IReadOnlyDictionary<string, object>? additional = null)
     {
         var claims = new Dictionary<string, object>
         { ["sub"] = "validated-human", ["eventstore:tenant"] = "tenant-a" };
         if (scenario != "read-only") claims["eventstore:permission"] = "command:replay";
         if (scenario == "workload") claims[EventStoreWorkloadAuthenticationDefaults.OperationClaimType] = "retry";
+        foreach (var claim in additional ?? new Dictionary<string, object>()) claims[claim.Key] = claim.Value;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = scenario == "issuer" ? "wrong" : "story514", Audience = scenario == "audience" ? "wrong" : "operations",

@@ -33,7 +33,7 @@ public static class WorkloadBindingAuthorityExtensions
         return services;
     }
 
-    /// <summary>Maps bounded no-store token and public metadata routes under an explicitly supplied prefix.</summary>
+    /// <summary>Maps HTTPS bootstrap only in an explicitly nonconforming Development fixture; conforming hosts refuse it.</summary>
     /// <param name="endpoints">The endpoint routes.</param>
     /// <param name="prefix">The path component of the configured issuer.</param>
     /// <returns>The endpoints.</returns>
@@ -61,7 +61,7 @@ public static class WorkloadBindingAuthorityExtensions
         {
             context.Response.Headers.CacheControl = "no-store";
             context.Response.Headers.Pragma = "no-cache";
-            if ((!context.Request.IsHttps && !environment.IsDevelopment()) || !context.Request.HasFormContentType
+            if (!context.Request.IsHttps || !context.Request.HasFormContentType
                 || context.Request.ContentLength is null or > 16384)
                 return Results.Json(new { error = "invalid_request" }, statusCode: 400);
             IFormCollection form;

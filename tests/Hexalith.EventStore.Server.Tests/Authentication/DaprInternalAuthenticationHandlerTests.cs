@@ -513,7 +513,7 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     [Theory]
     [InlineData(null, false, DaprAppChannelTokenStatus.Unconfigured)]
     [InlineData("   ", false, DaprAppChannelTokenStatus.Unconfigured)]
-    [InlineData(null, true, DaprAppChannelTokenStatus.NotRequired)]
+    [InlineData(null, true, DaprAppChannelTokenStatus.Unconfigured)]
     [InlineData("configured", false, DaprAppChannelTokenStatus.Missing)]
     public void AppChannelToken_IsUnconfiguredOutsideDevelopment(string? configured, bool isDevelopment, DaprAppChannelTokenStatus expected)
     {
@@ -736,6 +736,13 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
                 _ = services.AddSingleton(Router);
                 _ = services.AddSingleton(CommandRouter);
                 _ = services.AddSingleton(StatusStore);
+                // This legacy HTTP authentication suite isolates catalog activation through the existing
+                // friend-only handler seam; the complete authorization/logging/validation pipeline still runs.
+                services.RemoveAll<MediatR.IRequestHandler<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand, Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommandResult>>();
+                services.AddScoped<MediatR.IRequestHandler<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand, Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommandResult>>(_ =>
+                    new Hexalith.EventStore.Server.Pipeline.SubmitCommandHandler(StatusStore,
+                        Substitute.For<ICommandArchiveStore>(), CommandRouter,
+                        Microsoft.Extensions.Logging.Abstractions.NullLogger<Hexalith.EventStore.Server.Pipeline.SubmitCommandHandler>.Instance));
             });
         }
     }

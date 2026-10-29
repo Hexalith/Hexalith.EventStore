@@ -46,7 +46,7 @@ public static class DaprAppChannelToken
     /// </summary>
     /// <param name="request">The inbound request.</param>
     /// <param name="expectedToken">The configured token, or <see langword="null"/> when none is configured.</param>
-    /// <param name="isDevelopment">Whether the host runs in Development.</param>
+    /// <param name="isDevelopment">Retained for call-site compatibility; every environment requires a configured token.</param>
     /// <returns>The verification status.</returns>
     public static DaprAppChannelTokenStatus Verify(HttpRequest request, string? expectedToken, bool isDevelopment)
     {

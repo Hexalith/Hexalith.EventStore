@@ -6,6 +6,7 @@ namespace Hexalith.EventStore.RestApi.Generators.Tests;
 /// <summary>Guards named human classification in the actual emitted controller.</summary>
 public sealed class HttpHostSecurityTests
 {
+    /// <summary>Verifies every Emitted Controller Names The Shared Human Policy.</summary>
     [Fact]
     public void EveryEmittedControllerNamesTheSharedHumanPolicy()
     {

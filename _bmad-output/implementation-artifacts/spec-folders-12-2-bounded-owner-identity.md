@@ -265,3 +265,184 @@ No complete live acceptance, overall qualification, package/release readiness or
 Folders acceptance is claimed. Rebuild and rerun the live class against a stable
 source tree after the concurrent work settles; the broad failures above also
 remain unresolved.
+
+### Stable snapshot verification — 2026-10-29
+
+The implementation, regression tests and reader rollout/rollback documentation were
+already present. This run changes only this verification record; it preserves the
+original `baseline_commit`, frozen intent and `in-progress` status. No bounded-owner
+production defect was found. No source/test edits, dependency changes, Git index or
+history mutations, publication, deployment or retired qualification-tool restoration
+were performed by this run. CI run/link: none for this run; these are local results
+using SDK 10.0.403, .NET 10.0.14 and Dapr runtime 1.18.7.
+
+Origin HEAD: `8348bc491ace70dbd0d84c2320a6e4372479bbb9`. Concurrent dirty changes
+belonging to other sessions were preserved. Shared-checkout builds used:
+
+```bash
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+```
+
+All four ultimately succeeded with zero warnings/errors. The first Server build
+failed with three `CS0246` errors while a concurrent authentication change referenced
+the not-yet-created `EventStoreHumanCredentialRequirement` in
+`EventStoreHttpHostSecurityExtensions.cs:54` and `EventStoreHttpEndpointInventory.cs:36,109`.
+The unchanged command passed after that session supplied the type. Its initial and
+retry logs remain separately under `/tmp/bounded-20261029-server-build.log` and
+`/tmp/bounded-20261029-server-build-retry.log`.
+
+The following direct-assembly commands ran from the original repository root:
+
+```bash
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*SharedProjectionBoundedIdentityTests' -xml /tmp/bounded-20261029-client.xml
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -class '*DomainPartitionedSharedProjectionRebuildTests' -result-xml /tmp/bounded-20261029-domain.xml
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SharedProjectionSourceBeginProducerTests' -class '*SharedProjectionSourceRosterActorTests' -result-xml /tmp/bounded-20261029-server.xml
+BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE=/tmp/bounded-20261029-runtime.json dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityRuntimeProofTests' -result-xml /tmp/bounded-20261029-runtime.xml
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -result-xml /tmp/bounded-20261029-client-full.xml
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -result-xml /tmp/bounded-20261029-domain-full.xml
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml /tmp/bounded-20261029-server-full.xml
+```
+
+| Shared-checkout run | Passed | Failed | Skipped |
+| --- | ---: | ---: | ---: |
+| Client bounded identity class | 49 | 0 | 0 |
+| Domain partitioned rebuild class | 144 | 0 | 0 |
+| Server source producer/roster classes | 30 | 0 | 0 |
+| Runtime source-binding preflight | 3 | 0 | 0 |
+| Full Client suite | 2,248 | 1 | 2 |
+| Full Domain suite | 1,286 | 0 | 1 |
+| Full Server suite | 6,418 | 13 | 25 |
+
+These shared runs used their earlier successful Debug/source builds. Another session
+was observed running a Server test build during the full Server run; production
+and test sources also continued changing. The broad counts are observed test-process
+outcomes, not qualification of one fixed source/binary graph or of later edits.
+
+Client's failure is
+`DaprRoutingHeaderOwnershipGuardTests.HostSources_DelegateDaprRoutingHeaderOwnershipToThePlatformHandlerOnly`
+(the additional setter is `DaprRouteCatalogStateStore`). Server's failures are
+`CustomHostActorCallbackRateLimitTests.RawDaprMappingUsesTrustedDelegateProvenanceForIndependentBoundedQuotasAsync`,
+`DeletionConsumptionOriginalTests.UnavailableCurrentAuthorityOrUnsettledStateCannotReleaseOriginal(condition: "restored")`,
+`SignalRRuntimeProofMetadataTests.BroadcastReceipt_ReducedSerializedCap_MatchesDeliveredMetadata`,
+`SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets`, seven
+`QueryResponseProvenancePersistenceTests.PersistedFreshness_TraversesRouterHandlerControllerAndGatewayClient`
+cases, and `ActorBasedAuthIntegrationTests.ActorRbacValidation_CommandMessageCategoryPassedCorrectly`
+plus `ActorTenantValidation_Authorized_CommandAccepted`. No bounded matrix test failed.
+These failures were retained without attributing them to this feature, fixing foreign
+work or waiving the regression gate. Client's two isolated-Dapr skips, Domain's one
+content-live skip and Server's 25 existing opt-in/ATDD skips are separate from the
+required bounded matrix.
+
+The initial shared-tree live command was:
+
+```bash
+BOUNDED_IDENTITY_EVIDENCE_DIR=/tmp/bounded-20261029-live BOUNDED_IDENTITY_GENERATED_SOURCE_DIR=/tmp/bounded-20261029-live/generated dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityLiveTests' -result-xml /tmp/bounded-20261029-live.xml
+```
+
+Its first streamed 10,001-event worker correctly rejected concurrent edits with
+`Runtime PDB source differs: /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/RouteCatalogDevelopmentRedis.cs`.
+The unqualifiable run was canceled and its owned processes stopped. Its XML records
+zero passed/two failed: that source-drift failure and the canceled streamed 32,769
+case. The remaining seven cases did not run; they are not passes or skips.
+
+To complete the live matrix independently of ongoing edits, the complete current
+source/build-input tree and root-declared submodule sources were copied to
+`/tmp/bounded-owner-20261029-snapshot` using:
+
+```bash
+rsync -a --exclude='.git' --exclude='bin/' --exclude='obj/' --exclude='node_modules/' --exclude='.agents/' --exclude='.codex/' --exclude='.claude/' --exclude='.venv/' --exclude='_bmad/' --exclude='_bmad-output/' --exclude='evidence/' --exclude='/references/*/references/' /home/administrator/projects/hexalith/eventstore/ /tmp/bounded-owner-20261029-snapshot/
+```
+
+Source bytes were independent copies; no branch or nested submodule was created,
+initialized or updated. Earlier whole-tree captures caught two transient foreign
+compile failures with the same LiveSidecar build command: `CS0104` for ambiguous
+`IServer` in `HttpHostSecurityLiveTests.cs:112`, then `CS1929` for comparer-based
+`Contains` without LINQ in `EventStoreDomainServiceSecurityExtensions.cs:116`.
+Those failed logs remain `/tmp/bounded-20261029-snapshot-live-build.log` and
+`/tmp/bounded-20261029-snapshot-live-build-retry.log`. No foreign source was patched
+and no mixed production revision was constructed. After the broad runs, the whole
+tree was recaptured and its unchanged build command passed with zero warnings/errors
+(`/tmp/bounded-20261029-snapshot-live-build-final.log`).
+
+The successful capture is bound to:
+
+- UTC capture: `2026-10-29T18:24:23.545301+00:00`.
+- Origin HEAD: `8348bc491ace70dbd0d84c2320a6e4372479bbb9`, including the then-current
+  tracked and untracked dirty overlay, rather than HEAD alone.
+- Tracked overlay diff SHA-256:
+  `5dfd55c270f69426be663419374a2e26ebde7c9c4b41c571a23770389e268eaa`.
+- Complete 19,990-file input manifest SHA-256 (compact, key-sorted `sourceFiles` JSON):
+  `71ddf0ae753e4f4c9dfee7145f05370b5b83f3ad4bd3e7c53398ae17aacbad7e`.
+  All copied file hashes matched the origin at capture and remained unchanged after
+  the live run. The manifest includes untracked file content hashes; the tracked
+  diff hash alone does not cover that overlay.
+- Origin/status/submodule revisions and file hashes:
+  `/tmp/bounded-20261029-snapshot-origin.json`; tracked overlay:
+  `/tmp/bounded-20261029-origin.diff`. Earlier failed captures remain separately
+  suffixed `-initial` and `-second`.
+
+The following commands ran from `/tmp/bounded-owner-20261029-snapshot`:
+
+```bash
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE=/tmp/bounded-20261029-snapshot-runtime.json dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityRuntimeProofTests' -result-xml /tmp/bounded-20261029-snapshot-runtime.xml
+BOUNDED_IDENTITY_EVIDENCE_DIR=/tmp/bounded-20261029-snapshot-live BOUNDED_IDENTITY_GENERATED_SOURCE_DIR=/tmp/bounded-20261029-snapshot-live/generated dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityLiveTests' -result-xml /tmp/bounded-20261029-snapshot-live.xml
+```
+
+Snapshot preflight: **3 passed, zero failed/skipped/errors**. Complete live class:
+**9 passed, zero failed/skipped/errors**, `2026-10-29T18:24:43.1600176+00:00` through
+`2026-10-29T19:06:34.8697013+00:00` (2,511.813 seconds). Each scenario completed all
+required phases; all 30 worker PIDs were distinct:
+
+| Owner events | Contract | Inherited replay | Stage / promote / resume / inherited PIDs |
+| ---: | --- | --- | --- |
+| 129 | Streamed | No | 1527132 / 1529234 / 1529332 |
+| 129 | Buffered | No | 1532201 / 1533697 / 1534235 |
+| 129 | Streamed | Yes | 1513076 / 1515978 / 1516077 / 1519715 |
+| 129 | Buffered | Yes | 1520365 / 1522427 / 1522948 / 1527054 |
+| 10,001 | Streamed | No | 1536814 / 1579747 / 1580759 |
+| 32,769 | Streamed | No | 1625865 / 1758982 / 1760674 |
+| 10,001 | Buffered | No | 1880261 / 1913172 / 1913494 |
+| 32,769 | Buffered | No | 1948531 / 2068696 / 2069573 |
+| 10,001 | Buffered | Yes | 2177267 / 2208633 / 2209151 / 2243233 |
+
+All four large-owner scenarios proved durable interrupted staging, partial second-owner
+handoff, recovery, ordinary growth (including 32,770), repeated rebuild and historical
+duplicate/conflict proof. Inherited cases additionally proved unchanged replay from
+an omitted original owner in a fourth process.
+
+All 30 records identify one runtime graph, whose four actual PE/PDB pairs match their
+recorded hashes and whose 1,523 ordinary/embedded-generated source document SHA-256
+values match the captured sources. Compact, key-sorted runtime-proof JSON SHA-256:
+`3c8c02de3004d8d92e169925760aae9ddc4292f8ac6b17c24afbfb71b5163ac3`.
+Maximum physical value/canonical batch: **110,620 bytes**; maximum batch: **68
+operations**; identity: **12,302 bytes**; checkpoint: **1,696 bytes**; owner manifest:
+**1,258 bytes**. The 100-operation/one-MiB limits remain satisfied. Worker records and
+generated-source captures remain local under `/tmp/bounded-20261029-snapshot-live`;
+the final local audit is `/tmp/bounded-20261029-final-audit.json`.
+
+The frozen matrix maps to actual passing current results as follows. Every named
+unit method below was found as `Pass` in the focused XML; none was skipped. The live
+methods all passed in the final snapshot XML.
+
+| Frozen matrix row | Passing coverage |
+| --- | --- |
+| Complete original owner beyond 10,000; bounded values | Client `CompleteOriginalOwnerUsesBoundedNodesAndRetainsHistoricalProofAfterGrowth`; Domain `ProductionDispatcherRebuildsGrowsAndRebuildsCompleteOriginalOwner`; Server `OriginalOwnersStreamBeyondTheFormerCaptureSequenceBoundary` and `AuthoritativeCaptureRetainsOriginalOwnerBeyondFormerSequenceBoundary`; all four large-owner live cases. |
+| Exact retry; changed earlier identity | Client `EveryRetainedPrefixPageIncludingPartialLeafIsComparedBeforePromotion`; Domain `DispatcherRejectsChangedRetainedEarlyMiddleAndFinalIdentitiesBeforePromotion`; exact historical retry/conflict assertions in the complete-owner and live cases. |
+| Growth; independent owners | Client `MultipleOriginalOwnersKeepDistinctProofAndCoveredPendingJournalCatchUp`; Domain complete-owner rebuild/growth cases; all four large-owner live cases and the three inherited-owner live cases. |
+| Gap, alias, missing page or stale capture | Client `DistantMessageDuplicatesMissingAndCorruptNodesFailClosed` and `InheritedOwnerKeepsExactNextSequenceAndGapChecks`; Domain `DispatcherRejectsCrossPageMessageAliasAndAbortRetainsDurableRetirementInventory` and `StaleCaptureIsRejectedBeforePromotionAndFreshRetryCanCommit`. |
+| Concurrent writers; interrupted promotion; new process | Client `ConcurrentEpochChangeCannotBeOverwrittenByAStaleCheckpointSeed` and `AbortRetiresPreparedPagesWithoutAllowingDelayedInstallers`; Domain `DispatcherCommitKeepsDeliveryAndNextRebuildFencedUntilSeedingCompletes`; all nine live process-replacement cases. |
+
+Fixture cleanup completed without xUnit errors; the snapshot runner, all 30 workers
+and its sidecar targeting app port 33641 have exited. The five pre-existing Docker
+containers remained running; this run did not restart or remove them. The snapshot
+and local results were retained for inspection.
+
+The full live matrix is now verified for this exact captured dirty source/binary
+graph, superseding the earlier source-drift blocker only for that graph. It does not
+qualify subsequent concurrent edits. The broader regression gate remains red, so
+status remains `in-progress`; no overall regression qualification, package/release
+readiness or Folders acceptance is claimed.

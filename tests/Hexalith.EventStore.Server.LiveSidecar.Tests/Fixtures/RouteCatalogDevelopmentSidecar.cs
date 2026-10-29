@@ -17,6 +17,10 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
     public int AppPort { get; }
     public string RuntimeFingerprint { get; }
     public byte[] Arguments => System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(_start.ArgumentList.ToArray());
+    /// <summary>Gets the checksum-verified executable selected for this fixture process.</summary>
+    internal string Executable => _start.FileName;
+    /// <summary>Gets the process identity retained for this fixture's exact-process cleanup.</summary>
+    internal int ProcessId => _process?.Id ?? throw new InvalidOperationException("The owned sidecar has not started.");
 
     public RouteCatalogDevelopmentSidecar(string appId, string resources, string configuration, string? appToken = null)
     {
@@ -78,6 +82,17 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
     public void RequireRunning()
     {
         if (_process is null || _process.HasExited) throw new InvalidOperationException("The observed catalog fixture sidecar is unavailable.");
+    }
+
+    /// <summary>Disables control-plane enrollment for private state-store and direct app-port tests.</summary>
+    internal void DisableControlPlane()
+    {
+        for (int index = 0; index < _start.ArgumentList.Count - 1; index++)
+        {
+            if (_start.ArgumentList[index] is "--placement-host-address" or "--scheduler-host-address") _start.ArgumentList[index + 1] = "";
+        }
+        _start.Environment.Remove("DAPR_API_TOKEN");
+        _start.Environment.Remove("APP_API_TOKEN");
     }
 
     public void ConfigureMutualTls(RouteCatalogDevelopmentSentry sentry)

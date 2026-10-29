@@ -14,9 +14,12 @@ namespace Hexalith.EventStore.Operations.Tests;
 /// <summary>Supplies real credentials to existing host and redacted projection fixtures.</summary>
 internal static class OperationsTestCredentials
 {
+    /// <summary>Gets the test receiver channel credential.</summary>
     internal const string Channel = "operations-host-test-channel";
     private static readonly string SigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
 
+    /// <summary>Registers the fixture JWT profile and channel credential.</summary>
+    /// <param name="builder">The isolated test host builder.</param>
     internal static void Configure(IWebHostBuilder builder) => builder.ConfigureAppConfiguration((context, configuration) =>
     {
         bool production = context.HostingEnvironment.IsProduction();
@@ -31,6 +34,8 @@ internal static class OperationsTestCredentials
         });
     });
 
+    /// <summary>Creates a short-lived signed Admin credential for this test profile.</summary>
+    /// <returns>The fixture bearer token.</returns>
     internal static string HumanToken() => new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
     {
         Issuer = "operations-tests", Audience = "operations-tests", Expires = DateTime.UtcNow.AddMinutes(5),
