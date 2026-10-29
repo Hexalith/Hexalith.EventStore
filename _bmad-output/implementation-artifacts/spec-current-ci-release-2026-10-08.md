@@ -2,7 +2,9 @@
 title: 'Repair current main CI and publish a verified release'
 type: 'bugfix'
 created: '2026-10-08'
-status: 'in-review'
+status: 'done'
+disposition: 'superseded'
+closed: '2026-10-29'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '4cc77f9554395e84539e173e94b8f0b4df14d643'
@@ -48,6 +50,8 @@ context:
 
 ## Tasks & Acceptance
 
+This checklist records the original implementation. The remaining unchecked tasks are retired by the owner's 2026-10-29 supersession decision; they are not claims of completed implementation. See Current Outcome below.
+
 - [x] Guard the exact archived package-observation exemption with a content hash and negative controls for changes and new sibling overrides.
 - [x] Correct secret-scanner structural false positives with positive/negative controls; add exact hash-verified retirement without rewriting historical artifacts or skipping arbitrary reports/logs.
 - [x] Reproduce and repair matching-credential Pact acceptance in the test harness, preserving mismatch denial; run the full ProviderVerification test project.
@@ -68,6 +72,7 @@ The parent performs Git and remote publication after local implementation and re
 
 - 2026-10-08: The user explicitly selected “Fix current main and publish a new release” after historical v3.102.0 publication was verified. This continuation records a new exact baseline without rewriting the original spec's baseline or historical repair evidence.
 - 2026-10-08: Full Contracts verification exposed the archived companion `Identity.csproj` as another evaluated historical consumer. Its exact preserved path/hash joins the observation exemption with tracked/untracked drift controls. Live GitHub main rules require a squash PR before the exact-main CI and publication gates.
+- 2026-10-29: The user selected closing this historical spec as superseded after the published release was reverified. The later owner-approved [evidence-storage simplification](spec-evidence-storage-simplification.md) supersedes the committed-capture requirements. Retire the remaining alternative-repair and publication tasks, preserve the frozen intent and historical review record, and do not claim that the original capture-preservation acceptance criterion was met.
 
 ## Review Triage Log
 
@@ -103,10 +108,24 @@ Archived consumer files do not select live package versions. Metadata exemptions
 - Preserve complete test output locally and report exact command, exit code, counts and failures. Do not print credential values.
 - Parent remote gates: pinned commitlint preflight, exact-source push CI/Commitlint, ordinary `release.yml` dispatch with `bypass-validation=false`, tag/source identity, then both channels' 14-package contracts and nuspec source commits.
 
-## Current Outcome
+## Historical Outcome (2026-10-08)
 
 The isolated implementation is reviewed and locally verified. See `evidence/current-ci-release-2026-10-08/post-review-verification.json` and its retained output. Contracts ran sequentially after an unchanged Dapr process test twice hit its five-second deadline in parallel runs; all 2,281 cases finished with zero failures and two existing inventory-dependent skips. Server finished 4,011 cases with zero failures and 25 existing skips; ProviderVerification passed 83/83; OQ8 and warnings-as-errors Release build passed. The exact pinned commitlint candidate is validated but unused.
 
 No commit, stage, push or Release dispatch has been performed by this session. The other session pushed a different green repair that sanitizes a historical capture, then advanced main again. Its first publication attempt left tag v3.116.0 and stopped before NuGet push due source drift; that version must remain untouched. A replacement release run is observed separately in `upstream-coordination.json`. The user is choosing whether to retain frozen capture bytes and publish this reviewed repair, accept the sanitized upstream source, or let the other session own publication. Keep the spec in review until that choice and final publication checks are complete.
 
 - Observed publication outcome: the other session's ordinary protected Release run 37750172086 succeeded from b830d9829af70536d2a3fd21c5e2a23b2ca2f256 as v3.117.0. Its exact-source push CI and Commitlint passed; bypass-validation=false is verified in run logs. The tag matches source, and all 14 manifest packages validate in GitHub and NuGet with identical uncompressed contents except NuGet signatures and matching nuspec source commits. Publication verification is complete, while acceptance of the upstream historical-capture rewrite and disposition of this uncommitted reviewed alternative remain the user's pending choice.
+
+## Current Outcome
+
+Closed as superseded on 2026-10-29 at the user's explicit request. The historical pending-choice statements above are resolved by this closure. The separate reviewed alternative will not be revived or published under this spec, and no new release is required for closure. This decision does not retroactively claim that upstream satisfied the original capture-preservation requirement.
+
+The current repository policy is [AD-12 evidence storage](../planning-artifacts/architecture.md#ad-12---high-risk-verification-requires-persisted-evidence-adopted), adopted through [evidence-storage simplification](spec-evidence-storage-simplification.md) in commit `6a0b6441f6d78a3007678a1d0ec336e9cb8ff961`. It removes committed evidence and the validators that only re-verified it. The original frozen intent, checklist, local test counts and review findings above remain historical context; the removed captures and validators are not restored.
+
+Read-only publication verification on 2026-10-29 reconfirmed:
+
+- [Release v3.117.0](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.117.0) and its tag target source `b830d9829af70536d2a3fd21c5e2a23b2ca2f256`.
+- Exact-source push [CI 37749252540](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/37749252540), [Commitlint 37749252627](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/37749252627), and [Release 37750172086](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/37750172086) all completed successfully.
+- All 14 manifest package IDs were downloaded from both GitHub and NuGet. Every package matched version `3.117.0` and the source commit in its nuspec, every GitHub archive matched its published SHA-256 digest, and all uncompressed payloads matched across channels excluding NuGet's `.signature.p7s`. Signature presence was inspected; cryptographic signature verification was not performed. The verifier exited 0 with 14/14 passing; local scratch output is `/tmp/eventstore-oct08-publication-check-0eezdqpk/publication-check.json`.
+
+No application tests were rerun for this documentation-only closure. It makes no claim about current-main CI or publication readiness, and performs no remote publication or tag mutation.
