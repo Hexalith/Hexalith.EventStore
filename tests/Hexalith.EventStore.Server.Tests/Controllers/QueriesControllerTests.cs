@@ -59,7 +59,8 @@ public partial class QueriesControllerTests {
         ClaimsPrincipal? principal = null,
         ITenantValidator? tenantValidator = null,
         IRbacValidator? rbacValidator = null,
-        Microsoft.Extensions.Configuration.IConfiguration? configuration = null) {
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null) {
         eTagService ??= Substitute.For<IETagService>();
         if (tenantValidator is null) {
             tenantValidator = Substitute.For<ITenantValidator>();
@@ -72,7 +73,9 @@ public partial class QueriesControllerTests {
             _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
                 .Returns(RbacValidationResult.Allowed);
         }
-        var controller = new QueriesController(mediator, eTagService, tenantValidator, rbacValidator, NullLogger<QueriesController>.Instance, configuration: configuration);
+        var controller = catalogAuthority is null
+            ? new QueriesController(mediator, eTagService, tenantValidator, rbacValidator, NullLogger<QueriesController>.Instance, configuration: configuration)
+            : new QueriesController(catalogAuthority, mediator, eTagService, tenantValidator, rbacValidator, NullLogger<QueriesController>.Instance, configuration: configuration);
         var httpContext = new DefaultHttpContext {
             User = principal ?? new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim("sub", "test-user")], "test")),

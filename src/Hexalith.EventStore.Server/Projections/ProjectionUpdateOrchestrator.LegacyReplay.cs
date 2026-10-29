@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -21,8 +23,14 @@ internal partial class ProjectionUpdateOrchestrator
     /// <summary>Runs durable compatible replay independently of process-local scheduling.</summary>
     internal async Task<bool> DeliverCompatibleReplayAsync(AggregateIdentity identity, DomainServiceRegistration registration,
         ProjectionActivationWorkItem? sampledWork, IProjectionReplayPublicationGateway publication,
-        IProjectionRebuildInspectionGateway inspection, IProjectionLegacyDeliveryOutbox outbox, CancellationToken cancellationToken)
+        IProjectionRebuildInspectionGateway inspection, IProjectionLegacyDeliveryOutbox outbox, CancellationToken cancellationToken,
+        CommittedProjectionMethodPlan? methodPlan = null)
     {
+        if (methodPlan is { Legacy: false }
+            || methodPlan is not null && (registration.AppId != methodPlan.Registration.AppId || registration.Version != methodPlan.Registration.Version
+                || sampledWork?.LegacyDelivery is { } retained && (retained.AppId != registration.AppId || retained.ServiceVersion != registration.Version
+                    || retained.ProjectionType is not null && !methodPlan.LegacyOutputs.Contains(retained.ProjectionType, StringComparer.Ordinal))))
+            throw new RouteCatalogUnavailableException("The retained legacy projection intent differs from its committed method plan.");
         long observedHead = 0, observedCheckpoint = 0;
         string status = "retryable", reason = "delivery_state_unavailable";
         try
@@ -32,7 +40,7 @@ internal partial class ProjectionUpdateOrchestrator
             SourceProofInspection sourceInspection;
             try
             {
-                sourceInspection = await source.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+                sourceInspection = await RouteCatalogRemoteCall.InvokeAsync(() => source!.InspectSourceProofAsync().WaitAsync(cancellationToken)).ConfigureAwait(false);
             }
             catch (Exception failure) when (IsUnavailableActorMethod(failure))
             {
@@ -41,7 +49,7 @@ internal partial class ProjectionUpdateOrchestrator
                 // or writer-v2 cutover. Its exact discovered scope is fenced again
                 // before and under the existing lifecycle lease.
                 return sampledWork?.LegacyDelivery is not null
-                    || await deliveryStateStore!.ReadWriterProtocolAsync(cancellationToken).ConfigureAwait(false) is not null;
+                    || await RouteCatalogRemoteCall.InvokeAsync(() => deliveryStateStore!.ReadWriterProtocolAsync(cancellationToken)).ConfigureAwait(false) is not null;
             }
             if (sourceInspection.Status == SourceProofInspectionStatus.Invalid)
                 throw new ProjectionDeliveryHistoryValidationException("source_conflict");
@@ -64,8 +72,8 @@ internal partial class ProjectionUpdateOrchestrator
                 throw new ProjectionDeliveryHistoryValidationException("source_conflict");
             if (sampledWork is null)
             {
-                await projectionActivationOutbox!.EnsureAsync(identity, cancellationToken).ConfigureAwait(false);
-                sampledWork = await projectionActivationOutbox.GetAsync(identity, cancellationToken).ConfigureAwait(false);
+                await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.EnsureAsync(identity, cancellationToken)).ConfigureAwait(false);
+                sampledWork = await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.GetAsync(identity, cancellationToken)).ConfigureAwait(false);
                 if (sampledWork is null || sampledWork.LegacyDelivery is not null) return true;
             }
             string invocation = UniqueIdHelper.GenerateSortableUniqueStringId();
@@ -75,7 +83,7 @@ internal partial class ProjectionUpdateOrchestrator
                 // legacy attempt must not freeze later named heads behind its compatibility lease.
                 // Preserve that exact legacy intent and validate the current authoritative prefix
                 // before allowing the named coordinator to admit its own routes.
-                if (namedProjectionDispatchCoordinator is not null)
+                if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false })
                 {
                     (ProjectionEventDto[] namedEvents, string _, string namedHeadId) = await ReadLegacyReplayPrefixAsync(
                         source, identity, metadata.CurrentSequence, sourceInspection.Proof, true, cancellationToken).ConfigureAwait(false);
@@ -93,11 +101,11 @@ internal partial class ProjectionUpdateOrchestrator
                 UniqueIdHelper.GenerateSortableUniqueStringId(), registration.AppId, registration.Version ?? "v1", head, headId)
                 { SourceFingerprint = fingerprint, FrozenActivationRevision = sampledWork.Revision, SourceProof = anchor })
                 with { InvocationToken = invocation, LeaseExpiresAtUtc = clock.GetUtcNow() + TimeSpan.FromMinutes(5) };
-            ProjectionActivationWorkItem? work = await outbox.TryBindLegacyDeliveryAsync(sampledWork, intent, cancellationToken).ConfigureAwait(false);
+            ProjectionActivationWorkItem? work = await RouteCatalogRemoteCall.InvokeAsync(() => outbox!.TryBindLegacyDeliveryAsync(sampledWork, intent, cancellationToken)).ConfigureAwait(false);
             if (work is null) return true;
 
             // Named and explicit legacy routes may coexist. Their durable work remains independent.
-            if (namedProjectionDispatchCoordinator is not null)
+            if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false })
                 _ = await namedProjectionDispatchCoordinator.TryDispatchHeadAsync(identity, registration, head, headId, events,
                     anchor is null ? null : SourceProofCodec.ToNative(anchor), cancellationToken).ConfigureAwait(false);
 
@@ -106,16 +114,16 @@ internal partial class ProjectionUpdateOrchestrator
                 : QueryActorIdHelper.DeriveActorId(intent.ProjectionType, identity.TenantId, identity.AggregateId, []);
             if (actorId is not null)
             {
-                ProjectionRebuildInspection persisted = await inspection.InspectAsync(actorId, intent.OperationId, cancellationToken).ConfigureAwait(false);
+                ProjectionRebuildInspection persisted = await RouteCatalogRemoteCall.InvokeAsync(() => inspection!.InspectAsync(actorId, intent.OperationId, cancellationToken)).ConfigureAwait(false);
                 if (persisted.Status == ProjectionRebuildInspectionStatus.Conflict)
                 {
                     // A retained duplicate may reference an earlier completed operation.
                     // Only the unactivated equal-checkpoint path may retry its strict readback;
                     // the actor conflict remains authoritative for every publication path.
-                    ProjectionDeliveryStateReadResult priorScope = await deliveryStateStore!.ReadAsync(identity, intent.ProjectionType!, cancellationToken).ConfigureAwait(false);
+                    ProjectionDeliveryStateReadResult priorScope = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryStateStore!.ReadAsync(identity, intent.ProjectionType!, cancellationToken)).ConfigureAwait(false);
                     if (priorScope.WriterProtocolV2Active || !CanPublishLegacyScope(priorScope)
                         || priorScope.Classification == ProjectionDeliveryStateClassification.Current || deliveryCheckpointStore is null
-                        || await deliveryCheckpointStore.ReadDeliveredSequenceAsync(identity, intent.ProjectionType!, cancellationToken).ConfigureAwait(false) != head)
+                        || await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity, intent.ProjectionType!, cancellationToken)).ConfigureAwait(false) != head)
                         throw new ProjectionDeliveryHistoryValidationException("delivery_reconciliation_required");
                 }
                 candidate = persisted.State;
@@ -123,7 +131,7 @@ internal partial class ProjectionUpdateOrchestrator
             if (candidate is null)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                using HttpRequestMessage request = daprClient.CreateInvokeMethodRequest(intent.AppId, "project",
+                using HttpRequestMessage request = daprClient.CreateInvokeMethodRequest(intent.AppId, methodPlan?.Registration.MethodName ?? "project",
                     new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, events));
                 request.Content?.Dispose();
                 request.Content = ProjectionWireJsonSerializer.CreateContent(
@@ -133,7 +141,7 @@ internal partial class ProjectionUpdateOrchestrator
                 if (response is null) return true;
                 if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.NotImplemented)
                 {
-                    if (namedProjectionDispatchCoordinator is not null)
+                    if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false })
                         await CompleteLegacyIntentAsync(identity, outbox, work, cancellationToken).ConfigureAwait(false);
                     return true;
                 }
@@ -142,9 +150,13 @@ internal partial class ProjectionUpdateOrchestrator
                 if (prepared is null || string.IsNullOrWhiteSpace(prepared.ProjectionType)
                     || prepared.State.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
                     || prepared.State.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(prepared.State.GetString())) return true;
+                if (methodPlan is not null && !methodPlan.LegacyOutputs.Contains(prepared.ProjectionType, StringComparer.Ordinal))
+                    throw new RouteCatalogUnavailableException("The legacy response output differs from its committed method plan.");
                 candidate = ProjectionState.FromProjectionResponse(prepared, identity.TenantId);
                 actorId = QueryActorIdHelper.DeriveActorId(prepared.ProjectionType, identity.TenantId, identity.AggregateId, []);
             }
+            if (methodPlan is not null && !methodPlan.LegacyOutputs.Contains(candidate.ProjectionType, StringComparer.Ordinal))
+                throw new RouteCatalogUnavailableException("The retained legacy candidate output differs from its committed method plan.");
             string candidateDigest = Convert.ToHexStringLower(SHA256.HashData(candidate.StateBytes));
             if (intent.CandidateFingerprint is not null && intent.CandidateFingerprint != candidateDigest
                 || intent.ProjectionType is not null && intent.ProjectionType != candidate.ProjectionType)
@@ -154,7 +166,7 @@ internal partial class ProjectionUpdateOrchestrator
             if (work is null) return true;
 
             string route = candidate.ProjectionType;
-            ProjectionDeliveryStateReadResult scope = await deliveryStateStore!.ReadAsync(identity, route, cancellationToken).ConfigureAwait(false);
+            ProjectionDeliveryStateReadResult scope = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryStateStore!.ReadAsync(identity, route, cancellationToken)).ConfigureAwait(false);
             observedCheckpoint = scope.State?.LastDeliveredSequence ?? 0;
             // Catalog removal cannot turn an admitted guarded scope into an unguarded legacy writer.
             if (scope.SourceGuard is not null || scope.State?.SchemaVersion == ProjectionDeliveryState.GuardSchemaVersion
@@ -164,34 +176,34 @@ internal partial class ProjectionUpdateOrchestrator
             ProjectionDeliveryFingerprintHistory history = ProjectionDeliveryFingerprint.ComputeHistory(identity, route, events);
             events = [];
             string lease = UniqueIdHelper.GenerateSortableUniqueStringId();
-            if (!await lifecycleGateway!.BeginDeliveryWriteAsync(identity, route, lease, cancellationToken).ConfigureAwait(false)) return true;
+            if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.BeginDeliveryWriteAsync(identity, route, lease, cancellationToken)).ConfigureAwait(false)) return true;
             bool completed = false;
             CancellationTokenSource? finalization = null;
             try
             {
-                ProjectionActivationWorkItem? ownership = await projectionActivationOutbox!.GetAsync(identity, cancellationToken).ConfigureAwait(false);
+                ProjectionActivationWorkItem? ownership = await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.GetAsync(identity, cancellationToken)).ConfigureAwait(false);
                 if (ownership?.LegacyDelivery != intent || intent.LeaseExpiresAtUtc <= clock.GetUtcNow()) return true;
-                scope = await deliveryStateStore.ReadAsync(identity, route, cancellationToken).ConfigureAwait(false);
+                scope = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryStateStore!.ReadAsync(identity, route, cancellationToken)).ConfigureAwait(false);
                 observedCheckpoint = scope.State?.LastDeliveredSequence ?? 0;
                 if (!CanPublishLegacyScope(scope)) return true;
-                ProjectionLifecycleSnapshot lifecycle = await lifecycleGateway.ReadSnapshotAsync(identity, route, cancellationToken).ConfigureAwait(false);
+                ProjectionLifecycleSnapshot lifecycle = await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.ReadSnapshotAsync(identity, route, cancellationToken)).ConfigureAwait(false);
                 var binding = new ProjectionReplayPublicationBinding(identity.TenantId, identity.Domain, identity.AggregateId,
                     route, intent.OperationId, head, headId, fingerprint, candidateDigest);
                 var bound = new ProjectionReplayPublicationRequest(binding, lifecycle, lease, candidate);
                 ProjectionDeliveryReservation? reservation = null;
                 if (scope.WriterProtocolV2Active)
                 {
-                    ProjectionDeliveryAdmissionResult admission = await deliveryIdempotency!.TryAdmitHistoryAsync(identity, route,
-                        history, true, cancellationToken, intent.DeliveryFencingToken).ConfigureAwait(false);
+                    ProjectionDeliveryAdmissionResult admission = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryIdempotency!.TryAdmitHistoryAsync(identity, route,
+                        history, true, cancellationToken, intent.DeliveryFencingToken)).ConfigureAwait(false);
                     if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.AlreadyCompleted)
                     {
                         finalization = new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
                         CancellationToken readbackToken = finalization.Token;
-                        ProjectionRebuildInspection selected = await inspection.InspectAsync(actorId!, intent.OperationId, readbackToken).ConfigureAwait(false);
+                        ProjectionRebuildInspection selected = await RouteCatalogRemoteCall.InvokeAsync(() => inspection!.InspectAsync(actorId!, intent.OperationId, readbackToken)).ConfigureAwait(false);
                         completed = selected.Status == ProjectionRebuildInspectionStatus.Promoted && selected.State is not null
                             && selected.State.StateBytes.AsSpan().SequenceEqual(candidate.StateBytes)
-                            ? await publication.FinalizeReplayAsync(actorId!, bound with { State = null }, readbackToken).ConfigureAwait(false)
-                            : await publication.ReadReplayCompletionAsync(actorId!, bound with { State = null }, readbackToken).ConfigureAwait(false);
+                            ? await RouteCatalogRemoteCall.InvokeAsync(() => publication!.FinalizeReplayAsync(actorId!, bound with { State = null }, readbackToken)).ConfigureAwait(false)
+                            : await RouteCatalogRemoteCall.InvokeAsync(() => publication!.ReadReplayCompletionAsync(actorId!, bound with { State = null }, readbackToken)).ConfigureAwait(false);
                         return true;
                     }
                     reservation = admission.Reservation;
@@ -203,7 +215,7 @@ internal partial class ProjectionUpdateOrchestrator
                 else
                 {
                     if (scope.Classification == ProjectionDeliveryStateClassification.Current || deliveryCheckpointStore is null) return true;
-                    long checkpoint = await deliveryCheckpointStore.ReadDeliveredSequenceAsync(identity, route, cancellationToken).ConfigureAwait(false);
+                    long checkpoint = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity, route, cancellationToken)).ConfigureAwait(false);
                     if (checkpoint > head) throw new ProjectionDeliveryHistoryValidationException("checkpoint_drift");
                     if (checkpoint == head)
                     {
@@ -212,7 +224,7 @@ internal partial class ProjectionUpdateOrchestrator
                         finalization = new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
                         using var reconciliation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, finalization.Token);
                         CancellationToken proofToken = reconciliation.Token;
-                        SourceProofInspection currentSource = await source.InspectSourceProofAsync().WaitAsync(proofToken).ConfigureAwait(false);
+                        SourceProofInspection currentSource = await RouteCatalogRemoteCall.InvokeAsync(() => source!.InspectSourceProofAsync().WaitAsync(proofToken)).ConfigureAwait(false);
                         if (currentSource.Status == SourceProofInspectionStatus.Invalid || currentSource.Erased || !currentSource.Exists
                             || currentSource.CurrentSequence < head || anchor is not null && (currentSource.Proof is not { } currentAnchor
                                 || currentAnchor.SourceIncarnation != anchor.SourceIncarnation || currentAnchor.RetainedFloor > 1
@@ -222,14 +234,14 @@ internal partial class ProjectionUpdateOrchestrator
                             source, identity, head, anchor, false, proofToken).ConfigureAwait(false);
                         if (currentFingerprint != fingerprint || currentHeadId != headId)
                             throw new ProjectionDeliveryHistoryValidationException("source_conflict");
-                        bool reconciled = await publication.ReconcileBoundReplayCompletionAsync(actorId!, bound with { State = null },
-                            proofToken).ConfigureAwait(false);
+                        bool reconciled = await RouteCatalogRemoteCall.InvokeAsync(() => publication!.ReconcileBoundReplayCompletionAsync(actorId!, bound with { State = null },
+                            proofToken)).ConfigureAwait(false);
                         proofToken.ThrowIfCancellationRequested();
                         completed = reconciled;
                         return true;
                     }
                 }
-                ProjectionRebuildInspection staged = await publication.StageReplayAsync(actorId!, bound, cancellationToken).ConfigureAwait(false);
+                ProjectionRebuildInspection staged = await RouteCatalogRemoteCall.InvokeAsync(() => publication!.StageReplayAsync(actorId!, bound, cancellationToken)).ConfigureAwait(false);
                 if (staged.Status is not ProjectionRebuildInspectionStatus.Staged and not ProjectionRebuildInspectionStatus.Promoted) return true;
                 cancellationToken.ThrowIfCancellationRequested();
                 (ProjectionEventDto[] _, string verified, string verifiedHeadId) = await ReadLegacyReplayPrefixAsync(
@@ -242,21 +254,21 @@ internal partial class ProjectionUpdateOrchestrator
                 ProjectionRebuildInspection promoted;
                 try
                 {
-                    promoted = await publication.PromoteReplayAsync(actorId!, bound with { State = null },
-                        publicationCancellation.Token).WaitAsync(publicationCancellation.Token).ConfigureAwait(false);
+                    promoted = await RouteCatalogRemoteCall.InvokeAsync(() => publication!.PromoteReplayAsync(actorId!, bound with { State = null },
+                        publicationCancellation.Token).WaitAsync(publicationCancellation.Token)).ConfigureAwait(false);
                 }
                 catch when (!finalToken.IsCancellationRequested)
                 {
                     // A timeout/canceled caller is not permission to prepare a
                     // replacement. Inspect this exact original candidate only.
-                    promoted = await inspection.InspectAsync(actorId!, intent.OperationId, finalToken).ConfigureAwait(false);
+                    promoted = await RouteCatalogRemoteCall.InvokeAsync(() => inspection!.InspectAsync(actorId!, intent.OperationId, finalToken)).ConfigureAwait(false);
                     if (promoted.Status != ProjectionRebuildInspectionStatus.Promoted) return true;
                 }
-                ProjectionRebuildInspection readback = await inspection.InspectAsync(actorId!, intent.OperationId, finalToken).ConfigureAwait(false);
+                ProjectionRebuildInspection readback = await RouteCatalogRemoteCall.InvokeAsync(() => inspection!.InspectAsync(actorId!, intent.OperationId, finalToken)).ConfigureAwait(false);
                 if (promoted.Status != ProjectionRebuildInspectionStatus.Promoted
                     || readback.Status != ProjectionRebuildInspectionStatus.Promoted || readback.State is null
                     || !readback.State.StateBytes.AsSpan().SequenceEqual(candidate.StateBytes)) return true;
-                SourceProofInspection finalSource = await source.InspectSourceProofAsync().WaitAsync(finalToken).ConfigureAwait(false);
+                SourceProofInspection finalSource = await RouteCatalogRemoteCall.InvokeAsync(() => source!.InspectSourceProofAsync().WaitAsync(finalToken)).ConfigureAwait(false);
                 if (finalSource.Status == SourceProofInspectionStatus.Invalid || finalSource.Erased || !finalSource.Exists
                     || finalSource.CurrentSequence < head || anchor is not null && (finalSource.Proof is not { } finalAnchor
                         || finalAnchor.SourceIncarnation != anchor.SourceIncarnation || finalAnchor.RetainedFloor > 1
@@ -273,16 +285,16 @@ internal partial class ProjectionUpdateOrchestrator
                 }
                 if (reservation is not null)
                 {
-                    ProjectionDeliveryCompletion completion = await deliveryIdempotency!.CompleteHistoryAsync(identity, route,
-                        history, reservation, finalToken).ConfigureAwait(false);
+                    ProjectionDeliveryCompletion completion = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryIdempotency!.CompleteHistoryAsync(identity, route,
+                        history, reservation, finalToken)).ConfigureAwait(false);
                     if (completion is not ProjectionDeliveryCompletion.Completed and not ProjectionDeliveryCompletion.AlreadyCompleted) return true;
-                    ProjectionDeliveryStateReadResult saved = await deliveryStateStore.ReadAsync(identity, route, finalToken).ConfigureAwait(false);
+                    ProjectionDeliveryStateReadResult saved = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryStateStore!.ReadAsync(identity, route, finalToken)).ConfigureAwait(false);
                     if (saved.State?.LastDeliveredSequence != head || saved.State.LastCompletedMessageId != headId
                         || saved.State.CompletedPrefixFingerprint != history.PrefixFingerprint || saved.State.ActiveReservation is not null) return true;
                 }
-                else if (!await deliveryCheckpointStore!.SaveDeliveredSequenceAsync(identity, route, head, finalToken).ConfigureAwait(false)
-                    || await deliveryCheckpointStore.ReadDeliveredSequenceAsync(identity, route, finalToken).ConfigureAwait(false) != head) return true;
-                completed = await publication.FinalizeReplayAsync(actorId!, bound with { State = null }, finalToken).ConfigureAwait(false);
+                else if (!await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.SaveDeliveredSequenceAsync(identity, route, head, finalToken)).ConfigureAwait(false)
+                    || await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity, route, finalToken)).ConfigureAwait(false) != head) return true;
+                completed = await RouteCatalogRemoteCall.InvokeAsync(() => publication!.FinalizeReplayAsync(actorId!, bound with { State = null }, finalToken)).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
             }
             finally
@@ -290,7 +302,7 @@ internal partial class ProjectionUpdateOrchestrator
                 finalization ??= new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
                 try
                 {
-                    if (!await lifecycleGateway.CompleteDeliveryWriteAsync(identity, route, lease, finalization.Token).ConfigureAwait(false)) completed = false;
+                    if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteDeliveryWriteAsync(identity, route, lease, finalization.Token)).ConfigureAwait(false)) completed = false;
                     if (completed)
                     {
                         observedCheckpoint = head;
@@ -339,9 +351,9 @@ internal partial class ProjectionUpdateOrchestrator
         ProjectionActivationWorkItem expected, ProjectionLegacyDeliveryIntent next, IProjectionLegacyDeliveryOutbox outbox,
         CancellationToken cancellationToken)
     {
-        ProjectionActivationWorkItem? current = await projectionActivationOutbox!.GetAsync(identity, cancellationToken).ConfigureAwait(false);
+        ProjectionActivationWorkItem? current = await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.GetAsync(identity, cancellationToken)).ConfigureAwait(false);
         if (current is null || current.LegacyDelivery != expected.LegacyDelivery) return null;
-        return await outbox.TryBindLegacyDeliveryAsync(current, next, cancellationToken).ConfigureAwait(false);
+        return await RouteCatalogRemoteCall.InvokeAsync(() => outbox!.TryBindLegacyDeliveryAsync(current, next, cancellationToken)).ConfigureAwait(false);
     }
 
     private static bool CanPublishLegacyScope(ProjectionDeliveryStateReadResult scope)
@@ -352,9 +364,9 @@ internal partial class ProjectionUpdateOrchestrator
     private async Task<bool> CompleteLegacyIntentAsync(AggregateIdentity identity, IProjectionLegacyDeliveryOutbox outbox,
         ProjectionActivationWorkItem work, CancellationToken cancellationToken)
     {
-        if (!await outbox.TryCompleteLegacyDeliveryAsync(work, cancellationToken).ConfigureAwait(false)) return false;
-        await projectionActivationOutbox!.CompleteAsync(work with { Revision = work.LegacyDelivery!.FrozenActivationRevision,
-            LegacyDelivery = null }, cancellationToken).ConfigureAwait(false);
+        if (!await RouteCatalogRemoteCall.InvokeAsync(() => outbox!.TryCompleteLegacyDeliveryAsync(work, cancellationToken)).ConfigureAwait(false)) return false;
+        await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.CompleteAsync(work with { Revision = work.LegacyDelivery!.FrozenActivationRevision,
+            LegacyDelivery = null }, cancellationToken)).ConfigureAwait(false);
         return true;
     }
 
@@ -375,8 +387,8 @@ internal partial class ProjectionUpdateOrchestrator
         while (cursor < head)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            SourceEventRange page = await source.ReadMeasuredEventsBoundedRangeAsync(cursor, head, pageSize, 2_097_152)
-                .WaitAsync(cancellationToken).ConfigureAwait(false);
+            SourceEventRange page = await RouteCatalogRemoteCall.InvokeAsync(() => source!.ReadMeasuredEventsBoundedRangeAsync(cursor, head, pageSize, 2_097_152)
+                .WaitAsync(cancellationToken)).ConfigureAwait(false);
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceResponseDeserializationBytes, page.EnvelopeArrayBytes);
             if (page.ReasonCode is not null)
                 throw new ProjectionDeliveryHistoryValidationException(page.ReasonCode is "delivery_page_limit_exceeded"

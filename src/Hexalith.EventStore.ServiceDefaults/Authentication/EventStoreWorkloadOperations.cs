@@ -7,6 +7,8 @@ namespace Hexalith.EventStore.ServiceDefaults.Authentication;
 /// </summary>
 public static class EventStoreWorkloadOperations
 {
+    /// <summary>Read the protected shared catalog generation.</summary>
+    public const string RouteCatalogRead = EventStoreOperationIdentifiers.RouteCatalogRead;
     /// <summary>Process a command through <c>POST /process</c>.</summary>
     public const string DomainServiceProcess = EventStoreOperationIdentifiers.DomainServiceProcess;
 

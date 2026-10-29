@@ -86,6 +86,8 @@ public static class EventStoreServerServiceCollectionExtensions {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        _ = Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogServiceCollectionExtensions.AddEventStoreRouteCatalog(services, configuration);
+
         _ = services.AddEventStoreReadModelStore();
         services.TryAddSingleton<ICommandRouter, CommandRouter>();
         services.TryAddSingleton<IIdempotencyDigestKeyProvider>(static serviceProvider =>
@@ -116,6 +118,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IdempotencyTenantLifecyclePurger>();
         services.TryAddScoped<IProjectionActorInvoker, DefaultProjectionActorInvoker>();
         services.TryAddScoped<QueryRouter>(provider => new QueryRouter(
+            provider.GetRequiredService<Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority>(),
             provider.GetRequiredService<IProjectionActorInvoker>(),
             provider.GetRequiredService<ILogger<QueryRouter>>(), provider.GetRequiredService<IProjectionLifecycleGateway>(),
             provider.GetRequiredService<IProjectionSourceGuardDelivery>()));

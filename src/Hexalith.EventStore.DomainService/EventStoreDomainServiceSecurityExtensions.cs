@@ -108,6 +108,11 @@ public static class EventStoreDomainServiceSecurityExtensions
         where TBuilder : IEndpointConventionBuilder
     {
         ArgumentNullException.ThrowIfNull(builder);
+        if (builder is Microsoft.AspNetCore.Builder.RouteHandlerBuilder handler)
+        {
+            handler.AddEndpointFilter<DomainRouteCatalogFilter>();
+            handler.WithMetadata(new DomainRouteCatalogGuardMetadata());
+        }
         return EventStoreDomainServiceRoutes.TryGet(route, out EventStoreDomainServiceRoute? catalogRoute)
             ? builder.RequireAuthorization(catalogRoute!.Policy)
             : throw new ArgumentException("The route is not a canonical domain-service route.", nameof(route));

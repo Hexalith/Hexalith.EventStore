@@ -59,6 +59,9 @@ public partial class DaprDomainServiceInvokerTests
             ["Authentication:Workload:AllowedCallers:0"] = "eventstore", ["APP_API_TOKEN"] = appChannelToken,
         });
         builder.AddEventStoreDomainService(typeof(CommandEnvelope).Assembly);
+        // This original source/wire fixture isolates catalog authority while retaining every credential,
+        // serialized-binding and source assertion; activated HTTP tests exercise catalog enforcement.
+        builder.Services.AddSingleton<IDomainRouteCatalogGuard, CommandSourceCatalogIsolatedGuard>();
         builder.Services.AddEventStoreCompleteCommandSourceVerification("eventstore", [command.Domain]); builder.Services.AddKeyedSingleton(command.Domain, processor);
         await using var app = builder.Build();
         app.UseEventStoreDomainService(); await app.StartAsync(TestContext.Current.CancellationToken);

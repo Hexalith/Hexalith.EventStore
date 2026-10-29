@@ -2,6 +2,8 @@ using System.Text.Json;
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Contracts.Routing;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -89,13 +91,13 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
             return [];
         }
 
-        IReadOnlyList<BulkStateItem<JsonElement>> items = await _daprClient
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<BulkStateItem<JsonElement>> items = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
             .GetBulkStateAsync<JsonElement>(
                 storeName,
                 keys,
                 parallelism,
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+                cancellationToken: cancellationToken)).ConfigureAwait(false);
         Dictionary<string, BulkStateItem<JsonElement>> byKey = items
             .Where(static item => !string.IsNullOrWhiteSpace(item.Key))
             .GroupBy(static item => item.Key, StringComparer.Ordinal)
@@ -145,9 +147,9 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         ArgumentNullException.ThrowIfNull(value);
 
         RecordTypedMutation(value);
-        await _daprClient
-            .SaveStateAsync(storeName, key, value, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .SaveStateAsync(storeName, key, value, cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -199,14 +201,14 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
 
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        return await _daprClient
+        cancellationToken.ThrowIfCancellationRequested();
+        return await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
             .TryDeleteStateAsync(
                 storeName,
                 key,
                 etag,
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+                cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -287,8 +289,9 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         async Task<bool> WriteAsync(string physicalETag)
         {
             RecordTypedMutation(value);
-            return await _daprClient.TrySaveStateAsync(storeName, key, value, physicalETag,
-                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite }, metadata, token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            return await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient.TrySaveStateAsync(storeName, key, value, physicalETag,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite }, metadata, token)).ConfigureAwait(false);
         }
         Dapr.DaprException? failure = null;
         try { if (await WriteAsync(etag).ConfigureAwait(false)) return true; }
@@ -299,8 +302,9 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         {
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-            (ReadOnlyMemory<byte> bytes, string physicalETag) = await _daprClient.GetByteStateAndETagAsync(
-                storeName, key, consistencyMode: ConsistencyMode.Strong, cancellationToken: token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            (ReadOnlyMemory<byte> bytes, string physicalETag) = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient.GetByteStateAndETagAsync(
+                storeName, key, consistencyMode: ConsistencyMode.Strong, cancellationToken: token)).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, bytes.Length);
             physical = new(!string.IsNullOrEmpty(physicalETag), bytes, physicalETag);

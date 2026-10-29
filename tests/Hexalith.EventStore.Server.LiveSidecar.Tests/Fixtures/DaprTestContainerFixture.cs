@@ -1071,7 +1071,11 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton(AppendDurabilityRaceControl);
         _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
+        // This legacy fixture supplies synthetic domain invokers and tests state protocols.
+        // Catalog authority has separate real-host/Dapr/mTLS positive and rejection controls.
+        _ = builder.Services.AddSingleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, LegacyProtocolCatalogHttpIsolation>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddTransient<INamedProjectionDispatchCoordinator>(LegacyProtocolCatalogIsolation.Create<NamedProjectionDispatchCoordinator>);
         _ = builder.Services.AddEventStoreFoldedSnapshotQualification<Hexalith.EventStore.Sample.Counter.State.CounterState>(
             "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",
             CreateFoldedCounterCaptureLimits());
@@ -1243,7 +1247,9 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton(AppendDurabilityRaceControl);
         _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
+        _ = builder.Services.AddSingleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, LegacyProtocolCatalogHttpIsolation>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddTransient<INamedProjectionDispatchCoordinator>(LegacyProtocolCatalogIsolation.Create<NamedProjectionDispatchCoordinator>);
         _ = builder.Services.AddEventStoreFoldedSnapshotQualification<Hexalith.EventStore.Sample.Counter.State.CounterState>(
             "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",
             CreateFoldedCounterCaptureLimits());

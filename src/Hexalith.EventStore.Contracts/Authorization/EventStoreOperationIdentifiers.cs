@@ -5,6 +5,10 @@ namespace Hexalith.EventStore.Contracts.Authorization;
 /// </summary>
 public static class EventStoreOperationIdentifiers
 {
+    /// <summary>Read the persisted committed catalog through a protected Dapr generation readback.</summary>
+    public const string RouteCatalogRead = "eventstore:route-catalog-read";
+    /// <summary>Coordinate an independently trusted catalog activation through the protected host lifecycle API.</summary>
+    public const string RouteCatalogActivate = "eventstore:route-catalog-activate";
     /// <summary>Execute a projection query through ProjectionActor.QueryAsync; catalog metadata only.</summary>
     public const string ProjectionQuery = "projection:query";
 

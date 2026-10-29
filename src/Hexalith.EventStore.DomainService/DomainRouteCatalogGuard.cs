@@ -1,0 +1,120 @@
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Replay;
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
+
+namespace Hexalith.EventStore.DomainService;
+
+/// <summary>Validates receiver-side generation and targets after existing workload/channel authorization.</summary>
+internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, IOptions<RouteCatalogHostOptions> options) : IDomainRouteCatalogGuard
+{
+    /// <inheritdoc/>
+    public async Task<RouteCatalogDispatchLease?> AcquireAsync(EndpointFilterInvocationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        RouteCatalogDispatchLease lease = await authority.AcquireAsync(context.HttpContext.RequestAborted).ConfigureAwait(false);
+        try
+        {
+            var snapshot = lease.Snapshot;
+            var headers = context.HttpContext.Request.Headers;
+            if (headers[RouteCatalogInvocationHandler.RootHeader].Count != 1 || headers[RouteCatalogInvocationHandler.RootHeader][0] != snapshot.RootDigest
+                || headers[RouteCatalogInvocationHandler.EpochHeader].Count != 1 || headers[RouteCatalogInvocationHandler.EpochHeader][0] != snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                throw new RouteCatalogUnavailableException("The incoming call does not bind this committed generation.");
+            string appId = options.Value.Identity?.AppId ?? throw new RouteCatalogUnavailableException("The receiver has no catalog host identity.");
+            string method = context.HttpContext.Request.Path.Value!.TrimStart('/');
+            if (!EventStoreDomainServiceRoutes.Operational.Any(route => route.Route == "/" + method))
+                throw new RouteCatalogUnavailableException("The receiver method has no canonical operation policy.");
+            string operation = EventStoreDomainServiceRoutes.Operational.Single(route => route.Route == "/" + method).Operation;
+            switch (context.Arguments.FirstOrDefault(a => a is DomainServiceRequest or QueryEnvelope or ProjectionDispatchRequest or ProjectionRequest
+                or AggregateReconstructionRequest or ProjectionRebuildTransportPartRequest or DomainSharedProjectionRebuildRequest
+                or ProjectionOwnerProofRequest or ProjectionAppliedReceiptRequest or AdminOperationalIndexMetadata.Request))
+            {
+                case DomainServiceRequest request:
+                    var command = snapshot.Resolve("command", request.Command.TenantId, request.Command.Domain, request.Command.CommandType);
+                    if (command.Target.AppId != appId || command.Target.Method != method)
+                        throw new RouteCatalogUnavailableException("The command was sent to a different target.");
+                    if (DomainServiceVersion.Resolve(request.Command, command.Target.ContractVersion) != command.Target.ContractVersion)
+                        throw new RouteCatalogUnavailableException("A command version override disagrees with the committed target.");
+                    _ = snapshot.Admission(command.Declaration);
+                    break;
+                case QueryEnvelope query:
+                    var selected = snapshot.Resolve("query", query.TenantId, query.Domain, query.QueryType);
+                    if (selected.Target.AppId != appId || selected.Target.Method != method || selected.Declaration.Execution!.TargetKind != "domain-service")
+                        throw new RouteCatalogUnavailableException("The query was sent to a different target.");
+                    if (selected.Declaration.Execution.RequiresDelegatedContext && query.CallerAuthority is null)
+                        throw new RouteCatalogUnavailableException("This query requires verified delegated caller authority at the receiver.");
+                    break;
+                case ProjectionDispatchRequest dispatch:
+                    ValidateDispatch(snapshot, appId, method, dispatch);
+                    break;
+                case ProjectionRebuildTransportPartRequest part:
+                    ValidateDispatch(snapshot, appId, method, part.Header);
+                    break;
+                case DomainSharedProjectionRebuildRequest shared:
+                    ValidateProjectionScope(snapshot, appId, method, shared.Identity.TenantId, shared.Identity.Domain,
+                        shared.Identity.CatalogFingerprint, [shared.Identity.ProjectionType]);
+                    break;
+                case ProjectionOwnerProofRequest proof:
+                    ValidateOwnerScope(snapshot, appId, method, proof);
+                    break;
+                case ProjectionAppliedReceiptRequest receipt:
+                    ValidateOwnerScope(snapshot, appId, method, receipt.Scope);
+                    break;
+                case AggregateReconstructionRequest reconstruction:
+                    RouteCatalogProjectionPolicy.Auxiliary(snapshot, reconstruction.Domain, appId, method, operation);
+                    ValidateAuxiliaryTenant(snapshot, appId, reconstruction.Domain, reconstruction.TenantId);
+                    break;
+                case AdminOperationalIndexMetadata.Request metadata:
+                    if (metadata.Domains is not { Count: > 0 })
+                        throw new RouteCatalogUnavailableException("Metadata requires an exact inventoried domain set.");
+                    foreach (string domain in metadata.Domains)
+                        RouteCatalogProjectionPolicy.Auxiliary(snapshot, domain, appId, method, operation);
+                    break;
+                case ProjectionRequest projection:
+                    _ = RouteCatalogProjectionPolicy.Outputs(snapshot, projection.TenantId, projection.Domain, appId, method);
+                    break;
+                default:
+                    throw new RouteCatalogUnavailableException("The receiver request shape has no catalog scope binding.");
+            }
+            return lease;
+        }
+        catch
+        {
+            await lease.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private static void ValidateDispatch(CommittedRouteCatalogSnapshot snapshot, string appId, string method, ProjectionDispatchRequest dispatch)
+    {
+        ValidateProjectionScope(snapshot, appId, method, dispatch.Request.TenantId, dispatch.Request.Domain,
+            dispatch.CatalogFingerprint, dispatch.ProjectionTypes);
+    }
+
+    private static void ValidateOwnerScope(CommittedRouteCatalogSnapshot snapshot, string appId, string method, ProjectionOwnerProofRequest scope)
+        => ValidateProjectionScope(snapshot, appId, method, scope.TenantId, scope.Domain, scope.CatalogFingerprint, [scope.ProjectionName]);
+
+    private static void ValidateProjectionScope(CommittedRouteCatalogSnapshot snapshot, string appId, string method,
+        string tenant, string domain, string fingerprint, IReadOnlyList<string> projections)
+    {
+        if (!snapshot.ProjectionCapabilities.Any(c => c.AppId == appId && c.Domain == domain
+            && c.Fingerprint == fingerprint && projections.All(t => c.ProjectionTypes.Contains(t, StringComparer.Ordinal))))
+            throw new RouteCatalogUnavailableException("The named projection capability is not committed for this domain and generation.");
+        // Auxiliary projection protocols still select the exact callable handlers and partition scope.
+        _ = RouteCatalogProjectionPolicy.Outputs(snapshot, tenant, domain, appId, "project/v2", projections);
+        if (method != "project/v2") RouteCatalogProjectionPolicy.Auxiliary(snapshot, domain, appId, method,
+            EventStoreDomainServiceRoutes.Operational.Single(route => route.Route == "/" + method).Operation);
+    }
+
+    private static void ValidateAuxiliaryTenant(CommittedRouteCatalogSnapshot snapshot, string appId, string domain, string tenant)
+    {
+        var scoped = snapshot.Envelope.Routes.Where(r => r.AppId == appId
+            && snapshot.Envelope.Declarations.Any(d => d.RouteId == r.RouteId && d.Domain == domain && d.Kind == "command" && d.Execution!.TargetKind == "domain-service")).ToArray();
+        if (scoped.Length == 0 || !scoped.Any(r => r.ResolverTenantPattern is null or "*" || r.ResolverTenantPattern == tenant))
+            throw new RouteCatalogUnavailableException("The auxiliary request tenant is outside the committed domain scope.");
+    }
+}

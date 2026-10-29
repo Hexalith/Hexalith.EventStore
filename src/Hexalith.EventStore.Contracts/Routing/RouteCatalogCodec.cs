@@ -167,6 +167,13 @@ public static class RouteCatalogCodec
         });
     }
 
+    /// <summary>Compares installed static admission policy independently of an activation generation or entry content digest.</summary>
+    public static string ComputeIdempotencyPolicyDigest(IdempotencyCatalogEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return ComputeIdempotencyEntryDigest(entry with { Generation = 1 });
+    }
+
     /// <summary>Computes the complete routing facet preimage.</summary>
     internal static string ComputeRouteFacetDigest(RouteCatalogEnvelope envelope) => Hash(new
     {

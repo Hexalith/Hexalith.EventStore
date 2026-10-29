@@ -250,6 +250,8 @@ internal static class RestApiControllerEmitter
         AppendHttpAttribute(builder, route);
         builder.AppendLine("    [Consumes(\"application/json\")]");
         builder.AppendLine("    [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]");
+        builder.Append("    [global::Hexalith.EventStore.Contracts.Routing.RouteCatalogEndpoint(typeof(")
+            .Append(message.FullyQualifiedTypeName).AppendLine("), \"command\")]");
         AppendCommandProblemProducesResponseTypes(builder);
         builder.Append("    public async Task<IActionResult> ").Append(methodName).AppendLine("(");
         AppendRouteParameters(builder, message, routeParameters, trailingComma: true);
@@ -262,6 +264,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        }");
         AppendTenantResolution(builder, options, routeParameters);
         AppendCommandRouteMismatchChecks(builder, message, routeParameters, options);
+        AppendCatalogTenantValidation(builder, message, "command");
         builder.AppendLine();
         builder.AppendLine("        var __hexalithRequest = new SubmitCommandRequest(");
         builder.AppendLine("            UniqueIdHelper.GenerateSortableUniqueStringId(),");
@@ -304,6 +307,8 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("    [ProducesResponseType(StatusCodes.Status200OK)]");
         builder.AppendLine("    [ProducesResponseType(StatusCodes.Status304NotModified)]");
         AppendQueryProblemProducesResponseTypes(builder);
+        builder.Append("    [global::Hexalith.EventStore.Contracts.Routing.RouteCatalogEndpoint(typeof(")
+            .Append(message.FullyQualifiedTypeName).AppendLine("), \"query\")]");
         builder.Append("    public async Task<IActionResult> ").Append(methodName).AppendLine("(");
         bool hasEarlierParameter = AppendRouteParameters(builder, message, routeParameters, trailingComma: routeParameters.Length > 0 || queryParameters.Length > 0);
         AppendQueryParameters(builder, queryParameters, hasEarlierParameter);
@@ -313,6 +318,7 @@ internal static class RestApiControllerEmitter
         AppendTenantResolution(builder, options, routeParameters);
         AppendQueryPayload(builder, queryParameters);
         AppendQueryRouteValues(builder, message, routeParameters);
+        AppendCatalogTenantValidation(builder, message, "query");
         builder.AppendLine();
         builder.AppendLine("        var __hexalithRequest = new SubmitQueryRequest(");
         builder.AppendLine("            __hexalithTenant,");
@@ -889,6 +895,16 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        string __hexalithTenant = __hexalithTenantResult.Value!;");
+    }
+
+    private static void AppendCatalogTenantValidation(StringBuilder builder, RestApiMessageDescriptor message, string kind)
+    {
+        builder.AppendLine();
+        builder.Append("        if (!global::Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.ValidateTenant(HttpContext.Items, typeof(")
+            .Append(message.FullyQualifiedTypeName).Append("), ").Append(Literal(kind)).AppendLine(", __hexalithTenant))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return StatusCode(StatusCodes.Status503ServiceUnavailable);");
+        builder.AppendLine("        }");
     }
 
     private static void AppendCommandRouteMismatchChecks(

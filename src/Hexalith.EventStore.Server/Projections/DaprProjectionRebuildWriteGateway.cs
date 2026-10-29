@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
@@ -14,7 +16,8 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return CreatePublicationProxy(actorId).StageReplayAsync(request).WaitAsync(cancellationToken);
+        var proxy = CreatePublicationProxy(actorId);
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.StageReplayAsync(request).WaitAsync(cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -22,7 +25,8 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return CreatePublicationProxy(actorId).PromoteReplayAsync(request).WaitAsync(cancellationToken);
+        var proxy = CreatePublicationProxy(actorId);
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.PromoteReplayAsync(request).WaitAsync(cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -30,7 +34,8 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return CreatePublicationProxy(actorId).FinalizeReplayAsync(request).WaitAsync(cancellationToken);
+        var proxy = CreatePublicationProxy(actorId);
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.FinalizeReplayAsync(request).WaitAsync(cancellationToken));
     }
 
     private IProjectionReplayPublicationActor CreatePublicationProxy(string actorId)
@@ -41,7 +46,8 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return CreatePublicationProxy(actorId).ReadReplayCompletionAsync(request).WaitAsync(cancellationToken);
+        var proxy = CreatePublicationProxy(actorId);
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.ReadReplayCompletionAsync(request).WaitAsync(cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -52,7 +58,7 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
         IProjectionBoundReplayCompletionActor proxy = actorProxyFactory.CreateActorProxy<IProjectionBoundReplayCompletionActor>(
             new ActorId(actorId), QueryRouter.ProjectionActorTypeName);
-        return proxy.ReconcileBoundReplayCompletionAsync(request).WaitAsync(cancellationToken);
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.ReconcileBoundReplayCompletionAsync(request).WaitAsync(cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -63,7 +69,7 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
         IProjectionRebuildInspectionActor proxy = actorProxyFactory.CreateActorProxy<IProjectionRebuildInspectionActor>(
             new ActorId(actorId), QueryRouter.ProjectionActorTypeName);
-        return await proxy.InspectProjectionRebuildAsync(new(operationId)).WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await RouteCatalogRemoteCall.InvokeAsync(() => proxy.InspectProjectionRebuildAsync(new(operationId)).WaitAsync(cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -73,7 +79,7 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         IProjectionRebuildWriteActor proxy = CreateProxy(actorId);
-        await proxy.StageProjectionAsync(candidate).ConfigureAwait(false);
+        await RouteCatalogRemoteCall.InvokeAsync(() => proxy.StageProjectionAsync(candidate)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -83,8 +89,8 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         IProjectionRebuildWriteActor proxy = CreateProxy(actorId);
-        return await proxy
-            .PromoteProjectionAsync(new ProjectionRebuildCandidateOperation(operationId))
+        return await RouteCatalogRemoteCall.InvokeAsync(() => proxy
+            .PromoteProjectionAsync(new ProjectionRebuildCandidateOperation(operationId)))
             .ConfigureAwait(false);
     }
 
@@ -95,8 +101,8 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         IProjectionRebuildWriteActor proxy = CreateProxy(actorId);
-        return await proxy
-            .DiscardProjectionAsync(new ProjectionRebuildCandidateOperation(operationId))
+        return await RouteCatalogRemoteCall.InvokeAsync(() => proxy
+            .DiscardProjectionAsync(new ProjectionRebuildCandidateOperation(operationId)))
             .ConfigureAwait(false);
     }
 
@@ -107,8 +113,8 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         IProjectionRebuildWriteActor proxy = CreateProxy(actorId);
-        return await proxy
-            .RollbackProjectionAsync(new ProjectionRebuildCandidateOperation(operationId))
+        return await RouteCatalogRemoteCall.InvokeAsync(() => proxy
+            .RollbackProjectionAsync(new ProjectionRebuildCandidateOperation(operationId)))
             .ConfigureAwait(false);
     }
 
@@ -119,8 +125,8 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         IProjectionRebuildWriteActor proxy = CreateProxy(actorId);
-        return await proxy
-            .FinalizeProjectionAsync(new ProjectionRebuildCandidateOperation(operationId))
+        return await RouteCatalogRemoteCall.InvokeAsync(() => proxy
+            .FinalizeProjectionAsync(new ProjectionRebuildCandidateOperation(operationId)))
             .ConfigureAwait(false);
     }
 
@@ -130,7 +136,7 @@ internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actor
         CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         IProjectionRebuildWriteActor proxy = CreateProxy(actorId);
-        return await proxy.ReadProjectionStateAsync().ConfigureAwait(false);
+        return await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ReadProjectionStateAsync()).ConfigureAwait(false);
     }
 
     private IProjectionRebuildWriteActor CreateProxy(string actorId) {

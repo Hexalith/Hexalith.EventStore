@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using System.Text.Json;
 
 using Dapr.Client;
@@ -85,8 +87,8 @@ internal sealed class DaprProjectionSourceGuardTransport(DaprClient dapr, IHttpC
             AddReplayContext(upload, header);
             upload.Content?.Dispose();
             upload.Content = ProjectionWireJsonSerializer.CreateContent(new ProjectionRebuildTransportPartRequest(header, ordinal, part), JsonSerializerOptions.Web);
-            using HttpResponseMessage response = await clients.CreateClient().SendAsync(upload,
-                HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
+            using HttpResponseMessage response = await RouteCatalogRemoteCall.InvokeAsync(clients.CreateClient(), catalogRemoteProxy => catalogRemoteProxy.SendAsync(upload,
+                HttpCompletionOption.ResponseHeadersRead, token)).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) throw new IOException("Guarded replay part upload was rejected.");
         }
         using var parts = new ProjectionRebuildPartUploadStream(UploadAsync);
@@ -109,8 +111,8 @@ internal sealed class DaprProjectionSourceGuardTransport(DaprClient dapr, IHttpC
         // Guarded admission, bootstrap and replay-part digests qualify this fixed wire
         // profile. Dapr's configurable state serializer must not change these bytes.
         request.Content = ProjectionWireJsonSerializer.CreateContent(body, JsonSerializerOptions.Web);
-        using HttpResponseMessage response = await clients.CreateClient().SendAsync(request,
-            HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        using HttpResponseMessage response = await RouteCatalogRemoteCall.InvokeAsync(clients.CreateClient(), catalogRemoteProxy => catalogRemoteProxy.SendAsync(request,
+            HttpCompletionOption.ResponseHeadersRead, cancellationToken)).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > 16_384) return default;
         using Stream input = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         byte[] bytes = new byte[16_385];

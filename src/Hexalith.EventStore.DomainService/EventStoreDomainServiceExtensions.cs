@@ -671,6 +671,8 @@ public static class EventStoreDomainServiceExtensions {
 
         // Observability, health checks, service discovery, and HTTP resilience.
         _ = builder.AddServiceDefaults();
+        builder.Services.TryAddScoped<DomainRouteCatalogFilter>();
+        builder.Services.TryAddScoped<IDomainRouteCatalogGuard, DomainRouteCatalogGuard>();
 
         // Internal trust boundary (FR28): app-channel token + trusted-issuer workload assertion on every
         // operational route, sidecar-channel token on sidecar-originated deliveries, and an authenticated

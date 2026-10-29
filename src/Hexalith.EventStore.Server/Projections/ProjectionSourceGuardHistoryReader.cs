@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -100,8 +102,8 @@ internal sealed partial class ProjectionSourceGuardHistoryReader(IActorProxyFact
         while (after < admittedHead.HeadSequence)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            SourceEventRange response = await actor.ReadMeasuredEventsBoundedRangeAsync(after, admittedHead.HeadSequence,
-                pageSize, 2_097_152).WaitAsync(cancellationToken).ConfigureAwait(false);
+            SourceEventRange response = await RouteCatalogRemoteCall.InvokeAsync(() => actor.ReadMeasuredEventsBoundedRangeAsync(after, admittedHead.HeadSequence,
+                pageSize, 2_097_152).WaitAsync(cancellationToken)).ConfigureAwait(false);
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceResponseDeserializationBytes, response.EnvelopeArrayBytes);
             if (response.ReasonCode is not null)
                 throw new ProjectionDeliveryHistoryValidationException(response.ReasonCode switch

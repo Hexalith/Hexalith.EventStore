@@ -16,29 +16,91 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Queries;
 
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>Default fail-closed normal-delivery coordinator for named projection handlers.</summary>
-internal sealed partial class NamedProjectionDispatchCoordinator(
-    INamedProjectionRouteCatalog routeCatalog,
-    IProjectionDeliveryCheckpointStore checkpointStore,
-    IProjectionLifecycleGateway lifecycleGateway,
-    IActorProxyFactory actorProxyFactory,
-    DaprClient daprClient,
-    IHttpClientFactory httpClientFactory,
-    IOptions<ProjectionDispatchOptions> options,
-    ILogger<NamedProjectionDispatchCoordinator> logger,
-    IProjectionDeliveryRetryScheduler? retryScheduler = null,
-    TimeProvider? timeProvider = null,
-    INamedProjectionCatalogRefresher? catalogRefresher = null,
-    IProjectionDeliveryIdempotencyCoordinator? idempotencyCoordinator = null,
-    IOptions<EventStoreActorOptions>? actorOptions = null,
-    IProjectionDeliveryHistoryReader? historyReader = null) : INamedProjectionDispatchCoordinator {
+internal sealed partial class NamedProjectionDispatchCoordinator : INamedProjectionDispatchCoordinator {
+    private INamedProjectionRouteCatalog routeCatalog { get; }
+    private IProjectionDeliveryCheckpointStore checkpointStore { get; }
+    private IProjectionLifecycleGateway lifecycleGateway { get; }
+    private IActorProxyFactory actorProxyFactory { get; }
+    private DaprClient daprClient { get; }
+    private IHttpClientFactory httpClientFactory { get; }
+    private IOptions<ProjectionDispatchOptions> options { get; }
+    private ILogger<NamedProjectionDispatchCoordinator> logger { get; }
+    private IProjectionDeliveryRetryScheduler? retryScheduler { get; }
+    private TimeProvider? timeProvider { get; }
+    private INamedProjectionCatalogRefresher? catalogRefresher { get; }
+    private IProjectionDeliveryIdempotencyCoordinator? idempotencyCoordinator { get; }
+    private IOptions<EventStoreActorOptions>? actorOptions { get; }
+    private IProjectionDeliveryHistoryReader? historyReader { get; }
+    private Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority { get; }
+
+    /// <summary>Creates the guarded runtime implementation.</summary>
+    public NamedProjectionDispatchCoordinator(
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority authority,
+        INamedProjectionRouteCatalog routeCatalog,
+        IProjectionDeliveryCheckpointStore checkpointStore,
+        IProjectionLifecycleGateway lifecycleGateway,
+        IActorProxyFactory actorProxyFactory,
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        IOptions<ProjectionDispatchOptions> options,
+        ILogger<NamedProjectionDispatchCoordinator> logger,
+        IProjectionDeliveryRetryScheduler? retryScheduler = null,
+        TimeProvider? timeProvider = null,
+        INamedProjectionCatalogRefresher? catalogRefresher = null,
+        IProjectionDeliveryIdempotencyCoordinator? idempotencyCoordinator = null,
+        IOptions<EventStoreActorOptions>? actorOptions = null,
+        IProjectionDeliveryHistoryReader? historyReader = null)
+        : this(routeCatalog, checkpointStore, lifecycleGateway, actorProxyFactory, daprClient, httpClientFactory, options, logger, retryScheduler, timeProvider, catalogRefresher, idempotencyCoordinator, actorOptions, historyReader, authority)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+    }
+
+    /// <summary>Friend-only protocol composition seam.</summary>
+    internal NamedProjectionDispatchCoordinator(
+        INamedProjectionRouteCatalog routeCatalog,
+        IProjectionDeliveryCheckpointStore checkpointStore,
+        IProjectionLifecycleGateway lifecycleGateway,
+        IActorProxyFactory actorProxyFactory,
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        IOptions<ProjectionDispatchOptions> options,
+        ILogger<NamedProjectionDispatchCoordinator> logger,
+        IProjectionDeliveryRetryScheduler? retryScheduler = null,
+        TimeProvider? timeProvider = null,
+        INamedProjectionCatalogRefresher? catalogRefresher = null,
+        IProjectionDeliveryIdempotencyCoordinator? idempotencyCoordinator = null,
+        IOptions<EventStoreActorOptions>? actorOptions = null,
+        IProjectionDeliveryHistoryReader? historyReader = null,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+    {
+        this.routeCatalog = routeCatalog;
+        this.checkpointStore = checkpointStore;
+        this.lifecycleGateway = lifecycleGateway;
+        this.actorProxyFactory = actorProxyFactory;
+        this.daprClient = daprClient;
+        this.httpClientFactory = httpClientFactory;
+        this.options = options;
+        this.logger = logger;
+        this.retryScheduler = retryScheduler;
+        this.timeProvider = timeProvider;
+        this.catalogRefresher = catalogRefresher;
+        this.idempotencyCoordinator = idempotencyCoordinator;
+        this.actorOptions = actorOptions;
+        this.historyReader = historyReader;
+        this.catalogAuthority = catalogAuthority;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
+
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
-    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+    private readonly TimeProvider _timeProvider;
     private string AggregateActorTypeName => actorOptions?.Value.AggregateActorTypeName ?? nameof(AggregateActor);
 
     /// <inheritdoc/>
@@ -57,6 +119,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
     public async Task<bool> SupportsMappedOnlyStreamedDeliveryAsync(
         AggregateIdentity identity, DomainServiceRegistration registration, CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         NamedProjectionRouteCatalogEntry? entry = await ResolveCatalogEntryAsync(identity, registration,
             cancellationToken).ConfigureAwait(false);
         return historyReader is not null && idempotencyCoordinator is not null && retryScheduler is not null
@@ -73,6 +137,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     public async Task<bool> SupportsMappedOnlyStreamedRebuildAsync(
         AggregateIdentity identity, DomainServiceRegistration registration,
         string projectionName, CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         NamedProjectionRouteCatalogEntry? entry = await ResolveCatalogEntryAsync(identity, registration,
             cancellationToken).ConfigureAwait(false);
         return entry is not null
@@ -86,6 +152,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         AggregateIdentity identity, DomainServiceRegistration registration, string operationId,
         long sourceHead, Func<Stream, CancellationToken, Task<string?>> writeSource,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         NamedProjectionRouteCatalogEntry? entry = await ResolveCatalogEntryAsync(identity, registration,
             cancellationToken).ConfigureAwait(false);
         if (entry is null || entry.FullReplayProjectionTypes.Count == 0
@@ -116,6 +184,13 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 }, routes, operationId, entry.CatalogFingerprint) {
                     RebuildTransport = new ProjectionRebuildTransportReference(count, digest),
                 };
+            if (catalogLease is not null)
+            {
+                _ = RouteCatalogProjectionPolicy.Outputs(catalogLease.Snapshot, identity.TenantId, identity.Domain,
+                    registration.AppId, "project/v2", routes);
+                RouteCatalogProjectionPolicy.Auxiliary(catalogLease.Snapshot, identity.Domain, registration.AppId,
+                    "project/rebuild/part/v1", Contracts.Authorization.EventStoreOperationIdentifiers.DomainServiceProject);
+            }
             HttpClient uploadClient = httpClientFactory.CreateClient();
             async Task UploadAsync(int ordinal, byte[] data, CancellationToken token) {
                 using HttpRequestMessage upload = daprClient.CreateInvokeMethodRequest(
@@ -123,8 +198,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     new ProjectionRebuildTransportPartRequest(header, ordinal, data));
                 upload.Content?.Dispose();
                 upload.Content = ProjectionWireJsonSerializer.CreateContent(new ProjectionRebuildTransportPartRequest(header, ordinal, data), daprClient.JsonSerializerOptions);
-                using HttpResponseMessage response = await uploadClient.SendAsync(upload, token)
-                    .ConfigureAwait(false);
+                using HttpResponseMessage response = await RouteCatalogRemoteCall.InvokeAsync(() => uploadClient!.SendAsync(upload, token)).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                     throw new IOException("Mapped replay part upload was rejected.");
             }
@@ -153,11 +227,19 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         AggregateIdentity identity, DomainServiceRegistration registration,
         ProjectionDispatchRequest header, ProjectionMappedReplayAction action,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         if (!string.Equals(header.Request.TenantId, identity.TenantId, StringComparison.Ordinal)
             || !string.Equals(header.Request.Domain, identity.Domain, StringComparison.Ordinal)
             || !string.Equals(header.Request.AggregateId, identity.AggregateId, StringComparison.Ordinal)
             || header.RebuildTransport is null)
             throw new ArgumentException("Mapped replay header does not match the owner.", nameof(header));
+        if (catalogLease is not null && !catalogLease.Snapshot.Envelope.Routes.Any(route => route.AppId == registration.AppId
+            && route.Method == "project/v2" && route.ContractVersion == (registration.Version ?? "v1")
+            && (route.ResolverTenantPattern is null or "*" || route.ResolverTenantPattern == identity.TenantId)
+            && catalogLease.Snapshot.Envelope.Declarations.Any(declaration => declaration.RouteId == route.RouteId
+                && declaration.Kind == "projection" && declaration.Domain == identity.Domain)))
+            throw new RouteCatalogUnavailableException("The mapped replay target has no committed executable version and tenant scope.");
         string method = action switch {
             ProjectionMappedReplayAction.Commit => "project/rebuild/commit/v1",
             ProjectionMappedReplayAction.Verify => "project/rebuild/verify/v1",
@@ -192,6 +274,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         DomainServiceRegistration registration,
         string operationId,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
@@ -208,9 +292,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         var acquired = new List<string>(requiredRoutes.Length);
         try {
             foreach (string projectionType in requiredRoutes) {
-                if (!await lifecycleGateway
-                    .BeginRebuildAsync(identity, projectionType, operationId, cancellationToken)
-                    .ConfigureAwait(false)) {
+                if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.BeginRebuildAsync(identity, projectionType, operationId, cancellationToken)).ConfigureAwait(false)) {
                     ProjectionDispatchOutcome[] denied = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
                         route,
                         ProjectionDispatchStatus.Retryable,
@@ -243,6 +325,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         long sourceHeadSequence,
         string operationId,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(projectionEvents);
@@ -254,23 +338,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         ProjectionDispatchOptions dispatchOptions = options.Value;
         dispatchOptions.Validate();
         string serviceVersion = string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
-        if (!routeCatalog.Current.TryGet(
-            registration.AppId,
-            serviceVersion,
-            identity.Domain,
-            out NamedProjectionRouteCatalogEntry? catalogEntry)
-            || catalogEntry is null) {
-            if (catalogRefresher is null
-                || !await catalogRefresher.RefreshAsync(registration, cancellationToken).ConfigureAwait(false)
-                || !routeCatalog.Current.TryGet(
-                    registration.AppId,
-                    serviceVersion,
-                    identity.Domain,
-                    out catalogEntry)
-                || catalogEntry is null) {
-                return new NamedProjectionRebuildResult(Owned: false, Succeeded: true, [], []);
-            }
-        }
+        NamedProjectionRouteCatalogEntry? catalogEntry = await ResolveCatalogEntryAsync(identity, registration, cancellationToken).ConfigureAwait(false);
+        if (catalogEntry is null) { return new NamedProjectionRebuildResult(Owned: false, Succeeded: true, [], []); }
 
         string[] requiredRoutes = [.. catalogEntry.FullReplayProjectionTypes.Order(StringComparer.Ordinal)];
         if (requiredRoutes.Length == 0) {
@@ -282,7 +351,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             // actor-owned erasure completed. Re-read that durable marker at the source actor.
             IAggregateActor source = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId), AggregateActorTypeName);
-            AggregateStreamMetadata metadata = await source.GetStreamMetadataAsync().ConfigureAwait(false);
+            AggregateStreamMetadata metadata = await RouteCatalogRemoteCall.InvokeAsync(() => source!.GetStreamMetadataAsync()).ConfigureAwait(false);
             if (sourceHeadSequence != 0 || metadata.Exists || metadata.CurrentSequence != 0 || !metadata.Erased) {
                 ProjectionDispatchOutcome[] denied = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
                     route, ProjectionDispatchStatus.Failed, null, ProjectionDispatchReasonCodes.MalformedOutcome))];
@@ -295,9 +364,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         try {
             foreach (string projectionType in requiredRoutes) {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!await lifecycleGateway
-                    .BeginRebuildAsync(identity, projectionType, operationId, cancellationToken)
-                    .ConfigureAwait(false)) {
+                if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.BeginRebuildAsync(identity, projectionType, operationId, cancellationToken)).ConfigureAwait(false)) {
                     ProjectionDispatchOutcome[] denied = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
                     route,
                     ProjectionDispatchStatus.Retryable,
@@ -369,9 +436,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         catch {
             foreach (string projectionType in lifecycleProjectionTypes) {
                 try {
-                    bool completed = await lifecycleGateway
-                        .CompleteRebuildAsync(identity, projectionType, operationId, CancellationToken.None)
-                        .ConfigureAwait(false);
+                    bool completed = await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteRebuildAsync(identity, projectionType, operationId, CancellationToken.None)).ConfigureAwait(false);
                     if (!completed) {
                         Log.LifecycleReleaseFailed(
                             logger,
@@ -418,6 +483,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         EventEnvelope[] events,
         ProjectionEventDto[] projectionEvents,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(events);
@@ -426,6 +493,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             throw new ArgumentException("Named projection delivery requires a non-empty persisted event history.", nameof(events));
         }
 
+        if (catalogLease is not null) _ = await ResolveCatalogEntryAsync(identity, registration, cancellationToken).ConfigureAwait(false);
         EventEnvelope head = events.OrderBy(static item => item.SequenceNumber).Last();
         NativeSourceProof? proof = await CaptureNativePrefixAsync(identity, events, cancellationToken).ConfigureAwait(false);
         return await TryDispatchCoreAsync(identity, registration, head.SequenceNumber, head.MessageId,
@@ -449,29 +517,17 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         long highestSequence, string headMessageId, ProjectionEventDto[] projectionEvents,
         bool mappedOnly, CancellationToken cancellationToken, IReadOnlyList<string>? compatibleRoutes = null,
         string? expectedCatalogFingerprint = null, NativeSourceProof? nativeSourceProof = null) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
 
         ProjectionDispatchOptions dispatchOptions = options.Value;
         dispatchOptions.Validate();
         string serviceVersion = string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
-        if (!routeCatalog.Current.TryGet(
-            registration.AppId,
-            serviceVersion,
-            identity.Domain,
-            out NamedProjectionRouteCatalogEntry? catalogEntry)
-            || catalogEntry is null) {
-            if (catalogRefresher is null
-                || !await catalogRefresher.RefreshAsync(registration, cancellationToken).ConfigureAwait(false)
-                || !routeCatalog.Current.TryGet(
-                    registration.AppId,
-                    serviceVersion,
-                    identity.Domain,
-                    out catalogEntry)
-                || catalogEntry is null) {
-                return false;
-            }
-        }
+        NamedProjectionRouteCatalogEntry? catalogEntry = await ResolveCatalogEntryAsync(identity, registration, cancellationToken).ConfigureAwait(false);
+        if (catalogEntry is null) { return false; }
 
         if (catalogEntry.OrdinaryProjectionTypes.Count == 0) return false;
+        if (catalogLease is not null) ValidateCommittedCapability(catalogLease.Snapshot, identity, catalogEntry);
         if (expectedCatalogFingerprint is not null && (catalogEntry.CatalogFingerprint != expectedCatalogFingerprint
             || compatibleRoutes is null || compatibleRoutes.Count == 0
             || compatibleRoutes.Distinct(StringComparer.Ordinal).Count() != compatibleRoutes.Count
@@ -521,7 +577,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         }
         else {
             try {
-                scheduledWork = await retryScheduler.ScheduleAsync(proposedWork, cancellationToken).ConfigureAwait(false);
+                scheduledWork = await RouteCatalogRemoteCall.InvokeAsync(() => retryScheduler!.ScheduleAsync(proposedWork, cancellationToken)).ConfigureAwait(false);
             }
             catch (OperationCanceledException) {
                 throw;
@@ -540,14 +596,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         }
 
         if (retryScheduler is not null) {
-            ProjectionDeliveryRetryWorkItem? claimedWork = await retryScheduler
-                .TryAcquireAsync(
+            ProjectionDeliveryRetryWorkItem? claimedWork = await RouteCatalogRemoteCall.InvokeAsync(() => retryScheduler!.TryAcquireAsync(
                     scheduledWork,
                     Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture),
                     now,
                     dispatchOptions.RetryLeaseDuration,
-                    cancellationToken)
-                .ConfigureAwait(false);
+                    cancellationToken)).ConfigureAwait(false);
             if (claimedWork is null) {
                 return true;
             }
@@ -575,8 +629,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         if (mappedOnly) {
             mappedHistories = new Dictionary<string, ProjectionDeliveryFingerprintHistory>(StringComparer.Ordinal);
             foreach (string projectionType in deliveryRoutes) {
-                ProjectionDeliveryAcceptedPrefix? accepted = await idempotencyCoordinator!
-                    .ReadAcceptedPrefixAsync(identity, projectionType, cancellationToken).ConfigureAwait(false);
+                ProjectionDeliveryAcceptedPrefix? accepted = await RouteCatalogRemoteCall.InvokeAsync(() => idempotencyCoordinator!
+                    .ReadAcceptedPrefixAsync(identity, projectionType, cancellationToken)).ConfigureAwait(false);
                 ProjectionDeliveryFingerprintHistory history;
                 if (accepted is not null && accepted.SequenceNumber + 1 == highestSequence) {
                     history = await ProjectionDeliveryFingerprint.ComputeSuffixAsync(identity,
@@ -587,8 +641,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 }
                 else {
                     bool legacyIdentity = accepted?.Fingerprint.StartsWith("v1:", StringComparison.Ordinal)
-                        ?? await idempotencyCoordinator.UseLegacyMappedIdentityAsync(identity,
-                            projectionType, cancellationToken).ConfigureAwait(false);
+                        ?? await RouteCatalogRemoteCall.InvokeAsync(() => idempotencyCoordinator!.UseLegacyMappedIdentityAsync(identity,
+                            projectionType, cancellationToken)).ConfigureAwait(false);
                     history = await ProjectionDeliveryFingerprint.ComputeHistoryAsync(identity,
                         projectionType, historyReader!.ReadPagesAsync(identity, highestSequence,
                             cancellationToken), 10_000, cancellationToken,
@@ -629,9 +683,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 .Order(StringComparer.Ordinal)) {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (idempotencyCoordinator is null) {
-                    long deliveredSequence = await checkpointStore
-                        .ReadDeliveredSequenceAsync(identity, projectionType, cancellationToken)
-                        .ConfigureAwait(false);
+                    long deliveredSequence = await RouteCatalogRemoteCall.InvokeAsync(() => checkpointStore!.ReadDeliveredSequenceAsync(identity, projectionType, cancellationToken)).ConfigureAwait(false);
                     if (deliveredSequence > highestSequence) {
                         Log.RouteNotAdmitted(
                             logger,
@@ -649,13 +701,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     }
                 }
 
-                if (!await lifecycleGateway
-                    .BeginDeliveryWriteAsync(
+                if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.BeginDeliveryWriteAsync(
                         identity,
                         projectionType,
                         deliveryLeaseToken,
-                        cancellationToken)
-                    .ConfigureAwait(false)) {
+                        cancellationToken)).ConfigureAwait(false)) {
                     Log.RouteNotAdmitted(
                         logger,
                         identity.TenantId,
@@ -675,12 +725,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     long? resumeToken = scheduledWork.ReservationFencingTokens.TryGetValue(projectionType, out long token)
                         ? token : null;
                     ProjectionDeliveryAdmissionResult admission = mappedOnly
-                        ? await idempotencyCoordinator.TryAdmitHistoryAsync(
+                        ? await RouteCatalogRemoteCall.InvokeAsync(() => idempotencyCoordinator!.TryAdmitHistoryAsync(
                             identity, projectionType, mappedHistories![projectionType],
-                            reclaimSafe: true, cancellationToken, resumeToken).ConfigureAwait(false)
-                        : await idempotencyCoordinator.TryAdmitAsync(
+                            reclaimSafe: true, cancellationToken, resumeToken)).ConfigureAwait(false)
+                        : await RouteCatalogRemoteCall.InvokeAsync(() => idempotencyCoordinator!.TryAdmitAsync(
                             identity, projectionType, projectionEvents,
-                            reclaimSafe: true, cancellationToken, resumeToken).ConfigureAwait(false);
+                            reclaimSafe: true, cancellationToken, resumeToken)).ConfigureAwait(false);
                     ProjectionDeliveryDiagnostics.RecordAdmission(projectionType, admission);
                     if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.Dispatch) {
                         admittedRoutes.Add(projectionType);
@@ -688,13 +738,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                         continue;
                     }
 
-                    if (!await lifecycleGateway
-                        .CompleteDeliveryWriteAsync(
+                    if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteDeliveryWriteAsync(
                             identity,
                             projectionType,
                             deliveryLeaseToken,
-                            CancellationToken.None)
-                        .ConfigureAwait(false)) {
+                            CancellationToken.None)).ConfigureAwait(false)) {
                         throw new InvalidOperationException("Named projection delivery lifecycle lease completion was rejected.");
                     }
 
@@ -830,20 +878,18 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
                         if (idempotencyCoordinator is not null) {
                             ProjectionDeliveryCompletion completion = mappedOnly
-                                ? await idempotencyCoordinator.CompleteHistoryAsync(
+                                ? await RouteCatalogRemoteCall.InvokeAsync(() => idempotencyCoordinator!.CompleteHistoryAsync(
                                     identity, projectionType, mappedHistories![projectionType],
-                                    reservations[projectionType], finalizationToken).ConfigureAwait(false)
-                                : await idempotencyCoordinator.CompleteAsync(
+                                    reservations[projectionType], finalizationToken)).ConfigureAwait(false)
+                                : await RouteCatalogRemoteCall.InvokeAsync(() => idempotencyCoordinator!.CompleteAsync(
                                     identity, projectionType, projectionEvents,
-                                    reservations[projectionType], finalizationToken).ConfigureAwait(false);
+                                    reservations[projectionType], finalizationToken)).ConfigureAwait(false);
                             ProjectionDeliveryDiagnostics.RecordCompletion(projectionType, completion);
                             if (completion is ProjectionDeliveryCompletion.Completed or ProjectionDeliveryCompletion.AlreadyCompleted) {
                                 _ = completedRoutes.Add(projectionType);
                             }
                         }
-                        else if (await checkpointStore
-                            .SaveDeliveredSequenceAsync(identity, projectionType, highestSequence, finalizationToken)
-                            .ConfigureAwait(false)) {
+                        else if (await RouteCatalogRemoteCall.InvokeAsync(() => checkpointStore!.SaveDeliveredSequenceAsync(identity, projectionType, highestSequence, finalizationToken)).ConfigureAwait(false)) {
                             _ = completedRoutes.Add(projectionType);
                         }
                     }
@@ -857,9 +903,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 else if (outcome.Status == ProjectionDispatchStatus.Failed) {
                     if (idempotencyCoordinator is not null) {
                         using var release = new CancellationTokenSource(TimeSpan.FromSeconds(30), _timeProvider);
-                        _ = await idempotencyCoordinator
-                            .TryReleaseAsync(identity, projectionType, reservations[projectionType], release.Token)
-                            .ConfigureAwait(false);
+                        _ = await RouteCatalogRemoteCall.InvokeAsync(() => idempotencyCoordinator!.TryReleaseAsync(identity, projectionType, reservations[projectionType], release.Token)).ConfigureAwait(false);
                     }
 
                     _ = terminalRoutes.Add(projectionType);
@@ -1128,13 +1172,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         Exception? lifecycleCompletionFailure = null;
         foreach (string projectionType in lifecycleLeases.ToArray()) {
             try {
-                if (!await lifecycleGateway
-                    .CompleteDeliveryWriteAsync(
+                if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteDeliveryWriteAsync(
                         identity,
                         projectionType,
                         dispatchId,
-                        CancellationToken.None)
-                    .ConfigureAwait(false)) {
+                        CancellationToken.None)).ConfigureAwait(false)) {
                     lifecycleCompletionFailure ??= new InvalidOperationException(
                         "Named projection delivery lifecycle lease completion was rejected.");
                     continue;
@@ -1235,7 +1277,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)];
             if (remainingRoutes.Length == 0 && terminalRoutes.Count == 0) {
-                _ = await retryScheduler.TryDeleteAsync(scheduledWork, cancellationToken).ConfigureAwait(false);
+                _ = await RouteCatalogRemoteCall.InvokeAsync(() => retryScheduler!.TryDeleteAsync(scheduledWork, cancellationToken)).ConfigureAwait(false);
                 return;
             }
 
@@ -1256,7 +1298,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                         ? ProjectionDispatchReasonCodes.HandlerFailure
                         : ProjectionDispatchReasonCodes.PartialRetry,
             };
-            bool updatedSuccessfully = await retryScheduler.TryUpdateAsync(updated, cancellationToken).ConfigureAwait(false);
+            bool updatedSuccessfully = await RouteCatalogRemoteCall.InvokeAsync(() => retryScheduler!.TryUpdateAsync(updated, cancellationToken)).ConfigureAwait(false);
             if (identityConflict && !updatedSuccessfully) {
                 throw new InvalidOperationException("Projection delivery identity conflict could not be quarantined.");
             }
@@ -1290,7 +1332,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
         int attempt = Math.Min(workItem.Attempt + 1, dispatchOptions.MaxRetryAttempts);
         try {
-            _ = await retryScheduler.TryUpdateAsync(
+            _ = await RouteCatalogRemoteCall.InvokeAsync(() => retryScheduler!.TryUpdateAsync(
                 workItem with {
                     ReservationFencingTokens = reservations is null
                         ? workItem.ReservationFencingTokens
@@ -1302,7 +1344,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
                     LastReasonCode = reasonCode,
                 },
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken)).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw;
@@ -1334,6 +1376,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         string operationId,
         string methodName,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(projectionEvents);
@@ -1358,7 +1402,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         if (projectionEvents.Length == 0) {
             IAggregateActor source = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId), AggregateActorTypeName);
-            AggregateStreamMetadata metadata = await source.GetStreamMetadataAsync().ConfigureAwait(false);
+            AggregateStreamMetadata metadata = await RouteCatalogRemoteCall.InvokeAsync(() => source!.GetStreamMetadataAsync()).ConfigureAwait(false);
             if (metadata.Exists || metadata.CurrentSequence != 0 || !metadata.Erased) {
                 ProjectionDispatchOutcome[] denied = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
                     route, ProjectionDispatchStatus.Failed, null, ProjectionDispatchReasonCodes.MalformedOutcome))];
@@ -1417,17 +1461,34 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         AggregateIdentity identity,
         DomainServiceRegistration registration,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         string serviceVersion = string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
+        if (catalogLease is not null)
+        {
+            var snapshot = catalogLease.Snapshot;
+            var declared = snapshot.Envelope.Routes.Where(r => r.AppId == registration.AppId && r.ContractVersion == serviceVersion
+                && (r.ResolverTenantPattern is null or "*" || r.ResolverTenantPattern == identity.TenantId)
+                && snapshot.Envelope.Declarations.Any(d => d.RouteId == r.RouteId && d.Domain == identity.Domain && d.Kind == "projection")).ToArray();
+            if (!declared.Any(r => r.Method == "project/v2"))
+            {
+                if (declared.Any(r => r.Method == "project")) return null; // The committed legacy method remains authoritative, regardless of metadata.
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The named projection registration is not committed.");
+            }
+            if (!snapshot.ProjectionCapabilities.Any(c => c.AppId == registration.AppId && c.Domain == identity.Domain && c.ContractVersion == serviceVersion))
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The named projection capability inventory is not committed.");
+        }
         if (routeCatalog.Current.TryGet(
             registration.AppId,
             serviceVersion,
             identity.Domain,
             out NamedProjectionRouteCatalogEntry? catalogEntry)
             && catalogEntry is not null) {
+            if (catalogLease is not null) ValidateCommittedCapability(catalogLease.Snapshot, identity, catalogEntry);
             return catalogEntry;
         }
 
-        return catalogRefresher is not null
+        NamedProjectionRouteCatalogEntry? refreshed = catalogRefresher is not null
             && await catalogRefresher.RefreshAsync(registration, cancellationToken).ConfigureAwait(false)
             && routeCatalog.Current.TryGet(
                 registration.AppId,
@@ -1436,6 +1497,20 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 out catalogEntry)
             ? catalogEntry
             : null;
+        if (catalogLease is not null && refreshed is not null) ValidateCommittedCapability(catalogLease.Snapshot, identity, refreshed);
+        return refreshed;
+    }
+
+    private static void ValidateCommittedCapability(Hexalith.EventStore.ServiceDefaults.Routing.CommittedRouteCatalogSnapshot snapshot,
+        AggregateIdentity identity, NamedProjectionRouteCatalogEntry cached)
+    {
+        _ = Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogProjectionPolicy.Outputs(snapshot,
+            identity.TenantId, identity.Domain, cached.AppId, "project/v2", cached.ProjectionTypes);
+        var bound = snapshot.ProjectionCapabilities.SingleOrDefault(c => c.AppId == cached.AppId && c.Domain == identity.Domain
+            && c.ContractVersion == cached.ServiceVersion);
+        if (bound is null || bound.Fingerprint != cached.CatalogFingerprint
+            || !bound.ProjectionTypes.Order(StringComparer.Ordinal).SequenceEqual(cached.ProjectionTypes.Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The cached named projection capability is absent or stale for this committed generation.");
     }
 
     private async Task ReleaseRebuildLifecyclesAsync(
@@ -1444,9 +1519,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         IEnumerable<string> projectionTypes) {
         foreach (string projectionType in projectionTypes) {
             try {
-                _ = await lifecycleGateway
-                    .CompleteRebuildAsync(identity, projectionType, operationId, CancellationToken.None)
-                    .ConfigureAwait(false);
+                _ = await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteRebuildAsync(identity, projectionType, operationId, CancellationToken.None)).ConfigureAwait(false);
             }
             catch (Exception exception) when (exception is not OperationCanceledException) {
                 Log.LifecycleReleaseFailed(
@@ -1467,6 +1540,23 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         ProjectionDispatchRequest request,
         ProjectionDispatchOptions dispatchOptions,
         CancellationToken cancellationToken, string? replayRecoveryHeader = null) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
+        if (catalogLease is not null)
+        {
+            if (methodName == "project/v2") _ = Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogProjectionPolicy.Outputs(catalogLease.Snapshot,
+                request.Request.TenantId, request.Request.Domain, appId, methodName, request.ProjectionTypes);
+            else
+            {
+                _ = RouteCatalogProjectionPolicy.Outputs(catalogLease.Snapshot, request.Request.TenantId,
+                    request.Request.Domain, appId, "project/v2", request.ProjectionTypes);
+                RouteCatalogProjectionPolicy.Auxiliary(catalogLease.Snapshot, request.Request.Domain, appId,
+                    methodName, Contracts.Authorization.EventStoreOperationIdentifiers.DomainServiceProject);
+            }
+            if (!catalogLease.Snapshot.ProjectionCapabilities.Any(c => c.AppId == appId && c.Domain == request.Request.Domain
+                && c.Fingerprint == request.CatalogFingerprint && request.ProjectionTypes.All(t => c.ProjectionTypes.Contains(t, StringComparer.Ordinal))))
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("Named projection dispatch carries an uncommitted capability fingerprint.");
+        }
         try {
             if (replayRecoveryHeader is null && methodName.StartsWith("project/rebuild/", StringComparison.Ordinal)
                 && methodName != "project/rebuild/part/v1")
@@ -1488,6 +1578,9 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                         RebuildTransport = reference
                     };
                     HttpClient uploadClient = httpClientFactory.CreateClient();
+                    if (catalogLease is not null)
+                        RouteCatalogProjectionPolicy.Auxiliary(catalogLease.Snapshot, request.Request.Domain, appId,
+                            "project/rebuild/part/v1", Contracts.Authorization.EventStoreOperationIdentifiers.DomainServiceProject);
                     async Task UploadPartAsync(int ordinal, byte[] data, CancellationToken token)
                     {
                         using HttpRequestMessage upload = daprClient.CreateInvokeMethodRequest(appId,
@@ -1496,8 +1589,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                             upload.Headers.Add(ProjectionReplayTransportContext.HeaderName, replayContext);
                         upload.Content?.Dispose();
                         upload.Content = ProjectionWireJsonSerializer.CreateContent(new ProjectionRebuildTransportPartRequest(header, ordinal, data), daprClient.JsonSerializerOptions);
-                        using HttpResponseMessage uploaded = await uploadClient.SendAsync(upload, token)
-                            .ConfigureAwait(false);
+                        using HttpResponseMessage uploaded = await RouteCatalogRemoteCall.InvokeAsync(() => uploadClient!.SendAsync(upload, token)).ConfigureAwait(false);
                         if (!uploaded.IsSuccessStatusCode)
                             throw new IOException("Mapped replay part upload was rejected.");
                     }
@@ -1518,7 +1610,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             httpRequest.Content?.Dispose();
             httpRequest.Content = ProjectionWireJsonSerializer.CreateContent(request, daprClient.JsonSerializerOptions);
             HttpClient client = httpClientFactory.CreateClient();
-            using HttpResponseMessage response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await RouteCatalogRemoteCall.InvokeAsync(() => client!.SendAsync(httpRequest, cancellationToken)).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode
                 || response.Content.Headers.ContentType?.MediaType is not string mediaType
                 || (!string.Equals(mediaType, "application/json", StringComparison.OrdinalIgnoreCase)
@@ -1595,15 +1687,13 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             new ActorId(projectionActorId),
             QueryRouter.ProjectionActorTypeName);
         cancellationToken.ThrowIfCancellationRequested();
-        await writeProxy
-            .UpdateProjectionAsync(ProjectionState.FromJsonElement(projectionType, identity.TenantId, state))
-            .ConfigureAwait(false);
+        await RouteCatalogRemoteCall.InvokeAsync(() => writeProxy!.UpdateProjectionAsync(ProjectionState.FromJsonElement(projectionType, identity.TenantId, state))).ConfigureAwait(false);
 
         IETagActor eTagProxy = actorProxyFactory.CreateActorProxy<IETagActor>(
             new ActorId($"{projectionType}:{identity.TenantId}"),
             ETagActor.ETagActorTypeName);
         cancellationToken.ThrowIfCancellationRequested();
-        _ = await eTagProxy.RegenerateAsync().ConfigureAwait(false);
+        _ = await RouteCatalogRemoteCall.InvokeAsync(() => eTagProxy!.RegenerateAsync()).ConfigureAwait(false);
     }
 
     private static partial class Log {

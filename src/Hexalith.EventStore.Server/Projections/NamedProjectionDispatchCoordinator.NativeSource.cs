@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using Dapr.Actors;
 
 using Hexalith.EventStore.Contracts.Identity;
@@ -25,7 +27,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator
                 captureToken.ThrowIfCancellationRequested();
                 IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                     new ActorId(identity.ActorId), AggregateActorTypeName);
-                var before = await actor.InspectSourceProofAsync().ConfigureAwait(false);
+                var before = await RouteCatalogRemoteCall.InvokeAsync(() => actor!.InspectSourceProofAsync()).ConfigureAwait(false);
                 if (before is null || before.Status != SourceProofInspectionStatus.Available || !before.Exists || before.Erased || before.Proof is not { RetainedFloor: 1, Erased: false } proof
                     || proof.HeadSequence != events.LongLength
                     || !SourceProofCodec.IsValid(proof, identity, events.LongLength, 1)) return null;
@@ -37,7 +39,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator
                 }
                 if (chain != proof) return null;
                 captureToken.ThrowIfCancellationRequested();
-                var after = await actor.InspectSourceProofAsync().ConfigureAwait(false);
+                var after = await RouteCatalogRemoteCall.InvokeAsync(() => actor!.InspectSourceProofAsync()).ConfigureAwait(false);
                 return before == after ? SourceProofCodec.ToNative(proof) : null;
             }).ConfigureAwait(false);
         }

@@ -1,5 +1,7 @@
 using Dapr.Client;
 
+using Hexalith.EventStore.Contracts.Routing;
+
 namespace Hexalith.EventStore.Client.Projections;
 
 /// <summary>
@@ -17,11 +19,11 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
 
     /// <inheritdoc/>
     public async Task<RawStateEntry> ReadAsync(string key, CancellationToken cancellationToken) {
+        ValidateKey(key, cancellationToken);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        (ReadOnlyMemory<byte> value, string etag) = await daprClient
-            .GetByteStateAndETagAsync(storeName, key, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        (ReadOnlyMemory<byte> value, string etag) = await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
+            .GetByteStateAndETagAsync(storeName, key, cancellationToken: cancellationToken)).ConfigureAwait(false);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, value.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelBytes, value.Length);
         return string.IsNullOrEmpty(etag)
@@ -40,25 +42,24 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
         string expectedETag,
         TimeSpan? timeToLive,
         CancellationToken cancellationToken) {
+        ValidateKey(key, cancellationToken);
+        ArgumentNullException.ThrowIfNull(expectedETag);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, value.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelBytes, value.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+        IReadOnlyDictionary<string, string>? metadata = timeToLive is null ? null
+            : new Dictionary<string, string>(StringComparer.Ordinal) { ["ttlInSeconds"] = ToTtlSeconds(timeToLive.Value) };
         try {
-            return await daprClient
+            return await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
                 .TrySaveByteStateAsync(
                     storeName,
                     key,
                     value,
                     expectedETag,
                     new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                    metadata: timeToLive is null
-                        ? null!
-                        : new Dictionary<string, string>(StringComparer.Ordinal) {
-                            ["ttlInSeconds"] = ToTtlSeconds(timeToLive.Value),
-                        },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+                    metadata: metadata!,
+                    cancellationToken: cancellationToken)).ConfigureAwait(false);
         }
         catch (Dapr.DaprException) when (expectedETag.Length == 0 && !cancellationToken.IsCancellationRequested) {
             if (await DaprReadModelCreateConflict.ExistsAsync(daprClient, storeName, key, cancellationToken).ConfigureAwait(false))
@@ -69,20 +70,24 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
 
     /// <inheritdoc/>
     public async Task<bool> TryDeleteAsync(string key, string expectedETag, CancellationToken cancellationToken) {
+        ValidateKey(key, cancellationToken);
+        ArgumentNullException.ThrowIfNull(expectedETag);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        return await daprClient
+        return await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
             .TryDeleteStateAsync(
                 storeName,
                 key,
                 expectedETag,
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+                cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task ExecuteTransactionAsync(IReadOnlyList<RawTransactionOperation> operations, CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(operations);
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        cancellationToken.ThrowIfCancellationRequested();
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.TransactionAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts, operations.Count);
@@ -91,6 +96,7 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelBytes, bytes);
         var requests = new List<StateTransactionRequest>(operations.Count);
         foreach (RawTransactionOperation operation in operations) {
+            ArgumentException.ThrowIfNullOrWhiteSpace(operation.Key);
             requests.Add(new StateTransactionRequest(
                 operation.Key,
                 operation.IsDelete ? [] : operation.Value.ToArray(),
@@ -104,9 +110,15 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
                 options: operation.FirstWrite ? new StateOptions { Concurrency = ConcurrencyMode.FirstWrite } : null));
         }
 
-        await daprClient
-            .ExecuteStateTransactionAsync(storeName, requests, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
+            .ExecuteStateTransactionAsync(storeName, requests, cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
+
+    private void ValidateKey(string key, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     private static string ToTtlSeconds(TimeSpan timeToLive) {

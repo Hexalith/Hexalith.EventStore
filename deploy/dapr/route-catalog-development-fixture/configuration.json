@@ -1,0 +1,8 @@
+{
+  "apiVersion": "dapr.io/v1alpha1",
+  "kind": "Configuration",
+  "metadata": { "name": "route-catalog-development-fixture" },
+  "spec": {
+    "accessControl": { "defaultAction": "deny", "trustDomain": "public" }
+  }
+}

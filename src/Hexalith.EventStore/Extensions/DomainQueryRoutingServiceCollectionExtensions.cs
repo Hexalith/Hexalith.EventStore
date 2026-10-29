@@ -30,6 +30,7 @@ public static class DomainQueryRoutingServiceCollectionExtensions {
         // last IQueryRouter registration — the decorator — wins.
         // AddEventStoreServer owns concrete construction, including source-guard and lifecycle proof.
         _ = services.AddScoped<IQueryRouter>(serviceProvider => new HandlerAwareQueryRouter(
+            serviceProvider.GetRequiredService<Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority>(),
             serviceProvider.GetRequiredService<QueryRouter>(),
             serviceProvider.GetRequiredService<IDomainQueryHandlerRegistry>(),
             serviceProvider.GetRequiredService<IDomainQueryInvoker>(),

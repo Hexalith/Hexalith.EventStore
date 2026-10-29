@@ -19,13 +19,49 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// Created per-actor-call (same pattern as IdempotencyChecker, TenantValidator, EventStreamReader).
 /// No custom retry logic — DAPR resiliency handles transient failures (enforcement rule #4).
 /// </summary>
-public partial class DaprDomainServiceInvoker(
-    DaprClient daprClient,
-    IHttpClientFactory httpClientFactory,
-    IDomainServiceResolver resolver,
-    IOptions<DomainServiceOptions> options,
-    TimeProvider timeProvider,
-    ILogger<DaprDomainServiceInvoker> logger) : IDomainServiceInvoker {
+public partial class DaprDomainServiceInvoker : IDomainServiceInvoker {
+    private DaprClient daprClient { get; }
+    private IHttpClientFactory httpClientFactory { get; }
+    private IDomainServiceResolver resolver { get; }
+    private IOptions<DomainServiceOptions> options { get; }
+    private TimeProvider timeProvider { get; }
+    private ILogger<DaprDomainServiceInvoker> logger { get; }
+    private Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority { get; }
+
+    /// <summary>Creates a catalog-enforced runtime entry point.</summary>
+    public DaprDomainServiceInvoker(
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority authority,
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        IDomainServiceResolver resolver,
+        IOptions<DomainServiceOptions> options,
+        TimeProvider timeProvider,
+        ILogger<DaprDomainServiceInvoker> logger)
+        : this(daprClient, httpClientFactory, resolver, options, timeProvider, logger, authority)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+    }
+
+    /// <summary>Explicit friend-only composition seam for existing isolated protocol tests.</summary>
+    internal DaprDomainServiceInvoker(
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        IDomainServiceResolver resolver,
+        IOptions<DomainServiceOptions> options,
+        TimeProvider timeProvider,
+        ILogger<DaprDomainServiceInvoker> logger,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+    {
+        this.daprClient = daprClient;
+        this.httpClientFactory = httpClientFactory;
+        this.resolver = resolver;
+        this.options = options;
+        this.timeProvider = timeProvider;
+        this.logger = logger;
+        this.catalogAuthority = catalogAuthority;
+        _options = ValidateOptions(options);
+    }
+
     /// <summary>
     /// The command extension key used to specify the domain service version.
     /// </summary>
@@ -38,7 +74,7 @@ public partial class DaprDomainServiceInvoker(
     internal const string HttpClientName = "domain-service-invocation";
 
     private const string DefaultVersion = "v1";
-    private readonly DomainServiceOptions _options = ValidateOptions(options);
+    private readonly DomainServiceOptions _options;
 
     /// <summary>
     /// Initializes an invoker using the system time provider.
@@ -48,7 +84,7 @@ public partial class DaprDomainServiceInvoker(
     /// <param name="resolver">The domain-service registration resolver.</param>
     /// <param name="options">The domain-service invocation options.</param>
     /// <param name="logger">The invocation logger.</param>
-    public DaprDomainServiceInvoker(
+    internal DaprDomainServiceInvoker(
         DaprClient daprClient,
         IHttpClientFactory httpClientFactory,
         IDomainServiceResolver resolver,
@@ -95,8 +131,18 @@ public partial class DaprDomainServiceInvoker(
         CompleteCommandSource? completeSource = null) {
         ArgumentNullException.ThrowIfNull(command);
 
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        Hexalith.EventStore.Contracts.Routing.RouteCatalogEntry? committedTarget = catalogLease?.Snapshot
+            .Resolve("command", command.TenantId, command.Domain, command.CommandType).Target;
+
         // Extract version from command extensions, default to "v1" (AC #7, ADR-4)
-        string version = ExtractVersion(command, logger);
+        bool explicitVersion = command.Extensions is not null
+            && command.Extensions.TryGetValue(DomainServiceVersionExtensionKey, out string? versionOverride)
+            && !string.IsNullOrWhiteSpace(versionOverride);
+        string version = committedTarget is not null && !explicitVersion ? committedTarget.ContractVersion : ExtractVersion(command, logger);
+        if (committedTarget is not null && version != committedTarget.ContractVersion)
+            throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("A command version override disagrees with the committed target.");
 
         DomainServiceRegistration? registration = null;
         DomainServiceWireResult wireResult;
@@ -109,7 +155,9 @@ public partial class DaprDomainServiceInvoker(
         try {
             // Registration lookup can call the DAPR configuration store, so it shares the
             // configured operation budget with the subsequent service invocation.
-            registration = await resolver
+            registration = committedTarget is not null
+                ? new DomainServiceRegistration(committedTarget.AppId, committedTarget.Method, command.TenantId, command.Domain, committedTarget.ContractVersion)
+                : await resolver
                 .ResolveAsync(command.TenantId, command.Domain, version, invocationCancellation.Token)
                 .ConfigureAwait(false)
                 ?? throw new DomainServiceNotFoundException(command.TenantId, command.Domain, version);
@@ -409,9 +457,7 @@ public partial class DaprDomainServiceInvoker(
             return DefaultVersion;
         }
 
-        string normalized = versionValue.ToLowerInvariant();
-        ValidateVersionFormat(normalized);
-        return normalized;
+        return DomainServiceVersion.Resolve(command);
     }
 
     /// <summary>

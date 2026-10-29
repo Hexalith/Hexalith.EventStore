@@ -120,7 +120,7 @@ public class IdempotencyAdmissionActorTests
             UserId: "user-a",
             IdempotencyKey: "opaque-secret-key");
         IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
-        registry.Resolve(command).Returns(Descriptor("target-a"));
+        registry.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns(Descriptor("target-a"));
         var coordinator = new IdempotencyAdmissionCoordinator(
             factory,
             CreateProtector(),
@@ -374,7 +374,7 @@ public class IdempotencyAdmissionActorTests
             "trace-a",
             "user-a",
             IdempotencyKey: "opaque-secret-key");
-        registry.Resolve(command).Returns(Descriptor("target-a"));
+        registry.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns(Descriptor("target-a"));
         var coordinator = new IdempotencyAdmissionCoordinator(
             factory,
             CreateProtector(),
@@ -436,7 +436,7 @@ public class IdempotencyAdmissionActorTests
             "user-a",
             IdempotencyKey: "opaque-secret-key");
         IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
-        registry.Resolve(command).Returns(Descriptor("target-a"));
+        registry.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns(Descriptor("target-a"));
         var coordinator = new IdempotencyAdmissionCoordinator(
             factory,
             CreateProtector(),
@@ -595,7 +595,7 @@ public class IdempotencyAdmissionActorTests
             "trace-a",
             "user-a",
             IdempotencyKey: "opaque-secret-key");
-        registry.Resolve(command).Returns(descriptor);
+        registry.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns(descriptor);
         var coordinator = new IdempotencyAdmissionCoordinator(factory, protector, registry);
 
         IdempotencyAdmissionSession session = (await coordinator.AdmitAsync(command)).ShouldNotBeNull();
@@ -708,7 +708,7 @@ public class IdempotencyAdmissionActorTests
             "user-a",
             IdempotencyKey: "opaque-secret-key");
         IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
-        registry.Resolve(command).Returns(Descriptor("target-a"));
+        registry.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns(Descriptor("target-a"));
         var coordinator = new IdempotencyAdmissionCoordinator(factory, protector, registry);
 
         if (corruptProof)
@@ -778,7 +778,7 @@ public class IdempotencyAdmissionActorTests
             "user-a",
             IdempotencyKey: "opaque-secret-key");
         IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
-        registry.Resolve(command).Returns(Descriptor("target-a"));
+        registry.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns(Descriptor("target-a"));
         var coordinator = new IdempotencyAdmissionCoordinator(
             factory,
             CreateProtector(),
@@ -904,7 +904,7 @@ public class IdempotencyAdmissionActorTests
             "user-a",
             IdempotencyKey: "opaque-secret-key");
         IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
-        registry.Resolve(command).Returns(descriptor);
+        registry.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns(descriptor);
         var coordinator = new IdempotencyAdmissionCoordinator(factory, protector, registry);
 
         IdempotencyAdmissionSession session = (await coordinator.AdmitAsync(command)).ShouldNotBeNull();
@@ -994,7 +994,7 @@ public class IdempotencyAdmissionActorTests
             "user-a",
             IdempotencyKey: "opaque-secret-key");
         IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
-        registry.Resolve(command).Returns(Descriptor("target-a"));
+        registry.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns(Descriptor("target-a"));
         var coordinator = new IdempotencyAdmissionCoordinator(factory, protector, registry);
 
         IdempotencyAdmissionSession result = (await coordinator.AdmitAsync(command)).ShouldNotBeNull();

@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
@@ -27,8 +29,12 @@ internal sealed class DaprProjectionLifecycleGateway(
     /// <inheritdoc/>
     public Task<bool> OwnsDeliveryWriteAsync(AggregateIdentity identity, string projectionName, string operationId,
         ProjectionLifecycleSnapshot snapshot, CancellationToken cancellationToken = default)
-        => CreateProxy(identity, projectionName).InvokeMethodAsync<ProjectionDeliveryLeaseProof, bool>(
-            nameof(IProjectionDeliveryLeaseActor.OwnsDeliveryLeaseAsync), new(operationId, snapshot), cancellationToken);
+    {
+        ActorProxy proxy = CreateProxy(identity, projectionName);
+        var proof = new ProjectionDeliveryLeaseProof(operationId, snapshot);
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionDeliveryLeaseProof, bool>(
+            nameof(IProjectionDeliveryLeaseActor.OwnsDeliveryLeaseAsync), proof, cancellationToken));
+    }
 
     /// <inheritdoc/>
     public async Task<bool> BeginRebuildAsync(
@@ -38,10 +44,10 @@ internal sealed class DaprProjectionLifecycleGateway(
         CancellationToken cancellationToken = default) {
         if (await HasDeliveryFenceAsync(identity, projectionName, cancellationToken).ConfigureAwait(false)) return false;
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        bool admitted = await proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
+        bool admitted = await RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
             nameof(IProjectionLifecycleActor.BeginRebuildAsync),
             new ProjectionRebuildLifecycleRequest(operationId),
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken)).ConfigureAwait(false);
         if (!admitted || !await HasDeliveryFenceAsync(identity, projectionName, cancellationToken).ConfigureAwait(false)) return admitted;
         // The second read closes the precheck/acquire window. No selection effects have started;
         // release only this competing operation, leaving the pending delivery fence intact.
@@ -56,10 +62,10 @@ internal sealed class DaprProjectionLifecycleGateway(
         string operationId,
         CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
             nameof(IProjectionLifecycleActor.CompleteRebuildAsync),
             new ProjectionRebuildLifecycleRequest(operationId),
-            cancellationToken);
+            cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -70,10 +76,10 @@ internal sealed class DaprProjectionLifecycleGateway(
         CancellationToken cancellationToken = default) {
         if (await HasDeliveryFenceAsync(identity, projectionName, cancellationToken).ConfigureAwait(false)) return false;
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return await proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
+        return await RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
             nameof(IProjectionLifecycleActor.BeginRebuildPromotionAsync),
             new ProjectionRebuildLifecycleRequest(operationId),
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -83,10 +89,10 @@ internal sealed class DaprProjectionLifecycleGateway(
         string operationId,
         CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
             nameof(IProjectionLifecycleActor.CompleteRebuildPromotionAsync),
             new ProjectionRebuildLifecycleRequest(operationId),
-            cancellationToken);
+            cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -95,9 +101,9 @@ internal sealed class DaprProjectionLifecycleGateway(
         string projectionName,
         CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return proxy.InvokeMethodAsync<ProjectionLifecyclePhase>(
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionLifecyclePhase>(
             nameof(IProjectionLifecycleActor.ReadPhaseAsync),
-            cancellationToken);
+            cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -106,9 +112,9 @@ internal sealed class DaprProjectionLifecycleGateway(
         string projectionName,
         CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return proxy.InvokeMethodAsync<ProjectionLifecycleSnapshot>(
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionLifecycleSnapshot>(
             nameof(IProjectionLifecycleActor.ReadSnapshotAsync),
-            cancellationToken);
+            cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -118,12 +124,12 @@ internal sealed class DaprProjectionLifecycleGateway(
         string operationId,
         CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return proxy.InvokeMethodAsync<ProjectionDeliveryLifecycleRequest, bool>(
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionDeliveryLifecycleRequest, bool>(
             nameof(IProjectionLifecycleActor.BeginDeliveryWriteAsync),
             new ProjectionDeliveryLifecycleRequest(
                 operationId,
                 _timeProvider.GetUtcNow() + DeliveryLeaseDuration),
-            cancellationToken);
+            cancellationToken));
     }
 
     /// <inheritdoc/>
@@ -133,19 +139,19 @@ internal sealed class DaprProjectionLifecycleGateway(
         string operationId,
         CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return proxy.InvokeMethodAsync<ProjectionDeliveryLifecycleRequest, bool>(
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionDeliveryLifecycleRequest, bool>(
             nameof(IProjectionLifecycleActor.CompleteDeliveryWriteAsync),
             new ProjectionDeliveryLifecycleRequest(operationId),
-            cancellationToken);
+            cancellationToken));
     }
 
     /// <inheritdoc/>
     public async Task<bool> TryAdmitDeliveryWriteAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        ProjectionDeliveryAdmission admission = await proxy
+        ProjectionDeliveryAdmission admission = await RouteCatalogRemoteCall.InvokeAsync(() => proxy
             .InvokeMethodAsync<ProjectionDeliveryAdmission>(
                 nameof(IProjectionLifecycleActor.TryAdmitDeliveryWriteAsync),
-                cancellationToken)
+                cancellationToken))
             .ConfigureAwait(false);
         return admission.Admitted;
     }
@@ -161,10 +167,10 @@ internal sealed class DaprProjectionLifecycleGateway(
         if (await HasDeliveryFenceAsync(identity, projectionName, cancellationToken).ConfigureAwait(false))
             return new(ProjectionEraseAdmissionKind.BeginNotAllowed, new Dictionary<string, string>(StringComparer.Ordinal));
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        ProjectionEraseAdmission admitted = await proxy.InvokeMethodAsync<ProjectionEraseBeginRequest, ProjectionEraseAdmission>(
+        ProjectionEraseAdmission admitted = await RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionEraseBeginRequest, ProjectionEraseAdmission>(
             nameof(IProjectionLifecycleActor.BeginEraseAsync),
             new ProjectionEraseBeginRequest(operationId, manifestDigest, allowBegin),
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken)).ConfigureAwait(false);
         if (admitted.Kind is not ProjectionEraseAdmissionKind.Admitted and not ProjectionEraseAdmissionKind.Resume
             || !await HasDeliveryFenceAsync(identity, projectionName, cancellationToken).ConfigureAwait(false)) return admitted;
         await CompleteEraseAsync(identity, projectionName, operationId, cancellationToken).ConfigureAwait(false);
@@ -174,19 +180,19 @@ internal sealed class DaprProjectionLifecycleGateway(
     /// <inheritdoc/>
     public Task<bool> RecordTargetOutcomeAsync(AggregateIdentity identity, string projectionName, string operationId, string targetKey, string outcome, CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return proxy.InvokeMethodAsync<ProjectionTargetOutcomeRequest, bool>(
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionTargetOutcomeRequest, bool>(
             nameof(IProjectionLifecycleActor.RecordTargetOutcomeAsync),
             new ProjectionTargetOutcomeRequest(operationId, targetKey, outcome),
-            cancellationToken);
+            cancellationToken));
     }
 
     /// <inheritdoc/>
     public Task<bool> CompleteEraseAsync(AggregateIdentity identity, string projectionName, string operationId, CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
-        return proxy.InvokeMethodAsync<ProjectionEraseCompleteRequest, bool>(
+        return RouteCatalogRemoteCall.InvokeAsync(() => proxy.InvokeMethodAsync<ProjectionEraseCompleteRequest, bool>(
             nameof(IProjectionLifecycleActor.CompleteEraseAsync),
             new ProjectionEraseCompleteRequest(operationId),
-            cancellationToken);
+            cancellationToken));
     }
 
     private async Task<bool> HasDeliveryFenceAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken)

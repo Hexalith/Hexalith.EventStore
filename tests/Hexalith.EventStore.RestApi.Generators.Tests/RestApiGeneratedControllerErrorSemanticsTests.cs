@@ -15,7 +15,7 @@ using Microsoft.CodeAnalysis.Emit;
 
 namespace Hexalith.EventStore.RestApi.Generators.Tests;
 
-public sealed class RestApiGeneratedControllerErrorSemanticsTests
+public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
 {
     [Fact]
     public async Task QueryAction_Success_ForwardsBoundedMetadataHeadersAndRawPayload()
@@ -996,9 +996,9 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         headers.ContainsKey("Location").ShouldBeFalse();
     }
 
-    private static RestApiGeneratedController CreateController(ICommandStatusLocationBuilder? statusLocationBuilder = null)
+    private static RestApiGeneratedController CreateController(ICommandStatusLocationBuilder? statusLocationBuilder = null, string tenantMode = "Route")
     {
-        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(ControllerExerciseSource);
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(ControllerExerciseSource.Replace("RestTenantSource.Route", "RestTenantSource." + tenantMode, StringComparison.Ordinal));
         CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
             compilation,
             out _,
@@ -1017,7 +1017,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
             statusLocationBuilder ?? new FakeCommandStatusLocationBuilder(gatewayStatusBase: null))!;
         controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext(),
+            HttpContext = CreateCatalogIsolatedContext(),
         };
 
         return new RestApiGeneratedController(assembly, gateway, controller);
@@ -1126,4 +1126,12 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
             public static string ProjectionType => "counter";
         }
         """;
+    private static DefaultHttpContext CreateCatalogIsolatedContext()
+    {
+        var context = new DefaultHttpContext();
+        context.Items[Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.ValidatorKey] =
+            (Func<Type, string, string, bool>)((_, _, _) => true);
+        return context;
+    }
+
 }

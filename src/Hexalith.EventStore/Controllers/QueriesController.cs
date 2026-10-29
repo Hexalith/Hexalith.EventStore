@@ -31,16 +31,61 @@ namespace Hexalith.EventStore.Controllers;
 [Route("api/v1/queries")]
 [Consumes("application/json")]
 [Tags("Queries")]
-public partial class QueriesController(
-    IMediator mediator,
-    IETagService eTagService,
-    ITenantValidator tenantValidator,
-    IRbacValidator rbacValidator,
-    ILogger<QueriesController> logger,
-    IIdentityGatewayAdmission? identityAdmission = null,
-    IConfiguration? configuration = null,
-    WorkloadAssertionValidator? assertionValidator = null,
-    IOptionsMonitor<WorkloadAuthenticationOptions>? workloadOptions = null) : ControllerBase {
+public partial class QueriesController : ControllerBase {
+    private IMediator mediator { get; }
+    private IETagService eTagService { get; }
+    private ITenantValidator tenantValidator { get; }
+    private IRbacValidator rbacValidator { get; }
+    private ILogger<QueriesController> logger { get; }
+    private IIdentityGatewayAdmission? identityAdmission { get; }
+    private IConfiguration? configuration { get; }
+    private WorkloadAssertionValidator? assertionValidator { get; }
+    private IOptionsMonitor<WorkloadAuthenticationOptions>? workloadOptions { get; }
+    private Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority { get; }
+
+    /// <summary>Creates a catalog-enforced runtime entry point.</summary>
+    public QueriesController(
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority authority,
+        IMediator mediator,
+        IETagService eTagService,
+        ITenantValidator tenantValidator,
+        IRbacValidator rbacValidator,
+        ILogger<QueriesController> logger,
+        IIdentityGatewayAdmission? identityAdmission = null,
+        IConfiguration? configuration = null,
+        WorkloadAssertionValidator? assertionValidator = null,
+        IOptionsMonitor<WorkloadAuthenticationOptions>? workloadOptions = null)
+        : this(mediator, eTagService, tenantValidator, rbacValidator, logger, identityAdmission, configuration, assertionValidator, workloadOptions, authority)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+    }
+
+    /// <summary>Explicit friend-only composition seam for existing isolated protocol tests.</summary>
+    internal QueriesController(
+        IMediator mediator,
+        IETagService eTagService,
+        ITenantValidator tenantValidator,
+        IRbacValidator rbacValidator,
+        ILogger<QueriesController> logger,
+        IIdentityGatewayAdmission? identityAdmission = null,
+        IConfiguration? configuration = null,
+        WorkloadAssertionValidator? assertionValidator = null,
+        IOptionsMonitor<WorkloadAuthenticationOptions>? workloadOptions = null,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+    {
+        this.mediator = mediator;
+        this.eTagService = eTagService;
+        this.tenantValidator = tenantValidator;
+        this.rbacValidator = rbacValidator;
+        this.logger = logger;
+        this.identityAdmission = identityAdmission;
+        this.configuration = configuration;
+        this.assertionValidator = assertionValidator;
+        this.workloadOptions = workloadOptions;
+        this.catalogAuthority = catalogAuthority;
+
+    }
+
     private const int MaxIfNoneMatchValues = 10;
     private const int MaxMetadataHeaderValueLength = 4096;
     private const int MaxWarningCodeCount = 16;
@@ -106,7 +151,7 @@ public partial class QueriesController(
             = new GatewayAuthorizationContext(query.Tenant, query.Domain, query.QueryType, "query", query.AggregateId, workloadSubject);
         var submitted = new SubmitQuery(query.Tenant, query.Domain, query.AggregateId, query.QueryType,
             payload, correlationId, request.PrincipalId, EntityId: query.AggregateId,
-            ProjectionType: query.Domain, AuthenticatedWorkloadId: caller,
+            ProjectionType: catalogAuthority is null ? query.Domain : null, AuthenticatedWorkloadId: caller,
             OriginalActorId: request.PrincipalId, IsDelegated: true,
             Audience: ownerAuthority is not null && workloadOptions?.Get(DaprInternalAuthenticationOptions.SchemeName).Audience is { Length: > 0 } audience
                 ? [audience.Trim()] : null) { CallerAuthority = ownerAuthority };
@@ -154,6 +199,17 @@ public partial class QueriesController(
 
         await ValidateAuthorizationBeforeLookupAsync(request, userId, correlationId, cancellationToken)
             .ConfigureAwait(false);
+
+        var catalogLease = catalogAuthority is null ? null
+            : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        if (catalogLease is not null)
+        {
+            var selected = catalogLease.Snapshot.Resolve("query", request.Tenant, request.Domain, request.QueryType);
+            if ((!string.IsNullOrWhiteSpace(request.ProjectionType) && request.ProjectionType != selected.Declaration.ProjectionType)
+                || (!string.IsNullOrWhiteSpace(request.ProjectionActorType) && request.ProjectionActorType != selected.Declaration.Execution!.ActorType))
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The selected query target differs from committed authority.");
+        }
 
         DualPrincipalIdentity dualPrincipal = DualPrincipalClaimsHelper.Extract(User, userId);
 
@@ -208,7 +264,7 @@ public partial class QueriesController(
             UserId: userId,
             EntityId: entityId,
             ProjectionType: string.IsNullOrWhiteSpace(request.ProjectionType)
-                ? request.Domain
+                ? (catalogAuthority is null ? request.Domain : null)
                 : request.ProjectionType,
             ProjectionActorType: request.ProjectionActorType,
             IsGlobalAdmin: GlobalAdministratorHelper.IsGlobalAdministrator(User),

@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Contracts.Routing;
+
 using Dapr.Client;
 
 namespace Hexalith.EventStore.Client.Projections;
@@ -8,7 +10,8 @@ internal static class DaprReadModelCreateConflict {
     internal static async Task<bool> ExistsAsync(DaprClient client, string storeName, string key, CancellationToken cancellationToken) {
         try {
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-            (_, string etag) = await client.GetByteStateAndETagAsync(storeName, key, consistencyMode: ConsistencyMode.Strong, cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            (_, string etag) = await RouteCatalogRemoteExecution.InvokeAsync(() => client.GetByteStateAndETagAsync(storeName, key, consistencyMode: ConsistencyMode.Strong, cancellationToken: cancellationToken)).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             return !string.IsNullOrEmpty(etag);
         }

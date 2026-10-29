@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -85,12 +87,12 @@ public sealed partial class DaprProjectionActivationOutbox(
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationShardReads, Keys.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads, Keys.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        IReadOnlyList<BulkStateItem> shards = await daprClient
+        IReadOnlyList<BulkStateItem> shards = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
             .GetBulkStateAsync(
                 projectionOptions.Value.CheckpointStateStoreName,
                 Keys,
                 BulkReadParallelism,
-                cancellationToken: cancellationToken)
+                cancellationToken: cancellationToken))
             .ConfigureAwait(false);
         var items = new List<ProjectionActivationWorkItem>();
         foreach (BulkStateItem shard in shards)
@@ -161,13 +163,13 @@ public sealed partial class DaprProjectionActivationOutbox(
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, bytes.Length);
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-            if (await daprClient.TrySaveByteStateAsync(
+            if (await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.TrySaveByteStateAsync(
                     storeName,
                     key,
                     bytes,
                     etag,
                     stateOptions: new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                    cancellationToken: cancellationToken)
+                    cancellationToken: cancellationToken))
                 .ConfigureAwait(false)) {
                 return;
             }
@@ -181,8 +183,8 @@ public sealed partial class DaprProjectionActivationOutbox(
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationShardReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        (ReadOnlyMemory<byte> body, string etag) = await daprClient.GetByteStateAndETagAsync(
-            projectionOptions.Value.CheckpointStateStoreName, key, cancellationToken: cancellationToken).ConfigureAwait(false);
+        (ReadOnlyMemory<byte> body, string etag) = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.GetByteStateAndETagAsync(
+            projectionOptions.Value.CheckpointStateStoreName, key, cancellationToken: cancellationToken)).ConfigureAwait(false);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, body.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationReadBytes, body.Length);
         ProjectionActivationLedger? ledger = body.IsEmpty ? null : JsonSerializer.Deserialize<ProjectionActivationLedger>(body.Span, daprClient.JsonSerializerOptions);

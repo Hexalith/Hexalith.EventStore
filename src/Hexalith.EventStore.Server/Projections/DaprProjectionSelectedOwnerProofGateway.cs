@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using System.Text.Json;
 
 using Dapr.Client;
@@ -19,8 +21,8 @@ internal sealed class DaprProjectionSelectedOwnerProofGateway(DaprClient daprCli
         using HttpRequestMessage request = daprClient.CreateInvokeMethodRequest(catalog.AppId,
             "project/source-guard/owner-proof/v1", new ProjectionOwnerProofRequest(identity.TenantId,
                 identity.Domain, identity.AggregateId, projectionName, catalog.CatalogFingerprint));
-        using HttpResponseMessage response = await clients.CreateClient().SendAsync(request,
-            HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        using HttpResponseMessage response = await RouteCatalogRemoteCall.InvokeAsync(clients.CreateClient(), catalogRemoteProxy => catalogRemoteProxy.SendAsync(request,
+            HttpCompletionOption.ResponseHeadersRead, cancellationToken)).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > 16_384)
             return new(null, "delivery_state_unavailable", 0, 0);
         using Stream input = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);

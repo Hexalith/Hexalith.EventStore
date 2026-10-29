@@ -247,7 +247,7 @@ public partial class DaprDomainServiceInvokerTests {
     }
 
     [Fact]
-    public void DaprDomainServiceInvoker_PreservesLegacyPublicConstructor() {
+    public void DaprDomainServiceInvoker_PreservesLegacySignatureOnlyForExplicitFriendProtocolComposition() {
         Type[] legacyParameterTypes = [
             typeof(DaprClient),
             typeof(IHttpClientFactory),
@@ -256,7 +256,12 @@ public partial class DaprDomainServiceInvokerTests {
             typeof(ILogger<DaprDomainServiceInvoker>),
         ];
 
-        typeof(DaprDomainServiceInvoker).GetConstructor(legacyParameterTypes).ShouldNotBeNull();
+        typeof(DaprDomainServiceInvoker).GetConstructor(legacyParameterTypes).ShouldBeNull();
+        var isolated = typeof(DaprDomainServiceInvoker).GetConstructor(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+            binder: null, legacyParameterTypes, modifiers: null);
+        isolated.ShouldNotBeNull(); isolated.IsAssembly.ShouldBeTrue();
+        typeof(DaprDomainServiceInvoker).GetConstructors().ShouldHaveSingleItem().GetParameters()
+            .ShouldContain(parameter => parameter.ParameterType == typeof(Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority) && !parameter.IsOptional);
     }
 
     [Theory]

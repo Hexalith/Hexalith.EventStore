@@ -87,6 +87,8 @@ public sealed partial class CompleteCommandSourceTests
             ["Authentication:Workload:AllowedCallers:0"] = "eventstore", ["APP_API_TOKEN"] = appChannelToken,
         });
         builder.AddEventStoreDomainService(typeof(CommandEnvelope).Assembly);
+        // Preserve this fixture's signed-source authentication focus independently of catalog lifecycle.
+        builder.Services.AddScoped<IDomainRouteCatalogGuard, DomainRouteCatalogIsolatedGuard>();
         builder.Services.AddEventStoreCompleteCommandSourceVerification("eventstore", ["conversation"]);
         builder.Services.AddKeyedSingleton("conversation", processor);
         var administrator = Substitute.For<IDomainServiceAdministratorVerifier>();

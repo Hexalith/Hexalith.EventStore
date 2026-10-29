@@ -13,6 +13,8 @@
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.CatalogConstruction" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.AppHost.Tests" />
     <!-- Dapr emits one named runtime assembly per internal actor proxy contract. -->
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.Actors.IIdempotencyLegacySourceActor_.actorV1.proxy" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.Actors.IIdempotencyLegacySourceActor_.actorV1.disp" />

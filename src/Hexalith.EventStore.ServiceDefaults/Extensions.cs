@@ -12,6 +12,8 @@ using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -39,6 +41,7 @@ public static class Extensions {
 
         _ = builder.ConfigureOpenTelemetry();
         _ = builder.AddDefaultHealthChecks();
+        _ = builder.Services.AddEventStoreRouteCatalog(builder.Configuration);
         _ = builder.Services.AddServiceDiscovery();
         _ = builder.Services.ConfigureHttpClientDefaults(static http => {
             _ = http.AddStandardResilienceHandler()
@@ -212,6 +215,7 @@ public static class Extensions {
         _ = app.MapHealthChecks(HealthEndpointPath, healthOptions).AllowAnonymous();
         _ = app.MapHealthChecks(AlivenessEndpointPath, livenessOptions).AllowAnonymous();
         _ = app.MapHealthChecks(ReadinessEndpointPath, readinessOptions).AllowAnonymous();
+        _ = app.MapEventStoreRouteCatalog();
         return app;
     }
 

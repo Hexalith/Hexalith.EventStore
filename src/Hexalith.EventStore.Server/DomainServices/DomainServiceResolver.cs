@@ -24,10 +24,37 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// <para><b>BLOCKING:</b> Story 5.1 (DAPR ACLs) is required before production multi-tenant deployments.
 /// Without DAPR app-level access policies, any sidecar-accessible service can invoke any other service.</para>
 /// </remarks>
-public partial class DomainServiceResolver(
-    DaprClient daprClient,
-    IOptions<DomainServiceOptions> options,
-    ILogger<DomainServiceResolver> logger) : IDomainServiceResolver {
+public partial class DomainServiceResolver : IDomainServiceResolver {
+    private DaprClient daprClient { get; }
+    private IOptions<DomainServiceOptions> options { get; }
+    private ILogger<DomainServiceResolver> logger { get; }
+    private Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority { get; }
+
+    /// <summary>Creates a catalog-enforced runtime entry point.</summary>
+    public DomainServiceResolver(
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority authority,
+        DaprClient daprClient,
+        IOptions<DomainServiceOptions> options,
+        ILogger<DomainServiceResolver> logger)
+        : this(daprClient, options, logger, authority)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+    }
+
+    /// <summary>Explicit friend-only composition seam for existing isolated protocol tests.</summary>
+    internal DomainServiceResolver(
+        DaprClient daprClient,
+        IOptions<DomainServiceOptions> options,
+        ILogger<DomainServiceResolver> logger,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+    {
+        this.daprClient = daprClient;
+        this.options = options;
+        this.logger = logger;
+        this.catalogAuthority = catalogAuthority;
+
+    }
+
     private const int MaxDomainNameLength = 64;
 
     [GeneratedRegex(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")]
@@ -45,6 +72,20 @@ public partial class DomainServiceResolver(
         // Normalize and validate version format (ADR-4)
         version = version.ToLowerInvariant();
         DaprDomainServiceInvoker.ValidateVersionFormat(version);
+
+        if (catalogAuthority is not null)
+        {
+            var lease = await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            await using var catalogRelease = lease.ConfigureAwait(false);
+            var envelope = lease.Snapshot.Envelope;
+            var targets = envelope.Routes.Where(route => route.ContractVersion == version
+                && (route.ResolverTenantPattern is null or "*" || route.ResolverTenantPattern == tenantId)
+                && envelope.Declarations.Any(declaration => declaration.RouteId == route.RouteId
+                    && declaration.Domain == domain && declaration.Kind == "command"))
+                .Select(route => new DomainServiceRegistration(route.AppId, route.Method, tenantId, domain, route.ContractVersion)).Distinct().ToArray();
+            return targets.Length == 1 ? targets[0]
+                : throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("A domain-only lookup cannot select an undeclared or ambiguous committed target.");
+        }
 
         string configKey = $"{tenantId}:{domain}:{version}";
 

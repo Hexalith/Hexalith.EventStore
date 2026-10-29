@@ -6,6 +6,8 @@ using Hexalith.EventStore.Sample.Counter.Projections;
 using Hexalith.EventStore.Sample.Greeting;
 using Hexalith.EventStore.Sample.Greeting.Commands;
 
+[assembly: RouteCatalogDeclarationSource(typeof(Hexalith.EventStore.Sample.Counter.SampleCatalog))]
+
 namespace Hexalith.EventStore.Sample.Counter;
 
 /// <summary>Offline owner inventory. It does not register adapters, enable admission, or provision secrets.</summary>

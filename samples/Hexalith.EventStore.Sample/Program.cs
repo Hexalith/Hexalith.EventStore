@@ -31,7 +31,7 @@ if (malformedProjectionResponse) {
 
         // Intentionally malformed JSON payload used for Tier 3 fail-open validation.
         return Results.Content("{\"projectionType\":", "application/json");
-    }).RequireAuthorization(EventStoreDomainServicePolicies.Project);
+    }).RequireEventStoreDomainServicePolicy("/project");
 
     // Not anonymous: the domain-service fallback policy requires an EventStore workload assertion.
     _ = app.MapGet("/faults/project-hit-count", () => Results.Ok(new {

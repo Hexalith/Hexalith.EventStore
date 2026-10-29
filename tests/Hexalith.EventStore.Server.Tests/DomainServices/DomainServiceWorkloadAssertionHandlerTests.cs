@@ -287,6 +287,8 @@ public sealed partial class DomainServiceWorkloadAssertionHandlerTests
     private static IServiceCollection CreateHostServices(Dictionary<string, string?> settings, string environmentName = "Development")
     {
         var services = new ServiceCollection();
+        // Preserve this suite's original authentication assertions under explicit catalog-only isolation.
+        services.AddSingleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, WorkloadProtocolCatalogIsolation>();
         _ = services.AddLogging();
         _ = services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
         IHostEnvironment environment = Substitute.For<IHostEnvironment>();

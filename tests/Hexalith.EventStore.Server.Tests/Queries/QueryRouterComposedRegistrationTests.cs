@@ -2,6 +2,11 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Routing;
+using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Sample.Counter;
+using Hexalith.EventStore.Server.Tests.Routing;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Hexalith.EventStore.Extensions;
 using Hexalith.EventStore.Queries;
 using Hexalith.EventStore.Server.Configuration;
@@ -66,6 +71,32 @@ public sealed class QueryRouterComposedRegistrationTests
         services.AddSingleton<IProjectionSourceGuardDelivery>(fixture.Probe);
         services.AddSingleton(registry);
         services.AddSingleton(handler);
+        // Isolate persisted source/lifecycle protocol assertions with an explicit, canonical catalog snapshot.
+        // Activation/CAS and actual-host guards are exercised independently in Routing and LiveSidecar tests.
+        var envelope = new RouteCatalogTestFixture().Envelope;
+        var declaration = CounterCatalogDeclarations.Query with
+        {
+            Domain = fixture.Identity.Domain, MessageType = "query-counter", ProjectionType = declaredHandler ? null : route,
+            Operation = declaredHandler ? EventStoreOperationIdentifiers.DomainServiceQuery : EventStoreOperationIdentifiers.ProjectionQuery,
+            Execution = CounterCatalogDeclarations.Query.Execution! with
+            {
+                Aliases = ["query-counter"], TargetKind = declaredHandler ? "domain-service" : "projection-actor",
+                QueryKind = declaredHandler ? "computed" : "projection", ActorType = declaredHandler ? null : "ProjectionActor",
+            },
+        };
+        envelope = RouteCatalogCodec.Seal(envelope with
+        {
+            Declarations = [.. envelope.Declarations.Select(d => d.RouteId == declaration.RouteId ? declaration : d)],
+            Routes = [.. envelope.Routes.Select(r => r.RouteId == declaration.RouteId ? r with
+            {
+                DeclarationDigest = RouteCatalogCodec.ComputeDeclarationDigest(declaration), Operation = declaration.Operation,
+                AppId = declaredHandler ? "sample" : "eventstore", Method = declaredHandler ? "query" : "QueryAsync",
+            } : r)],
+        });
+        var snapshot = new CommittedRouteCatalogSnapshot(RouteCatalogCodec.Encode(envelope), RouteCatalogCodec.ComputeRootDigest(envelope), 1, localAppId: "eventstore");
+        IRouteCatalogAuthority catalog = Substitute.For<IRouteCatalogAuthority>();
+        catalog.AcquireAsync(Arg.Any<CancellationToken>()).Returns(_ => new RouteCatalogDispatchLease(snapshot, () => Task.CompletedTask));
+        services.AddSingleton(catalog);
         services.AddEventStoreServer(new ConfigurationBuilder().Build());
         services.AddEventStoreDomainQueryRouting();
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -75,7 +106,7 @@ public sealed class QueryRouterComposedRegistrationTests
         scope.ServiceProvider.GetRequiredService<QueryRouter>().ShouldBeSameAs(scope.ServiceProvider.GetRequiredService<QueryRouter>());
         using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
         QueryRouterResult result = await router.RouteQueryAsync(new SubmitQuery(fixture.Identity.TenantId, fixture.Identity.Domain,
-            fixture.Identity.AggregateId, "query-counter", [], "correlation-1", "user-1", ProjectionType: route));
+            fixture.Identity.AggregateId, "query-counter", [], "correlation-1", "user-1", ProjectionType: declaredHandler ? null : route));
         result.Success.ShouldBeTrue();
         result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(expected);
         result.Metadata.Provenance.ShouldBe(declaredHandler ? QueryResponseProvenance.HandlerComputed : QueryResponseProvenance.ProjectionBacked);

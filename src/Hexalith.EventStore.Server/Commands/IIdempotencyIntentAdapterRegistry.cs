@@ -9,4 +9,8 @@ public interface IIdempotencyIntentAdapterRegistry
     /// <param name="command">The authorized and validated command.</param>
     /// <returns>A trusted canonical descriptor with fixed server-owned policy metadata.</returns>
     TrustedIdempotencyDescriptor Resolve(SubmitCommand command);
+
+    /// <summary>Resolves under the committed route/admission generation before invoking the trusted adapter.</summary>
+    Task<TrustedIdempotencyDescriptor> ResolveAsync(SubmitCommand command, CancellationToken cancellationToken = default)
+        => Task.FromResult(Resolve(command));
 }

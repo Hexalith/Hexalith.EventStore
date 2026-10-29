@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using Dapr.Actors;
 
 using Hexalith.EventStore.Contracts.Identity;
@@ -20,14 +22,14 @@ internal partial class ProjectionUpdateOrchestrator
     private async Task<bool> CanUseReleasedWriterAsync(AggregateIdentity identity, string route,
         ProjectionActivationWorkItem? sampledWork, CancellationToken cancellationToken)
     {
-        ProjectionDeliveryStateReadResult scope = await deliveryStateStore!.ReadAsync(identity, route, cancellationToken).ConfigureAwait(false);
+        ProjectionDeliveryStateReadResult scope = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryStateStore!.ReadAsync(identity, route, cancellationToken)).ConfigureAwait(false);
         if (scope.WriterProtocolV2Active || scope.SourceGuard is not null
             || scope.Classification is not (ProjectionDeliveryStateClassification.Absent
                 or ProjectionDeliveryStateClassification.LegacyZero or ProjectionDeliveryStateClassification.LegacyNonZero)
             || scope.State?.SchemaVersion == ProjectionDeliveryState.GuardSchemaVersion
             || scope.State?.GuardEvidence is not null || scope.State?.ActiveReservation is not null
             || scope.State?.IdleBindingPending is not null) return false;
-        ProjectionActivationWorkItem? current = await projectionActivationOutbox!.GetAsync(identity, cancellationToken).ConfigureAwait(false);
+        ProjectionActivationWorkItem? current = await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.GetAsync(identity, cancellationToken)).ConfigureAwait(false);
         return sampledWork?.LegacyDelivery is null && current?.LegacyDelivery is null
             && current?.Revision == sampledWork?.Revision;
     }

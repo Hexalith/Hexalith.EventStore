@@ -33,9 +33,16 @@ internal sealed partial class EventStoreDomainServiceSecurityStartupValidator(
         IEndpointRouteBuilder? endpoints = endpointSource.Endpoints;
         if (endpoints is not null)
         {
-            IReadOnlyList<string> violations = EventStoreDomainServiceEndpointInventory.Validate(
-                endpoints.DataSources.SelectMany(static source => source.Endpoints),
-                authorizationOptions.Value.FallbackPolicy);
+            var inventory = endpoints.DataSources.SelectMany(static source => source.Endpoints).ToArray();
+            List<string> violations = [.. EventStoreDomainServiceEndpointInventory.Validate(inventory, authorizationOptions.Value.FallbackPolicy)];
+            foreach (RouteEndpoint endpoint in inventory.OfType<RouteEndpoint>())
+            {
+                var methods = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
+                if (EventStoreDomainServiceRoutes.TryGet(endpoint.RoutePattern.RawText, out _)
+                    && (methods is null || methods.HttpMethods.Contains("POST", StringComparer.OrdinalIgnoreCase))
+                    && endpoint.Metadata.GetMetadata<DomainRouteCatalogGuardMetadata>() is null)
+                    violations.Add($"{endpoint.RoutePattern.RawText}: canonical POST overrides must install the receiver catalog guard via RequireEventStoreDomainServicePolicy().");
+            }
             if (violations.Count > 0)
             {
                 throw new InvalidOperationException(

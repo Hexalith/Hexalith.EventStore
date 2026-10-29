@@ -5,6 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample.Api\Hexalith.EventStore.Sample.Api.csproj" Aliases="sampleapi" />
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="$(HexalithTenantsBasePath)/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" Condition="'$(HexalithTenantsFromSource)' == 'true'" />
     <PackageReference Include="Hexalith.Tenants.Contracts" Condition="'$(HexalithTenantsFromSource)' != 'true'" />
@@ -36,4 +37,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../Hexalith.EventStore.Server.Tests/Routing/RouteCatalogAdmissionFixture.cs" Link="Fixtures/RouteCatalogAdmissionFixture.cs" />
+    <Compile Include="../Hexalith.EventStore.Server.Tests/Routing/ObservedQuiescenceFixture.cs" Link="Fixtures/ObservedQuiescenceFixture.cs" />
+  </ItemGroup>
 </Project>

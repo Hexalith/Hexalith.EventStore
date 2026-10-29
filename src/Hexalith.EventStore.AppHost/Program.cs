@@ -6,6 +6,7 @@ using Hexalith.EventStore.Aspire;
 PrerequisiteValidator.Validate();
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
+RouteCatalogTopologyGuard.RefuseUnqualifiedActivation(builder.Configuration);
 
 LocalAuthenticationCredentials? localCredentials = null;
 IResourceBuilder<ParameterResource>? localSigningKey = null;

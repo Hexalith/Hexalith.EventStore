@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using System.Text.Json;
 
 using Dapr.Client;
@@ -25,11 +27,11 @@ internal sealed class DaprProjectionDeliveryStateStore(
         string storeName = projectionOptions.Value.CheckpointStateStoreName;
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ProofReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        (ReadOnlyMemory<byte> stateBody, string etag) = await daprClient
+        (ReadOnlyMemory<byte> stateBody, string etag) = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
             .GetByteStateAndETagAsync(
                 storeName,
                 ProjectionDeliveryStateKeys.GetStateKey(identity, projectionName),
-                cancellationToken: cancellationToken)
+                cancellationToken: cancellationToken))
             .ConfigureAwait(false);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ProofReadBytes, stateBody.Length);
         ProjectionDeliveryStateBody.Validate(stateBody.Span, daprClient.JsonSerializerOptions,
@@ -40,17 +42,17 @@ internal sealed class DaprProjectionDeliveryStateStore(
         if (state is not null) ValidateSize(state, stateBody.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MarkerReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        (ReadOnlyMemory<byte> writerBody, _) = await daprClient.GetByteStateAndETagAsync(storeName,
-            ProjectionDeliveryStateKeys.WriterProtocol, cancellationToken: cancellationToken).ConfigureAwait(false);
+        (ReadOnlyMemory<byte> writerBody, _) = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.GetByteStateAndETagAsync(storeName,
+            ProjectionDeliveryStateKeys.WriterProtocol, cancellationToken: cancellationToken)).ConfigureAwait(false);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MarkerReadBytes, writerBody.Length);
         if (writerBody.Length > 4096) throw new JsonException("Invalid writer protocol record size.");
         ProjectionDeliveryWriterProtocol? marker = writerBody.IsEmpty ? null
             : JsonSerializer.Deserialize<ProjectionDeliveryWriterProtocol>(writerBody.Span, daprClient.JsonSerializerOptions);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MarkerReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        (ReadOnlyMemory<byte> guardBody, string guardEtag) = await daprClient.GetByteStateAndETagAsync(storeName,
+        (ReadOnlyMemory<byte> guardBody, string guardEtag) = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.GetByteStateAndETagAsync(storeName,
             ProjectionDeliveryStateKeys.GetSourceGuardKey(identity, projectionName),
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MarkerReadBytes, guardBody.Length);
         if (guardBody.Length > 4096) throw new JsonException("Invalid source guard record size.");
         using JsonDocument? guardJson = guardBody.IsEmpty ? null : JsonDocument.Parse(guardBody);
@@ -86,13 +88,13 @@ internal sealed class DaprProjectionDeliveryStateStore(
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ProofWriteAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ProofWriteBytes, bytes.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        return await daprClient.TrySaveByteStateAsync(
+        return await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.TrySaveByteStateAsync(
             projectionOptions.Value.CheckpointStateStoreName,
             ProjectionDeliveryStateKeys.GetStateKey(identity, projectionName),
             bytes,
             etag,
             new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -118,7 +120,7 @@ internal sealed class DaprProjectionDeliveryStateStore(
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.TransactionAttempts);
         var firstWrite = new StateOptions { Concurrency = ConcurrencyMode.FirstWrite };
-        await daprClient.ExecuteStateTransactionAsync(
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.ExecuteStateTransactionAsync(
             projectionOptions.Value.CheckpointStateStoreName,
             [
                 new StateTransactionRequest(
@@ -132,7 +134,7 @@ internal sealed class DaprProjectionDeliveryStateStore(
                     workBytes,
                     StateOperationType.Upsert),
             ],
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
         return true;
     }
 
@@ -169,13 +171,13 @@ internal sealed class DaprProjectionDeliveryStateStore(
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, markerBytes.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        return await daprClient.TrySaveByteStateAsync(
+        return await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.TrySaveByteStateAsync(
             storeName,
             ProjectionDeliveryStateKeys.WriterProtocol,
             markerBytes,
             etag,
             new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -191,11 +193,11 @@ internal sealed class DaprProjectionDeliveryStateStore(
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, bytes.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        await daprClient.SaveByteStateAsync(
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.SaveByteStateAsync(
             projectionOptions.Value.CheckpointStateStoreName,
             ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projectionName),
             bytes,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -229,14 +231,14 @@ internal sealed class DaprProjectionDeliveryStateStore(
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.TransactionAttempts);
         var firstWrite = new StateOptions { Concurrency = ConcurrencyMode.FirstWrite };
-        await daprClient.ExecuteStateTransactionAsync(projectionOptions.Value.CheckpointStateStoreName,
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.ExecuteStateTransactionAsync(projectionOptions.Value.CheckpointStateStoreName,
         [
             new(ProjectionDeliveryStateKeys.GetStateKey(identity, projectionName), stateBytes,
                 StateOperationType.Upsert, stateEtag, options: firstWrite),
             new(ProjectionDeliveryStateKeys.GetSourceGuardKey(identity, projectionName), markerBytes,
                 StateOperationType.Upsert, markerEtag, options: firstWrite),
             new(ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projectionName), workBytes, StateOperationType.Upsert),
-        ], cancellationToken: cancellationToken).ConfigureAwait(false);
+        ], cancellationToken: cancellationToken)).ConfigureAwait(false);
         return true;
     }
 
@@ -264,8 +266,8 @@ internal sealed class DaprProjectionDeliveryStateStore(
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ReconciliationReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        (ReadOnlyMemory<byte> bytes, _) = await daprClient.GetByteStateAndETagAsync(projectionOptions.Value.CheckpointStateStoreName,
-            ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projectionName), cancellationToken: cancellationToken).ConfigureAwait(false);
+        (ReadOnlyMemory<byte> bytes, _) = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.GetByteStateAndETagAsync(projectionOptions.Value.CheckpointStateStoreName,
+            ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projectionName), cancellationToken: cancellationToken)).ConfigureAwait(false);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, bytes.Length);
         if (bytes.Length > 16_384) throw new ProjectionDeliveryHistoryValidationException("delivery_proof_limit_exceeded");
         return bytes.IsEmpty ? null : JsonSerializer.Deserialize<ProjectionDeliveryReconciliationWork>(bytes.Span, daprClient.JsonSerializerOptions);
@@ -283,9 +285,9 @@ internal sealed class DaprProjectionDeliveryStateStore(
     {
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MarkerReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        (ReadOnlyMemory<byte> body, string etag) = await daprClient.GetByteStateAndETagAsync(
+        (ReadOnlyMemory<byte> body, string etag) = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.GetByteStateAndETagAsync(
             projectionOptions.Value.CheckpointStateStoreName, ProjectionDeliveryStateKeys.WriterProtocol,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MarkerReadBytes, body.Length);
         if (body.Length > 4096) throw new JsonException("Invalid writer protocol record size.");
         return (body, etag);

@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using Dapr.Actors;
 using Dapr.Actors.Client;
 using System.Runtime.CompilerServices;
@@ -66,8 +68,8 @@ internal sealed class EventStoreProjectionDeliveryHistoryReader(
             actorOptions.Value.AggregateActorTypeName);
         while (afterSequence < throughSequence) {
             cancellationToken.ThrowIfCancellationRequested();
-            EventEnvelope[] page = await aggregate
-                .ReadEventsRangeAsync(afterSequence, throughSequence, _readPageSize)
+            EventEnvelope[] page = await RouteCatalogRemoteCall.InvokeAsync(() => aggregate
+                .ReadEventsRangeAsync(afterSequence, throughSequence, _readPageSize))
                 .ConfigureAwait(false);
             long nextSequence = ProjectionStreamPageValidation.Validate(
                 identity,

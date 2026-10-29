@@ -1968,7 +1968,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             string.Equals(candidate.RoutePattern.RawText, route, StringComparison.Ordinal));
         byte[] body = JsonSerializer.SerializeToUtf8Bytes(request, JsonSerializerOptions.Web);
         var context = new DefaultHttpContext {
-            RequestServices = app.Services,
+            RequestServices = new DomainRouteCatalogIsolatedServices(app.Services),
         };
         context.RequestAborted = cancellationToken;
         IHttpRequestBodyDetectionFeature bodyDetection = Substitute.For<IHttpRequestBodyDetectionFeature>();

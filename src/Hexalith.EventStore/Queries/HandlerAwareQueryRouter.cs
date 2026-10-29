@@ -19,17 +19,63 @@ namespace Hexalith.EventStore.Queries;
 /// The wrapped <paramref name="inner"/> is the concrete projection-actor <c>QueryRouter</c>, supplied by the
 /// DI factory (not resolved as <see cref="IQueryRouter"/>, which would resolve back to this decorator).
 /// </remarks>
-public sealed class HandlerAwareQueryRouter(
-    IQueryRouter inner,
-    IDomainQueryHandlerRegistry registry,
-    IDomainQueryInvoker invoker,
-    ILogger<HandlerAwareQueryRouter> logger) : IQueryRouter {
+public sealed class HandlerAwareQueryRouter : IQueryRouter {
+    private IQueryRouter inner { get; }
+    private IDomainQueryHandlerRegistry registry { get; }
+    private IDomainQueryInvoker invoker { get; }
+    private ILogger<HandlerAwareQueryRouter> logger { get; }
+    private Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority { get; }
+
+    /// <summary>Creates a catalog-enforced runtime entry point.</summary>
+    public HandlerAwareQueryRouter(
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority authority,
+        IQueryRouter inner,
+        IDomainQueryHandlerRegistry registry,
+        IDomainQueryInvoker invoker,
+        ILogger<HandlerAwareQueryRouter> logger)
+        : this(inner, registry, invoker, logger, authority)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+    }
+
+    /// <summary>Explicit friend-only composition seam for existing isolated protocol tests.</summary>
+    internal HandlerAwareQueryRouter(
+        IQueryRouter inner,
+        IDomainQueryHandlerRegistry registry,
+        IDomainQueryInvoker invoker,
+        ILogger<HandlerAwareQueryRouter> logger,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+    {
+        this.inner = inner;
+        this.registry = registry;
+        this.invoker = invoker;
+        this.logger = logger;
+        this.catalogAuthority = catalogAuthority;
+
+    }
+
     /// <inheritdoc/>
     public async Task<QueryRouterResult> RouteQueryAsync(SubmitQuery query, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
 
-        bool handlerBased = await registry
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        var selected = catalogLease?.Snapshot.Resolve("query", query.Tenant, query.Domain, query.QueryType);
+        if (selected is { } committed)
+        {
+            if (committed.Declaration.Execution is not { } execution)
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The committed declaration has no execution metadata.");
+            if ((!string.IsNullOrWhiteSpace(query.ProjectionType) && query.ProjectionType != committed.Declaration.ProjectionType)
+                || (!string.IsNullOrWhiteSpace(query.ProjectionActorType) && query.ProjectionActorType != execution.ActorType))
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("Caller-selected projection or actor differs from the committed query target.");
+            if (execution.RequiresDelegatedContext && query.CallerAuthority is null)
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The committed query requires delegated caller authority.");
+        }
+
+        bool handlerBased = selected is { } route
+            ? (route.Declaration.Execution ?? throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The committed declaration has no execution metadata.")).TargetKind == "domain-service"
+            : await registry
             .SupportsQueryAsync(query.Domain, query.QueryType, cancellationToken)
             .ConfigureAwait(false);
 
@@ -63,6 +109,8 @@ public sealed class HandlerAwareQueryRouter(
             query.DelegationId) { IdentityAdmissionProof = query.IdentityAdmissionProof, CallerAuthority = query.CallerAuthority };
 
         QueryResult result = await invoker.InvokeAsync(envelope, cancellationToken).ConfigureAwait(false);
+        if (selected is { } declared && result.ProjectionType is not null && result.ProjectionType != declared.Declaration.ProjectionType)
+            throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The handler response names an undeclared projection output.");
 
         if (!result.Success) {
             return result.ErrorMessage == "safe-denial"

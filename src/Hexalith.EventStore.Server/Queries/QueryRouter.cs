@@ -32,6 +32,7 @@ public partial class QueryRouter : IQueryRouter {
     private readonly IProjectionLifecycleGateway? _lifecycleGateway;
     private readonly ILogger<QueryRouter> _logger;
     private readonly IProjectionSourceGuardDelivery? _sourceGuard;
+    private readonly Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? _catalogAuthority;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="QueryRouter"/> class.
@@ -42,7 +43,20 @@ public partial class QueryRouter : IQueryRouter {
     /// <c>ActorProxy.InvokeMethodAsync</c> call carries the request-scope
     /// <see cref="CancellationToken"/> into the invocation operation.
     /// </remarks>
-    public QueryRouter(IActorProxyFactory actorProxyFactory, ILogger<QueryRouter> logger)
+    public QueryRouter(IActorProxyFactory actorProxyFactory, ILogger<QueryRouter> logger,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority catalogAuthority)
+        : this(catalogAuthority, new DefaultProjectionActorInvoker(actorProxyFactory), logger, new DaprProjectionLifecycleGateway(actorProxyFactory), null) {
+    }
+
+    /// <summary>Required-authority runtime core retaining the installed invoker, lifecycle and source/provenance enforcement.</summary>
+    internal QueryRouter(Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority authority,
+        IProjectionActorInvoker invoker, ILogger<QueryRouter> logger, IProjectionLifecycleGateway lifecycleGateway,
+        IProjectionSourceGuardDelivery? sourceGuard)
+        : this(invoker, logger, lifecycleGateway, sourceGuard,
+            catalogAuthority: authority ?? throw new ArgumentNullException(nameof(authority))) { }
+
+    /// <summary>Explicit friend-test seam for legacy actor protocol tests without catalog authority.</summary>
+    internal QueryRouter(IActorProxyFactory actorProxyFactory, ILogger<QueryRouter> logger)
         : this(
             new DefaultProjectionActorInvoker(actorProxyFactory),
             logger,
@@ -64,7 +78,8 @@ public partial class QueryRouter : IQueryRouter {
         IProjectionActorInvoker invoker,
         ILogger<QueryRouter> logger,
         IProjectionLifecycleGateway lifecycleGateway,
-        IProjectionSourceGuardDelivery? sourceGuard = null) {
+        IProjectionSourceGuardDelivery? sourceGuard = null,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null) {
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(lifecycleGateway);
@@ -72,6 +87,7 @@ public partial class QueryRouter : IQueryRouter {
         _lifecycleGateway = lifecycleGateway;
         _logger = logger;
         _sourceGuard = sourceGuard;
+        _catalogAuthority = catalogAuthority;
     }
 
     /// <inheritdoc/>
@@ -81,14 +97,29 @@ public partial class QueryRouter : IQueryRouter {
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
 
-        string routingQueryType = string.IsNullOrWhiteSpace(query.ProjectionType)
+        var catalogLease = _catalogAuthority is null ? null : await _catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        var committed = catalogLease?.Snapshot.Resolve("query", query.Tenant, query.Domain, query.QueryType);
+        if (committed is { } selected)
+        {
+            if (selected.Declaration.Execution is not { } execution)
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The committed declaration has no execution metadata.");
+            if (execution.TargetKind != "projection-actor"
+                || selected.Target.AppId != catalogLease!.Snapshot.LocalAppId
+                || !string.IsNullOrWhiteSpace(query.ProjectionType) && query.ProjectionType != selected.Declaration.ProjectionType
+                || !string.IsNullOrWhiteSpace(query.ProjectionActorType) && query.ProjectionActorType != execution.ActorType)
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("Direct actor dispatch disagrees with the committed query target.");
+        }
+
+        string routingQueryType = committed?.Declaration.ProjectionType ?? (string.IsNullOrWhiteSpace(query.ProjectionType)
             ? query.QueryType
-            : query.ProjectionType;
+            : query.ProjectionType);
 
         string actorId = QueryActorIdHelper.DeriveActorId(routingQueryType, query.Tenant, query.EntityId, query.Payload);
-        string actorTypeName = string.IsNullOrWhiteSpace(query.ProjectionActorType)
-            ? ProjectionActorTypeName
-            : query.ProjectionActorType;
+        string actorTypeName = committed is not { } selectedRoute
+            ? (string.IsNullOrWhiteSpace(query.ProjectionActorType) ? ProjectionActorTypeName : query.ProjectionActorType)
+            : (selectedRoute.Declaration.Execution ?? throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The committed declaration has no execution metadata.")).ActorType
+                ?? (string.IsNullOrWhiteSpace(query.ProjectionActorType) ? ProjectionActorTypeName : query.ProjectionActorType);
         int tier = query.EntityId is not null && query.EntityId.Length > 0 ? 1
             : query.Payload.Length > 0 ? 2
             : 3;
@@ -122,9 +153,12 @@ public partial class QueryRouter : IQueryRouter {
                         lifecycleProjectionType,
                         cancellationToken)
                     .ConfigureAwait(false);
-                QueryResult? result = await _invoker
-                    .InvokeAsync(actorId, actorTypeName, envelope, cancellationToken)
-                    .ConfigureAwait(false);
+                QueryResult? result;
+                try
+                {
+                    result = await _invoker.InvokeAsync(actorId, actorTypeName, envelope, cancellationToken).ConfigureAwait(false);
+                }
+                catch { catalogLease?.Retain(); throw; }
 
                 if (result is null) {
                     Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ResponseMismatch);
@@ -135,6 +169,10 @@ public partial class QueryRouter : IQueryRouter {
                     Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, GetSafeLogErrorMessage(result.ErrorMessage));
                     return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage, Metadata: result.Metadata);
                 }
+
+                string actualProjectionType = result.ProjectionType ?? routingQueryType;
+                if (committed is { } bound && actualProjectionType != bound.Declaration.ProjectionType)
+                    throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The actor response names an undeclared projection output.");
 
                 if (result.PayloadBytes is not { Length: > 0 }) {
                     Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.MissingPayload);
@@ -150,7 +188,6 @@ public partial class QueryRouter : IQueryRouter {
                     return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.SerializationFailure);
                 }
 
-                string actualProjectionType = result.ProjectionType ?? routingQueryType;
                 LifecycleObservation after = await ReadLifecycleAsync(
                         query,
                         actualProjectionType,

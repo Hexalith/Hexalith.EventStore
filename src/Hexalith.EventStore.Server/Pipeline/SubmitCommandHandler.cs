@@ -19,27 +19,78 @@ namespace Hexalith.EventStore.Server.Pipeline;
 /// Story 2.7: Archives original command for replay (advisory, rule #12).
 /// Story 3.1: Routes command to aggregate actor via CommandRouter.
 /// </summary>
-public partial class SubmitCommandHandler(
-    ICommandStatusStore statusStore,
-    ICommandArchiveStore archiveStore,
-    ICommandRouter commandRouter,
-    ICommandActivityTracker? activityTracker,
-    IStreamActivityTracker? streamActivityTracker,
-    IProjectionUpdateOrchestrator projectionOrchestrator,
-    ILogger<SubmitCommandHandler> logger,
-    ICommandCorrelationIndex? correlationIndex = null,
-    IProjectionActivationOutbox? projectionActivationOutbox = null,
-    IIdempotencyAdmissionCoordinator? idempotencyAdmissionCoordinator = null,
-    IConfiguration? humanAuthorityConfiguration = null) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+    private ICommandStatusStore statusStore { get; }
+    private ICommandArchiveStore archiveStore { get; }
+    private ICommandRouter commandRouter { get; }
+    private ICommandActivityTracker? activityTracker { get; }
+    private IStreamActivityTracker? streamActivityTracker { get; }
+    private IProjectionUpdateOrchestrator projectionOrchestrator { get; }
+    private ILogger<SubmitCommandHandler> logger { get; }
+    private ICommandCorrelationIndex? correlationIndex { get; }
+    private IProjectionActivationOutbox? projectionActivationOutbox { get; }
+    private IIdempotencyAdmissionCoordinator? idempotencyAdmissionCoordinator { get; }
+    private IConfiguration? humanAuthorityConfiguration { get; }
+    private Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority { get; }
 
+    /// <summary>Creates a catalog-enforced runtime entry point.</summary>
     public SubmitCommandHandler(
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority authority,
+        ICommandStatusStore statusStore,
+        ICommandArchiveStore archiveStore,
+        ICommandRouter commandRouter,
+        ICommandActivityTracker? activityTracker,
+        IStreamActivityTracker? streamActivityTracker,
+        IProjectionUpdateOrchestrator projectionOrchestrator,
+        ILogger<SubmitCommandHandler> logger,
+        ICommandCorrelationIndex? correlationIndex = null,
+        IProjectionActivationOutbox? projectionActivationOutbox = null,
+        IIdempotencyAdmissionCoordinator? idempotencyAdmissionCoordinator = null,
+        IConfiguration? humanAuthorityConfiguration = null)
+        : this(statusStore, archiveStore, commandRouter, activityTracker, streamActivityTracker, projectionOrchestrator, logger, correlationIndex, projectionActivationOutbox, idempotencyAdmissionCoordinator, humanAuthorityConfiguration, authority)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+    }
+
+    /// <summary>Explicit friend-only composition seam for existing isolated protocol tests.</summary>
+    internal SubmitCommandHandler(
+        ICommandStatusStore statusStore,
+        ICommandArchiveStore archiveStore,
+        ICommandRouter commandRouter,
+        ICommandActivityTracker? activityTracker,
+        IStreamActivityTracker? streamActivityTracker,
+        IProjectionUpdateOrchestrator projectionOrchestrator,
+        ILogger<SubmitCommandHandler> logger,
+        ICommandCorrelationIndex? correlationIndex = null,
+        IProjectionActivationOutbox? projectionActivationOutbox = null,
+        IIdempotencyAdmissionCoordinator? idempotencyAdmissionCoordinator = null,
+        IConfiguration? humanAuthorityConfiguration = null,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+    {
+        this.statusStore = statusStore;
+        this.archiveStore = archiveStore;
+        this.commandRouter = commandRouter;
+        this.activityTracker = activityTracker;
+        this.streamActivityTracker = streamActivityTracker;
+        this.projectionOrchestrator = projectionOrchestrator;
+        this.logger = logger;
+        this.correlationIndex = correlationIndex;
+        this.projectionActivationOutbox = projectionActivationOutbox;
+        this.idempotencyAdmissionCoordinator = idempotencyAdmissionCoordinator;
+        this.humanAuthorityConfiguration = humanAuthorityConfiguration;
+        this.catalogAuthority = catalogAuthority;
+
+    }
+
+
+    internal SubmitCommandHandler(
         ICommandStatusStore statusStore,
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
         ILogger<SubmitCommandHandler> logger)
         : this(statusStore, archiveStore, commandRouter, null, null, new NoOpProjectionUpdateOrchestrator(), logger) { }
 
-    public SubmitCommandHandler(
+    internal SubmitCommandHandler(
         ICommandStatusStore statusStore,
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
@@ -57,6 +108,13 @@ public partial class SubmitCommandHandler(
 
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        if (catalogLease is not null)
+        {
+            var selected = catalogLease.Snapshot.Resolve("command", request.Tenant, request.Domain, request.CommandType);
+            _ = catalogLease.Snapshot.Admission(selected.Declaration);
+        }
 
         string diagnosticCausationId = request.IdempotencyKey is null ? request.MessageId : "protected";
         Log.CommandReceived(logger, request.CorrelationId, diagnosticCausationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);

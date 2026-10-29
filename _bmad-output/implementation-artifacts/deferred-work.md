@@ -6179,3 +6179,15 @@ status: open
 - source_spec: `spec-5-12-route-and-idempotency-catalog-schema-codec-and-envelope.md`
   summary: Add a no-write regression for content preparation at a successfully quiesced lease fence.
   evidence: Pre-verified final review R6G1: AuthoritativeContentStoreTests.CleanLeaseReleaseAllowsOnlyAHigherFenceAndCompletionRemainsTerminal covers stale Upload and higher-fence Prepare, but no new Prepare at released fence1. Removing the QuiescedTaskFences guard in PrepareAsync leaves existing tests green. Independent content-lease owner should assert ContentConflictException, unchanged persisted state, and higher-fence success.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
+  summary: Confirm whether the pinned Dapr sidecar treats a differently cased invoke path as an invocation that can pass the catalog guard.
+  evidence: R5-B03 is unverified high. RouteCatalogInvocationHandler matches `/v1.0/invoke/` ordinally and `/v1.0/actors/` without case. A mixed-case invoke redirect is ordinary traffic. This is settled only by showing whether daprd 1.18.7 accepts that path and performs an effect.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
+  summary: Confirm whether a relative dapr-app-id request can reach the catalog guard before HttpClient makes the URI absolute.
+  evidence: R5-E03 is unverified medium. AbsolutePath on a relative URI throws InvalidOperationException before catalog refusal. HttpClient normally resolves BaseAddress first. A handler-level relative request with dapr-app-id would settle it.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
+  summary: Align exact message-id status lookup with cross-tenant correlation replay conflicts.
+  evidence: R5-B08 is outside catalog activation. The status commit after the planning baseline returns one exact messageId across authorized tenants without reading correlation indexes, while replay can still return 409 for an exact message in one tenant plus an indexed correlation hit in another. No catalog test covers that split.

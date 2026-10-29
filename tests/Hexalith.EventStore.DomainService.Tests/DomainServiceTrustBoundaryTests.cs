@@ -481,7 +481,7 @@ public sealed partial class DomainServiceTrustBoundaryTests
         foreach (string probe in EventStoreDomainServiceRoutes.AnonymousProbeRoutes)
         {
             using HttpResponseMessage probeResponse = await client.GetAsync(probe, TestContext.Current.CancellationToken);
-            probeResponse.StatusCode.ShouldBe(HttpStatusCode.OK, probe);
+            probeResponse.StatusCode.ShouldBe(probe == "/alive" ? HttpStatusCode.OK : HttpStatusCode.ServiceUnavailable, probe);
         }
 
         // The Tier-3 readiness probe invokes /alive through EventStore's sidecar, whose ACL admits POST only.
@@ -679,6 +679,7 @@ public sealed partial class DomainServiceTrustBoundaryTests
     [InlineData("mismatched-public")]
     [InlineData("broad-public")]
     [InlineData("secured-project")]
+    [InlineData("authorization-only-project")]
     public async Task HostOverrides_MustCarryTheSdkPolicy(string overrideKind)
     {
         int hits = 0;
@@ -715,9 +716,13 @@ public sealed partial class DomainServiceTrustBoundaryTests
                     _ = app.MapGet("/faults/{id}", (string id) => id)
                         .AllowEventStorePublicEndpoint("/faults/{id}");
                     break;
-                default:
+                case "authorization-only-project":
                     _ = app.MapPost("/project", () => Interlocked.Increment(ref hits))
                         .RequireAuthorization(EventStoreDomainServicePolicies.Project);
+                    break;
+                default:
+                    _ = app.MapPost("/project", () => Interlocked.Increment(ref hits))
+                        .RequireEventStoreDomainServicePolicy("/project");
                     break;
             }
         }
@@ -727,7 +732,7 @@ public sealed partial class DomainServiceTrustBoundaryTests
             InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(beforeSdk: MapOverrides));
             failure.Message.ShouldContain(overrideKind switch
             {
-                "weak-project" => "/project",
+                "weak-project" or "authorization-only-project" => "/project",
                 "weak-subscribe" => "/dapr/subscribe",
                 "public-project" => "/project/v2",
                 "public-sidecar" => "/dapr/subscribe",
@@ -807,6 +812,9 @@ public sealed partial class DomainServiceTrustBoundaryTests
         }
 
         _ = builder.AddEventStoreDomainService(typeof(WidgetAggregate).Assembly);
+        // This suite isolates workload/channel/authority verification. Catalog admission has its
+        // own real-HTTP, Dapr and mTLS positive/negative qualification fixture.
+        builder.Services.AddScoped<IDomainRouteCatalogGuard, DomainRouteCatalogIsolatedGuard>();
         if (processor is not null)
         {
             _ = builder.Services.AddKeyedSingleton<IDomainProcessor>("widget", processor);

@@ -4,11 +4,15 @@ using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Sample.Counter.Commands;
 using Hexalith.EventStore.Sample.Counter.Queries;
 
+[assembly: RouteCatalogDeclarationSource(typeof(Hexalith.EventStore.Sample.Counter.CounterCatalogDeclarations))]
+
 namespace Hexalith.EventStore.Sample.Counter;
 
 /// <summary>Owner-approved v1 intent policies and v2 route declarations; no runtime activation.</summary>
 public static class CounterCatalogDeclarations
 {
+    /// <summary>Gets complete compiled declarations consumed by generated hosts.</summary>
+    public static IReadOnlyList<RouteContractDeclaration> Routes => [.. Commands.Select(c => c.Route), Query];
     /// <summary>Gets all four owner-approved MessageId v1, Mutation/24-hour policies.</summary>
     public static IReadOnlyList<CommandIntentDeclaration> Commands { get; } = [
         Command<IncrementCounter>(), Command<DecrementCounter>(), Command<ResetCounter>(), Command<CloseCounter>()];

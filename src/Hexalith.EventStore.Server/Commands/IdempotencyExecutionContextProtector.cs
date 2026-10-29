@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
@@ -171,8 +172,8 @@ public sealed class IdempotencyExecutionContextProtector(
             purpose);
         if (useActorDecision)
         {
-            IdempotencyAdmissionAuthorityDecision decision = await authority
-                .EvaluateAuthorityAsync(request).ConfigureAwait(false);
+            IdempotencyAdmissionAuthorityDecision decision = await RouteCatalogRemoteCall.InvokeAsync(() => authority
+                .EvaluateAuthorityAsync(request)).ConfigureAwait(false);
             if (decision == IdempotencyAdmissionAuthorityDecision.Stale)
             {
                 throw new InvalidOperationException("The idempotency execution authority is no longer current.");
@@ -185,7 +186,7 @@ public sealed class IdempotencyExecutionContextProtector(
             }
         }
 
-        await authority.ValidateAuthorityAsync(request).ConfigureAwait(false);
+        await RouteCatalogRemoteCall.InvokeAsync(() => authority.ValidateAuthorityAsync(request)).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
     }
 

@@ -18,6 +18,8 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Queries;
 
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -32,42 +34,120 @@ namespace Hexalith.EventStore.Server.Projections;
 /// Entire method is wrapped in try/catch — fire-and-forget safe. Any exception is
 /// swallowed after logging. The projection stays at last known state on failure.
 /// </remarks>
-internal partial class ProjectionUpdateOrchestrator(
-    IActorProxyFactory actorProxyFactory,
-    DaprClient daprClient,
-    IHttpClientFactory httpClientFactory,
-    IDomainServiceResolver resolver,
-    IProjectionCheckpointTracker checkpointTracker,
-    IOptions<ProjectionOptions> projectionOptions,
-    ILogger<ProjectionUpdateOrchestrator> logger,
-    IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
-    IEventPayloadProtectionService? payloadProtectionService = null,
-    IOptions<EventStoreActorOptions>? actorOptions = null,
-    IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
-    IProjectionLifecycleGateway? lifecycleGateway = null,
-    INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null,
-    IProjectionActivationOutbox? projectionActivationOutbox = null,
-    IProjectionRebuildWriteGateway? rebuildWriteGateway = null,
-    IProjectionSourceGuardDelivery? sourceGuardDelivery = null,
-    IProjectionDeliveryStateStore? deliveryStateStore = null,
-    IProjectionDeliveryIdempotencyCoordinator? deliveryIdempotency = null,
-    TimeProvider? timeProvider = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+    private IActorProxyFactory actorProxyFactory { get; }
+    private DaprClient daprClient { get; }
+    private IHttpClientFactory httpClientFactory { get; }
+    private IDomainServiceResolver resolver { get; }
+    private IProjectionCheckpointTracker checkpointTracker { get; }
+    private IOptions<ProjectionOptions> projectionOptions { get; }
+    private ILogger<ProjectionUpdateOrchestrator> logger { get; }
+    private IProjectionRebuildCheckpointStore? rebuildCheckpointStore { get; }
+    private IEventPayloadProtectionService? payloadProtectionService { get; }
+    private IOptions<EventStoreActorOptions>? actorOptions { get; }
+    private IProjectionDeliveryCheckpointStore? deliveryCheckpointStore { get; }
+    private IProjectionLifecycleGateway? lifecycleGateway { get; }
+    private INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator { get; }
+    private IProjectionActivationOutbox? projectionActivationOutbox { get; }
+    private IProjectionRebuildWriteGateway? rebuildWriteGateway { get; }
+    private IProjectionSourceGuardDelivery? sourceGuardDelivery { get; }
+    private IProjectionDeliveryStateStore? deliveryStateStore { get; }
+    private IProjectionDeliveryIdempotencyCoordinator? deliveryIdempotency { get; }
+    private TimeProvider? timeProvider { get; }
+    private Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority { get; }
+
+    /// <summary>Creates the guarded runtime implementation.</summary>
+    public ProjectionUpdateOrchestrator(
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority authority,
+        IActorProxyFactory actorProxyFactory,
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        IDomainServiceResolver resolver,
+        IProjectionCheckpointTracker checkpointTracker,
+        IOptions<ProjectionOptions> projectionOptions,
+        ILogger<ProjectionUpdateOrchestrator> logger,
+        IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
+        IEventPayloadProtectionService? payloadProtectionService = null,
+        IOptions<EventStoreActorOptions>? actorOptions = null,
+        IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
+        IProjectionLifecycleGateway? lifecycleGateway = null,
+        INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null,
+        IProjectionActivationOutbox? projectionActivationOutbox = null,
+        IProjectionRebuildWriteGateway? rebuildWriteGateway = null,
+        IProjectionSourceGuardDelivery? sourceGuardDelivery = null,
+        IProjectionDeliveryStateStore? deliveryStateStore = null,
+        IProjectionDeliveryIdempotencyCoordinator? deliveryIdempotency = null,
+        TimeProvider? timeProvider = null)
+        : this(actorProxyFactory, daprClient, httpClientFactory, resolver, checkpointTracker, projectionOptions, logger, rebuildCheckpointStore, payloadProtectionService, actorOptions, deliveryCheckpointStore, lifecycleGateway, namedProjectionDispatchCoordinator, projectionActivationOutbox, rebuildWriteGateway, sourceGuardDelivery, deliveryStateStore, deliveryIdempotency, timeProvider, authority)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+    }
+
+    /// <summary>Friend-only protocol composition seam.</summary>
+    internal ProjectionUpdateOrchestrator(
+        IActorProxyFactory actorProxyFactory,
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        IDomainServiceResolver resolver,
+        IProjectionCheckpointTracker checkpointTracker,
+        IOptions<ProjectionOptions> projectionOptions,
+        ILogger<ProjectionUpdateOrchestrator> logger,
+        IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
+        IEventPayloadProtectionService? payloadProtectionService = null,
+        IOptions<EventStoreActorOptions>? actorOptions = null,
+        IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
+        IProjectionLifecycleGateway? lifecycleGateway = null,
+        INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null,
+        IProjectionActivationOutbox? projectionActivationOutbox = null,
+        IProjectionRebuildWriteGateway? rebuildWriteGateway = null,
+        IProjectionSourceGuardDelivery? sourceGuardDelivery = null,
+        IProjectionDeliveryStateStore? deliveryStateStore = null,
+        IProjectionDeliveryIdempotencyCoordinator? deliveryIdempotency = null,
+        TimeProvider? timeProvider = null,
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+    {
+        this.actorProxyFactory = actorProxyFactory;
+        this.daprClient = daprClient;
+        this.httpClientFactory = httpClientFactory;
+        this.resolver = resolver;
+        this.checkpointTracker = checkpointTracker;
+        this.projectionOptions = projectionOptions;
+        this.logger = logger;
+        this.rebuildCheckpointStore = rebuildCheckpointStore;
+        this.payloadProtectionService = payloadProtectionService;
+        this.actorOptions = actorOptions;
+        this.deliveryCheckpointStore = deliveryCheckpointStore;
+        this.lifecycleGateway = lifecycleGateway;
+        this.namedProjectionDispatchCoordinator = namedProjectionDispatchCoordinator;
+        this.projectionActivationOutbox = projectionActivationOutbox;
+        this.rebuildWriteGateway = rebuildWriteGateway;
+        this.sourceGuardDelivery = sourceGuardDelivery;
+        this.deliveryStateStore = deliveryStateStore;
+        this.deliveryIdempotency = deliveryIdempotency;
+        this.timeProvider = timeProvider;
+        this.catalogAuthority = catalogAuthority;
+        _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
+    }
+
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
     internal static readonly KeyedSemaphore<string> ProjectionLocks = new(StringComparer.Ordinal);
     private const string RebuildPromotionPendingReasonCode = "rebuild-promotion-pending";
-    private readonly IEventPayloadProtectionService _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
+    private readonly IEventPayloadProtectionService _payloadProtectionService;
     private string AggregateActorTypeName => actorOptions?.Value.AggregateActorTypeName ?? nameof(AggregateActor);
 
     /// <inheritdoc/>
     public async Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         ArgumentNullException.ThrowIfNull(identity);
+        if (catalogLease is not null) _ = ResolveCommittedProjection(catalogLease.Snapshot, identity);
 
         int refreshIntervalMs = projectionOptions.Value.GetRefreshIntervalMs(identity.Domain);
         if (refreshIntervalMs > 0) {
             try {
-                await checkpointTracker.TrackIdentityAsync(identity, cancellationToken).ConfigureAwait(false);
+                await RouteCatalogRemoteCall.InvokeAsync(() => checkpointTracker!.TrackIdentityAsync(identity, cancellationToken)).ConfigureAwait(false);
                 Log.PollingWorkRegistered(logger, identity.TenantId, identity.Domain, identity.AggregateId, refreshIntervalMs);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -82,22 +162,29 @@ internal partial class ProjectionUpdateOrchestrator(
 
     /// <inheritdoc/>
     public async Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         ArgumentNullException.ThrowIfNull(identity);
-        if (sourceGuardDelivery is not null)
+        CommittedProjectionMethodPlan? methodPlan = catalogLease is null ? null : ResolveCommittedProjectionPlan(catalogLease.Snapshot, identity);
+        if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, methodPlan.LegacyOutputs, cancellationToken).ConfigureAwait(false);
+        bool sourceGuardHandledNamed = false;
+        if (sourceGuardDelivery is not null && methodPlan is not { Named: false })
         {
             ProjectionSourceGuardDeliveryResult guarded = await sourceGuardDelivery.TryDeliverAsync(identity, cancellationToken).ConfigureAwait(false);
-            if (guarded.Owned) return;
+            if (guarded.Owned)
+            {
+                if (methodPlan is not { Legacy: true } || !guarded.AlreadyCurrent && !guarded.CompletionProven) return;
+                sourceGuardHandledNamed = true;
+            }
         }
-        bool namedActivationDurable = namedProjectionDispatchCoordinator is null;
+        bool namedActivationDurable = sourceGuardHandledNamed || methodPlan is { Named: false } || namedProjectionDispatchCoordinator is null;
         bool releasedCompatibility = false;
         ProjectionActivationWorkItem? activationWorkItem = null;
 
         using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
         try {
             if (projectionActivationOutbox is not null) {
-                activationWorkItem = await projectionActivationOutbox
-                    .GetAsync(identity, cancellationToken)
-                    .ConfigureAwait(false);
+                activationWorkItem = await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.GetAsync(identity, cancellationToken)).ConfigureAwait(false);
             }
 
             Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
@@ -105,15 +192,13 @@ internal partial class ProjectionUpdateOrchestrator(
             // D3-B: route through the active-rebuilds index instead of probing by
             // (tenant, domain, domain) which incorrectly assumed projectionName == domain.
             if (rebuildCheckpointStore is not null
-                && await rebuildCheckpointStore
-                    .HasActiveOperatorRebuildForDomainAsync(identity.TenantId, identity.Domain, cancellationToken)
-                    .ConfigureAwait(false)) {
+                && await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.HasActiveOperatorRebuildForDomainAsync(identity.TenantId, identity.Domain, cancellationToken)).ConfigureAwait(false)) {
                 Log.PollerRebuildConflict(logger, identity.TenantId, identity.Domain, identity.AggregateId, StreamReplayReasonCodes.PollerRebuildConflict);
                 return;
             }
 
             // Step 1: Resolve domain service registration
-            DomainServiceRegistration? registration = await resolver
+            DomainServiceRegistration? registration = methodPlan?.Registration ?? await resolver
                 .ResolveAsync(identity.TenantId, identity.Domain, "v1", cancellationToken)
                 .ConfigureAwait(false);
 
@@ -121,6 +206,8 @@ internal partial class ProjectionUpdateOrchestrator(
                 Log.NoDomainServiceRegistered(logger, identity.TenantId, identity.Domain);
                 return;
             }
+            if (methodPlan is { Named: true } && namedProjectionDispatchCoordinator is null)
+                throw new RouteCatalogUnavailableException("The committed named projection method has no installed coordinator.");
 
             // Step 2: Create aggregate actor proxy and read events
             IAggregateActor aggregateProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
@@ -128,16 +215,17 @@ internal partial class ProjectionUpdateOrchestrator(
                 AggregateActorTypeName);
 
             if (namedProjectionDispatchCoordinator is not null
+                && !sourceGuardHandledNamed
+                && methodPlan is not { Named: false } && methodPlan is not { Legacy: true }
                 && await namedProjectionDispatchCoordinator.SupportsMappedOnlyStreamedDeliveryAsync(
                     identity, registration, cancellationToken).ConfigureAwait(false)) {
-                AggregateStreamMetadata metadata = await aggregateProxy.GetStreamMetadataAsync()
-                    .ConfigureAwait(false);
+                AggregateStreamMetadata metadata = await RouteCatalogRemoteCall.InvokeAsync(() => aggregateProxy!.GetStreamMetadataAsync()).ConfigureAwait(false);
                 if (metadata.Exists && metadata.CurrentSequence > 0) {
                     long sourceHead = metadata.CurrentSequence;
                     if (sourceHead > projectionOptions.Value.RebuildMaxPrefixEventCount)
                         throw new ProjectionRebuildPrefixSafetyLimitExceededException();
-                    EventEnvelope[] lastPage = await aggregateProxy.ReadEventsRangeAsync(
-                        sourceHead - 1, sourceHead, 1).ConfigureAwait(false);
+                    EventEnvelope[] lastPage = await RouteCatalogRemoteCall.InvokeAsync(() => aggregateProxy!.ReadEventsRangeAsync(
+                        sourceHead - 1, sourceHead, 1)).ConfigureAwait(false);
                     _ = ProjectionStreamPageValidation.Validate(identity, sourceHead - 1,
                         sourceHead, 1, lastPage);
                     if (lastPage.Length != 1 || string.IsNullOrWhiteSpace(lastPage[0].MessageId))
@@ -151,21 +239,21 @@ internal partial class ProjectionUpdateOrchestrator(
             }
 
             if (rebuildWriteGateway is IProjectionReplayPublicationGateway publication
+                && methodPlan is not { Legacy: false }
                 && rebuildWriteGateway is IProjectionRebuildInspectionGateway inspection
                 && projectionActivationOutbox is IProjectionLegacyDeliveryOutbox legacyOutbox
                 && lifecycleGateway is not null && deliveryStateStore is not null && deliveryIdempotency is not null)
             {
                 namedActivationDurable = false;
                 if (await DeliverCompatibleReplayAsync(identity, registration, activationWorkItem,
-                    publication, inspection, legacyOutbox, cancellationToken).ConfigureAwait(false)) return;
+                    publication, inspection, legacyOutbox, cancellationToken,
+                    sourceGuardHandledNamed ? methodPlan! with { NamedOutputs = [] } : methodPlan).ConfigureAwait(false)) return;
                 releasedCompatibility = true;
             }
 
             long lastDeliveredSequence = 0;
             try {
-                lastDeliveredSequence = await checkpointTracker
-                    .ReadLastDeliveredSequenceAsync(identity, cancellationToken)
-                    .ConfigureAwait(false);
+                lastDeliveredSequence = await RouteCatalogRemoteCall.InvokeAsync(() => checkpointTracker!.ReadLastDeliveredSequenceAsync(identity, cancellationToken)).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
@@ -175,9 +263,7 @@ internal partial class ProjectionUpdateOrchestrator(
             // projection handlers receive prior state or become explicitly incremental-aware.
             // Read the checkpoint first so later fixed-head/current-path admission can
             // prove zero-history work without moving this read across a handler effect.
-            EventEnvelope[] events = await aggregateProxy
-                .GetEventsAsync(0)
-                .ConfigureAwait(false);
+            EventEnvelope[] events = await RouteCatalogRemoteCall.InvokeAsync(() => aggregateProxy!.GetEventsAsync(0)).ConfigureAwait(false);
 
             if (events.Length == 0) {
                 // Drift detection covers the canonical "stale checkpoint + empty stream" case
@@ -227,9 +313,9 @@ internal partial class ProjectionUpdateOrchestrator(
 
             // Step 4: Invoke domain service /project endpoint via DAPR
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
-            if (!releasedCompatibility && namedProjectionDispatchCoordinator is not null) {
+            if (!releasedCompatibility && !sourceGuardHandledNamed && namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false }) {
                 try {
-                    _ = await namedProjectionDispatchCoordinator
+                    bool owned = await namedProjectionDispatchCoordinator
                         .TryDispatchAsync(
                             identity,
                             registration,
@@ -237,12 +323,17 @@ internal partial class ProjectionUpdateOrchestrator(
                             projectionReadability.Events!,
                         cancellationToken)
                         .ConfigureAwait(false);
+                    if (methodPlan is not null && !owned)
+                        throw new RouteCatalogUnavailableException("The committed named projection method could not be selected.");
                     namedActivationDurable = true;
                 }
+                catch (RouteCatalogUnavailableException) { throw; }
                 catch (OperationCanceledException) {
                     throw;
                 }
                 catch (Exception ex) {
+                    if (methodPlan is not null)
+                        throw new RouteCatalogUnavailableException("The committed named projection method is unavailable.");
                     Log.NamedProjectionDispatchFailed(
                         logger,
                         ex,
@@ -253,12 +344,15 @@ internal partial class ProjectionUpdateOrchestrator(
                 }
             }
 
+            if (methodPlan is { Legacy: false }) return;
+            if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, methodPlan.LegacyOutputs, cancellationToken).ConfigureAwait(false);
+
             // Named v2 routes and an unmapped legacy v1 handler may intentionally coexist for the
             // same domain. Named delivery therefore does not short-circuit the released v1 path.
             // A named-only service returns a support-safe non-success response from /project.
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
-                "project",
+                methodPlan?.Registration.MethodName ?? "project",
                 request);
             HttpClient httpClient = httpClientFactory.CreateClient();
             HttpResponseMessage? httpResponse = await SendProjectRequestAsync(
@@ -296,6 +390,10 @@ internal partial class ProjectionUpdateOrchestrator(
                 return;
             }
 
+            if (catalogLease is not null && !Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogProjectionPolicy.Outputs(
+                catalogLease.Snapshot, identity.TenantId, identity.Domain, registration.AppId, "project").Contains(response.ProjectionType, StringComparer.Ordinal))
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The legacy projection returned an undeclared output.");
+
             if (string.IsNullOrWhiteSpace(response.ProjectionType)) {
                 Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, ProjectionReasonCodes.ProjectInvalidProjectionType);
                 return;
@@ -310,9 +408,7 @@ internal partial class ProjectionUpdateOrchestrator(
             if (releasedCompatibility && !await CanUseReleasedWriterAsync(identity, response.ProjectionType,
                 activationWorkItem, cancellationToken).ConfigureAwait(false)) return;
             long scopedLastDelivered = deliveryCheckpointStore is not null
-                ? await deliveryCheckpointStore
-                    .ReadDeliveredSequenceAsync(identity, response.ProjectionType, cancellationToken)
-                    .ConfigureAwait(false)
+                ? await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity, response.ProjectionType, cancellationToken)).ConfigureAwait(false)
                 : lastDeliveredSequence;
             if (scopedLastDelivered > highestAvailableSequence) {
                 Log.CheckpointDriftDetected(
@@ -340,13 +436,11 @@ internal partial class ProjectionUpdateOrchestrator(
                 events,
                 highestAvailableSequence);
             bool deliveryLeaseAcquired = lifecycleGateway is null
-                || await lifecycleGateway
-                    .BeginDeliveryWriteAsync(
+                || await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.BeginDeliveryWriteAsync(
                         identity,
                         response.ProjectionType,
                         deliveryOperationId,
-                        cancellationToken)
-                    .ConfigureAwait(false);
+                        cancellationToken)).ConfigureAwait(false);
             if (!deliveryLeaseAcquired) {
                 Log.ProjectionDeliveryDeferredForErase(
                     logger,
@@ -360,6 +454,7 @@ internal partial class ProjectionUpdateOrchestrator(
 
             bool releasedCompletion = false;
             try {
+                if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, [response.ProjectionType], cancellationToken).ConfigureAwait(false);
                 if (releasedCompatibility && !await CanUseReleasedWriterAsync(identity, response.ProjectionType,
                     activationWorkItem, cancellationToken).ConfigureAwait(false)) return;
                 // Step 5: Derive projection actor ID and update state
@@ -373,9 +468,7 @@ internal partial class ProjectionUpdateOrchestrator(
                     new ActorId(projectionActorId),
                     QueryRouter.ProjectionActorTypeName);
 
-                await writeProxy
-                    .UpdateProjectionAsync(ProjectionState.FromProjectionResponse(response, identity.TenantId))
-                    .ConfigureAwait(false);
+                await RouteCatalogRemoteCall.InvokeAsync(() => writeProxy!.UpdateProjectionAsync(ProjectionState.FromProjectionResponse(response, identity.TenantId))).ConfigureAwait(false);
 
                 await RegenerateProjectionETagAsync(identity, response.ProjectionType, cancellationToken)
                     .ConfigureAwait(false);
@@ -386,18 +479,14 @@ internal partial class ProjectionUpdateOrchestrator(
                     // delivery store is supplied; otherwise fall back to the released aggregate-wide
                     // checkpoint (legacy path used by the orchestrator unit tests).
                     bool checkpointSaved = deliveryCheckpointStore is not null
-                        ? await deliveryCheckpointStore
-                            .SaveDeliveredSequenceAsync(identity, response.ProjectionType, highestDeliveredSequence, cancellationToken)
-                            .ConfigureAwait(false)
-                        : await checkpointTracker
-                            .SaveDeliveredSequenceAsync(identity, highestDeliveredSequence, cancellationToken)
-                            .ConfigureAwait(false);
+                        ? await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.SaveDeliveredSequenceAsync(identity, response.ProjectionType, highestDeliveredSequence, cancellationToken)).ConfigureAwait(false)
+                        : await RouteCatalogRemoteCall.InvokeAsync(() => checkpointTracker!.SaveDeliveredSequenceAsync(identity, highestDeliveredSequence, cancellationToken)).ConfigureAwait(false);
                     if (!checkpointSaved) {
                         Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestDeliveredSequence);
                     }
                     else if (releasedCompatibility) {
-                        releasedCompletion = await deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity,
-                            response.ProjectionType, cancellationToken).ConfigureAwait(false) == highestDeliveredSequence;
+                        releasedCompletion = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity,
+                            response.ProjectionType, cancellationToken)).ConfigureAwait(false) == highestDeliveredSequence;
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -408,13 +497,11 @@ internal partial class ProjectionUpdateOrchestrator(
             }
             finally {
                 if (lifecycleGateway is not null
-                    && !await lifecycleGateway
-                        .CompleteDeliveryWriteAsync(
+                    && !await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteDeliveryWriteAsync(
                             identity,
                             response.ProjectionType,
                             deliveryOperationId,
-                            CancellationToken.None)
-                        .ConfigureAwait(false)) {
+                            CancellationToken.None)).ConfigureAwait(false)) {
                     throw new InvalidOperationException("Projection delivery lifecycle lease completion was rejected.");
                 }
             }
@@ -433,7 +520,7 @@ internal partial class ProjectionUpdateOrchestrator(
         finally {
             if (namedActivationDurable && projectionActivationOutbox is not null && activationWorkItem is not null) {
                 try {
-                    await projectionActivationOutbox.CompleteAsync(activationWorkItem, CancellationToken.None).ConfigureAwait(false);
+                    await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.CompleteAsync(activationWorkItem, CancellationToken.None)).ConfigureAwait(false);
                 }
                 catch (Exception ex) {
                     Log.ProjectionActivationCompletionFailed(
@@ -452,7 +539,23 @@ internal partial class ProjectionUpdateOrchestrator(
     public async Task RebuildProjectionAsync(
         ProjectionRebuildCheckpointScope scope,
         CancellationToken cancellationToken = default) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         ArgumentNullException.ThrowIfNull(scope);
+        if (catalogLease is not null)
+        {
+            var rebuildIdentity = new AggregateIdentity(scope.Tenant, scope.Domain, scope.AggregateId ?? "catalog-rebuild");
+            var rebuildPlan = ResolveCommittedProjectionPlan(catalogLease.Snapshot, rebuildIdentity, scope.ProjectionName);
+            if (scope.AggregateId is not null)
+                await RefuseGuardedLegacyOutputsAsync(rebuildIdentity, rebuildPlan.LegacyOutputs, cancellationToken).ConfigureAwait(false);
+            var executable = rebuildPlan.Registration;
+            if (!catalogLease.Snapshot.Envelope.Declarations.Any(d => d.Domain == scope.Domain && d.Kind == "projection"
+                && d.Execution!.ProjectionOutputs.Contains(scope.ProjectionName, StringComparer.Ordinal)
+                && catalogLease.Snapshot.Envelope.Routes.Any(r => r.RouteId == d.RouteId && r.AppId == executable.AppId
+                    && r.ContractVersion == executable.Version && r.Method == executable.MethodName
+                    && (r.ResolverTenantPattern is null or "*" || r.ResolverTenantPattern == scope.Tenant))))
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The rebuild output is not committed.");
+        }
         if (rebuildCheckpointStore is null) {
             return;
         }
@@ -469,9 +572,7 @@ internal partial class ProjectionUpdateOrchestrator(
         // write path uniformly.
         ProjectionRebuildCheckpoint? initial;
         try {
-            initial = await rebuildCheckpointStore
-                .ReadAsync(scope, cancellationToken)
-                .ConfigureAwait(false);
+            initial = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(scope, cancellationToken)).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw;
@@ -482,15 +583,13 @@ internal partial class ProjectionUpdateOrchestrator(
             // (`ex`) on its way out of the method. Mirrors the H1-5P / cancel-cleanup pattern
             // below.
             try {
-                ProjectionRebuildCheckpointSaveResult initFailSave = await rebuildCheckpointStore
-                    .ResetAsync(
+                ProjectionRebuildCheckpointSaveResult initFailSave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ResetAsync(
                         scope,
                         lastAppliedSequence: 0,
                         ProjectionRebuildStatus.Failed,
                         failureReasonCode: ex.GetType().Name,
                         cancellationToken: CancellationToken.None,
-                        toPosition: null)
-                    .ConfigureAwait(false);
+                        toPosition: null)).ConfigureAwait(false);
                 if (!initFailSave.Succeeded) {
                     Log.RebuildTerminalFailWriteRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, initFailSave.ReasonCode ?? "unknown", ex.GetType().Name);
                 }
@@ -525,13 +624,14 @@ internal partial class ProjectionUpdateOrchestrator(
                 if (!MatchesRebuildScope(scope, identity)) {
                     continue;
                 }
+                if (catalogLease is not null)
+                    await RefuseGuardedLegacyOutputsAsync(identity, ResolveCommittedProjectionPlan(catalogLease.Snapshot, identity,
+                        scope.ProjectionName).LegacyOutputs, cancellationToken).ConfigureAwait(false);
 
                 _ = touchedAggregateIds.Add(identity.AggregateId);
 
                 // Re-read OPERATOR scope to honor mid-iteration Pause/Cancel intent.
-                ProjectionRebuildCheckpoint? operatorSnap = await rebuildCheckpointStore
-                    .ReadAsync(operatorScope, cancellationToken)
-                    .ConfigureAwait(false);
+                ProjectionRebuildCheckpoint? operatorSnap = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(operatorScope, cancellationToken)).ConfigureAwait(false);
                 if (!CanRunRebuild(operatorSnap)) {
                     _ = await ClearRebuildLifecyclesAsync(
                             activeLifecycleScopes.Values,
@@ -545,22 +645,18 @@ internal partial class ProjectionUpdateOrchestrator(
                 // D3-A/D3-E: read PER-AGGREGATE progress from the rebuild checkpoint store, not
                 // from the poller checkpoint tracker. First-run perAggregateRow is null → progress 0.
                 ProjectionRebuildCheckpointScope perAggregateScope = operatorScope with { AggregateId = identity.AggregateId };
-                ProjectionRebuildCheckpoint? perAggregateRow = await rebuildCheckpointStore
-                    .ReadAsync(perAggregateScope, cancellationToken)
-                    .ConfigureAwait(false);
+                ProjectionRebuildCheckpoint? perAggregateRow = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(perAggregateScope, cancellationToken)).ConfigureAwait(false);
                 long perAggregateProgress = perAggregateRow?.LastAppliedSequence ?? 0;
                 long? toPosition = operatorSnap!.ToPosition;
 
                 if (lifecycleGateway is not null) {
                     string operationId = operatorScope.OperationId
                         ?? throw new InvalidOperationException("A running projection rebuild requires an operation identity.");
-                    if (!await lifecycleGateway
-                        .BeginRebuildAsync(
+                    if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.BeginRebuildAsync(
                             identity,
                             operatorScope.ProjectionName,
                             operationId,
-                            cancellationToken)
-                        .ConfigureAwait(false)) {
+                            cancellationToken)).ConfigureAwait(false)) {
                         await FailRebuildAsync(
                                 operatorScope,
                                 perAggregateProgress,
@@ -595,9 +691,7 @@ internal partial class ProjectionUpdateOrchestrator(
                         cancellationToken)
                     .ConfigureAwait(false);
                 if (delivery.Interrupted) {
-                    ProjectionRebuildCheckpoint? interruptedSnapshot = await rebuildCheckpointStore
-                        .ReadAsync(operatorScope, CancellationToken.None)
-                        .ConfigureAwait(false);
+                    ProjectionRebuildCheckpoint? interruptedSnapshot = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(operatorScope, CancellationToken.None)).ConfigureAwait(false);
                     if (IsTerminalStatus(interruptedSnapshot?.Status ?? ProjectionRebuildStatus.Running)) {
                         await ClearRebuildLifecyclesAsync(
                                 activeLifecycleScopes.Values,
@@ -632,9 +726,7 @@ internal partial class ProjectionUpdateOrchestrator(
                 // DEC3-P/P14/P15: cancel-cleanup must reach a terminal lifecycle write even when the
                 // store's lifecycle guards (IsLifecycleProtected) would reject SaveAsync. Use ResetAsync,
                 // which is the documented trust boundary for operator-intentional terminal writes.
-                ProjectionRebuildCheckpoint? canceledSnapshot = await rebuildCheckpointStore
-                    .ReadAsync(operatorScope, CancellationToken.None)
-                    .ConfigureAwait(false);
+                ProjectionRebuildCheckpoint? canceledSnapshot = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(operatorScope, CancellationToken.None)).ConfigureAwait(false);
                 if (canceledSnapshot is not null && !IsTerminalStatus(canceledSnapshot.Status)) {
                     // P15-7P (pass-7): mirror the P14-7P / M7-5P carve-out — domain-wide rebuilds
                     // do NOT inflate operator-scope LastAppliedSequence to the largest aggregate's
@@ -645,15 +737,13 @@ internal partial class ProjectionUpdateOrchestrator(
                         ? canceledSnapshot.LastAppliedSequence
                         : Math.Max(canceledSnapshot.LastAppliedSequence, highestMatchedProgress);
 
-                    ProjectionRebuildCheckpointSaveResult cancelSave = await rebuildCheckpointStore
-                        .ResetAsync(
+                    ProjectionRebuildCheckpointSaveResult cancelSave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ResetAsync(
                             operatorScope,
                             cancelLastApplied,
                             ProjectionRebuildStatus.Canceled,
                             failureReasonCode: StreamReplayReasonCodes.RebuildCanceled,
                             cancellationToken: CancellationToken.None,
-                            toPosition: canceledSnapshot.ToPosition)
-                        .ConfigureAwait(false);
+                            toPosition: canceledSnapshot.ToPosition)).ConfigureAwait(false);
                     if (cancelSave is null || !cancelSave.Succeeded) {
                         Log.RebuildCancelCleanupRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, cancelSave?.ReasonCode ?? "unknown");
                     }
@@ -666,9 +756,7 @@ internal partial class ProjectionUpdateOrchestrator(
                     if (operatorScope.AggregateId is null) {
                         foreach (string touchedAggregateId in touchedAggregateIds) {
                             ProjectionRebuildCheckpointScope touchedScope = operatorScope with { AggregateId = touchedAggregateId };
-                            ProjectionRebuildCheckpoint? touchedSnap = await rebuildCheckpointStore
-                                .ReadAsync(touchedScope, CancellationToken.None)
-                                .ConfigureAwait(false);
+                            ProjectionRebuildCheckpoint? touchedSnap = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(touchedScope, CancellationToken.None)).ConfigureAwait(false);
                             if (touchedSnap is null || IsTerminalStatus(touchedSnap.Status)) {
                                 continue;
                             }
@@ -679,15 +767,13 @@ internal partial class ProjectionUpdateOrchestrator(
                             // generic RebuildCanceled. The cancellation reason should only be used
                             // when the per-aggregate row has no prior failure reason of its own.
                             string touchedReasonCode = touchedSnap.FailureReasonCode ?? StreamReplayReasonCodes.RebuildCanceled;
-                            ProjectionRebuildCheckpointSaveResult touchedCancelResult = await rebuildCheckpointStore
-                                .ResetAsync(
+                            ProjectionRebuildCheckpointSaveResult touchedCancelResult = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ResetAsync(
                                     touchedScope,
                                     touchedSnap.LastAppliedSequence,
                                     ProjectionRebuildStatus.Canceled,
                                     failureReasonCode: touchedReasonCode,
                                     cancellationToken: CancellationToken.None,
-                                    toPosition: touchedSnap.ToPosition)
-                                .ConfigureAwait(false);
+                                    toPosition: touchedSnap.ToPosition)).ConfigureAwait(false);
                             // P3-8P (pass-8): surface cleanup failures instead of silently
                             // discarding the result. Operators rely on this log to detect orphaned
                             // per-aggregate rows that the future P-DEC1-8P cleanup service should
@@ -736,9 +822,7 @@ internal partial class ProjectionUpdateOrchestrator(
                 // latest-stored, accumulated highestMatchedProgress (aggregate-scoped only)}.
                 ProjectionRebuildCheckpoint? latestOperator = null;
                 try {
-                    latestOperator = await rebuildCheckpointStore
-                        .ReadAsync(operatorScope, CancellationToken.None)
-                        .ConfigureAwait(false);
+                    latestOperator = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(operatorScope, CancellationToken.None)).ConfigureAwait(false);
                 }
                 catch (Exception readEx) when (readEx is not OperationCanceledException) {
                     // Best-effort read; fall through with `latestOperator = null` and the
@@ -752,15 +836,13 @@ internal partial class ProjectionUpdateOrchestrator(
                         Math.Max(initial.LastAppliedSequence, highestMatchedProgress),
                         latestOperator?.LastAppliedSequence ?? 0);
 
-                ProjectionRebuildCheckpointSaveResult failSave = await rebuildCheckpointStore
-                    .ResetAsync(
+                ProjectionRebuildCheckpointSaveResult failSave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ResetAsync(
                         operatorScope,
                         failLastApplied,
                         ProjectionRebuildStatus.Failed,
                         failureReasonCode: ex.GetType().Name,
                         cancellationToken: CancellationToken.None,
-                        toPosition: initial.ToPosition)
-                    .ConfigureAwait(false);
+                        toPosition: initial.ToPosition)).ConfigureAwait(false);
                 if (failSave is null || !failSave.Succeeded) {
                     Log.RebuildTerminalFailWriteRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, failSave?.ReasonCode ?? "unknown", ex.GetType().Name);
                 }
@@ -785,9 +867,7 @@ internal partial class ProjectionUpdateOrchestrator(
         // Succeeded-write durability intent. Without this, a request CT cancellation between
         // iteration completion and the final read dropped to cancel-cleanup which stamped
         // Canceled despite all work being logically complete.
-        ProjectionRebuildCheckpoint? finalSnapshot = await rebuildCheckpointStore
-            .ReadAsync(operatorScope, CancellationToken.None)
-            .ConfigureAwait(false)
+        ProjectionRebuildCheckpoint? finalSnapshot = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(operatorScope, CancellationToken.None)).ConfigureAwait(false)
             ?? initial;
         if (!CanRunRebuild(finalSnapshot)) {
             _ = await ClearRebuildLifecyclesAsync(
@@ -818,8 +898,7 @@ internal partial class ProjectionUpdateOrchestrator(
             // documented in DeliverProjectionForRebuildAsync. Without this, an ASP.NET request
             // timeout disposing the request CT just before this write would propagate as OCE and
             // the cancel-cleanup catch would mis-stamp a successful rebuild as Canceled.
-            ProjectionRebuildCheckpointSaveResult succeededSave = await rebuildCheckpointStore
-                .SaveAsync(
+            ProjectionRebuildCheckpointSaveResult succeededSave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.SaveAsync(
                     operatorScope,
                     operatorScope.AggregateId is null
                         ? finalSnapshot!.LastAppliedSequence
@@ -827,8 +906,7 @@ internal partial class ProjectionUpdateOrchestrator(
                     ProjectionRebuildStatus.Succeeded,
                     failureReasonCode: null,
                     CancellationToken.None,
-                    finalSnapshot.ToPosition)
-                .ConfigureAwait(false);
+                    finalSnapshot.ToPosition)).ConfigureAwait(false);
             if (succeededSave is null || !succeededSave.Succeeded) {
                 Log.RebuildTerminalFailWriteRejected(
                     logger,
@@ -857,27 +935,21 @@ internal partial class ProjectionUpdateOrchestrator(
                 // A process can disappear after durable promotion while the lifecycle's promotion
                 // fence is still set. Release that same-operation fence first; a non-fenced actor
                 // returns false and the normal completion below remains the source of truth.
-                _ = await lifecycleGateway
-                    .CompleteRebuildPromotionAsync(
+                _ = await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteRebuildPromotionAsync(
                         lifecycleScope.Identity,
                         lifecycleScope.ProjectionName,
                         operatorScope.OperationId,
-                        CancellationToken.None)
-                    .ConfigureAwait(false);
-                bool completed = await lifecycleGateway
-                    .CompleteRebuildAsync(
+                        CancellationToken.None)).ConfigureAwait(false);
+                bool completed = await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteRebuildAsync(
                         lifecycleScope.Identity,
                         lifecycleScope.ProjectionName,
                         operatorScope.OperationId,
-                        CancellationToken.None)
-                    .ConfigureAwait(false);
+                        CancellationToken.None)).ConfigureAwait(false);
                 if (!completed) {
-                    ProjectionLifecyclePhase phase = await lifecycleGateway
-                        .ReadPhaseAsync(
+                    ProjectionLifecyclePhase phase = await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.ReadPhaseAsync(
                             lifecycleScope.Identity,
                             lifecycleScope.ProjectionName,
-                            CancellationToken.None)
-                        .ConfigureAwait(false);
+                            CancellationToken.None)).ConfigureAwait(false);
                     if (phase != ProjectionLifecyclePhase.Idle) {
                         throw new InvalidOperationException("Projection rebuild lifecycle completion was rejected.");
                     }
@@ -910,11 +982,16 @@ internal partial class ProjectionUpdateOrchestrator(
         long? toPosition,
         IDictionary<string, RebuildLifecycleScope> activeLifecycleScopes,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
         try {
             Log.RebuildDeliveryStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
 
-            DomainServiceRegistration? registration = await resolver
+            CommittedProjectionMethodPlan? methodPlan = catalogLease is null ? null
+                : ResolveCommittedProjectionPlan(catalogLease.Snapshot, identity, operatorScope.ProjectionName);
+            if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, methodPlan.LegacyOutputs, cancellationToken).ConfigureAwait(false);
+            DomainServiceRegistration? registration = methodPlan?.Registration ?? await resolver
                 .ResolveAsync(identity.TenantId, identity.Domain, "v1", cancellationToken)
                 .ConfigureAwait(false);
 
@@ -941,7 +1018,7 @@ internal partial class ProjectionUpdateOrchestrator(
 
             string operationId = operatorScope.OperationId
                 ?? throw new InvalidOperationException("A running projection rebuild requires an operation identity.");
-            if (namedProjectionDispatchCoordinator is not null) {
+            if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false }) {
                 NamedProjectionRebuildResult? namedLease = await namedProjectionDispatchCoordinator
                     .AcquireRebuildLifecyclesAsync(
                         identity,
@@ -964,7 +1041,7 @@ internal partial class ProjectionUpdateOrchestrator(
                 new ActorId(identity.ActorId),
                 AggregateActorTypeName);
 
-            long currentStreamHead = await aggregateProxy.GetCurrentSequenceAsync().ConfigureAwait(false);
+            long currentStreamHead = await RouteCatalogRemoteCall.InvokeAsync(() => aggregateProxy!.GetCurrentSequenceAsync()).ConfigureAwait(false);
             long frozenTarget = initialPerAggregateRow is not null
                 && string.Equals(initialPerAggregateRow.OperationId, operatorScope.OperationId, StringComparison.Ordinal)
                 && initialPerAggregateRow.ToPosition is long persistedTarget
@@ -977,7 +1054,7 @@ internal partial class ProjectionUpdateOrchestrator(
             // Freeze is itself a durable resumable boundary. A retry must never re-sample a newer
             // stream head after a crash between the read and the later promotion/checkpoint write.
             if (rebuildWriteGateway is not null) {
-                ProjectionRebuildCheckpointSaveResult frozenSave = await rebuildCheckpointStore!
+                ProjectionRebuildCheckpointSaveResult frozenSave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
                     .SaveAsync(
                         progressScope,
                         perAggregateProgress,
@@ -985,15 +1062,12 @@ internal partial class ProjectionUpdateOrchestrator(
                         failureReasonCode: null,
                         CancellationToken.None,
                         frozenTarget,
-                        isPerAggregateProgress: operatorScope.AggregateId is null)
-                    .ConfigureAwait(false);
+                        isPerAggregateProgress: operatorScope.AggregateId is null)).ConfigureAwait(false);
                 if (frozenSave is null || !frozenSave.Succeeded) {
                     return RebuildDeliveryResult.Interrupt();
                 }
 
-                ProjectionRebuildCheckpoint? frozenReadBack = await rebuildCheckpointStore
-                    .ReadAsync(progressScope, CancellationToken.None)
-                    .ConfigureAwait(false);
+                ProjectionRebuildCheckpoint? frozenReadBack = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(progressScope, CancellationToken.None)).ConfigureAwait(false);
                 if (frozenReadBack is null
                     || frozenReadBack.ToPosition != frozenTarget
                     || frozenReadBack.LastAppliedSequence != perAggregateProgress
@@ -1005,6 +1079,7 @@ internal partial class ProjectionUpdateOrchestrator(
             }
 
             if (namedProjectionDispatchCoordinator is not null
+                && methodPlan is not { Named: false }
                 && frozenTarget > 0
                 && frozenTarget == currentStreamHead
                 && await namedProjectionDispatchCoordinator.SupportsMappedOnlyStreamedRebuildAsync(
@@ -1041,9 +1116,17 @@ internal partial class ProjectionUpdateOrchestrator(
                 return RebuildDeliveryResult.Interrupt();
             }
 
+            if (methodPlan is { Legacy: false })
+            {
+                if (namedProjectionDispatchCoordinator is null)
+                    throw new RouteCatalogUnavailableException("The committed named rebuild has no installed coordinator.");
+                return await DeliverCommittedNamedProjectionForRebuildAsync(identity, registration, operatorScope,
+                    progressScope, perAggregateProgress, frozenTarget, prefix.Events, operationId, activeLifecycleScopes).ConfigureAwait(false);
+            }
+
             if (prefix.Events.Length == 0) {
                 if (currentStreamHead == 0 && frozenTarget == 0 && namedProjectionDispatchCoordinator is not null) {
-                    AggregateStreamMetadata metadata = await aggregateProxy.GetStreamMetadataAsync().ConfigureAwait(false);
+                    AggregateStreamMetadata metadata = await RouteCatalogRemoteCall.InvokeAsync(() => aggregateProxy!.GetStreamMetadataAsync()).ConfigureAwait(false);
                     if (!metadata.Exists && metadata.CurrentSequence == 0 && metadata.Erased) {
                         return await DeliverErasedNamedProjectionForRebuildAsync(
                             identity, registration, operatorScope, progressScope, perAggregateProgress,
@@ -1070,9 +1153,10 @@ internal partial class ProjectionUpdateOrchestrator(
             }
 
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, prefix.Events);
+            if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, methodPlan.LegacyOutputs, cancellationToken).ConfigureAwait(false);
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
-                "project",
+                methodPlan?.Registration.MethodName ?? "project",
                 request);
             HttpClient httpClient = httpClientFactory.CreateClient();
             HttpResponseMessage? httpResponse = await SendProjectRequestAsync(
@@ -1173,24 +1257,22 @@ internal partial class ProjectionUpdateOrchestrator(
                 projectionActor,
                 QueryRouter.ProjectionActorTypeName);
             ProjectionState candidateState = ProjectionState.FromProjectionResponse(response, identity.TenantId);
+            if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, [response.ProjectionType], cancellationToken).ConfigureAwait(false);
 
             // P19: re-check operator-scope lifecycle AND verify the operator is still the same one
             // (OperationId match) BEFORE writing the projection state. Without the OperationId
             // check, a concurrent operator B that issued Reset+Replay between this iteration's
             // initial read and this point would silently inherit our stale page application.
             cancellationToken.ThrowIfCancellationRequested();
-            ProjectionRebuildCheckpoint? preSaveOperator = await rebuildCheckpointStore!
-                .ReadAsync(operatorScope, cancellationToken)
-                .ConfigureAwait(false);
+            ProjectionRebuildCheckpoint? preSaveOperator = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
+                .ReadAsync(operatorScope, cancellationToken)).ConfigureAwait(false);
             if (!CanRunRebuild(preSaveOperator)
                 || !string.Equals(preSaveOperator!.OperationId, operatorScope.OperationId, StringComparison.Ordinal)) {
                 return RebuildDeliveryResult.Interrupt();
             }
 
             if (operatorScope.AggregateId is null) {
-                ProjectionRebuildCheckpoint? preSavePerAggregate = await rebuildCheckpointStore
-                    .ReadAsync(perAggregateScope, cancellationToken)
-                    .ConfigureAwait(false);
+                ProjectionRebuildCheckpoint? preSavePerAggregate = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ReadAsync(perAggregateScope, cancellationToken)).ConfigureAwait(false);
                 if (PerAggregateProgressChanged(initialPerAggregateRow, preSavePerAggregate)) {
                     // P8-8P (pass-8): operator was preempted by a concurrent per-aggregate write
                     // (different OperationId, advanced LastAppliedSequence, status drift, or
@@ -1201,15 +1283,13 @@ internal partial class ProjectionUpdateOrchestrator(
                     // CancellationToken.None so a request cancel race does not silently drop the
                     // audit trail.
                     try {
-                        ProjectionRebuildCheckpointSaveResult preemptSave = await rebuildCheckpointStore
-                            .ResetAsync(
+                        ProjectionRebuildCheckpointSaveResult preemptSave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.ResetAsync(
                                 operatorScope,
                                 lastAppliedSequence: preSavePerAggregate?.LastAppliedSequence ?? perAggregateProgress,
                                 ProjectionRebuildStatus.Canceled,
                                 failureReasonCode: StreamReplayReasonCodes.OperatorPreempted,
                                 cancellationToken: CancellationToken.None,
-                                toPosition: toPosition)
-                            .ConfigureAwait(false);
+                                toPosition: toPosition)).ConfigureAwait(false);
                         if (!preemptSave.Succeeded) {
                             Log.RebuildCancelCleanupRejected(logger, operatorScope.Tenant, operatorScope.Domain, operatorScope.ProjectionName, preemptSave.ReasonCode ?? "unknown");
                         }
@@ -1223,7 +1303,7 @@ internal partial class ProjectionUpdateOrchestrator(
             }
 
             if (rebuildWriteGateway is null) {
-                if (namedProjectionDispatchCoordinator is not null) {
+                if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false }) {
                     NamedProjectionRebuildResult legacyNamedResult = await namedProjectionDispatchCoordinator
                         .TryRebuildAsync(
                             identity,
@@ -1257,14 +1337,14 @@ internal partial class ProjectionUpdateOrchestrator(
                     }
                 }
 
-                await writeProxy.UpdateProjectionAsync(candidateState).ConfigureAwait(false);
+                await RouteCatalogRemoteCall.InvokeAsync(() => writeProxy!.UpdateProjectionAsync(candidateState)).ConfigureAwait(false);
                 _ = await RegenerateProjectionETagAsync(
                         identity,
                         response.ProjectionType,
                         CancellationToken.None)
                     .ConfigureAwait(false);
                 long legacyHighestAppliedSequence = prefix.Events[^1].SequenceNumber;
-                ProjectionRebuildCheckpointSaveResult legacySave = await rebuildCheckpointStore!
+                ProjectionRebuildCheckpointSaveResult legacySave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
                     .SaveAsync(
                         progressScope,
                         legacyHighestAppliedSequence,
@@ -1272,8 +1352,7 @@ internal partial class ProjectionUpdateOrchestrator(
                         failureReasonCode: null,
                         CancellationToken.None,
                         frozenTarget,
-                        isPerAggregateProgress: operatorScope.AggregateId is null)
-                    .ConfigureAwait(false);
+                        isPerAggregateProgress: operatorScope.AggregateId is null)).ConfigureAwait(false);
                 if (legacySave is null || !legacySave.Succeeded) {
                     return RebuildDeliveryResult.Interrupt();
                 }
@@ -1294,17 +1373,15 @@ internal partial class ProjectionUpdateOrchestrator(
             try {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (rebuildWriteGateway is not null) {
-                    await rebuildWriteGateway
-                        .StageAsync(
+                    await RouteCatalogRemoteCall.InvokeAsync(() => rebuildWriteGateway!.StageAsync(
                             projectionActorId,
                             new ProjectionRebuildCandidate(operationId, candidateState)
                             { SelectedReplayFence = new(identity.ActorId, response.ProjectionType, operationId, frozenTarget) },
-                            CancellationToken.None)
-                        .ConfigureAwait(false);
+                            CancellationToken.None)).ConfigureAwait(false);
                     actorStaged = true;
                 }
 
-                if (namedProjectionDispatchCoordinator is not null) {
+                if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false }) {
                     NamedProjectionRebuildResult namedResult = await namedProjectionDispatchCoordinator
                         .TryRebuildAsync(
                             identity,
@@ -1361,22 +1438,18 @@ internal partial class ProjectionUpdateOrchestrator(
                 }
 
                 if (rebuildWriteGateway is not null) {
-                    actorPromoted = await rebuildWriteGateway
-                        .PromoteAsync(projectionActorId, operationId, CancellationToken.None)
-                        .ConfigureAwait(false);
+                    actorPromoted = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildWriteGateway!.PromoteAsync(projectionActorId, operationId, CancellationToken.None)).ConfigureAwait(false);
                     if (!actorPromoted) {
                         return RebuildDeliveryResult.Interrupt();
                     }
 
-                    ProjectionState? promotedReadBack = await rebuildWriteGateway
-                        .ReadAsync(projectionActorId, CancellationToken.None)
-                        .ConfigureAwait(false);
+                    ProjectionState? promotedReadBack = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildWriteGateway!.ReadAsync(projectionActorId, CancellationToken.None)).ConfigureAwait(false);
                     if (!ProjectionStatesEqual(candidateState, promotedReadBack)) {
                         return RebuildDeliveryResult.Interrupt();
                     }
                 }
                 else {
-                    await writeProxy.UpdateProjectionAsync(candidateState).ConfigureAwait(false);
+                    await RouteCatalogRemoteCall.InvokeAsync(() => writeProxy!.UpdateProjectionAsync(candidateState)).ConfigureAwait(false);
                     actorPromoted = true;
                 }
 
@@ -1390,7 +1463,7 @@ internal partial class ProjectionUpdateOrchestrator(
                 }
 
                 long highestAppliedSequence = prefix.Events[^1].SequenceNumber;
-                ProjectionRebuildCheckpointSaveResult pendingSave = await rebuildCheckpointStore!
+                ProjectionRebuildCheckpointSaveResult pendingSave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
                     .SaveAsync(
                         progressScope,
                         highestAppliedSequence,
@@ -1398,8 +1471,7 @@ internal partial class ProjectionUpdateOrchestrator(
                         RebuildPromotionPendingReasonCode,
                         CancellationToken.None,
                         frozenTarget,
-                        isPerAggregateProgress: operatorScope.AggregateId is null)
-                    .ConfigureAwait(false);
+                        isPerAggregateProgress: operatorScope.AggregateId is null)).ConfigureAwait(false);
                 if (!pendingSave.Succeeded
                     || !await VerifyRebuildCheckpointAsync(
                             progressScope,
@@ -1463,16 +1535,14 @@ internal partial class ProjectionUpdateOrchestrator(
                     }
                 }
 
-                ProjectionRebuildCheckpointSaveResult completedSave = await rebuildCheckpointStore
-                    .SaveAsync(
+                ProjectionRebuildCheckpointSaveResult completedSave = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.SaveAsync(
                         progressScope,
                         highestAppliedSequence,
                         ProjectionRebuildStatus.Running,
                         failureReasonCode: null,
                         CancellationToken.None,
                         frozenTarget,
-                        isPerAggregateProgress: operatorScope.AggregateId is null)
-                    .ConfigureAwait(false);
+                        isPerAggregateProgress: operatorScope.AggregateId is null)).ConfigureAwait(false);
                 if (!completedSave.Succeeded
                     || !await VerifyRebuildCheckpointAsync(
                             progressScope,
@@ -1486,9 +1556,7 @@ internal partial class ProjectionUpdateOrchestrator(
                 }
 
                 if (rebuildWriteGateway is not null
-                    && !await rebuildWriteGateway
-                        .FinalizeAsync(projectionActorId, operationId, CancellationToken.None)
-                        .ConfigureAwait(false)) {
+                    && !await RouteCatalogRemoteCall.InvokeAsync(() => rebuildWriteGateway!.FinalizeAsync(projectionActorId, operationId, CancellationToken.None)).ConfigureAwait(false)) {
                     retainPromotionFences = true;
                     return RebuildDeliveryResult.Interrupt();
                 }
@@ -1533,14 +1601,10 @@ internal partial class ProjectionUpdateOrchestrator(
 
                     if (rebuildWriteGateway is not null) {
                         if (actorPromoted) {
-                            _ = await rebuildWriteGateway
-                                .RollbackAsync(projectionActorId, operationId, CancellationToken.None)
-                                .ConfigureAwait(false);
+                            _ = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildWriteGateway!.RollbackAsync(projectionActorId, operationId, CancellationToken.None)).ConfigureAwait(false);
                         }
                         else if (actorStaged) {
-                            _ = await rebuildWriteGateway
-                                .DiscardAsync(projectionActorId, operationId, CancellationToken.None)
-                                .ConfigureAwait(false);
+                            _ = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildWriteGateway!.DiscardAsync(projectionActorId, operationId, CancellationToken.None)).ConfigureAwait(false);
                         }
                     }
                 }
@@ -1623,11 +1687,10 @@ internal partial class ProjectionUpdateOrchestrator(
             if (!await OwnsRebuildAsync(operatorScope, operationId).ConfigureAwait(false))
                 return RebuildDeliveryResult.Interrupt();
 
-            ProjectionRebuildCheckpointSaveResult pending = await rebuildCheckpointStore!
+            ProjectionRebuildCheckpointSaveResult pending = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
                 .SaveAsync(progressScope, frozenTarget, ProjectionRebuildStatus.Running,
                     RebuildPromotionPendingReasonCode, CancellationToken.None, frozenTarget,
-                    isPerAggregateProgress: operatorScope.AggregateId is null)
-                .ConfigureAwait(false);
+                    isPerAggregateProgress: operatorScope.AggregateId is null)).ConfigureAwait(false);
             if (!pending.Succeeded || !await VerifyRebuildCheckpointAsync(
                     progressScope, operationId, frozenTarget, frozenTarget,
                     RebuildPromotionPendingReasonCode).ConfigureAwait(false))
@@ -1653,11 +1716,9 @@ internal partial class ProjectionUpdateOrchestrator(
             if (!verified.Succeeded) return RebuildDeliveryResult.Interrupt();
             committed = true;
 
-            ProjectionRebuildCheckpointSaveResult saved = await rebuildCheckpointStore
-                .SaveAsync(progressScope, frozenTarget, ProjectionRebuildStatus.Running,
+            ProjectionRebuildCheckpointSaveResult saved = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.SaveAsync(progressScope, frozenTarget, ProjectionRebuildStatus.Running,
                     failureReasonCode: null, CancellationToken.None, frozenTarget,
-                    isPerAggregateProgress: operatorScope.AggregateId is null)
-                .ConfigureAwait(false);
+                    isPerAggregateProgress: operatorScope.AggregateId is null)).ConfigureAwait(false);
             if (!saved.Succeeded || !await VerifyRebuildCheckpointAsync(
                     progressScope, operationId, frozenTarget, frozenTarget,
                     failureReasonCode: null).ConfigureAwait(false))
@@ -1687,8 +1748,7 @@ internal partial class ProjectionUpdateOrchestrator(
         int pageSize = Math.Min(projectionOptions.Value.RebuildPageSize, 8);
         while (cursor < target) {
             cancellationToken.ThrowIfCancellationRequested();
-            EventEnvelope[] page = await aggregateProxy.ReadEventsRangeAsync(cursor, target, pageSize)
-                .ConfigureAwait(false);
+            EventEnvelope[] page = await RouteCatalogRemoteCall.InvokeAsync(() => aggregateProxy!.ReadEventsRangeAsync(cursor, target, pageSize)).ConfigureAwait(false);
             long next = ProjectionStreamPageValidation.Validate(identity, cursor, target, pageSize, page);
             if (page.Length == 0 || eventCount > projectionOptions.Value.RebuildMaxPrefixEventCount - page.Length)
                 throw new ProjectionRebuildPrefixSafetyLimitExceededException();
@@ -1727,16 +1787,29 @@ internal partial class ProjectionUpdateOrchestrator(
             return RebuildDeliveryResult.Interrupt();
         }
 
-        ProjectionEventDto[] empty = [];
+        return await DeliverCommittedNamedProjectionForRebuildAsync(identity, registration, operatorScope,
+            progressScope, perAggregateProgress, 0, [], operationId, activeLifecycleScopes).ConfigureAwait(false);
+    }
+
+    private async Task<RebuildDeliveryResult> DeliverCommittedNamedProjectionForRebuildAsync(
+        AggregateIdentity identity, DomainServiceRegistration registration,
+        ProjectionRebuildCheckpointScope operatorScope, ProjectionRebuildCheckpointScope progressScope,
+        long perAggregateProgress, long target, ProjectionEventDto[] events, string operationId,
+        IDictionary<string, RebuildLifecycleScope> activeLifecycleScopes)
+    {
+        if (!await OwnsRebuildAsync(operatorScope, operationId).ConfigureAwait(false))
+            return RebuildDeliveryResult.Interrupt();
         NamedProjectionRebuildResult stage = await namedProjectionDispatchCoordinator!
-            .TryRebuildAsync(identity, registration, empty, 0, operationId, CancellationToken.None)
+            .TryRebuildAsync(identity, registration, events, target, operationId, CancellationToken.None)
             .ConfigureAwait(false);
         foreach (string projectionType in stage.LifecycleProjectionTypes) {
             TrackLifecycleScope(activeLifecycleScopes, identity, projectionType);
         }
 
         if (!stage.Owned) {
-            return RebuildDeliveryResult.Complete(0, pageComplete: true);
+            if (catalogAuthority is not null)
+                throw new RouteCatalogUnavailableException("The committed named rebuild has no matching installed capability.");
+            return RebuildDeliveryResult.Complete(target, pageComplete: true);
         }
 
         if (!stage.Succeeded) {
@@ -1763,27 +1836,26 @@ internal partial class ProjectionUpdateOrchestrator(
                 return RebuildDeliveryResult.Interrupt();
             }
 
-            ProjectionRebuildCheckpointSaveResult pending = await rebuildCheckpointStore!
-                .SaveAsync(progressScope, 0, ProjectionRebuildStatus.Running,
-                    RebuildPromotionPendingReasonCode, CancellationToken.None, 0,
-                    isPerAggregateProgress: operatorScope.AggregateId is null)
-                .ConfigureAwait(false);
+            ProjectionRebuildCheckpointSaveResult pending = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
+                .SaveAsync(progressScope, perAggregateProgress, ProjectionRebuildStatus.Running,
+                    RebuildPromotionPendingReasonCode, CancellationToken.None, target,
+                    isPerAggregateProgress: operatorScope.AggregateId is null)).ConfigureAwait(false);
             if (!pending.Succeeded || !await VerifyRebuildCheckpointAsync(
-                    progressScope, operationId, 0, 0, RebuildPromotionPendingReasonCode)
+                    progressScope, operationId, perAggregateProgress, target, RebuildPromotionPendingReasonCode)
                 .ConfigureAwait(false)) {
                 return RebuildDeliveryResult.Interrupt();
             }
 
             commitAttempted = true;
             NamedProjectionRebuildResult commit = await namedProjectionDispatchCoordinator
-                .CommitRebuildAsync(identity, registration, empty, operationId, CancellationToken.None)
+                .CommitRebuildAsync(identity, registration, events, operationId, CancellationToken.None)
                 .ConfigureAwait(false);
             NamedProjectionRebuildResult verified = await namedProjectionDispatchCoordinator
-                .VerifyRebuildAsync(identity, registration, empty, operationId, CancellationToken.None)
+                .VerifyRebuildAsync(identity, registration, events, operationId, CancellationToken.None)
                 .ConfigureAwait(false);
             if (!commit.Succeeded && !verified.Succeeded) {
                 NamedProjectionRebuildResult abort = await namedProjectionDispatchCoordinator
-                    .AbortRebuildAsync(identity, registration, empty, operationId, CancellationToken.None)
+                    .AbortRebuildAsync(identity, registration, events, operationId, CancellationToken.None)
                     .ConfigureAwait(false);
                 if (abort.Succeeded) {
                     aborted = true;
@@ -1798,24 +1870,22 @@ internal partial class ProjectionUpdateOrchestrator(
             }
 
             committed = true;
-            ProjectionRebuildCheckpointSaveResult saved = await rebuildCheckpointStore
-                .SaveAsync(progressScope, 0, ProjectionRebuildStatus.Running,
-                    failureReasonCode: null, CancellationToken.None, 0,
-                    isPerAggregateProgress: operatorScope.AggregateId is null)
-                .ConfigureAwait(false);
+            ProjectionRebuildCheckpointSaveResult saved = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!.SaveAsync(progressScope, target, ProjectionRebuildStatus.Running,
+                    failureReasonCode: null, CancellationToken.None, target,
+                    isPerAggregateProgress: operatorScope.AggregateId is null)).ConfigureAwait(false);
             if (!saved.Succeeded || !await VerifyRebuildCheckpointAsync(
-                    progressScope, operationId, 0, 0, failureReasonCode: null)
+                    progressScope, operationId, target, target, failureReasonCode: null)
                 .ConfigureAwait(false)) {
                 return RebuildDeliveryResult.Interrupt();
             }
 
             completed = true;
-            return RebuildDeliveryResult.Complete(0, pageComplete: true);
+            return RebuildDeliveryResult.Complete(target, pageComplete: true);
         }
         finally {
             if (!commitAttempted && !aborted) {
                 _ = await namedProjectionDispatchCoordinator.AbortRebuildAsync(
-                    identity, registration, empty, operationId, CancellationToken.None)
+                    identity, registration, events, operationId, CancellationToken.None)
                     .ConfigureAwait(false);
             }
 
@@ -1838,9 +1908,7 @@ internal partial class ProjectionUpdateOrchestrator(
         long cursor = 0;
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
-            EventEnvelope[] page = await aggregateProxy
-                .ReadEventsRangeAsync(cursor, targetPosition, pageSize)
-                .ConfigureAwait(false);
+            EventEnvelope[] page = await RouteCatalogRemoteCall.InvokeAsync(() => aggregateProxy!.ReadEventsRangeAsync(cursor, targetPosition, pageSize)).ConfigureAwait(false);
             long nextCursor = ProjectionStreamPageValidation.Validate(
                 identity,
                 cursor,
@@ -1937,9 +2005,8 @@ internal partial class ProjectionUpdateOrchestrator(
     private async Task<bool> OwnsRebuildAsync(
         ProjectionRebuildCheckpointScope operatorScope,
         string operationId) {
-        ProjectionRebuildCheckpoint? checkpoint = await rebuildCheckpointStore!
-            .ReadAsync(operatorScope, CancellationToken.None)
-            .ConfigureAwait(false);
+        ProjectionRebuildCheckpoint? checkpoint = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
+            .ReadAsync(operatorScope, CancellationToken.None)).ConfigureAwait(false);
         return CanRunRebuild(checkpoint)
             && string.Equals(checkpoint!.OperationId, operationId, StringComparison.Ordinal);
     }
@@ -1953,13 +2020,11 @@ internal partial class ProjectionUpdateOrchestrator(
         }
 
         foreach (RebuildLifecycleScope lifecycleScope in lifecycleScopes.DistinctBy(static item => item.Key)) {
-            if (!await lifecycleGateway
-                .BeginRebuildPromotionAsync(
+            if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.BeginRebuildPromotionAsync(
                     lifecycleScope.Identity,
                     lifecycleScope.ProjectionName,
                     operationId,
-                    CancellationToken.None)
-                .ConfigureAwait(false)) {
+                    CancellationToken.None)).ConfigureAwait(false)) {
                 _ = await CompletePromotionFencesAsync(acquired, operationId).ConfigureAwait(false);
                 return [];
             }
@@ -1980,13 +2045,11 @@ internal partial class ProjectionUpdateOrchestrator(
         bool succeeded = true;
         foreach (RebuildLifecycleScope lifecycleScope in lifecycleScopes.Reverse()) {
             try {
-                bool completed = await lifecycleGateway
-                    .CompleteRebuildPromotionAsync(
+                bool completed = await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteRebuildPromotionAsync(
                         lifecycleScope.Identity,
                         lifecycleScope.ProjectionName,
                         operationId,
-                        CancellationToken.None)
-                    .ConfigureAwait(false);
+                        CancellationToken.None)).ConfigureAwait(false);
                 succeeded &= completed;
             }
             catch (Exception exception) {
@@ -2010,9 +2073,8 @@ internal partial class ProjectionUpdateOrchestrator(
         long lastAppliedSequence,
         long frozenTarget,
         string? failureReasonCode) {
-        ProjectionRebuildCheckpoint? readBack = await rebuildCheckpointStore!
-            .ReadAsync(scope, CancellationToken.None)
-            .ConfigureAwait(false);
+        ProjectionRebuildCheckpoint? readBack = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
+            .ReadAsync(scope, CancellationToken.None)).ConfigureAwait(false);
         return readBack is not null
             && readBack.Status == ProjectionRebuildStatus.Running
             && readBack.LastAppliedSequence == lastAppliedSequence
@@ -2047,15 +2109,14 @@ internal partial class ProjectionUpdateOrchestrator(
         long lastAppliedSequence,
         string reasonCode,
         long? toPosition) {
-        ProjectionRebuildCheckpointSaveResult failure = await rebuildCheckpointStore!
+        ProjectionRebuildCheckpointSaveResult failure = await RouteCatalogRemoteCall.InvokeAsync(() => rebuildCheckpointStore!
             .ResetAsync(
                 operatorScope,
                 lastAppliedSequence,
                 ProjectionRebuildStatus.Failed,
                 failureReasonCode: reasonCode,
                 cancellationToken: CancellationToken.None,
-                toPosition: toPosition)
-            .ConfigureAwait(false);
+                toPosition: toPosition)).ConfigureAwait(false);
         if (failure is null || !failure.Succeeded) {
             throw new InvalidOperationException(
                 $"Projection rebuild terminalization was rejected: {failure?.ReasonCode ?? "unknown"}.");
@@ -2151,6 +2212,41 @@ internal partial class ProjectionUpdateOrchestrator(
             OperationId = checkpoint.OperationId,
         };
 
+    private static DomainServiceRegistration ResolveCommittedProjection(CommittedRouteCatalogSnapshot snapshot, AggregateIdentity identity)
+        => ResolveCommittedProjectionPlan(snapshot, identity).Registration;
+
+    private async Task RefuseGuardedLegacyOutputsAsync(AggregateIdentity identity, IReadOnlyList<string> outputs, CancellationToken cancellationToken)
+    {
+        if (sourceGuardDelivery is null) return;
+        foreach (string output in outputs)
+        {
+            ProjectionSourceGuardDeliveryResult scope = await sourceGuardDelivery.InspectCurrentAsync(identity, output, cancellationToken).ConfigureAwait(false);
+            if (scope.Owned || scope.ReasonCode is not null)
+                throw new RouteCatalogUnavailableException("An established or unavailable source/provenance scope cannot use legacy projection execution.");
+        }
+    }
+
+    private static CommittedProjectionMethodPlan ResolveCommittedProjectionPlan(CommittedRouteCatalogSnapshot snapshot,
+        AggregateIdentity identity, string? output = null)
+    {
+        var scopedEntries = (from route in snapshot.Envelope.Routes
+            join declaration in snapshot.Envelope.Declarations on route.RouteId equals declaration.RouteId
+            where declaration.Kind == "projection" && declaration.Domain == identity.Domain
+                && (route.ResolverTenantPattern is null or "*" || route.ResolverTenantPattern == identity.TenantId)
+            select (Route: route, Declaration: declaration)).ToArray();
+        var targets = scopedEntries.Select(entry => (entry.Route.AppId, entry.Route.ContractVersion)).Distinct().ToArray();
+        var entries = scopedEntries.Where(entry => output is null || entry.Declaration.Execution!.ProjectionOutputs.Contains(output, StringComparer.Ordinal)).ToArray();
+        string[] methods = entries.Select(entry => entry.Route.Method).Distinct(StringComparer.Ordinal).ToArray();
+        if (targets.Length != 1 || entries.Length == 0 || methods.Any(method => method is not ("project" or "project/v2"))
+            || output is not null && methods.Length != 1
+            || scopedEntries.Where(entry => entry.Route.Method == "project").Select(entry => entry.Declaration.RouteId).Distinct(StringComparer.Ordinal).Count() > 1)
+            throw new RouteCatalogUnavailableException("The projection target, output or handler is undeclared or ambiguous.");
+        IReadOnlyList<string> Outputs(string method) => Array.AsReadOnly(entries.Where(entry => entry.Route.Method == method)
+            .SelectMany(entry => entry.Declaration.Execution!.ProjectionOutputs).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
+        string selectedMethod = methods.Contains("project", StringComparer.Ordinal) ? "project" : "project/v2";
+        return new(new(targets[0].AppId, selectedMethod, identity.TenantId, identity.Domain, targets[0].ContractVersion), Outputs("project"), Outputs("project/v2"));
+    }
+
     private async Task<HttpResponseMessage?> SendProjectRequestAsync(
         HttpClient httpClient,
         HttpRequestMessage httpRequest,
@@ -2158,7 +2254,7 @@ internal partial class ProjectionUpdateOrchestrator(
         AggregateIdentity identity,
         CancellationToken cancellationToken) {
         try {
-            return await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            return await RouteCatalogRemoteCall.InvokeAsync(() => httpClient.SendAsync(httpRequest, cancellationToken)).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             throw;
@@ -2207,12 +2303,12 @@ internal partial class ProjectionUpdateOrchestrator(
                 ETagActor.ETagActorTypeName);
 
             cancellationToken.ThrowIfCancellationRequested();
-            string regenerated = await eTagProxy.RegenerateAsync().ConfigureAwait(false);
+            string regenerated = await RouteCatalogRemoteCall.InvokeAsync(() => eTagProxy!.RegenerateAsync()).ConfigureAwait(false);
             if (!requireReadBack) {
                 return true;
             }
 
-            string? readBack = await eTagProxy.GetCurrentETagAsync().ConfigureAwait(false);
+            string? readBack = await RouteCatalogRemoteCall.InvokeAsync(() => eTagProxy!.GetCurrentETagAsync()).ConfigureAwait(false);
             return !string.IsNullOrWhiteSpace(regenerated)
                 && string.Equals(regenerated, readBack, StringComparison.Ordinal);
         }
@@ -2237,6 +2333,8 @@ internal partial class ProjectionUpdateOrchestrator(
         string appId,
         AggregateIdentity identity,
         CancellationToken cancellationToken) {
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         string contentType = GetContentTypeForLog(httpResponse.Content);
         string httpStatus = ((int)httpResponse.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (!IsJsonContent(httpResponse.Content)) {
@@ -2273,9 +2371,14 @@ internal partial class ProjectionUpdateOrchestrator(
         }
 
         try {
-            return await httpResponse.Content
+            ProjectionResponse? result = await httpResponse.Content
                 .ReadFromJsonAsync<ProjectionResponse>(cancellationToken)
                 .ConfigureAwait(false);
+            if (catalogLease is not null && result is not null
+                && !Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogProjectionPolicy.Outputs(catalogLease.Snapshot,
+                    identity.TenantId, identity.Domain, appId, "project").Contains(result.ProjectionType, StringComparer.Ordinal))
+                throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("A legacy projection response names an undeclared output.");
+            return result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             throw;

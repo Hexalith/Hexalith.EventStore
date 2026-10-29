@@ -52,6 +52,7 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddExceptionHandler<QueryExecutionFailedExceptionHandler>();    // 403 / 501 query failures
         _ = services.AddExceptionHandler<BackpressureExceptionHandler>();             // 429 (per-aggregate backpressure)
         _ = services.AddExceptionHandler<DaprSidecarUnavailableHandler>();          // 503 (sidecar down)
+        _ = services.AddExceptionHandler<RouteCatalogUnavailableExceptionHandler>();
         _ = services.AddExceptionHandler<GlobalExceptionHandler>();
 
         _ = services.AddHttpContextAccessor();

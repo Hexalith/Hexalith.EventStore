@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
+
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json.Serialization;
@@ -196,7 +198,7 @@ public sealed partial class AdminOperationalIndexHostedService(
         // Metadata discovery is advisory and may probe absent development modules. Isolate its target's
         // resilience circuit so an unavailable module cannot block ordinary domain-service delivery.
         HttpClient httpClient = httpClientFactory.CreateClient($"eventstore-domain-metadata:{registration.AppId}");
-        using HttpResponseMessage response = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+        using HttpResponseMessage response = await RouteCatalogRemoteCall.InvokeAsync(() => httpClient.SendAsync(httpRequest, cancellationToken)).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound) {
             Log.MetadataEndpointAbsent(logger, registration.AppId);
             return (true, null, []);
@@ -536,13 +538,13 @@ public sealed partial class AdminOperationalIndexHostedService(
         => string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
 
     private async Task WriteProjectionIndexAsync(AdminOperationalIndexSnapshot snapshot, CancellationToken ct) {
-        await daprClient.SaveStateAsync(_stateStoreName, "admin:projections:all", snapshot.Projections, cancellationToken: ct).ConfigureAwait(false);
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.SaveStateAsync(_stateStoreName, "admin:projections:all", snapshot.Projections, cancellationToken: ct)).ConfigureAwait(false);
         foreach ((string tenantId, List<ProjectionStatus> scoped) in snapshot.TenantProjections) {
-            await daprClient.SaveStateAsync(
+            await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.SaveStateAsync(
                 _stateStoreName,
                 $"admin:projections:{tenantId}",
                 scoped.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList(),
-                cancellationToken: ct).ConfigureAwait(false);
+                cancellationToken: ct)).ConfigureAwait(false);
         }
     }
 
@@ -588,11 +590,11 @@ public sealed partial class AdminOperationalIndexHostedService(
             return false;
         }
 
-        await daprClient.SaveStateAsync(
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.SaveStateAsync(
             _stateStoreName,
             $"admin:query-types:{domain}",
             normalized,
-            cancellationToken: ct).ConfigureAwait(false);
+            cancellationToken: ct)).ConfigureAwait(false);
         return true;
     }
 
@@ -602,9 +604,9 @@ public sealed partial class AdminOperationalIndexHostedService(
         IReadOnlyList<CommandTypeInfo> commands,
         IReadOnlyList<AggregateTypeInfo> aggregates,
         CancellationToken ct) {
-        await daprClient.SaveStateAsync(_stateStoreName, $"admin:type-catalog:events:{scope}", events, cancellationToken: ct).ConfigureAwait(false);
-        await daprClient.SaveStateAsync(_stateStoreName, $"admin:type-catalog:commands:{scope}", commands, cancellationToken: ct).ConfigureAwait(false);
-        await daprClient.SaveStateAsync(_stateStoreName, $"admin:type-catalog:aggregates:{scope}", aggregates, cancellationToken: ct).ConfigureAwait(false);
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.SaveStateAsync(_stateStoreName, $"admin:type-catalog:events:{scope}", events, cancellationToken: ct)).ConfigureAwait(false);
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.SaveStateAsync(_stateStoreName, $"admin:type-catalog:commands:{scope}", commands, cancellationToken: ct)).ConfigureAwait(false);
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.SaveStateAsync(_stateStoreName, $"admin:type-catalog:aggregates:{scope}", aggregates, cancellationToken: ct)).ConfigureAwait(false);
     }
 
     internal static bool IsProjectionActorStateKey(string value)

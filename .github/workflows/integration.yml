@@ -155,6 +155,52 @@ jobs:
           retry_wait_seconds: 15
           command: docker pull postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
 
+      # The catalog fixture owns a matching mTLS Sentry/runtime pair from the existing
+      # candidate lock. It does not replace this job's Dapr installation or other fixtures.
+      - name: Verify catalog Docker selection without daemon access
+        run: python3 -m unittest discover -s tools/tests -p 'test_route_catalog_ci_tools.py'
+
+      - name: Prepare pinned route catalog Development tools
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, io, json, os, pathlib, subprocess, tarfile, urllib.parse, urllib.request
+          profile = json.loads(pathlib.Path('deploy/dapr/qualification/runtime-lock.json').read_text())
+          docker_environment = os.environ.copy()
+          context, host = docker_environment.get('DOCKER_CONTEXT'), docker_environment.get('DOCKER_HOST')
+          if context or not host:
+              inspection_environment = docker_environment.copy()
+              inspection_environment.pop('DOCKER_CONTEXT', None)
+              inspection_environment.pop('DOCKER_HOST', None)
+              command = ['docker', 'context', 'inspect'] + ([context] if context else [])
+              inspection = subprocess.run(command, check=True, timeout=30, capture_output=True, text=True, env=inspection_environment)
+              endpoint = json.loads(inspection.stdout)[0]['Endpoints']['docker']['Host']
+              if context and host and host != endpoint:
+                  raise SystemExit('Conflicting Docker context and host selections refuse catalog tool preparation')
+          else:
+              endpoint = host
+          address = urllib.parse.urlsplit(endpoint)
+          if address.scheme != 'unix' or address.netloc or not address.path.startswith('/'):
+              raise SystemExit('Catalog tool preparation requires a local Unix Docker endpoint')
+          for name in ('DOCKER_CONTEXT', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH'):
+              docker_environment.pop(name, None)
+          docker_environment['DOCKER_HOST'] = endpoint
+          for image in (profile['images']['sentry']['reference'], 'redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf'):
+              subprocess.run(['docker', '--host', endpoint, 'pull', image], check=True, timeout=300, env=docker_environment)
+          version = profile['runtime']['version']
+          data = urllib.request.urlopen(f'https://github.com/dapr/dapr/releases/download/v{version}/daprd_linux_amd64.tar.gz', timeout=60).read()
+          with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
+              member = next(m for m in archive.getmembers() if pathlib.PurePosixPath(m.name).name == 'daprd' and m.isfile())
+              binary = archive.extractfile(member).read()
+          assert hashlib.sha256(binary).hexdigest() == profile['runtime']['binarySha256'], 'catalog fixture runtime checksum mismatch'
+          destination = pathlib.Path(os.environ['RUNNER_TEMP']) / 'route-catalog-tools' / 'daprd'
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          destination.write_bytes(binary)
+          destination.chmod(0o755)
+          with open(os.environ['GITHUB_ENV'], 'a') as target:
+              target.write(f'EVENTSTORE_ROUTE_CATALOG_DAPRD={destination}\n')
+          PY
+
       - name: Run Live-Sidecar Integration Tests
         run: |
           dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ \
