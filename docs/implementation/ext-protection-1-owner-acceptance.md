@@ -1,6 +1,47 @@
 # EXT-PROTECTION-1 owner acceptance packet
 
-## Source delivery proposal — 2026-10-29
+## Parent merged-source review candidates — 2026-10-29
+
+The corrected source and [parent validation](../../../platform/docs/implementation/ext-protection-1-parent-merged-2026-10-29/verification.json) are prepared for independent review. Platform `06751feca75a83c892d8cef53b35c7a2c5c58ddb` and EventStore `6068b7771372eb0b05ed60bc91002a1c6b4486ba` are complete unpublished local source candidates, retained as `refs/ext-protection-1/source-20261029-loop1` in each repository. [Exact source/blob coverage](../../../platform/docs/implementation/ext-protection-1-parent-merged-2026-10-29/source-candidates.json) includes all implementation/verifier corrections and their test dependencies. Neither shared main branch moved and unrelated dirty changes were excluded. Acceptance documents accompany the candidates separately. Proposed integration date is `2026-11-02`; neither target/date nor a profile is owner-accepted. The older candidate pair stays withdrawn.
+
+Merged results are Protection 318 total/312 executed/six native-only skips; EventStore 415/415; standalone payload protection 892/892; offline verifier 90/90; harness/bootstrap 5/5; zero-warning/error host and role builds. The retained actual native custody suite passes 5/5, with unchanged task-scoped native sources and verified cleanup. Counts overlap. The historical component records below retain their dated findings; this section supersedes their source-count/candidate statements only. Full-copy/nonrollback/restore acceptance and a complete installed 41-case run remain required. G1–G7 are not declared accepted, and the Agents register remains Uncommitted.
+
+The [current delivery note](../../../platform/docs/implementation/ext-protection-1-erc-component-delivery-2026-10-29.md) supplies the clause map, unchanged plan hash, unrun executable command and exact missing installed inputs. No Live/OQ/Agents, cluster/production or Git remote operation occurred. Parent local staging and unpublished candidate creation are the only Git mutations in this audit.
+
+The [snapshot grammar continuation](ext-protection-1-delivery-2026-10-29-verifier-grammar.md) and [machine packet](ext-protection-1-delivery-2026-10-29-verifier-grammar.json) record seven additional verifier regressions and their correction: 87 final offline tests pass, and all 26 grammar fixtures agree with the fresh production C# parser. The unchanged 41-case plan remains Source-only. Full delivery stays in progress with G1–G7 open; both earlier targets remain withdrawn and concurrent Platform repairs remain independently owned.
+
+## Current acceptance correction — 2026-10-29
+
+The [EC-3 verifier continuation](ext-protection-1-delivery-2026-10-29-verifier-ec3.md) and [separate machine packet](ext-protection-1-delivery-2026-10-29-verifier-ec3.json) record the local reserved-snapshot correction: 24 pre-correction false accepts reproduced, all 80 final offline verifier/interoperability tests pass, and the unchanged 41-case plan remains Source-only. The concurrent Platform review remains open; this component correction supplies no replacement accepted target or installed qualification.
+
+**BlockedNotSubmitted.** The [resumed delivery audit](ext-protection-1-delivery-2026-10-29-resumed.md) supersedes the target proposals below. EventStore candidate `5945ba8b3575f76597075e460bb9a973453272ea` omits the historical mixed-root ownership-read correction; the current source also corrects cancellation during mixed-root materialization. Concurrent [Platform review](../../../platform/_bmad-output/implementation-artifacts/spec-ext-protection-1-production-engine.md#review-triage-log) withdrew both candidates and identified source pass-path, recovery, per-copy evidence, holder-lifetime, bounded-history and missing-input defects. Replacement candidates must contain every runtime/verifier correction and receive the required review before a complete owner record can be proposed.
+
+The earlier proposal remains historical evidence. Complete accepted EventStore/Platform targets, integration date and installed profile/engine/role/trust bindings remain unresolved. The proposed date `2026-11-02` remains unaccepted. Current Platform source supplies the custody, authority, composition and qualification-role APIs; the verified source defects, their independent installation, full-copy/nonrollback/restore qualification and complete installed 41-case run remain outstanding. No Live or owner acceptance occurs through this correction; the register stays `Uncommitted` and the full delivery stays `in-progress`.
+
+## Re-derived source delivery — 2026-10-29
+
+**Implementation source is prepared for parent audit; status is in-progress.** The source candidates and proposed date in the historical proposal below are withdrawn. This handback proposes no replacement immutable target, accepted date or profile hash. It edits no Agents/register record and makes no Committed/Available declaration.
+
+The [current Platform delivery note](../../../platform/docs/implementation/ext-protection-1-erc-component-delivery-2026-10-29.md) and [re-derived evidence](../../../platform/docs/implementation/ext-protection-1-rederived-2026-10-29/verification.json) supersede the historical source-gap, source-candidate and test-count statements below. Full-copy sanitization and the complete independently installed 41-case run remain unqualified; production destruction must remain denied by the independent copy-policy authority until accepted.
+
+| Re-derived requirement | Concrete source and executed coverage |
+| --- | --- |
+| Bounded history and exact originals | Immutable ERC transition/holder archives, tenant-CAS ancestry/current pointer, restrictive identity index, complete legacy migration or refusal; sustained growth, stale restore and prewrite/ambiguity regressions |
+| Real erased/copy evidence | Source-owned final per-copy replay, exact native location/ciphertext binding and read-only persisted observer; every erased plan branch executes real engine/driver replay, copy substitution rejects |
+| Exact pending recovery | Actual role service/journal, provider/owner reconciliation, conditional owner and refused-guard originals, byte-identical copy receipt identities; lost trim/native/aggregate results and changed digest regressions |
+| Hold/holder ordering | Both P21 guard/ERC race orderings and fresh continuation; production idle holder worker, second-owner erase, undisposed-derived-use refusal |
+| Missing input and actual callers | Native digest/inventory/source/current-permission preflight; configured EventPersister graph and concrete SnapshotManager partial-erasure caller tests |
+| P13 closed pass path | Exactly two expected targets, distinct actual accepted-set control root, actual signed singleton consumption and per-copy replay; complete emitted observation passes the unchanged verifier, with negative mutations |
+| Native transport | Redirect refusal, streamed-body deadline, bounded head/response framing and same-ERC archive ACLs; all five native cases plus archive/legacy precheck, verified cleanup |
+
+The final EventStore regression is 413 cases: the complete prior 317 plus 13 persistence and 83 SnapshotManager cases. The temporary 315 selection omitted 98 replacement-authority cases and added those 96 caller cases; the final union restores all prior coverage. Exact command filters, per-class XML, runtime/source pins and all final counts are retained in the evidence.
+
+The missing installed references and unrun executable entry point remain listed in the [acceptance boundary](../../../platform/docs/implementation/ext-protection-1-erc-component-delivery-2026-10-29.md#acceptance-boundary-and-remaining-inputs). No Live/OQ/Agents, cluster provisioning, production OpenBao or Git mutation occurred. Frozen intent and the original baseline commits remain unchanged. The following proposal is historical and withdrawn.
+
+
+## Historical source delivery proposal — 2026-10-29 (withdrawn)
+
+**WITHDRAWN after independent review:** verified source pass-path, recovery, copy-correlation, holder-lifetime, retention and missing-input defects require re-derivation. The commits in the historical proposal table below are observations only and must not be accepted. No replacement complete target is proposed until corrected source passes parent audit and review. The implementation is in progress; installed qualification remains pending.
 
 The implementation and component/native verification are delivered for independent review. Production qualification remains pending: historical Raft/WAL/storage/memory/operator copies and the complete independently installed 41-case run are unqualified. The independent copy-policy authority must deny destruction until its full-copy evidence is accepted. EXT-PROTECTION-1 remains `Uncommitted`; this packet changes no Agents/register record or cluster state.
 

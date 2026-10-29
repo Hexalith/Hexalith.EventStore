@@ -11,6 +11,39 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 /// <summary>Authenticates retained mixed-root ciphertext and checks historical ownership before returning readable state.</summary>
 public sealed class InteractionMixedSnapshotProtectionTests
 {
+    /// <summary>Materialization cancellation cannot expose the reconstructed state or change retained ciphertext.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancellationDuringMixedSnapshotMaterializationKeepsTheCallerToken(bool replay)
+    {
+        var fixture = new InteractionMixedSnapshotFixture();
+        var write = await fixture.Service.ProtectSnapshotAsync(fixture.Owner, fixture.Source, fixture.StateType, fixture.Occurrence,
+            TestContext.Current.CancellationToken);
+        await fixture.Service.CompletePayloadProtectionAsync(write.CompletionContext!, PayloadProtectionPersistenceOutcome.Persisted,
+            TestContext.Current.CancellationToken);
+        byte[][] originals = fixture.Records.Select(record => record.Sealed!.PayloadBytes.ToArray()).ToArray();
+        using var cancellation = new CancellationTokenSource();
+        var options = new JsonSerializerOptions(JsonSerializerOptions.Default);
+        options.Converters.Add(new CancellingMixedSnapshotConverter(cancellation));
+        var stateType = options.GetTypeInfo(typeof(JsonElement));
+
+        var error = await Should.ThrowAsync<OperationCanceledException>(() => replay
+            ? fixture.Service.TryReplaySnapshotAsync(fixture.Owner, write.ProtectionResult.State, write.ProtectionResult.Metadata,
+                stateType, fixture.Occurrence, cancellation.Token)
+            : fixture.Service.TryUnprotectSnapshotAsync(fixture.Owner, write.ProtectionResult.State, write.ProtectionResult.Metadata,
+                stateType, fixture.Occurrence, cancellation.Token));
+
+        error.CancellationToken.ShouldBe(cancellation.Token);
+        for (int index = 0; index < originals.Length; index++)
+        {
+            fixture.Records[index].Sealed!.PayloadBytes.ShouldBe(originals[index]);
+            fixture.Records[index].WriterState.ShouldBe(InteractionOccurrenceWriterState.Active);
+        }
+        fixture.OwnedBuffers.ShouldNotBeEmpty();
+        fixture.OwnedBuffers.All(bytes => bytes.All(value => value == 0)).ShouldBeTrue();
+    }
+
     /// <summary>The actual engine preserves original per-root ciphertext, completion and nested array state across retry.</summary>
     [Fact]
     public async Task MixedSnapshotRoundtripAndRetryKeepBothOriginalCiphertexts()

@@ -1335,23 +1335,52 @@ def snapshot_record_envelopes(protected, target):
     raw = base64.b64decode(protected['SkeletonBytes'], validate=True)
     require(raw and len(raw) <= 1048576 and base64.b64encode(raw).decode() == protected['SkeletonBytes'], 'SNAPSHOT_SKELETON_INVALID')
     skeleton = strict_json(raw)
+    # Match BoundedJsonDocument before interpreting ownership, including objects the
+    # layout walk treats as leaves. Depth counts open containers; nodes include scalars.
+    pending, nodes = [(skeleton, 0)], 0
+    while pending:
+        node, depth = pending.pop()
+        nodes += 1
+        require(nodes <= 65536, 'SNAPSHOT_SKELETON_INVALID')
+        if isinstance(node, (dict, list)):
+            require(depth < 64, 'SNAPSHOT_SKELETON_INVALID')
+            if isinstance(node, dict):
+                require(not {'$pdenc', '$enc'} & set(node), 'SNAPSHOT_SKELETON_INVALID')
+                children = node.values()
+            else:
+                children = node
+            pending.extend((child, depth + 1) for child in children)
     geometry = []
     def visit(node, path=''):
         if isinstance(node, list):
             for index, child in enumerate(node):
                 visit(child, path + '/' + str(index))
         elif isinstance(node, dict):
+            target_fields = {'TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias'}
+            if any(key.lower() == 'targetprotectionkeyalias' for key in node):
+                require(set(node) == target_fields and node['TenantId'] == target['TenantId'], 'SNAPSHOT_SKELETON_INVALID')
+                require(all(isinstance(value, str) and bool(value.strip()) for value in node.values()), 'SNAPSHOT_TARGET_INVALID')
+                try:
+                    for value in node.values():
+                        value.encode('utf-8')
+                except UnicodeError:
+                    raise Failed('SNAPSHOT_TARGET_INVALID') from None
             addressed = node.get('Target')
-            if isinstance(addressed, dict) and 'TargetProtectionKeyAlias' in addressed and 'Value' in node:
+            envelope = any(key.lower() == 'target' and isinstance(child, dict)
+                           and any(member.lower() == 'targetprotectionkeyalias' for member in child)
+                           for key, child in node.items()) and any(key.lower() == 'value' for key in node)
+            if envelope:
                 require(set(node) == {'Target', 'Value'} and node['Value'] is None
-                        and set(addressed) == {'TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias'}
+                        and isinstance(addressed, dict) and set(addressed) == target_fields
                         and addressed['TenantId'] == target['TenantId'], 'SNAPSHOT_SKELETON_INVALID')
                 for value in addressed.values():
                     identity_text(value, 'SNAPSHOT_TARGET_INVALID', byte_bound=True)
                 geometry.append((path + '/Value', addressed))
             else:
                 for key, child in node.items():
-                    require(key.lower() != 'protectedcontent' or key == 'ProtectedContent', 'SNAPSHOT_SKELETON_INVALID')
+                    require(key.lower() != 'protectedcontent' or (key == 'ProtectedContent' and isinstance(child, dict)
+                            and set(child) == {'Target', 'Value'} and isinstance(child['Target'], dict)
+                            and 'TargetProtectionKeyAlias' in child['Target'] and child['Value'] is None), 'SNAPSHOT_SKELETON_INVALID')
                     visit(child, path + '/' + key.replace('~', '~0').replace('/', '~1'))
     visit(skeleton)
     entries = protected['Entries']

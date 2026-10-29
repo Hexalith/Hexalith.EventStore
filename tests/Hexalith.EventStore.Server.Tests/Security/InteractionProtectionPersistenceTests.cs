@@ -1,5 +1,7 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Dapr.Client;
 
@@ -198,11 +200,94 @@ public sealed class InteractionProtectionPersistenceTests
         fixture.Occurrences.Keys.WriteRoots.ShouldBe(1);
     }
 
+    /// <summary>Server commit/retry and transported cache replay preserve each enrolled root, including partial erasure.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EnrolledMixedSnapshotCommitsOriginalCiphertextsAndReplaysFromSerializedCache(bool eraseFirst)
+    {
+        var fixture = new InteractionMixedSnapshotPersistenceFixture();
+        var state = new InMemoryStateManager();
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), NullLogger<SnapshotManager>.Instance, fixture.Service);
+        List<PayloadProtectionCompletionContext> completions = [];
+        (await manager.StageSnapshotAsync(fixture.Owner, 1, fixture.Source, state, JsonSerializerOptions.Web, SnapshotTestLimits.ForState(),
+            "mixed", TestContext.Current.CancellationToken, true, completions)).ShouldBeTrue();
+        state.CommittedState.ShouldBeEmpty();
+        PayloadProtectionCompletionContext originalCompletion = completions.ShouldHaveSingleItem();
+        originalCompletion.SnapshotEntryManifest.ShouldBe(fixture.Entries);
+        originalCompletion.SnapshotContainerDigest.ShouldBe(Convert.ToHexString(SHA256.HashData(fixture.Skeleton)));
+        originalCompletion.SnapshotEntries!.Length.ShouldBe(2);
+        fixture.Records.All(record => record.WriterState == InteractionOccurrenceWriterState.SealedPending).ShouldBeTrue();
+        await fixture.Service.AcquirePayloadProtectionCompletionLeaseAsync(originalCompletion, TestContext.Current.CancellationToken);
+        await state.SaveStateAsync(TestContext.Current.CancellationToken);
+        await fixture.Service.CompletePayloadProtectionAsync(originalCompletion, PayloadProtectionPersistenceOutcome.Persisted,
+            TestContext.Current.CancellationToken);
+
+        var stored = state.CommittedState[fixture.Owner.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
+        var carrier = stored.State.ShouldBeOfType<ProtectedSnapshotEntriesV2>();
+        carrier.SkeletonBytes.ShouldBe(fixture.Skeleton);
+        byte[] originalCarrier = JsonSerializer.SerializeToUtf8Bytes(carrier, JsonSerializerOptions.Web);
+        Encoding.UTF8.GetString(originalCarrier).ShouldNotContain("secret-");
+        Encoding.UTF8.GetString(carrier.SkeletonBytes).ShouldNotContain("secret-");
+        byte[][] originals = fixture.Records.Select(record => record.Sealed!.PayloadBytes.ToArray()).ToArray();
+        for (int index = 0; index < originals.Length; index++)
+        {
+            carrier.Entries[index].Path.ShouldBe(fixture.Entries[index].Path);
+            carrier.Entries[index].Target.ShouldBe(fixture.Entries[index].Target);
+            carrier.Entries[index].Protected.ShouldBe(JsonSerializer.Deserialize<ProtectedSnapshotPayloadV2>(originals[index]));
+            fixture.Records[index].Request.Identity.ShouldBe(fixture.Bindings[index].Identity);
+        }
+        var loaded = (await manager.LoadSnapshotAsync(fixture.Owner, state, "before-erasure", TestContext.Current.CancellationToken)).ShouldNotBeNull();
+        JsonNode.DeepEquals(JsonSerializer.SerializeToNode(loaded.State), JsonSerializer.SerializeToNode(fixture.Source)).ShouldBeTrue();
+
+        completions.Clear();
+        (await manager.StageSnapshotAsync(fixture.Owner, 1, fixture.Source, state, JsonSerializerOptions.Web, SnapshotTestLimits.ForState(),
+            "retry", TestContext.Current.CancellationToken, true, completions)).ShouldBeTrue();
+        var retryCompletion = completions.ShouldHaveSingleItem();
+        JsonSerializer.SerializeToUtf8Bytes(retryCompletion).ShouldBe(JsonSerializer.SerializeToUtf8Bytes(originalCompletion));
+        await fixture.Service.AcquirePayloadProtectionCompletionLeaseAsync(retryCompletion, TestContext.Current.CancellationToken);
+        await state.SaveStateAsync(TestContext.Current.CancellationToken);
+        await fixture.Service.CompletePayloadProtectionAsync(retryCompletion, PayloadProtectionPersistenceOutcome.Persisted,
+            TestContext.Current.CancellationToken);
+        var retry = state.CommittedState[fixture.Owner.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
+        JsonSerializer.SerializeToUtf8Bytes(retry.State, JsonSerializerOptions.Web).ShouldBe(originalCarrier);
+
+        // Dapr returns a serialized cell after activation, whereas the original turn caches SnapshotRecord.
+        JsonElement cached = JsonSerializer.SerializeToElement(retry, JsonSerializerOptions.Web);
+        byte[] originalCache = JsonSerializer.SerializeToUtf8Bytes(cached);
+        await state.SetStateAsync(fixture.Owner.SnapshotKey, cached, TestContext.Current.CancellationToken);
+        await state.SaveStateAsync(TestContext.Current.CancellationToken);
+        fixture.EraseFirst = eraseFirst;
+        if (eraseFirst)
+        {
+            (await fixture.Service.TryUnprotectSnapshotAsync(fixture.Owner, retry.State, retry.ProtectionMetadata,
+                SnapshotStateJsonContext.Default.JsonElement, fixture.Occurrence, TestContext.Current.CancellationToken)).IsUnreadable.ShouldBeTrue();
+        }
+        var restarted = new SnapshotManager(Options.Create(new SnapshotOptions()), NullLogger<SnapshotManager>.Instance, fixture.Service);
+        var replay = (await restarted.LoadSnapshotAsync(fixture.Owner, state, "cache-replay", TestContext.Current.CancellationToken)).ShouldNotBeNull();
+        var restored = replay.State.ShouldBeOfType<JsonElement>();
+        restored.GetProperty("Safe").GetInt32().ShouldBe(7);
+        var first = restored.GetProperty("Entries")[0].GetProperty("ProtectedContent").GetProperty("Value");
+        if (eraseFirst) { first.GetProperty("State").GetString().ShouldBe("Erased"); }
+        else { first.GetProperty("Secret").GetString().ShouldBe("secret-a"); }
+        restored.GetProperty("Entries")[1].GetProperty("ProtectedContent").GetProperty("Value").GetProperty("Secret").GetString().ShouldBe("secret-b");
+        JsonSerializer.SerializeToUtf8Bytes(state.CommittedState[fixture.Owner.SnapshotKey]).ShouldBe(originalCache);
+        fixture.Keys.Leases.ShouldBe(2);
+        fixture.Keys.WriteRoots.ShouldBe(2);
+        for (int index = 0; index < originals.Length; index++)
+        {
+            fixture.Records[index].WriterState.ShouldBe(InteractionOccurrenceWriterState.Active);
+            fixture.Records[index].Sealed!.PayloadBytes.ShouldBe(originals[index]);
+        }
+        fixture.OwnedBuffers.ShouldNotBeEmpty();
+        fixture.OwnedBuffers.All(bytes => bytes.All(value => value == 0)).ShouldBeTrue();
+    }
+
     [Theory]
     [InlineData("interaction-a", "interaction-b")]
     [InlineData("alias-a", "alias-b")]
     [InlineData("tenant-a", "tenant-b")]
-    public async Task MixedTargetDirectorySnapshotStagesNothingAndConsultsNoAuthority(string before, string after)
+    public async Task UnenrolledMixedTargetDirectorySnapshotStagesNothingBeforeRegistryOrKeyEffects(string before, string after)
     {
         var fixture = SnapshotFixture();
         var state = new InMemoryStateManager();
@@ -215,7 +300,31 @@ public sealed class InteractionProtectionPersistenceTests
         await state.SaveStateAsync(TestContext.Current.CancellationToken);
         state.CommittedState.ShouldBeEmpty();
         completions.ShouldBeEmpty();
-        fixture.Bindings.ReceivedCalls().ShouldBeEmpty();
+        if (before == "tenant-a")
+        {
+            fixture.Bindings.ReceivedCalls().ShouldBeEmpty();
+        }
+        else
+        {
+            var target = fixture.Binding.Identity.Target;
+            SnapshotProtectionEntry[] expected =
+            [
+                new("/Nested/0/ProtectedContent/Value", target),
+                new("/Nested/1/ProtectedContent/Value", target with
+                {
+                    AgentInteractionId = target.AgentInteractionId.Replace(before, after, StringComparison.Ordinal),
+                    TargetProtectionKeyAlias = target.TargetProtectionKeyAlias.Replace(before, after, StringComparison.Ordinal),
+                }),
+            ];
+            JsonNode skeleton = JsonNode.Parse(source.RootElement.GetRawText())!;
+            foreach (JsonNode? entry in skeleton["Nested"]!.AsArray()) { entry!["ProtectedContent"]!["Value"] = null; }
+            string digest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(skeleton)));
+            fixture.Bindings.ReceivedCalls().ShouldHaveSingleItem().GetMethodInfo().Name
+                .ShouldBe(nameof(Hexalith.EventStore.PayloadProtection.IInteractionProtectionBindingProvider.ResolveSnapshotEntriesAsync));
+            await fixture.Bindings.Received(1).ResolveSnapshotEntriesAsync(fixture.Binding.Identity.Owner, fixture.Occurrence,
+                digest, Arg.Is<IReadOnlyList<SnapshotProtectionEntry>>(entries => entries.SequenceEqual(expected)), true,
+                Arg.Any<CancellationToken>());
+        }
         fixture.Occurrences.Registry.ReceivedCalls().ShouldBeEmpty();
         fixture.Occurrences.Record.ShouldBeNull();
         fixture.Occurrences.OwnedBuffers.ShouldBeEmpty();

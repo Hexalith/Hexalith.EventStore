@@ -101,7 +101,9 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
                 var restoredLayout = SnapshotEntryLayout.Read(clear, owner.TenantId, false, token);
                 if (!restoredLayout.Skeleton.AsSpan().SequenceEqual(layout.Skeleton) || !restoredLayout.Entries.SequenceEqual(layout.Entries))
                 { return Unreadable(metadata); }
-                return SnapshotUnprotectionOutcome.Readable(JsonSerializer.Deserialize(clear, type) ?? throw new PayloadProtectionFormatException(), metadata);
+                object unprotected = JsonSerializer.Deserialize(clear, type) ?? throw new PayloadProtectionFormatException();
+                token.ThrowIfCancellationRequested();
+                return SnapshotUnprotectionOutcome.Readable(unprotected, metadata);
             }
             finally { CryptographicOperations.ZeroMemory(clear); }
         }
