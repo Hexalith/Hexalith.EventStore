@@ -1,11 +1,19 @@
-# Production workload resource-binding authority
+# Workload resource-binding authority
 
-The opt-in EventStore HTTP host can now issue short-lived, per-request RSA
-workload assertions after authenticating a protected client and checking a
-current server-configured grant. This is technical capability only. No production
-Timesheets signer, client grant, endpoint or deployment is enrolled by this change.
-The sole owner may review this project document; operational facts still require
-configuration and observations.
+Conforming EventStore HTTP hosts refuse embedded workload-authority activation in
+every environment. Production and Staging cannot enable or map the embedded
+issuer. No anonymous issuer exception is added to the shared probes-only host
+boundary. Production workload issuance belongs to the external platform/identity
+authority owner, including signer custody, grants, trust publication, rotation,
+and deployment approval; this repository supplies receiver and outbound-client
+contracts, not production enrollment authority.
+
+The embedded implementation survives only as an explicitly nonconforming
+Development fixture with both `Authentication:WorkloadAuthority:Enabled=true` and
+`Authentication:WorkloadAuthority:NonconformingDevelopmentFixture=true`. Such a
+fixture cannot enroll shared conforming HTTP-host security and supplies no host
+conformance or production authority. Its HTTPS bootstrap and synthetic signing
+material exist for bounded protocol/cryptographic tests.
 
 The token request uses OAuth client credentials plus the bounded
 [authorization_details profile](https://www.rfc-editor.org/rfc/rfc9396.html).
@@ -73,23 +81,19 @@ Owner-query and stream-read proofs accept aggregate IDs up to 256 characters.
 The independent 200-character principal and proof Tenant/domain limits, and the
 aggregate identity's 64-character Tenant/domain validation, remain unchanged.
 
-The host maps `/workload-authority/token`, `/workload-authority/jwks` and
-`/workload-authority/.well-known/openid-configuration` only when
-`Authentication:WorkloadAuthority:Enabled=true`. Its default is disabled.
-The configured issuer path must match the mapped prefix at startup. The standard
-EventStore host maps `/workload-authority`; a different issuer path is rejected.
-An explicitly composed technical host may map the matching custom prefix.
-Changing the issuer path after mapping fails closed rather than advertising
-nonexistent endpoints. Discovery, verification keys and token requests each use
-one fixed, bounded partition in both host global limiters, isolated from unrelated
-anonymous traffic. These three partitions attest no client identity: form fields,
-request paths and user subjects cannot create additional authority buckets.
-Production token requests require HTTPS at the application. TLS termination must
-be configured directly in Kestrel or through an already approved trusted proxy;
-never enable unrestricted forwarded-header trust. Credentials stay in a form
-body; token responses use `Cache-Control: no-store`. Form size, field set,
-duplicate fields and profile structure are bounded and checked before issuance.
-The endpoint authenticates its own client credential rather than user cookies.
+Only the explicitly nonconforming Development fixture may map
+`/workload-authority/token`, `/workload-authority/jwks`, and
+`/workload-authority/.well-known/openid-configuration` through the existing
+registration/mapping helpers. The configured HTTPS issuer path must match the
+mapped prefix; changing it after mapping fails closed. A conforming host rejects
+this activation even when the fixture flag is set. No new enrollment protocol is
+introduced.
+
+Fixture token requests require HTTPS at the application. Credentials stay in a
+bounded form body; exact fields, duplicate fields, profile structure, and client
+credentials are checked before issuance. Token responses use
+`Cache-Control: no-store`. Production clients instead use the externally owned
+HTTPS authority through the same validated outbound contract.
 
 A protected PKCS#12 certificate supplies RSA signing (at least 2048 bits,
 `RS256`, digital-signature usage, current validity). The application never generates
@@ -134,13 +138,13 @@ by grant and signing-certificate expiry. Emergency retirement must block the
 client at the receiver/network or retire the trust key as well; merely removing
 a grant cannot retroactively invalidate a JWT.
 
-## Exact production inputs and operational boundary
+## External production authority inputs and operational boundary
 
-The target deployment preparation must bind these inputs before any live action:
+The external authority owner must establish these inputs before any live action; they do not authorize activating the embedded EventStore issuer:
 
-- The selected environment/namespace and immutable EventStore artifact containing
-  this implementation, plus an exact broker HTTPS issuer and the existing
-  validated TLS route/client trust. A public application JWT issuer and this
+- The selected environment/namespace, immutable EventStore receiver artifact,
+  and the external authority's exact HTTPS issuer and existing validated TLS
+  route/client trust. A public application JWT issuer and this
   workload trust must not be silently interchanged.
 - An authority-approved key id and protected existing signer reference,
   certificate public fingerprint/JWKS, custody and actual validity/revocation
@@ -156,7 +160,7 @@ The target deployment preparation must bind these inputs before any live action:
   expected effects, post-apply read-only verification and rollback/disable
   procedure for owner approval. This source change authorizes no live action.
 
-Disabling the feature removes the mapped broker on the next host rollout.
+Disabling the fixture removes its bootstrap on the next fixture restart. External production issuer rollback remains the authority owner's responsibility.
 Before rollback, retain immutable artifact/configuration evidence, revoke the
 client/receiver access if required, and allow the maximum assertion lifetime to
 elapse. Never delete EventStore data or migrate projection state as an issuer
@@ -191,8 +195,10 @@ retiring the source snapshots and reports they depended on. Those runs do not
 establish current-source validation or deployed acceptance; proof is the
 current tests and CI.
 
-Production-mode tests use a temporary self-signed synthetic certificate and an
-in-memory HTTP transport. They exercise the actual broker, outbound client,
+Explicitly nonconforming Development issuer tests use a temporary self-signed
+synthetic certificate and an in-memory HTTP transport; independent receivers retain
+Production JWT validation controls. Production/Staging embedded-activation refusal
+is tested directly. They exercise the actual broker, outbound client,
 cryptographic validation and mapped endpoint boundaries. They are local software
 validation only, not real TLS/client identity, current operational grants or
 runtime acceptance. Story 3.6 remains incomplete until its deployed acceptance

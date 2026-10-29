@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// <summary>Exercises strict SDK classification and the channel boundary with real routing and authorization.</summary>
 public sealed class HttpHostSecurityTests
 {
+    /// <summary>Verifies unclassified Endpoints Fail Startup In Either Mapping Order.</summary>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -27,6 +28,7 @@ public sealed class HttpHostSecurityTests
         await Should.ThrowAsync<InvalidOperationException>(() => app.StartAsync(TestContext.Current.CancellationToken)).ConfigureAwait(true);
     }
 
+    /// <summary>Verifies subscription Discovery Requires Actual Channel Token.</summary>
     [Theory]
     [InlineData(null, HttpStatusCode.Unauthorized)]
     [InlineData("wrong", HttpStatusCode.Unauthorized)]
@@ -41,6 +43,26 @@ public sealed class HttpHostSecurityTests
         if (token is not null) client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, token);
         using HttpResponseMessage response = await client.GetAsync("/dapr/subscribe", TestContext.Current.CancellationToken).ConfigureAwait(true);
         response.StatusCode.ShouldBe(expected);
+    }
+
+    /// <summary>Actual topic metadata cannot turn an anonymous probe route into an unguarded delivery endpoint.</summary>
+    [Fact]
+    public async Task TopicMarkedHealthHandlerIsDeniedBeforeExecution()
+    {
+        await using WebApplication app = Build();
+        app.UseRouting();
+        app.UseEventStoreHttpHostSecurity();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapGet("/alive", () => Results.Ok()).AllowAnonymous();
+        await app.StartAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+        int calls = 0;
+        app.MapPost("/health", () => { calls++; return Results.Ok(); })
+            .WithTopic("pubsub", "review.health").AllowAnonymous();
+        using HttpClient client = app.GetTestClient();
+        using HttpResponseMessage response = await client.PostAsync("/health", new StringContent("{}"), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        calls.ShouldBe(0);
     }
 
     private static WebApplication Build()

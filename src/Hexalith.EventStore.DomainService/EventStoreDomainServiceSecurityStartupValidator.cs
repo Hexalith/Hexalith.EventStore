@@ -39,7 +39,7 @@ internal sealed partial class EventStoreDomainServiceSecurityStartupValidator(
             {
                 var methods = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
                 if (EventStoreDomainServiceRoutes.TryGet(endpoint.RoutePattern.RawText, out _)
-                    && (methods is null || methods.HttpMethods.Contains("POST", StringComparer.OrdinalIgnoreCase))
+                    && (methods is null || methods.HttpMethods.Count == 0 || methods.HttpMethods.Contains("POST", StringComparer.OrdinalIgnoreCase))
                     && endpoint.Metadata.GetMetadata<DomainRouteCatalogGuardMetadata>() is null)
                     violations.Add($"{endpoint.RoutePattern.RawText}: canonical POST overrides must install the receiver catalog guard via RequireEventStoreDomainServicePolicy().");
             }

@@ -279,7 +279,7 @@ public static class EventStoreDomainServiceExtensions {
 
         ValidateDomainQueryHandlerRoutes(app.Services);
         app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
-        app.UseEventStoreHttpHostSecurity();
+        app.UseEventStoreDomainServiceEndpointSecurity();
         // Preserve the status-root contract without adding an anonymous endpoint (AD-16).
         _ = app.MapGet("/", () => "Hexalith EventStore domain service")
             .RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload);
@@ -358,7 +358,7 @@ public static class EventStoreDomainServiceExtensions {
     {
         ArgumentNullException.ThrowIfNull(app);
         app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
-        app.UseEventStoreHttpHostSecurity();
+        app.UseEventStoreDomainServiceEndpointSecurity();
         bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
         bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
         if (mapProjectionEndpoint)
@@ -882,7 +882,7 @@ public static class EventStoreDomainServiceExtensions {
 
     private static bool MatchesHttpMethod(RouteEndpoint endpoint, string httpMethod) {
         IHttpMethodMetadata? metadata = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
-        return metadata is null
+        return metadata is null || metadata.HttpMethods.Count == 0
             || metadata.HttpMethods.Contains(httpMethod, StringComparer.OrdinalIgnoreCase);
     }
 

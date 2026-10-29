@@ -51,10 +51,7 @@ public static class EventStoreHttpHostSecurityExtensions
     public static AuthorizationPolicy CreateHumanPolicy()
         => new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
             .RequireAuthenticatedUser()
-            .RequireAssertion(static context => IsHuman(context.User)
-                && (context.Resource is not HttpContext http
-                    || !http.Request.Headers.ContainsKey(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName)
-                        && http.Request.Headers.Authorization.Count <= 1))
+            .AddRequirements(new EventStoreHumanCredentialRequirement())
             .Build();
 
     /// <summary>Tests the validated principal's credential kind without deriving authority from request headers.</summary>

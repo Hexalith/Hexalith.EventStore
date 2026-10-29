@@ -23,7 +23,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Authentication;
 
-/// <summary>Production-mode tests use a disposable synthetic RSA authority; they establish no real deployment or enrollment.</summary>
+/// <summary>Explicitly nonconforming Development issuer fixtures retain production receiver and cryptographic controls.</summary>
 public sealed partial class WorkloadBindingAuthorityTests : IDisposable
 {
     private readonly string _path = Path.Combine(Path.GetTempPath(), "workload-authority-" + Guid.NewGuid().ToString("N") + ".pfx");
@@ -41,7 +41,7 @@ public sealed partial class WorkloadBindingAuthorityTests : IDisposable
         File.WriteAllBytes(_path, certificate.Export(X509ContentType.Pkcs12));
         _options = new WorkloadAuthorityOptions
         {
-            Enabled = true, Issuer = "https://authority.example.test/workload-authority", KeyId = "synthetic-test-key",
+            Enabled = true, NonconformingDevelopmentFixture = true, Issuer = "https://authority.example.test/workload-authority", KeyId = "synthetic-test-key",
             SigningCertificatePath = _path,
             Grants = [new WorkloadAuthorityGrant
             {
@@ -59,12 +59,12 @@ public sealed partial class WorkloadBindingAuthorityTests : IDisposable
         monitor.CurrentValue.Returns(_options);
         IHostEnvironment environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
-        _authority = new WorkloadBindingAuthority(monitor, environment, TimeProvider.System);
+        _authority = new WorkloadBindingAuthority(monitor, NonconformingDevelopmentEnvironment(), TimeProvider.System);
     }
 
     /// <summary>The production issuer signs only the exact authorized workload, operation and tenant, with verifiable RSA and bounded expiry.</summary>
     [Fact]
-    public async Task ProductionGrantProducesExactlyBoundAsymmetricAssertion()
+    public async Task NonconformingFixtureProducesExactlyBoundAsymmetricAssertion()
     {
         string token = Issue().ShouldNotBeNull();
         var parsed = new JsonWebToken(token);
@@ -215,7 +215,7 @@ public sealed partial class WorkloadBindingAuthorityTests : IDisposable
         _options.Grants[0].ExpiresAt = now.AddSeconds(grantSeconds);
         IOptionsMonitor<WorkloadAuthorityOptions> monitor = Substitute.For<IOptionsMonitor<WorkloadAuthorityOptions>>(); monitor.CurrentValue.Returns(_options);
         IHostEnvironment environment = Substitute.For<IHostEnvironment>(); environment.EnvironmentName.Returns(Environments.Production);
-        var authority = new WorkloadBindingAuthority(monitor, environment, new FakeTimeProvider(now));
+        var authority = new WorkloadBindingAuthority(monitor, NonconformingDevelopmentEnvironment(), new FakeTimeProvider(now));
         string token = authority.Issue("synthetic-client", _secret, Scope(Details()), Details()).ShouldNotBeNull();
         new JsonWebToken(token).ValidTo.ShouldBe(now.AddSeconds(expectedSeconds).UtcDateTime);
     }
@@ -257,8 +257,8 @@ public sealed partial class WorkloadBindingAuthorityTests : IDisposable
     [InlineData(false)]
     public async Task RealIssuerAuthenticatesAgainstMappedAuthority(bool correctSecret)
     {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
-        builder.WebHost.UseTestServer(); builder.Services.AddSingleton(_authority);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        builder.WebHost.UseTestServer(); EnrollNonconformingDevelopmentFixture(builder);
         await using WebApplication app = builder.Build(); app.MapEventStoreWorkloadBindingAuthority();
         await app.StartAsync(TestContext.Current.CancellationToken);
         using HttpClient http = app.GetTestClient();
@@ -281,8 +281,8 @@ public sealed partial class WorkloadBindingAuthorityTests : IDisposable
     public async Task AuthorityMapRejectsMismatchedIssuerPrefixAndReloadDrift()
     {
         _options.Issuer = "https://authority.example.test/custom-authority";
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
-        builder.WebHost.UseTestServer(); builder.Services.AddSingleton(_authority);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        builder.WebHost.UseTestServer(); EnrollNonconformingDevelopmentFixture(builder);
         await using WebApplication app = builder.Build();
         Should.Throw<InvalidOperationException>(() => app.MapEventStoreWorkloadBindingAuthority());
         app.MapEventStoreWorkloadBindingAuthority("/custom-authority");
@@ -378,7 +378,7 @@ public sealed partial class WorkloadBindingAuthorityTests : IDisposable
         provider.GetRequiredService<IWorkloadAssertionIssuer>().CanBindResources.ShouldBeFalse();
     }
 
-    /// <summary>The mapped production endpoint enforces HTTPS, bounded exact form fields, credentials, and no-store responses.</summary>
+    /// <summary>The explicit nonconforming Development bootstrap retains HTTPS, exact form, credential, and no-store checks.</summary>
     /// <param name="shape">The synthetic HTTP request variation.</param>
     /// <param name="status">Expected HTTP status.</param>
     [Theory]
@@ -389,11 +389,11 @@ public sealed partial class WorkloadBindingAuthorityTests : IDisposable
     [InlineData("bad-secret", 401)]
     [InlineData("oversized", 400)]
     [InlineData("bad-profile", 400)]
-    public async Task ProductionHttpEndpointEnforcesRequestBoundary(string shape, int status)
+    public async Task NonconformingDevelopmentBootstrapEnforcesHttpsAndRequestBoundary(string shape, int status)
     {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
         builder.WebHost.UseTestServer();
-        builder.Services.AddSingleton(_authority);
+        EnrollNonconformingDevelopmentFixture(builder);
         await using WebApplication app = builder.Build();
         app.MapEventStoreWorkloadBindingAuthority();
         await app.StartAsync(TestContext.Current.CancellationToken);
@@ -424,6 +424,32 @@ public sealed partial class WorkloadBindingAuthorityTests : IDisposable
 
     /// <inheritdoc/>
     public void Dispose() => File.Delete(_path);
+
+    /// <summary>Production and Staging cannot map bootstrap even with the Development-fixture flag.</summary>
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public async Task NonDevelopmentHostRefusesEmbeddedBootstrap(string environment)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
+        builder.Services.AddSingleton(_authority);
+        builder.Services.AddSingleton<IOptions<WorkloadAuthorityOptions>>(Options.Create(_options));
+        await using WebApplication app = builder.Build();
+        Should.Throw<InvalidOperationException>(() => app.MapEventStoreWorkloadBindingAuthority());
+    }
+
+    private void EnrollNonconformingDevelopmentFixture(WebApplicationBuilder builder)
+    {
+        builder.Services.AddSingleton(_authority);
+        builder.Services.AddSingleton<IOptions<WorkloadAuthorityOptions>>(Options.Create(_options));
+    }
+
+    private static IHostEnvironment NonconformingDevelopmentEnvironment()
+    {
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Development);
+        return environment;
+    }
 
     private string? Issue() => _authority.Issue("synthetic-client", _secret, Scope(Details()), Details());
     private static string Scope(WorkloadAuthorizationDetails details) => new WorkloadAssertionIssuerOptions().BuildScope(details.Audience, details.Operation);

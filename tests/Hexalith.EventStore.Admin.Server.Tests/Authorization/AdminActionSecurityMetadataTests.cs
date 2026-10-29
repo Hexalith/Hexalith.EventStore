@@ -141,6 +141,7 @@ public class AdminActionSecurityMetadataTests {
 
     private static int GetPolicyRank(string policy)
         => policy switch {
+            "EventStoreHuman" => -1,
             AdminAuthorizationPolicies.ReadOnly => 0,
             AdminAuthorizationPolicies.Operator => 1,
             AdminAuthorizationPolicies.Admin => 2,

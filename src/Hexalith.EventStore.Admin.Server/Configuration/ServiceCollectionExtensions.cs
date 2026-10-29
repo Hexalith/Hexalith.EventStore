@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions {
     private static readonly object HostAuthorizationHandlerKey = new();
     /// <summary>
     /// Adds the Admin API layer: authorization policies, claims transformation, tenant filter, and admin services.
-    /// The host (Story 14-4) MUST additionally call <c>AddAuthentication().AddJwtBearer()</c> and
+    /// The host MUST additionally register the shared HTTP host security policies, call <c>AddAuthentication().AddJwtBearer()</c>, and
     /// <c>AddControllers().AddApplicationPart(typeof(AdminStreamsController).Assembly)</c>.
     /// </summary>
     /// <param name="services">The service collection.</param>

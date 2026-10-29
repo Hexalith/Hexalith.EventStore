@@ -126,7 +126,7 @@ public sealed class WorkloadBindingAuthority(IOptionsMonitor<WorkloadAuthorityOp
         && string.IsNullOrEmpty(uri.UserInfo) && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment)
         && current.Issuer == uri.AbsoluteUri.TrimEnd('/')
         && (_mappedPrefix is null || uri.AbsolutePath == _mappedPrefix)
-        && (uri.Scheme == "https" || environment.IsDevelopment() && uri.Scheme == "http");
+        && uri.Scheme == "https";
 
     private static X509Certificate2 LoadCertificate(WorkloadAuthorityOptions current, DateTimeOffset now)
     {

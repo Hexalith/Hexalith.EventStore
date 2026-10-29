@@ -18,7 +18,7 @@ internal sealed class EventStoreHttpHostSecurityStartupValidator(
         }
         if (source.Endpoints is null)
         {
-            return;
+            throw new InvalidOperationException("Shared HTTP security requires UseEventStoreHttpHostSecurity() enrollment before startup.");
         }
         IReadOnlyList<string> failures = await EventStoreHttpEndpointInventory.ValidateAsync(
             source.Endpoints.DataSources.SelectMany(static item => item.Endpoints), services).ConfigureAwait(false);

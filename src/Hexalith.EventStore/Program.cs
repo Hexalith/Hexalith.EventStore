@@ -38,7 +38,6 @@ app.MapDefaultEndpoints();
 app.UseRouting();
 app.UseAuthentication();
 app.UseRateLimiter();
-app.UseCloudEvents();
 
 // OpenAPI/Swagger UI (gated by configuration, H13)
 if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
@@ -52,6 +51,7 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
 
 app.UseEventStoreHttpHostSecurity();
 app.UseAuthorization();
+app.UseCloudEvents();
 
 bool declarativeSubscriptions = app.Configuration.GetValue<bool>("Dapr:DeclarativeSubscriptions");
 app.MapControllers().Add(endpoint => ProjectionNotificationTopicAttribute.Bind(endpoint, app.Services, declarativeSubscriptions));

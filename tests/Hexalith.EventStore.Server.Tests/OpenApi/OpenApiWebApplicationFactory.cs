@@ -25,6 +25,22 @@ namespace Hexalith.EventStore.Server.Tests.OpenApi;
 /// from code metadata and does not require live DAPR calls.
 /// </summary>
 public class OpenApiWebApplicationFactory : WebApplicationFactory<EventStoreProgram> {
+    /// <summary>Documentation assertions run as a validated human; security tests explicitly clear the bearer.</summary>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        base.ConfigureClient(client);
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",
+            new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler().CreateToken(new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor
+            {
+                Issuer = "hexalith-dev", Audience = "hexalith-eventstore", Expires = DateTime.UtcNow.AddMinutes(5),
+                Claims = new Dictionary<string, object> { ["sub"] = "documentation-reader" },
+                SigningCredentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(
+                    new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(AuthenticationTestEnvironment.SigningKey)),
+                    Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256),
+            }));
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
         _ = builder.UseEnvironment("Development");

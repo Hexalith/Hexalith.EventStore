@@ -25,6 +25,10 @@ public sealed class AdminTestHost : IDisposable {
         _ = builder.Services.AddAdminApi(builder.Configuration);
         _ = builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
+        // This role/tenant fixture uses its explicit fake bearer scheme. Production host tests
+        // independently exercise the shared signed-JWT human policy and denying fallback.
+        _ = builder.Services.AddAuthorization(options => options.AddPolicy("EventStoreHuman", policy =>
+            policy.AddAuthenticationSchemes(TestAuthHandler.SchemeName).RequireAuthenticatedUser()));
         _ = builder.Services.AddControllers()
             .AddApplicationPart(typeof(AdminStreamsController).Assembly);
 

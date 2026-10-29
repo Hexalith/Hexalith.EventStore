@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.EventStore.Operations.Configuration;
+using Hexalith.EventStore.Operations.Models;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -40,11 +41,83 @@ internal static class OperationsHttpSecurityExtensions
         return services;
     }
 
+    /// <summary>Rejects missing, duplicate, or conflicting action-body tenant scope before model binding and effects.</summary>
+    internal static WebApplication UseOperationsHumanRelayScope(this WebApplication app)
+    {
+        app.Use(async (context, next) =>
+        {
+            var policies = context.GetEndpoint()?.Metadata.GetOrderedMetadata<IAuthorizeData>();
+            if (HttpMethods.IsPost(context.Request.Method)
+                && policies?.Any(static item => item.Policy?.StartsWith(PolicyPrefix, StringComparison.Ordinal) == true) == true)
+            {
+                if (context.Request.Query.ContainsKey("tenantId"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
+                // Allow every bounded identifier even at the JSON encoder's six-byte escaping expansion.
+                int maxBytes = checked(1024 + context.RequestServices.GetRequiredService<IOptions<EventStoreOperationsOptions>>()
+                    .Value.MaxActionItems * ((DeadLetterSafeIdentity.MaxValueLength * 6) + 3));
+                if (context.Request.ContentLength > maxBytes)
+                {
+                    context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+                    return;
+                }
+                (byte[] body, bool tooLarge) = await Endpoints.DeadLetterOperationsEndpointExtensions
+                    .ReadBoundedBodyAsync(context.Request, maxBytes).ConfigureAwait(false);
+                if (tooLarge)
+                {
+                    context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+                    return;
+                }
+                JsonDocument document;
+                try
+                {
+                    document = JsonDocument.Parse(body);
+                }
+                catch (JsonException)
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    return;
+                }
+                using (document)
+                {
+                    JsonProperty[] scopes = document.RootElement.ValueKind == JsonValueKind.Object
+                        ? [.. document.RootElement.EnumerateObject().Where(static property => string.Equals(property.Name, "tenantId", StringComparison.OrdinalIgnoreCase))]
+                        : [];
+                    if (scopes.Length != 1 || scopes[0].Value.ValueKind != JsonValueKind.String
+                        || !CanAccessTenant(context.User, scopes[0].Value.GetString()))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return;
+                    }
+                }
+                using var retainedBody = new MemoryStream(body, writable: false);
+                Stream originalBody = context.Request.Body;
+                context.Request.Body = retainedBody;
+                try
+                {
+                    await next(context).ConfigureAwait(false);
+                }
+                finally
+                {
+                    context.Request.Body = originalBody;
+                }
+                return;
+            }
+            await next(context).ConfigureAwait(false);
+        });
+        return app;
+    }
+
     /// <summary>Authorizes one explicit canonical tenant without selecting scope from a caller's grants.</summary>
     internal static bool CanAccessTenant(ClaimsPrincipal principal, string? tenant)
         => IsCanonicalTenant(tenant)
-            && (ResolveRole(principal) == "Admin"
-                || principal.HasClaim("eventstore:tenant", tenant!));
+            && (IsAdministrator(principal)
+                || tenant != DeadLetterSafeIdentity.UnidentifiedTenantId && principal.HasClaim("eventstore:tenant", tenant!));
+
+    /// <summary>Checks the independently validated principal's effective Admin role.</summary>
+    internal static bool IsAdministrator(ClaimsPrincipal principal) => ResolveRole(principal) == "Admin";
 
     /// <summary>Validates canonical tenant syntax, including the reserved system scope.</summary>
     internal static bool IsCanonicalTenant(string? tenant)
@@ -83,10 +156,12 @@ internal static class OperationsHttpSecurityExtensions
     // Preserve Admin.Server's mapping of signed human claims at this independent receiver boundary.
     private static string? ResolveRole(ClaimsPrincipal principal)
     {
-        string? explicitRole = principal.FindFirst("eventstore:admin-role")?.Value;
-        if (explicitRole is "Admin" or "Operator" or "ReadOnly")
+        string[] explicitRoles = [.. principal.FindAll("eventstore:admin-role").Select(static claim => claim.Value)];
+        if (explicitRoles.Length > 0)
         {
-            return explicitRole;
+            return explicitRoles.Contains("Admin", StringComparer.Ordinal) ? "Admin"
+                : explicitRoles.Contains("Operator", StringComparer.Ordinal) ? "Operator"
+                : explicitRoles.Contains("ReadOnly", StringComparer.Ordinal) ? "ReadOnly" : null;
         }
         if (principal.Claims.Any(static claim => claim.Type is "global_admin" or "is_global_admin"
             && bool.TryParse(claim.Value, out bool admin) && admin

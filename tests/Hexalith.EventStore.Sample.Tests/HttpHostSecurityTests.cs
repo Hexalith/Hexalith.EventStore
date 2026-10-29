@@ -25,6 +25,7 @@ public sealed class HttpHostSecurityTests
 {
     private const string Key = "story514-sample-api-signing-key-at-least-32-bytes";
 
+    /// <summary>Verifies generated Api Only Admits Human Bearers.</summary>
     [Theory]
     [InlineData("anonymous", HttpStatusCode.Unauthorized)]
     [InlineData("channel", HttpStatusCode.Unauthorized)]

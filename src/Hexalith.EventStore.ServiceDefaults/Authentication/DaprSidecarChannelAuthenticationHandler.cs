@@ -28,7 +28,7 @@ public sealed class DaprSidecarChannelAuthenticationHandler(
     /// <summary>Gets the channel claim value recorded for a verified token.</summary>
     public const string VerifiedChannel = "dapr-app-channel";
 
-    /// <summary>Gets the channel claim value recorded in Development when no token is configured.</summary>
+    /// <summary>Gets a legacy unverified claim value retained for compatibility; the handler never emits it.</summary>
     public const string DevelopmentUnverifiedChannel = "development-unverified";
 
     /// <inheritdoc />

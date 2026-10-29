@@ -22,9 +22,9 @@ public sealed partial class WorkloadBindingAuthorityTests
         _options.Grants[0].Bindings[family] = ["approved-value"];
         using var json = new MemoryStream(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Authentication = new { WorkloadAuthority = _options } })));
         IConfiguration configuration = new ConfigurationBuilder().AddJsonStream(json).Build();
-        using ServiceProvider services = new ServiceCollection().AddEventStoreWorkloadBindingAuthority(configuration).BuildServiceProvider();
-        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
-        environment.EnvironmentName.Returns(Environments.Production);
+        IHostEnvironment environment = NonconformingDevelopmentEnvironment();
+        using ServiceProvider services = new ServiceCollection().AddSingleton(environment)
+            .AddEventStoreWorkloadBindingAuthority(configuration).BuildServiceProvider();
         var authority = new WorkloadBindingAuthority(services.GetRequiredService<IOptionsMonitor<WorkloadAuthorityOptions>>(), environment, TimeProvider.System);
         WorkloadAuthorizationDetails details = Details();
         details.Bindings[family] = "approved-value";

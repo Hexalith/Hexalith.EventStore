@@ -189,7 +189,8 @@ development_status:
   # framework-route protection on every HTTP host.
   5-12-route-and-idempotency-catalog-schema-codec-and-envelope: done
   5-13-route-catalog-activation-and-topology-binding: done
-  5-14-authenticated-fallback-and-dapr-framework-route-protection: in-progress
+  # Bounded HTTP-policy milestone reviewed; actor/audit and cross-owner conformance remain open.
+  5-14-authenticated-fallback-and-dapr-framework-route-protection: review
   epic-5-retrospective: optional
 
   epic-6: in-progress

@@ -766,6 +766,61 @@ public sealed partial class DomainServiceTrustBoundaryTests
                 .AllowEventStorePublicEndpoint("/metadata/timesheets")));
     }
 
+    /// <summary>A late canonical replacement cannot bypass the catalog guard after startup validation.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LateCanonicalReplacementWithoutCatalogGuardIsDeniedBeforeHandler(bool emptyMethods)
+    {
+        int calls = 0;
+        var initial = new Microsoft.AspNetCore.Routing.RouteEndpointBuilder(_ => Task.CompletedTask,
+            Microsoft.AspNetCore.Routing.Patterns.RoutePatternFactory.Parse("/project"), 0);
+        initial.Metadata.Add(new Microsoft.AspNetCore.Routing.HttpMethodMetadata([HttpMethods.Post]));
+        initial.Metadata.Add(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute(EventStoreDomainServicePolicies.Project));
+        initial.Metadata.Add(new DomainRouteCatalogGuardMetadata());
+        var source = new HttpHostSecurityMutableEndpointSource(initial.Build());
+        await using WebApplication app = await StartAsync(beforeSdk: application =>
+            ((Microsoft.AspNetCore.Routing.IEndpointRouteBuilder)application).DataSources.Add(source));
+        var replacement = new Microsoft.AspNetCore.Routing.RouteEndpointBuilder(_ => { calls++; return Task.CompletedTask; },
+            Microsoft.AspNetCore.Routing.Patterns.RoutePatternFactory.Parse("/project"), 0);
+        replacement.Metadata.Add(new Microsoft.AspNetCore.Routing.HttpMethodMetadata(emptyMethods ? [] : [HttpMethods.Post]));
+        replacement.Metadata.Add(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute(EventStoreDomainServicePolicies.Project));
+        source.Replace(replacement.Build());
+        using HttpRequestMessage request = JsonPost("/project", "{}");
+        AddInternalHeaders(request, Assertion([EventStoreWorkloadOperations.DomainServiceProject]), [ChannelToken]);
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        calls.ShouldBe(0);
+    }
+
+    /// <summary>Empty method metadata requires the canonical POST catalog guard and preserves guarded overrides.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EmptyMethodCanonicalOverrideRequiresCatalogGuard(bool guarded)
+    {
+        int calls = 0;
+        void MapOverride(WebApplication application)
+        {
+            var endpoint = application.MapPost("/project", () => { calls++; return Results.Ok(); })
+                .WithMetadata(new Microsoft.AspNetCore.Routing.HttpMethodMetadata([]));
+            if (guarded) endpoint.RequireEventStoreDomainServicePolicy("/project");
+            else endpoint.RequireAuthorization(EventStoreDomainServicePolicies.Project);
+        }
+        if (!guarded)
+        {
+            await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(beforeSdk: MapOverride));
+            calls.ShouldBe(0);
+            return;
+        }
+        await using WebApplication app = await StartAsync(beforeSdk: MapOverride);
+        using HttpRequestMessage request = JsonPost("/project", "{}");
+        AddInternalHeaders(request, Assertion([EventStoreWorkloadOperations.DomainServiceProject]), [ChannelToken]);
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        calls.ShouldBe(1);
+    }
+
     private static async Task<WebApplication> StartAsync(
         string environmentName = "Development",
         Dictionary<string, string?>? settings = null,

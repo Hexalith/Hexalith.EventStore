@@ -1247,6 +1247,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     public void MapEventStoreDomainService_MapsCanonicalEndpointsUnchanged() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         _ = builder.Services.AddSingleton(new DiscoveryResult([], []));
+        _ = builder.Services.AddEventStoreDomainServiceSecurity();
         WebApplication app = builder.Build();
 
         _ = app.MapEventStoreDomainService();
@@ -1316,7 +1317,8 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         Microsoft.AspNetCore.Authorization.AuthorizationPolicy fallback = app.Services
             .GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Authorization.AuthorizationOptions>>()
             .Value.FallbackPolicy.ShouldNotBeNull();
-        fallback.AuthenticationSchemes.ShouldBe([ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme]);
+        fallback.AuthenticationSchemes.ShouldBe([ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.SidecarChannelScheme]);
+        fallback.Requirements.ShouldContain(requirement => requirement.GetType().Name == "EventStoreUnclassifiedEndpointRequirement");
     }
 
     /// <summary>The published policy names are exactly the catalog's operation policies.</summary>
@@ -1365,7 +1367,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         }
     }
 
-    /// <summary>A GET-only canonical route may rely on a denying fallback but cannot be made public.</summary>
+    /// <summary>A GET-only canonical route requires its exact policy and cannot rely on fallback or public markers.</summary>
     /// <param name="publicConfiguration">The public metadata applied to the GET route.</param>
     [Theory]
     [InlineData("none")]
@@ -1387,11 +1389,9 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         Microsoft.AspNetCore.Authorization.AuthorizationPolicy fallback = ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions
             .CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme);
         IReadOnlyList<string> violations = EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallback);
-        if (publicConfiguration == "none") {
-            violations.ShouldBeEmpty();
-        }
-        else {
-            violations.ShouldHaveSingleItem().ShouldContain("/project: a canonical route cannot be public.");
+        violations.ShouldContain($"/project: the effective endpoint must require policy '{EventStoreDomainServicePolicies.Project}'.");
+        if (publicConfiguration != "none") {
+            violations.ShouldContain("/project: a canonical route cannot be public.");
         }
     }
 
@@ -1427,7 +1427,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             violations.ShouldHaveSingleItem().ShouldContain($"/project: the effective endpoint must require policy '{EventStoreDomainServicePolicies.Project}'.");
         }
     }
-    /// <summary>Only the specifically marked public metadata and capability routes pass the inventory.</summary>
+    /// <summary>Explicit public metadata cannot create anonymous exceptions on conforming hosts.</summary>
     /// <param name="route">The literal public route.</param>
     /// <param name="method">Its single HTTP method.</param>
     [Theory]
@@ -1436,7 +1436,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     [InlineData("/api/timesheets/magic-links/confirm/submit", "POST")]
     [InlineData("/api/timesheets/magic-links/adjust", "GET")]
     [InlineData("/api/timesheets/magic-links/adjust/submit", "POST")]
-    public void EndpointInventory_AcceptsOneExplicitPublicRoute(string route, string method) {
+    public void EndpointInventory_RejectsExplicitPublicRoutes(string route, string method) {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         _ = builder.AddEventStoreDomainService();
         WebApplication app = builder.Build();
@@ -1448,7 +1448,8 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         }
 
         _ = app.UseEventStoreDomainService();
-        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallbackPolicy: null).ShouldBeEmpty();
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallbackPolicy: null)
+            .ShouldHaveSingleItem().ShouldContain("only exact health, alive, and ready probes may be anonymous.");
     }
 
     /// <summary>A marker cannot make a bare, protected, mismatched, or broad route public.</summary>
@@ -1535,7 +1536,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     /// nothing, so endpoints without metadata are still violations.
     /// </summary>
     [Fact]
-    public void EndpointInventory_CountsOnlyAFallbackThatDeniesAnonymous() {
+    public void EndpointInventory_NeverClassifiesEndpointsUsingFallback() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         _ = builder.AddEventStoreDomainService();
         WebApplication app = builder.Build();
@@ -1552,7 +1553,8 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         EventStoreDomainServiceEndpointInventory.DeniesAnonymous(deniesAnonymous).ShouldBeTrue();
         EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), admitsAnonymous)
             .ShouldHaveSingleItem().ShouldContain("/unprotected");
-        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), deniesAnonymous).ShouldBeEmpty();
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), deniesAnonymous)
+            .ShouldHaveSingleItem().ShouldContain("/unprotected");
     }
 
     /// <summary>

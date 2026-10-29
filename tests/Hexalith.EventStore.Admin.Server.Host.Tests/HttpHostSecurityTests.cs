@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Admin.Server.Host.Tests;
 /// <summary>Verifies the Admin host names resolved policies and protects its documentation assets.</summary>
 public sealed class HttpHostSecurityTests
 {
+    /// <summary>Verifies admin Inventory Resolves Every Named Policy And Scheme.</summary>
     [Fact]
     public async Task AdminInventoryResolvesEveryNamedPolicyAndScheme()
     {
@@ -25,6 +26,7 @@ public sealed class HttpHostSecurityTests
         alive.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
+    /// <summary>Verifies admin Documentation Requires Human Authentication.</summary>
     [Theory]
     [InlineData("/openapi/v1.json")]
     [InlineData("/swagger/index.html")]
