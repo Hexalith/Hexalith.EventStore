@@ -437,24 +437,24 @@ three bind repository, path, and commit (Story 4.17, G-OQ8). Absence or mismatch
 
 ## Stack
 
-This table records the tested 2026-10-08 dependency refresh, whose validated catalog bytes are now present in the current Builds checkout `520abb5898ad44b30c0744e707b53cd94741e6b1`. The previous 2026-10-07 snapshot was observed at Builds gitlink `397c94a4`; historical evidence remains preserved. The Builds catalog remains the sole dependency authority; availability never authorizes an upgrade, and upstream versions require a separately tested refresh.
+This table records current package selections from Builds checkout `ed64aae652f153001aa52ef839a74f9bda873df0` and the SDK `10.0.403` alignment target. Current verification is recorded in the SDK alignment spec; these selections alone do not establish build or runtime acceptance. The tested 2026-10-08 dependency refresh was observed at Builds `520abb5898ad44b30c0744e707b53cd94741e6b1`, and the previous 2026-10-07 snapshot at Builds gitlink `397c94a4`; historical evidence remains preserved. The Builds catalog remains the sole dependency authority; availability never authorizes an upgrade, and upstream versions require a separately tested refresh.
 
 | Name | Repository value | Current evidence / posture |
 | --- | --- | --- |
-| .NET SDK | `10.0.401`, `rollForward: latestPatch` | Current SDK for the 10.0.12 security release (2026-09-08) |
+| .NET SDK | `10.0.403`, `rollForward: latestPatch` | SDK alignment target; Microsoft.Testing.Platform runner retained |
 | Target framework | `net10.0` | Retain |
-| ASP.NET Core / SignalR | `10.0.12` | Current security servicing release |
-| Aspire.Hosting / AppHost SDK | `13.6.1` | Published 2026-10-07; Keycloak and Kubernetes hosting remain preview |
-| CommunityToolkit Aspire DAPR | `13.6.0-preview.1.261001-0243` | Preview-channel exception remains explicit; upstream has no later stable release |
+| ASP.NET Core / SignalR | `10.0.14` | Repository catalog pin |
+| Aspire.Hosting / AppHost SDK | `13.6.4` | Keycloak and Kubernetes hosting remain preview at `13.6.4-preview.1.26523.11` |
+| CommunityToolkit Aspire DAPR | `13.6.2-beta.959` | Prerelease catalog selection remains explicit |
 | DAPR runtime | CI `1.18.2` (CLI `1.18.0`); deployment examples `1.18.0`; Kubernetes guide `1.14.4` | Stable DAPR `1.18.4` (2026-09-09); `1.14.x` is unsupported, `1.18.0` predates the 1.18.2 CVE and reminder-name fixes, and `1.18.3` fixed a placement mass-disconnect, so AD-26 requires one tested pin of at least `1.18.3` |
-| Dapr .NET SDK | `1.18.10` | Repository catalog pin; current |
+| Dapr .NET SDK | `1.19.0` | Repository catalog pin |
 | PostgreSQL state component | stable `state.postgresql` v1 | Stable with no deprecation plan; v2 is incompatible and has no v1 migration path, so AD-26 retains v1 |
 | OpenBao secret store | Specified `secretstores.hashicorp.vault` v1; no committed component or contract | Required only in the AD-26 production profile, which must bind an OpenBao server floor of `2.7.1` / `2.6.4` (2026-10-01 security releases); the component authenticates by token only and resolves component secrets at initialization |
-| MediatR / FluentValidation | `14.2.0` / `12.1.1` | Repository authority; MediatR is RPL-1.5 or commercial licensed and referenced by released packages, so its license posture needs an owner decision before release |
-| FrontComposer / Fluent UI | `4.6.0` / `5.0.0` | Validated package refresh targets Fluent UI v5 GA; the previous FrontComposer `4.5.0` package was built against rc.5 |
-| OpenTelemetry | `1.19.1` (instrumentation `1.19.0`) | Exporter and cardinality budgets remain deployment-gated |
+| MediatR / FluentValidation | `14.2.0` / `12.2.0` | Repository authority; MediatR is RPL-1.5 or commercial licensed and referenced by released packages, so its license posture needs an owner decision before release |
+| FrontComposer / Fluent UI | `4.7.1` / `5.0.1` | Current catalog targets Fluent UI v5 GA; the historical FrontComposer `4.5.0` package was built against rc.5 |
+| OpenTelemetry | `1.20.1` (ASP.NET/HTTP/runtime instrumentation `1.20.1`) | Exporter and cardinality budgets remain deployment-gated |
 | Code coverage | `18.12.0` | Repository catalog pin |
-| Test stack | xUnit `4.0.1`, Shouldly `4.3.0`, NSubstitute `6.2.0` | Repository catalog pin |
+| Test stack | xUnit `4.0.2`, Shouldly `4.3.0`, NSubstitute `6.2.0` | Repository catalog pin |
 
 ## Structural Seed
 

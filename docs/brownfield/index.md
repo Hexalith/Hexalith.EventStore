@@ -10,9 +10,9 @@
 ## Project Overview
 
 - **Type:** Monorepo / multi-part (event-sourcing **backend** + Blazor admin/sample UI tier)
-- **Primary language:** C# (.NET 10, SDK 10.0.402)
+- **Primary language:** C# (.NET 10, SDK 10.0.403)
 - **Architecture:** CQRS + DDD + Event Sourcing on DAPR actors & pub/sub, orchestrated by .NET Aspire
-- **Solution:** `Hexalith.EventStore.slnx` — 51 projects (19 src, 5 samples, 1 perf, 26 tests) plus 7 root-declared submodules
+- **Solution:** `Hexalith.EventStore.slnx` — 52 projects (19 src, 5 samples, 1 perf, 27 tests) plus 9 root-declared submodules
 
 ## Quick Reference
 

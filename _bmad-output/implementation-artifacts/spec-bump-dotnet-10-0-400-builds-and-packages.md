@@ -7,8 +7,12 @@ review_loop_iteration: 6
 baseline_commit: '762a745426db66c2846b1af17a10b2a619bf3d95'
 original_baseline_commit: '62d28510f3c11904b6b2ce22edc075d55878924b'
 resumed_tenants_baseline_commit: '811447342e8f44b644a2074565e83f45519528fd'
-requested_sdk: '10.0.401'
-resumed: '2026-10-08'
+requested_sdk: '10.0.403'
+resumed: '2026-10-29'
+resume_403_baseline_commit: '530e34d61a0b2a1e61391b1d5d9d0b0630eabe83'
+resume_403_tenants_baseline_commit: '03615cc91d940ca37b47fb13413a90a31151dd71'
+resume_403_builds_baseline_commit: '4775fb72e3ca3c05059830733e31a98995818cb6'
+resume_403_builds_upstream_commit: 'ed64aae652f153001aa52ef839a74f9bda873df0'
 tenants_baseline_commit: 'eb965727329c7d7335be4cd341db4e2f9bf57b56'
 correction_baseline_commit: 'b34f252c6fbd103acd0e45168ff238a6badd726c'
 builds_correction_baseline_commit: '18742168b0bcdc40e5223f7573b1dcca441d781f'
@@ -48,7 +52,24 @@ context:
 
 </frozen-after-approval>
 
-## Current Resume Scope (2026-10-08)
+## Current Resume Scope (2026-10-29, SDK 10.0.403)
+
+The user explicitly amended the SDK target to `10.0.403` on this resume. This section supersedes earlier SDK targets and execution scope; earlier frozen intent, implementation, results, review triage, and sealed evidence remain historical. Preserve `baseline_commit` and the prior review-loop counter; the `resume_403_*` frontmatter records this resume's separate review boundaries. Do not reapply committed migrations or reopen previous independent product/authority work.
+
+Before implementation, EventStore, root Tenants, and root Builds pin `10.0.402` with `latestPatch` and Microsoft.Testing.Platform. The root was clean at the full baseline above. A fresh `ls-remote` and scoped fetch resolved Builds remote main to `ed64aae652f153001aa52ef839a74f9bda873df0`; its catalog and global.json are byte-identical to the original checkout. The clean root Builds checkout was advanced, non-recursively, to that exact detached revision. No new package family is introduced. The catalog remains the sole authority: Dapr 1.19.0, Aspire 13.6.4, Roslyn 5.9.0, NBomber 6.7.1, xUnit 4.0.2, Fluent UI 5.0.1, .NET servicing 10.0.14, and Microsoft coverage 18.12.0. SDK 10.0.403 was installed using Microsoft's exact-version installer; `aspire ps` reported no running AppHosts before changes.
+
+### Active execution and acceptance
+
+- [x] Change only the SDK version to `10.0.403` in root `global.json`, root Builds `global.json`, and root Tenants `global.json`, preserving each file's existing line endings, `latestPatch`, and MTP runner. Work from each owning repository and follow its applicable guidance. Root Builds and Tenants edits are explicitly authorized by this SDK alignment scope, including the demonstrated Builds ToolProjectSpineTests SDK assertion and supported audit refresh below; no other root or nested submodule content is authorized.
+- [x] Update live SDK instructions/snapshots in root `CONTRIBUTING.md`, `docs/getting-started/prerequisites.md`, `docs/guides/`, `docs/brownfield/`, `_bmad-output/project-context.md`, and `_bmad-output/planning-artifacts/architecture.md`; and Tenants `docs/quickstart.md`, `_bmad-output/project-context.md`, and `_bmad-output/planning-artifacts/architecture.md`. Synchronize directly stale live package tables in those same snapshots and root `docs/reference/nuget-packages.md` against the effective Builds catalog. Only update current claims; preserve historical release observations, fixtures, sealed evidence, and archived artifacts. Do not expand to unrelated files or global version replacement.
+- [x] Verify SDK resolution, `latestPatch`, MTP, and clean whitespace in all three owners; run Builds governance/audit/workflow validators without changing its catalog. If the selected upstream declaration bytes invalidate the audit, use the supported incremental generator to refresh only the affected families and revision/consumer metadata; preserve prior observations and selected versions. Run root Release package-mode restore/build with warnings enforced, relevant generator, load, serialization, AppHost, DomainService, documentation, and real local container provenance checks; run the Tenants Quickstart documentation test through maintained MTP. Record exact commands and results, distinguishing existing blockers from caused regressions. Inspect live AppHost health and Error telemetry if runtime prerequisites permit; clean up the scoped AppHost and preserve unrelated runtime state.
+- [x] Complete independent review of this resume's root diff plus the explicit Builds/Tenants owning diffs against the `resume_403_*` baselines; record every finding's disposition and fix current-scope defects. Do not reinterpret historical acceptance as current execution. Keep the spec in-review if required verification is blocked.
+
+Given the human-amended target, when SDK resolution runs in each owning directory, then all three resolve `10.0.403`, retain `latestPatch` and MTP, and their live SDK claims agree. Given the remotely resolved Builds checkout, when governance and package consumers validate, then catalog selections remain unchanged, any necessary audit refresh retains prior observations, current package snapshots match effective values, and no SDK-induced consumer failure is left unaddressed. Given old sealed/history artifacts, when this resume's diff is reviewed, then those artifacts remain untouched. Given validation blockers, when reporting completion, then commands/results and limitations are explicit and no full-acceptance claim is made without the required evidence.
+
+The implementation subagent implements only the active SDK/documentation changes above and verifies SDK selection, version/whitespace checks, and the documentation consistency script. Leave the broad build/test/runtime validation and independent reviewers to the parent after handoff. It may update these active task checkboxes when supported by its checks. Do not edit any historical section or old checkbox, reset the old loop counter, commit, stage, publish, push, change a package version, initialize/update nested submodules, or load a skill from references/. The parent may regenerate the affected audit metadata as specified above; no catalog change is authorized. If a required consumer migration is demonstrated, report it before expanding the implementation.
+
+## Previous Resume Scope (2026-10-08)
 
 The user explicitly amended the target to SDK `10.0.401`. EventStore, the initialized root Tenants repository, and Builds already select that exact SDK with `latestPatch` and Microsoft.Testing.Platform. The earlier implementation is committed; its historical results and frozen evidence remain records of the SDK under which they ran. This resume reconciles stale live SDK/package snapshots and verifies the current consumers without reapplying committed migrations or editing sealed evidence. The review baseline above is the full current EventStore commit; `original_baseline_commit` retains the original implementation baseline. Tenants changes are reviewed against `resumed_tenants_baseline_commit`.
 
@@ -310,3 +331,179 @@ All three required review layers ran independently. The verification-gap layer r
 - Runtime intervention: the initial `aspire start --isolated` restarted a pre-existing EventStore session. That was a mistake after detecting the existing session. The scoped source-mode session was restored and left running because an EventStore session existed before this check; the concurrent temporary AppHost session was preserved. No runtime credentials or raw secret-bearing telemetry were retained in the verification packet.
 - The spec remains `in-review`: current package-mode Tenants compatibility and maintained authority validation require broader follow-up, and zero-error runtime acceptance is not proven. Focused source-mode or container successes do not override those blockers. Prior full UI, coverage, LiveSidecar, and OQ8 capture results remain historical records; this resume does not claim they were rerun under 10.0.401. No local commit or push was made, consistent with the spec's explicit prohibition.
 - Scoped documentation diff SHA-256, excluding this self-updating spec and unrelated concurrent changes: EventStore `a029efa0403ee7bf4c48ae06ae41a6884ddc41245ae28ef4407f4d88a52bec94`; Tenants `43e4013f4eba40e5569fff2b2ab9142aab425265a76f59651f07c5fe591518c4`; Builds worktree `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`. Final spec-byte identity is reported externally rather than embedded in itself. Concurrent subsequent edits to test, provider-verification, release, and package-refresh work remain outside this resumed documentation diff.
+
+## SDK 10.0.403 Verification Progress (2026-10-29)
+
+- Implementation handoff: all three SDK selectors resolve `10.0.403`, preserve `latestPatch`/MTP and original line endings. Fourteen root documentation files and three Tenants snapshots were reconciled with the catalog. `bash scripts/check-doc-versions.sh` passed all four Dapr rows at `1.19.0`; inline checks matched 13 NuGet rows, 15 live SDK documents, and 33 package claims. All three whitespace checks passed.
+- Upstream audit defect exposed by selecting latest Builds: `pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-package-version-audit.ps1` exited 1 with three declaration-identity errors for `test/Hexalith.Builds.Module.Tests/Hexalith.Builds.Module.Tests.csproj`. Upstream `eb0332b` adds only a build-order project reference to that declaration; package selections and the catalog remain unchanged. Its three audited families are `package:microsoft.net.test.sdk`, `package:shouldly`, and `xunit`. `Tools/README.md` documents revision-bound incremental regeneration; the source declaration is already committed at selected upstream HEAD, so no source commit is required. The active scope allows that necessary audit metadata repair, preserving prior observations and catalog bytes.
+
+## SDK 10.0.403 Current Verification (2026-10-29)
+
+The parent ran all checks sequentially. The local command ledger and full logs are scratch at `/tmp/eventstore-sdk403-verification/commands.json`; no packet is committed and no hosted CI result is claimed. Every MTP run below used `dotnet test` with its explicit project path, `--no-build --configuration Release`, MTP-native TRX options, and current outputs emitted by the SDK-10.0.403 solution build. No direct-assembly fallback substitutes for a broken maintained runner.
+
+| Check | Current result |
+| --- | --- |
+| Central versions / authoritative catalog | 307 entries; 50 IDs and 3 shared versions passed |
+| Exceptions / Dapr / consumer authority | 16 exceptions; 8 Dapr IDs at 1.19.0; 62 EventStore projects passed |
+| Shared MTP workflow contract | 411 assertions passed |
+| Incrementally refreshed audit | 307 packages / 151 families / one source passed; all selected versions and both catalog hashes unchanged |
+| Audit generator / validator fixture suites | 115 / 103 scenarios passed |
+| LoadTests / RestApi.Generators | 9/9 and 135/135 passed |
+| DomainService | 1276 passed, zero failed, one existing opt-in live-content test skipped |
+| AppHost | 193/193 passed |
+| Server / Server.LiveSidecar serialization metadata | 1/1 each passed |
+| CorrectiveOciProvenanceReleaseTests | 21/21 passed, including `RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs` and its real local two-architecture archive |
+| EffectivePackageVersionEvaluationTests / PackageOwnershipGovernanceTests | 1/1 and 7/7 passed |
+| Tenants Server.Tests package-mode build / QuickstartDocumentationTests | zero warnings/errors; 7/7 passed |
+
+The 10 maintained MTP runs total **1651 passed, zero failed, one prerequisite skip** and produced TRX. The skipped DomainService test explicitly requires `EVENTSTORE_CONTENT_LIVE=1`; it is not counted as executed proof.
+
+Exact broad command: `dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false` passed, then `dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false` failed with zero warnings and one CS7036 error at `tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs:286`. Its four-argument `SubmitCommandHandler` call reaches an internal constructor unavailable to this assembly. Both this caller and the handler are byte-unchanged against this resume's root baseline `530e34d61a0b2a1e61391b1d5d9d0b0630eabe83`; this is a pre-existing route-catalog consumer migration blocker. All runnable focused projects above were emitted successfully by that same build. IntegrationTests serialization and full solution acceptance remain blocked; no stale pre-existing IntegrationTests binary was used as substitute evidence. No product C# code or authorization boundary was changed; the review correction below updates only the Builds SDK guard test literal.
+
+The exact audit refresh was run from root Builds using `pwsh -NoProfile -Command "& './Tools/audit-central-package-versions.ps1' -PriorAuditPath '/tmp/eventstore-sdk403-verification/package-version-audit.before.json' -ChangedFamily @('package:microsoft.net.test.sdk','package:shouldly','xunit')"`, followed by `pwsh -NoProfile -File Tools/validate-package-version-audit.ps1`, `Tools/test-package-version-audit-generator.ps1`, and `Tools/test-package-version-audit-validator.ps1`. It refreshed three families and preserved 148. The old observations remain in the supported historical-context model; current catalog bytes and selections were not edited. Both source revisions already existed in upstream history; no commit or push was made.
+
+Tenants check: from its owning directory, `dotnet build tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false`, then `dotnet test tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj --no-build --configuration Release --filter-class Hexalith.Tenants.Server.Tests.Documentation.QuickstartDocumentationTests --results-directory /tmp/eventstore-sdk403-verification/tenants-quickstart --report-xunit-trx --report-xunit-trx-filename tenants-quickstart.trx`.
+
+Parent inspection corrected two mistakenly updated Platform-specific prerequisites in CONTRIBUTING: that independently qualified Platform module tool still requires Aspire CLI/orchestration/dashboard 13.6.1. EventStore's catalog package family remains 13.6.4. CONTRIBUTING now changes only its SDK minimum.
+
+Live runtime verification used `UseHexalithProjectReferences=false HexalithMemoriesFromSource=false aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive --format Json`, then the explicit host's `aspire wait security --status healthy --timeout 60`, `aspire describe --non-interactive --format Json`, and `aspire otel logs --severity Error --limit 1000 --format Json --non-interactive`. All 30 resources were Running+Healthy, including Tenants and Tenants API; Error telemetry count was zero. The initial `aspire ps` was empty. The explicit host's `aspire stop --non-interactive` passed, and final `aspire ps --non-interactive --format Json` returned `[]`. Only names/state/health, Error count, and command outcomes were retained locally; no credentials or raw telemetry were retained.
+
+Independent review boundary: root SDK/documentation/spec deltas against `resume_403_baseline_commit`, Tenants deltas against `resume_403_tenants_baseline_commit`, and owning Builds SDK/audit changes on selected upstream `resume_403_builds_upstream_commit`. The parent gitlink delta preserves the full prior and selected upstream identities. Concurrent root edits to `spec-5-13-route-catalog-activation-and-topology-binding.md` and `deferred-work.md` are unrelated and excluded. Prior frozen intent and sealed evidence remain unchanged. The existing IntegrationTests compile defect prevents full acceptance, so this spec remains in-review regardless of the successful focused/runtime checks.
+
+## Review Triage Log — SDK 10.0.403 (2026-10-29)
+
+All three independent reviewers completed before triage. Edge-case hunter returned no findings. Blind hunter used 89.953 kB and finding floor 10. Verification-gap reviewer reported no gap findings and one non-gap defect. Each finding is recorded below before grouping; the previous review history and loop counter are preserved.
+
+| Finding | Verdict | Evidence and disposition |
+| --- | --- | --- |
+| Blind 1 — durable command ledger | low | Exact current args/logs are local scratch and selected commands/counts are recorded here, as required by the no-committed-packets policy. The tracked summary can be more reproducible; complete command lists will be recorded here. Rejected from grouping because its correction edits this spec. |
+| Blind 2 — inline snapshot checks not reproduced | low | The maintained script checks four Dapr rows; the additional snapshot checks were manual/inline and their bodies were not retained in the spec. Record the concrete final assertion procedure without adding implementation-mirroring tests. Rejected from grouping because its correction edits this spec. |
+| Blind 3 — final scoped hashes missing | low | Final hashes were pending the planned post-review checkpoint. Record all three scoped dirty-byte identities after patches; do not embed the spec's own self-referential digest. Rejected from grouping because its correction edits this spec. |
+| Blind 4 — SDK-402 compile attribution unproved | false | Parent forced the installed 10.0.402 CLI/MSBuild; `-getProperty:NETCoreSdkVersion` returned 10.0.402. Its focused IntegrationTests Release build reproduced the exact CS7036 at the same caller line with zero warnings and one error. The caller and handler also remain unchanged against the resume baseline, disproving an SDK-403 regression. No product-code patch is needed. |
+| Blind 5 — no Builds .NET consumer validation | medium | PowerShell checks do not run the owned Module.Tests project. The hard-coded SDK guard reported by verification review demonstrates the missing maintained owner-level lane. Grouped with Verification 1; run the narrow owning project/class through MTP after the SDK guard correction (patch). |
+| Blind 6 — telemetry observation interval absent | medium | Follow-up strict array parsing found zero Errors at 09:36:07.779877Z and five at 09:36:28.077107Z, confirming the readiness-only observation missed delayed errors. Diagnostic repetition identified route-catalog bootstrap failures and a related 503 retry while all 30 resources stayed healthy. Current zero-error acceptance is withdrawn; the runtime availability blocker is deferred without altering route-catalog authority. |
+| Blind 7 — targeting argument omitted in prose commands | low | Every actual runtime command in the retained runtime summary contains the explicit AppHost argument. The abbreviated spec prose can be made copyable by recording complete commands. Rejected from grouping because its correction edits this spec. |
+| Blind 8 — latest SDK download may not match feature band | low | The troubleshooting sentence does not cover SDK-resolution failure and directs readers to an unrestricted latest choice. Replace it directly with the requested 10.0.403 or a compatible 10.0.4xx patch (patch). |
+| Blind 9 — stale semantic-release snapshot | low | package.json selects ^25.0.5 while the updated live stack table still says ^24.2.3. Direct table correction is sufficient (patch). |
+| Blind 10 — stale project/submodule counts | low | XML parsing shows 52 solution projects: 19 src, five samples, one perf, 27 tests. Root .gitmodules declares nine submodules, including McpCli and Platform. Direct live count/inventory corrections are sufficient (patch). |
+| Verification 1 — Builds SDK assertion still 10.0.402 | high | ToolProjectSpineTests.RepositorySpineDefinesAuthorizedToolContracts compares the global SDK to 10.0.402 while the changed global.json selects 10.0.403. Builds' normal CI executes that project. Update the exact expected SDK and run its existing class through maintained MTP; no assertion weakening or new public surface is needed (patch). |
+
+Survivor groups: (1) omitted Builds SDK guard/owner check = Blind 5 + Verification 1; (2) compatible SDK troubleshooting = Blind 8; (3) stale live stack metadata = Blind 9; (4) stale live inventory metadata = Blind 10. These four groups route to direct patches. The later confirmed runtime-availability defect from Blind 6 routes to defer, with its diagnostic outcome and ledger entry below. No intent-gap or bad-spec code loop is needed.
+
+Baseline reproduction command: `dotnet /home/administrator/.dotnet/sdk/10.0.402/dotnet.dll msbuild tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj -getProperty:NETCoreSdkVersion` returned `10.0.402`; `dotnet /home/administrator/.dotnet/sdk/10.0.402/dotnet.dll build tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj --configuration Release --no-restore -warnaserror -m:1 -p:UseHexalithProjectReferences=false` reproduced the same CS7036.
+
+## SDK 10.0.403 Final Disposition (2026-10-29)
+
+All independent review patches are complete: the Builds SDK spine guard now requires exactly 10.0.403 and passes 1/1 through the maintained MTP project/class; compatible-band troubleshooting, semantic-release metadata, solution counts, and root submodule inventory are corrected. The owning guard retains CRLF. The post-review snapshot check passes all three selectors/resolutions/line endings, 15 SDK documents, 13 evaluated NuGet rows, 52 projects, nine submodules, and the npm snapshot. Builds' audit passes again at 307 packages / 151 families / one source, with all package selections unchanged. All three final whitespace checks pass. Final focused MTP total is **1652 passed, zero failed, one opt-in prerequisite skip**; the 115 generator, 103 validator, and 411 workflow contract assertions are separate passing checks.
+
+After the SDK-402 baseline reproduction, the final SDK-403 package-mode AppHost build was rerun to restore the current SDK outputs: `dotnet build src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false` passed with zero warnings/errors. The final Builds check, from its owning directory, was `dotnet test test/Hexalith.Builds.Module.Tests/Hexalith.Builds.Module.Tests.csproj --no-build --configuration Release --filter-class Hexalith.Builds.ModuleTool.Tests.ToolProjectSpineTests` (1/1 passed); the implementation agent also compiled and executed this class through MTP. No product C# code or runtime authorization boundary was changed.
+
+**Runtime limit superseding the readiness-only zero-error observation:** a follow-up warm run used strict telemetry result-shape parsing. The Error result was an array with count zero at `2026-10-29T09:36:07.779877Z` and count five at `2026-10-29T09:36:28.077107Z`, an observation interval of 20.297230 seconds. A diagnostic repetition at `2026-10-29T09:38:45.924489Z` again reported five Errors: four EventStore BootstrapGlobalAdmin pipeline failures with RouteCatalogUnavailableException, and one Tenants handled 503 retry. All 30 resources were still Running+Healthy. This does not establish error-free runtime acceptance. No raw telemetry or credentials were retained; sanitized failure classifications and counts are sufficient to identify the route-catalog availability follow-up. Both follow-up sessions were stopped and final `aspire ps` returned `[]`.
+
+Every follow-up lifecycle/telemetry command targeted the same explicit host:
+
+```bash
+apphost=src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+UseHexalithProjectReferences=false HexalithMemoriesFromSource=false aspire start --no-build --apphost "$apphost" --non-interactive --format Json
+aspire wait security --status healthy --timeout 60 --apphost "$apphost" --non-interactive
+aspire otel logs --apphost "$apphost" --severity Error --limit 1000 --format Json --non-interactive
+# Wait 20 seconds before the second strict-schema Error query.
+aspire otel logs --apphost "$apphost" --severity Error --limit 1000 --format Json --non-interactive
+aspire describe --apphost "$apphost" --non-interactive --format Json
+aspire stop --apphost "$apphost" --non-interactive
+aspire ps --non-interactive --format Json
+```
+
+The SDK implementation and independent review are complete. The spec remains **in-review**, because the full solution build still reaches the confirmed SDK-402/403 IntegrationTests constructor defect and current route-catalog bootstrap availability prevents zero-error runtime acceptance. These two follow-ups are appended to the deferred-work ledger. Prior full UI, coverage, LiveSidecar, OQ8 and other historical acceptance results are not represented as rerun for this resume. No commit, staging, push, publication, package-version edit, or nested-submodule mutation was made.
+
+### Reproducible current checks
+
+The final command list below is transcribed from the local command ledger; SDK-402 failure reproduction is a diagnostic expected failure, not accepted proof of a successful build. Commands in submodules are prefixed with their owning directory. The maintained MTP commands cover the explicitly named projects/classes above rather than using solution-level test execution.
+
+```bash
+mkdir -p /tmp/eventstore-sdk403-verification
+git -C references/Hexalith.Builds show ed64aae652f153001aa52ef839a74f9bda873df0:Tools/package-version-audit.json > /tmp/eventstore-sdk403-verification/package-version-audit.before.json
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-central-package-versions.ps1
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/test-authoritative-package-catalog.ps1
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-package-version-audit.ps1
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-package-version-exceptions.ps1 -InventoryPath references/Hexalith.Builds/Tools/package-version-exceptions.json -CatalogPath references/Hexalith.Builds/Props/Directory.Packages.props
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-dapr-package-versions.ps1
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-consumer-package-authority.ps1 -RepositoryRoot . -CatalogPath references/Hexalith.Builds/Props/Directory.Packages.props
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/test-domain-workflow-test-platforms.ps1
+dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false
+dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false
+(cd references/Hexalith.Builds && pwsh -NoProfile -Command '& '"'"'./Tools/audit-central-package-versions.ps1'"'"' -PriorAuditPath '"'"'/tmp/eventstore-sdk403-verification/package-version-audit.before.json'"'"' -ChangedFamily @('"'"'package:microsoft.net.test.sdk'"'"','"'"'package:shouldly'"'"','"'"'xunit'"'"')')
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-package-version-audit.ps1
+dotnet test tests/Hexalith.EventStore.LoadTests.Tests/Hexalith.EventStore.LoadTests.Tests.csproj --no-build --configuration Release --results-directory /tmp/eventstore-sdk403-verification/Hexalith.EventStore.LoadTests.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.LoadTests.Tests.trx
+dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj --no-build --configuration Release --results-directory /tmp/eventstore-sdk403-verification/Hexalith.EventStore.RestApi.Generators.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.RestApi.Generators.Tests.trx
+dotnet test tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj --no-build --configuration Release --results-directory /tmp/eventstore-sdk403-verification/Hexalith.EventStore.DomainService.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.DomainService.Tests.trx
+dotnet test tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj --no-build --configuration Release --results-directory /tmp/eventstore-sdk403-verification/Hexalith.EventStore.AppHost.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.AppHost.Tests.trx
+dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-build --configuration Release --filter-class Hexalith.EventStore.Server.Tests.AssemblyParallelizationTests --results-directory /tmp/eventstore-sdk403-verification/Hexalith.EventStore.Server.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.Server.Tests.trx
+dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj --no-build --configuration Release --filter-class Hexalith.EventStore.Server.LiveSidecar.Tests.AssemblyParallelizationTests --results-directory /tmp/eventstore-sdk403-verification/Hexalith.EventStore.Server.LiveSidecar.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.Server.LiveSidecar.Tests.trx
+dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --filter-class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests --results-directory /tmp/eventstore-sdk403-verification/oci --report-xunit-trx --report-xunit-trx-filename oci.trx
+(cd references/Hexalith.Builds && pwsh -NoProfile -File Tools/test-package-version-audit-generator.ps1)
+(cd references/Hexalith.Builds && pwsh -NoProfile -File Tools/test-package-version-audit-validator.ps1)
+dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --filter-class Hexalith.EventStore.Contracts.Tests.Packaging.EffectivePackageVersionEvaluationTests --results-directory /tmp/eventstore-sdk403-verification/EffectivePackageVersionEvaluationTests --report-xunit-trx --report-xunit-trx-filename EffectivePackageVersionEvaluationTests.trx
+dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --filter-class Hexalith.EventStore.Contracts.Tests.Packaging.PackageOwnershipGovernanceTests --results-directory /tmp/eventstore-sdk403-verification/PackageOwnershipGovernanceTests --report-xunit-trx --report-xunit-trx-filename PackageOwnershipGovernanceTests.trx
+(cd references/Hexalith.Tenants && dotnet build tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false)
+(cd references/Hexalith.Tenants && dotnet test tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj --no-build --configuration Release --filter-class Hexalith.Tenants.Server.Tests.Documentation.QuickstartDocumentationTests --results-directory /tmp/eventstore-sdk403-verification/tenants-quickstart --report-xunit-trx --report-xunit-trx-filename tenants-quickstart.trx)
+dotnet /home/administrator/.dotnet/sdk/10.0.402/dotnet.dll build tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj --configuration Release --no-restore -warnaserror -m:1 -p:UseHexalithProjectReferences=false
+dotnet build src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false
+(cd references/Hexalith.Builds && dotnet test test/Hexalith.Builds.Module.Tests/Hexalith.Builds.Module.Tests.csproj --no-build --configuration Release --filter-class Hexalith.Builds.ModuleTool.Tests.ToolProjectSpineTests)
+bash scripts/check-doc-versions.sh
+pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-package-version-audit.ps1
+git diff --check
+(cd references/Hexalith.Builds && git diff --check)
+(cd references/Hexalith.Tenants && git diff --check)
+python3 /tmp/eventstore-sdk403-snapshot-checks.py
+```
+
+The final inline snapshot assertion command (no new repository test file was added) is:
+
+```bash
+python3 - <<'PY'
+import collections, json, pathlib, re, subprocess, xml.etree.ElementTree as ET
+root = pathlib.Path.cwd()
+for owner in [root, root / 'references/Hexalith.Builds', root / 'references/Hexalith.Tenants']:
+    raw = (owner / 'global.json').read_bytes()
+    data = json.loads(raw)
+    assert data['sdk'] == {'version': '10.0.403', 'rollForward': 'latestPatch'}
+    assert data['test']['runner'] == 'Microsoft.Testing.Platform'
+    assert subprocess.check_output(['dotnet', '--version'], cwd=owner, text=True).strip() == '10.0.403'
+    assert raw.count(b'\r\n') == raw.count(b'\n') if owner == root else b'\r' not in raw
+sdk_docs = ['CONTRIBUTING.md', '_bmad-output/project-context.md', '_bmad-output/planning-artifacts/architecture.md',
+    'docs/brownfield/development-guide.md', 'docs/brownfield/index.md', 'docs/brownfield/project-overview.md',
+    'docs/brownfield/source-tree-analysis.md', 'docs/getting-started/prerequisites.md',
+    'docs/guides/deployment-azure-container-apps.md', 'docs/guides/deployment-docker-compose.md',
+    'docs/guides/deployment-kubernetes.md', 'docs/guides/troubleshooting.md',
+    'references/Hexalith.Tenants/docs/quickstart.md', 'references/Hexalith.Tenants/_bmad-output/project-context.md',
+    'references/Hexalith.Tenants/_bmad-output/planning-artifacts/architecture.md']
+for path in sdk_docs:
+    assert '10.0.403' in (root / path).read_text(), path
+items = json.loads(subprocess.check_output(['dotnet', 'msbuild', 'Directory.Packages.props', '-getItem:PackageVersion'], cwd=root, text=True))['Items']['PackageVersion']
+versions = {item['Identity']: item['Version'] for item in items}
+rows = re.findall(r'^\|\s*([A-Za-z][\w.]+)\s*\|\s*(\d+\.\d+\.\d+(?:-[^ |]+)?)\s*\|\s*$', (root / 'docs/reference/nuget-packages.md').read_text(), re.M)
+checked = [(name, version) for name, version in rows if name in versions]
+assert len(checked) == 13, checked
+for name, version in checked:
+    assert versions[name] == version, (name, version, versions[name])
+projects = [item.attrib['Path'].replace('\\', '/') for item in ET.parse(root / 'Hexalith.EventStore.slnx').iter('Project')]
+assert len(projects) == 52
+assert collections.Counter(path.split('/')[0] for path in projects) == {'src': 19, 'samples': 5, 'perf': 1, 'tests': 27}
+modules = subprocess.check_output(['git', 'config', '--file', '.gitmodules', '--get-regexp', r'^submodule\..*\.path$'], cwd=root, text=True).splitlines()
+assert len(modules) == 9
+release = json.loads((root / 'package.json').read_text())['devDependencies']['semantic-release']
+assert release in (root / 'docs/brownfield/project-overview.md').read_text()
+print('PASS: three SDK selectors/resolutions/line endings; 15 SDK documents; 13 effective NuGet rows; 52 projects; nine submodules; semantic-release snapshot')
+PY
+```
+
+### Final scoped identities
+
+Root remains `530e34d61a0b2a1e61391b1d5d9d0b0630eabe83`; Tenants remains `03615cc91d940ca37b47fb13413a90a31151dd71`; selected Builds is `ed64aae652f153001aa52ef839a74f9bda873df0`. The root Builds gitlink delta is the remotely resolved advance from `4775fb72e3ca3c05059830733e31a98995818cb6`; its SDK, audit, and test guard changes remain uncommitted in the owning worktree. Tenants SDK/snapshot changes remain uncommitted in its owning worktree.
+
+- EventStore scoped diff SHA-256: `62e4c34f1da0a1ff98a518b126213758bb34720385e69329cb1cde43596d2f7f`.
+- Hexalith.Builds scoped diff SHA-256: `ea0537242b4a79757912475d8e90433ad83665303fd955934d5ec22991fd48b1`.
+- Hexalith.Tenants scoped diff SHA-256: `102dfe5234f99bd622b2553e2ee4073e40b1801225a851a8020a14389b774a4c`.
+
+The root hash excludes this self-updating spec, the deferred ledger, and the concurrent route spec; the owner hashes bind all current Builds/Tenants deltas. The final spec digest is reported outside its own bytes. The original frozen-after-approval block and all prior sealed artifacts remain unchanged.

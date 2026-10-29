@@ -22,7 +22,7 @@ state.Apply(Event)                          // fold events back into state
 
 - **Repository:** https://github.com/Hexalith/Hexalith.EventStore
 - **License:** MIT
-- **Framework:** .NET 10 (SDK `10.0.402`, pinned in `global.json`, roll-forward `latestPatch`)
+- **Framework:** .NET 10 (SDK `10.0.403`, pinned in `global.json`, roll-forward `latestPatch`)
 - **Solution file:** `Hexalith.EventStore.slnx` (modern XML solution format — `.sln` is never used)
 
 ## Repository Classification
@@ -32,34 +32,34 @@ state.Apply(Event)                          // fold events back into state
 | Repository type | **Monorepo / multi-part** (multiple deployable services + libraries + submodules) |
 | Project type | **Backend** (event-sourcing server) with a **Blazor** admin/sample UI tier |
 | Primary language | **C#** (`net10.0`, `LangVersion=latest`, Nullable + ImplicitUsings enabled) |
-| Solution projects | **51 projects** (19 `src/`, 5 `samples/`, 1 `perf/`, 26 `tests/`) plus 7 root-declared submodules |
+| Solution projects | **52 projects** (19 `src/`, 5 `samples/`, 1 `perf/`, 27 `tests/`) plus 9 root-declared submodules |
 | Source files | ~900 C# files across `src/` alone |
-| Package management | **Centralized** via `references/Hexalith.Builds/Props/Directory.Packages.props`; root `Directory.Packages.props` imports the catalog and carries the [approved five-package `10.0.13` servicing exception](../reference/nuget-packages.md#source-vs-package-dependencies) (`ManagePackageVersionsCentrally=true`) |
+| Package management | **Centralized** via `references/Hexalith.Builds/Props/Directory.Packages.props`; root `Directory.Packages.props` is an import-only wrapper (`ManagePackageVersionsCentrally=true`) |
 | Build conventions | `TreatWarningsAsErrors=true`, Allman braces, file-scoped namespaces, `_camelCase` fields |
-| Submodules | `references/Hexalith.Tenants`, `references/Hexalith.Commons`, `references/Hexalith.AI.Tools`, `references/Hexalith.Builds`, `references/Hexalith.FrontComposer`, `references/Hexalith.Memories`, `references/Hexalith.PolymorphicSerializations` (root-declared only) |
+| Submodules | `references/Hexalith.Tenants`, `references/Hexalith.Commons`, `references/Hexalith.AI.Tools`, `references/Hexalith.Builds`, `references/Hexalith.FrontComposer`, `references/Hexalith.Memories`, `references/Hexalith.PolymorphicSerializations`, `references/Hexalith.McpCli`, `references/Hexalith.Platform` (root-declared only) |
 
 ## Tech Stack Summary
 
 | Category | Technology | Version | Role |
 |----------|-----------|---------|------|
-| Runtime | .NET | `net10.0` (SDK 10.0.402) | Target framework |
-| Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.18.10` | State store, pub/sub, actors, service invocation |
-| Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.6.1` (Keycloak/K8s `13.6.1-preview.1.26506.6`) | Local topology + publish targets |
-| DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.6.0-preview.1.261001-0243` | DAPR sidecar wiring in AppHost |
+| Runtime | .NET | `net10.0` (SDK 10.0.403) | Target framework |
+| Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.19.0` | State store, pub/sub, actors, service invocation |
+| Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.6.4` (Keycloak/K8s `13.6.4-preview.1.26523.11`) | Local topology + publish targets |
+| DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.6.2-beta.959` | DAPR sidecar wiring in AppHost |
 | Mediation | MediatR | `14.2.0` | CQRS command/query pipeline |
-| Validation | FluentValidation (+ DI extensions) | `12.1.1` | Command/query/options validation |
-| Auth | `Microsoft.AspNetCore.Authentication.JwtBearer` | `10.0.12` | JWT bearer (Keycloak OIDC or symmetric-key fallback) |
-| API docs | `Microsoft.AspNetCore.OpenApi`, `Swashbuckle.AspNetCore.SwaggerUI` | `10.0.12` / `10.3.0` | OpenAPI 3.1 + Swagger UI |
-| Real-time | SignalR Client + `SignalR.StackExchangeRedis` | `10.0.12` | Projection-changed notifications + Redis backplane |
-| UI | `Microsoft.FluentUI.AspNetCore.Components` (+ Icons) | `5.0.0` | Blazor admin + sample UI |
-| CLI | `System.CommandLine` | `2.0.12` | Admin CLI tool |
-| AI integration | `ModelContextProtocol` | `2.2.0` | Admin MCP server (AI-callable tools) |
-| Observability | OpenTelemetry (OTLP exporter + ASP.NET/HTTP/runtime instrumentation) | `1.19.1` (instrumentation `1.19.0`) | Traces, metrics, structured logs |
-| Resilience | `Microsoft.Extensions.Http.Resilience`, `ServiceDiscovery` | `10.10.0` | HTTP resilience + service discovery |
-| Identifiers | `Hexalith.Commons.UniqueIds` | `2.30.1` | ULID generation |
-| Testing | Microsoft.Testing.Platform runner, xUnit v3 `4.0.1`, Microsoft code coverage `18.12.0`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bunit `2.11.3`, Playwright `1.63.0`, Testcontainers `4.15.0` | — | Unit → integration → E2E |
-| Load testing | NBomber + NBomber.Http | `6.6.0` / `6.2.1` | Throughput/latency perf tests |
-| Release | semantic-release (Conventional Commits) | npm `^24.2.3` | Automated versioning + NuGet publish |
+| Validation | FluentValidation (+ DI extensions) | `12.2.0` | Command/query/options validation |
+| Auth | `Microsoft.AspNetCore.Authentication.JwtBearer` | `10.0.14` | JWT bearer (Keycloak OIDC or symmetric-key fallback) |
+| API docs | `Microsoft.AspNetCore.OpenApi`, `Swashbuckle.AspNetCore.SwaggerUI` | `10.0.14` / `10.3.1` | OpenAPI 3.1 + Swagger UI |
+| Real-time | SignalR Client + `SignalR.StackExchangeRedis` | `10.0.14` | Projection-changed notifications + Redis backplane |
+| UI | `Microsoft.FluentUI.AspNetCore.Components` (+ Icons) | `5.0.1` | Blazor admin + sample UI |
+| CLI | `System.CommandLine` | `2.0.14` | Admin CLI tool |
+| AI integration | `ModelContextProtocol` | `2.3.0` | Admin MCP server (AI-callable tools) |
+| Observability | OpenTelemetry (OTLP exporter + ASP.NET/HTTP/runtime instrumentation) | `1.20.1` | Traces, metrics, structured logs |
+| Resilience | `Microsoft.Extensions.Http.Resilience`, `ServiceDiscovery` | `10.11.0` | HTTP resilience + service discovery |
+| Identifiers | `Hexalith.Commons.UniqueIds` | `2.30.3` | ULID generation |
+| Testing | Microsoft.Testing.Platform runner, xUnit v3 `4.0.2`, Microsoft code coverage `18.12.0`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bunit `2.13.3`, Playwright `1.64.1`, Testcontainers `4.16.0` | — | Unit → integration → E2E |
+| Load testing | NBomber + NBomber.Http | `6.7.1` / `6.2.1` | Throughput/latency perf tests |
+| Release | semantic-release (Conventional Commits) | npm `^25.0.5` | Automated versioning + NuGet publish |
 
 ## What's in the Box (high-level)
 

@@ -99,7 +99,7 @@ Inside this repository, cross-repo Hexalith library dependencies use package mod
 
 - Set `-p:UseHexalithProjectReferences=true` for an intentional source session. A `ProjectReference` is selected only when the root-declared submodule project exists; otherwise evaluation falls back to `PackageReference`.
 - Package publication must use `-p:UseHexalithProjectReferences=false`.
-- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` imports that catalog and carries the owner-approved `10.0.13` servicing exception for `Microsoft.AspNetCore.SignalR.Common`, `System.Security.Cryptography.Pkcs`, `System.Security.Cryptography.Xml`, `Microsoft.Extensions.DependencyInjection.Abstractions`, and `Microsoft.Extensions.Options`. The [EventStore authority validator](../../scripts/validate-eventstore-package-authority.ps1) permits exactly those five pins and preserves the shared checks for all other declarations.
+- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper. The [EventStore authority validator](../../scripts/validate-eventstore-package-authority.ps1) checks declarations against the shared catalog.
 
 `Hexalith.EventStore.*` packages must describe external Hexalith libraries as NuGet package dependencies, not
 as source project edges.
@@ -384,9 +384,9 @@ DI registration, domain processor abstractions, the fluent `AddEventStore` exten
 
 | Package                                   | Version |
 | ----------------------------------------- | ------- |
-| Dapr.Client                               | 1.18.10  |
-| Microsoft.Extensions.Configuration.Binder | 10.0.12 |
-| Microsoft.Extensions.Hosting.Abstractions | 10.0.12 |
+| Dapr.Client                               | 1.19.0  |
+| Microsoft.Extensions.Configuration.Binder | 10.0.14 |
+| Microsoft.Extensions.Hosting.Abstractions | 10.0.14 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Client
@@ -408,9 +408,9 @@ Aggregate actors, command routing, event persistence, state rehydration, and DAP
 
 | Package                | Version |
 | ---------------------- | ------- |
-| Dapr.Client            | 1.18.10  |
-| Dapr.Actors            | 1.18.10  |
-| Dapr.Actors.AspNetCore | 1.18.10  |
+| Dapr.Client            | 1.19.0  |
+| Dapr.Actors            | 1.19.0  |
+| Dapr.Actors.AspNetCore | 1.19.0  |
 | MediatR                | 14.2.0  |
 
 ```bash
@@ -433,7 +433,7 @@ When naming projection types, use short names for compact ETags — see [Project
 
 | Package                             | Version |
 | ----------------------------------- | ------- |
-| Microsoft.AspNetCore.SignalR.Client | 10.0.12 |
+| Microsoft.AspNetCore.SignalR.Client | 10.0.14 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.SignalR
@@ -459,7 +459,7 @@ Test helpers, in-memory fakes, deterministic gateway doubles, and builders for u
 | ------------ | ------- |
 | Shouldly     | 4.3.0   |
 | NSubstitute  | 6.2.0   |
-| xunit.v3.assert | 4.0.1 |
+| xunit.v3.assert | 4.0.2 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Testing
@@ -494,8 +494,8 @@ audiences, requires HTTPS metadata for publishing, and clears the signing-key ov
 
 | Package                              | Version |
 | ------------------------------------ | ------- |
-| Aspire.Hosting                       | 13.6.1 |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.6.0-preview.1.261001-0243 |
+| Aspire.Hosting                       | 13.6.4 |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.6.2-beta.959 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Aspire

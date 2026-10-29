@@ -6191,3 +6191,24 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
   summary: Align exact message-id status lookup with cross-tenant correlation replay conflicts.
   evidence: R5-B08 is outside catalog activation. The status commit after the planning baseline returns one exact messageId across authorized tenants without reading correlation indexes, while replay can still return 409 for an exact message in one tenant plus an indexed correlation hit in another. No catalog test covers that split.
+
+## Deferred from: code review of spec-5-13-route-catalog-activation-and-topology-binding.md, chunk 1 (2026-10-29)
+
+- Lost CAS response can orphan a durable lease (unverified high). Settle: read `RouteCatalogAuthority.AcquireAsync` final-write exception path; check lease reconciliation.
+- HTTP 500 treated as CAS conflict in `DaprRouteCatalogStateStore.CompareExchangeAsync` (unverified medium). Settle: show an applied-write 500 followed by a concurrent advance and check retry idempotence.
+- Raw `/v1.0/actors/` refused unconditionally; spec says refuse unless exact catalog scope is provable (unverified high). Settle: confirm whether typed actor proxies traverse `RouteCatalogInvocationHandler`.
+- Ordinary redirect traffic uses a reflected transport copy and private `HttpRequestMessage.DisableAuth` (unverified medium). Settle: transport-parity test and runtime member check.
+- Dispatch lease released at response headers, before streamed body completes (unverified medium). Settle: check whether any invoked method streams after headers.
+- Single-cell CAS on every dispatch; 32-attempt budget, 4096 lease cap, unbounded token-less `ReleaseAsync` (unverified medium). Settle: concurrency run against the Dapr state component.
+- AppHost `RefuseUnqualifiedActivation` keys only on `ActivationFile`, which nothing else reads (unverified medium). Settle: enumerate AppHost activation configuration keys.
+- Receiver projection-capability match ignores `ContractVersion` (unverified medium). Settle: can one app commit capabilities for two versions of a domain?
+- Shared rebuild refuses a declared non-callable output (unverified medium). Settle against the Server rebuild chunk.
+- Sample `Routes` sources cross-checked only by the live-sidecar suite (low). Add a plain unit test over both sample assemblies.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-dotnet-10-0-400-builds-and-packages.md`
+  summary: IntegrationTests cannot compile because its concurrency-conflict helper calls an inaccessible SubmitCommandHandler constructor.
+  evidence: Root baseline 530e34d61a0b2a1e61391b1d5d9d0b0630eabe83 has unchanged caller/handler bytes; exact SDK 10.0.402 and 10.0.403 Release package-mode builds both report CS7036 at ConcurrencyConflictIntegrationTests.cs:286. Scoped SDK 10.0.403 AppHost and Tenants builds pass; this existing route-catalog consumer migration blocks the full solution gate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-dotnet-10-0-400-builds-and-packages.md`
+  summary: EventStore route-catalog availability blocks administrator bootstrap despite green resource health checks.
+  evidence: SDK 10.0.403 package-mode AppHost reports 30/30 Running+Healthy, but a 20.297230-second telemetry interval changes Error count from zero to five. Diagnostic repetition identifies four BootstrapGlobalAdmin RouteCatalogUnavailableException failures and one Tenants 503 retry. Sessions were cleaned up; zero-error runtime acceptance remains unproven and no catalog authority was bypassed.

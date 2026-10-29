@@ -16,14 +16,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ## Technology Stack & Versions
 
-- **.NET 10** — SDK pinned `10.0.401` (`rollForward: latestPatch`) in `global.json`; application and library projects target `net10.0`, except the Roslyn generator (`netstandard2.0`); `Nullable`+`ImplicitUsings` enabled, **`TreatWarningsAsErrors=true`**
-- **DAPR SDK 1.18.10** — `Dapr.Client`, `Dapr.AspNetCore`, `Dapr.Actors(.AspNetCore)` (state store, pub/sub, actors)
-- **.NET Aspire 13.6.1** — Hosting, Redis, Docker, Azure AppContainers, K8s, Testing; Keycloak/K8s are **preview** builds; DAPR orchestration via `CommunityToolkit.Aspire.Hosting.Dapr` (preview)
-- **MediatR 14.2.0** (CQRS), **FluentValidation 12.1.1**, JWT Bearer auth, OpenAPI/Swashbuckle
-- **OpenTelemetry 1.19.1** (instrumentation 1.19.0), `Microsoft.Extensions` servicing packages 10.0.12 (Http.Resilience/ServiceDiscovery 10.10.0), **SignalR** 10.0.12 (+ StackExchange.Redis backplane)
-- **Blazor FluentUI `5.0.0`** + matching Icons package (admin/sample UIs)
-- **Testing:** xUnit **v3** (`xunit.v3` 4.0.1) on Microsoft.Testing.Platform, Shouldly 4.3.0, NSubstitute 6.2.0, bunit 2.11.3, Testcontainers 4.15.0, Playwright 1.63.0, Microsoft.Testing.Extensions.CodeCoverage 18.12.0, and coverlet 10.1.0; NBomber 6.6.0 (load)
-- **Identity helper:** `Hexalith.Commons.UniqueIds` 2.30.1 (ULID generation)
+- **.NET 10** — SDK pinned `10.0.403` (`rollForward: latestPatch`) in `global.json`; application and library projects target `net10.0`, except the Roslyn generator (`netstandard2.0`); `Nullable`+`ImplicitUsings` enabled, **`TreatWarningsAsErrors=true`**
+- **DAPR SDK 1.19.0** — `Dapr.Client`, `Dapr.AspNetCore`, `Dapr.Actors(.AspNetCore)` (state store, pub/sub, actors)
+- **.NET Aspire 13.6.4** — Hosting, Redis, Docker, Azure AppContainers, K8s, Testing; Keycloak/K8s use **preview** `13.6.4-preview.1.26523.11`; DAPR orchestration via `CommunityToolkit.Aspire.Hosting.Dapr` `13.6.2-beta.959`
+- **MediatR 14.2.0** (CQRS), **FluentValidation 12.2.0**, JWT Bearer auth, OpenAPI/Swashbuckle
+- **OpenTelemetry 1.20.1** (ASP.NET/HTTP/runtime instrumentation 1.20.1), `Microsoft.Extensions` servicing packages 10.0.14 (Http.Resilience/ServiceDiscovery 10.11.0), **SignalR** 10.0.14 (+ StackExchange.Redis backplane)
+- **Blazor FluentUI `5.0.1`** + matching Icons package (admin/sample UIs)
+- **Testing:** xUnit **v3** (`xunit.v3` 4.0.2) on Microsoft.Testing.Platform, Shouldly 4.3.0, NSubstitute 6.2.0, bunit 2.13.3, Testcontainers 4.16.0, Playwright 1.64.1, Microsoft.Testing.Extensions.CodeCoverage 18.12.0, and coverlet 10.1.0; NBomber 6.7.1 (load)
+- **Identity helper:** `Hexalith.Commons.UniqueIds` 2.30.3 (ULID generation)
 - **All source-owned package versions centralized** in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper — `ManagePackageVersionsCentrally=true`
 
 ## Critical Implementation Rules

@@ -40,7 +40,7 @@ That replacement is significant — the Server package is not trivial — but it
 
 ## How Does DAPR Versioning Affect Hexalith?
 
-> **TL;DR:** DAPR follows SemVer with 5+ years of v1.x backward compatibility. Hexalith pins to a specific SDK version in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root [`Directory.Packages.props`](../../Directory.Packages.props) imports that shared catalog; its [approved five-package `10.0.13` servicing exception](../reference/nuget-packages.md#source-vs-package-dependencies) does not change the DAPR SDK pin. CI verifies the pin on every commit.
+> **TL;DR:** DAPR follows SemVer with 5+ years of v1.x backward compatibility. Hexalith pins to a specific SDK version in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root [`Directory.Packages.props`](../../Directory.Packages.props) is an import-only wrapper for that shared catalog. CI verifies the pin on every commit.
 
 DAPR has been on v1.x since February 2021. In over five years of releases, DAPR has maintained backward compatibility within the major version — minor releases add features, patch releases fix bugs, and neither breaks existing API contracts. DAPR's [versioning policy](https://docs.dapr.io/operations/support/support-versioning/) follows semantic versioning: breaking changes are reserved for major version bumps.
 

@@ -5,7 +5,7 @@
 
 ## Prerequisites
 
-- **.NET SDK 10.0.402** (pinned in `global.json`, roll-forward `latestPatch`).
+- **.NET SDK 10.0.403** (pinned in `global.json`, roll-forward `latestPatch`).
 - **Docker Desktop** (for Redis, integration tests, container builds).
 - **DAPR CLI** + runtime (`daprd`, `placement`, `scheduler`).
 - **Aspire CLI** (`aspire`).
@@ -30,7 +30,7 @@ Cross-repo Hexalith library dependencies use package mode by default in every co
 
 - Use `-p:UseHexalithProjectReferences=true` only for an intentional source session. A `ProjectReference` is selected only when the root-declared submodule project exists; otherwise evaluation falls back to `PackageReference`.
 - Package publication must use `-p:UseHexalithProjectReferences=false`.
-- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` imports that catalog and carries only the [approved five-package `10.0.13` servicing exception](../reference/nuget-packages.md#source-vs-package-dependencies).
+- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper.
 
 Rerun `dotnet restore` when switching between these modes. Build assets restored in source mode can keep stale
 project-reference edges if reused with `--no-restore` in package mode.
