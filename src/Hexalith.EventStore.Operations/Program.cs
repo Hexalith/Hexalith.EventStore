@@ -7,6 +7,7 @@ using Hexalith.EventStore.Operations.Replay;
 using Hexalith.EventStore.Operations.Security;
 using Hexalith.EventStore.Operations.Telemetry;
 using Hexalith.EventStore.ServiceDefaults;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.Extensions.Options;
 
@@ -17,6 +18,7 @@ string? appApiToken = DaprAppChannelSecurity.ValidateConfiguration(
 
 builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
+builder.Services.AddOperationsHttpSecurity();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<EventStoreOperationsTelemetry>();
@@ -31,17 +33,15 @@ builder.Services.AddActors(actorOptions =>
 builder.Services.AddHostedService<DeadLetterBacklogReconciler>();
 
 WebApplication app = builder.Build();
-if (appApiToken is not null)
-{
-    _ = app.UseWhen(
-        context => DaprAppChannelSecurity.RequiresToken(context.Request.Path),
-        guarded => guarded.UseMiddleware<DaprAppChannelTokenMiddleware>(appApiToken));
-}
+app.UseRouting();
+app.UseEventStoreHttpHostSecurity();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapDefaultEndpoints();
 app.MapDeadLetterOperations();
-app.MapSubscribeHandler();
-app.MapActorsHandlers();
+app.MapSubscribeHandler().RequireEventStoreChannel();
+app.MapActorsHandlers().RequireEventStoreChannel();
 
 await app.RunAsync().ConfigureAwait(false);
 

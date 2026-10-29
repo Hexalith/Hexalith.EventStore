@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// the trace map takes a correlation ID as primary identifier, not a stream identity.
 /// </summary>
 [ApiController]
+[Authorize(Policy = "EventStoreHuman")]
 [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
 [Route("api/v1/admin/traces")]
 [Tags("Admin - Traces")]

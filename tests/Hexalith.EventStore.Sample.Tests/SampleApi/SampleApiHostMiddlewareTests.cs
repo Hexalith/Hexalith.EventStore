@@ -37,7 +37,8 @@ public sealed class SampleApiHostMiddlewareTests
     public async Task CounterRoute_WhenBearerTokenIsMissing_ReturnsUnauthorized()
     {
         await using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
-            .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth));
+            .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth)
+                .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>()));
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
@@ -84,7 +85,9 @@ public sealed class SampleApiHostMiddlewareTests
         await using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
             .WithWebHostBuilder(builder =>
             {
-                builder.ConfigureAppConfiguration(ConfigureSampleAuth);
+                builder.ConfigureAppConfiguration(ConfigureSampleAuth)
+                .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>());
+                builder.ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>());
                 builder.ConfigureTestServices(services =>
                 {
                     services.RemoveAll<IEventStoreGatewayClient>();
@@ -128,7 +131,8 @@ public sealed class SampleApiHostMiddlewareTests
     public async Task CounterRoute_WhenBearerTokenUsesHs384_ReturnsUnauthorized()
     {
         await using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
-            .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth));
+            .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth)
+                .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>()));
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
@@ -162,7 +166,8 @@ public sealed class SampleApiHostMiddlewareTests
                 signingKey)),
         ];
         await using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
-            .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth));
+            .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth)
+                .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>()));
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
@@ -216,6 +221,7 @@ public sealed class SampleApiHostMiddlewareTests
                         ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
                         ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500",
                     }));
+                builder.ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>());
                 builder.ConfigureTestServices(services =>
                 {
                     services.RemoveAll<IEventStoreGatewayClient>();

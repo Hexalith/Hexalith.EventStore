@@ -27,7 +27,6 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.EventStore.Controllers;
 
 [ApiController]
-[Authorize]
 [Route("api/v1/queries")]
 [Consumes("application/json")]
 [Tags("Queries")]
@@ -164,6 +163,7 @@ public partial class QueriesController : ControllerBase {
     }
 
     [HttpPost]
+    [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(SubmitQueryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status304NotModified)]

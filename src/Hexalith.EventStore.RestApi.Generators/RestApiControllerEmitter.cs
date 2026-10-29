@@ -218,7 +218,7 @@ internal static class RestApiControllerEmitter
     private static void AppendControllerStart(StringBuilder builder, RestApiOptions options, string controllerName, bool hasCommandActions)
     {
         builder.AppendLine("[ApiController]");
-        builder.AppendLine("[Authorize]");
+        builder.AppendLine("[Authorize(Policy = \"EventStoreHuman\")]");
         builder.Append("[Route(").Append(Literal(options.RoutePrefix)).AppendLine(")]");
         builder.Append("[Tags(").Append(Literal(GetTag(options))).AppendLine(")]");
         // Inject ICommandStatusLocationBuilder only when a command action reads it; a query-only controller

@@ -25,7 +25,7 @@ builder.Services
 builder.Services.AddSingleton<IValidateOptions<JwtBearerAuthenticationOptions>, ValidateJwtBearerAuthenticationOptions>();
 builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerAuthenticationOptions>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
-builder.Services.AddAuthorization();
+builder.Services.AddEventStoreHttpHostSecurity();
 
 // Outbound path to the EventStore gateway via this app's DAPR sidecar. The caller's validated bearer is
 // forwarded unchanged so EventStore's JWT/RBAC/tenant enforcement stays authoritative. A literal
@@ -61,6 +61,8 @@ if (!app.Environment.IsDevelopment()) {
 }
 
 app.UseHttpsRedirection();
+app.UseRouting();
+app.UseEventStoreHttpHostSecurity();
 app.UseAuthentication();
 app.UseAuthorization();
 

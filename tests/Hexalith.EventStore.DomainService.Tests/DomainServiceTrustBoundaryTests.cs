@@ -757,20 +757,13 @@ public sealed partial class DomainServiceTrustBoundaryTests
         hits.ShouldBe(1);
     }
 
-    /// <summary>An explicitly marked literal route starts and serves anonymous callers under the workload fallback.</summary>
+    /// <summary>Legacy public-endpoint markers cannot create anonymous exceptions on conforming SDK hosts.</summary>
     [Fact]
-    public async Task ExplicitPublicEndpoint_BypassesFallbackOnlyForItsOwnRoute()
+    public async Task ExplicitPublicEndpoint_FailsClosedAtStartup()
     {
-        await using WebApplication app = await StartAsync(beforeSdk: application =>
+        await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(beforeSdk: application =>
             application.MapGet("/metadata/timesheets", () => "timesheets")
-                .AllowEventStorePublicEndpoint("/metadata/timesheets"));
-
-        using HttpResponseMessage response = await app.GetTestClient().GetAsync(
-            "/metadata/timesheets", TestContext.Current.CancellationToken);
-        using HttpResponseMessage protectedResponse = await app.GetTestClient().PostAsync(
-            "/project/v2", new StringContent("{}"), TestContext.Current.CancellationToken);
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        protectedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+                .AllowEventStorePublicEndpoint("/metadata/timesheets")));
     }
 
     private static async Task<WebApplication> StartAsync(

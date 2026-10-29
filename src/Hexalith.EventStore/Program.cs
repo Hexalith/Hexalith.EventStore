@@ -35,19 +35,23 @@ WebApplication app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.MapDefaultEndpoints();
+app.UseRouting();
 app.UseAuthentication();
 app.UseRateLimiter();
-app.UseAuthorization();
 app.UseCloudEvents();
 
 // OpenAPI/Swagger UI (gated by configuration, H13)
 if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
-    _ = app.MapOpenApi();
+    _ = app.MapOpenApi().RequireAuthorization(EventStoreHttpHostSecurityExtensions.HumanPolicy);
+    _ = app.UseEventStoreHumanSurface("/swagger");
     _ = app.UseSwaggerUI(options => {
         options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore API v1");
         options.RoutePrefix = "swagger";
     });
 }
+
+app.UseEventStoreHttpHostSecurity();
+app.UseAuthorization();
 
 bool declarativeSubscriptions = app.Configuration.GetValue<bool>("Dapr:DeclarativeSubscriptions");
 app.MapControllers().Add(endpoint => ProjectionNotificationTopicAttribute.Bind(endpoint, app.Services, declarativeSubscriptions));
@@ -55,11 +59,11 @@ app.MapErrorReferences();
 app.MapApiVersionFallback();
 if (!declarativeSubscriptions)
 {
-    app.MapSubscribeHandler();
+    app.MapSubscribeHandler().RequireEventStoreChannel();
 }
 app.MapActorsHandlers()
     .WithMetadata(EventStoreActorCallbackEndpointMetadata.Instance)
-    .RequireAuthorization(EventStoreWorkloadAuthenticationDefaults.SidecarChannelPolicy);
+    .RequireEventStoreChannel();
 if (workloadAuthorityEnabled)
 {
     app.MapEventStoreWorkloadBindingAuthority();
@@ -72,7 +76,8 @@ SignalROptions? signalROptions = app.Configuration
     .Get<SignalROptions>();
 
 if (signalROptions?.Enabled == true) {
-    _ = app.MapHub<ProjectionChangedHub>(ProjectionChangedHub.HubPath);
+    _ = app.MapHub<ProjectionChangedHub>(ProjectionChangedHub.HubPath)
+        .RequireAuthorization(EventStoreHttpHostSecurityExtensions.HumanPolicy);
     _ = app.MapSignalRRuntimeProofEndpoints();
 }
 

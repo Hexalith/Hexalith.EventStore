@@ -32,7 +32,5 @@ internal static class DaprAppChannelSecurity
     /// retained item, identity, or payload, so leaving them open costs nothing the operator boundary protects.
     /// </remarks>
     internal static bool RequiresToken(PathString path)
-        => !path.StartsWithSegments("/health")
-            && !path.StartsWithSegments("/alive")
-            && !path.StartsWithSegments("/ready");
+        => !Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpEndpointInventory.IsProbe(path.Value);
 }

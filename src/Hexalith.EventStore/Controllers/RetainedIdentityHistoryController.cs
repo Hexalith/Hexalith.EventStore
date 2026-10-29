@@ -8,7 +8,7 @@ namespace Hexalith.EventStore.Controllers;
 
 /// <summary>Explicitly composed internal attribution endpoint; ordinary stream privileges do not grant it.</summary>
 [ApiController]
-[Authorize]
+[Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/identity-history")]
 public sealed class RetainedIdentityHistoryController(RetainedIdentityHistorySourceReader? reader = null) : ControllerBase
 {

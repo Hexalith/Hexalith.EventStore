@@ -112,7 +112,7 @@ public sealed class SampleApiStructuralTests
         programText.ShouldContain("builder.Services.AddControllers();");
         programText.ShouldContain("builder.Services.AddHttpContextAccessor();");
         programText.ShouldContain("builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)");
-        programText.ShouldContain("builder.Services.AddAuthorization();");
+        programText.ShouldContain("builder.Services.AddEventStoreHttpHostSecurity();");
         programText.ShouldContain("options.BaseAddress = new Uri(daprHttpEndpoint)");
         programText.ShouldContain(".AddHttpMessageHandler<InboundBearerForwardingHandler>()");
         programText.ShouldContain(".AddEventStoreDaprServiceInvocation(\"eventstore\", daprApiToken)");

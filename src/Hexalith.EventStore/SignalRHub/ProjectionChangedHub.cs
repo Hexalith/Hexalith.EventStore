@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.SignalRHub;
 /// SignalR hub for real-time projection change notifications.
 /// Clients join groups by projection type and tenant to receive targeted "changed" signals.
 /// </summary>
-[Authorize]
+[Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 public partial class ProjectionChangedHub {
     /// <summary>
     /// The hub endpoint path. Hardcoded — no valid reason to make configurable.

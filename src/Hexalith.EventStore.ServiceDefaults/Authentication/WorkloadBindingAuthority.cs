@@ -118,7 +118,8 @@ public sealed class WorkloadBindingAuthority(IOptionsMonitor<WorkloadAuthorityOp
         _mappedPrefix = prefix;
     }
 
-    private bool Usable(WorkloadAuthorityOptions current) => current.Enabled && current.Grants is not null
+    private bool Usable(WorkloadAuthorityOptions current) => environment.IsDevelopment() && current.NonconformingDevelopmentFixture
+        && current.Enabled && current.Grants is not null
         && !string.IsNullOrWhiteSpace(current.KeyId) && !string.IsNullOrWhiteSpace(current.SigningCertificatePath)
         && Path.IsPathFullyQualified(current.SigningCertificatePath)
         && Uri.TryCreate(current.Issuer, UriKind.Absolute, out Uri? uri)

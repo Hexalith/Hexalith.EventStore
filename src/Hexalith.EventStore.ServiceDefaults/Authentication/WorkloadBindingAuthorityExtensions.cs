@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.ServiceDefaults.Authentication;
 
@@ -21,7 +22,12 @@ public static class WorkloadBindingAuthorityExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddOptions<WorkloadAuthorityOptions>().Bind(configuration.GetSection(WorkloadAuthorityOptions.SectionName))
-            .PostConfigure(options => WorkloadAuthorityBindingConfiguration.Configure(options, configuration));
+            .PostConfigure(options => WorkloadAuthorityBindingConfiguration.Configure(options, configuration))
+            .Validate<IServiceProvider>((options, provider) => !options.Enabled
+                || provider.GetService<IHostEnvironment>()?.IsDevelopment() == true && options.NonconformingDevelopmentFixture
+                    && !services.Any(static descriptor => descriptor.ServiceType == typeof(EventStoreHttpEndpointSource)),
+                "The embedded authority requires an explicitly nonconforming Development fixture.")
+            .ValidateOnStart();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<WorkloadBindingAuthority>();
         return services;
@@ -38,6 +44,13 @@ public static class WorkloadBindingAuthorityExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
         if (!prefix.StartsWith('/') || prefix.EndsWith('/') || prefix.Contains("..", StringComparison.Ordinal))
             throw new ArgumentException("An absolute route prefix without trailing slash is required.", nameof(prefix));
+        WorkloadAuthorityOptions options = endpoints.ServiceProvider.GetRequiredService<IOptions<WorkloadAuthorityOptions>>().Value;
+        IHostEnvironment hostEnvironment = endpoints.ServiceProvider.GetRequiredService<IHostEnvironment>();
+        if (!hostEnvironment.IsDevelopment() || !options.NonconformingDevelopmentFixture
+            || endpoints.ServiceProvider.GetService<EventStoreHttpEndpointSource>() is not null)
+        {
+            throw new InvalidOperationException("Embedded authority routes require an explicitly nonconforming Development fixture.");
+        }
         endpoints.ServiceProvider.GetRequiredService<WorkloadBindingAuthority>().BindRoutePrefix(prefix);
         endpoints.MapGet(prefix + "/.well-known/openid-configuration", (WorkloadBindingAuthority authority) =>
             authority.GetMetadata() is { } metadata ? Results.Json(metadata) : Results.NotFound()).WithMetadata(WorkloadAuthorityEndpointMetadata.Discovery).AllowAnonymous();

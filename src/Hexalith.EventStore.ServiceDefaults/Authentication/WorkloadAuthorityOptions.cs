@@ -9,6 +9,8 @@ public sealed class WorkloadAuthorityOptions
     public const int MaximumLifetimeSeconds = 120;
     /// <summary>Gets or sets the explicit activation flag.</summary>
     public bool Enabled { get; set; }
+    /// <summary>Gets or sets whether this is an explicitly nonconforming Development fixture.</summary>
+    public bool NonconformingDevelopmentFixture { get; set; }
     /// <summary>Gets or sets the exact HTTPS issuer, including the authority route prefix.</summary>
     public string Issuer { get; set; } = string.Empty;
     /// <summary>Gets or sets the mounted protected PKCS#12 signing certificate path.</summary>

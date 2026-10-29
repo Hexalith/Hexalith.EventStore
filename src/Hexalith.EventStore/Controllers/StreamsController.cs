@@ -59,7 +59,7 @@ public sealed partial class StreamsController(
     /// Reads a public EventStore stream page for downstream replay/rebuild use.
     /// </summary>
     [HttpPost("read")]
-    [Authorize]
+    [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(StreamReadPage), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]

@@ -20,7 +20,7 @@ namespace Hexalith.EventStore.DomainService;
 /// Every canonical operational route requires the Dapr application-channel token plus a short-lived workload
 /// assertion from the trusted JWT issuer whose caller, audience (this service's Dapr application id), and granted
 /// operation match the route. Sidecar-originated deliveries (pub/sub subscriptions, subscription discovery, actor
-/// runtime calls) require the application-channel token. Every other endpoint falls back to the any-workload policy.
+/// runtime calls) require the application-channel token. Every other endpoint must name an explicit policy; unclassified endpoints are denied.
 /// Only <c>/health</c>, <c>/alive</c>, and <c>/ready</c> stay anonymous.
 /// </para>
 /// <para>
@@ -56,6 +56,7 @@ public static class EventStoreDomainServiceSecurityExtensions
         }
 
         _ = services.AddSingleton<EventStoreDomainServiceEndpointSource>();
+        _ = services.AddEventStoreHttpHostSecurity();
         _ = services
             .AddAuthentication()
             .AddEventStoreWorkloadScheme(
@@ -77,9 +78,7 @@ public static class EventStoreDomainServiceSecurityExtensions
         _ = services.AddEventStoreWorkloadPolicies(
             EventStoreWorkloadAuthenticationDefaults.WorkloadScheme,
             EventStoreDomainServiceRoutes.Operations);
-        _ = services.Configure<AuthorizationOptions>(static options =>
-            options.FallbackPolicy ??= EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(
-                EventStoreWorkloadAuthenticationDefaults.WorkloadScheme));
+
 
         // A domain service is itself an internal caller when it submits trusted effects to EventStore: it proves its
         // own workload identity (its Dapr application id) with an assertion from the same trusted issuer.
@@ -129,17 +128,7 @@ public static class EventStoreDomainServiceSecurityExtensions
         where TBuilder : IEndpointConventionBuilder
     {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.Add(static endpointBuilder =>
-        {
-            for (int index = endpointBuilder.Metadata.Count - 1; index >= 0; index--)
-            {
-                if (endpointBuilder.Metadata[index] is IAllowAnonymous)
-                {
-                    endpointBuilder.Metadata.RemoveAt(index);
-                }
-            }
-        });
-        return builder.RequireAuthorization(EventStoreDomainServicePolicies.SidecarChannel);
+        return builder.RequireEventStoreChannel();
     }
 
     /// <summary>

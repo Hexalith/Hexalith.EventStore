@@ -5,4 +5,5 @@ namespace Hexalith.EventStore.Operations.Models;
 /// </summary>
 /// <param name="TenantId">The authorized tenant scope.</param>
 /// <param name="MessageIds">The message identifiers.</param>
-public sealed record DeadLetterActionRequest(string TenantId, IReadOnlyList<string> MessageIds);
+/// <param name="RequestedBy">The validated human subject supplied by the HTTP receiver for attribution only.</param>
+public sealed record DeadLetterActionRequest(string TenantId, IReadOnlyList<string> MessageIds, string? RequestedBy = null);

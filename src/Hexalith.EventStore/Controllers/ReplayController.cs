@@ -23,7 +23,7 @@ namespace Hexalith.EventStore.Controllers;
 /// Route: POST /api/v1/commands/replay/{correlationId}
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/commands/replay")]
 [Tags("Commands")]
 public class ReplayController(

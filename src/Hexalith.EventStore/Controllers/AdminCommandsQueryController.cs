@@ -13,7 +13,7 @@ namespace Hexalith.EventStore.Controllers;
 /// The admin server queries this endpoint via DAPR service invocation.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
 [Route("api/v1/admin/streams")]
 [Tags("Admin - Command Queries")]

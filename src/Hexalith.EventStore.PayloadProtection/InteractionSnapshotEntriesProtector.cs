@@ -94,7 +94,15 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
                 finally { CryptographicOperations.ZeroMemory(opened.PayloadBytes!); }
             }
             byte[] clear = JsonSerializer.SerializeToUtf8Bytes(restored, InteractionSnapshotJsonContext.Default.JsonNode);
-            try { return SnapshotUnprotectionOutcome.Readable(JsonSerializer.Deserialize(clear, type) ?? throw new PayloadProtectionFormatException(), metadata); }
+            try
+            {
+                // Authentication binds the historical bytes, not their ownership geometry. Reapply the
+                // writer's bounded rules before exposing values that may predate those rules.
+                var restoredLayout = SnapshotEntryLayout.Read(clear, owner.TenantId, false, token);
+                if (!restoredLayout.Skeleton.AsSpan().SequenceEqual(layout.Skeleton) || !restoredLayout.Entries.SequenceEqual(layout.Entries))
+                { return Unreadable(metadata); }
+                return SnapshotUnprotectionOutcome.Readable(JsonSerializer.Deserialize(clear, type) ?? throw new PayloadProtectionFormatException(), metadata);
+            }
             finally { CryptographicOperations.ZeroMemory(clear); }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }

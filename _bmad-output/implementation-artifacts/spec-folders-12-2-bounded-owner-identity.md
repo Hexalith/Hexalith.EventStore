@@ -10,6 +10,17 @@ approved: '2026-10-21'
 context: []
 ---
 
+> **Resumption note — 2026-10-29:** The implementation and regression tests are
+> already present. The later approved [evidence-storage simplification](spec-evidence-storage-simplification.md)
+> supersedes this spec's qualification-script and committed-evidence requirements:
+> commit `6a0b6441f6d78a3007678a1d0ec336e9cb8ff961` deliberately removed
+> `tools/qualify-bounded-owner-identity.py` and the linked evidence packets.
+> Preserve the historical results below as historical claims; their packet links
+> are no longer available in this checkout. Current verification uses repository
+> tests and CI, with commands, counts, source revision and CI availability recorded
+> here. Do not recreate the retired evidence machinery. Frozen behavioral intent,
+> consumption boundaries and the prohibition on commits/publishing remain unchanged.
+
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
 ## Intent
@@ -65,6 +76,12 @@ Repository-relative directory aliases below identify exact task locations:
 2026-10-21: Human approved this spec and directed implementation to continue. Work and evidence belong to this EventStore repository. Preserve the frozen intent and all pre-existing work; no Git staging or commits are authorized.
 
 ## Spec Change Log
+
+- 2026-10-29: Reconciled the resumed spec with the later owner-approved
+  evidence-storage simplification. The seventh task's tool and packet retention
+  describe the original delivery, not work to restore. Keep the implemented
+  bounded storage, public transport, tests and rollout documentation; record new
+  verification here under the current repository policy.
 
 ## Review Triage Log
 
@@ -160,3 +177,91 @@ No Git staging, commits, push, publication, deployment or dependency pin changes
 Package/release qualification and Folders acceptance remain separate.
 
 Final complete unstaged diff, including all untracked evidence, archived at `/tmp/eventstore-bounded-owner-final-fipq0ags.diff`.
+
+### Resumed verification — 2026-10-29
+
+Source revision: `5945ba8b3575f76597075e460bb9a973453272ea`.
+The bounded implementation, tests and consumption documentation already exist;
+this resumption changes only this spec. Concurrent planning, production, test and
+staged documentation changes from other sessions were preserved. This resumption
+did not change pins, source code, the Git index or history.
+CI run: not triggered or claimed; the results below are local Debug/source-mode
+runs using SDK 10.0.403 and .NET runtime 10.0.14.
+
+Build commands:
+
+```bash
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+```
+
+All four builds succeeded with zero warnings and zero errors:
+`Hexalith.EventStore.Client.Tests`, `Hexalith.EventStore.DomainService.Tests`,
+`Hexalith.EventStore.Server.Tests`, and `Hexalith.EventStore.Server.LiveSidecar.Tests`.
+
+Direct assembly verification commands (from the repository root):
+
+```bash
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*SharedProjectionBoundedIdentityTests' -xml /tmp/bounded-client.xml
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -class '*DomainPartitionedSharedProjectionRebuildTests' -result-xml /tmp/bounded-domain.xml
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SharedProjectionSourceBeginProducerTests' -class '*SharedProjectionSourceRosterActorTests' -result-xml /tmp/bounded-server.xml
+dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityRuntimeProofTests' -result-xml /tmp/bounded-runtime-proof.xml
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -result-xml /tmp/bounded-client-full.xml
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -result-xml /tmp/bounded-domain-full.xml
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml /tmp/bounded-server-full.xml
+```
+
+| Run | Passed | Failed | Skipped |
+| --- | ---: | ---: | ---: |
+| Client bounded identity class | 49 | 0 | 0 |
+| Domain partitioned rebuild class | 144 | 0 | 0 |
+| Server source producer/roster classes | 30 | 0 | 0 |
+| Runtime source-binding tests | 3 | 0 | 0 |
+| Full Client suite | 2,248 | 1 | 2 |
+| Full Domain suite | 1,276 | 0 | 1 |
+| Full Server suite | 6,403 | 15 | 25 |
+
+The broad gate remains failed, so status stays `in-progress`. Client's failure is
+`DaprRoutingHeaderOwnershipGuardTests.HostSources_DelegateDaprRoutingHeaderOwnershipToThePlatformHandlerOnly`:
+the guard detects header mutation in the existing `DaprRouteCatalogStateStore`.
+Server failures are in `DaprInternalAuthenticationHandlerTests` (2),
+`ActorBasedAuthIntegrationTests` (2), `QueryResponseProvenancePersistenceTests` (7),
+`InteractionProtectionPersistenceTests` (2), `DeletionConsumptionOriginalTests`
+(1), and `SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets`
+(1). These are failures of the unchanged checkout outside the bounded-owner test
+classes; this resumption neither fixes nor waives them. Client's two isolated-Dapr
+skips and Domain's `EVENTSTORE_CONTENT_LIVE=1` content-persistence skip are separate
+lanes. Historical 2026-10-21 counts above do not describe this source revision.
+
+Live command:
+
+```bash
+BOUNDED_IDENTITY_EVIDENCE_DIR=/tmp/bounded-identity-current BOUNDED_IDENTITY_GENERATED_SOURCE_DIR=/tmp/bounded-identity-current/generated dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityLiveTests' -result-xml /tmp/bounded-live.xml
+```
+
+Three required large-owner cases completed: streamed 10,001, streamed 32,769 and
+buffered 10,001. Each passed staging interruption, partial multi-owner handoff,
+recovery, ordinary growth and repeated rebuild through three distinct processes.
+The nine completed worker records passed runtime PE/PDB and current-source
+checks; maximum observed physical/canonical batch bytes were 110,620, maximum
+batch operations 68, identity bytes 12,302, checkpoint bytes 1,696 and owner
+manifest bytes 1,254. These measurements cover only the completed cases.
+
+**Current live blocker:** concurrent production edits occurred after the builds.
+The buffered 32,769 worker, followed by inherited-owner canaries, correctly failed
+with `Runtime PDB source differs: /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/EventStoreDomainServiceEndpointInventory.cs`.
+The remaining live run was stopped because it could no longer bind results to
+one unchanged source/binary graph. Final XML reports three passed and four failed:
+three source-drift failures (buffered 32,769 and both small inherited-owner cases)
+plus one canceled 10,001-event omitted-owner case. Two focused process-replacement
+canaries were not executed before cancellation; they are not passes or skips.
+The owned runner, worker, sidecar and temporary component directory were cleaned
+up; external containers were left untouched. This is a source-drift qualification failure,
+not evidence of a bounded-identity runtime defect. Do not extrapolate the three
+completed cases to the entire current live matrix or to the concurrent edits.
+No complete live acceptance, overall qualification, package/release readiness or
+Folders acceptance is claimed. Rebuild and rerun the live class against a stable
+source tree after the concurrent work settles; the broad failures above also
+remain unresolved.

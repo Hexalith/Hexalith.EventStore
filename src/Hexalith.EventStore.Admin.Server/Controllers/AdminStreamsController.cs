@@ -17,6 +17,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// REST API controller for browsing and inspecting event streams.
 /// </summary>
 [ApiController]
+[Authorize(Policy = "EventStoreHuman")]
 [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
 [Route("api/v1/admin/streams")]
 [Tags("Admin - Streams")]

@@ -25,7 +25,8 @@ public static class SignalRRuntimeProofEndpoints {
             return app;
         }
 
-        RouteGroupBuilder group = app.MapGroup("/_test/signalr/runtime-proof");
+        RouteGroupBuilder group = app.MapGroup("/_test/signalr/runtime-proof")
+            .RequireAuthorization(Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy);
 
         _ = group.MapGet("/identity", (IConfiguration configuration, IWebHostEnvironment environment) => {
             string? redis = GetBackplaneRedisConnectionString(configuration);

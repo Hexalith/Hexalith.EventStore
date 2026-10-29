@@ -112,7 +112,7 @@ public static class EventStoreServiceCollectionExtensions {
              EventStoreWorkloadOperations.GatewayStreamRead,
              EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery]);
 
-        _ = services.AddAuthorization();
+        _ = services.AddEventStoreHttpHostSecurity();
 
         // FR28: a plain [Authorize] endpoint serves authenticated human callers only. The default policy authenticates
         // the JwtBearer scheme alone, so a workload principal, even a valid one, never satisfies it; an internal
@@ -533,7 +533,5 @@ public static class EventStoreServiceCollectionExtensions {
     /// </summary>
     /// <returns>The default policy.</returns>
     public static AuthorizationPolicy CreateHumanDefaultPolicy()
-        => new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
-            .RequireAuthenticatedUser()
-            .Build();
+        => EventStoreHttpHostSecurityExtensions.CreateHumanPolicy();
 }

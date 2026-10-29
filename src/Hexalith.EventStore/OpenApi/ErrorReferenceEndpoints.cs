@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
 using System.Net;
 
 using Hexalith.EventStore.ErrorHandling;
@@ -147,6 +149,7 @@ public static class ErrorReferenceEndpoints {
         ArgumentNullException.ThrowIfNull(endpoints);
 
         RouteGroupBuilder group = endpoints.MapGroup("/problems")
+            .RequireAuthorization(EventStoreHttpHostSecurityExtensions.HumanPolicy)
             .ExcludeFromDescription();
 
         _ = group.MapGet("", () => Results.Content(RenderIndexHtml(), "text/html"));

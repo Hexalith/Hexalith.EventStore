@@ -23,7 +23,7 @@ public sealed class RestApiControllerGenerationTests
         string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
 
         source.ShouldContain("[ApiController]");
-        source.ShouldContain("[Authorize]");
+        source.ShouldContain("[Authorize(Policy = \"EventStoreHuman\")]" );
         source.ShouldContain("[Route(\"api/counter\")]");
         source.ShouldContain("[Tags(\"counter\")]");
         source.ShouldContain("    [Consumes(\"application/json\")]");

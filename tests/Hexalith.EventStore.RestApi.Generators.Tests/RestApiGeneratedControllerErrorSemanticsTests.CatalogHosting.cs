@@ -6,6 +6,7 @@ using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,8 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     {
         var controller = CreateController();
         var builder = WebApplication.CreateBuilder(); builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, CatalogFixtureAuthenticationHandler>("fixture", null);
+        builder.Services.AddAuthorization(options => options.AddPolicy("EventStoreHuman", policy => policy.AddAuthenticationSchemes("fixture").RequireAuthenticatedUser()));
         builder.Services.AddSingleton<IEventStoreGatewayClient>(controller.Gateway);
         builder.Services.AddSingleton<ICommandStatusLocationBuilder>(new FakeCommandStatusLocationBuilder(null));
         builder.Services.AddControllers().AddApplicationPart(controller.Assembly);

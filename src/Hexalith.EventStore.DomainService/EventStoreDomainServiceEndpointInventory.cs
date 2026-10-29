@@ -12,16 +12,13 @@ namespace Hexalith.EventStore.DomainService;
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
-/// <item><description>Only probes and explicitly marked literal public endpoints may carry anonymous metadata.</description></item>
-/// <item><description>Every effective POST-capable canonical operational route, and every canonical route with
-/// explicit authorization metadata, must carry its exact catalog policy (<see cref="EventStoreDomainServiceRoutes"/>).
-/// A GET-only canonical route without authorization metadata may rely on a denying fallback. No canonical route
-/// may be public.</description></item>
+/// <item><description>Only the exact health, alive, and ready probes may carry anonymous metadata.</description></item>
+/// <item><description>Every canonical operational route must carry its exact catalog policy (<see cref="EventStoreDomainServiceRoutes"/>).
+/// No canonical route may be public.</description></item>
 /// <item><description>Every sidecar-originated route — <c>dapr/subscribe</c>, every pub/sub subscription, and every
 /// Dapr actor route — must carry <see cref="EventStoreDomainServicePolicies.SidecarChannel"/>, including one a host
 /// mapped itself before the SDK.</description></item>
-/// <item><description>Every other endpoint must carry explicit authorization metadata unless a fallback policy that
-/// denies anonymous callers protects it.</description></item>
+/// <item><description>Every other endpoint must name an explicit authorization policy. The fallback never classifies it.</description></item>
 /// </list>
 /// </remarks>
 public static class EventStoreDomainServiceEndpointInventory
@@ -37,12 +34,11 @@ public static class EventStoreDomainServiceEndpointInventory
     public static IReadOnlyList<string> Validate(IEnumerable<Endpoint> endpoints, AuthorizationPolicy? fallbackPolicy)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-        bool fallbackProtects = DeniesAnonymous(fallbackPolicy);
         var violations = new List<string>();
         foreach (RouteEndpoint endpoint in endpoints.OfType<RouteEndpoint>())
         {
             string route = EventStoreDomainServiceRoutes.Normalize(endpoint.RoutePattern.RawText);
-            bool isProbe = EventStoreDomainServiceRoutes.AnonymousProbeRoutes.Contains(route, StringComparer.OrdinalIgnoreCase);
+            bool isProbe = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpEndpointInventory.IsProbe(endpoint.RoutePattern.RawText);
             bool isAnonymous = endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null;
             IReadOnlyList<IAuthorizeData> authorizeData = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>();
             IReadOnlyList<EventStorePublicEndpointMetadata> publicMarkers = endpoint.Metadata.GetOrderedMetadata<EventStorePublicEndpointMetadata>();
@@ -78,30 +74,18 @@ public static class EventStoreDomainServiceEndpointInventory
                     violations.Add($"{route}: a canonical route cannot be public.");
                 }
 
-                if ((SupportsPost(endpoint) || authorizeData.Count > 0)
-                    && !authorizeData.Any(data => string.Equals(data.Policy, catalogRoute!.Policy, StringComparison.Ordinal)))
+                if (!authorizeData.Any(data => string.Equals(data.Policy, catalogRoute!.Policy, StringComparison.Ordinal)))
                 {
                     violations.Add($"{route}: the effective endpoint must require policy '{catalogRoute!.Policy}'.");
                 }
-                else if (!fallbackProtects && authorizeData.Count == 0)
-                {
-                    violations.Add($"{route}: the endpoint has no authorization metadata and no fallback policy that denies anonymous callers protects it.");
-                }
+
 
                 continue;
             }
 
             if (isAnonymous)
             {
-                if (publicMarkers.Count != 1
-                    || !string.Equals(endpoint.RoutePattern.RawText, publicMarkers[0].Route, StringComparison.Ordinal)
-                    || route.IndexOfAny(['{', '}', '*', '?']) >= 0
-                    || !HasSinglePublicMethod(endpoint)
-                    || authorizeData.Count > 0)
-                {
-                    violations.Add($"{route}: anonymous access requires one exact public-endpoint marker on a literal GET or POST route without authorization metadata.");
-                }
-
+                violations.Add($"{route}: only exact health, alive, and ready probes may be anonymous.");
                 continue;
             }
 
@@ -111,9 +95,9 @@ public static class EventStoreDomainServiceEndpointInventory
                 continue;
             }
 
-            if (!fallbackProtects && authorizeData.Count == 0)
+            if (authorizeData.Count == 0 || authorizeData.Any(static data => string.IsNullOrWhiteSpace(data.Policy)))
             {
-                violations.Add($"{route}: the endpoint has no authorization metadata and no fallback policy that denies anonymous callers protects it.");
+                violations.Add($"{route}: the endpoint must name an explicit authorization policy.");
             }
         }
 
@@ -145,17 +129,4 @@ public static class EventStoreDomainServiceEndpointInventory
             || endpoint.Metadata.GetMetadata<ITopicMetadata>() is not null;
     }
 
-    private static bool HasSinglePublicMethod(RouteEndpoint endpoint)
-    {
-        IHttpMethodMetadata? methods = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
-        return methods?.HttpMethods.Count == 1
-            && (string.Equals(methods.HttpMethods[0], HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(methods.HttpMethods[0], HttpMethods.Post, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool SupportsPost(RouteEndpoint endpoint)
-    {
-        IHttpMethodMetadata? methods = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
-        return methods is null || methods.HttpMethods.Contains(HttpMethods.Post, StringComparer.OrdinalIgnoreCase);
-    }
 }

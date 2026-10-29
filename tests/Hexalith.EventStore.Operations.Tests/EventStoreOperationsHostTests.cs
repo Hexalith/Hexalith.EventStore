@@ -21,8 +21,9 @@ public sealed class EventStoreOperationsHostTests
     public async Task SubscribeDocumentContainsExactDeadLetterMapping()
     {
         using var factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+            .WithWebHostBuilder(builder => { builder.UseEnvironment("Development"); OperationsTestCredentials.Configure(builder); });
         using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("dapr-api-token", OperationsTestCredentials.Channel);
 
         using HttpResponseMessage response = await client.GetAsync("/dapr/subscribe");
 
@@ -62,6 +63,7 @@ public sealed class EventStoreOperationsHostTests
             .WithWebHostBuilder(builder =>
             {
                 _ = builder.UseEnvironment("Production");
+                OperationsTestCredentials.Configure(builder);
                 _ = builder.UseSetting(DaprAppChannelSecurity.ConfigurationKey, "sidecar-secret");
             });
         using HttpClient client = factory.CreateClient();
@@ -84,6 +86,7 @@ public sealed class EventStoreOperationsHostTests
             .WithWebHostBuilder(builder =>
             {
                 _ = builder.UseEnvironment("Production");
+                OperationsTestCredentials.Configure(builder);
                 _ = builder.UseSetting(DaprAppChannelSecurity.ConfigurationKey, "sidecar-secret");
             });
         using HttpClient client = factory.CreateClient();
@@ -97,6 +100,13 @@ public sealed class EventStoreOperationsHostTests
 
         using HttpResponseMessage response = await client.SendAsync(request);
 
-        response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
+        if (path == "/internal/dead-letters/count")
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+        else
+        {
+            response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
+        }
     }
 }

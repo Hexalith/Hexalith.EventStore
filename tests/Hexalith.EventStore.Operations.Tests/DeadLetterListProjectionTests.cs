@@ -65,11 +65,12 @@ public sealed class DeadLetterListProjectionTests
 
         using WebApplicationFactory<Program> factory = CreateFactory(actor);
         using HttpClient client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/internal/dead-letters?count=2");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/internal/dead-letters?tenantId=tenant-a&count=2");
         request.Headers.TryAddWithoutValidation("dapr-caller-app-id", "eventstore-admin").ShouldBeTrue();
+        request.Headers.Add("dapr-api-token", OperationsTestCredentials.Channel);
         request.Headers.TryAddWithoutValidation(
             "Authorization",
-            "Bearer " + Guid.NewGuid().ToString("N")).ShouldBeTrue();
+            "Bearer " + OperationsTestCredentials.HumanToken()).ShouldBeTrue();
 
         using HttpResponseMessage response = await client.SendAsync(request);
 
@@ -117,11 +118,12 @@ public sealed class DeadLetterListProjectionTests
             actor,
             builder => builder.UseSetting($"{EventStoreOperationsOptions.SectionName}:MaxListItems", "5"));
         using HttpClient client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/internal/dead-letters?count=999");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/internal/dead-letters?tenantId=tenant-a&count=999");
         request.Headers.TryAddWithoutValidation("dapr-caller-app-id", "eventstore-admin").ShouldBeTrue();
+        request.Headers.Add("dapr-api-token", OperationsTestCredentials.Channel);
         request.Headers.TryAddWithoutValidation(
             "Authorization",
-            "Bearer " + Guid.NewGuid().ToString("N")).ShouldBeTrue();
+            "Bearer " + OperationsTestCredentials.HumanToken()).ShouldBeTrue();
 
         using HttpResponseMessage response = await client.SendAsync(request);
 
@@ -139,6 +141,7 @@ public sealed class DeadLetterListProjectionTests
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             _ = builder.UseEnvironment("Development");
+            OperationsTestCredentials.Configure(builder);
             configure?.Invoke(builder);
             builder.ConfigureServices(services => services.AddSingleton(proxyFactory));
         });

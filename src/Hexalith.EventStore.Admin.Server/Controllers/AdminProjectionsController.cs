@@ -16,7 +16,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// REST API controller for querying and managing projections.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Policy = "EventStoreHuman")]
 [Route("api/v1/admin/projections")]
 [Tags("Admin - Projections")]
 public class AdminProjectionsController(

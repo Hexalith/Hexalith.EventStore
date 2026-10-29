@@ -33,17 +33,17 @@ public static class ServiceCollectionExtensions {
         // 1. Authorization policies (NFR46)
         _ = services.AddAuthorizationBuilder()
             .AddPolicy(AdminAuthorizationPolicies.ReadOnly, policy =>
-                policy.RequireAuthenticatedUser()
+                policy.AddAuthenticationSchemes("Bearer").RequireAuthenticatedUser()
                     .RequireClaim(
                         AdminClaimTypes.AdminRole,
                         nameof(Abstractions.Models.Common.AdminRole.ReadOnly),
                         nameof(Abstractions.Models.Common.AdminRole.Operator),
                         nameof(Abstractions.Models.Common.AdminRole.Admin)))
             .AddPolicy(AdminAuthorizationPolicies.Operator, policy =>
-                policy.RequireAuthenticatedUser()
+                policy.AddAuthenticationSchemes("Bearer").RequireAuthenticatedUser()
                     .RequireClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Operator), nameof(Abstractions.Models.Common.AdminRole.Admin)))
             .AddPolicy(AdminAuthorizationPolicies.Admin, policy =>
-                policy.RequireAuthenticatedUser()
+                policy.AddAuthenticationSchemes("Bearer").RequireAuthenticatedUser()
                     .RequireClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)));
 
         // Retain the previous descriptor and lifetime, and resolve its implementation through

@@ -14,6 +14,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// Type catalog is tenant-agnostic — types are registered globally via reflection.
 /// </summary>
 [ApiController]
+[Authorize(Policy = "EventStoreHuman")]
 [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
 [Route("api/v1/admin/types")]
 [Tags("Admin - Type Catalog")]

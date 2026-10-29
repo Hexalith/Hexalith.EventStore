@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// Health is system-wide — no tenant scoping.
 /// </summary>
 [ApiController]
+[Authorize(Policy = "EventStoreHuman")]
 [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
 [Route("api/v1/admin/health")]
 [Tags("Admin - Health")]

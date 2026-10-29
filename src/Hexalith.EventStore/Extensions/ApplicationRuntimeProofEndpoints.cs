@@ -40,7 +40,7 @@ public static class ApplicationRuntimeProofEndpoints {
                     return Task.CompletedTask;
                 });
                 return Results.Accepted();
-            });
+            }).RequireAuthorization(Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy);
 
         return app;
     }

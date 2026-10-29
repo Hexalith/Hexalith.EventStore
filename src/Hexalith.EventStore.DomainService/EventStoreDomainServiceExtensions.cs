@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -277,6 +279,7 @@ public static class EventStoreDomainServiceExtensions {
 
         ValidateDomainQueryHandlerRoutes(app.Services);
         app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
+        app.UseEventStoreHttpHostSecurity();
         // Preserve the status-root contract without adding an anonymous endpoint (AD-16).
         _ = app.MapGet("/", () => "Hexalith EventStore domain service")
             .RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload);
@@ -355,6 +358,7 @@ public static class EventStoreDomainServiceExtensions {
     {
         ArgumentNullException.ThrowIfNull(app);
         app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
+        app.UseEventStoreHttpHostSecurity();
         bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
         bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
         if (mapProjectionEndpoint)

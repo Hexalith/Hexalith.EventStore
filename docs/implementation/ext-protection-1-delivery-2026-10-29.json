@@ -1,0 +1,706 @@
+{
+  "schema": "ext-protection-1-owner-delivery-audit/v1",
+  "observedAt": "2026-10-29T17:14:23.137163+00:00",
+  "dependencyId": "EXT-PROTECTION-1",
+  "disposition": "BlockedNotSubmitted",
+  "acceptedStatus": "Uncommitted",
+  "dependencyAvailable": false,
+  "liveReady": false,
+  "qualificationPassed": false,
+  "liveExecuted": false,
+  "cohortExecuted": false,
+  "nativeExecuted": false,
+  "attemptReserved": false,
+  "completeImmutableOwnerTarget": null,
+  "completeImmutablePlatformTarget": null,
+  "acceptedIntegrationDate": null,
+  "proposedIntegrationDate": "2026-11-02",
+  "proposedDateAccepted": false,
+  "currentRegisterRecord": {
+    "Owner": "EventStore Maintainer",
+    "Repository": "Hexalith.EventStore",
+    "RequiredArtifact": "A production payload-protection engine behind the existing EventStore hooks, applied field-level to a `ProtectedContent` envelope so every other event field stays plaintext and a destroyed-key field unprotects as the typed value `Erased` without breaking replay: one data-encryption key per `AgentInteraction`, plus an explicit provider-neutral `TargetProtectionKeyAlias` that lets a target-limited creation-outbox `ProtectedContent` field owned by `ConversationAgentState` select that exact interaction DEK without deriving it from the directory aggregate identity, wrapped by a per-tenant key-encryption key custodied through `EXT-SECRETS-1`. The custodian exposes `WrapDek`, `UnwrapDek`, `PinDek`, `UnpinDek`, per-key `DestroyDek`, and an atomic `DestroyDekManifest(BatchId, ManifestDigest, SortedTenantInteractionAliasTargets, GuardCapability)` operation. The batch identity and signed capability are deterministic and target-bound. The capability is non-expiring and revocable, carries its signing-key version, and that version remains verifiable for the full retention of the batch identity and terminal outcome, including exact retry/lookup after consumption or revocation; there is no expiry or renewal path and restore reuses the same identity. Consumption is single-use and all-or-none, returns an ordered irreversible per-target receipt vector, exact retry/lookup returns that vector, a changed target/digest conflicts, and `BlockDeletionBatchConsumption` races `ReserveAndConsumeDeletionBatch` at the same protection owner so exactly one wins. Each first previously uncovered complete protection target `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)` uses one guard-issued batch for its ProtectionFence-assigned monotonic containment ordinal and immutable singleton target manifest; later violation resources for that same target receive coverage links only, no ProtectionFence event alone is a guard capability, and distinct uncovered targets receive distinct ordinals/batches. Hold pinning rejects both per-key and manifest destruction; sealed envelopes remain sealed on broker/read models, `PayloadUnprotectionOutcome` is unreadable after erasure, and snapshot/replay caches inherit the DEK (AD-22, AD-27). The shipped no-op default is not acceptable for content-bearing workflows (AD-14).",
+    "TargetVersionOrCommit": "TBD",
+    "TargetIntegrationDate": "TBD",
+    "CompatibilityContractAndVerificationCommand": "Contract: an owner-supplied executable command must prove at minimum (1) seal with plaintext-absence proof, (2) unseal with payload equality, (3) irreversible erase with typed `Erased` replay, (4) hold pin rejecting erase until authorized unpin, and (5) engine identity/version reporting equal to the exact committed target, with per-tenant isolation and restore-cannot-revive behavior. It must seal the directory creation-outbox field through the target alias and exercise a multi-interaction `DestroyDekManifest`: deterministic single-use batch identity, exact sorted target binding, all targets destroyed or none, ordered per-key receipts, byte-identical retry and lost-result lookup, changed-manifest conflict, duplicate-consumption denial with exact prior result, hold-pin rejection, and a protection-owner `BlockDeletionBatchConsumption`-versus-`ReserveAndConsumeDeletionBatch` race with exactly one winner, plus capability non-expiry across delayed dispatch/restore and signing-key verification until terminal batch state. A containment batch is accepted only with the exact guard-issued capability for its ProtectionFence-assigned singleton ordinal/manifest; response loss uses exact issuance and protection lookup, exact duplicates reuse it, concurrent distinct targets remain distinct, and containment ordinals cannot reuse the accepted-set batch. Replay must yield typed `Erased` from both source outbox and target events. Negative fixtures cover cross-tenant alias substitution, changed payload/manifest, partial-provider failure, snapshot/cache replay, backup, restore, and stale or revoked guard capability. Command: `TBD`.",
+    "RequiredEvidenceLevel": "Levels 4 and 5",
+    "AcceptedStatus": "Uncommitted",
+    "ConsumingStories": "5.6, 5.8, 6.1–6.4, 6.8, 7.1–7.4, 7.7, 8.1–8.3, 8.8; `RQ-1`"
+  },
+  "fullProtectionContract": "### EXT-PROTECTION-1 — EventStore Payload-Protection Engine\n\n| Commitment field | Value |\n| --- | --- |\n| `Owner` | EventStore Maintainer |\n| `Repository` | `Hexalith.EventStore` |\n| `RequiredArtifact` | A production payload-protection engine behind the existing EventStore hooks, applied field-level to a `ProtectedContent` envelope so every other event field stays plaintext and a destroyed-key field unprotects as the typed value `Erased` without breaking replay: one data-encryption key per `AgentInteraction`, plus an explicit provider-neutral `TargetProtectionKeyAlias` that lets a target-limited creation-outbox `ProtectedContent` field owned by `ConversationAgentState` select that exact interaction DEK without deriving it from the directory aggregate identity, wrapped by a per-tenant key-encryption key custodied through `EXT-SECRETS-1`. The custodian exposes `WrapDek`, `UnwrapDek`, `PinDek`, `UnpinDek`, per-key `DestroyDek`, and an atomic `DestroyDekManifest(BatchId, ManifestDigest, SortedTenantInteractionAliasTargets, GuardCapability)` operation. The batch identity and signed capability are deterministic and target-bound. The capability is non-expiring and revocable, carries its signing-key version, and that version remains verifiable for the full retention of the batch identity and terminal outcome, including exact retry/lookup after consumption or revocation; there is no expiry or renewal path and restore reuses the same identity. Consumption is single-use and all-or-none, returns an ordered irreversible per-target receipt vector, exact retry/lookup returns that vector, a changed target/digest conflicts, and `BlockDeletionBatchConsumption` races `ReserveAndConsumeDeletionBatch` at the same protection owner so exactly one wins. Each first previously uncovered complete protection target `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)` uses one guard-issued batch for its ProtectionFence-assigned monotonic containment ordinal and immutable singleton target manifest; later violation resources for that same target receive coverage links only, no ProtectionFence event alone is a guard capability, and distinct uncovered targets receive distinct ordinals/batches. Hold pinning rejects both per-key and manifest destruction; sealed envelopes remain sealed on broker/read models, `PayloadUnprotectionOutcome` is unreadable after erasure, and snapshot/replay caches inherit the DEK (AD-22, AD-27). The shipped no-op default is not acceptable for content-bearing workflows (AD-14). |\n| `TargetVersionOrCommit` | `TBD` |\n| `TargetIntegrationDate` | `TBD` |\n| `CompatibilityContractAndVerificationCommand` | Contract: an owner-supplied executable command must prove at minimum (1) seal with plaintext-absence proof, (2) unseal with payload equality, (3) irreversible erase with typed `Erased` replay, (4) hold pin rejecting erase until authorized unpin, and (5) engine identity/version reporting equal to the exact committed target, with per-tenant isolation and restore-cannot-revive behavior. It must seal the directory creation-outbox field through the target alias and exercise a multi-interaction `DestroyDekManifest`: deterministic single-use batch identity, exact sorted target binding, all targets destroyed or none, ordered per-key receipts, byte-identical retry and lost-result lookup, changed-manifest conflict, duplicate-consumption denial with exact prior result, hold-pin rejection, and a protection-owner `BlockDeletionBatchConsumption`-versus-`ReserveAndConsumeDeletionBatch` race with exactly one winner, plus capability non-expiry across delayed dispatch/restore and signing-key verification until terminal batch state. A containment batch is accepted only with the exact guard-issued capability for its ProtectionFence-assigned singleton ordinal/manifest; response loss uses exact issuance and protection lookup, exact duplicates reuse it, concurrent distinct targets remain distinct, and containment ordinals cannot reuse the accepted-set batch. Replay must yield typed `Erased` from both source outbox and target events. Negative fixtures cover cross-tenant alias substitution, changed payload/manifest, partial-provider failure, snapshot/cache replay, backup, restore, and stale or revoked guard capability. Command: `TBD`. |\n| `RequiredEvidenceLevel` | Levels 4 and 5 |\n| `AcceptedStatus` | `Uncommitted` |\n| `ConsumingStories` | 5.6, 5.8, 6.1–6.4, 6.8, 7.1–7.4, 7.7, 8.1–8.3, 8.8; `RQ-1` |\n\n**Required v21 manifest-destruction extension:** The engine verifies the complete `DeletionBatchCapabilityV1` JWS against the committed anchor/audience and performs a linearizable exact `GovernanceScopeGuard` lookup at consumption; signature-only or batch-issue-only acceptance is forbidden. The lookup must confirm the same batch/manifest, one active unrevoked attestation, and an exact `DeletionBatchDispatchAuthorized` receipt whose conditional guard commit ordered every earlier post-start hold or compromise before dispatch. Open/missing/mismatched/hold-allowed evidence that preceded dispatch, a stale dispatch, unavailable lookup, or compromised/replaced attestation performs no destruction. A later hold ordered after successful dispatch cannot cancel the possibly begun batch but remains restrictive for other batches, purge, and completion. Emergency key revocation blocks the old attestation before consume; same-batch re-attestation is accepted only after the guard atomically makes it the sole active credential and records a successor dispatch authorization. The protection owner indexes terminal destruction by complete `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)`: a later different BatchId for the exact already-destroyed target returns authenticated `AlreadyDestroyedByBatch(OriginalBatchId, OriginalPerTargetReceipt)`, while changed/cross-tenant targets conflict. Same-alias distinct-resource tests before/after original consumption, hold/dispatch/consume ordering, online-lookup races, compromise/re-attestation, lost acknowledgement, and restore are mandatory.\n\n**Required v23 protection-owner extension:** The engine owns the only post-dispatch cancel-versus-consume state machine. It atomically orders `BlockDeletionBatchConsumption` (admission-integrity or registrar-authenticated per-tenant/key-version compromise) against `ReserveAndConsumeDeletionBatch`; only `Unconsumed` may become `ConsumptionReserved`, and that reservation is the irreversible instant for those cancellation reasons. The owner returns authenticated blocked/reserved/consumed/revoked outcomes and exact lookup after loss; a pending/unknown block performs no new effect. `ConsumptionReserved` recovery completes the same all-or-none batch or returns its terminal vector, never a new authorization. Re-attestation begins only from the exact capability-compromise block, remains blocked while the guard replaces the attestation and issues a successor dispatch, and reopens only when `ActivateReattestedDeletionBatch` conditionally consumes those receipts at the same owner while atomically requiring absence of a replacement-key block at the activation identity's expected tenant-key block-set revision. If that key block exists or wins the compare, activation returns `ActivationBlockedByReplacementKeyCompromise(NewKeyVersion, NewRevocationRevision, NewBlockReceiptId)` and leaves/places the batch in that exact new-key `ConsumptionBlocked` state for another same-batch re-attestation; it never clears a global tenant-key block. Admission-integrity blocks never reopen. The target index is complete `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)`: later violation resources use coverage links and never receive another ordinal/batch; `AlreadyDestroyedByBatch` is exact-target defense in depth, not successor authority. Fixtures cover registration arriving before/at/after reserve; a second compromise before replacement, before dispatch, before/at activation, and after activation before reserve; block delivery/mirror loss; exact activation lookup; no false replacement; restore; and tenant/key/attestation/dispatch/revision substitution.\n\n*Added 2026-09-09 by the architecture update: the 2026-09-09 verified-current review found that the EventStore checkout carries only the protection hooks and a no-op default, so the AD-22 key hierarchy has no owner without this record.*\n\n",
+  "authorities": {
+    "register": {
+      "path": "/home/administrator/projects/hexalith/agents/_bmad-output/planning-artifacts/external-dependency-register.md",
+      "exists": true,
+      "sha256": "e29b7fc41cb404209e0abb5fb1e735f29cab253ce4012b142a2c8c30a9c19860"
+    },
+    "platformSourceHandback": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/ext-protection-1-erc-component-delivery-2026-10-29.md",
+      "exists": true,
+      "sha256": "4892c2d7290a10b4af4655931b6e10ebe265f0471b85a709b75edc2b3ac345bd"
+    }
+  },
+  "observedSourceOnly": {
+    "eventstore": {
+      "path": "/home/administrator/projects/hexalith/eventstore",
+      "head": "5945ba8b3575f76597075e460bb9a973453272ea",
+      "branch": "main",
+      "workingTreeStatus": " M _bmad-output/implementation-artifacts/epic-5-context.md\n M _bmad-output/implementation-artifacts/spec-ext-protection-1-owner-delivery.md\n M _bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md\n M _bmad-output/implementation-artifacts/sprint-status.yaml\nM  docs/implementation/ext-protection-1-owner-acceptance.md\n M docs/implementation/ext-protection-1-verifier-protocol.md\n M samples/Hexalith.EventStore.Sample.Api/Program.cs\n M src/Hexalith.EventStore.Admin.Server.Host/Program.cs\n M src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs\n M src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs\n M src/Hexalith.EventStore.Admin.Server/Controllers/AdminConsistencyController.cs\n M src/Hexalith.EventStore.Admin.Server/Controllers/AdminDeadLettersController.cs\n M src/Hexalith.EventStore.Admin.Server/Controllers/AdminProjectionsController.cs\n M src/Hexalith.EventStore.Admin.Server/Controllers/AdminStorageController.cs\n M src/Hexalith.EventStore.DomainService/EventStoreDomainServiceEndpointInventory.cs\n M src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs\n M src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityExtensions.cs\n M src/Hexalith.EventStore.Operations/Endpoints/DeadLetterOperationsEndpointExtensions.cs\n M src/Hexalith.EventStore.Operations/Models/DeadLetterActionRequest.cs\n M src/Hexalith.EventStore.Operations/Program.cs\n M src/Hexalith.EventStore.Operations/Security/DaprAppChannelSecurity.cs\n M src/Hexalith.EventStore.PayloadProtection/InteractionSnapshotEntriesProtector.cs\n M src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs\n M src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprAppChannelToken.cs\n M src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprSidecarChannelAuthenticationHandler.cs\n M src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs\n M src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs\n M src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs\n M src/Hexalith.EventStore/Controllers/AdminCommandsQueryController.cs\n M src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs\n M src/Hexalith.EventStore/Controllers/AdminStorageCommandController.cs\n M src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs\n M src/Hexalith.EventStore/Controllers/AdminTraceQueryController.cs\n M src/Hexalith.EventStore/Controllers/CommandStatusController.cs\n M src/Hexalith.EventStore/Controllers/CommandValidationController.cs\n M src/Hexalith.EventStore/Controllers/CommandsController.cs\n M src/Hexalith.EventStore/Controllers/QueriesController.cs\n M src/Hexalith.EventStore/Controllers/QueryValidationController.cs\n M src/Hexalith.EventStore/Controllers/ReplayController.cs\n M src/Hexalith.EventStore/Controllers/RetainedIdentityHistoryController.cs\n M src/Hexalith.EventStore/Controllers/StreamsController.cs\n M src/Hexalith.EventStore/Extensions/ApplicationRuntimeProofEndpoints.cs\n M src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs\n M src/Hexalith.EventStore/OpenApi/ApiVersionFallbackEndpoints.cs\n M src/Hexalith.EventStore/OpenApi/ErrorReferenceEndpoints.cs\n M src/Hexalith.EventStore/Program.cs\n M src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofEndpoints.cs\n M tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs\n M tests/Hexalith.EventStore.Operations.Tests/DeadLetterOperationsAuthorizationTests.cs\n M tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs\n M tests/Hexalith.EventStore.ServiceDefaults.Tests/Authentication/CommandSourceAuthorityTests.cs\n?? _bmad-output/implementation-artifacts/spec-5-14-authenticated-fallback-and-dapr-framework-route-protection.md\n?? docs/implementation/ext-protection-1-delivery-2026-10-29.md\n?? src/Hexalith.EventStore.Operations/Security/OperationsHttpSecurityExtensions.cs\n?? src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreHttpEndpointInventory.cs\n?? src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreHttpEndpointSource.cs\n?? src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreHttpHostSecurityExtensions.cs\n?? src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreHttpHostSecurityStartupValidator.cs\n?? tests/Hexalith.EventStore.Admin.Server.Host.Tests/HttpHostSecurityTests.cs\n?? tests/Hexalith.EventStore.DomainService.Tests/HttpHostSecurityTests.cs\n?? tests/Hexalith.EventStore.Operations.Tests/HttpHostSecurityTests.cs\n?? tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotFixture.cs\n?? tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotProtectionTests.cs\n?? tests/Hexalith.EventStore.Sample.Tests/HttpHostSecurityTests.cs\n?? tests/Hexalith.EventStore.Server.Tests/HttpHostSecurityTests.cs\n?? tests/Hexalith.EventStore.ServiceDefaults.Tests/HttpHostSecurityTests.cs\n",
+      "completeAcceptedTarget": false
+    },
+    "platformSibling": {
+      "path": "/home/administrator/projects/hexalith/platform",
+      "head": "965b00249b473d602a663f1f48be39424f996337",
+      "branch": "main",
+      "workingTreeStatus": " M _bmad-output/implementation-artifacts/spec-5-4-complete-coupled-secrets-host-delivery.md\nMM _bmad-output/implementation-artifacts/spec-ext-protection-1-production-engine.md\nM  docs/implementation/ext-protection-1-erc-component-delivery-2026-10-29.md\nM  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/README.md\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/log-inventory.json\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-build-1.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-build-2.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-enrollment-build-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-enrollment-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-diff-check.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-build-2.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-build-3.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-build-4.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-build-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-regression-2.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-regression-3.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-regression-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-payload-regression.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-server-build-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-server-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-server-regression-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-eventstore-server-regression.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-executor-build-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-executor-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-final-source-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-focused-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-host-build-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-host-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-native-five.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-native-harness-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-native-harness.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-observer-build-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-observer-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-p15-focused.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-p15-source-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-platform-diff-check.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-protection-regression-final-p15.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-protection-regression-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-protection-regression.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-source-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-source-inventory.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-verifier-regression-2.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-finish-verifier-regression.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-parent-matrix-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-parent-matrix-tests.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-postactivation-python-final-2.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-postactivation-python-final.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-postactivation-python.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-build-2.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-build-3.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-build-4.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-build-5.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-build-6.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-build.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-tests-2.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-tests-3.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-tests-4.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-tests-5.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-tests-6.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/logs/ext-protection-preparation-source-tests.log\nA  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/source-inventory.json\nM  docs/implementation/ext-protection-1-erc-final-source-2026-10-29/verification.json\nM  tests/Hexalith.Platform.Protection.Tests/ErasureRootCustodyTests.cs\nM  tests/Hexalith.Platform.Protection.Tests/ProtectionQualificationPreparationFixture.cs\nM  tests/Hexalith.Platform.Protection.Tests/ProtectionQualificationPreparationTests.cs\n?? _bmad-output/implementation-artifacts/tests/story-5-4-coupled-delivery-2026-10-29-plan/\n",
+      "completeAcceptedTarget": false
+    },
+    "platformRootReference": {
+      "path": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Platform",
+      "head": "86c51be91fa196b53b9b4b47b4f90ff46e3af40f",
+      "branch": "main",
+      "workingTreeStatus": "",
+      "completeAcceptedTarget": false
+    }
+  },
+  "candidateVerification": {
+    "workingDirectory": "/home/administrator/projects/hexalith/agents",
+    "command": "python3 ../eventstore/tools/verify-ext-protection-1.py --mode Live --profile /home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json --evidence-root /home/administrator/hexalith-protection-evidence/ext-protection-1/attempts",
+    "executed": false,
+    "ProtectionProfileSha256": null,
+    "ProtectionPlatformTargetCommit": null
+  },
+  "observedPlan": {
+    "path": "/home/administrator/projects/hexalith/eventstore/tools/ext-protection-1/plan.json",
+    "exists": true,
+    "sha256": "c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c",
+    "cases": 41,
+    "qualified": false,
+    "sourceResult": {
+      "mode": "Source",
+      "cases": 41,
+      "planSha256": "c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c",
+      "liveExecuted": false
+    }
+  },
+  "installedBindings": {
+    "protectionProfile": {
+      "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json",
+      "exists": false,
+      "sha256": null
+    },
+    "engineBinary": null,
+    "capabilityTrust": null,
+    "roles": {
+      "executor": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      },
+      "observer": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      },
+      "enrollment": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      }
+    },
+    "remoteInstallationQueried": false,
+    "requiredHostFields": [
+      "Native",
+      "Endpoint",
+      "CredentialReference",
+      "RegistryEpochs",
+      "PrivateAuthority",
+      "SourceAuthority",
+      "GuardAuthority",
+      "RegistrarAuthority",
+      "EvidenceAuthority",
+      "CapabilityTrust",
+      "InventoryConfigurationFile",
+      "InventoryConfigurationSha256",
+      "CopyPolicyFile",
+      "CopyPolicySha256"
+    ],
+    "requiredNativeFields": [
+      "StoreId",
+      "EnrollmentId",
+      "TransitMount",
+      "HeadMount",
+      "NativeKeys",
+      "DurabilityPolicy"
+    ],
+    "requiredAuthorityFields": [
+      "AppId",
+      "CredentialReference",
+      "PublicKeyPem",
+      "EnrollmentId",
+      "Scope",
+      "CurrentTrustRevision"
+    ]
+  },
+  "gapDisposition": {
+    "G1": {
+      "status": "Open",
+      "remaining": "Installed six-operation custody and all-or-none manifest/holder/pin/terminal receipt provenance remain unqualified; ERC source/native component delivery does not establish all-copy physical effects."
+    },
+    "G2": {
+      "status": "Open",
+      "remaining": "Current independent authority/registrar/receiver/composition source exists; exact installed identities, grants, enrollment/genesis/current trust and outside-restore placement remain unqualified."
+    },
+    "G3": {
+      "status": "Open",
+      "remaining": "Complete historical Raft/WAL/storage/replica/memory/swap/core/export/backup/clone/operator copy inventory, physical erasure, restore exclusion and survivor recovery remain unproved. Full-copy policy must deny until qualified."
+    },
+    "G4": {
+      "status": "Open",
+      "remaining": "Mixed-root representation/composite completion/selective replay source exists, including the historical-read correction. Installed source/target/cache/backup/restore and actual writer/anchor/scheduler histories remain required."
+    },
+    "G5": {
+      "status": "Open",
+      "remaining": "All 41 source cases are mapped and three role programs exist; independently installed Executor/Observer/Enrollment ACLs, native arguments, actual complete 41-case execution and persisted observations remain unqualified."
+    },
+    "G6": {
+      "status": "Open",
+      "remaining": "Native capability/signing/no-issue/hold/replacement/original correlation exists and passes offline. Installed authenticated complete append/currentness, sole authority, native mutation/physical provenance and restore evidence remain required."
+    },
+    "G7": {
+      "status": "Open",
+      "remaining": "Complete coordinated clean immutable source/package targets, accepted profile/plan/engine/role/trust hashes, integration date and explicit owner acceptance remain absent; no package pins or dependency pointers changed."
+    }
+  },
+  "matrixAudit": {
+    "fullInstalledMatrixPassed": false,
+    "rows": [
+      {
+        "row": "Protect",
+        "source": [
+          "src/Hexalith.EventStore.PayloadProtection/InteractionPayloadProtectionService.cs",
+          "../platform/src/Hexalith.Platform.Protection/ErasureRootOccurrenceBindings.cs"
+        ],
+        "tests": [
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionPayloadProtectionServiceTests.cs",
+          "../platform/tests/Hexalith.Platform.Protection.Tests/ErasureRootEngineTests.cs"
+        ],
+        "remaining": [
+          "G1",
+          "G4",
+          "G5"
+        ],
+        "verificationScope": "Current-run full PayloadProtection suite and offline verifier only; other named tests are retained source/handback evidence, not rerun installed proof."
+      },
+      {
+        "row": "Read/distribute",
+        "source": [
+          "src/Hexalith.EventStore.PayloadProtection/InteractionSnapshotEntriesProtector.cs",
+          "src/Hexalith.EventStore.Server/Events/EventPublisher.cs"
+        ],
+        "tests": [
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotProtectionTests.cs",
+          "tests/Hexalith.EventStore.Server.Tests/Security/InteractionProtectionActorRecoveryTests.cs"
+        ],
+        "remaining": [
+          "G3",
+          "G4",
+          "G5"
+        ],
+        "verificationScope": "Current-run full PayloadProtection suite and offline verifier only; other named tests are retained source/handback evidence, not rerun installed proof."
+      },
+      {
+        "row": "Custody",
+        "source": [
+          "../platform/src/Hexalith.Platform.Protection/ErasureRootCustody.cs",
+          "../platform/src/Hexalith.Platform.Protection/ErasureRootLifecycleAuthority.cs"
+        ],
+        "tests": [
+          "../platform/tests/Hexalith.Platform.Protection.Tests/ErasureRootCustodyTests.cs"
+        ],
+        "remaining": [
+          "G1",
+          "G2",
+          "G3"
+        ],
+        "verificationScope": "Current-run full PayloadProtection suite and offline verifier only; other named tests are retained source/handback evidence, not rerun installed proof."
+      },
+      {
+        "row": "Manifest",
+        "source": [
+          "src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs",
+          "../platform/src/Hexalith.Platform.Protection/ErasureRootManifestProvider.cs"
+        ],
+        "tests": [
+          "tests/Hexalith.EventStore.Server.Tests/Security/DeletionConsumptionOriginalTests.cs",
+          "../platform/tests/Hexalith.Platform.Protection.Tests/ErasureRootConsumptionTests.cs"
+        ],
+        "remaining": [
+          "G1",
+          "G3",
+          "G6"
+        ],
+        "verificationScope": "Current-run full PayloadProtection suite and offline verifier only; other named tests are retained source/handback evidence, not rerun installed proof."
+      },
+      {
+        "row": "v21",
+        "source": [
+          "src/Hexalith.EventStore.Server/Security/PublishedTrustDeletionConsumptionAuthority.cs",
+          "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardReducer.cs",
+          "tools/ext_protection_1.py"
+        ],
+        "tests": [
+          "tests/Hexalith.EventStore.Server.Tests/Security/PublishedTrustDeletionConsumptionAuthorityTests.cs",
+          "tools/tests/test_ext_protection_1_cross_language.py"
+        ],
+        "remaining": [
+          "G2",
+          "G5",
+          "G6"
+        ],
+        "verificationScope": "Current-run full PayloadProtection suite and offline verifier only; other named tests are retained source/handback evidence, not rerun installed proof."
+      },
+      {
+        "row": "v23",
+        "source": [
+          "src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs",
+          "tools/ext_protection_1.py"
+        ],
+        "tests": [
+          "tests/Hexalith.EventStore.Server.Tests/Security/PublishedTrustReplacementAuthorityTests.cs",
+          "tools/tests/test_ext_protection_1_rejected_replacement.py"
+        ],
+        "remaining": [
+          "G2",
+          "G5",
+          "G6"
+        ],
+        "verificationScope": "Current-run full PayloadProtection suite and offline verifier only; other named tests are retained source/handback evidence, not rerun installed proof."
+      },
+      {
+        "row": "Qualification",
+        "source": [
+          "tools/verify-ext-protection-1.py",
+          "../platform/src/Hexalith.Platform.Protection/ProtectionQualificationRoleProgram.cs",
+          "../platform/src/Hexalith.Platform.Protection/ProtectionQualificationSourceCatalog.cs"
+        ],
+        "tests": [
+          "tools/tests/test_ext_protection_1.py",
+          "tools/tests/test_ext_protection_1_mixed_snapshot.py"
+        ],
+        "remaining": [
+          "G1",
+          "G2",
+          "G3",
+          "G4",
+          "G5",
+          "G6",
+          "G7"
+        ],
+        "verificationScope": "Current-run full PayloadProtection suite and offline verifier only; other named tests are retained source/handback evidence, not rerun installed proof."
+      }
+    ]
+  },
+  "deliveredEventStoreSource": [
+    "src/Hexalith.EventStore.PayloadProtection/InteractionSnapshotEntriesProtector.cs",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotFixture.cs",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotProtectionTests.cs"
+  ],
+  "sourceFiles": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/InteractionSnapshotEntriesProtector.cs",
+      "exists": true,
+      "sha256": "2a0c5f4367bd9ec31bd1f52b619cef7ef4307366272c1792e2d6fa9ceb257b2e"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotFixture.cs",
+      "exists": true,
+      "sha256": "a5c8f934544920fd9219ab2bb3ebb3190396ab14ab9aec344b27486f716220f2"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotProtectionTests.cs",
+      "exists": true,
+      "sha256": "c0f6b22e1c8e3ba7ff5253c95e9519c6640a5e24319ea78f268c3eb6cf0b883f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-delivery-2026-10-29.md",
+      "exists": true,
+      "sha256": "6891e932eddedd8507461c3ffcee266e9d5163ee2f5c4de2f5302cf7cc2c3128"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-verifier-protocol.md",
+      "exists": true,
+      "sha256": "b3ef6f56d051c8258b95ea40459863431e99c74f389edc38e537662f8bb5a65a"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-ext-protection-1-owner-delivery.md",
+      "exists": true,
+      "sha256": "c6a6b789d3af45cfb0f992666555b78f06e86fd73a67cf2d549d07c5e5057a12"
+    }
+  ],
+  "currentComponentVerification": {
+    "payloadTestsPassed": 890,
+    "newCasesIncludedInPayloadTotal": 10,
+    "offlineVerifierTestsPassed": 78,
+    "totalNonoverlappingTestsPassed": 968,
+    "failed": 0,
+    "skipped": 0,
+    "unrun": 0,
+    "buildWarnings": 0,
+    "buildErrors": 0,
+    "serverOrPlatformSuiteRerun": false,
+    "commands": [
+      {
+        "name": "parent-offline-verifier",
+        "command": {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tools/tests",
+            "-p",
+            "test_ext_protection_1*.py",
+            "-v"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:10:56.552085+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:10:56.552085+00:00",
+          "finishedAt": "2026-10-29T17:11:15.694390+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/parent-offline-verifier.log",
+          "logSha256": "72500fcc18803dbfb08d256c15241105336e38142be14f1dc63c4cb21cb713a9"
+        }
+      },
+      {
+        "name": "parent-source",
+        "command": {
+          "argv": [
+            "python3",
+            "tools/verify-ext-protection-1.py",
+            "--mode",
+            "Source"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:06:19.099371+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:06:19.099371+00:00",
+          "finishedAt": "2026-10-29T17:06:19.135762+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/parent-source.log",
+          "logSha256": "b331043bc1b4ef5a172a6a5a89501e59ac85ec72adc1efe6608d8f249e07549a"
+        }
+      },
+      {
+        "name": "snapshot-historical-diff-check",
+        "command": {
+          "argv": [
+            "git",
+            "diff",
+            "--check",
+            "--",
+            "src/Hexalith.EventStore.PayloadProtection/InteractionSnapshotEntriesProtector.cs",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotFixture.cs",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionMixedSnapshotProtectionTests.cs"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:10:09.564873+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:10:09.564873+00:00",
+          "finishedAt": "2026-10-29T17:10:09.569863+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-diff-check.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "name": "snapshot-historical-final-build",
+        "command": {
+          "argv": [
+            "dotnet",
+            "build",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+            "--configuration",
+            "Debug",
+            "-p:UseHexalithProjectReferences=true",
+            "-m:1",
+            "-nodeReuse:false"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:09:29.720118+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:09:29.720118+00:00",
+          "finishedAt": "2026-10-29T17:09:31.771860+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-final-build.log",
+          "logSha256": "243000d1ee6a0c4ac83666a95af57a3e86fa38564f1e76c6d851f402dbf21739"
+        }
+      },
+      {
+        "name": "snapshot-historical-final-focused",
+        "command": {
+          "argv": [
+            "dotnet",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+            "-class",
+            "Hexalith.EventStore.PayloadProtection.Tests.InteractionMixedSnapshotProtectionTests",
+            "-noColor"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:09:46.904010+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:09:46.904010+00:00",
+          "finishedAt": "2026-10-29T17:09:47.399172+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-final-focused.log",
+          "logSha256": "fff2ff340c792d3b96583f65fe018db5df2506a54b8e8ac6aea0d48506d4f492"
+        }
+      },
+      {
+        "name": "snapshot-historical-final-payload-suite",
+        "command": {
+          "argv": [
+            "dotnet",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+            "-noColor"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:09:53.678992+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:09:53.678992+00:00",
+          "finishedAt": "2026-10-29T17:09:58.353591+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-final-payload-suite.log",
+          "logSha256": "f5c5b557cc0e8a5ad09fcc6d94805ec5bee4f87bc9460b264c07618cd89b9fca"
+        }
+      },
+      {
+        "name": "snapshot-historical-green-build",
+        "command": {
+          "argv": [
+            "dotnet",
+            "build",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+            "--configuration",
+            "Debug",
+            "-p:UseHexalithProjectReferences=true",
+            "-m:1",
+            "-nodeReuse:false"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:08:29.978018+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:08:29.978018+00:00",
+          "finishedAt": "2026-10-29T17:08:32.867548+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-green-build.log",
+          "logSha256": "55701376f41f1f64e55122c508a181a2bd266f653f8e978311262b7bdaebc274"
+        }
+      },
+      {
+        "name": "snapshot-historical-green-tests",
+        "command": {
+          "argv": [
+            "dotnet",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+            "-class",
+            "Hexalith.EventStore.PayloadProtection.Tests.InteractionMixedSnapshotProtectionTests",
+            "-noColor"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:08:57.558431+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:08:57.558431+00:00",
+          "finishedAt": "2026-10-29T17:08:58.391627+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-green-tests.log",
+          "logSha256": "a0655794c4b5674761d6f62a8fc61331ad89264ec1525844aee224746b5ad490"
+        }
+      },
+      {
+        "name": "snapshot-historical-red-build-2",
+        "command": {
+          "argv": [
+            "dotnet",
+            "build",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+            "--configuration",
+            "Debug",
+            "-p:UseHexalithProjectReferences=true",
+            "-m:1",
+            "-nodeReuse:false"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:07:48.613694+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:07:48.613694+00:00",
+          "finishedAt": "2026-10-29T17:07:50.894732+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-red-build-2.log",
+          "logSha256": "7c51edae94526e897b2163cca42fd14631ca9228d0d75746a47e24cd17307015"
+        }
+      },
+      {
+        "name": "snapshot-historical-red-build",
+        "command": {
+          "argv": [
+            "dotnet",
+            "build",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+            "--configuration",
+            "Debug",
+            "-p:UseHexalithProjectReferences=true",
+            "-m:1",
+            "-nodeReuse:false"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:07:15.944672+00:00"
+        },
+        "result": {
+          "exitCode": 0,
+          "startedAt": "2026-10-29T17:07:15.944672+00:00",
+          "finishedAt": "2026-10-29T17:07:20.273884+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-red-build.log",
+          "logSha256": "d149a63d84a14146a0d13d0fd13c9b206143812a643caa6893cb6a4035590c9c"
+        }
+      },
+      {
+        "name": "snapshot-historical-red-tests-2",
+        "command": {
+          "argv": [
+            "dotnet",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+            "-class",
+            "Hexalith.EventStore.PayloadProtection.Tests.InteractionMixedSnapshotProtectionTests",
+            "-noColor"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:08:16.931448+00:00"
+        },
+        "result": {
+          "exitCode": 1,
+          "startedAt": "2026-10-29T17:08:16.931448+00:00",
+          "finishedAt": "2026-10-29T17:08:17.431661+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-red-tests-2.log",
+          "logSha256": "f33e21078768aef6d4e0aaee571e7c0877f439c27e462477b3aa2e1a2bf3658d"
+        }
+      },
+      {
+        "name": "snapshot-historical-red-tests",
+        "command": {
+          "argv": [
+            "dotnet",
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+            "-class",
+            "Hexalith.EventStore.PayloadProtection.Tests.InteractionMixedSnapshotProtectionTests",
+            "-noColor"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/eventstore",
+          "startedAt": "2026-10-29T17:07:32.824282+00:00"
+        },
+        "result": {
+          "exitCode": 1,
+          "startedAt": "2026-10-29T17:07:32.824282+00:00",
+          "finishedAt": "2026-10-29T17:07:33.730858+00:00",
+          "logPath": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/snapshot-historical-red-tests.log",
+          "logSha256": "1f5dc6e0651675535c63e11eafbcefdc9e6765e3d0456881947bfa87dd0177c5"
+        }
+      }
+    ]
+  },
+  "retainedPlatformHandback": {
+    "verification": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/ext-protection-1-erc-final-source-2026-10-29/verification.json",
+      "exists": true,
+      "sha256": "10a6fa97103cb76a8c2d965820d83ba34570f25f50a866c7a67e0cbf2d14bdab"
+    },
+    "sourceInventory": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/ext-protection-1-erc-final-source-2026-10-29/source-inventory.json",
+      "exists": true,
+      "sha256": "39c3516c73dff520938e6fb0f0951f8503ec2bd7f3e384098dc4ce2dd2ae2e9f"
+    },
+    "logInventory": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/ext-protection-1-erc-final-source-2026-10-29/log-inventory.json",
+      "exists": true,
+      "sha256": "59b487ac097914fa73356437ec4ccbdd472bab3b2aecf37f3ea013424b5a5eeb"
+    },
+    "initialSourceHashAudit": {
+      "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/platform-source-handback-audit.json",
+      "exists": true,
+      "sha256": "3e1b4b8438f3a57d31536e0e25dcac9cad81eb16921d2a1e5cadfd7dec343f74"
+    },
+    "retainedLogHashAudit": {
+      "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/platform-log-handback-audit.json",
+      "exists": true,
+      "sha256": "16c4b9434c05738ed0a3362d4ce880f2b63bb0567f74ec70e7ac7fd22c6d93a7"
+    },
+    "countsAreNotCurrentRun": true,
+    "all41InstalledRecipesExecuted": false,
+    "nativeEvidenceHasSyntheticPrivateEligibility": true
+  },
+  "retainedNegativeControl": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/option-a-feasibility-20261018T113800Z-1dbe62f55af0434684a9602a3824bfe9/raft-probe-attempt-6.result.json",
+    "exists": true,
+    "sha256": "6efa381bc70b3de57a24142e5e679f53781c7f89d5ab6740fb7664966f30888e",
+    "disposition": "ObservedRevival",
+    "g1Qualified": false,
+    "nativeRerun": false
+  },
+  "priorDeliveryPacket": {
+    "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-delivery-2026-10-28.json",
+    "exists": true,
+    "sha256": "221420676325a0cbbfa57d8e076598cb173bceb574c79bb9d16a8ea7d4a88a9f"
+  },
+  "priorAttemptsPreserved": true,
+  "baselineCommitPreserved": "9b062d0d4f506bf45b7fdcd8e54189599a36ff9b",
+  "frozenIntentSha256": "f368586c94007880a5921bbe44e5590ccb8fe88550ded75734c5b3632b7e5da7",
+  "fullDeliveryTasksComplete": false,
+  "specStatus": "in-progress",
+  "workflowStep": 3,
+  "reviewScope": "Parent inspected all current three-file source/test changes. Formal workflow review/completion not reached because full Tasks & Acceptance remain unmet.",
+  "installedIntegrationSchedule": {
+    "status": "NotSchedulable",
+    "date": null,
+    "reason": "Complete accepted coordinated targets and actual installed independent profile/roles/trust, all-copy qualification and owner acceptance are missing."
+  },
+  "evidenceDirectory": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf",
+  "verificationManifest": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261029T170427Z-f2b93ebf/verification-manifest-final.json",
+  "executionBoundary": [
+    "No Live/cohort/Agents consumer or native/infrastructure/enrollment/spending action",
+    "No AppHost restart",
+    "No Platform/Agents/register/default-DI/plan/golden/package-pin/lock/dependency-pointer mutation",
+    "No Git mutation"
+  ],
+  "concurrentWorkPreserved": [
+    "Story 5.14 HTTP security work",
+    "Folders 12.2",
+    "epic/sprint documentation",
+    "externally staged owner-acceptance documentation"
+  ]
+}

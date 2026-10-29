@@ -25,7 +25,7 @@ namespace Hexalith.EventStore.Controllers;
 /// EventStore-owned admin storage write routes.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/admin/storage")]
 [Tags("Admin - Storage Writes")]
 public sealed class AdminStorageCommandController(

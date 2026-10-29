@@ -146,6 +146,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         {
             AllowAutoRedirect = false,
         });
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(new Claim("sub", "discovery-reader")));
 
         using HttpResponseMessage document = await client.GetAsync(
             "/openapi/v1.json",
@@ -194,6 +195,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         {
             AllowAutoRedirect = false,
         });
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(new Claim("sub", "discovery-reader")));
 
         using HttpResponseMessage document = await client.GetAsync(
             "/openapi/v1.json",

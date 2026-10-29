@@ -430,6 +430,9 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             HttpContext = new DefaultHttpContext(),
         };
 
+        // These action tests isolate response semantics from the separately tested real-host catalog gate.
+        controller.HttpContext.Items[Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.ValidatorKey] =
+            (Func<Type, string, string, bool>)((_, _, tenant) => tenant == "tenant-a");
         return new GeneratedController(controller, gateway);
     }
 

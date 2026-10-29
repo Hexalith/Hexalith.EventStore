@@ -59,7 +59,7 @@ public class CommandStatusController(
     /// <response code="409">The identifier matches multiple commands or authorized tenant scopes.</response>
     /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
     [HttpGet("{messageId}")]
-    [Authorize]
+    [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
     [ProducesResponseType(typeof(CommandStatusResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]

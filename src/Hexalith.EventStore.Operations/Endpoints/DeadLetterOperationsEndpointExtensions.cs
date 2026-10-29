@@ -1,5 +1,7 @@
+using Hexalith.EventStore.Operations.Security;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
 using System.Globalization;
-using System.Net.Http.Headers;
 
 using Dapr;
 using Dapr.Actors;
@@ -41,12 +43,17 @@ internal static class DeadLetterOperationsEndpointExtensions
             {
                 PubsubName = options.PubSubName,
                 Name = options.TopicName,
-            });
-        _ = endpoints.MapGet(InternalRoute + "/count", CountAsync);
-        _ = endpoints.MapGet(InternalRoute, ListAsync);
-        _ = endpoints.MapPost(InternalRoute + "/retry", RetryAsync);
-        _ = endpoints.MapPost(InternalRoute + "/skip", SkipAsync);
-        _ = endpoints.MapPost(InternalRoute + "/archive", ArchiveAsync);
+            }).RequireEventStoreChannel();
+        _ = endpoints.MapGet(InternalRoute + "/count", CountAsync)
+            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "count");
+        _ = endpoints.MapGet(InternalRoute, ListAsync)
+            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "list");
+        _ = endpoints.MapPost(InternalRoute + "/retry", RetryAsync)
+            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "retry");
+        _ = endpoints.MapPost(InternalRoute + "/skip", SkipAsync)
+            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "skip");
+        _ = endpoints.MapPost(InternalRoute + "/archive", ArchiveAsync)
+            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "archive");
         return endpoints;
     }
 
@@ -125,7 +132,7 @@ internal static class DeadLetterOperationsEndpointExtensions
         IActorProxyFactory actorProxyFactory,
         IOptions<EventStoreOperationsOptions> options)
     {
-        if (!IsAuthorized(request, options.Value))
+        if (!EventStoreHttpHostSecurityExtensions.IsHuman(request.HttpContext.User))
         {
             return OpaqueForbidden();
         }
@@ -144,7 +151,9 @@ internal static class DeadLetterOperationsEndpointExtensions
         int count = 100,
         string? continuationToken = null)
     {
-        if (!IsAuthorized(request, options.Value))
+        if (!EventStoreHttpHostSecurityExtensions.IsHuman(request.HttpContext.User)
+            || request.Query["tenantId"].Count != 1
+            || !OperationsHttpSecurityExtensions.CanAccessTenant(request.HttpContext.User, tenantId))
         {
             return OpaqueForbidden();
         }
@@ -198,7 +207,8 @@ internal static class DeadLetterOperationsEndpointExtensions
         Func<IDeadLetterDrainActor, DeadLetterActionRequest, Task<DeadLetterActorActionResult>> invoke)
     {
         ArgumentNullException.ThrowIfNull(action);
-        if (!IsAuthorized(request, options))
+        if (!EventStoreHttpHostSecurityExtensions.IsHuman(request.HttpContext.User)
+            || !OperationsHttpSecurityExtensions.CanAccessTenant(request.HttpContext.User, action.TenantId))
         {
             return OpaqueForbidden();
         }
@@ -212,6 +222,8 @@ internal static class DeadLetterOperationsEndpointExtensions
                 "InvalidOperation"));
         }
 
+        // Attribution is derived from the independently validated bearer, never from the action body.
+        action = action with { RequestedBy = request.HttpContext.User.FindFirst("sub")?.Value };
         DeadLetterActorActionResult result = await invoke(Actor(actorProxyFactory, options), action).ConfigureAwait(false);
         return result.Success
             ? Results.Ok(new AdminOperationResult(true, "dead-letter-action", "Operation accepted.", null))
@@ -224,19 +236,9 @@ internal static class DeadLetterOperationsEndpointExtensions
                     "InvalidOperation"));
     }
 
-    internal static bool IsAuthorized(HttpRequest request, EventStoreOperationsOptions options)
-    {
-        string caller = request.Headers["dapr-caller-app-id"].ToString();
-        string authorization = request.Headers.Authorization.ToString();
-        return string.Equals(caller, options.AdminCallerAppId, StringComparison.Ordinal)
-            && AuthenticationHeaderValue.TryParse(authorization, out AuthenticationHeaderValue? parsed)
-            && string.Equals(parsed.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase)
-            && !string.IsNullOrWhiteSpace(parsed.Parameter);
-    }
 
     internal static bool IsValidAction(DeadLetterActionRequest action, EventStoreOperationsOptions options)
-        => !string.IsNullOrWhiteSpace(action.TenantId)
-            && action.TenantId.Length <= DeadLetterSafeIdentity.MaxValueLength
+        => OperationsHttpSecurityExtensions.IsCanonicalTenant(action.TenantId)
             && action.MessageIds is { Count: > 0 }
             && action.MessageIds.Count <= options.MaxActionItems
             && action.MessageIds.All(DeadLetterSafeIdentity.IsValidValue);

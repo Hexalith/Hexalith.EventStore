@@ -31,7 +31,8 @@ public class AdminTenantsController(
     /// Adds a user to a tenant.
     /// </summary>
     [HttpPost("{tenantId}/users")]
-    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [Authorize(Policy = "EventStoreHuman")]
+[Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]

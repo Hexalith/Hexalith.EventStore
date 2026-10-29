@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.ErrorHandling;
 
@@ -29,6 +31,7 @@ public static class ApiVersionFallbackEndpoints {
 
         _ = endpoints
             .MapFallback("/api/{version}/{*path}", HandleApiFallback)
+            .RequireAuthorization(EventStoreHttpHostSecurityExtensions.HumanPolicy)
             .ExcludeFromDescription();
 
         return endpoints;

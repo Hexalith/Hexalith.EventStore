@@ -20,7 +20,7 @@ namespace Hexalith.EventStore.Controllers;
 /// Requires the authenticated principal to hold the GlobalAdministrator role (P-D1).
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/admin/projections")]
 [Tags("Admin - Projection Rebuild")]
 public sealed partial class AdminProjectionRebuildController(

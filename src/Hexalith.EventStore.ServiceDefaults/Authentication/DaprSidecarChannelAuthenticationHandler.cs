@@ -34,6 +34,12 @@ public sealed class DaprSidecarChannelAuthenticationHandler(
     /// <inheritdoc />
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        if (Request.Headers.ContainsKey("Authorization")
+            || Request.Headers.ContainsKey(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName))
+        {
+            return Task.FromResult(AuthenticateResult.Fail(
+                new WorkloadAuthenticationException(WorkloadAuthenticationReasons.CredentialConflict)));
+        }
         DaprAppChannelTokenStatus status = DaprAppChannelToken.Verify(Request, configuration, environment);
         if (!DaprAppChannelToken.IsAdmitted(status))
         {
@@ -44,7 +50,7 @@ public sealed class DaprSidecarChannelAuthenticationHandler(
         var identity = new ClaimsIdentity(
             [new Claim(
                 EventStoreWorkloadAuthenticationDefaults.ChannelClaimType,
-                status == DaprAppChannelTokenStatus.Valid ? VerifiedChannel : DevelopmentUnverifiedChannel)],
+                VerifiedChannel)],
             Scheme.Name);
         return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name)));
     }

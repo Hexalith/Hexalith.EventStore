@@ -53,7 +53,7 @@ public static class DaprAppChannelToken
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(expectedToken))
         {
-            return isDevelopment ? DaprAppChannelTokenStatus.NotRequired : DaprAppChannelTokenStatus.Unconfigured;
+            return DaprAppChannelTokenStatus.Unconfigured;
         }
 
         StringValues header = request.Headers[HeaderName];
@@ -86,10 +86,9 @@ public static class DaprAppChannelToken
     /// Gets whether a status admits the request through the channel check.
     /// </summary>
     /// <param name="status">The verification status.</param>
-    /// <returns><see langword="true"/> for <see cref="DaprAppChannelTokenStatus.Valid"/> and the Development-only
-    /// <see cref="DaprAppChannelTokenStatus.NotRequired"/>.</returns>
+    /// <returns><see langword="true"/> only for <see cref="DaprAppChannelTokenStatus.Valid"/>.</returns>
     public static bool IsAdmitted(DaprAppChannelTokenStatus status)
-        => status is DaprAppChannelTokenStatus.Valid or DaprAppChannelTokenStatus.NotRequired;
+        => status == DaprAppChannelTokenStatus.Valid;
 
     /// <summary>
     /// Maps a rejected status to its bounded, support-safe reason code.

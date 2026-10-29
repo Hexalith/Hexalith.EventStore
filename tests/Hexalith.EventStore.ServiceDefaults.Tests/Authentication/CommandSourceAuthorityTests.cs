@@ -58,9 +58,9 @@ public sealed class CommandSourceAuthorityTests
                 NotBefore = DateTimeOffset.UtcNow.AddMinutes(-1), ExpiresAt = DateTimeOffset.UtcNow.AddHours(1), Operations = [operation],
                 Bindings = bindings.Where(pair => pair.Key != dynamicClaim).ToDictionary(pair => pair.Key, pair => new[] { pair.Value }, StringComparer.Ordinal),
             };
-            var options = new WorkloadAuthorityOptions { Enabled = true, Issuer = "https://issuer.example.test", KeyId = "test-key", SigningCertificatePath = path, Grants = [grant] };
+            var options = new WorkloadAuthorityOptions { Enabled = true, NonconformingDevelopmentFixture = true, Issuer = "https://issuer.example.test", KeyId = "test-key", SigningCertificatePath = path, Grants = [grant] };
             var monitor = Substitute.For<IOptionsMonitor<WorkloadAuthorityOptions>>(); monitor.CurrentValue.Returns(options);
-            var environment = Substitute.For<IHostEnvironment>(); environment.EnvironmentName.Returns(Environments.Production);
+            var environment = Substitute.For<IHostEnvironment>(); environment.EnvironmentName.Returns(Environments.Development);
             var authority = new WorkloadBindingAuthority(monitor, environment, TimeProvider.System);
             var details = WorkloadAuthorizationDetails.Decode(WorkloadAuthorizationDetails.Encode(new("receiver", operation, bindings)))!;
             string oauthScope = new WorkloadAssertionIssuerOptions().BuildScope("receiver", operation);

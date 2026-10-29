@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Controllers;
 using Hexalith.EventStore.Admin.Server.Host.Authentication;
@@ -26,6 +28,8 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer();
 
+builder.Services.AddEventStoreHttpHostSecurity();
+
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(AdminStreamsController).Assembly);
 
@@ -34,21 +38,24 @@ WebApplication app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.MapDefaultEndpoints();
+app.UseRouting();
 app.UseAuthentication();
-app.UseAuthorization();
 app.UseMiddleware<AdminRequestBodySizeMiddleware>();
 
 // Admin API discovery is a local-development aid. Configuration cannot expose it outside Development.
 if (app.Environment.IsDevelopment()
     && bool.TryParse(app.Configuration["EventStore:Admin:OpenApi:Enabled"], out bool openApiEnabled)
     && openApiEnabled) {
-    _ = app.MapOpenApi();
+    _ = app.MapOpenApi().RequireAuthorization(EventStoreHttpHostSecurityExtensions.HumanPolicy);
+    _ = app.UseEventStoreHumanSurface("/swagger");
     _ = app.UseSwaggerUI(options => {
         options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore Admin API v1");
         options.RoutePrefix = "swagger";
     });
 }
 
+app.UseEventStoreHttpHostSecurity();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();

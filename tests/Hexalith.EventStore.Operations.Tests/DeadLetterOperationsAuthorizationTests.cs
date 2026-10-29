@@ -123,36 +123,6 @@ public sealed class DeadLetterOperationsAuthorizationTests
         result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status200OK);
     }
 
-    /// <summary>Verifies both the exact Admin app id and forwarded bearer context are mandatory.</summary>
-    [Theory]
-    [InlineData(null, null, false)]
-    [InlineData("eventstore-admin", null, false)]
-    [InlineData("other-app", "Bearer <token>", false)]
-    [InlineData("eventstore-admin", "Basic <token>", false)]
-    [InlineData("eventstore-admin", "Bearer ", false)]
-    [InlineData("eventstore-admin", "Bearer     ", false)]
-    [InlineData("eventstore-admin", "Bearer <token>", true)]
-    public void InternalAuthorizationRequiresExactCallerAndBearer(
-        string? callerAppId,
-        string? authorization,
-        bool expected)
-    {
-        var context = new DefaultHttpContext();
-        if (callerAppId is not null)
-        {
-            context.Request.Headers["dapr-caller-app-id"] = callerAppId;
-        }
-
-        if (authorization is not null)
-        {
-            context.Request.Headers.Authorization = authorization;
-        }
-
-        DeadLetterOperationsEndpointExtensions.IsAuthorized(
-            context.Request,
-            new EventStoreOperationsOptions()).ShouldBe(expected);
-    }
-
     /// <summary>Verifies action batches and actor-key inputs are bounded before actor invocation.</summary>
     [Fact]
     public void ActionValidationRejectsOversizedBatchesAndIdentityInputs()

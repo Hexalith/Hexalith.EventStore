@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Hexalith.EventStore.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/queries/validate")]
 [Consumes("application/json")]
 [Tags("Validation")]
