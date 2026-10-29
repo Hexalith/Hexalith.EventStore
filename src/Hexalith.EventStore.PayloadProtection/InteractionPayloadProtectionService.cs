@@ -17,6 +17,7 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
     private readonly IInteractionOccurrenceRegistry _registry;
     private readonly IInteractionProtectionBindingProvider _bindings;
     private readonly InteractionOccurrenceProtector _protector;
+    private readonly InteractionSnapshotEntriesProtector _snapshotEntries;
 
     /// <summary>Creates the engine without manufacturing any custody or authority implementation.</summary>
     /// <param name="registry">Authenticated durable occurrence owner.</param>
@@ -33,6 +34,7 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
         _registry = registry;
         _bindings = bindings;
         _protector = new(registry, keys, clock);
+        _snapshotEntries = new(registry, bindings, _protector);
     }
 
     /// <summary>Reports the loaded binary and exact compiled revision, never a configured or caller-supplied target.</summary>
@@ -180,6 +182,9 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(state, stateTypeInfo);
         try
         {
+            var layout = SnapshotEntryLayout.Read(bytes, identity.TenantId, false, cancellationToken);
+            if (layout.Entries.Select(entry => entry.Target).Distinct().Skip(1).Any())
+            { return await _snapshotEntries.ProtectAsync(identity, occurrenceContext, layout, cancellationToken).ConfigureAwait(false); }
             ProtectionTarget? target = SnapshotProtectionTargetReader.Read(bytes, identity.TenantId, cancellationToken);
             InteractionProtectionBinding binding = await ResolveAsync(identity, occurrenceContext, target, true, cancellationToken).ConfigureAwait(false);
             InteractionOccurrenceSealedResult result = await _protector.ProtectSnapshotAsync(bytes, binding.Identity,
@@ -198,6 +203,11 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
     {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateOccurrence(identity, occurrenceContext, PayloadProtectionPayloadKind.Snapshot);
+        if (InteractionSnapshotEntriesProtector.IsMixed(state))
+        {
+            if (metadata is null) { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch); }
+            return await _snapshotEntries.ReadAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, false, cancellationToken).ConfigureAwait(false);
+        }
         try
         {
             ProtectedSnapshotPayloadV2 snapshot = state is ProtectedSnapshotPayloadV2 typed ? typed
@@ -232,6 +242,13 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
     public async Task AcquirePayloadProtectionCompletionLeaseAsync(PayloadProtectionCompletionContext completionContext,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(completionContext);
+        if (completionContext.SnapshotEntries is not null)
+        {
+            var entries = await _snapshotEntries.ResolveCompletionAsync(completionContext, cancellationToken).ConfigureAwait(false);
+            if (!await _bindings.AcquireSnapshotCompletionLeasesAsync(entries, cancellationToken).ConfigureAwait(false)) { throw new InvalidOperationException("ProtectionCompletionUnavailable"); }
+            return;
+        }
         InteractionProtectionBinding binding = await ResolveCompletionAsync(completionContext, cancellationToken).ConfigureAwait(false);
         if (!await _bindings.AcquireCompletionLeaseAsync(binding, cancellationToken).ConfigureAwait(false))
         { throw new InvalidOperationException("ProtectionCompletionUnavailable"); }
@@ -241,8 +258,16 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
     public async Task CompletePayloadProtectionAsync(PayloadProtectionCompletionContext completionContext,
         PayloadProtectionPersistenceOutcome persistenceOutcome, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(completionContext);
         if (persistenceOutcome is not (PayloadProtectionPersistenceOutcome.Persisted or PayloadProtectionPersistenceOutcome.NotPersisted
             or PayloadProtectionPersistenceOutcome.Unknown)) { throw new ArgumentOutOfRangeException(nameof(persistenceOutcome)); }
+        if (completionContext.SnapshotEntries is not null)
+        {
+            _ = await _snapshotEntries.ResolveCompletionAsync(completionContext, cancellationToken).ConfigureAwait(false);
+            foreach (var entry in completionContext.SnapshotEntries)
+            { await CompletePayloadProtectionAsync(entry, persistenceOutcome, cancellationToken).ConfigureAwait(false); }
+            return;
+        }
         InteractionProtectionBinding binding = await ResolveCompletionAsync(completionContext, cancellationToken).ConfigureAwait(false);
         // An ambiguous save retains the original pending record. Only independent exact writer proof may activate or abort it.
         if (persistenceOutcome == PayloadProtectionPersistenceOutcome.Unknown) { return; }
@@ -253,6 +278,18 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
             || result.Record.WriterProofId != completionContext.OperationId
             || result.Record.WriterState != (persisted ? InteractionOccurrenceWriterState.Active : InteractionOccurrenceWriterState.Aborted))
         { throw new InvalidOperationException("ProtectionCompletionUnavailable"); }
+    }
+
+    /// <inheritdoc />
+    public Task<SnapshotUnprotectionOutcome> TryReplaySnapshotAsync(AggregateIdentity identity, object state, EventStorePayloadProtectionMetadata? metadata,
+        JsonTypeInfo stateTypeInfo, PayloadProtectionOccurrenceContext occurrenceContext, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(identity); ArgumentNullException.ThrowIfNull(occurrenceContext); ArgumentNullException.ThrowIfNull(stateTypeInfo);
+        ValidateOccurrence(identity, occurrenceContext, PayloadProtectionPayloadKind.Snapshot);
+        if (!InteractionSnapshotEntriesProtector.IsMixed(state)) { return TryUnprotectSnapshotAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, cancellationToken); }
+        return metadata is null ? Task.FromResult(SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch))
+            : _snapshotEntries.ReadAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, true, cancellationToken);
     }
 
     private async Task<InteractionProtectionBinding> ResolveCompletionAsync(PayloadProtectionCompletionContext context, CancellationToken token)

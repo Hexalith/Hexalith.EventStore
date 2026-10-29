@@ -78,6 +78,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
         InteractionOccurrenceIdentity identity, string digestVersion, long attempt, string proposedReference, CancellationToken token)
     {
         long start = clock.GetTimestamp(); byte[]? owned = null; PayloadProtectionMaterial? material = null; ProtectedPathManifest? manifest = null;
+        InteractionOccurrenceOwnedKey? rootUse = null;
         try
         {
             token.ThrowIfCancellationRequested(); ArgumentNullException.ThrowIfNull(payload); ArgumentNullException.ThrowIfNull(paths); ArgumentNullException.ThrowIfNull(identity);
@@ -103,7 +104,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
             if (reserved.Status != InteractionOccurrenceReservationStatus.Reserved || record.WriterState != InteractionOccurrenceWriterState.Reserved
                 || record.Sealed is not null || !await AwaitAsync(() => keys.AcquireEncryptionLeaseAsync(record, CancellationToken.None), start, token).ConfigureAwait(false))
             { return null; }
-            using var root = await AwaitAsync(() => keys.ResolveRootAsync(identity, record.KeyReference, true, CancellationToken.None), start, token,
+            var root = rootUse = await AwaitAsync(() => keys.ResolveRootAsync(identity, record.KeyReference, true, CancellationToken.None), start, token,
                 static key => key?.Dispose()).ConfigureAwait(false);
             if (!ValidKey(root, identity, "interaction-root", identity.RootKeyVersion)) { return null; }
             material = InteractionOccurrenceKeyDeriver.Derive(root!.Bytes, identity, record.KeyReference, token);
@@ -131,6 +132,8 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
             if (owned is not null) { CryptographicOperations.ZeroMemory(owned); }
             if (material?.DataEncryptionKey is not null) { CryptographicOperations.ZeroMemory(material.DataEncryptionKey); }
             if (manifest is not null) { CryptographicOperations.ZeroMemory(manifest.Encoded); CryptographicOperations.ZeroMemory(manifest.Commitment); }
+            // The owned root-use completion signal follows disposal of every derived key and plaintext copy.
+            rootUse?.Dispose();
         }
     }
 
@@ -158,7 +161,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
         => first.KeyReference == second.KeyReference && first.SerializationFormat == second.SerializationFormat && first.ProtectedPathCount == second.ProtectedPathCount
             && first.PayloadBytes.AsSpan().SequenceEqual(second.PayloadBytes);
 
-    private static string Fingerprint(byte[] digestKey, InteractionOccurrenceIdentity identity, byte[] manifest, byte[] payload)
+    internal static string Fingerprint(byte[] digestKey, InteractionOccurrenceIdentity identity, byte[] manifest, byte[] payload)
     {
         // Only this retained-key HMAC covers plaintext. Registry state contains the resulting keyed digest, never raw content or an unkeyed content hash.
         using var hmac = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA256, digestKey);

@@ -8,7 +8,7 @@ From the Agents repository root, the proposed entry point is:
 python3 ../eventstore/tools/verify-ext-protection-1.py --mode Live --profile /home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json --evidence-root /home/administrator/hexalith-protection-evidence/ext-protection-1/attempts
 ```
 
-Do not execute this command before owner-record acceptance. It reads the Agents register, requires EXT-PROTECTION-1 `Committed` or `Available`, validates its accepted ISO integration date without requiring a particular literal date, requires HEAD equal to the accepted full target, a clean EventStore tree, and ancestry from `origin/main`. It does not fetch or alter Git state. The accepted compatibility field must bind the installed profile with `ProtectionProfileSha256=` followed by its exact SHA-256. This belongs in the existing compatibility field. It is not a new register schema row. The command has a success branch after all installed inputs and every case pass; current input absence is not converted to availability.
+Do not execute this command before owner-record acceptance. It reads the Agents register, requires EXT-PROTECTION-1 `Committed` or `Available`, validates its accepted ISO integration date without requiring a particular literal date, and requires exact clean EventStore and Platform checkouts with ancestry from their local `origin/main` refs. It does not fetch or alter Git state. The accepted compatibility field must bind the installed profile with `ProtectionProfileSha256=` followed by its exact SHA-256 and the full Platform commit with `ProtectionPlatformTargetCommit=` followed by 40 lowercase hexadecimal digits. These belong in the existing compatibility field, not new register rows. Both commits and the role-program contract participate in the retained binding digest and exact-original recovery identity. Older profiles lacking the Platform pin fail closed. The command has a success branch after all installed inputs and every case pass; current input absence is not converted to availability.
 
 Each invocation creates a fresh retained UTC/UUID attempt directory, including refusals. No file is overwritten or cleaned. The `binding.json` identity contains exact target/profile/plan/anchor hashes. The independent enrollment role must durably enforce one attempt per accepted target set across machines and evidence roots. A local directory alone does not establish that policy.
 
@@ -20,6 +20,9 @@ The profile is a JSON object with exactly these members:
 | --- | --- |
 | `schema` | `ext-protection-1-profile/v2` |
 | `targetCommit` | Accepted full EventStore commit |
+| `platformTargetCommit` | Accepted full Platform commit equal to the compatibility field's `ProtectionPlatformTargetCommit` pin |
+| `platformRoot` | Absolute path of the separate exact clean Platform checkout; checked before any role invocation |
+| `roleProgramContract` | Exactly `ext-protection-1-role-program/v1`, the stdin/stdout role transport below |
 | `planSha256` | SHA-256 of exact committed `tools/ext-protection-1/plan.json` bytes |
 | `tenantReferences` | Object containing distinct nonempty `primary` and `other` tenant references |
 | `roles` | Object containing exactly `executor`, `observer`, `enrollment` |

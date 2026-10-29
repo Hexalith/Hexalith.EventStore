@@ -42,7 +42,7 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
                            '</PropertyGroup><ItemGroup>' + ''.join('<Compile Include="' + escape(str(source)) + '" />' for source in sources)
                            + '<ProjectReference Include="' + escape(str(contracts)) + '" /></ItemGroup></Project>')
         command = ['dotnet', 'build', str(project), '--configuration', configuration,
-                   '-p:UseHexalithProjectReferences=' + project_references, '-m:1', '--nologo']
+                   '-p:UseHexalithProjectReferences=' + project_references, '-m:1', '-nodeReuse:false', '--nologo']
         result = subprocess.run(command, capture_output=True, text=True, timeout=180)
         print(json.dumps({'buildCommand': command, 'exitCode': result.returncode}))
         print(json.dumps({'sourceSha256': {str(source): v.digest(source.read_bytes()) for source in [*sources,

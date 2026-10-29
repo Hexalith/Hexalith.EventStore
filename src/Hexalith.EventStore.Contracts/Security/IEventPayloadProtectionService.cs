@@ -10,6 +10,10 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// and unprotecting them before publication or replay.
 /// </summary>
 public interface IEventPayloadProtectionService {
+    /// <summary>Reads an exact snapshot for trusted domain replay. Providers may substitute positively erased entries while preserving independently readable sibling roots.</summary>
+    Task<SnapshotUnprotectionOutcome> TryReplaySnapshotAsync(AggregateIdentity identity, object state, EventStorePayloadProtectionMetadata? metadata,
+        JsonTypeInfo stateTypeInfo, PayloadProtectionOccurrenceContext occurrenceContext, CancellationToken cancellationToken = default)
+        => TryUnprotectSnapshotAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, cancellationToken);
     /// <summary>Prepares an exact persisted occurrence for broker/read-model distribution. Sealed providers must authenticate retained ciphertext and keep its metadata and bytes sealed.</summary>
     /// <param name="identity">The addressed source aggregate.</param>
     /// <param name="eventTypeName">The persisted event type.</param>

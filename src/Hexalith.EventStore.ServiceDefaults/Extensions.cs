@@ -41,7 +41,6 @@ public static class Extensions {
 
         _ = builder.ConfigureOpenTelemetry();
         _ = builder.AddDefaultHealthChecks();
-        _ = builder.Services.AddEventStoreRouteCatalog(builder.Configuration);
         _ = builder.Services.AddServiceDiscovery();
         _ = builder.Services.ConfigureHttpClientDefaults(static http => {
             _ = http.AddStandardResilienceHandler()
@@ -215,7 +214,10 @@ public static class Extensions {
         _ = app.MapHealthChecks(HealthEndpointPath, healthOptions).AllowAnonymous();
         _ = app.MapHealthChecks(AlivenessEndpointPath, livenessOptions).AllowAnonymous();
         _ = app.MapHealthChecks(ReadinessEndpointPath, readinessOptions).AllowAnonymous();
-        _ = app.MapEventStoreRouteCatalog();
+        // Route-catalog lifecycle endpoints exist only on hosts that explicitly opted in to AddEventStoreRouteCatalog.
+        if (app.Services.GetService<RouteCatalogRegistration>() is not null) {
+            _ = app.MapEventStoreRouteCatalog();
+        }
         return app;
     }
 

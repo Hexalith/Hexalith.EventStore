@@ -205,7 +205,7 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         if (_journal is null || _revocations is null || envelope is null || envelope.KeyFamily != KeyFamily || envelope.RevocationRevision < 1
             || envelope.TrustProfileRevision < 1 || !Text(envelope.TenantId) || !Text(envelope.Issuer) || !Text(envelope.Audience)
             || !Text(envelope.KeyVersion) || !Text(envelope.EventIdentity) || !Hex(envelope.SignatureDigest)
-            || !_revocations.Matches(envelope) || _revocations.Pending(envelope) || !SoleTrust(envelope.Issuer, envelope.Audience, envelope.TenantId, envelope.KeyVersion))
+            || !SoleTrust(envelope.Issuer, envelope.Audience, envelope.TenantId, envelope.KeyVersion))
         {
             return false;
         }
@@ -213,6 +213,7 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!await CurrentRevocationAsync(envelope, cancellationToken).ConfigureAwait(false)) { return false; }
             TenantGovernanceGuardState? state = await _guard.ReadAsync(envelope.TenantId, cancellationToken).ConfigureAwait(false);
             if (state is null || state.TenantId != envelope.TenantId)
             {
@@ -246,7 +247,7 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
             if (DeletionConsumptionIdentity.Digest(captured) != DeletionConsumptionIdentity.Digest(activation)
                 || captured.ExpectedKeyBlockSetRevision < 0 || !Text(captured.OperationId)
                 || !Text(captured.CompromiseBlockReceiptId) || !Text(captured.GuardReplacementReceiptId)
-                || !_revocations.MatchesActivation(captured) || _revocations.PendingActivation(captured)
+                || !await CurrentActivationAsync(captured, cancellationToken).ConfigureAwait(false)
                 || !SignatureMatches(captured.Replacement, retainedVerifier: true))
             {
                 return false;
@@ -302,8 +303,8 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
 
             DeletionBlockedReplacementReconciliation captured = DeletionConsumptionIdentity.Capture(request);
             if (DeletionConsumptionIdentity.Digest(captured) != DeletionConsumptionIdentity.Digest(request)
-                || !_revocations.MatchesBlockedReplacement(captured) || _revocations.PendingBlockedReplacement(captured)
-                || !_revocations.Matches(captured.RevocationReceipt.Envelope) || _revocations.Pending(captured.RevocationReceipt.Envelope)
+                || !await CurrentBlockedReplacementAsync(captured, cancellationToken).ConfigureAwait(false)
+                || !await CurrentRevocationAsync(captured.RevocationReceipt.Envelope, cancellationToken).ConfigureAwait(false)
                 || !SignatureMatches(captured.Capability, captured.DetachedJws, captured.Targets, retainedVerifier: true))
             {
                 return false;
@@ -457,6 +458,16 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         string predecessor = Convert.ToHexString(SHA256.HashData(StrictUtf8.GetBytes(kind + "|predecessor|" + tenantId + "|" + expected.ToString(CultureInfo.InvariantCulture))));
         return new("published-trust|" + kind + "|" + tenantId + "|" + identity, expected, targetRevision, predecessor, target, bytes);
     }
+
+    private Task<bool> CurrentRevocationAsync(DeletionCapabilityRevocationEnvelope envelope, CancellationToken token)
+        => _revocations is IAsyncPublishedTrustRevocationEvidence current ? current.VerifyRevocationEvidenceAsync(envelope, token)
+            : Task.FromResult(_revocations is not null && _revocations.Matches(envelope) && !_revocations.Pending(envelope));
+    private Task<bool> CurrentActivationAsync(DeletionReattestationActivation activation, CancellationToken token)
+        => _revocations is IAsyncPublishedTrustRevocationEvidence current ? current.VerifyActivationEvidenceAsync(activation, token)
+            : Task.FromResult(_revocations is not null && _revocations.MatchesActivation(activation) && !_revocations.PendingActivation(activation));
+    private Task<bool> CurrentBlockedReplacementAsync(DeletionBlockedReplacementReconciliation request, CancellationToken token)
+        => _revocations is IAsyncPublishedTrustRevocationEvidence current ? current.VerifyBlockedReplacementEvidenceAsync(request, token)
+            : Task.FromResult(_revocations is not null && _revocations.MatchesBlockedReplacement(request) && !_revocations.PendingBlockedReplacement(request));
 
     private bool SoleTrust(DeletionBatchCapabilityV1 capability)
         => SoleTrust(capability.Issuer, capability.Audience, capability.TenantId, capability.CapabilityKeyVersion);

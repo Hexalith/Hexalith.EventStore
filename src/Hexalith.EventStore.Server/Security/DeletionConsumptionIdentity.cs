@@ -7,8 +7,10 @@ using Hexalith.EventStore.Contracts.Security;
 namespace Hexalith.EventStore.Server.Security;
 
 /// <summary>Narrow private bounded identity/manifest capture; no caller classification or signature grants authority.</summary>
-internal static class DeletionConsumptionIdentity
+public static class DeletionConsumptionIdentity
 {
+    /// <summary>Captures the exact bounded sorted owner request for host-owned atomic providers. Validation grants no caller, dispatch or physical authority.</summary>
+    public static DeletionBatchConsumptionRequest CaptureRequest(DeletionBatchConsumptionRequest request) => Capture(request);
     internal static void Text(string value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > 2048 || new UTF8Encoding(false, true).GetByteCount(value) > 2048)

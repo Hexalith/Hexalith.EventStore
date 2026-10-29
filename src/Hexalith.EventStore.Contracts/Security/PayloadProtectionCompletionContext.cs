@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Contracts.Identity;
+using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Security;
 
@@ -21,6 +22,15 @@ public sealed record PayloadProtectionCompletionContext(
     string KeyReference,
     uint DekVersion,
     ulong LifecycleEpoch) {
+    /// <summary>Exact entry completions for a mixed-root snapshot. Omitted for every existing single-target identity and serialized original.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PayloadProtectionCompletionContext[]? SnapshotEntries { get; init; }
+    /// <summary>Independent content-free technical skeleton digest for a composite snapshot completion.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SnapshotContainerDigest { get; init; }
+    /// <summary>Complete independently enrolled protected value paths and targets for composite completion.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SnapshotProtectionEntry[]? SnapshotEntryManifest { get; init; }
     /// <summary>Returns a bounded diagnostic name without identity, occurrence, operation, or key details.</summary>
     /// <returns>The contract type name.</returns>
     public override string ToString() => nameof(PayloadProtectionCompletionContext);

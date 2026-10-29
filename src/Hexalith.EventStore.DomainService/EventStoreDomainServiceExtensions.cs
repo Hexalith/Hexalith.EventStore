@@ -671,6 +671,9 @@ public static class EventStoreDomainServiceExtensions {
 
         // Observability, health checks, service discovery, and HTTP resilience.
         _ = builder.AddServiceDefaults();
+
+        // Domain hosts receive catalog-fenced dispatch, so they opt in to the route catalog explicitly.
+        _ = Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogServiceCollectionExtensions.AddEventStoreRouteCatalog(builder.Services, builder.Configuration);
         builder.Services.TryAddScoped<DomainRouteCatalogFilter>();
         builder.Services.TryAddScoped<IDomainRouteCatalogGuard, DomainRouteCatalogGuard>();
 

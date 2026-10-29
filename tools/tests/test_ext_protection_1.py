@@ -29,8 +29,19 @@ class ExtProtectionPolicyTests(unittest.TestCase):
                 path.write_text('### EXT-PROTECTION-1 — Engine\n' + '\n'.join([
                     '| `AcceptedStatus` | `Committed` |', '| `TargetVersionOrCommit` | `' + 'a' * 40 + '` |',
                     '| `TargetIntegrationDate` | `' + when + '` |',
-                    '| `CompatibilityContractAndVerificationCommand` | ProtectionProfileSha256=' + 'b' * 64 + ' |']))
+                    '| `CompatibilityContractAndVerificationCommand` | ProtectionProfileSha256=' + 'b' * 64 + ' ProtectionPlatformTargetCommit=' + 'c' * 40 + ' |']))
                 self.assertEqual(when, v.accepted_record(path)['TargetIntegrationDate'])
+                self.assertEqual('c' * 40, v.accepted_record(path)['platformTargetCommit'])
+
+    def test_missing_platform_target_cannot_qualify_an_eventstore_only_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'register.md'
+            path.write_text('### EXT-PROTECTION-1 — Engine\n' + '\n'.join([
+                '| `AcceptedStatus` | `Committed` |', '| `TargetVersionOrCommit` | `' + 'a' * 40 + '` |',
+                '| `TargetIntegrationDate` | `2026-11-02` |',
+                '| `CompatibilityContractAndVerificationCommand` | ProtectionProfileSha256=' + 'b' * 64 + ' |']))
+            with self.assertRaisesRegex(v.Blocked, 'ACCEPTED_PLATFORM_TARGET_MISSING'):
+                v.accepted_record(path)
 
     def test_uncommitted_and_unpinned_records_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1163,6 +1174,7 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
         engine = self.directory / 'engine.dll'
         engine.write_bytes(b'offline-binary')
         profile = {'schema': 'ext-protection-1-profile/v2', 'targetCommit': 'a' * 40, 'planSha256': 'b' * 64,
+                   'platformTargetCommit': 'c' * 40, 'platformRoot': str(self.directory), 'roleProgramContract': 'ext-protection-1-role-program/v1',
                    'tenantReferences': {'primary': 'tenant-a', 'other': 'other'}, 'roles': self.roles,
                    'engineBinary': {'path': str(engine), 'sha256': v.digest(engine.read_bytes())}, 'capabilityTrust': self.trust}
         path = self.directory / 'profile.json'
@@ -1170,12 +1182,19 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
             for schema in ('ext-protection-1-profile/v2', 'ext-protection-1-profile/v1'):
                 profile['schema'] = schema
                 path.write_bytes(v.canonical(profile))
-                record = {'profileSha256': v.digest(path.read_bytes()), 'TargetVersionOrCommit': 'a' * 40}
+                record = {'profileSha256': v.digest(path.read_bytes()), 'TargetVersionOrCommit': 'a' * 40, 'platformTargetCommit': 'c' * 40}
                 if schema.endswith('/v2'):
                     self.assertEqual(profile, v.validate_profile(path, record, 'b' * 64))
                 else:
                     with self.assertRaisesRegex(v.Blocked, 'PROFILE_BINDING_MISMATCH'):
                         v.validate_profile(path, record, 'b' * 64)
+
+            profile['schema'] = 'ext-protection-1-profile/v2'
+            profile['platformTargetCommit'] = 'd' * 40
+            path.write_bytes(v.canonical(profile))
+            record['profileSha256'] = v.digest(path.read_bytes())
+            with self.assertRaisesRegex(v.Blocked, 'PROFILE_BINDING_MISMATCH'):
+                v.validate_profile(path, record, 'b' * 64)
 
 
 if __name__ == '__main__':

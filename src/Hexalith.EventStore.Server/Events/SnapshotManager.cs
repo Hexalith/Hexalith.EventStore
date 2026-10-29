@@ -432,7 +432,7 @@ public partial class SnapshotManager(
         try
         {
             outcome = payloadProtectionService is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
-                ? await payloadProtectionService.TryUnprotectSnapshotAsync(
+                ? await payloadProtectionService.TryReplaySnapshotAsync(
                 identity, snapshot.State, metadata, SnapshotStateJsonContext.Default.JsonElement,
                 new PayloadProtectionOccurrenceContext(checked((ulong)sequence), PayloadProtectionPayloadKind.Snapshot,
                     FoldedSnapshotTypeId), cancellationToken).ConfigureAwait(false)

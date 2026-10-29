@@ -108,6 +108,10 @@ def accepted_record(register):
     if not pin:
         raise Blocked('ACCEPTED_PROFILE_PIN_MISSING')
     fields['profileSha256'] = pin[1]
+    platform_pin = re.search(r'ProtectionPlatformTargetCommit=([0-9a-f]{40})(?![0-9a-f])', fields.get('CompatibilityContractAndVerificationCommand', ''))
+    if not platform_pin:
+        raise Blocked('ACCEPTED_PLATFORM_TARGET_MISSING')
+    fields['platformTargetCommit'] = platform_pin[1]
     return fields
 
 
@@ -144,9 +148,13 @@ def validate_profile(path, record, plan_sha):
     if digest(raw) != record['profileSha256']:
         raise Blocked('PROFILE_HASH_MISMATCH')
     profile = read_json(path)
-    if set(profile) != {'schema', 'targetCommit', 'planSha256', 'tenantReferences', 'roles', 'engineBinary', 'capabilityTrust'} \
+    if set(profile) != {'schema', 'targetCommit', 'platformTargetCommit', 'platformRoot', 'roleProgramContract', 'planSha256', 'tenantReferences', 'roles', 'engineBinary', 'capabilityTrust'} \
             or profile['schema'] != 'ext-protection-1-profile/v2' \
-            or profile['targetCommit'] != record['TargetVersionOrCommit'] or profile['planSha256'] != plan_sha:
+            or profile['targetCommit'] != record['TargetVersionOrCommit'] or profile['planSha256'] != plan_sha \
+            or not re.fullmatch(r'[0-9a-f]{40}', profile['platformTargetCommit'] or '') \
+            or profile['platformTargetCommit'] != record.get('platformTargetCommit') \
+            or not isinstance(profile['platformRoot'], str) or not Path(profile['platformRoot']).is_absolute() \
+            or profile['roleProgramContract'] != 'ext-protection-1-role-program/v1':
         raise Blocked('PROFILE_BINDING_MISMATCH')
     tenants = profile['tenantReferences']
     if set(tenants) != {'primary', 'other'} or any(not isinstance(v, str) or not v.strip() for v in tenants.values()) or tenants['primary'] == tenants['other']:
@@ -1230,9 +1238,12 @@ def rejection_statuses(step, checks):
 
 
 def execute(profile, record, plan, attempt, recover=None):
-    binding = digest({'target': profile['targetCommit'], 'profile': record['profileSha256'], 'plan': profile['planSha256'],
+    binding = digest({'target': profile['targetCommit'], 'platformTarget': profile['platformTargetCommit'],
+                      'roleProgramContract': profile['roleProgramContract'], 'profile': record['profileSha256'], 'plan': profile['planSha256'],
                       'anchors': {name: profile['roles'][name]['publicAnchorSha256'] for name in ROLE_NAMES}})
-    durable(attempt / 'binding.json', {'bindingDigest': binding, 'profileSha256': record['profileSha256'], 'targetCommit': profile['targetCommit'], 'recoveryOf': str(recover) if recover else None})
+    durable(attempt / 'binding.json', {'bindingDigest': binding, 'profileSha256': record['profileSha256'], 'targetCommit': profile['targetCommit'],
+                                     'platformTargetCommit': profile['platformTargetCommit'], 'roleProgramContract': profile['roleProgramContract'],
+                                     'recoveryOf': str(recover) if recover else None})
     trust_snapshot = validate_capability_trust(profile['capabilityTrust'], profile['roles'])
     roles = {name: Role(name, profile['roles'][name], binding, attempt, profile['engineBinary'], profile['capabilityTrust'], profile['roles'], trust_snapshot) for name in ROLE_NAMES}
     journal = attempt / 'original-operations'
@@ -1336,6 +1347,9 @@ def main(argv=None):
         record = accepted_record(Path.cwd() / '_bmad-output/planning-artifacts/external-dependency-register.md')
         exact_checkout(ROOT, record['TargetVersionOrCommit'])
         profile = validate_profile(args.profile, record, digest(PLAN_FILE.read_bytes()))
+        if Path(profile['platformRoot']).resolve() == ROOT.resolve():
+            raise Blocked('DISTINCT_PLATFORM_CHECKOUT_REQUIRED')
+        exact_checkout(profile['platformRoot'], profile['platformTargetCommit'])
         execute(profile, record, plan, attempt, args.recover_journal)
         status, code = ('RECOVERED', 'EXACT_ORIGINAL_RECOVERED') if args.recover_journal else ('PASS', 'OWNER_COMPONENT_CONTRACT_PASSED')
     except (Blocked, Failed) as exc:
