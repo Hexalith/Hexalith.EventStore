@@ -2,7 +2,7 @@
 title: '5.13 Route catalog activation and topology binding'
 type: 'feature'
 created: '2026-10-28'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 4
 story_id: '5.13'

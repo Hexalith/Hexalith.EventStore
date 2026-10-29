@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-28
+# last_updated: 2026-10-29
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -188,7 +188,7 @@ development_status:
   # schema/codec/envelope (before 2.14 and 2.15) and activation; AD-16 fallback and Dapr
   # framework-route protection on every HTTP host.
   5-12-route-and-idempotency-catalog-schema-codec-and-envelope: done
-  5-13-route-catalog-activation-and-topology-binding: in-progress
+  5-13-route-catalog-activation-and-topology-binding: review
   5-14-authenticated-fallback-and-dapr-framework-route-protection: backlog
   epic-5-retrospective: optional
 
