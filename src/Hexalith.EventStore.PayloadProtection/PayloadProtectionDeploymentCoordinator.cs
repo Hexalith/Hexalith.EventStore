@@ -35,7 +35,7 @@ internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionS
         using var operationBudget = new PayloadOperationBudget(_clock, token);
         var catalogs = new PayloadProtectionCatalogs(store, _clock);
         MemberCatalogSnapshot members = await catalogs.ReadMembersAsync(root, token).ConfigureAwait(false);
-        foreach (MemberEntryV1 member in members.Pages.SelectMany(p => p.Value.Entries).Where(e => e.Generation <= closed.Value.Generation))
+        foreach (MemberEntryV1 member in members.Pages.SelectMany(p => p.Value.Entries).Where(e => e.Generation <= closed.Value.Generation && e.State != "Cleared"))
         {
             if (await PayloadOperationBudget.ReadAsync<CapabilityLeaseV1>(store, PayloadProtectionStateKeys.Capability(root, member.Generation, member.InstanceId), token).ConfigureAwait(false) is not null) { throw Mismatch(); }
         }
@@ -78,7 +78,7 @@ internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionS
     private async ValueTask<PayloadProtectionStateValue<T>> RequiredAsync<T>(string key, CancellationToken token) where T : class => await PayloadOperationBudget.ReadAsync<T>(store, key, token).ConfigureAwait(false) ?? throw Mismatch();
     private static void RequireCommit(PayloadStateCommitResult result)
     {
-        if (result != PayloadStateCommitResult.Committed) { throw new PayloadProtectionStateException(result == PayloadStateCommitResult.Denied ? UnreadableProtectedDataReason.ProviderDenied : UnreadableProtectedDataReason.ProviderUnavailable); }
+        if (result != PayloadStateCommitResult.Committed) { throw new PayloadProtectionStateException(result == PayloadStateCommitResult.Denied ? UnreadableProtectedDataReason.ProviderDenied : result == PayloadStateCommitResult.Conflict ? UnreadableProtectedDataReason.ConsistencyMismatch : UnreadableProtectedDataReason.ProviderUnavailable); }
     }
     private static PayloadProtectionStateException Mismatch() => new(UnreadableProtectedDataReason.ConsistencyMismatch);
 }

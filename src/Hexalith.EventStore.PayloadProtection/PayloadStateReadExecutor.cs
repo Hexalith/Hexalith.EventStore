@@ -38,7 +38,7 @@ internal sealed class PayloadStateReadExecutor(TimeProvider? timeProvider = null
                 ObserveLate(pending);
                 throw Unavailable();
             }
-            catch (PayloadProtectionStateException failure) when (failure.Reason == UnreadableProtectedDataReason.ProviderUnavailable)
+            catch (PayloadProtectionStateException failure) when (failure.Reason == UnreadableProtectedDataReason.ProviderUnavailable && !failure.IsAdmissionLimit)
             {
                 if (attempt == 2 || _clock.GetElapsedTime(started) >= TimeSpan.FromSeconds(10)) { throw; }
                 TimeSpan pause = TimeSpan.FromMilliseconds((attempt == 0 ? 200 : 500) * (RandomNumberGenerator.GetInt32(800, 1201) / 1000d));

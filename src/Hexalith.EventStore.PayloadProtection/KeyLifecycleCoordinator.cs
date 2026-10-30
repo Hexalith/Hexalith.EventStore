@@ -44,6 +44,7 @@ internal sealed class KeyLifecycleCoordinator
         long started = _clock.GetTimestamp();
         string root = Admit(identity);
         _ = PayloadProtectionStateKeys.Operation(operationId);
+        if (epoch == ulong.MaxValue) { throw Mismatch(); }
         if (approval.State is not (CryptoShreddingWorkflowState.Approved or CryptoShreddingWorkflowState.PendingProvider)
             || !approval.Identity.TryValidate(out _) || !CanonicalUlid.IsValid(approval.Identity.WorkflowId)
             || approval.Identity.TenantId != identity.TenantId || approval.Identity.Domain != identity.Domain
@@ -77,9 +78,9 @@ internal sealed class KeyLifecycleCoordinator
         if (result == PayloadStateCommitResult.Unknown)
         {
             // Confirm exact durable identity, then the resuming owner starts a fresh complete wait.
-            PayloadProtectionStateValue<InvalidationDrainV1> confirmed = await RequiredAsync<InvalidationDrainV1>(PayloadProtectionStateKeys.Drain(scope, operationId), cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<InvalidationDrainV1> confirmed = await PayloadOperationBudget.ReadAsync<InvalidationDrainV1>(_store, PayloadProtectionStateKeys.Drain(scope, operationId), cancellationToken).ConfigureAwait(false) ?? throw Unavailable();
             PayloadProtectionStateValue<LifecycleV1> barrier = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
-            PayloadProtectionStateValue<OperationV1> confirmedOperation = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(operationId), cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<OperationV1> confirmedOperation = await PayloadOperationBudget.ReadAsync<OperationV1>(_store, PayloadProtectionStateKeys.Operation(operationId), cancellationToken).ConfigureAwait(false) ?? throw Unavailable();
             if (confirmed.Value != drain || barrier.Value.OperationId != operationId || barrier.Value.Epoch != epoch || confirmedOperation.Value != operation) { throw Mismatch(); }
         }
         else { RequireCommit(result); }
@@ -93,6 +94,12 @@ internal sealed class KeyLifecycleCoordinator
         using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         string root = Admit(identity);
         PayloadProtectionStateValue<LifecycleV1> lifecycle = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
+        if (lifecycle.Value.State != "Invalidating")
+        {
+            if (lifecycle.Value.State != "Invalidated") { return; }
+            OperationV1 operation = (await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(lifecycle.Value.OperationId), cancellationToken).ConfigureAwait(false)).Value;
+            if (operation.Operation != "Delete" || operation.Result != "Pending") { return; }
+        }
         PayloadProtectionStateValue<InvalidationDrainV1> drain = await DrainAsync(root, lifecycle, operationId, cancellationToken).ConfigureAwait(false);
         await PayloadOperationBudget.AwaitAsync(async ct => { await _leases.LocalOperations.DrainScopeAsync(lifecycle.Value.ScopeDigest, ct).ConfigureAwait(false); return true; }, cancellationToken).ConfigureAwait(false);
         await PayloadOperationBudget.AwaitAsync(async ct => { await _cache.ClearScopeAsync(lifecycle.Value.ScopeDigest, ct).ConfigureAwait(false); return true; }, cancellationToken).ConfigureAwait(false);
@@ -124,7 +131,10 @@ internal sealed class KeyLifecycleCoordinator
         {
             _ = await _claims.RequireAsync(claim, cancellationToken).ConfigureAwait(false);
             lifecycle = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
-            _ = await DrainAsync(root, lifecycle, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<InvalidationDrainV1> observedDrain = await DrainAsync(root, lifecycle, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
+            if (claim.KeyRef == "" && observedDrain.Value.OperationId != claim.OperationId) { throw Mismatch(); }
+            if (!await HasClearingProofAsync(observedDrain.Value, cancellationToken).ConfigureAwait(false)
+                || await HasUnresolvedPersistenceAsync(root, claim.ScopeDigest, claim.OperationId, claim.KeyRef == "", cancellationToken).ConfigureAwait(false)) { return false; }
         }
         await PayloadMonotonicDrain.WaitAsync(_clock, _delay, cancellationToken).ConfigureAwait(false);
         using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);

@@ -236,4 +236,103 @@ public sealed class InteractionOccurrenceRegistryActorTests
         JsonSerializer.SerializeToUtf8Bytes(restored.CommittedState.Single().Value).ShouldBe(exact);
     }
 
+    [Fact]
+    public async Task InvalidRecoveredSnapshotJsonReturnsUnavailable()
+    {
+        var f = new InteractionOccurrenceFixture();
+        byte[] bytes = "{not-json"u8.ToArray();
+        string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        string scope = InteractionOccurrenceRegistryActor.GetActorId("tenant-a") + "|candidate-interaction-occurrences-v1";
+        f.Head = 9;
+        f.Authority.ReadCurrentOriginalAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new AnchoredStateTransition(scope, 0, 1, f.AnchorDigest, digest, bytes));
+        (await f.Actor.LookupAsync(InteractionOccurrenceFixture.Request().Identity)).Status.ShouldBe(InteractionOccurrenceReservationStatus.Unavailable);
+    }
+
+    /// <summary>A newer committed original replaces a missing primary registry and keeps the exact sealed bytes.</summary>
+    [Fact]
+    public async Task NewerCurrentOriginalRestoresExactRegistryState()
+    {
+        var f = new InteractionOccurrenceFixture();
+        var request = InteractionOccurrenceFixture.Request();
+        await f.Actor.ReserveAsync(request);
+        byte[] skeleton = [9, 8, 7];
+        var sealedResult = InteractionOccurrenceFixture.Sealed() with { SnapshotReplaySkeleton = skeleton };
+        await f.Actor.RetainSealedAsync(request.Identity, sealedResult);
+        var saved = f.Backend.CommittedState.Single();
+        var snapshot = (InteractionOccurrenceRegistrySnapshot)saved.Value;
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(snapshot);
+        string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        f.Head = snapshot.Revision;
+        f.AnchorDigest = digest;
+        (await f.Backend.TryRemoveStateAsync(saved.Key, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        await f.Backend.SaveStateAsync(TestContext.Current.CancellationToken);
+        f.Backend.CommittedState.ShouldBeEmpty();
+        string scope = InteractionOccurrenceRegistryActor.GetActorId("tenant-a") + "|candidate-interaction-occurrences-v1";
+        f.Authority.ReadCurrentOriginalAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new AnchoredStateTransition(scope, 0, snapshot.Revision, digest, digest, bytes));
+        var lookup = await f.Actor.LookupAsync(request.Identity);
+        lookup.Status.ShouldBe(InteractionOccurrenceReservationStatus.Sealed);
+        lookup.Record!.Sealed!.PayloadBytes.ShouldBe(sealedResult.PayloadBytes);
+        lookup.Record.Sealed.SnapshotReplaySkeleton.ShouldBe(skeleton);
+        ((InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value).Revision.ShouldBe(snapshot.Revision);
+    }
+
+    /// <summary>A newer matching original replaces an older stored snapshot that no longer validates.</summary>
+    [Fact]
+    public async Task NewerCurrentOriginalReplacesOlderStoredRegistry()
+    {
+        var f = new InteractionOccurrenceFixture();
+        var request = InteractionOccurrenceFixture.Request();
+        await f.Actor.ReserveAsync(request);
+        await f.Actor.RetainSealedAsync(request.Identity, InteractionOccurrenceFixture.Sealed());
+        var stored = (InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value;
+        long olderRevision = stored.Revision;
+        var newerRecord = stored.Records[0] with { RegistryRevision = olderRevision + 1 };
+        var newer = stored with { Revision = olderRevision + 1, Records = [newerRecord] };
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(newer);
+        string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        f.Head = newer.Revision;
+        f.AnchorDigest = digest;
+        ((InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value).Revision.ShouldBe(olderRevision);
+        string scope = InteractionOccurrenceRegistryActor.GetActorId("tenant-a") + "|candidate-interaction-occurrences-v1";
+        string olderDigest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(stored)));
+        f.Authority.ReadCurrentOriginalAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new AnchoredStateTransition(scope, olderRevision, newer.Revision, olderDigest, digest, bytes));
+        var lookup = await f.Actor.LookupAsync(request.Identity);
+        lookup.Status.ShouldBe(InteractionOccurrenceReservationStatus.Sealed);
+        lookup.Record!.RegistryRevision.ShouldBe(newer.Revision);
+        lookup.Record.Sealed!.PayloadBytes.ShouldBe(newerRecord.Sealed!.PayloadBytes);
+        ((InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value).Revision.ShouldBe(newer.Revision);
+    }
+
+    /// <summary>A recovered snapshot that deserializes to null is unavailable, including the argument-null refusal.</summary>
+    [Fact]
+    public async Task NullRecoveredSnapshotReturnsUnavailable()
+    {
+        var f = new InteractionOccurrenceFixture();
+        byte[] bytes = "null"u8.ToArray();
+        string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        string scope = InteractionOccurrenceRegistryActor.GetActorId("tenant-a") + "|candidate-interaction-occurrences-v1";
+        f.Head = 9;
+        f.Authority.ReadCurrentOriginalAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new AnchoredStateTransition(scope, 0, 1, f.AnchorDigest, digest, bytes));
+        (await f.Actor.LookupAsync(InteractionOccurrenceFixture.Request().Identity)).Status.ShouldBe(InteractionOccurrenceReservationStatus.Unavailable);
+    }
+
+    /// <summary>Retained skeleton bytes are detached from the caller, and an oversized skeleton is refused before another write.</summary>
+    [Fact]
+    public async Task SealedSkeletonIsDetachedAndOversizeSkeletonIsRejected()
+    {
+        var f = new InteractionOccurrenceFixture();
+        var request = InteractionOccurrenceFixture.Request();
+        await f.Actor.ReserveAsync(request);
+        byte[] skeleton = [1, 2, 3];
+        var sealedResult = InteractionOccurrenceFixture.Sealed() with { SnapshotReplaySkeleton = skeleton };
+        var retained = await f.Actor.RetainSealedAsync(request.Identity, sealedResult);
+        skeleton[0] = 9;
+        retained.Record!.Sealed!.SnapshotReplaySkeleton.ShouldNotBeNull();
+        retained.Record.Sealed.SnapshotReplaySkeleton[0].ShouldBe((byte)1);
+        retained.Record.Sealed.SnapshotReplaySkeleton.ShouldNotBeSameAs(skeleton);
+        string before = JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value);
+        await Should.ThrowAsync<ArgumentException>(() => f.Actor.RetainSealedAsync(request.Identity, InteractionOccurrenceFixture.Sealed() with { SnapshotReplaySkeleton = new byte[16777217] }));
+        JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value).ShouldBe(before);
+    }
+
 }

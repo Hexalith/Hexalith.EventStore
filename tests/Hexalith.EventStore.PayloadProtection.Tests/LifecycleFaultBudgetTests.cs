@@ -76,7 +76,7 @@ public sealed class LifecycleFaultBudgetTests
     }
 
     [Fact]
-    public async Task V049_LostReservationAcknowledgementKeepsTheKeyBothIndexesAndDiscoverableAmbiguousOperation()
+    public async Task V049_LostReservationAcknowledgementKeepsTheKeyBothIndexesAndQuarantinableReservedOperation()
     {
         ReservationTestFixture fixture = await ReservationTestFixture.CreateAsync();
         fixture.Store.Committing = mutations =>
@@ -86,7 +86,7 @@ public sealed class LifecycleFaultBudgetTests
         await Should.ThrowAsync<PayloadProtectionCryptographicException>(() => fixture.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context()).AsTask());
         WorkEntryV1 work = (await new PayloadProtectionCatalogs(fixture.Store, fixture.Clock).ReadWorkAsync(fixture.Root)).Pages.Single().Value.Entries.Single();
         OperationV1 operation = (await fixture.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(work.OperationId)))!.Value;
-        operation.Phase.ShouldBe("Ambiguous");
+        operation.Phase.ShouldBe("Reserved"); operation.Result.ShouldBe("Failed"); operation.ReasonCode.ShouldBe("not-persisted");
         WrappedDekV1 key = (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(fixture.Scope, operation.KeyRef, 1)))!.Value;
         key.State.ShouldBe("Reserved");
         var indexes = new PayloadKeyIndexes(fixture.Store, fixture.Clock);

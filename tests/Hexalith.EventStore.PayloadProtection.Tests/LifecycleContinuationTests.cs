@@ -102,7 +102,7 @@ public sealed class LifecycleContinuationTests
         ReconciliationV1 claim = (await new PayloadReconciliationClaims(fixture.Store, fixture.Clock).TryClaimAsync(new(child, fixture.Scope)))!.Value;
         (await lifecycle.ResumeAsync(fixture.Identity, claim)).ShouldBeFalse();
         await lifecycle.AcknowledgeAsync(fixture.Identity, barrierId);
-        fixture.Clock.Advance(TimeSpan.FromSeconds(30));
+        fixture.Clock.Advance(TimeSpan.FromSeconds(90));
         claim = (await new PayloadReconciliationClaims(fixture.Store, fixture.Clock).TryClaimAsync(new(child, fixture.Scope)))!.Value;
         (await lifecycle.ResumeAsync(fixture.Identity, claim)).ShouldBeTrue();
         (await fixture.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(child)))!.Value.Phase.ShouldBe("Completed");

@@ -22,6 +22,7 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
                 if (await PayloadOperationBudget.ReadAsync<ScopeIndexPageV1>(store, PayloadProtectionStateKeys.IndexPage(scope, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
                 return new(scope, null, []);
             }
+            PayloadOperationBudget.RequireReadCapacity(((long)head.Value.PageCount + 1) * PayloadProtectionStateCodec.MaximumBytes, (long)head.Value.PageCount + 1);
             var pages = new List<PayloadProtectionStateValue<ScopeIndexPageV1>>();
             var pairs = new HashSet<(string Key, uint Version)>();
             uint count = 0;
@@ -60,6 +61,7 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
                 if (await PayloadOperationBudget.ReadAsync<KekInventoryPageV1>(store, PayloadProtectionStateKeys.KekPage(backendDigest, providerDigest, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
                 return new(backendDigest, providerDigest, null, []);
             }
+            PayloadOperationBudget.RequireReadCapacity(((long)head.Value.PageCount + 1) * PayloadProtectionStateCodec.MaximumBytes, (long)head.Value.PageCount + 1);
             var pages = new List<PayloadProtectionStateValue<KekInventoryPageV1>>();
             var pairs = new HashSet<(string Scope, string Key, uint Version)>();
             ulong count = 0;
@@ -115,6 +117,7 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
             mutations.Add(PayloadProtectionStateMutation.Put(new ScopeIndexPageV1(current.ScopeDigest, generation, page,
                 entries.Skip(checked((int)page * 256)).Take(256).ToArray()), page < current.Pages.Count ? current.Pages[(int)page].ETag : null));
         }
+        PayloadProtectionOperationalLimits.RequireTransactionCapacity(mutations);
         return mutations.AsReadOnly();
     }
 
@@ -138,6 +141,7 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
             mutations.Add(PayloadProtectionStateMutation.Put(new KekInventoryPageV1(current.BackendDigest, current.ProviderDigest, generation, page,
                 entries.Skip(checked((int)page * 256)).Take(256).ToArray()), page < current.Pages.Count ? current.Pages[(int)page].ETag : null));
         }
+        PayloadProtectionOperationalLimits.RequireTransactionCapacity(mutations);
         return mutations.AsReadOnly();
     }
 
@@ -156,6 +160,7 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
             mutations.Add(PayloadProtectionStateMutation.Put(new ScopeIndexPageV1(current.ScopeDigest, generation, page,
                 entries.Skip(checked((int)page * 256)).Take(256).ToArray()), current.Pages[(int)page].ETag));
         }
+        PayloadProtectionOperationalLimits.RequireTransactionCapacity(mutations);
         return mutations;
     }
 

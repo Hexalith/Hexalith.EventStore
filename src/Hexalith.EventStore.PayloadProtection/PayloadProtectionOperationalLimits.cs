@@ -21,6 +21,13 @@ internal static class PayloadProtectionOperationalLimits
         return checked(1024 + Encoding.UTF8.GetByteCount(mutation.Key) + (mutation.Bytes?.Length ?? 0)
             + (mutation.ExpectedETag is null ? 0 : Encoding.UTF8.GetByteCount(mutation.ExpectedETag)));
     }
+
+    /// <summary>Rejects an oversized plan before transport submission with a retryable, bounded admission result.</summary>
+    internal static void RequireTransactionCapacity(IReadOnlyList<PayloadProtectionStateMutation> mutations)
+    {
+        if (mutations.Count > TransactionOperations || mutations.Sum(m => (long)Charge(m)) + 1024 > TransactionBytes)
+        { throw new PayloadProtectionStateException(Hexalith.EventStore.Contracts.Security.UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true); }
+    }
     /// <summary>Checks the actual member-catalog clearing working set; Cleared tombstones need no acknowledgement read.</summary>
     internal static void RequireClearingCapacity(MemberCatalogSnapshot members, string newInstance, bool append)
     {

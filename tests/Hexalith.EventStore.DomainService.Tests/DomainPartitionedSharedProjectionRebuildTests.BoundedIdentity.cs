@@ -119,6 +119,81 @@ public sealed partial class DomainPartitionedSharedProjectionRebuildTests
         JsonSerializer.Serialize(await coordinator.GetCheckpointAsync(scope, "owner-a")).ShouldBe(JsonSerializer.Serialize(originalCheckpoint));
     }
 
+    /// <summary>Proves covered pending deliveries before dispatcher promotion and checkpoint handoff.</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task DispatcherCommitValidatesCoveredPendingDeliveriesAgainstPagedIdentity(bool bufferedOwner, bool contradictoryDelivery)
+    {
+        var store = new InMemoryReadModelStore();
+        PartitionedHandler handler = bufferedOwner ? new OutputOnlyPartitionedHandler() : new StreamedPartitionedHandler();
+        handler.FoldOrdinaryRows = true;
+        handler.FailBufferedOwnerFold = !bufferedOwner;
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        using var provider = Provider(store, store, coordinator, handler);
+        var scope = handler.CreateScope("tenant-a");
+        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
+        var original = Identity("pending-proof-selected");
+        var events = BoundedHistory(67);
+        await BoundedFinishAsync(provider, original, await BoundedAccumulateAsync(provider, original, events[..65]));
+        long selected = (await coordinator.GetStatusAsync(scope)).ActiveGeneration;
+        string selectedRow = JsonSerializer.Serialize((await coordinator.ReadAsync<PayloadRow>(scope, "row:owner-a")).Value);
+        ProjectionEventDto pending = contradictoryDelivery ? events[65] with { Payload = [99] } : events[65];
+        var delivery = new SharedProjectionDelivery("owner-a", pending.GlobalPosition,
+            JsonSerializer.SerializeToUtf8Bytes(new ProjectionRequest("tenant-a", "widget", "owner-a", [pending]), JsonSerializerOptions.Web),
+            JsonSerializer.SerializeToUtf8Bytes(pending.GlobalPosition), OwnerSequenceNumber: pending.SequenceNumber);
+        (await coordinator.JournalAsync(scope, await coordinator.RefreshLeaseAsync(scope, handler.OrdinaryWriterId), delivery))
+            .ShouldBe(SharedProjectionJournalResult.Journaled);
+        byte[] checkpointBefore = store.SnapshotRaw(StoreName, CheckpointKey(scope, "owner-a"))!;
+        var next = Identity("covered-pending-proof");
+        var accepted = await BoundedAccumulateAsync(provider, next, events);
+        var manifest = (await store.GetAsync<DomainSharedProjectionStoredPartitionManifest>(StoreName,
+            DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(DomainSharedProjectionRebuildSessionKey.Compute(next), 0))).Value!;
+        manifest.CapturedEventDigests.ShouldBeNull();
+        var reference = manifest.CapturedIdentityReference.ShouldNotBeNull();
+        reference.Count.ShouldBe(events.Length);
+        (await coordinator.GetPendingJournalOwnerIdsAsync(scope, next.OperationId)).ShouldContain("owner-a");
+        (await coordinator.GetStatusAsync(scope)).PendingDeliveryCount.ShouldBe(1);
+        (await BoundedRebuildAsync(provider, Finalize(next, accepted))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        (await BoundedRebuildAsync(provider, Lifecycle(next, DomainSharedProjectionRebuildAction.Stage))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
+
+        var committed = await BoundedRebuildAsync(provider, Lifecycle(next, DomainSharedProjectionRebuildAction.Commit));
+
+        handler.OrdinaryFoldCount.ShouldBe(0);
+        var status = await coordinator.GetStatusAsync(scope);
+        if (contradictoryDelivery)
+        {
+            committed.Status.ShouldBe(ProjectionDispatchStatus.Failed);
+            committed.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            status.ActiveGeneration.ShouldBe(selected);
+            status.IsBuilding.ShouldBeTrue();
+            status.PendingDeliveryCount.ShouldBe(1);
+            store.SnapshotRaw(StoreName, CheckpointKey(scope, "owner-a")).ShouldBe(checkpointBefore);
+            JsonSerializer.Serialize((await coordinator.ReadAsync<PayloadRow>(scope, "row:owner-a")).Value).ShouldBe(selectedRow);
+            return;
+        }
+
+        committed.Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        status.ActiveGeneration.ShouldBe(status.Epoch);
+        status.ActiveGeneration.ShouldBeGreaterThan(selected);
+        status.IsBuilding.ShouldBeFalse();
+        status.PendingDeliveryCount.ShouldBe(0);
+        var checkpoint = (await coordinator.GetCheckpointAsync(scope, "owner-a")).ShouldNotBeNull();
+        checkpoint.OwnerSequenceNumber.ShouldBe(events.Length);
+        checkpoint.Position.ShouldBe(events[^1].GlobalPosition);
+        checkpoint.CapturedIdentityReference.ShouldBe(reference);
+        (await coordinator.ReadAsync<PayloadRow>(scope, "row:owner-a")).Value!.Value.ShouldBe(Convert.ToHexString(SHA256.HashData(events[^1].Payload)));
+        (await BoundedOrdinaryAsync(provider, handler, next, pending)).ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        (await BoundedRebuildAsync(provider, Lifecycle(next, DomainSharedProjectionRebuildAction.Commit))).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        handler.OrdinaryFoldCount.ShouldBe(0);
+        (await coordinator.GetStatusAsync(scope)).PendingDeliveryCount.ShouldBe(0);
+        (await BoundedOrdinaryAsync(provider, handler, next, BoundedHistory(68)[^1])).ShouldBe(ProjectionDispatchStatus.Completed);
+        handler.OrdinaryFoldCount.ShouldBe(1);
+        (await coordinator.GetCheckpointAsync(scope, "owner-a"))!.OwnerSequenceNumber.ShouldBe(68);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

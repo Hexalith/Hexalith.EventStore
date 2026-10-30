@@ -56,16 +56,18 @@ public sealed class PayloadProtectionDrainLiveTests(PayloadProtectionDaprFixture
         (await claims.TryClaimAsync(new(operation, scope), token)).ShouldBeNull();
         long started = Stopwatch.GetTimestamp();
         (await lifecycle.ResumeAsync(identity, first, token)).ShouldBeFalse();
-        Stopwatch.GetElapsedTime(started).ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(60));
-        (await fixture.Store.ReadAsync<ReadLeaseV1>(PayloadProtectionStateKeys.Lease(scope, "01J00000000000000000000204"), token)).ShouldBeNull();
-        Should.Throw<PayloadProtectionStateException>(() => read.AssertCurrent(token));
-        await read.DisposeAsync();
+        Stopwatch.GetElapsedTime(started).ShouldBeLessThan(TimeSpan.FromSeconds(10));
+        (await fixture.Store.ReadAsync<ReadLeaseV1>(PayloadProtectionStateKeys.Lease(scope, "01J00000000000000000000204"), token)).ShouldNotBeNull();
+        read.AssertCurrent(token);
         (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateCodec.KeyFor(key), token))!.Value.State.ShouldBe("Active");
         (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(scope), token))!.Value.State.ShouldBe("Invalidating");
         (await catalogs.ReadWorkAsync(root, token)).Head.Value.EntryCount.ShouldBe(1u);
         (await claims.TryClaimAsync(new(operation, scope), token)).ShouldBeNull();
         DateTimeOffset due = PayloadProtectionStateCodec.ParseTimestamp(first.NotBeforeUtc);
         while (due > DateTimeOffset.UtcNow) { await Task.Delay(due - DateTimeOffset.UtcNow, token); }
+        (await fixture.Store.ReadAsync<ReadLeaseV1>(PayloadProtectionStateKeys.Lease(scope, "01J00000000000000000000204"), token)).ShouldBeNull();
+        Should.Throw<PayloadProtectionStateException>(() => read.AssertCurrent(token));
+        await read.DisposeAsync();
         ReconciliationV1 replacement = (await claims.TryClaimAsync(new(operation, scope), token))!.Value;
         replacement.Attempt.ShouldBe(first.Attempt + 1);
         await Should.ThrowAsync<PayloadProtectionStateException>(() => lifecycle.ResumeAsync(identity, first, token).AsTask());

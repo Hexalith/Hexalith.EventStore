@@ -6372,3 +6372,34 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
   summary: Bound cumulative persisted multipart-owner event intake before complete-owner validation.
   evidence: Current patch completion review B4; every accepted transport part may contain 256 events and the aggregate event count is checked only by AccumulateComplete. The original multipart design likewise stores parts before this aggregate check, permitting scratch-write amplification up to the part/event ratio while still refusing an oversized completed owner. Preserve configured complete-history admission and deterministic retry/cleanup behavior when designing ingress accounting.
+
+- source_spec: `spec-folders-12-2-bounded-owner-identity.md`
+  summary: Refuse or observe ordinary redirects when the catalog handler cannot create an isolated redirect transport.
+  evidence: A copied-current-source HTTP probe using a derived HttpClientHandler makes RouteCatalogInvocationTransport.Create return null; RouteCatalogInvocationHandler.SendOrdinaryAsync then delegates to native redirects, and a same-host unlisted Dapr invocation returns 200 with zero catalog acquisitions. This unchanged routing path is independent of bounded identity; the finding establishes a client-side fence bypass, not receiver authorization bypass.
+
+## Deferred from: code review of spec-8-5-policy-and-key-lifecycle-mechanics.md, Group B (2026-10-30)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Verify reservation collision regeneration against the real Dapr state store.
+  evidence: Review pass 3 VG6/BH21. `ReserveAsync` regenerates only on `PayloadStateCommitResult.Conflict` (`KeyReservationCoordinator.cs:318`). `ReservationCollisionTests` uses the memory store, which returns Conflict for any create-only mismatch. The live lane records Unknown for stale conditional transactions, and no live test forces a key-reference collision. On Dapr a collision may become an ambiguous failure rather than a regeneration. Practically unreachable with ULID references.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Define unwrap operation-ID semantics before restore reuses one ID for every unwrap (unverified, would be medium).
+  evidence: Review pass 3 BH8. `PayloadRestoreAdmission` passes `request.AdmissionId` to every `UnwrapAsync` and uses it as the read-lease operation ID (`:54`, `:91`). Rotation deliberately uses a fresh ID per unwrap. The backend SPI does not define unwrap ID semantics. Settle by specifying them; if a backend correlates or de-duplicates by ID, use fresh IDs.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Decide how rotation verifies environment-wide inventory entries owned by roots this process does not enroll (unverified, would be medium).
+  evidence: Review pass 3 EC19. `VerifyInventoryAsync` calls `Admit` (root enrollment plus audit-scope permission) for the owner of every inventory entry (`PayloadKeyRotationCoordinator.cs:27`). If processes sharing the state store enroll different root sets, every rewrap under that KEK version fails. Settle with Story 8.7's multi-host enrollment model.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Make restore decision confirmation tolerate the existing workflow's idempotent replay (unverified, would be medium).
+  evidence: Review pass 3 EC26. `PayloadRestoreAdmission.AdmitAsync` requires `recorded == result` (`:113-114`), and `result` carries a fresh `DecidedAtUtc` with `IdempotentReplay: false`. If the workflow returns the stored decision on replay, a retry for an already-recorded `AdmissionId` always fails ConsistencyMismatch. Settle with the restore workflow's replay contract when Story 8.7 wires it; compare decision identity, state and reason instead.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Redesign payload-protection index maintenance so its cost is per touched entry, not per environment-wide inventory (high).
+  evidence: Review pass 3 decision D2. `SetInventoryEntry`/`SetScopeEntry` rewrite the head and every page on each membership change (`PayloadKeyIndexes.cs:100-141`), and every protected event reserves a fresh DEK, so reservations exceed the 2 MiB transaction profile after roughly 18k keys per backend/KEK version. Barrier, restore and fence paths compare every page. `VerifyInventoryAsync` reads the whole inventory two or three times per rewrap (rotation fails beyond roughly 1,300 keys). Invalidation re-reads it per key and verifies every scope key in one 4,096-read phase (aggregates over roughly 4,000 keys never finish). Thresholds are review estimates. Story 8.5 adds only typed bounded admission failures and documents the ceiling.
+  reason: Owner decision 2026-10-30: typed limit now; the redesign needs approved authority bytes and belongs in a capacity story before Story 8.7 host wiring.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Recover an incarnation whose capability lapsed after a renewal gap over 60 s (medium).
+  evidence: Review pass 3 decision D4 (BH14, EC14). `RenewAsync` rejects the expired/TTL-deleted capability (`PayloadProtectionLeaseCoordinator.cs:77-78`) and `RegisterAsync` rejects the existing member (`:50`), so the process can never serve that root again.
+  reason: Owner decision 2026-10-30: the Story 8.7 host owns incarnations and must retire and start a fresh incarnation after a lapse.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Make pending payload-protection lifecycle work observable (low).
+  evidence: Review pass 3 decision D5 (BH11). `PayloadProtectionDiagnosticScope` defaults to `Unavailable`, so drain-waiting, pending-persistence and batch-cap returns record Unavailable metrics. The closed result enum has no pending value, and no coordinator logs which member, acknowledgement or operation blocks a drain.
+  reason: Owner decision 2026-10-30: belongs to Story 8.7/8.11 operability work.

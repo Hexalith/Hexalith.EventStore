@@ -72,7 +72,9 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
                     // Clearing is a responsibility of every registered incarnation, independent of mutation ownership/due time.
                     if (lifecycle.Value.State is "Invalidating" or "Invalidated")
                     {
-                        await _lifecycle.AcknowledgeAsync(identity, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
+                        try { await _lifecycle.AcknowledgeAsync(identity, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false); }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                        catch (Exception) { /* Clearing uncertainty cannot prevent independent claim-fenced bookkeeping. */ }
                     }
                     PayloadProtectionStateValue<ReconciliationV1>? claim = await _claims.TryClaimAsync(entry, cancellationToken).ConfigureAwait(false);
                     if (claim is null) { continue; }
@@ -95,7 +97,7 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
                     }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-                catch (PayloadProtectionStateException) { /* Leave discoverable work intact on denial, uncertainty or a fenced claim. */ }
+                catch (Exception) { /* Leave discoverable work intact on malformed state, denial, uncertainty or a fenced claim. */ }
             }
             return processed;
         }
@@ -105,12 +107,20 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
     /// <summary>Runs bounded passes; faults never cause blind mutation replay or untracked work removal.</summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        int idleRoots = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
-            try { _ = await RunPassAsync(stoppingToken).ConfigureAwait(false); }
+            int processed = 0;
+            try { processed = await RunPassAsync(stoppingToken).ConfigureAwait(false); }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch (PayloadProtectionStateException) { /* Root admission remains fail-closed until state is available and consistent. */ }
-            await Task.Delay(TimeSpan.FromSeconds(1), _clock, stoppingToken).ConfigureAwait(false);
+            catch (Exception) { /* Root admission remains fail-closed; a fault cannot stop the sole worker. */ }
+            idleRoots = processed == 0 ? idleRoots + 1 : 0;
+            if (idleRoots >= _roots.Roots.Count)
+            {
+                idleRoots = 0;
+                try { await Task.Delay(TimeSpan.FromSeconds(1), _clock, stoppingToken).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+            }
         }
     }
 
@@ -122,7 +132,7 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
         PayloadProtectionStateValue<OperationV1> operation = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(claim.OperationId), token).ConfigureAwait(false);
         if (operation.Value.ScopeDigest != claim.ScopeDigest || operation.Value.KeyRef != claim.KeyRef || operation.Value.DekVersion != claim.DekVersion
             || operation.Value.Operation != claim.Kind) { throw Mismatch(); }
-        if (operation.Value.Phase == "Ambiguous" && _backendProvider is not null
+        if (operation.Value.Phase is "Ambiguous" or "Started" && _backendProvider is not null
             && await PayloadOperationBudget.ReadAsync<WrappedDekV1>(_store, PayloadProtectionStateKeys.Key(claim.ScopeDigest, claim.KeyRef, claim.DekVersion), token).ConfigureAwait(false) is null)
         {
             // No payload can precede a Reserved record. Reconcile the old wrap by stable identity; never wrap again.
@@ -131,9 +141,15 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
             if (outcome.Failure is not (PayloadBackendFailure.None or PayloadBackendFailure.Missing)) { return; }
             PayloadProtectionStateValue<ReconciliationV1> held = await _claims.RequireAsync(claim, token).ConfigureAwait(false);
             string reconciledAt = Now();
+            LifecycleV1 observed = (await RequiredAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(claim.ScopeDigest), token).ConfigureAwait(false)).Value;
+            FenceV1 fence = (await RequiredAsync<FenceV1>(PayloadProtectionStateKeys.Fence(root), token).ConfigureAwait(false)).Value;
+            var recoveredAudit = new PayloadProtectionAuditRecord(new CryptographicPayloadProtectionEntropy().CreateKeyReference(), claim.OperationId, null, null,
+                identity.TenantId, identity.Domain, null, "Reconcile", null, null, observed.Epoch, fence.ApprovalEpoch, _backend, "v2", null, null,
+                claim.Attempt, checked((ulong)Math.Max(0, Math.Floor(_clock.GetElapsedTime(started).TotalMilliseconds))), "Failed", "not-persisted", _actor, reconciledAt);
             PayloadStateCommitResult reconciled = await _store.CommitAsync([
                 PayloadProtectionStateMutation.Put(operation.Value with { Phase = "Failed", Result = "Failed", ReasonCode = "not-persisted", UpdatedAtUtc = reconciledAt }, operation.ETag),
-                PayloadProtectionStateMutation.Put(claim with { Status = "Pending", ReasonCode = "not-persisted", NotBeforeUtc = PayloadProtectionStateCodec.Timestamp(PayloadProtectionStateCodec.ParseTimestamp(operation.Value.CreatedAtUtc).AddHours(24)), UpdatedAtUtc = reconciledAt }, held.ETag)], token).ConfigureAwait(false);
+                PayloadProtectionStateMutation.Put(claim with { Status = "Pending", ReasonCode = "not-persisted", NotBeforeUtc = PayloadProtectionStateCodec.Timestamp(PayloadProtectionStateCodec.ParseTimestamp(operation.Value.CreatedAtUtc).AddHours(24)), UpdatedAtUtc = reconciledAt }, held.ETag),
+                PayloadProtectionStateMutation.Put(recoveredAudit)], token).ConfigureAwait(false);
             if (reconciled != PayloadStateCommitResult.Committed) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }
             return;
         }
@@ -162,7 +178,7 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
         List<PayloadProtectionStateMutation> conditions = [];
         if (key is not null)
         {
-            if (key.Value.State != "Reserved" || key.Value.CreatingOperationId != claim.OperationId || key.Value.ScopeDigest != claim.ScopeDigest
+            if ((key.Value.State != "Reserved" && !(key.Value.State == "Invalidated" && operation.Value.Result == "Failed")) || key.Value.CreatingOperationId != claim.OperationId || key.Value.ScopeDigest != claim.ScopeDigest
                 || key.Value.TenantId != identity.TenantId || key.Value.Domain != identity.Domain || key.Value.AggregateId != identity.AggregateId) { throw Mismatch(); }
             var indexes = new PayloadKeyIndexes(_store, _clock);
             ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(claim.ScopeDigest, token).ConfigureAwait(false);

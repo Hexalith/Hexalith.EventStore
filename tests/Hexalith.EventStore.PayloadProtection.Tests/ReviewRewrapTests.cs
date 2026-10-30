@@ -20,6 +20,7 @@ public sealed class ReviewRewrapTests
             await fixture.Reservations.AcquireCompletionAsync(write.Completion!);
             await fixture.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.Persisted);
         }
+        else { await fixture.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.NotPersisted); }
         string keyAddress = PayloadProtectionStateKeys.Key(fixture.Scope, write.Completion!.KeyReference, 1);
         WrappedDekV1 original = (await fixture.Store.ReadAsync<WrappedDekV1>(keyAddress))!.Value;
         fixture.Backend.Unwrap = (_, _, _, _) => ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Denied));
@@ -44,6 +45,7 @@ public sealed class ReviewRewrapTests
     {
         ReservationTestFixture fixture = await ReservationTestFixture.CreateAsync();
         var write = await fixture.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context());
+        await fixture.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.NotPersisted);
         fixture.Backend.Unwrap = (_, provider, _, _) => ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, new byte[32], provider));
         fixture.Backend.Wrap = (_, _, _) => ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, new byte[32], "fixture:wrong-target"));
         var rotation = Rotation(fixture);
@@ -64,6 +66,7 @@ public sealed class ReviewRewrapTests
     {
         ReservationTestFixture fixture = await ReservationTestFixture.CreateAsync();
         var write = await fixture.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context());
+        await fixture.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.NotPersisted);
         var outputs = new List<byte[]>();
         fixture.Backend.Unwrap = (_, provider, _, _) =>
         {
@@ -93,6 +96,7 @@ public sealed class ReviewRewrapTests
     {
         ReservationTestFixture f = await ReservationTestFixture.CreateAsync();
         var write = await f.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context());
+        await f.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.NotPersisted);
         f.Backend.Unwrap = (_, _, _, _) => ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Denied));
         var rotation = Rotation(f);
         await Should.ThrowAsync<PayloadProtectionStateException>(() => rotation.RewrapAsync(f.Identity, write.Completion!.KeyReference, 1, Operation, "fixture:version-02").AsTask());
@@ -109,6 +113,7 @@ public sealed class ReviewRewrapTests
     {
         ReservationTestFixture f = await ReservationTestFixture.CreateAsync();
         var write = await f.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context());
+        await f.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.NotPersisted);
         f.Backend.Unwrap = (_, provider, _, _) => ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, new byte[32], provider));
         var response = new TaskCompletionSource<PayloadBackendResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         f.Backend.Wrap = (_, _, _) => new(response.Task);
@@ -128,6 +133,7 @@ public sealed class ReviewRewrapTests
     {
         var f = await ReservationTestFixture.CreateAsync();
         var write = await f.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context());
+        await f.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.NotPersisted);
         string current = "fixture:version-02"; bool wrapped = false;
         f.Backend.Unwrap = (_, provider, _, _) => { current = "fixture:version-03"; return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, new byte[32], provider)); };
         f.Backend.WrapExact = async (operation, target, _, token) =>

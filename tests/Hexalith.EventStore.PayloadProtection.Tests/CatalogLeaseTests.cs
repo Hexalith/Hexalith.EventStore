@@ -138,8 +138,9 @@ public sealed class CatalogLeaseTests
         clock.Advance(TimeSpan.FromSeconds(45));
         Should.Throw<PayloadProtectionStateException>(() => read.AssertCurrent());
         await leases.RenewAsync(Identity);
+        lifecycle = (await store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(Scope)))!;
         store.BeforeCommit = () => store.CommitAsync([PayloadProtectionStateMutation.Put(lifecycle.Value with {
-            State = "Invalidating", ReasonCode = "domain-invalidating", Epoch = 2 }, lifecycle.ETag)]).GetAwaiter().GetResult();
+            State = "Invalidating", ReasonCode = "domain-invalidating", Epoch = 2 }, lifecycle.ETag)]).GetAwaiter().GetResult().ShouldBe(PayloadStateCommitResult.Committed);
         await Should.ThrowAsync<PayloadProtectionStateException>(() => leases.AcquireReadAsync(Identity, KeyRef, 1,
             "01J00000000000000000000004", lifecycle).AsTask());
         (await store.ReadAsync<ReadLeaseV1>(PayloadProtectionStateKeys.Lease(Scope, "01J00000000000000000000004"))).ShouldBeNull();

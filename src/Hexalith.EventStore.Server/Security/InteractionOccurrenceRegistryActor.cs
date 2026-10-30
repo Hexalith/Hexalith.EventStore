@@ -104,7 +104,9 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
                 && original.TargetBytes is { Length: > 0 and <= RecoverableAnchoredState.MaximumPendingBytes }
                 && Convert.ToHexString(SHA256.HashData(original.TargetBytes)) == original.TargetDigest)
             {
-                var current = CaptureState(JsonSerializer.Deserialize<InteractionOccurrenceRegistrySnapshot>(original.TargetBytes)!);
+                InteractionOccurrenceRegistrySnapshot? recovered = JsonSerializer.Deserialize<InteractionOccurrenceRegistrySnapshot>(original.TargetBytes);
+                ArgumentNullException.ThrowIfNull(recovered);
+                var current = CaptureState(recovered);
                 if (current.TenantId == tenant && current.EpochId == epoch && current.Revision == original.TargetRevision && Digest(current) == original.TargetDigest
                     && await authority.ValidateStateAsync(tenant, epoch, current.Revision, original.TargetDigest).ConfigureAwait(false))
                 {
@@ -116,7 +118,7 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
         return await RecoverableAnchoredState.ReconcileAsync(PendingScope, state, await ReadPendingAsync().ConfigureAwait(false), CaptureState,
             value => authority.ValidateStateAsync(tenant, epoch, value.Revision, Digest(value)), authority, PersistTargetAsync, recoverAdmittedOriginal).ConfigureAwait(false);
         }
-        catch (InvalidOperationException) { return null; }
+        catch (Exception exception) when (exception is InvalidOperationException or JsonException or ArgumentNullException) { return null; }
     }
     private async Task SaveAsync(InteractionOccurrenceRegistrySnapshot next, long expected)
     {

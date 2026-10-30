@@ -84,6 +84,8 @@ Repository-relative directory aliases below identify exact task locations:
 
 ## Spec Change Log
 
+- 2026-10-30: Resumption review added four public dispatcher controls for covered pending deliveries against paged identity proof. Matching cases complete handoff and drain without refolding; contradictory bytes preserve the pre-commit checkpoint and selected view/generation. No runtime code, frozen intent, original baseline or deferred owner decision changed.
+
 - 2026-10-30: Completed the five patch-delta follow-ups, then corrected legacy inline journal-proof arithmetic exposed by removal of the old sequence ceiling. Added public-API overflow regressions and explicit host-owned rollout quiescence guidance. Frozen behavior, original baseline and owner-deferred GC remain unchanged.
 
 - 2026-10-30: The owner assigned the concurrent scoped review's direct fixes to this run. Corrected captured-prefix admission, inline sequence arithmetic, buffered session fencing and cleanup disposal; added the requested persisted-state controls and clarified the dispatcher deployment gate. The later recorded owner decision defers evidence garbage collection and converts runtime source-binding/OS-observer removal into a direct patch while retaining process-replacement coverage.
@@ -95,6 +97,36 @@ Repository-relative directory aliases below identify exact task locations:
   verification here under the current repository policy.
 
 ## Review Triage Log
+
+### Current resumption review — 2026-10-30
+
+All three layers completed before classification. The full original-baseline
+input is `/tmp/bmad-12-2-review-lw4ec_qi.diff` (5,792,681,349 bytes); detailed
+tracing used its 27-file bounded-identity source/test/guide navigation slice and
+selected routing callers. Review was not exhaustive across the historical
+evidence deletions or unrelated intervening changes. Each finding receives its
+own verdict below before grouping. Previously logged locations and claims keep
+their verdicts without duplicate follow-ups.
+
+| Finding | Verdict / route | Evidence and decision |
+| --- | --- | --- |
+| B1: selected-capture replay does not reread the epoch | medium / carried defer | Carried from Resumption E1 and Current patch completion B1: the same `JournalAsync` return path remains. Preserve the existing stale-lease acknowledgement follow-up. |
+| B2: retirement rejects admitted streamed chunk counts | medium / carried defer | Carried from Resumption Blind R2 and Current patch completion B2: the same `ReconcileRetiredPartitionOwnersAsync` admission mismatch remains. No additional deferred entry. |
+| B3: null multipart events escape validation | medium / carried defer | Carried from Current patch completion B3: `RequireLegacyEvents` still skips null elements before the same intake dereference. Preserve its separate input-validation follow-up. |
+| B4: multipart ingress exceeds complete-owner event admission | medium / carried defer | Carried from Current patch completion B4: the same per-part allowance can persist excessive scratch before completion rejects it. No duplicate follow-up. |
+| B5: cross-host redirects bypass catalog invocation fencing | medium / carried defer | Carried from Fresh resumption B10 and Corrected-graph R1: the same `IsSameHost` condition remains. Preserve the client-side finding without a receiver authorization claim. |
+| B6: same-host redirects retain Authorization | medium / carried defer | Carried from Corrected-graph R2 and Resumption B2: the same redirect-authentication branch remains. Keep the existing native-transport parity follow-up. |
+| B7: a POST body returns after POST-to-GET followed by 307 | medium / carried defer | Carried from Resumption B3: `forceGet` still leaves the replay buffer available to the subsequent redirect. No duplicate entry. |
+| B8: ordinary HTTP bodies are buffered before the first send | medium / carried defer | Carried from Corrected-graph R3 and Current-source B10: the same unconditional body capture remains. Preserve the existing streaming/memory follow-up. |
+| B9: unavailable isolated redirect transport falls back beneath the guard | medium / defer | Parent confirmed both copied source files match current bytes and reran `/tmp/blind-12-2-http-probe/bin/Debug/net10.0/Probe.dll`. A derived `HttpClientHandler` makes isolated-copy creation return null; the original native transport follows a same-host redirect to an unlisted invocation, returning 200 with zero catalog acquisitions. The routing files are unchanged since this invocation's initial revision and independent of bounded identity. This proves a client-side fencing gap, not a receiver authorization bypass. |
+| B10: dispatch-lease release has no retry deadline | medium / carried defer | Carried from Corrected-graph R5 and Resumption B6: the same CAS loop with `CancellationToken.None` remains. Preserve the existing contention follow-up. |
+| E1: selected replay can acknowledge a stale lease during paged proof reads | medium / carried defer | Carried from Resumption E1 and B1 above at the same `JournalAsync` path. The reviewer reproduced `AlreadyCaptured` with current epoch 2 and lease epoch 1; the existing root and follow-up remain unchanged. |
+| VG1: paged pending-journal proof lacks a dispatcher commit regression | medium / patch fixed | Accepted as pre-verified. Added four public dispatcher controls covering both owner contracts: matching proof completes handoff/drain without a second fold, and contradictory bytes preserve the pre-commit checkpoint and selected view/generation. Implementer and parent each ran all four cases successfully. |
+
+VG1 and B9 have separate roots: one direct regression-test correction and one
+pre-existing routing follow-up. The ten carried findings introduce no additional
+patches or ledger entries. Frozen intent, original baseline and the unresolved
+broad regression results remain unchanged.
 
 ### Current patch completion review — 2026-10-30
 
@@ -1863,3 +1895,122 @@ guard and 15 previously recorded Server failures remain unresolved; status is
 Frozen intent and the original baseline are preserved. All owned processes were
 awaited; concurrent tooling/CI/review edits are preserved. No Git staging, commit,
 push, dependency change, publication, deployment or retired-helper restoration ran.
+
+### Current implementation resumption and verification — 2026-10-30
+
+Read the complete spec; `context: []` names no additional inputs. The bounded
+implementation, regression tests and rollout/rollback guide are already present.
+No additional production or test change was needed. This resumption appends only
+this verification record, preserving the frozen intent, original baseline and
+`in-progress` status. CI run/link: none initiated or claimed by this resumption;
+these are local SDK **10.0.403**, .NET **10.0.14**, Dapr CLI **1.18.2** / runtime
+**1.18.7** results.
+
+External Git work advanced the initial `dd02dd054ff28140a12d7b9a2b8cd3772c509051` checkout to
+`6adfa33ae737d1c1baf0ce1f99847f0649f874e0` during initial inspection, then
+recorded the nine already checked-out submodule revisions in
+`e92e6694a93c79531368fa3bbf6c06462fd05484`. The latter commit changes only
+gitlinks; root production, test and build configuration files are unchanged. The checked-out submodule
+revisions are retained in `submodules.txt` and `submodules-after.txt` under the
+directory below. All external work was preserved; this resumption performed no
+Git staging, commit, push, branch or dependency mutation.
+
+The .NET builds and test commands ran sequentially from the owning repository
+root; every process was awaited. All four builds passed with **zero
+warnings/errors**. Independent workflow and whitespace checks also completed.
+Separate logs and XML remain under the exact directory named by `bounded_run`:
+
+```bash
+bounded_run=/tmp/bounded-owner-6adfa33a-bD6fCo
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true > "$bounded_run/client-build.log" 2>&1
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -result-xml "$bounded_run/client-full.xml" > "$bounded_run/client-full.log" 2>&1
+dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true > "$bounded_run/domain-build.log" 2>&1
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -result-xml "$bounded_run/domain-full.xml" > "$bounded_run/domain-full.log" 2>&1
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true > "$bounded_run/server-build.log" 2>&1
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml "$bounded_run/server-full.xml" > "$bounded_run/server-full.log" 2>&1
+ASPNETCORE_URLS=http://127.0.0.1:0 dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*QueryResponseProvenancePersistenceTests' -result-xml "$bounded_run/server-query-ephemeral.xml" > "$bounded_run/server-query-ephemeral.log" 2>&1
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true > "$bounded_run/live-build.log" 2>&1
+BOUNDED_IDENTITY_EVIDENCE_DIR="$bounded_run/live" dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method '*ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff' -method '*ProjectionBoundedIdentityLiveTests.FocusedInheritedOwnerReplayAfterProcessReplacement' -result-xml "$bounded_run/live.xml" > "$bounded_run/live.log" 2>&1
+actionlint .github/workflows/integration.yml
+git diff --check
+```
+
+| Current run | Passed | Failed | Skipped | Exit |
+| --- | ---: | ---: | ---: | ---: |
+| Full Client | 2,262 | 1 | 2 | 1 |
+| Full Domain | 1,289 | 0 | 1 | 0 |
+| Full Server | 6,457 | 15 | 25 | 1 |
+| Query-provenance retry on an ephemeral URL | 0 | 7 | 0 | 1 |
+| Short live process-replacement and inherited-replay cases | 4 | 0 | 0 | 0 |
+
+All XML reports have zero errors/not-run cases. The complete unit runs contain
+**63/63** bounded Client, **147/147** partitioned Domain and **30/30** source
+producer/roster passes: **240 relevant cases**, including every named frozen
+matrix method and all correction controls. No bounded-matrix case failed or was
+skipped. Existing opt-in/ATDD skips remain separate lanes.
+
+Client's sole failure remains the routing-header ownership guard. Server's eight
+non-binding failures remain the pipeline-ordering, callback-quota, SignalR
+metadata-cap, secret-guard, two internal-authentication and two actor-authorization
+cases previously recorded. Its seven query-provenance rows initially failed to
+bind `127.0.0.1:5000`, which is held by an external Aspire process that was left
+untouched. The focused environment-only retry removed that bind failure, but all
+seven then returned **503 ServiceUnavailable** instead of **200 OK**. That retry
+is a failure, not a passing environment control; no deeper cause is inferred
+from the HTTP assertion alone, and no broad failure is fixed or waived.
+
+The four **129-event** live cases passed in **74.089 seconds** using **14 distinct
+worker PIDs**, all now exited. Native worker records verify interrupted staging,
+partial second-owner handoff, recovery and unchanged inherited replay/checkpoint
+hashes. Every phase enforces bounds: maximum physical/canonical batch **55,055
+bytes / 68 operations**, identity **10,366 bytes**, checkpoint **1,664 bytes** and
+owner manifest **1,246 bytes**. These measurements cover the current short cases;
+the complete large-owner live matrix remains historical evidence for its recorded
+graph and was not rerun. Retired runtime-proof, observer and qualification helpers
+remain absent. Workflow lint and whitespace checks passed.
+
+The current complete regression gates still fail, so status remains
+`in-progress`; no overall regression, package/release or Folders acceptance is
+claimed. Evidence garbage collection remains owner-deferred. No publication,
+deployment, nested-submodule update or retired-helper restoration was performed.
+
+### Resumption review correction and parent verification — 2026-10-30
+
+All three review layers completed and all twelve findings were triaged above.
+The sole patch adds `DispatcherCommitValidatesCoveredPendingDeliveriesAgainstPagedIdentity`
+to `tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.BoundedIdentity.cs`.
+Its four rows exercise buffered/streamed owners with matching/contradictory
+pending sequence 66 beyond the first proof page. Matching commit proves handoff,
+journal draining, duplicate retry and subsequent ordinary growth without a
+second fold. Contradictory commit preserves the exact checkpoint captured after
+journal admission, the selected view/generation and the pending delivery.
+
+The target Debug/source build passed with zero warnings/errors; implementer
+verification passed **4/4** with zero skips/errors/not-run. Its initial two
+negative assertions took the checkpoint snapshot before journal admission;
+that admission legitimately advances the checkpoint. Moving the snapshot to the
+actual pre-rebuild boundary corrected the fixture without changing production
+behavior or reducing the preservation assertions. Logs are under
+`/tmp/bounded-pending-dispatcher-vIMy1r`.
+
+Parent read the complete test correction and independently ran:
+
+```bash
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -method '*DispatcherCommitValidatesCoveredPendingDeliveriesAgainstPagedIdentity' -result-xml /tmp/bounded-pending-dispatcher-vIMy1r/parent-tests.xml
+```
+
+Result: **4 passed / 0 failed / 0 skipped**, zero errors/not-run, exit **0**,
+**1.273 seconds**. Scoped whitespace validation passed. Earlier complete suites,
+**240 relevant unit cases** and four short live cases retain their separately
+recorded results; they were not repeated for this test-only addition. These four
+new cases bring unique relevant unit coverage executed in this run to **244**.
+No bounded runtime code or shared test helper changed.
+
+Source revision is `e92e6694a93c79531368fa3bbf6c06462fd05484` plus this run's
+test, spec and deferred-ledger edits. Concurrent external Server security
+source/test edits appeared after the broad runs and are preserved; those earlier
+results do not qualify the later whole working tree. CI run/link: none for these
+local checks. The last complete Client/Server sweeps still have **16 failing
+tests**, so no overall regression, package/release or Folders acceptance is
+claimed. The full large-owner live lane remains historical, as recorded above.
+No Git staging/commit/push, dependency mutation or retired-tool restoration ran.

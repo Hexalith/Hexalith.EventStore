@@ -72,11 +72,11 @@ public sealed class DaprStateStoreBoundaryTests
         string now = PayloadProtectionStateCodec.Timestamp(DateTimeOffset.UtcNow);
         var many = Enumerable.Range(0, PayloadProtectionOperationalLimits.TransactionOperations + 1)
             .Select(i => PayloadProtectionStateMutation.Put(new WorkHeadV1(i.ToString("x64"), 0, 0, 0, now))).ToArray();
-        await Should.ThrowAsync<PayloadProtectionFormatException>(() => store.CommitAsync(many).AsTask());
+        await Should.ThrowAsync<PayloadProtectionStateException>(() => store.CommitAsync(many).AsTask());
         var entropy = new CryptographicPayloadProtectionEntropy(); string scope = PayloadProtectionStateKeys.ScopeDigest(new("tenant", "domain", "aggregate"));
         var large = Enumerable.Range(0, 35).Select(_ => PayloadProtectionStateMutation.Put(PayloadProtectionStateCodec.Seal(new WrappedDekV1("tenant", "domain", "aggregate", scope,
             entropy.CreateKeyReference(), 1, "Reserved", "fixture", new('p', 60000), "RSA-OAEP-256", "AA", 1, 1, 1, entropy.CreateKeyReference(), now, now, new('0', 64), new('0', 64))))).ToArray();
-        await Should.ThrowAsync<PayloadProtectionFormatException>(() => store.CommitAsync(large).AsTask());
+        await Should.ThrowAsync<PayloadProtectionStateException>(() => store.CommitAsync(large).AsTask());
         var ack = new CacheClearAckV1(scope, entropy.CreateKeyReference(), 1, entropy.CreateKeyReference(), now);
         await Should.ThrowAsync<PayloadProtectionFormatException>(() => store.CommitAsync([PayloadProtectionStateMutation.Put(ack, "etag")]).AsTask());
         await client.DidNotReceiveWithAnyArgs().ExecuteStateTransactionAsync(default!, default!, default!, default);

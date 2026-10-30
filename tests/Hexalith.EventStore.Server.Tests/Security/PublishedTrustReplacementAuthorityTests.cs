@@ -1,4 +1,6 @@
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Security;
@@ -565,6 +567,59 @@ public sealed class PublishedTrustReplacementAuthorityTests
         DeletionConsumptionIdentity.Digest(saved.Operations.Single(o => o.OperationId == f.Activation.OperationId).ActivationOriginal).ShouldBe(DeletionConsumptionIdentity.Digest(f.Activation));
         await owner.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
+    [Fact]
+    public async Task UnissuedProofAcceptsMatchingGuardAndRejectsMismatchedGuard()
+    {
+        var f = new PublishedTrustReplacementFixture();
+        var token = TestContext.Current.CancellationToken;
+        f.SetBatch(f.Batch with { ProtectionOutcome = "ConsumptionBlocked:CapabilityKeyCompromise" });
+        var successor = f.Replacement.Capability with { AttestationOrdinal = f.Batch.AttestationOrdinal + 1 };
+        var signed = f.SignedSubstitution(successor, f.Replacement.Targets);
+        byte[] stateBytes = JsonSerializer.SerializeToUtf8Bytes(f.State);
+        string stateDigest = Convert.ToHexString(SHA256.HashData(stateBytes));
+        stateDigest.ShouldBe(DeletionConsumptionIdentity.Digest(f.State));
+        string mutation = DeletionConsumptionIdentity.Digest(Array.Empty<GuardedStateMutation>());
+        var transition = new GovernanceGuardTransition(successor.TenantId, "replace-unissued", GovernanceGuardOperation.ReplaceAttestation,
+            f.State.Revision, f.State.EpochId, successor.DeletionRequestId, null, null, null, null, null,
+            new GovernanceBatchCommand(successor.BatchId, successor.BatchKind, successor.BatchOrdinal,
+                signed.Targets.Select(target => new GovernanceProtectionTarget(target.TenantId, target.AgentInteractionId, target.TargetProtectionKeyAlias)).ToArray(),
+                successor.ManifestDigest, successor.AttestationOrdinal, successor.CapabilityKeyVersion,
+                Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(signed.DetachedJws))),
+                "blocked", "unissued-refusal", [], signed.ExpectedKeyBlockSetRevision)
+            { Capability = successor, DetachedJws = signed.DetachedJws, SigningRequestId = signed.SigningRequestId },
+            "authorization", "reference");
+        string intent = DeletionConsumptionIdentity.Digest(new { Transition = transition, TargetMutationDigest = mutation });
+        var receipt = new GovernanceProtocolReceipt("replace-unissued", intent, "Stale", f.State.Revision, 1, "reference", "unissued-refusal")
+        {
+            Capability = successor,
+            SigningRequestId = signed.SigningRequestId,
+            DetachedJwsDigest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(signed.DetachedJws))),
+        };
+        var proof = new GovernanceRejectedIssueOriginal(transition, mutation, receipt, f.State.Revision, stateDigest) { CurrentGuardStateBytes = stateBytes };
+        var request = signed with { CommittedIssuedGuardRevision = 0, GuardReplacementReceiptId = receipt.ReceiptId, UnissuedProof = proof };
+        DeletionConsumptionIdentity.Digest(DeletionConsumptionIdentity.Capture(request)).ShouldBe(DeletionConsumptionIdentity.Digest(request));
+        f.Blocked = request;
+        bool acceptBlockedProof = true;
+        string material = DeletionConsumptionIdentity.Digest(request);
+        f.Journal.VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            AnchoredStateTransition proof = call.Arg<AnchoredStateTransition>();
+            string expected = string.Join('\n', "blocked-replacement", successor.TenantId, successor.BatchId,
+                f.State.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture), material);
+            bool blocked = proof.ScopeId == "published-trust|blocked-replacement|" + successor.TenantId + "|" + successor.BatchId
+                && Encoding.UTF8.GetString(proof.TargetBytes) == expected;
+            return blocked && acceptBlockedProof;
+        });
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeTrue();
+        acceptBlockedProof = false;
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
+        acceptBlockedProof = true;
+        f.State = f.State with { Revision = f.State.Revision + 1 };
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
+        f.State = f.State with { Revision = proof.CurrentGuardRevision, EpochId = "epoch-mutated" };
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
+    }
+
     private static Task<bool> VerifySuccessorAsync(PublishedTrustReplacementFixture fixture, bool activation,
         PublishedTrustDeletionConsumptionAuthority? authority = null, CancellationToken cancellationToken = default)
     {
