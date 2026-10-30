@@ -1,6 +1,6 @@
 namespace Hexalith.EventStore.Testing.Integration;
 
-/// <summary>An exact HTTP resource binding required by a descriptor fixture.</summary>
+/// <summary>An exact resource binding required by a descriptor fixture.</summary>
 /// <param name="ResourceId">The declared resource identity.</param>
 /// <param name="ModuleId">The declaring module identity.</param>
 /// <param name="EndpointName">The endpoint name.</param>

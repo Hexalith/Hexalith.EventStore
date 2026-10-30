@@ -7,6 +7,49 @@ namespace Hexalith.EventStore.Testing.Integration.Tests;
 [Collection("Descriptor handoff")]
 public sealed class DescriptorFixtureTests
 {
+    [Theory]
+    [InlineData("missing-resource")]
+    [InlineData("wrong-module")]
+    [InlineData("missing-endpoint")]
+    [InlineData("valid")]
+    public async Task NonHttpPersistenceBindingIsRequiredBeforeClientExposure(string binding)
+    {
+        using var handoff = new DescriptorHandoffScope();
+        string path = System.Environment.GetEnvironmentVariable("HEXALITH_TEST_ENVIRONMENT_PATH")!;
+        System.Text.Json.Nodes.JsonNode root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+        System.Text.Json.Nodes.JsonNode environment = root["bindings"]!["environment"]!;
+        if (binding != "missing-resource")
+        {
+            environment["resources"]!.AsArray().Add(new System.Text.Json.Nodes.JsonObject
+            {
+                ["resourceId"] = "redis", ["moduleId"] = binding == "wrong-module" ? "foreign" : "parties",
+                ["endpoints"] = new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject
+                {
+                    ["name"] = binding == "missing-endpoint" ? "other" : "tcp", ["protocol"] = "tcp", ["uri"] = "tcp://127.0.0.1:16379",
+                }),
+            });
+            System.Text.Json.Nodes.JsonNode ready = environment["readiness"]!["resources"]![0]!.DeepClone();
+            ready["resourceId"] = "redis";
+            environment["readiness"]!["resources"]!.AsArray().Add(ready);
+        }
+        File.WriteAllText(path, root.ToJsonString());
+        await using var fixture = new DescriptorPersistenceFixture();
+        if (binding == "valid")
+        {
+            await fixture.InitializeAsync();
+            fixture.Gateway.BaseAddress.ShouldBe(new Uri("http://127.0.0.1:18080"));
+            fixture.Environment.GetEndpoint("redis", "parties", "tcp").Scheme.ShouldBe("tcp");
+            Should.Throw<InvalidOperationException>(() => fixture.PersistenceClient);
+        }
+        else
+        {
+            TestEnvironmentDescriptorException failure = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () => await fixture.InitializeAsync());
+            failure.Rule.ShouldBe("HXT109");
+            Should.Throw<InvalidOperationException>(() => fixture.Gateway);
+            Should.Throw<InvalidOperationException>(() => fixture.Environment);
+        }
+    }
+
     [Fact]
     public async Task MissingHandoff_FailsBothFixturesWithoutStartupOrSkip()
     {

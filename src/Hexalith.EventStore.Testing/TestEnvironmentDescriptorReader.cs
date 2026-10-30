@@ -74,7 +74,7 @@ public static class TestEnvironmentDescriptorReader
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
+            if (!TestEnvironmentDescriptorFile.IsLocalAbsolutePath(path))
             {
                 return Refuse("HXT106", version, "$", "Supply an absolute readable local descriptor path.");
             }

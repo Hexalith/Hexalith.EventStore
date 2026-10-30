@@ -14,13 +14,17 @@ internal sealed class TestEnvironmentRequestHandler(Uri endpoint, CancellationTo
             throw new TestEnvironmentDescriptorException("HXT109", "Fixture requests must remain within their exact declared endpoint origin.");
         }
 
+        if (request.Headers.Host is not null)
+            throw new TestEnvironmentDescriptorException("HXT109", "Requests must preserve the exact supplied endpoint authority.");
+
         if (endpointCredential is not null)
         {
             string[] authorizations = request.Headers.TryGetValues("Authorization", out var values) ? values.ToArray() : [];
             bool bearer = authorizations.Length == 1 && AuthenticationHeaderValue.TryParse(authorizations[0], out var authorization)
                 && authorization.Scheme.Equals("Bearer", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(authorization.Parameter);
-            if (!bearer || request.Headers.Contains("dapr-app-id") || !target.AbsolutePath.StartsWith(endpoint.AbsolutePath, StringComparison.Ordinal) || HasStructuralEncoding(target)
-                || request.Headers.Host is not null || request.Headers.Contains("dapr-api-token"))
+            if (!bearer || request.Headers.Contains("dapr-app-id") || request.Content?.Headers.Contains("dapr-app-id") == true
+                || !target.AbsolutePath.StartsWith(endpoint.AbsolutePath, StringComparison.Ordinal) || HasStructuralEncoding(target)
+                || request.Headers.Contains("dapr-api-token") || request.Content?.Headers.Contains("dapr-api-token") == true)
                 throw new TestEnvironmentDescriptorException("HXT109", "Credential-bearing requests must remain within the exact supplied invocation prefix without conflicting credentials.");
             request.Headers.Add("dapr-api-token", endpointCredential);
         }

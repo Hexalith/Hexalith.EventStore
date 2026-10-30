@@ -7,12 +7,26 @@ namespace Hexalith.EventStore.Testing;
 /// <summary>Opens private descriptor files without following final links or blocking on FIFOs.</summary>
 internal static class TestEnvironmentDescriptorFile
 {
+    /// <summary>Rejects UNC and device namespace paths before any filesystem operation.</summary>
+    /// <param name="path">The explicit path supplied through the local private channel.</param>
+    /// <returns>Whether the path is fully qualified and uses an ordinary local path namespace.</returns>
+    internal static bool IsLocalAbsolutePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        string normalized = path.Replace('\\', '/');
+        return !normalized.StartsWith("//", StringComparison.Ordinal)
+            && !normalized.StartsWith("/??/", StringComparison.Ordinal)
+            && !normalized.StartsWith("/Device/", StringComparison.OrdinalIgnoreCase)
+            && Path.IsPathFullyQualified(path);
+    }
+
     /// <summary>Opens a held read handle without following final links or blocking on a Unix FIFO.</summary>
     /// <param name="path">The absolute local descriptor path.</param>
     /// <returns>The held stream; the reader verifies its seekability and bounded size.</returns>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The returned FileStream owns the SafeFileHandle; constructor failure disposes it explicitly.")]
     internal static FileStream OpenWithoutBlocking(string path)
     {
+        if (!IsLocalAbsolutePath(path)) throw new IOException("Require an ordinary absolute local metadata path.");
         if (OperatingSystem.IsWindows())
         {
             // OPEN_REPARSE_POINT opens the final entry itself; inspect that held handle before reading it.

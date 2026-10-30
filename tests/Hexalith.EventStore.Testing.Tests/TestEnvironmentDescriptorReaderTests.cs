@@ -9,6 +9,77 @@ namespace Hexalith.EventStore.Testing.Tests;
 
 public sealed class TestEnvironmentDescriptorReaderTests
 {
+    /// <summary>Pins the embedded immutable contract without requiring any external checkout.</summary>
+    [Fact]
+    public void EmbeddedCanonicalV1SchemaMatchesIndependentlyVerifiedAuthoritativeBytes()
+    {
+        using Stream schema = typeof(TestEnvironmentDescriptorReader).Assembly.GetManifestResourceStream(
+            "Hexalith.EventStore.Testing.hexalith.test-environment.v1.json")!;
+        Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(schema))
+            .ShouldBe("bf1e46acc773991037daaae20dff1d815faf4af13ab7887d88339609607ff357");
+    }
+
+    /// <summary>Refuses network path namespaces before entering the filesystem.</summary>
+    /// <param name="path">The explicitly supplied network path.</param>
+    [Theory]
+    [InlineData(@"\\server\private-share\descriptor.json")]
+    [InlineData(@"\\?\UNC\server\share\descriptor.json")]
+    [InlineData(@"\\.\UNC\server\share\descriptor.json")]
+    [InlineData(@"\\?\GLOBALROOT\Device\Mup\server\share\descriptor.json")]
+    [InlineData("//server/private-share/descriptor.json")]
+    [InlineData(@"\??\UNC\server\share\descriptor.json")]
+    public void NetworkPathNamespacesRefuseBeforeOpening(string path)
+    {
+        TestEnvironmentDescriptorFile.IsLocalAbsolutePath(path).ShouldBeFalse();
+        TestEnvironmentDescriptorException failure = Should.Throw<TestEnvironmentDescriptorException>(() => TestEnvironmentDescriptorReader.ReadDescriptor(path));
+        failure.Rule.ShouldBe("HXT106");
+        failure.Message.ShouldNotContain(path);
+        Should.Throw<IOException>(() => TestEnvironmentDescriptorFile.OpenWithoutBlocking(path)).Message.ShouldNotContain(path);
+    }
+
+    /// <summary>Preserves ordinary absolute local files while refusing network-style aliases.</summary>
+    [Fact]
+    public void OrdinaryLocalPathRemainsReadableAndDoubleSeparatorAliasRefuses()
+    {
+        using var file = new DescriptorTestFile();
+        TestEnvironmentDescriptorFile.IsLocalAbsolutePath(file.Path).ShouldBeTrue();
+        using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
+        if (!OperatingSystem.IsWindows())
+            Should.Throw<TestEnvironmentDescriptorException>(() => TestEnvironmentDescriptorReader.ReadDescriptor("/" + file.Path)).Rule.ShouldBe("HXT106");
+    }
+
+    /// <summary>Requires HTTP protocol metadata without restricting generic endpoint selection.</summary>
+    [Fact]
+    public void HttpClientRequiresDeclaredHttpProtocolWhileGenericSelectionRemainsAvailable()
+    {
+        using var file = new DescriptorTestFile();
+        JsonNode root = JsonNode.Parse(File.ReadAllText(file.Path))!;
+        root["bindings"]!["environment"]!["resources"]![0]!["endpoints"]![0]!["protocol"] = "tcp";
+        File.WriteAllText(file.Path, root.ToJsonString());
+        using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
+        descriptor.GetEndpoint("eventstore", "Hexalith.EventStore", "http").Scheme.ShouldBe("http");
+        Should.Throw<TestEnvironmentDescriptorException>(() => descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(1), false)).Rule.ShouldBe("HXT110");
+    }
+
+    /// <summary>Rejects an explicit authority override before any socket can receive the bearer.</summary>
+    [Fact]
+    public async Task OrdinaryBearerHostOverrideRefusesBeforeSending()
+    {
+        using var file = new DescriptorTestFile();
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        File.WriteAllText(file.Path, File.ReadAllText(file.Path).Replace("18080", ((IPEndPoint)listener.LocalEndpoint).Port.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
+        using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
+        descriptor.BindCredentials(descriptor.RunId, descriptor.SyntheticTenantId, descriptor.DataIsolationId, "private-bearer");
+        using HttpClient client = descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(1));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/");
+        request.Headers.Host = "foreign-owner";
+        TestEnvironmentDescriptorException failure = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () =>
+            await client.SendAsync(request, TestContext.Current.CancellationToken));
+        failure.Rule.ShouldBe("HXT109");
+        listener.Pending().ShouldBeFalse();
+    }
+
     [Fact]
     public void ReadyOwner_ResolvesExactBindingsAndSyntheticTenant()
     {

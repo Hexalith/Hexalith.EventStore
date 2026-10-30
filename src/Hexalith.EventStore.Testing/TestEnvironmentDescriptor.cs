@@ -105,7 +105,7 @@ public sealed class TestEnvironmentDescriptor : IDisposable
     /// <returns>A fixture-owned client cancelled and released on disposal.</returns>
     public HttpClient CreateHttpClient(string resourceId, string moduleId, string endpointName, TimeSpan timeout, bool authenticated = true)
     {
-        Uri endpoint = GetEndpoint(resourceId, moduleId, endpointName);
+        Uri endpoint = GetHttpEndpoint(resourceId, moduleId, endpointName);
         if (endpoint.Scheme is not ("http" or "https") || timeout <= TimeSpan.Zero || timeout > TimeSpan.FromMinutes(5)
             || (authenticated && _accessToken is null))
         {
@@ -138,7 +138,7 @@ public sealed class TestEnvironmentDescriptor : IDisposable
     /// <returns>The exact supplied URI after its private binding is validated.</returns>
     public Uri GetDaprInvocationEndpoint(string resourceId, string moduleId, string endpointName)
     {
-        Uri endpoint = GetEndpoint(resourceId, moduleId, endpointName);
+        Uri endpoint = GetHttpEndpoint(resourceId, moduleId, endpointName);
         if (!TestEnvironmentEndpointCredentials.IsInvocationEndpoint(endpoint) || !_endpointCredentials.ContainsKey((resourceId, moduleId, endpointName)))
             throw new TestEnvironmentDescriptorException("HXT110", "Require the explicit supplied invocation endpoint and its matching private Dapr API credential.");
         return endpoint;
@@ -151,6 +151,18 @@ public sealed class TestEnvironmentDescriptor : IDisposable
     {
         try { _endpointCredentials = TestEnvironmentEndpointCredentials.Read(path, descriptorPath, this); }
         catch { Dispose(); throw; }
+    }
+
+    private Uri GetHttpEndpoint(string resourceId, string moduleId, string endpointName)
+    {
+        Uri endpoint = GetEndpoint(resourceId, moduleId, endpointName);
+        JsonElement resource = EnvironmentBinding.GetProperty("resources").EnumerateArray().Single(value =>
+            value.GetProperty("resourceId").GetString() == resourceId && value.GetProperty("moduleId").GetString() == moduleId);
+        string? protocol = resource.GetProperty("endpoints").EnumerateArray().Single(value =>
+            value.GetProperty("name").GetString() == endpointName).GetProperty("protocol").GetString();
+        if (protocol is not ("http" or "https") || endpoint.Scheme is not ("http" or "https"))
+            throw new TestEnvironmentDescriptorException("HXT110", "Require an explicitly declared HTTP transport and HTTP endpoint URI.");
+        return endpoint;
     }
 
     private HttpClient CreateClient(Uri endpoint, TimeSpan timeout, bool authenticated, string? endpointCredential)

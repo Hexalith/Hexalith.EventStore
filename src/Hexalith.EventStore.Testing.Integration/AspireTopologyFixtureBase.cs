@@ -9,7 +9,7 @@ public abstract class AspireTopologyFixtureBase : IAsyncLifetime
     private TestEnvironmentDescriptor? _environment;
     private bool _disposed;
 
-    /// <summary>Gets the exact declared HTTP resource bindings required by this suite.</summary>
+    /// <summary>Gets the exact declared resource bindings required by this suite.</summary>
     protected abstract IReadOnlyList<TestEnvironmentEndpoint> Resources { get; }
 
     /// <summary>Gets the validated ready environment after initialization.</summary>
@@ -64,6 +64,8 @@ public abstract class AspireTopologyFixtureBase : IAsyncLifetime
 
             foreach (TestEnvironmentEndpoint resource in required)
             {
+                Uri endpoint = environment.GetEndpoint(resource.ResourceId, resource.ModuleId, resource.EndpointName);
+                if (endpoint.Scheme is not ("http" or "https")) continue;
                 _clients.Add((resource.ResourceId, resource.ModuleId, resource.EndpointName), resource.DaprInvocation
                     ? environment.CreateDaprInvocationClient(resource.ResourceId, resource.ModuleId, resource.EndpointName, resource.Timeout)
                     : environment.CreateHttpClient(resource.ResourceId, resource.ModuleId, resource.EndpointName, resource.Timeout, resource.Authenticated));

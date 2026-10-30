@@ -24,6 +24,7 @@ internal static class TestEnvironmentEndpointCredentials
     {
         try
         {
+            if (!TestEnvironmentDescriptorFile.IsLocalAbsolutePath(path) || !TestEnvironmentDescriptorFile.IsLocalAbsolutePath(descriptorPath)) throw new InvalidDataException();
             string expected = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(descriptorPath))!, FileName);
             if (!Path.IsPathFullyQualified(path) || Path.GetFullPath(path) != expected || !HasUnlinkedParents(path)) throw new InvalidDataException();
             using FileStream stream = TestEnvironmentDescriptorFile.OpenWithoutBlocking(path);

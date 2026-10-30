@@ -10,6 +10,40 @@ using Shouldly;
 /// <summary>Exercises explicit private endpoint bindings and actual confined HTTP sends.</summary>
 public sealed class TestEnvironmentEndpointCredentialTests
 {
+    /// <summary>Network namespaces are rejected in both private path inputs before filesystem inspection.</summary>
+    /// <param name="path">The network path spelling.</param>
+    [Theory]
+    [InlineData(@"\\server\share\native-endpoint-credentials.json")]
+    [InlineData(@"\\?\UNC\server\share\native-endpoint-credentials.json")]
+    [InlineData("//server/share/native-endpoint-credentials.json")]
+    public void NetworkCredentialPathsRefuseWithoutValues(string path)
+    {
+        using var files = new EndpointCredentialTestEnvironment();
+        TestEnvironmentDescriptorException credential = Should.Throw<TestEnvironmentDescriptorException>(() =>
+            TestEnvironmentEndpointCredentials.Read(path, files.DescriptorPath, files.Environment));
+        credential.Rule.ShouldBe("HXT110");
+        credential.Message.ShouldNotContain(path);
+        TestEnvironmentDescriptorException descriptor = Should.Throw<TestEnvironmentDescriptorException>(() =>
+            TestEnvironmentEndpointCredentials.Read(files.CredentialPath, path, files.Environment));
+        descriptor.Rule.ShouldBe("HXT110");
+        descriptor.Message.ShouldNotContain(path);
+    }
+
+    /// <summary>The private token cannot turn a non-HTTP declared transport into an HTTP client.</summary>
+    [Fact]
+    public void InvocationHttpUriWithTcpProtocolRefuses()
+    {
+        using var files = new EndpointCredentialTestEnvironment();
+        files.Bind();
+        JsonNode root = JsonNode.Parse(File.ReadAllText(files.DescriptorPath))!;
+        root["bindings"]!["environment"]!["resources"]![0]!["endpoints"]![1]!["protocol"] = "tcp";
+        File.WriteAllText(files.DescriptorPath, root.ToJsonString());
+        using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(files.DescriptorPath);
+        descriptor.BindCredentials(descriptor.RunId, descriptor.SyntheticTenantId, descriptor.DataIsolationId, EndpointCredentialTestEnvironment.BearerToken);
+        descriptor.BindEndpointCredentials(files.CredentialPath, files.DescriptorPath);
+        Should.Throw<TestEnvironmentDescriptorException>(() => descriptor.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromSeconds(1))).Rule.ShouldBe("HXT110");
+    }
+
     /// <summary>Missing private endpoint credentials never fall back to the bearer-only client.</summary>
     [Fact]
     public void MissingExplicitCredentialRefusesDaprClient()
@@ -141,6 +175,32 @@ public sealed class TestEnvironmentEndpointCredentialTests
         if (path == "basic-auth") request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", "b3RoZXI6YXBw");
         if (path == "missing-bearer") client.DefaultRequestHeaders.Authorization = null;
         if (path == "duplicate-authorization") request.Headers.TryAddWithoutValidation("Authorization", ["Bearer one", "Bearer two"]);
+        TestEnvironmentDescriptorException failure = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () =>
+            await client.SendAsync(request, TestContext.Current.CancellationToken));
+        failure.Rule.ShouldBe("HXT109");
+        failure.ToString().ShouldNotContain(EndpointCredentialTestEnvironment.ApiToken);
+        request.ToString().ShouldNotContain(EndpointCredentialTestEnvironment.ApiToken);
+        listener.Pending().ShouldBeFalse();
+    }
+
+    /// <summary>Content headers cannot override the supplied Dapr target or credential before any socket is opened.</summary>
+    /// <param name="header">The conflicting Dapr header admitted by HttpContentHeaders.</param>
+    [Theory]
+    [InlineData("dapr-app-id")]
+    [InlineData("dapr-api-token")]
+    public async Task InvocationContentHeadersRefuseBeforeSending(string header)
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var files = new EndpointCredentialTestEnvironment($"http://127.0.0.1:{port}/v1.0/invoke/declared-owner/method/");
+        files.Bind();
+        using HttpClient client = files.Environment.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromSeconds(1));
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/v1/tenants")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { }),
+        };
+        request.Content.Headers.TryAddWithoutValidation(header, "conflicting-value").ShouldBeTrue();
         TestEnvironmentDescriptorException failure = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () =>
             await client.SendAsync(request, TestContext.Current.CancellationToken));
         failure.Rule.ShouldBe("HXT109");
