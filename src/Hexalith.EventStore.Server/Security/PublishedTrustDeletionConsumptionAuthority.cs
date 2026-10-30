@@ -361,6 +361,12 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     }
 
     /// <inheritdoc />
+    public Task<AnchoredStateTransition?> ReadAdmittedOriginalAsync(string scopeId, CancellationToken cancellationToken = default)
+    {
+        var owners = _ownerAuthorities.Where(owner => owner.ScopeId == scopeId && OwnerForTenant(owner.TenantId) == owner).ToArray();
+        return owners.Length == 1 ? owners[0].ReadAdmittedOriginalAsync(scopeId, cancellationToken) : Task.FromResult<AnchoredStateTransition?>(null);
+    }
+    /// <inheritdoc />
     public Task<AnchoredStateTransition?> ReadCurrentOriginalAsync(string scopeId, CancellationToken cancellationToken = default)
     {
         var owners = _ownerAuthorities.Where(owner => owner.ScopeId == scopeId && OwnerForTenant(owner.TenantId) == owner).ToArray();

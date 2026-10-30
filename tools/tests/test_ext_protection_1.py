@@ -180,7 +180,8 @@ class ExtProtectionPolicyTests(unittest.TestCase):
         observation['holdOrders'] = [{'holdOperationId': 'hold', 'dispatchOperationId': 'dispatch',
                                       'holdRevision': 1, 'dispatchRevision': 2, 'dispatchWon': False}]
         observation['guardReceipts'] = [self.hold_receipt('hold', 1, 'hold-receipt'), self.hold_receipt('dispatch', 2, 'dispatch-receipt')]
-        self.evaluate(observation, ['race', 'hold-order'])
+        with self.assertRaisesRegex(v.Blocked, 'CAPABILITY_TRUST_MISSING'):
+            self.evaluate(observation, ['race', 'hold-order'])
         observation['roots'][0]['state'] = 'Destroyed'
         with self.assertRaisesRegex(v.Failed, 'HOLD_RACE_STATE_CONTRADICTION'):
             self.evaluate(observation, ['race', 'hold-order'])
@@ -196,7 +197,8 @@ class ExtProtectionPolicyTests(unittest.TestCase):
         observation['holdOrders'] = [{'holdOperationId': 'hold', 'dispatchOperationId': 'dispatch',
                                       'holdRevision': 1, 'dispatchRevision': 2, 'dispatchWon': False}]
         observation['guardReceipts'] = [self.hold_receipt('hold', 1, 'hold-receipt'), self.hold_receipt('dispatch', 2, 'dispatch-receipt')]
-        self.evaluate(observation, ['hold-order'])
+        with self.assertRaisesRegex(v.Blocked, 'CAPABILITY_TRUST_MISSING'):
+            self.evaluate(observation, ['hold-order'])
         observation['guardReceipts'][0]['GuardHighWater'] = 9
         with self.assertRaisesRegex(v.Failed, 'HOLD_ORIGINAL_SUBSTITUTED'):
             self.evaluate(observation, ['hold-order'])

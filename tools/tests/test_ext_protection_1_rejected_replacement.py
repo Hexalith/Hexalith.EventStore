@@ -147,6 +147,19 @@ class RejectedReplacementEvidenceTests(unittest.TestCase):
         for unissued in (True, False):
             self.evaluate(self.observation(unissued))
 
+    def test_both_rejected_branches_bind_historical_owner_immutable_original(self):
+        for unissued in (True, False):
+            for member in ('DestructionSealId', 'BatchId', 'Targets'):
+                observed = self.observation(unissued)
+                observed['ownerBatches'][0]['Original'] = copy.deepcopy(observed['ownerBatches'][0]['Original'])
+                original = observed['ownerBatches'][0]['Original']
+                if member == 'Targets':
+                    original['Targets'][0]['AgentInteractionId'] = 'substituted-owner-target'
+                else:
+                    original['Capability'][member] = 'substituted-owner-' + member
+                with self.subTest(unissued=unissued, member=member), self.assertRaises((v.Failed, v.Blocked)):
+                    self.evaluate(observed)
+
     def test_missing_or_substituted_unissued_original_refuses(self):
         mutations = [lambda o: o.pop('ownerRevocations'), lambda o: o['guardBatches'][0].update(AttestationOrdinal=2),
                      lambda o: o['rejectedUnissuedOriginal']['Original']['UnissuedProof']['Refusal'].update(Status='Committed'),

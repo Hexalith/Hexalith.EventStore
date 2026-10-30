@@ -1016,6 +1016,51 @@ def bind_hold_originals(observation):
                 and (receipt['Status'] != 'Blocked' or transition['ExpectedGuardRevision'] == receipt['GuardHighWater']), 'HOLD_REFUSAL_ORDER_INVALID')
 
 
+def bind_hold_scope(observation, targets, trust):
+    """Correlate actual outer guard commands and current native hold/deletion scope with their independently signed complete request."""
+    attempts, contexts = observation.get('guardAttempts'), observation.get('holdContexts')
+    require(isinstance(attempts, list) and attempts and isinstance(contexts, list) and len(contexts) == len(observation['holdOrders']), 'HOLD_SCOPE_ORIGINAL_MISSING')
+    tenant = targets[0]['TenantId']
+    require(all(target['TenantId'] == tenant for target in targets), 'HOLD_CASE_TENANT_INVALID')
+    for order in observation['holdOrders']:
+        holds = [item for item in attempts if item['Transition']['OperationId'] == order['holdOperationId'] and item['Receipt']['Status'] == 'Committed']
+        dispatches = [item for item in attempts if item['Transition']['OperationId'] == order['dispatchOperationId']]
+        selected = [item for item in contexts if item.get('HoldOperationId') == order['holdOperationId']]
+        require(len(holds) == len(dispatches) == len(selected) == 1, 'HOLD_SCOPE_ORIGINAL_AMBIGUOUS')
+        hold, dispatch, context = holds[0], dispatches[0], selected[0]
+        native_record(context, 'HoldOperationId DeletionRequestId Scope Hold SealId', 'HOLD_SCOPE_CONTEXT_INVALID')
+        command, hold_command = dispatch['Transition'], hold['Transition']
+        batch = command['Batch']
+        require(isinstance(batch, dict), 'HOLD_DISPATCH_BATCH_INVALID')
+        signing, signature = validate_capability_signature(batch['Capability'], batch['DetachedJws'], None, None, trust)
+        cap = batch['Capability']
+        scope, native_hold = context['Scope'], context['Hold']
+        native_record(scope, 'TenantId Kind AgentInteractionId SourceConversationId', 'HOLD_SCOPE_CONTEXT_INVALID')
+        native_record(native_hold, 'HoldId Scope DispositionVersion Active PostStartAttempt ReleaseReceiptId', 'HOLD_SCOPE_CONTEXT_INVALID')
+        require(scope['TenantId'] == tenant and scope['Kind'] in ('ExactInteraction', 'SourceDeletionExactConversation')
+                and ((scope['Kind'] == 'ExactInteraction' and scope['AgentInteractionId'] and not scope['SourceConversationId'])
+                     or (scope['Kind'] == 'SourceDeletionExactConversation' and scope['SourceConversationId'] and not scope['AgentInteractionId'])), 'HOLD_SCOPE_CONTEXT_INVALID')
+        predicate = digest(native_json_bytes(scope)).upper()
+        seal = digest(native_json_bytes([tenant, context['DeletionRequestId'], predicate, 'DestructionSealed'])).upper()
+        require(command['TenantId'] == hold_command['TenantId'] == cap['TenantId'] == tenant
+                and command['DeletionRequestId'] == hold_command['DeletionRequestId'] == cap['DeletionRequestId'] == context['DeletionRequestId']
+                and command['Scope'] is None and hold_command['Scope'] is None
+                and context['SealId'] == cap['DestructionSealId'] == seal
+                and canonical(batch['Targets']) == canonical(targets)
+                and batch['ManifestDigest'] == cap['ManifestDigest'] == digest(target_manifest_bytes(targets)).upper()
+                and all(batch[key] == cap[key] for key in ('BatchId', 'BatchKind', 'BatchOrdinal', 'AttestationOrdinal', 'CapabilityKeyVersion'))
+                and batch['SigningRequestId'] == signing and batch['AttestationDigest'] == signature
+                and command['ReferenceId'] in ('', cap['BatchId']) and command['Hold'] is None
+                and hold_command['Operation'] == 12 and hold_command['Hold']['HoldId'] == native_hold['HoldId'] == hold['Receipt']['ReferenceId']
+                and hold_command['Hold']['Scope'] == native_hold['Scope'] == scope
+                and hold_command['Hold']['DispositionVersion'] == native_hold['DispositionVersion']
+                and native_hold['Active'] is True and native_hold['ReleaseReceiptId'] == hold_command['Hold']['ReleaseReceiptId'] == '', 'HOLD_SIGNED_SCOPE_MISMATCH')
+        if order.get('dispatchStatus', 'Committed') == 'Committed':
+            receipt = dispatch['Receipt']
+            require(receipt['Capability'] == cap and receipt['SigningRequestId'] == signing and receipt['DetachedJwsDigest'] == signature
+                    and receipt['ReferenceId'] == cap['BatchId'], 'HOLD_COMMITTED_REQUEST_MISMATCH')
+
+
 def bind_pin_originals(observation, targets):
     """Reject a pin summary whose native pin receipts were substituted."""
     outcomes = observation['pinOutcomes']
@@ -1164,6 +1209,11 @@ def bind_rejected_replacement_original(observation):
     require(len(batches) == 1 and canonical(batches[0]['Current']) == canonical(issued)
             and canonical(batches[0]['BlockedReplacement']) == canonical(original['Original'])
             and batches[0]['Outcome']['Status'] == 2 and batches[0]['Outcome']['ReceiptId'] == outcome['ReceiptId'], 'REJECTED_OWNER_ORIGINAL_SUBSTITUTED')
+    capture_consumption_request(batches[0]['Original'])
+    historical = batches[0]['Original']
+    require(all(historical['Capability'][key] == old[key] for key in immutable)
+            and historical['Targets'] == issued['Targets']
+            and historical['Capability']['AttestationOrdinal'] <= old['AttestationOrdinal'], 'REJECTED_HISTORICAL_OWNER_SUBSTITUTED')
     summary = observation['activationOutcome']
     require(summary['status'] == 'ActivationBlockedByReplacementKeyCompromise' and summary['newBlockReceiptId'] == outcome['ReceiptId']
             and summary['newKeyVersion'] == outcome['BlockedKeyVersion'] and summary['revocationRevision'] == outcome['RevocationRevision'], 'REJECTED_OUTCOME_SUBSTITUTED')
@@ -1322,6 +1372,46 @@ def evaluate(observation, case, targets, canary, commit, binary_sha, capability_
     budget.remaining()
 
 
+def event_record_envelope(protected, target, raw):
+    """Apply the production event's closed field shape and bounded V2 grammar to persisted bytes."""
+    require(isinstance(protected, dict), 'PROTECTED_ENVELOPE_INVALID')
+    content = protected.get('ProtectedContent')
+    require(isinstance(content, dict) and set(content) == {'Target', 'Value'} and content['Target'] == target
+            and isinstance(content['Value'], dict) and set(content['Value']) == {'$pdenc'}, 'PROTECTED_ENVELOPE_INVALID')
+    pending, nodes = [(protected, 0)], 0
+    while pending:
+        node, depth = pending.pop()
+        nodes += 1
+        require(nodes <= 65536, 'EVENT_JSON_INVALID')
+        if isinstance(node, (dict, list)):
+            require(depth < 64, 'EVENT_JSON_INVALID')
+            if isinstance(node, dict):
+                for name in node:
+                    try:
+                        name.encode('utf-8')
+                    except UnicodeError:
+                        raise Failed('EVENT_JSON_INVALID') from None
+                    require(name.lower() != 'protectedcontent' or (node is protected and name == 'ProtectedContent'), 'PROTECTED_ENVELOPE_INVALID')
+                    require(name != '$enc' and (name != '$pdenc' or node is content['Value']), 'PROTECTED_ENVELOPE_INVALID')
+                children = node.values()
+            else:
+                children = node
+            pending.extend((child, depth + 1) for child in children)
+    encoded = content['Value']['$pdenc']
+    require(isinstance(encoded, str) and len(encoded) <= 1398211, 'PROTECTED_ENVELOPE_INVALID')
+    # ReadProtectedWrappers rejects JSON escapes in the reserved marker and its carrier,
+    # while permitting surrounding whitespace and ordinary escaped domain member names.
+    require(re.search(rb'"\$pdenc"[ \t\r\n]*:[ \t\r\n]*"' + re.escape(encoded.encode('utf-8')) + rb'"', raw), 'PROTECTED_ENVELOPE_INVALID')
+    envelope = decode_base64url(encoded)
+    require(83 <= len(envelope) <= 1048658 and envelope[:8] == b'HXP2\x02\x01\x01\x01'
+            and int.from_bytes(envelope[8:10], 'big') == 28 and int.from_bytes(envelope[10:12], 'big') == 26
+            and int.from_bytes(envelope[12:16], 'big') > 0 and int.from_bytes(envelope[16:20], 'big') == 0
+            and envelope[20:24] == bytes((12, 16, 0, 0)) and 0 < int.from_bytes(envelope[24:28], 'big') <= 1048576
+            and len(envelope) == 82 + int.from_bytes(envelope[24:28], 'big')
+            and re.fullmatch(rb'[0-7][0-9A-HJKMNP-TV-Z]{25}', envelope[28:54]) and envelope[54:66] == bytes(12), 'PROTECTED_ENVELOPE_INVALID')
+    return encoded
+
+
 def snapshot_record_envelopes(protected, target):
     """Keep whole-state V2 compatibility; validate complete mixed-root geometry and unchanged per-entry V2 envelopes."""
     if protected.get('Format') == 'json+pdenc-v2':
@@ -1426,7 +1516,7 @@ def bind_snapshot_originals(observation):
     require(isinstance(originals, list) and len(originals) == len(mixed), 'SNAPSHOT_NATIVE_ORIGINALS_MISSING')
     seen = set()
     for original in originals:
-        native_record(original, 'CarrierSha256 Completion Entries', 'SNAPSHOT_NATIVE_ORIGINAL_SCHEMA_INVALID')
+        native_record({key: value for key, value in original.items() if key != 'ProducerOriginal'}, 'CarrierSha256 Completion Entries', 'SNAPSHOT_NATIVE_ORIGINAL_SCHEMA_INVALID')
         key = original['CarrierSha256']
         require(key in mixed and key not in seen, 'SNAPSHOT_NATIVE_ORIGINAL_SUBSTITUTED')
         seen.add(key)
@@ -1469,10 +1559,96 @@ def bind_snapshot_originals(observation):
         require(all(completion[field] == first[field] for field in ('Identity', 'OperationId', 'KeyReference', 'DekVersion', 'LifecycleEpoch')), 'SNAPSHOT_COMPOSITE_IDENTITY_SUBSTITUTED')
 
 
+def bind_producer_originals(observation, commit, binary_sha, role_configs=None):
+    """Authenticate the actual executor identity and every event/single snapshot against retained native originals."""
+    producer = observation.get('producerIdentity')
+    native_record(producer, 'EngineSourceRevision EngineBinarySha256 RoleIdentity BindingDigest StoreId EnrollmentId', 'PRODUCER_IDENTITY_MISSING')
+    require(producer['EngineSourceRevision'] == commit and producer['EngineBinarySha256'] == binary_sha,
+            'EXECUTOR_PRODUCER_IDENTITY_SUBSTITUTED')
+    identity_text(producer['RoleIdentity'], 'EXECUTOR_PRODUCER_ROLE_MISSING', byte_bound=True)
+    identity_text(producer['BindingDigest'], 'EXECUTOR_INSTALLATION_BINDING_MISSING', byte_bound=True)
+    if role_configs:
+        require(producer['RoleIdentity'] == role_configs['executor']['identity'], 'EXECUTOR_PRODUCER_ROLE_SUBSTITUTED')
+    def bind_execution(retained):
+        fields = set('SourceIdentity Bindings SealedPayloadSha256 CompletionDigest Completion Producer'.split())
+        require(isinstance(retained, dict) and fields <= set(retained) <= fields | {'Call'}, 'COPY_PRODUCER_ORIGINAL_SCHEMA_INVALID')
+        call = retained.get('Call')
+        if call is None and not role_configs:
+            return
+        native_record(call, 'Id Kind Payload OperationId RequestSha256', 'SOURCE_EXECUTION_ORIGINAL_MISSING')
+        require(type(call['Kind']) is int and call['Kind'] in (0, 3) and isinstance(call['Payload'], dict), 'SOURCE_EXECUTION_CALL_INVALID')
+        identity_text(call['Id'], byte_bound=True)
+        identity_text(call['OperationId'], byte_bound=True)
+        require(isinstance(call['RequestSha256'], str) and re.fullmatch(r'[a-f0-9]{64}', call['RequestSha256']), 'SOURCE_EXECUTION_REQUEST_INVALID')
+        operations = observation.get('operationProducerOriginals')
+        require(isinstance(operations, list), 'SOURCE_EXECUTION_OPERATION_MISSING')
+        matching = [value for value in operations if value.get('OperationId') == call['OperationId']]
+        require(len(matching) == 1 and matching[0].get('RequestSha256') == call['RequestSha256']
+                and matching[0].get('Producer') == retained['Producer'] and matching[0].get('Role') == 'executor'
+                and matching[0].get('BindingDigest') == producer['BindingDigest'], 'SOURCE_EXECUTION_OPERATION_SUBSTITUTED')
+    for snapshot in observation.get('snapshotOriginals', []):
+        retained = snapshot.get('ProducerOriginal')
+        bind_execution(retained)
+        require(isinstance(retained, dict) and retained.get('Producer') == producer and retained.get('SealedPayloadSha256') == snapshot['CarrierSha256']
+                and retained.get('Completion') == snapshot['Completion']
+                and retained.get('CompletionDigest') == hashlib.sha256(native_json_bytes(snapshot['Completion'])).hexdigest().upper()
+                and retained.get('Bindings') == [entry['SourceEnrollment']['Binding'] for entry in snapshot['Entries']], 'SNAPSHOT_PRODUCER_ORIGINAL_SUBSTITUTED')
+    originals = observation.get('copyOriginals', [])
+    require(isinstance(originals, list), 'COPY_NATIVE_ORIGINALS_MISSING')
+    required = {}
+    for record in observation['records']:
+        raw = base64.b64decode(record['bytesBase64'], validate=True)
+        document = strict_json(raw)
+        if document.get('Format') == 'json+pdenc-v2-entries':
+            continue
+        require(isinstance(record.get('copyId'), str) and record['copyId'] not in required, 'COPY_IDENTITY_MISSING')
+        required[record['copyId']] = (record, raw)
+    require(len(originals) == len(required), 'COPY_NATIVE_ORIGINALS_MISSING')
+    seen = set()
+    for original in originals:
+        native_record(original, 'CopyId SourceEnrollment RegistryOriginal WriterProof ProducerOriginal', 'COPY_NATIVE_ORIGINAL_SCHEMA_INVALID')
+        copy_id = original['CopyId']
+        require(copy_id in required and copy_id not in seen, 'COPY_NATIVE_ORIGINAL_SUBSTITUTED')
+        seen.add(copy_id)
+        record, raw = required[copy_id]
+        enrollment, registry, writer, retained = (original[name] for name in ('SourceEnrollment', 'RegistryOriginal', 'WriterProof', 'ProducerOriginal'))
+        binding = enrollment['Binding']
+        root = enrollment['RootIdentity']
+        require(root['TenantId'] == record['target']['TenantId'] and root['ObjectId'] == record['target']['AgentInteractionId']
+                and root['KeyAlias'] == record['target']['TargetProtectionKeyAlias'] and root['StoreTarget'] == producer['StoreId']
+                and binding['Identity']['Owner']['TenantId'] == record['target']['TenantId']
+                and record['rootReference'] == hashlib.sha256(native_json_bytes(root)).hexdigest().upper(), 'COPY_ROOT_ORIGINAL_SUBSTITUTED')
+        require(binding['Identity']['Target'] == record['target'] and registry['Request']['Identity'] == binding['Identity']
+                and registry['KeyReference'] == binding['KeyReference'] and registry['WriterState'] == 2 and registry['WriterProofId'] == binding['OperationId'],
+                'COPY_SOURCE_REGISTRY_SUBSTITUTED')
+        sealed = registry['Sealed']
+        require(sealed['KeyReference'] == binding['KeyReference'] and sealed['SerializationFormat'] == 'json+pdenc-v2'
+                and sealed['ProtectedPathCount'] == 1 and base64.b64decode(sealed['PayloadBytes'], validate=True) == raw,
+                'COPY_CIPHERTEXT_SUBSTITUTED')
+        digest_value = hashlib.sha256(raw).hexdigest().upper()
+        require(writer['Binding'] == binding and writer['Persisted'] is True and writer['WriterRetired'] is True
+                and writer['SealedPayloadSha256'] == digest_value and isinstance(writer['ReceiptId'], str) and writer['ReceiptId'].strip(),
+                'COPY_WRITER_ORIGINAL_SUBSTITUTED')
+        bind_execution(retained)
+        require(retained['Bindings'] == [binding] and retained['SealedPayloadSha256'] == digest_value and retained['Producer'] == producer,
+                'COPY_PRODUCER_ORIGINAL_SUBSTITUTED')
+        completion = retained['Completion']
+        native_record(completion, 'Identity Occurrence OperationId KeyReference DekVersion LifecycleEpoch', 'COPY_SINGLE_COMPLETION_SCHEMA_INVALID')
+        require(type(completion['DekVersion']) is int and completion['DekVersion'] == 1, 'COPY_COMPLETION_VERSION_SUBSTITUTED')
+        require(retained['CompletionDigest'] == hashlib.sha256(native_json_bytes(completion)).hexdigest().upper()
+                and completion['Identity'] == binding['Identity']['Owner'] and completion['OperationId'] == binding['OperationId']
+                and completion['KeyReference'] == binding['KeyReference'] and completion['LifecycleEpoch'] == binding['LifecycleEpoch']
+                and completion['Occurrence'] == {'RecordSequence': binding['Identity']['Sequence'], 'PayloadKind': binding['Identity']['Kind'],
+                                                 'PayloadTypeId': binding['Identity']['PayloadTypeId']}, 'COPY_COMPLETION_SUBSTITUTED')
+    return producer
+
+
 def _evaluate(observation, case, targets, canary, commit, binary_sha, capability_trust, role_configs, budget):
     """Assert raw persisted state and ordered receipts; no aggregate pass booleans."""
     require(observation['engineSourceRevision'] == commit and observation['engineBinarySha256'] == binary_sha, 'ENGINE_IDENTITY_MISMATCH')
     require(observation['agentsRuntimeEnabled'] is False, 'AGENTS_RUNTIME_FORBIDDEN')
+    if observation.get('producerIdentity') is not None or observation.get('copyOriginals') is not None:
+        bind_producer_originals(observation, commit, binary_sha, role_configs)
     roots = observation['roots']
     require(sorted(target_key(r['target']) for r in roots) == sorted(map(target_key, targets)), 'ROOT_INVENTORY_MISMATCH')
     checks = set(case['checks'])
@@ -1490,11 +1666,9 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
         require(target_key(record['target']) in set(map(target_key, targets)), 'COPY_TARGET_SUBSTITUTED')
         raw = base64.b64decode(record['bytesBase64'], validate=True)
         require(raw and canary not in raw, 'PLAINTEXT_PERSISTED')
-        protected = json.loads(raw)
+        protected = strict_json(raw.decode('utf-8'))
         if record['kind'] in ('source-outbox', 'target-event'):
-            content = protected['ProtectedContent']
-            require(content['Target'] == record['target'] and set(content['Value']) == {'$pdenc'}, 'PROTECTED_ENVELOPE_INVALID')
-            encoded = content['Value']['$pdenc']
+            encoded = event_record_envelope(protected, record['target'], raw)
         else:
             encoded_values = snapshot_record_envelopes(protected, record['target'])
         for encoded in [encoded] if record['kind'] in ('source-outbox', 'target-event') else encoded_values:
@@ -1546,6 +1720,9 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
             bind_restore_originals(observation)
     if 'blocked' in checks:
         require(observation['ownerOutcome']['status'] == 'ConsumptionBlocked' and observation['ownerOutcome']['receiptId'], 'AUTHENTICATED_BLOCK_MISSING')
+    if case.get('id') == 'P34' or 'CompromiseReplacementAfterActivation' in case.get('steps', []) or observation.get('postActivationBlockOriginal') is not None:
+        require(observation.get('postActivationBlockOriginal') is not None, 'POST_ACTIVATION_BLOCK_ORIGINAL_MISSING')
+        bind_post_activation_block_original(observation)
     if 'replacement-blocked' in checks:
         value = observation['activationOutcome']
         expected_status = 'ActivatedThenReplacementBlocked' if observation.get('postActivationBlockOriginal') is not None else 'ActivationBlockedByReplacementKeyCompromise'
@@ -1589,6 +1766,7 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
                     require(batch['SigningRequestId'] == signing_id and batch['AttestationDigest'] == signature_digest
                             and batch['BatchId'] == batch['Capability']['BatchId'] and batch['ManifestDigest'] == batch['Capability']['ManifestDigest'], 'HOLD_DISPATCH_BATCH_INVALID')
         bind_hold_originals(observation)
+        bind_hold_scope(observation, targets, capability_snapshot or validate_capability_trust(capability_trust, role_configs or {}, budget))
     if 'coverage' in checks or 'containment' in checks:
         groups = observation['targetCoverage']
         require(sorted(target_key(g['target']) for g in groups) == sorted(map(target_key, targets)), 'TARGET_COVERAGE_INCOMPLETE')
@@ -1675,6 +1853,11 @@ def execute(profile, record, plan, attempt, recover=None):
             require(set(required) <= set(value['supportedOperations']), 'INSTALLED_DRIVER_INCOMPLETE')
         if name == 'observer':
             require(value['credentialScope'] == 'ReadPersistedStateOnly', 'OBSERVER_NOT_INDEPENDENT_READ_ONLY')
+            permission = value.get('observerPermissionEvidence')
+            require(isinstance(permission, dict) and permission.get('CredentialScope') == 'ReadPersistedStateOnly'
+                    and permission.get('RoleIdentity') == profile['roles']['observer']['identity']
+                    and permission.get('BindingDigest') == binding and permission.get('ReceiptId')
+                    and permission.get('NativeCredentialSha256') != permission.get('DaprCredentialSha256'), 'OBSERVER_PERMISSION_ORIGINAL_MISSING')
         durable(attempt / (name + '-installation.json'), proof)
     require(len({canonical(i) for i in installations.values()}) == 1, 'ROLE_INSTALLATION_MISMATCH')
     enrollment = {'operationId': uuid.uuid4().hex, 'role': 'enrollment', 'action': 'EnrollSingleAttempt', 'bindingDigest': binding, 'attemptId': attempt.name, 'installation': installations['executor']}
@@ -1718,6 +1901,15 @@ def execute(profile, record, plan, attempt, recover=None):
             require(roundtrips > 0, 'ROUNDTRIP_PROOF_MISSING')
         observed = roles['observer'].request({'operationId': uuid.uuid4().hex, 'action': 'ObservePersistedState', 'bindingDigest': binding, 'expectedOperations': expected_operations, **base})
         require(response(observed)['operationOutcomes'] == expected_operations, 'OBSERVED_OPERATION_IDENTITY_MISMATCH')
+        selected_producer = bind_producer_originals(response(observed), profile['targetCommit'], profile['engineBinary']['sha256'], profile['roles'])
+        require(selected_producer['BindingDigest'] == binding, 'EXECUTOR_INSTALLATION_BINDING_SUBSTITUTED')
+        producer_originals = response(observed).get('operationProducerOriginals')
+        require(isinstance(producer_originals, list) and len(producer_originals) == len(expected_operations), 'OPERATION_PRODUCER_ORIGINALS_MISSING')
+        for original, expected in zip(producer_originals, expected_operations):
+            native_record(original, 'OperationId RequestSha256 Role BindingDigest AttemptId Producer', 'OPERATION_PRODUCER_ORIGINAL_SCHEMA_INVALID')
+            require(original['OperationId'] == expected['operationId'] and original['RequestSha256'] == expected['requestSha256']
+                    and original['Role'] == 'executor' and original['BindingDigest'] == binding and original['AttemptId'] == attempt.name
+                    and original['Producer'] == selected_producer, 'OPERATION_PRODUCER_ORIGINAL_SUBSTITUTED')
         evaluate(response(observed), case, targets, canary, profile['targetCommit'], profile['engineBinary']['sha256'], profile['capabilityTrust'], profile['roles'])
         durable(attempt / (case['id'] + '-persisted-observation.json'), observed)
         durable(attempt / (case['id'] + '-assertions.json'), {'case': case['id'], 'checks': case['checks'], 'status': 'PASS'})

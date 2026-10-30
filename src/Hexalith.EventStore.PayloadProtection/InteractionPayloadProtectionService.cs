@@ -148,11 +148,21 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
         byte[] payloadBytes, string serializationFormat, EventStorePayloadProtectionMetadata? metadata,
         PayloadProtectionOccurrenceContext occurrenceContext, CancellationToken cancellationToken = default)
     {
-        PayloadUnprotectionOutcome outcome = await TryUnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes,
-            serializationFormat, metadata, occurrenceContext, cancellationToken).ConfigureAwait(false);
-        if (outcome.IsReadable) { return new(outcome); }
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsPlain(serializationFormat, metadata))
+        {
+            return new(await TryUnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes, serializationFormat, metadata, occurrenceContext, cancellationToken).ConfigureAwait(false));
+        }
         try
         {
+            bool permanentLoss = await _bindings.IsCustodyPermanentlyLostAsync(identity, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            PayloadUnprotectionOutcome outcome = permanentLoss
+                ? PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata)
+                : await TryUnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes,
+                    serializationFormat, metadata, occurrenceContext, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (outcome.IsReadable) { return new(outcome); }
             InteractionProtectionBinding? binding = outcome.UnreadableReason == UnreadableProtectedDataReason.KeyInvalidatedOrDeleted
                 ? await AuthenticateStoredAsync(identity, occurrenceContext, payloadBytes, serializationFormat, metadata, cancellationToken).ConfigureAwait(false) : null;
             if (binding is null && serializationFormat == "json+pdenc-v2" && metadata is { Scheme: "hexalith-pdenc-v2", KeyAlias: { } reference })
@@ -164,8 +174,8 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
             byte[] erased = document.Rewrite([new JsonReplacement(node.Start, node.Length, "{\"State\":\"Erased\"}"u8.ToArray())], cancellationToken);
             return new(PayloadUnprotectionOutcome.Readable(erased, "json", metadata!), true);
         }
-        catch (OperationCanceledException) { throw; }
-        catch { return new(PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata)); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch { cancellationToken.ThrowIfCancellationRequested(); return new(PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata)); }
     }
 
     /// <inheritdoc/>
@@ -284,15 +294,56 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
     }
 
     /// <inheritdoc />
-    public Task<SnapshotUnprotectionOutcome> TryReplaySnapshotAsync(AggregateIdentity identity, object state, EventStorePayloadProtectionMetadata? metadata,
+    public async Task<SnapshotUnprotectionOutcome> TryReplaySnapshotAsync(AggregateIdentity identity, object state, EventStorePayloadProtectionMetadata? metadata,
         JsonTypeInfo stateTypeInfo, PayloadProtectionOccurrenceContext occurrenceContext, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(identity); ArgumentNullException.ThrowIfNull(occurrenceContext); ArgumentNullException.ThrowIfNull(stateTypeInfo);
         ValidateOccurrence(identity, occurrenceContext, PayloadProtectionPayloadKind.Snapshot);
-        if (!InteractionSnapshotEntriesProtector.IsMixed(state)) { return TryUnprotectSnapshotAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, cancellationToken); }
-        return metadata is null ? Task.FromResult(SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch))
-            : _snapshotEntries.ReadAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, true, cancellationToken);
+        if (InteractionSnapshotEntriesProtector.IsMixed(state))
+        { return metadata is null ? SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch)
+            : await _snapshotEntries.ReadAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, true, cancellationToken).ConfigureAwait(false); }
+        try
+        {
+            if (metadata is not { Scheme: "hexalith-pdenc-v2", KeyAlias: { } reference }) { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata); }
+            ProtectedSnapshotPayloadV2 snapshot = state is ProtectedSnapshotPayloadV2 typed ? typed : state is JsonElement json ? ReadSnapshot(json) : throw new PayloadProtectionFormatException();
+            byte[] sealedBytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, InteractionSnapshotJsonContext.Default.ProtectedSnapshotPayloadV2);
+            // Positive independent loss proof is resolved before touching the former registry/ERC endpoint.
+            var binding = await _bindings.ResolveErasedStoredAsync(identity, occurrenceContext, sealedBytes, reference, cancellationToken).ConfigureAwait(false);
+            byte[]? skeleton;
+            if (binding is null && await _bindings.IsCustodyPermanentlyLostAsync(identity, cancellationToken).ConfigureAwait(false))
+            { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata); }
+            if (binding is not null)
+            { skeleton = await _bindings.ReadErasedSnapshotSkeletonAsync(binding, sealedBytes, cancellationToken).ConfigureAwait(false); }
+            else
+            {
+                var opened = await TryUnprotectSnapshotAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, cancellationToken).ConfigureAwait(false);
+                if (opened.IsReadable) { return opened; }
+                binding = await ResolveAsync(identity, occurrenceContext, null, false, cancellationToken).ConfigureAwait(false);
+                var retained = await _registry.LookupAsync(binding.Identity, cancellationToken).ConfigureAwait(false);
+                if (!IsActive(retained, binding, metadata) || ReadSnapshot(retained.Record!.Sealed!.PayloadBytes) != snapshot)
+                { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata); }
+                skeleton = retained.Record.Sealed.SnapshotReplaySkeleton;
+            }
+            if (skeleton is null || binding.KeyReference != reference || !await _bindings.IsIrreversiblyErasedAsync(binding, cancellationToken).ConfigureAwait(false))
+            { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted, metadata); }
+            var layout = SnapshotEntryLayout.Read(skeleton, identity.TenantId, true, cancellationToken);
+            if (layout.Entries.Length == 0 || layout.Entries.Any(entry => entry.Target != binding.Identity.Target) || layout.Values.Any(value => value is not null))
+            { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata); }
+            var restored = System.Text.Json.Nodes.JsonNode.Parse(layout.Skeleton)!;
+            foreach (var entry in layout.Entries) { SnapshotEntryLayout.Replace(restored, entry.Path, JsonSerializer.SerializeToNode(new Erased(), InteractionSnapshotJsonContext.Default.Erased)); }
+            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(restored, InteractionSnapshotJsonContext.Default.JsonNode);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                object replayed = JsonSerializer.Deserialize(bytes, stateTypeInfo)!;
+                cancellationToken.ThrowIfCancellationRequested();
+                return SnapshotUnprotectionOutcome.Readable(replayed, metadata);
+            }
+            finally { CryptographicOperations.ZeroMemory(bytes); }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch { cancellationToken.ThrowIfCancellationRequested(); return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata); }
     }
 
     private async Task<InteractionProtectionBinding> ResolveCompletionAsync(PayloadProtectionCompletionContext context, CancellationToken token)

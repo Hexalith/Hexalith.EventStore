@@ -7,6 +7,9 @@ namespace Hexalith.EventStore.Server.Security;
 internal sealed class DeadlineDeletionConsumptionAuthority(IAnchoredStateTransitionAuthority authority, AuthoritativeStreamReadDeadline deadline) : IAnchoredStateTransitionAuthority
 {
     /// <inheritdoc/>
+    public Task<AnchoredStateTransition?> ReadAdmittedOriginalAsync(string scopeId, CancellationToken cancellationToken = default)
+        => deadline.ReadAsync(token => authority.ReadAdmittedOriginalAsync(scopeId, token));
+    /// <inheritdoc/>
     public Task<bool> AdmitTransitionAsync(AnchoredStateTransition transition, CancellationToken cancellationToken = default)
         => deadline.ReadAsync(token => authority.AdmitTransitionAsync(transition, token));
 

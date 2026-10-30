@@ -40,6 +40,13 @@ public static class InteractionOccurrenceSealedVerifier
             }
             clear = opened.PayloadBytes;
             if (!opened.IsReadable || clear is null) { return false; }
+            if (sealedResult.SnapshotReplaySkeleton is { } skeleton)
+            {
+                if (identity.Kind != PayloadProtectionPayloadKind.Snapshot) { return false; }
+                var layout = SnapshotEntryLayout.Read(clear, identity.Target.TenantId, false, cancellationToken);
+                if (layout.Entries.Length == 0 || !layout.Skeleton.AsSpan().SequenceEqual(skeleton)
+                    || layout.Entries.Any(entry => entry.Target != identity.Target)) { return false; }
+            }
             byte[] actual = Convert.FromHexString(InteractionOccurrenceProtector.Fingerprint(digestKey, identity, manifest.Encoded, clear));
             byte[] expected = Convert.FromHexString(original.ContentIntentHmac);
             try { return CryptographicOperations.FixedTimeEquals(actual, expected); }

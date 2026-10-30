@@ -119,7 +119,18 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
             else
             {
                 var result = _core.ProtectSnapshot(owned, Context(identity), () => material, cancellationToken: token);
-                encrypted = new(record.KeyReference, WriteSnapshot(result), result.Format, 1);
+                byte[]? skeleton = null;
+                // The lower-level V2 snapshot protector also supports legacy arbitrary snapshots.
+                // Only canonical target/value layouts gain optional authenticated replay metadata.
+                try
+                {
+                    var layout = SnapshotEntryLayout.Read(owned, identity.Target.TenantId, false, token);
+                    if (layout.Entries.Length > 0) { skeleton = layout.Skeleton; }
+                }
+                catch (PayloadProtectionFormatException) { token.ThrowIfCancellationRequested(); }
+                catch (InvalidOperationException) { token.ThrowIfCancellationRequested(); }
+                encrypted = new(record.KeyReference, WriteSnapshot(result), result.Format, 1)
+                { SnapshotReplaySkeleton = skeleton };
             }
             CheckBudget(start, token);
             var retained = await AwaitAsync(() => registry.RetainSealedAsync(identity, encrypted, CancellationToken.None), start, token).ConfigureAwait(false);
@@ -156,11 +167,13 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
     {
         if (result.PayloadBytes is null || result.PayloadBytes.Length > PayloadProtectionLimits.PayloadBytes || result.ProtectedPathCount is < 1 or > PayloadProtectionLimits.ProtectedPaths
             || result.SerializationFormat != PayloadProtectionWireFormat.ProtectedSerializationFormat) { throw new PayloadProtectionFormatException(); }
-        return result with { PayloadBytes = result.PayloadBytes.ToArray() };
+        return result with { PayloadBytes = result.PayloadBytes.ToArray(), SnapshotReplaySkeleton = result.SnapshotReplaySkeleton?.ToArray() };
     }
     private static bool Equal(InteractionOccurrenceSealedResult first, InteractionOccurrenceSealedResult second)
         => first.KeyReference == second.KeyReference && first.SerializationFormat == second.SerializationFormat && first.ProtectedPathCount == second.ProtectedPathCount
-            && first.PayloadBytes.AsSpan().SequenceEqual(second.PayloadBytes);
+            && first.PayloadBytes.AsSpan().SequenceEqual(second.PayloadBytes)
+            && (first.SnapshotReplaySkeleton is null && second.SnapshotReplaySkeleton is null || first.SnapshotReplaySkeleton is not null
+                && second.SnapshotReplaySkeleton is not null && first.SnapshotReplaySkeleton.AsSpan().SequenceEqual(second.SnapshotReplaySkeleton));
 
     internal static string Fingerprint(byte[] digestKey, InteractionOccurrenceIdentity identity, byte[] manifest, byte[] payload)
     {

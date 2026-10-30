@@ -205,7 +205,8 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
         Reference(value.KeyReference);
         if (value.PayloadBytes is not { Length: > 0 and <= 16777216 } || value.SerializationFormat != "json+pdenc-v2" || value.ProtectedPathCount is < 1 or > 4096)
         { throw new ArgumentException("Invalid candidate sealed result.", nameof(value)); }
-        return value with { PayloadBytes = value.PayloadBytes.ToArray() };
+        if (value.SnapshotReplaySkeleton is { Length: > 16777216 }) { throw new ArgumentException("Bounded snapshot skeleton required."); }
+        return value with { PayloadBytes = value.PayloadBytes.ToArray(), SnapshotReplaySkeleton = value.SnapshotReplaySkeleton?.ToArray() };
     }
     private static void Reference(string value)
     {

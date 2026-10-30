@@ -11,6 +11,30 @@ namespace Hexalith.EventStore.Server.Security;
 public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transaction, TimeProvider clock, IGovernanceGuardAuthority? authority = null) : IGovernanceScopeGuard
 {
     /// <inheritdoc/>
+    public async Task<GovernanceProtocolReceipt?> LookupOriginalAsync(GovernanceGuardTransition transition, IReadOnlyList<GuardedStateMutation> targets, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (authority is null || transition is null || targets is null || targets.Count > 1000 || !GovernanceScopeGuardReducer.IsClosedCommand(transition)) { return null; }
+            transition = Capture(transition);
+            targets = targets.Select(value => value with { NextValue = value.NextValue.ToArray() }).ToArray();
+            string targetDigest = Hash(targets), intent = Hash(new { Transition = transition, TargetMutationDigest = targetDigest });
+            var proof = await authority.ReadLookupAsync(transition, intent, targetDigest, cancellationToken).ConfigureAwait(false);
+            bool Current(GovernanceGuardEvidence? value) => value is not null && value.TenantId == transition.TenantId && value.IntentDigest == intent
+                && value.TargetMutationDigest == targetDigest && !string.IsNullOrWhiteSpace(value.AuthorityRevision) && !string.IsNullOrWhiteSpace(value.AuthorityReceiptId)
+                && value.ObservedAt != default && value.ObservedAt <= clock.GetUtcNow() && value.ValidUntil > clock.GetUtcNow();
+            if (!Current(proof)) { return null; }
+            var result = await transaction.LookupByIntentAsync(transition.TenantId, transition.OperationId, intent, cancellationToken).ConfigureAwait(false);
+            var final = await authority.ReadLookupAsync(transition, intent, targetDigest, cancellationToken).ConfigureAwait(false);
+            if (!Current(final) || Hash(proof) != Hash(final) || result.Status != GuardedStateCommitStatus.Committed || result.Receipt is not { } receipt
+                || receipt.LogicalIntentDigest != intent) { return null; }
+            var original = JsonSerializer.Deserialize<GovernanceProtocolReceipt>(receipt.Outcome);
+            return original is not null && original.OperationId == transition.OperationId && original.IntentDigest == intent
+                && original.GuardHighWater == receipt.LogicalGuardHighWater && !string.IsNullOrWhiteSpace(original.ReceiptId) ? original : null;
+        }
+        catch (Exception) { cancellationToken.ThrowIfCancellationRequested(); return null; }
+    }
+    /// <inheritdoc/>
     public async Task<TenantGovernanceGuardState?> ReadAsync(string tenantId, CancellationToken cancellationToken = default)
     {
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());

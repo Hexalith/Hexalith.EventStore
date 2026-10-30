@@ -420,6 +420,9 @@ public sealed class DeletionConsumptionOriginalTests
     {
         f.Provider.ReceivedCalls().ShouldBeEmpty();
         manager.ReceivedCalls().All(call => call.GetMethodInfo().Name is nameof(IActorStateManager.ClearCacheAsync) or nameof(IActorStateManager.TryGetStateAsync)).ShouldBeTrue();
-        f.Authority.ReceivedCalls().All(call => call.GetMethodInfo().Name is nameof(IDeletionConsumptionAuthority.AuthorizeOperationAsync) or nameof(IDeletionConsumptionAuthority.ValidateStateAsync)).ShouldBeTrue();
+        // A stale primary may ask for the independently committed current original. It must
+        // still never discover/advance an admission, dispatch, or write either store.
+        f.Authority.ReceivedCalls().All(call => call.GetMethodInfo().Name is nameof(IDeletionConsumptionAuthority.AuthorizeOperationAsync)
+            or nameof(IDeletionConsumptionAuthority.ValidateStateAsync) or nameof(IDeletionConsumptionAuthority.ReadCurrentOriginalAsync)).ShouldBeTrue();
     }
 }

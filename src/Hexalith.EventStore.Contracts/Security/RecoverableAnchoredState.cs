@@ -28,6 +28,8 @@ public static class RecoverableAnchoredState
         ArgumentException.ThrowIfNullOrWhiteSpace(scope);
         ArgumentNullException.ThrowIfNull(capture); ArgumentNullException.ThrowIfNull(validateCurrent);
         ArgumentNullException.ThrowIfNull(authority); ArgumentNullException.ThrowIfNull(persistTarget);
+        if (pending is null && recoverAdmittedOriginal)
+        { pending = await authority.ReadAdmittedOriginalAsync(scope).ConfigureAwait(false); }
         if (pending is not null)
         {
             Validate(pending, scope);

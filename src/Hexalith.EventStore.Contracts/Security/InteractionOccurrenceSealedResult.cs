@@ -7,6 +7,9 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="ProtectedPathCount">Positive complete selected field count.</param>
 public sealed record InteractionOccurrenceSealedResult(string KeyReference, byte[] PayloadBytes, string SerializationFormat, int ProtectedPathCount)
 {
+    /// <summary>Authenticated content-free replay skeleton, verified against decrypted original bytes before retention. Legacy V2 ciphertext bytes are unchanged.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public byte[]? SnapshotReplaySkeleton { get; init; }
     /// <inheritdoc/>
     public override string ToString() => nameof(InteractionOccurrenceSealedResult);
 }

@@ -72,6 +72,7 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
                     { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted, metadata); }
                     SnapshotEntryLayout.Replace(restored, entry.Path, JsonSerializer.SerializeToNode(new Erased(), InteractionSnapshotJsonContext.Default.Erased)); continue;
                 }
+                if (await bindings.IsCustodyPermanentlyLostAsync(owner, token).ConfigureAwait(false)) { return Unreadable(metadata); }
                 var original = await registry.LookupAsync(binding.Identity, token).ConfigureAwait(false);
                 if (entry.KeyReference != binding.KeyReference || original.Status != InteractionOccurrenceReservationStatus.Sealed
                     || original.Record is not { WriterState: InteractionOccurrenceWriterState.Active, Sealed: { } sealedValue } retained

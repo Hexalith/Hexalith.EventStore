@@ -258,7 +258,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         var result = new DeletionCapabilityRevocationReceipt(envelope, next.Revision, next.KeyBlockSetRevision, receipt, Array.AsReadOnly(affected));
         next = next with { Revocations = state.Revocations.Append(result).ToArray(), Batches = state.Batches.Select(b => affected.Contains(b.Current.Capability.BatchId)
             ? b with { Outcome = Result(next, b.Current.Capability.BatchId, DeletionConsumptionStatus.ConsumptionBlocked) with {
-                ReceiptId = DeletionConsumptionIdentity.Digest(new[] { receipt, b.Current.Capability.BatchId }), BlockReason = DeletionConsumptionBlockReason.CapabilityKeyCompromise,
+                ReceiptId = DeletionConsumptionIdentity.RevocationBlockReceiptId(receipt, b.Current.Capability.BatchId), BlockReason = DeletionConsumptionBlockReason.CapabilityKeyCompromise,
                 BlockedKeyVersion = envelope.KeyVersion, RevocationRevision = envelope.RevocationRevision } } : b).ToArray() };
         await SaveAsync(next).ConfigureAwait(false); return result;
     }

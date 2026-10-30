@@ -225,7 +225,7 @@ public static class GovernanceScopeGuardReducer
                     || !CapabilityMatches(command.Batch, deletion)) { return Denied(); }
                 ReplaceBatch(batch with { AttestationOrdinal = command.Batch.AttestationOrdinal, CapabilityKeyVersion = command.Batch.CapabilityKeyVersion, AttestationDigest = command.Batch.AttestationDigest,
                     IssueReceiptId = ReceiptId(state, command, intentDigest, "Committed", next), DispatchReceiptId = "", ProtectionOutcome = "ReplacementAwaitingActivation", Capability = command.Batch.Capability,
-                    DetachedJws = command.Batch.DetachedJws, SigningRequestId = command.Batch.SigningRequestId, IssuedGuardRevision = next, DispatchGuardRevision = 0, RejectedUnissuedReplacement = null });
+                    DetachedJws = command.Batch.DetachedJws, SigningRequestId = command.Batch.SigningRequestId, IssuedGuardRevision = next, DispatchGuardRevision = 0, RejectedUnissuedReplacement = null }); reference = batch.BatchId;
                 break;
             case GovernanceGuardOperation.RecordProtectionOutcome:
                 batch = FindBatch();

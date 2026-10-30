@@ -247,6 +247,36 @@ public sealed class InteractionSnapshotProtectionTests
         fixture.Occurrences.Record!.WriterState.ShouldBe(InteractionOccurrenceWriterState.Active);
     }
 
+    /// <summary>Cancellation during typed-Erased materialization cannot expose state or change the retained single-root ciphertext.</summary>
+    [Fact]
+    public async Task CancellationDuringSingleRootErasedReplayMaterializationKeepsTheCallerToken()
+    {
+        var fixture = Create();
+        var write = await fixture.Service.ProtectSnapshotAsync(fixture.Binding.Identity.Owner, State("{\"ProtectedContent\":ENVELOPE}"),
+            StateType, Occurrence(fixture.Binding), TestContext.Current.CancellationToken);
+        await fixture.Service.CompletePayloadProtectionAsync(write.CompletionContext!, PayloadProtectionPersistenceOutcome.Persisted,
+            TestContext.Current.CancellationToken);
+        byte[] original = fixture.Occurrences.Record!.Sealed!.PayloadBytes.ToArray();
+        byte[] skeleton = fixture.Occurrences.Record.Sealed.SnapshotReplaySkeleton!;
+        skeleton.ShouldNotBeNull();
+        fixture.Bindings.ResolveErasedStoredAsync(fixture.Binding.Identity.Owner, Occurrence(fixture.Binding), Arg.Any<byte[]>(),
+            fixture.Binding.KeyReference, Arg.Any<CancellationToken>()).Returns(fixture.Binding);
+        fixture.Bindings.ReadErasedSnapshotSkeletonAsync(fixture.Binding, Arg.Any<byte[]>(), Arg.Any<CancellationToken>()).Returns(skeleton);
+        fixture.Bindings.IsIrreversiblyErasedAsync(fixture.Binding, Arg.Any<CancellationToken>()).Returns(true);
+        using var cancellation = new CancellationTokenSource();
+        var options = new JsonSerializerOptions(JsonSerializerOptions.Default);
+        options.Converters.Add(new CancellingMixedSnapshotConverter(cancellation));
+
+        var error = await Should.ThrowAsync<OperationCanceledException>(() => fixture.Service.TryReplaySnapshotAsync(
+            fixture.Binding.Identity.Owner, write.ProtectionResult.State, write.ProtectionResult.Metadata,
+            options.GetTypeInfo(typeof(JsonElement)), Occurrence(fixture.Binding), cancellation.Token));
+
+        error.CancellationToken.ShouldBe(cancellation.Token);
+        fixture.Occurrences.Record.Sealed.PayloadBytes.ShouldBe(original);
+        fixture.Occurrences.Record.WriterState.ShouldBe(InteractionOccurrenceWriterState.Active);
+        fixture.Occurrences.OwnedBuffers.All(bytes => bytes.All(value => value == 0)).ShouldBeTrue();
+    }
+
     private static string Expand(string template) => template.Replace("ENVELOPE", Envelope, StringComparison.Ordinal).Replace("TARGET", Target, StringComparison.Ordinal);
     private static JsonElement State(string template) => JsonSerializer.Deserialize<JsonElement>(Expand(template));
     private static PayloadProtectionOccurrenceContext Occurrence(InteractionProtectionBinding binding)

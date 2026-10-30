@@ -9,6 +9,9 @@ namespace Hexalith.EventStore.Server.Security;
 /// <summary>Narrow private bounded identity/manifest capture; no caller classification or signature grants authority.</summary>
 public static class DeletionConsumptionIdentity
 {
+    /// <summary>Derives the exact immutable per-batch key-compromise block receipt from the authenticated owner revocation original.</summary>
+    public static string RevocationBlockReceiptId(string revocationReceiptId, string batchId) => Digest(new[] { revocationReceiptId, batchId });
+
     /// <summary>Captures the exact bounded sorted owner request for host-owned atomic providers. Validation grants no caller, dispatch or physical authority.</summary>
     public static DeletionBatchConsumptionRequest CaptureRequest(DeletionBatchConsumptionRequest request) => Capture(request);
     internal static void Text(string value)

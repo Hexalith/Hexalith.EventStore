@@ -6,6 +6,11 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>Infrastructure authority for exact target/occurrence enrollment and source-writer completion. No permissive implementation is supplied.</summary>
 public interface IInteractionProtectionBindingProvider
 {
+    /// <summary>Reports only independently authenticated permanent custody loss; an outage returns false and grants no erasure authority.</summary>
+    Task<bool> IsCustodyPermanentlyLostAsync(AggregateIdentity owner, CancellationToken cancellationToken = default) => Task.FromResult(false);
+    /// <summary>Reads an independently authenticated exact source skeleton after permanent custody loss; no former-ERC dependency or plaintext reconstruction.</summary>
+    Task<byte[]?> ReadErasedSnapshotSkeletonAsync(InteractionProtectionBinding binding, byte[] sealedPayload, CancellationToken cancellationToken = default)
+        => Task.FromResult<byte[]?>(null);
     /// <summary>Authenticates exact committed source ciphertext after independently proved permanent custody loss. This never treats missing custody or an untrusted stored envelope as erased.</summary>
     Task<InteractionProtectionBinding?> ResolveErasedStoredAsync(AggregateIdentity owner, PayloadProtectionOccurrenceContext occurrence,
         byte[] sealedPayload, string keyReference, CancellationToken cancellationToken = default)
