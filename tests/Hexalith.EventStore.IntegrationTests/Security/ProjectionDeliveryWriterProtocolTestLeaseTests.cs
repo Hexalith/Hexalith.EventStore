@@ -22,7 +22,9 @@ public sealed class ProjectionDeliveryWriterProtocolTestLeaseTests {
             AllowAdmin = false,
         }).ConfigureAwait(true);
         IDatabase database = redis.GetDatabase();
-        byte[]? originalState = await database.KeyDumpAsync(MarkerKey).ConfigureAwait(true);
+        bool markerExisted = await database.KeyExistsAsync(MarkerKey).ConfigureAwait(true);
+        HashEntry[] originalState = await database.HashGetAllAsync(MarkerKey).ConfigureAwait(true);
+        TimeSpan? originalExpiry = await database.KeyTimeToLiveAsync(MarkerKey).ConfigureAwait(true);
         var lease = new ProjectionDeliveryWriterProtocolTestLease();
 
         try {
@@ -40,12 +42,19 @@ public sealed class ProjectionDeliveryWriterProtocolTestLeaseTests {
             activated.ToString().ShouldContain(sourceCommit);
 
             await lease.RestoreAsync().ConfigureAwait(true);
-            byte[]? restoredState = await database.KeyDumpAsync(MarkerKey).ConfigureAwait(true);
-            if (originalState is null) {
-                restoredState.ShouldBeNull();
+            (await database.KeyExistsAsync(MarkerKey).ConfigureAwait(true)).ShouldBe(markerExisted);
+            HashEntry[] restoredState = await database.HashGetAllAsync(MarkerKey).ConfigureAwait(true);
+            // Redis can repack a restored hash into a different RDB byte sequence. Its
+            // fields and expiry, rather than serialization order, define restored state.
+            restoredState.OrderBy(entry => entry.Name.ToString(), StringComparer.Ordinal)
+                .ShouldBe(originalState.OrderBy(entry => entry.Name.ToString(), StringComparer.Ordinal));
+            TimeSpan? restoredExpiry = await database.KeyTimeToLiveAsync(MarkerKey).ConfigureAwait(true);
+            if (originalExpiry is null) {
+                restoredExpiry.ShouldBeNull();
             }
             else {
-                restoredState.ShouldBe(originalState);
+                restoredExpiry.ShouldNotBeNull().ShouldBeLessThanOrEqualTo(originalExpiry.Value);
+                restoredExpiry.Value.ShouldBeGreaterThan(originalExpiry.Value - TimeSpan.FromMinutes(1));
             }
         }
         finally {

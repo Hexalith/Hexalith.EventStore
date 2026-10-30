@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.Testing.Integration;
 /// <summary>Consumes an existing Platform topology. This fixture never creates or stops infrastructure.</summary>
 public abstract class AspireTopologyFixtureBase : IAsyncLifetime
 {
-    private readonly Dictionary<string, HttpClient> _clients = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string ResourceId, string ModuleId, string EndpointName), HttpClient> _clients = new();
     private TestEnvironmentDescriptor? _environment;
     private bool _disposed;
 
@@ -21,8 +21,21 @@ public abstract class AspireTopologyFixtureBase : IAsyncLifetime
     protected HttpClient Client(string resourceId)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return _clients.TryGetValue(resourceId, out HttpClient? client)
-            ? client : throw new InvalidOperationException("The requested fixture resource was not declared or initialized.");
+        HttpClient[] matches = _clients.Where(pair => pair.Key.ResourceId == resourceId).Select(pair => pair.Value).ToArray();
+        return matches.Length == 1 ? matches[0]
+            : throw new InvalidOperationException("The requested fixture resource is unavailable or requires an exact endpoint binding.");
+    }
+
+    /// <summary>Gets the client for an exact resource, module and endpoint tuple.</summary>
+    /// <param name="resourceId">The declared resource identity.</param>
+    /// <param name="moduleId">The declaring module identity.</param>
+    /// <param name="endpointName">The declared endpoint name.</param>
+    /// <returns>The bounded fixture-owned client.</returns>
+    protected HttpClient Client(string resourceId, string moduleId, string endpointName)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _clients.TryGetValue((resourceId, moduleId, endpointName), out HttpClient? client)
+            ? client : throw new InvalidOperationException("The requested fixture endpoint was not declared or initialized.");
     }
 
     /// <inheritdoc/>
@@ -34,18 +47,19 @@ public abstract class AspireTopologyFixtureBase : IAsyncLifetime
             throw new InvalidOperationException("The fixture has already initialized.");
         }
 
+        TestEnvironmentEndpoint[] required = Resources.ToArray();
         TestEnvironmentDescriptor environment = TestEnvironmentDescriptorReader.ReadFromEnvironment();
         try
         {
             // Validate every binding before allocating any clients.
-            foreach (TestEnvironmentEndpoint resource in Resources)
+            foreach (TestEnvironmentEndpoint resource in required)
             {
                 _ = environment.GetEndpoint(resource.ResourceId, resource.ModuleId, resource.EndpointName);
             }
 
-            foreach (TestEnvironmentEndpoint resource in Resources)
+            foreach (TestEnvironmentEndpoint resource in required)
             {
-                _clients.Add(resource.ResourceId, environment.CreateHttpClient(resource.ResourceId, resource.ModuleId, resource.EndpointName, resource.Timeout, resource.Authenticated));
+                _clients.Add((resource.ResourceId, resource.ModuleId, resource.EndpointName), environment.CreateHttpClient(resource.ResourceId, resource.ModuleId, resource.EndpointName, resource.Timeout, resource.Authenticated));
             }
 
             _environment = environment;

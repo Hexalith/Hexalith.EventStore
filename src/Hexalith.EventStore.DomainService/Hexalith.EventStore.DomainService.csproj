@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.EventStore.DomainService.Tests" />
+    <!-- Consumer-owned isolated HTTP fixtures exercise authentication without a live catalog owner. -->
+    <InternalsVisibleTo Include="Hexalith.Parties.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />

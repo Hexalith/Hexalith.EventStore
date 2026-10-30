@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Routing;
 
 /// <summary>Closed schema v1/v2 construction envelope. Possession of this envelope grants no activation or signing authority.</summary>
@@ -10,6 +12,8 @@ namespace Hexalith.EventStore.Contracts.Routing;
 /// <param name="Idempotency">One entry per command declaration.</param>
 /// <param name="RouteFacetDigest">Digest of the routing facet, including declarations.</param>
 /// <param name="IdempotencyFacetDigest">Digest of the idempotency facet.</param>
+/// <param name="Operations">Schema-three owner operation contracts; absent in historical envelopes.</param>
+/// <param name="RetainedIdempotency">Non-executable immutable history; absent in historical envelopes.</param>
 public sealed record RouteCatalogEnvelope(
     int SchemaVersion,
     long Generation,
@@ -19,4 +23,6 @@ public sealed record RouteCatalogEnvelope(
     IReadOnlyList<RouteCatalogEntry> Routes,
     IReadOnlyList<IdempotencyCatalogEntry> Idempotency,
     string RouteFacetDigest,
-    string IdempotencyFacetDigest);
+    string IdempotencyFacetDigest,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RouteOperationContract>? Operations = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RetainedIdempotencyCatalogEntry>? RetainedIdempotency = null);

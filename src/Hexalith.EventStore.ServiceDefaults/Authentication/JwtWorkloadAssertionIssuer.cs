@@ -179,6 +179,7 @@ public sealed partial class JwtWorkloadAssertionIssuer(
         {
             [EventStoreWorkloadAuthenticationDefaults.CallerClaimType] = issuer.Workload.Trim(),
             [EventStoreWorkloadAuthenticationDefaults.OperationClaimType] = request.Operation,
+            [RouteCatalogSurfacePolicy.ClaimType] = "service",
             [JwtRegisteredClaimNames.Jti] = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant(),
         };
         if (request.Bindings is not null)

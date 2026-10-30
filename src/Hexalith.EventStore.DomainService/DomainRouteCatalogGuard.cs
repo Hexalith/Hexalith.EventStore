@@ -20,6 +20,9 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
         try
         {
             var snapshot = lease.Snapshot;
+            if (snapshot.Envelope.SchemaVersion == 3
+                && Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Surface(context.HttpContext.User) != "service")
+                throw new RouteCatalogUnavailableException("The domain receiver requires an authenticated service surface in addition to its workload policy.");
             var headers = context.HttpContext.Request.Headers;
             if (headers[RouteCatalogInvocationHandler.RootHeader].Count != 1 || headers[RouteCatalogInvocationHandler.RootHeader][0] != snapshot.RootDigest
                 || headers[RouteCatalogInvocationHandler.EpochHeader].Count != 1 || headers[RouteCatalogInvocationHandler.EpochHeader][0] != snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture))
@@ -40,6 +43,7 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                     if (DomainServiceVersion.Resolve(request.Command, command.Target.ContractVersion) != command.Target.ContractVersion)
                         throw new RouteCatalogUnavailableException("A command version override disagrees with the committed target.");
                     _ = snapshot.Admission(command.Declaration);
+                    RefuseStepUp(snapshot, command.Declaration.RouteId);
                     break;
                 case QueryEnvelope query:
                     var selected = snapshot.Resolve("query", query.TenantId, query.Domain, query.QueryType);
@@ -47,6 +51,7 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                         throw new RouteCatalogUnavailableException("The query was sent to a different target.");
                     if (selected.Declaration.Execution.RequiresDelegatedContext && query.CallerAuthority is null)
                         throw new RouteCatalogUnavailableException("This query requires verified delegated caller authority at the receiver.");
+                    RefuseStepUp(snapshot, selected.Declaration.RouteId);
                     break;
                 case ProjectionDispatchRequest dispatch:
                     ValidateDispatch(snapshot, appId, method, dispatch);
@@ -87,6 +92,12 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
             await lease.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    private static void RefuseStepUp(CommittedRouteCatalogSnapshot snapshot, string routeId)
+    {
+        if (snapshot.Envelope.SchemaVersion == 3 && snapshot.Envelope.Operations!.Single(o => o.RouteId == routeId).Eligibility == "step-up")
+            throw new RouteCatalogUnavailableException("Step-up operations are unavailable in this catalog protocol.");
     }
 
     private static void ValidateDispatch(CommittedRouteCatalogSnapshot snapshot, string appId, string method, ProjectionDispatchRequest dispatch)

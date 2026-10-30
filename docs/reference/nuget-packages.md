@@ -507,6 +507,10 @@ through `Resources`. There is no AppHost type, startup argument, port or prerequ
 `ConfigureDomain`, local host registration, `/process` mapping, captured host errors and
 `SkipIfUnavailable` were removed. `DaprFact` never skips a missing handoff. Optional performance
 opt-in remains separate.
+Use `Client(resourceId, moduleId, endpointName)` when a resource exposes multiple endpoints;
+`Client(resourceId)` remains available only for an unambiguous single declared endpoint.
+Fixture disposal and finite request budgets cover streamed response bodies, including
+`ResponseHeadersRead` consumers whose subsequent reads omit a cancellation token.
 
 Run these suites through `hexalith-module test` so `HEXALITH_TEST_ENVIRONMENT_PATH` is an absolute
 private descriptor file and the existing `HEXALITH_G4_RUN_ID`, `HEXALITH_G4_TENANT`,

@@ -10,7 +10,7 @@ public static class RouteCatalogTopologyValidator
     /// <summary>Compares exact scopes and effective allow grants to catalog targets, auxiliary inventory and protected lifecycle methods.</summary>
     public static void ValidateDevelopment(ReadOnlyMemory<byte> componentBytes, ReadOnlyMemory<byte> configurationBytes,
         RouteCatalogEnvelope envelope, IReadOnlyList<RouteCatalogHostIdentity> hosts, string localAppId,
-        IReadOnlyList<RouteCatalogAuxiliaryOperation>? auxiliary = null)
+        IReadOnlyList<RouteCatalogAuxiliaryOperation>? auxiliary = null, RouteCatalogReceiverSurface? receiver = null)
     {
         ArgumentNullException.ThrowIfNull(envelope);
         ArgumentNullException.ThrowIfNull(hosts);
@@ -55,10 +55,14 @@ public static class RouteCatalogTopologyValidator
                 {
                     if (grant.GetProperty("action").GetString() != "allow") continue;
                     string method = grant.GetProperty("name").GetString()!.TrimStart('/');
-                    if (!methods.ContainsKey(method)) throw Failure("undeclared-acl-operation");
+                    string canonical = method.EndsWith("/*", StringComparison.Ordinal) ? method[..^2] : method;
+                    if (!methods.ContainsKey(canonical) || (canonical != method && (receiver is null
+                        || !methods.Keys.Any(child => child.StartsWith(canonical + "/", StringComparison.Ordinal)))))
+                        throw Failure("undeclared-acl-operation");
                     string[] verbs = [.. grant.GetProperty("httpVerb").EnumerateArray().Select(v => v.GetString()!)];
-                    string expected = method == "internal/routing/catalog-generation" ? "GET" : "POST";
+                    string expected = canonical == "internal/routing/catalog-generation" ? "GET" : "POST";
                     if (verbs.Length != 1 || verbs[0] != expected) throw Failure("unbounded-acl-http-verb");
+                    if (receiver is not null) ValidateFiniteReceiver(receiver, canonical, verbs[0], methods);
                 }
             }
         }
@@ -69,4 +73,38 @@ public static class RouteCatalogTopologyValidator
     }
 
     private static RouteCatalogValidationException Failure(string code) => new([new("$.activation.topology", code)]);
+
+    private static void ValidateFiniteReceiver(RouteCatalogReceiverSurface receiver, string prefix, string verb,
+        IReadOnlyDictionary<string, string> operations)
+    {
+        if (receiver.FenceVersion != "eventstore-finite-dapr-receiver-v1" || receiver.Endpoints is not { Count: > 0 }
+            || receiver.Endpoints.Any(endpoint => endpoint is null || string.IsNullOrEmpty(endpoint.Pattern)
+                || endpoint.Methods is null || endpoint.Policies is null))
+            throw Failure("missing-effective-finite-receiver-fence");
+        string parent = "/" + prefix;
+        // Dapr's literal parent grants are prefix grants too. Account for every reachable endpoint,
+        // including patterns and anonymous endpoints explicitly denied by the installed receiver fence.
+        var reachable = receiver.Endpoints.Where(endpoint => endpoint.Pattern.Equals(parent, StringComparison.OrdinalIgnoreCase)
+            || endpoint.Pattern.StartsWith(parent + "/", StringComparison.OrdinalIgnoreCase)
+            || (endpoint.IsPattern && PatternMayIntersect(endpoint.Pattern, parent))).ToArray();
+        if (!reachable.Any(endpoint => endpoint.Pattern.Equals(parent, StringComparison.OrdinalIgnoreCase)
+            && endpoint.Admitted && endpoint.Methods.Contains(verb, StringComparer.Ordinal)))
+            throw Failure("acl-grant-has-no-finite-authenticated-receiver");
+        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
+        {
+            string method = endpoint.Pattern.TrimStart('/');
+            if (endpoint.Anonymous || endpoint.IsPattern || endpoint.Policies.Count == 0 || endpoint.Policies.Any(string.IsNullOrEmpty)
+                || endpoint.Methods.Count != 1 || endpoint.Methods[0] != verb || !operations.TryGetValue(method, out string? operation)
+                || operation != endpoint.Operation)
+                throw Failure("reachable-receiver-is-not-an-exact-authenticated-operation");
+        }
+    }
+
+    private static bool PatternMayIntersect(string pattern, string prefix)
+    {
+        int parameter = pattern.IndexOfAny(['{', '*']);
+        string literal = parameter < 0 ? pattern : pattern[..parameter].TrimEnd('/');
+        return prefix.Equals(literal, StringComparison.OrdinalIgnoreCase) || prefix.StartsWith(literal + "/", StringComparison.OrdinalIgnoreCase)
+            || literal.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase);
+    }
 }

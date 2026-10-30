@@ -206,6 +206,10 @@ public partial class QueriesController : ControllerBase {
         if (catalogLease is not null)
         {
             var selected = catalogLease.Snapshot.Resolve("query", request.Tenant, request.Domain, request.QueryType);
+            if (catalogLease.Snapshot.Envelope.SchemaVersion == 3
+                && !Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Allows(
+                    catalogLease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId), User))
+                return Forbid();
             if ((!string.IsNullOrWhiteSpace(request.ProjectionType) && request.ProjectionType != selected.Declaration.ProjectionType)
                 || (!string.IsNullOrWhiteSpace(request.ProjectionActorType) && request.ProjectionActorType != selected.Declaration.Execution!.ActorType))
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The selected query target differs from committed authority.");

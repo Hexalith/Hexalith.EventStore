@@ -333,7 +333,9 @@
             },
             "callers": [
               "tenants-api",
-              "timesheets"
+              "timesheets",
+              "tenants",
+              "memories"
             ],
             "operations": [
               {
@@ -410,6 +412,27 @@
                 "path": "/api/v1/commands/status/workload",
                 "verbs": [
                   "GET"
+                ]
+              },
+              {
+                "caller": "tenants",
+                "path": "/api/v1/streams/read/workload",
+                "verbs": [
+                  "POST"
+                ]
+              },
+              {
+                "caller": "memories",
+                "path": "/api/v1/commands/bound/workload",
+                "verbs": [
+                  "POST"
+                ]
+              },
+              {
+                "caller": "tenants",
+                "path": "/api/v1/commands/bound/workload",
+                "verbs": [
+                  "POST"
                 ]
               }
             ]

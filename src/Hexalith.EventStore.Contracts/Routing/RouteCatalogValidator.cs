@@ -34,7 +34,7 @@ public static partial class RouteCatalogValidator
     internal static void ValidateMetadata(RouteCatalogEnvelope envelope)
     {
         Require(envelope is not null, "$", "missing-document");
-        Require(envelope.SchemaVersion is 1 or 2, "$.schemaVersion", "unsupported-version");
+        Require(envelope.SchemaVersion is 1 or 2 or 3, "$.schemaVersion", "unsupported-version");
         Require(envelope.Generation is > 0 and <= 9007199254740991, "$.generation", "invalid-generation");
         Token(envelope.Profile, "$.profile");
         Require(!envelope.AllowRuntimeOverrides || envelope.Profile == "Development", "$.allowRuntimeOverrides", "override-outside-development");
@@ -53,7 +53,7 @@ public static partial class RouteCatalogValidator
             RouteContractDeclaration declaration = envelope.Declarations[index];
             string path = $"$.declarations[{index}]";
             CheckDeclaration(declaration, path);
-            Require((envelope.SchemaVersion == 2) == (declaration.Execution is not null), path + ".execution", "schema-execution-mismatch");
+            Require((envelope.SchemaVersion >= 2) == (declaration.Execution is not null), path + ".execution", "schema-execution-mismatch");
             Require(declarations.TryAdd(declaration.RouteId, declaration), path + ".routeId", "duplicate-route-id");
             string keyPrefix = $"{(declaration.Kind == "projection" ? "projection" : "message")}|{declaration.Domain}|";
             if (declaration.Execution is { } execution)
@@ -110,6 +110,46 @@ public static partial class RouteCatalogValidator
         }
 
         Require(bound.Count == declarations.Count, "$.routes", "missing-binding");
+        if (envelope.SchemaVersion == 3)
+        {
+            List(envelope.Operations, "$.operations", allowEmpty: false);
+            List(envelope.RetainedIdempotency, "$.retainedIdempotency");
+            var operations = new HashSet<string>(StringComparer.Ordinal);
+            foreach (RouteOperationContract operation in envelope.Operations!)
+            {
+                ValidateOperationContract(operation);
+                Require(operations.Add(operation.RouteId), operation.RouteId, "duplicate-operation-contract");
+                Require(declarations.TryGetValue(operation.RouteId, out var declaration)
+                    && declaration.ContractVersion == operation.ContractVersion && declaration.Kind == operation.Kind
+                    && declaration.Domain == operation.Domain && (declaration.MessageType ?? declaration.ProjectionType) == operation.MessageType,
+                    operation.RouteId, "invalid-operation-join");
+                Require(operation.Ingress != "public" || declaration!.Kind is "command" or "query"
+                    && declaration.Execution?.RequiresDelegatedContext != true, operation.RouteId, "internal-operation-is-public");
+                Require(operation.Digest == RouteCatalogCodec.ComputeOperationContractDigest(operation), operation.RouteId, "operation-contract-digest-mismatch");
+                Require(envelope.Routes.Single(r => r.RouteId == operation.RouteId).OperationContractDigest == operation.Digest,
+                    operation.RouteId, "route-operation-digest-mismatch");
+            }
+            Require(operations.Count == declarations.Count, "$.operations", "missing-operation-contract");
+            var retained = new HashSet<string>(StringComparer.Ordinal);
+            var historicalIdentities = new Dictionary<(string Route, long Generation), string>();
+            foreach (RetainedIdempotencyCatalogEntry historical in envelope.RetainedIdempotency!)
+            {
+                ValidateIdempotencyMetadata(historical.Entry, "$.retainedIdempotency");
+                Require(historical.Entry.Generation < envelope.Generation, "$.retainedIdempotency", "invalid-historical-generation");
+                Require(historical.Entry.ContentDigest == RouteCatalogCodec.ComputeIdempotencyEntryDigest(historical.Entry),
+                    historical.Entry.RouteId, "historical-content-digest-mismatch");
+                Require(retained.Add(historical.Entry.ContentDigest), historical.Entry.RouteId, "duplicate-historical-entry");
+                var identity = (historical.Entry.RouteId, historical.Entry.Generation);
+                Require(!historicalIdentities.TryGetValue(identity, out string? digest) || digest == historical.Entry.ContentDigest,
+                    historical.Entry.RouteId, "conflicting-historical-identity");
+                historicalIdentities[identity] = historical.Entry.ContentDigest;
+            }
+        }
+        else
+        {
+            Require(envelope.Operations is null && envelope.RetainedIdempotency is null
+                && envelope.Routes.All(r => r.OperationContractDigest is null), "$", "schema-three-fields-in-historical-envelope");
+        }
         var commands = new HashSet<string>(StringComparer.Ordinal);
         var secretMapGenerations = new Dictionary<(string Consumer, string Store, string Name), string>();
         var secretMapKeys = new Dictionary<(string Consumer, string Store, string Name, string Generation), string>();
@@ -190,6 +230,22 @@ public static partial class RouteCatalogValidator
         }
 
         Require(generations.SetEquals(readers), path + ".keyMap", "reader-generation-map-mismatch");
+    }
+
+    /// <summary>Validates value-free owner schemas and the closed eligibility vocabulary before hashing.</summary>
+    public static void ValidateOperationContract(RouteOperationContract operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        Name(operation.RouteId, "$.operation.routeId");
+        Require(IsMatch(operation.ContractVersion, VersionPattern()), operation.RouteId, "invalid-operation-version");
+        Require(operation.Kind is "command" or "query" or "projection", operation.RouteId, "invalid-operation-kind");
+        Domain(operation.Domain, operation.RouteId + ".domain");
+        Discriminator(operation.MessageType, operation.RouteId + ".messageType");
+        Require(operation.Ingress is "public" or "internal", operation.RouteId, "invalid-operation-ingress");
+        Require(operation.Eligibility is "agent-eligible" or "UI-only" or "confirmation-required" or "step-up",
+            operation.RouteId, "invalid-operation-eligibility");
+        Require(operation.RequestSchema.ValueKind == System.Text.Json.JsonValueKind.Object
+            && operation.ResultSchema.ValueKind == System.Text.Json.JsonValueKind.Object, operation.RouteId, "missing-operation-schema");
     }
 
     private static void CheckDeclaration(RouteContractDeclaration declaration, string path)

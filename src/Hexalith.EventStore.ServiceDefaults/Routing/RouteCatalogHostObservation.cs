@@ -20,4 +20,6 @@ public sealed record RouteCatalogHostObservation(string HostId, string AppId,
     IReadOnlyList<IdempotencyCatalogEntry>? AdmissionPolicies = null,
     IReadOnlyList<RouteCatalogProjectionCapability>? ProjectionCapabilities = null,
     IReadOnlyList<RouteCatalogAuxiliaryOperation>? AuxiliaryOperations = null,
-    RouteCatalogStateCoordinates? AuthorityCoordinates = null);
+    RouteCatalogStateCoordinates? AuthorityCoordinates = null,
+    RouteCatalogReceiverSurface? ReceiverSurface = null,
+    IReadOnlyList<RouteOperationContract>? Operations = null);

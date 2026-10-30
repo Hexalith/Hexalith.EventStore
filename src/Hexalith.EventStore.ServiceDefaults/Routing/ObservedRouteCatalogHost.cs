@@ -31,6 +31,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 .Select(c => new { c.AppId, c.Domain, c.ContractVersion, c.Fingerprint, types = c.ProjectionTypes.Order(StringComparer.Ordinal).ToArray() }).ToArray(),
             auxiliary = observation.AuxiliaryOperations.OrderBy(a => a.Domain, StringComparer.Ordinal).ThenBy(a => a.Method, StringComparer.Ordinal).ToArray(),
             declarations = observation.Declarations.OrderBy(d => d.RouteId, StringComparer.Ordinal).Select(RouteCatalogCodec.ComputeDeclarationDigest).ToArray(),
+            operations = observation.Operations?.OrderBy(o => o.RouteId, StringComparer.Ordinal).Select(RouteCatalogCodec.ComputeOperationContractDigest).ToArray(),
             targets = observation.Targets.OrderBy(t => t.RouteId, StringComparer.Ordinal).Select(t => new
             { t.RouteId, t.DeclarationDigest, t.AppId, t.Method, t.ContractVersion, t.CredentialKind, t.Operation, t.IsRuntimeOverride, t.ResolverTenantPattern }).ToArray(),
         }));
@@ -39,6 +40,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
             hosts = observation.RequiredHostIds.Order(StringComparer.Ordinal).ToArray(),
             documents = observation.TopologyDocuments.Select(Hash).ToArray(),
             authority = observation.AuthorityCoordinates,
+            receiver = observation.ReceiverSurface,
         }));
         return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile));
     }
@@ -53,6 +55,11 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
             throw new RouteCatalogUnavailableException("Observed authority coordinates disagree with the effective state store.", RouteCatalogRefusalReason.Configuration);
         RouteCatalogHostIdentity identity = Identity(actual);
         RouteCatalogEnvelope envelope = RouteCatalogCodec.Decode(activation.CanonicalCatalog, activation.RootDigest);
+        if (envelope.SchemaVersion == 3 && (actual.Operations is null
+            || !actual.Operations.Select(o => o.RouteId).Order(StringComparer.Ordinal).SequenceEqual(actual.Declarations.Select(d => d.RouteId).Order(StringComparer.Ordinal), StringComparer.Ordinal)
+            || actual.Operations.Any(o => o.Digest != RouteCatalogCodec.ComputeOperationContractDigest(o)
+                || !envelope.Operations!.Any(candidate => candidate.RouteId == o.RouteId && candidate.Digest == o.Digest))))
+            throw new RouteCatalogUnavailableException("The installed owner operation schemas or eligibility differ from the proposed generation.", RouteCatalogRefusalReason.Inventory);
         if (actual.TopologyDocuments.Count < 2) throw new RouteCatalogUnavailableException("Loaded component and ACL inputs are required.", RouteCatalogRefusalReason.Configuration);
         try
         {
@@ -61,7 +68,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 || !metadata.TryGetProperty("name", out var name) || name.GetString() != coordinates.StateStore)
                 throw new RouteCatalogUnavailableException("Loaded authority component disagrees with the selected state store.", RouteCatalogRefusalReason.Topology);
             RouteCatalogTopologyValidator.ValidateDevelopment(actual.TopologyDocuments[0], actual.TopologyDocuments[1], envelope,
-                activation.RequiredHosts, actual.AppId, activation.AuxiliaryOperations);
+                activation.RequiredHosts, actual.AppId, activation.AuxiliaryOperations, actual.ReceiverSurface);
         }
         catch (RouteCatalogValidationException)
         {

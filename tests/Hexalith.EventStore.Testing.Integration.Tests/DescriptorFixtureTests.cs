@@ -31,7 +31,25 @@ public sealed class DescriptorFixtureTests
         await using var domain = new DescriptorDomainFixture();
         await domain.InitializeAsync();
         domain.AppEndpoint.ShouldBe("http://127.0.0.1:18080");
-        domain.DaprHttpEndpoint.ShouldBe("http://127.0.0.1:18080");
+        domain.DaprHttpEndpoint.ShouldBe("http://127.0.0.1:18081");
+    }
+
+    [Fact]
+    public async Task OneResourceWithTwoEndpoints_BindsExactClientsAndRejectsAmbiguousLookup()
+    {
+        using var handoff = new DescriptorHandoffScope();
+        await using var fixture = new DescriptorDomainFixture();
+        await fixture.InitializeAsync();
+        fixture.DomainClient.BaseAddress.ShouldBe(new Uri("http://127.0.0.1:18080"));
+        fixture.SidecarClient.BaseAddress.ShouldBe(new Uri("http://127.0.0.1:18081"));
+        fixture.DomainClient.ShouldNotBeSameAs(fixture.SidecarClient);
+        fixture.DomainClient.DefaultRequestHeaders.Authorization.ShouldNotBeNull();
+        fixture.SidecarClient.DefaultRequestHeaders.Authorization.ShouldBeNull();
+        Should.Throw<InvalidOperationException>(() => fixture.AmbiguousClient);
+        Should.Throw<InvalidOperationException>(() => fixture.ExactClient("eventstore", "other-module", "http"));
+        Should.Throw<InvalidOperationException>(() => fixture.ExactClient("eventstore", "Hexalith.EventStore", "HTTP"));
+        await fixture.DisposeAsync();
+        Should.Throw<ObjectDisposedException>(() => fixture.DomainClient);
     }
 
     [Theory]

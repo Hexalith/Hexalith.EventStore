@@ -70,6 +70,9 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
             string domain = Read(metadata.ContractType, "Domain");
             string discriminator = Read(metadata.ContractType, metadata.Kind == "command" ? "CommandType" : "QueryType");
             var selected = lease.Snapshot.Resolve(metadata.Kind, tenant, domain, discriminator);
+            if (lease.Snapshot.Envelope.SchemaVersion == 3
+                && !Authentication.RouteCatalogSurfacePolicy.Allows(lease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId), context.User))
+                throw new RouteCatalogUnavailableException("The authenticated generated-ingress surface cannot invoke this operation.");
             RouteContractDeclaration[] compiled = [.. CompiledDeclarations.GetOrAdd(metadata.ContractType.Assembly, static assembly => CompiledRouteCatalogDeclarations.Read([assembly]))
                 .Where(d => d.Kind == metadata.Kind && d.Domain == domain && CommandDiscriminatorCompatibility.Matches(d, discriminator))];
             if (compiled.Length != 1 || RouteCatalogCodec.ComputeDeclarationDigest(compiled[0]) != selected.Target.DeclarationDigest)

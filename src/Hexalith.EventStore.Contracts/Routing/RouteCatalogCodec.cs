@@ -174,8 +174,23 @@ public static class RouteCatalogCodec
         return ComputeIdempotencyEntryDigest(entry with { Generation = 1 });
     }
 
+    /// <summary>Hashes owner operation identity, serialized shapes, ingress and eligibility independently of routing.</summary>
+    public static string ComputeOperationContractDigest(RouteOperationContract operation)
+    {
+        RouteCatalogValidator.ValidateOperationContract(operation);
+        return Hash(new { purpose = "operation-contract", schemaVersion = 3, operation = new
+        {
+            operation.RouteId, operation.ContractVersion, operation.Kind, operation.Domain, operation.MessageType, operation.Ingress, operation.Eligibility,
+            operation.RequestSchema, operation.ResultSchema,
+        } });
+    }
+
     /// <summary>Computes the complete routing facet preimage.</summary>
-    internal static string ComputeRouteFacetDigest(RouteCatalogEnvelope envelope) => Hash(new
+    internal static string ComputeRouteFacetDigest(RouteCatalogEnvelope envelope) => envelope.SchemaVersion == 3 ? Hash(new
+    {
+        purpose = "route-facet", envelope.SchemaVersion, envelope.Generation,
+        Normalize(envelope).Declarations, Normalize(envelope).Routes, Normalize(envelope).Operations,
+    }) : Hash(new
     {
         purpose = "route-facet",
         envelope.SchemaVersion,
@@ -185,7 +200,11 @@ public static class RouteCatalogCodec
     });
 
     /// <summary>Computes the complete idempotency facet preimage.</summary>
-    internal static string ComputeIdempotencyFacetDigest(RouteCatalogEnvelope envelope) => Hash(new
+    internal static string ComputeIdempotencyFacetDigest(RouteCatalogEnvelope envelope) => envelope.SchemaVersion == 3 ? Hash(new
+    {
+        purpose = "idempotency-facet", envelope.SchemaVersion, envelope.Generation,
+        entries = Normalize(envelope).Idempotency, retained = Normalize(envelope).RetainedIdempotency,
+    }) : Hash(new
     {
         purpose = "idempotency-facet",
         envelope.SchemaVersion,
@@ -279,6 +298,9 @@ public static class RouteCatalogCodec
 
     private static RouteCatalogEnvelope Normalize(RouteCatalogEnvelope envelope) => envelope with
     {
+        Operations = envelope.Operations?.OrderBy(o => o.RouteId, StringComparer.Ordinal).ToArray(),
+        RetainedIdempotency = envelope.RetainedIdempotency?.OrderBy(r => r.Entry.RouteId, StringComparer.Ordinal)
+            .ThenBy(r => r.Entry.Generation).ThenBy(r => r.Entry.ContentDigest, StringComparer.Ordinal).ToArray(),
         Declarations = envelope.Declarations.Select(Normalize).OrderBy(d => d.RouteId, StringComparer.Ordinal).ToArray(),
         Routes = envelope.Routes.OrderBy(r => r.RouteId, StringComparer.Ordinal).ToArray(),
         Idempotency = envelope.Idempotency.Select(i => i with

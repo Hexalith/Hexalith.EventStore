@@ -21,6 +21,8 @@ builder.Services.AddHealthChecks()
 builder.Services.AddEventStore();
 builder.Services.AddEventStoreServer(builder.Configuration);
 builder.Services.AddEventStoreDomainQueryRouting();
+if (!string.IsNullOrEmpty(builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:CatalogPath"]))
+    Hexalith.EventStore.Server.Routing.RunScopedRouteCatalogGateway.AddEventStoreRunScopedCatalogGateway(builder.Services, builder.Configuration);
 builder.Services.AddEventStoreSignalR(builder.Configuration);
 
 bool workloadAuthorityEnabled = builder.Configuration.GetValue<bool>("Authentication:WorkloadAuthority:Enabled");
@@ -51,6 +53,9 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
 
 app.UseEventStoreHttpHostSecurity();
 app.UseAuthorization();
+if (!string.IsNullOrEmpty(app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:CatalogPath"]))
+    Hexalith.EventStore.ServiceDefaults.Routing.FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app,
+        Hexalith.EventStore.Server.Routing.RunScopedRouteCatalogGateway.Operation);
 app.UseCloudEvents();
 
 bool declarativeSubscriptions = app.Configuration.GetValue<bool>("Dapr:DeclarativeSubscriptions");

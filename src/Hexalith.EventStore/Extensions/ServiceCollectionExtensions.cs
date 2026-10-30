@@ -454,6 +454,7 @@ public static class EventStoreServiceCollectionExtensions {
             // "MediatR pipeline entry" log — the rejection is logged by AuthorizationBehavior
             // itself, and pipeline entry/exit logs are reserved for requests that passed auth.
             _ = cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
+            _ = cfg.AddOpenBehavior(typeof(RouteCatalogEligibilityBehavior<,>));
             _ = cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
             _ = cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });

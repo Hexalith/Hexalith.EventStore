@@ -19,5 +19,5 @@ public abstract class DaprDomainServiceTestFixtureBase : AspireTopologyFixtureBa
     public string AppEndpoint => Environment.GetEndpoint(DomainService.ResourceId, DomainService.ModuleId, DomainService.EndpointName).AbsoluteUri.TrimEnd('/');
 
     /// <summary>Gets the bounded domain-service client.</summary>
-    public HttpClient DomainClient => Client(DomainService.ResourceId);
+    public HttpClient DomainClient => Client(DomainService.ResourceId, DomainService.ModuleId, DomainService.EndpointName);
 }

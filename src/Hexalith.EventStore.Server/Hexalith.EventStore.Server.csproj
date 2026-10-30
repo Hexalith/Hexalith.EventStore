@@ -9,6 +9,8 @@
     <InternalsVisibleTo Include="Hexalith.EventStore" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Gateway" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.IntegrationTests" />
+    <InternalsVisibleTo Include="Hexalith.Parties.Tests" />
     <InternalsVisibleTo Include="Hexalith.Timesheets.IntegrationTests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing" />

@@ -110,6 +110,13 @@ public static class WorkloadAssertionEvaluator
             new(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, caller),
             new(EventStoreWorkloadAuthenticationDefaults.LegacyCallerClaimType, caller),
         };
+        var surfaces = validated.FindAll(RouteCatalogSurfacePolicy.ClaimType).ToArray();
+        if (surfaces.Length > 0)
+        {
+            if (surfaces.Length != 1 || surfaces[0].Value != "service")
+                return WorkloadAssertionEvaluation.Failure(WorkloadAuthenticationReasons.BindingAmbiguous);
+            claims.Add(new(RouteCatalogSurfacePolicy.ClaimType, "service"));
+        }
         claims.AddRange(operations.Select(static operation =>
             new Claim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType, operation)));
         claims.AddRange(bindings.Select(static binding => new Claim(binding.Key, binding.Value)));

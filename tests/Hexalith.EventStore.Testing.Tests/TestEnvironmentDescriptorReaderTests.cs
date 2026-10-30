@@ -155,6 +155,31 @@ public sealed class TestEnvironmentDescriptorReaderTests
     }
 
     [Fact]
+    public async Task Disposal_CancelsResponseBodyReadAfterHeadersWithoutCallerToken()
+    {
+        using var file = new DescriptorTestFile();
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        File.WriteAllText(file.Path, File.ReadAllText(file.Path).Replace("18080", port.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
+        using TestEnvironmentDescriptor environment = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
+        using HttpClient client = environment.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(30), authenticated: false);
+        Task<HttpResponseMessage> request = client.GetAsync("/", HttpCompletionOption.ResponseHeadersRead, TestContext.Current.CancellationToken);
+        using TcpClient accepted = await listener.AcceptTcpClientAsync(TestContext.Current.CancellationToken);
+        await accepted.GetStream().WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Length: 4096\r\nConnection: close\r\n\r\nx"), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await request.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        using Stream body = await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
+        byte[] buffer = new byte[1];
+        (await body.ReadAsync(buffer, TestContext.Current.CancellationToken)).ShouldBe(1);
+        Task<int> pending = body.ReadAsync(buffer).AsTask();
+        pending.IsCompleted.ShouldBeFalse();
+        environment.Dispose();
+        Exception? failure = await Record.ExceptionAsync(async () => await pending.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        (failure is IOException or ObjectDisposedException or OperationCanceledException).ShouldBeTrue(
+            "Fixture disposal must end an outstanding streamed body read without a caller-supplied token.");
+    }
+
+    [Fact]
     public async Task AbsoluteRequestOverride_RefusesBeforeSendingCredentialOrRequest()
     {
         using var file = new DescriptorTestFile();

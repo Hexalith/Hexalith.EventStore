@@ -11,6 +11,10 @@ internal sealed class DescriptorHandoffScope : IDisposable
     {
         JsonNode root = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "ready-owner.json")))!;
         JsonNode environment = root["bindings"]!["environment"]!;
+        environment["resources"]![0]!["endpoints"]!.AsArray().Add(new JsonObject
+        {
+            ["name"] = "dapr-http", ["protocol"] = "http", ["uri"] = "http://127.0.0.1:18081",
+        });
         JsonNode sidecar = environment["resources"]![0]!.DeepClone();
         sidecar["resourceId"] = "sidecar";
         environment["resources"]!.AsArray().Add(sidecar);

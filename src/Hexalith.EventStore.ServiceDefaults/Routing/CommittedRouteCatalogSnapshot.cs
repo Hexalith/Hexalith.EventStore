@@ -18,6 +18,13 @@ public sealed class CommittedRouteCatalogSnapshot
         RouteCatalogEnvelope decoded = RouteCatalogCodec.Decode(_bytes, rootDigest);
         _envelope = decoded with
         {
+            Operations = decoded.Operations is null ? null : Array.AsReadOnly(decoded.Operations.Select(o => o with
+            { RequestSchema = o.RequestSchema.Clone(), ResultSchema = o.ResultSchema.Clone() }).ToArray()),
+            RetainedIdempotency = decoded.RetainedIdempotency is null ? null : Array.AsReadOnly(decoded.RetainedIdempotency.Select(r => new RetainedIdempotencyCatalogEntry(r.Entry with
+            {
+                DescriptorSchema = r.Entry.DescriptorSchema with { Fields = Array.AsReadOnly(r.Entry.DescriptorSchema.Fields.ToArray()) },
+                ReaderDigestKeyGenerations = Array.AsReadOnly(r.Entry.ReaderDigestKeyGenerations.ToArray()), KeyMap = Array.AsReadOnly(r.Entry.KeyMap.ToArray()),
+            })).ToArray()),
             Declarations = Array.AsReadOnly(decoded.Declarations.Select(d => d with
             {
                 FallbackTypes = Array.AsReadOnly(d.FallbackTypes.ToArray()),

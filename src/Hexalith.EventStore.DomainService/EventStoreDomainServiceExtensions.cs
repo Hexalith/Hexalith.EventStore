@@ -222,6 +222,9 @@ public static class EventStoreDomainServiceExtensions {
         // Canonical domain-service endpoints invoked by the EventStore gateway.
         _ = app.MapEventStoreDomainService();
 
+        _ = Hexalith.EventStore.ServiceDefaults.Routing.FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app,
+            endpoint => EventStoreDomainServiceRoutes.Operational.SingleOrDefault(route => route.Route == endpoint.RoutePattern.RawText)?.Operation);
+
         // Typed-reminder actor routes (AD-20 R6), wired only when AddEventStoreReminders registered the runtime.
         // MapEventStoreReminders skips the Dapr actor handlers when the host already mapped them; the
         // app-channel token filter is installed by the registration itself.

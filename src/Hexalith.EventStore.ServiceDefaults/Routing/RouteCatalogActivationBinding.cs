@@ -13,7 +13,7 @@ public static class RouteCatalogActivationBinding
     {
         ArgumentNullException.ThrowIfNull(activation);
         RouteCatalogEnvelope envelope = RouteCatalogCodec.Decode(activation.CanonicalCatalog, activation.RootDigest);
-        if (envelope.SchemaVersion != 2 || string.IsNullOrWhiteSpace(activation.AttemptId)
+        if (envelope.SchemaVersion is not (2 or 3) || string.IsNullOrWhiteSpace(activation.AttemptId)
             || string.IsNullOrWhiteSpace(activation.Owner) || activation.RequiredHosts is not { Count: > 0 and <= 256 }
             || activation.RequiredHosts.Any(h => h is null || string.IsNullOrWhiteSpace(h.HostId)
                 || string.IsNullOrWhiteSpace(h.AppId) || !Digest(h.InventoryDigest) || !Digest(h.TopologyDigest)

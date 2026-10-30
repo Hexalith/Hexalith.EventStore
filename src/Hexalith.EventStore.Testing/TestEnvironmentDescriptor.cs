@@ -111,7 +111,7 @@ public sealed class TestEnvironmentDescriptor : IDisposable
             throw new TestEnvironmentDescriptorException("HXT110", "Require an HTTP endpoint, bounded requests and the private runner credential channel.");
         }
 
-        HttpClient client = new(new TestEnvironmentRequestHandler(endpoint, _requests.Token)) { BaseAddress = endpoint, Timeout = timeout };
+        HttpClient client = new(new TestEnvironmentRequestHandler(endpoint, _requests.Token, timeout)) { BaseAddress = endpoint, Timeout = timeout };
         if (authenticated)
         {
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);

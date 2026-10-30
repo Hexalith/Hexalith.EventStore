@@ -12,9 +12,11 @@ namespace Hexalith.EventStore.DomainService;
 public sealed class DeclaredIdempotencyIntentAdapter<TCommand> : IDeclaredIdempotencyIntentAdapter
 {
     private readonly Func<TCommand, IReadOnlyDictionary<string, object?>> _semanticFields;
+    private readonly Func<ReadOnlyMemory<byte>, IReadOnlyDictionary<string, object?>>? _completePayloadFields;
 
     /// <summary>Creates an offline adapter; this does not register it or enable admission.</summary>
-    public DeclaredIdempotencyIntentAdapter(CommandIntentDeclaration declaration, Func<TCommand, IReadOnlyDictionary<string, object?>> semanticFields)
+    public DeclaredIdempotencyIntentAdapter(CommandIntentDeclaration declaration, Func<TCommand, IReadOnlyDictionary<string, object?>> semanticFields,
+        Func<ReadOnlyMemory<byte>, IReadOnlyDictionary<string, object?>>? completePayloadFields = null)
     {
         ArgumentNullException.ThrowIfNull(declaration);
         ArgumentNullException.ThrowIfNull(semanticFields);
@@ -51,6 +53,7 @@ public sealed class DeclaredIdempotencyIntentAdapter<TCommand> : IDeclaredIdempo
         }
         Declaration = declaration;
         _semanticFields = semanticFields;
+        _completePayloadFields = completePayloadFields;
     }
 
     /// <inheritdoc/>
@@ -77,7 +80,7 @@ public sealed class DeclaredIdempotencyIntentAdapter<TCommand> : IDeclaredIdempo
         TCommand payload = JsonSerializer.Deserialize<TCommand>(command.Payload, EventStorePayloadSerialization.Options)
             ?? throw new InvalidOperationException("The command payload is missing.");
         var fields = new SortedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach ((string name, object? value) in _semanticFields(payload))
+        foreach ((string name, object? value) in _completePayloadFields?.Invoke(command.Payload) ?? _semanticFields(payload))
         {
             fields.Add(name, value);
         }
