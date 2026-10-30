@@ -266,16 +266,16 @@ public sealed class PublishedTrustOwnerStateAuthorityTests
         a.Revision.ShouldBe(1);
     }
 
-    /// <summary>Admitted-original reads forward only to the single canonical owner enrolled for that exact scope; foreign, duplicate or absent enrollment returns unknown.</summary>
+    /// <summary>Admitted-original reads forward only to the single canonical owner enrolled for that exact scope; foreign tenant, foreign scope, duplicate or absent enrollment returns unknown.</summary>
     [Theory]
-    [InlineData("exact")][InlineData("foreign-scope")][InlineData("duplicate")][InlineData("absent")]
+    [InlineData("exact")][InlineData("foreign-scope")][InlineData("foreign-tenant")][InlineData("duplicate")][InlineData("absent")]
     public async Task AdmittedOriginalReadForwardsOnlyToExactSingleEnrolledOwner(string vector)
     {
         PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create();
         string scope = DeletionConsumptionActor.GetOwnerScope("tenant-a");
         var transition = new AnchoredStateTransition(scope, 0, 1, new string('A', 64), Convert.ToHexString(SHA256.HashData("admitted"u8)), "admitted"u8.ToArray());
         var owner = Substitute.For<IDeletionConsumptionOwnerStateAuthority>();
-        owner.TenantId.Returns("tenant-a");
+        owner.TenantId.Returns(vector == "foreign-tenant" ? "tenant-b" : "tenant-a");
         owner.ScopeId.Returns(scope);
         owner.ReadAdmittedOriginalAsync(scope, Arg.Any<CancellationToken>()).Returns(transition);
         IReadOnlyList<IDeletionConsumptionOwnerStateAuthority> owners = vector switch
@@ -292,6 +292,35 @@ public sealed class PublishedTrustOwnerStateAuthorityTests
         {
             original.ShouldBeNull();
             await owner.DidNotReceiveWithAnyArgs().ReadAdmittedOriginalAsync(default!, default);
+        }
+    }
+
+    /// <summary>Current-original reads forward only to the single canonical owner enrolled for that exact scope; foreign tenant, foreign scope, duplicate or absent enrollment returns unknown.</summary>
+    [Theory]
+    [InlineData("exact")][InlineData("foreign-scope")][InlineData("foreign-tenant")][InlineData("duplicate")][InlineData("absent")]
+    public async Task CurrentOriginalReadForwardsOnlyToExactSingleEnrolledOwner(string vector)
+    {
+        PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create();
+        string scope = DeletionConsumptionActor.GetOwnerScope("tenant-a");
+        var transition = new AnchoredStateTransition(scope, 1, 2, new string('B', 64), Convert.ToHexString(SHA256.HashData("current"u8)), "current"u8.ToArray());
+        var owner = Substitute.For<IDeletionConsumptionOwnerStateAuthority>();
+        owner.TenantId.Returns(vector == "foreign-tenant" ? "tenant-b" : "tenant-a");
+        owner.ScopeId.Returns(scope);
+        owner.ReadCurrentOriginalAsync(scope, Arg.Any<CancellationToken>()).Returns(transition);
+        IReadOnlyList<IDeletionConsumptionOwnerStateAuthority> owners = vector switch
+        {
+            "duplicate" => [owner, owner],
+            "absent" => [],
+            _ => [owner],
+        };
+        var authority = new PublishedTrustDeletionConsumptionAuthority([world.Trust], world.Guard, null, null, owners);
+        string requested = vector == "foreign-scope" ? DeletionConsumptionActor.GetOwnerScope("tenant-b") : scope;
+        var original = await authority.ReadCurrentOriginalAsync(requested, TestContext.Current.CancellationToken);
+        if (vector == "exact") { original.ShouldBeSameAs(transition); }
+        else
+        {
+            original.ShouldBeNull();
+            await owner.DidNotReceiveWithAnyArgs().ReadCurrentOriginalAsync(default!, default);
         }
     }
 

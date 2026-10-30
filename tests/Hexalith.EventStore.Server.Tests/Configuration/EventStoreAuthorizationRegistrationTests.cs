@@ -275,6 +275,7 @@ public class EventStoreAuthorizationRegistrationTests {
         // reserved for authorized requests.
         behaviorOrder.ShouldBe([
             typeof(AuthorizationBehavior<,>),
+            typeof(RouteCatalogEligibilityBehavior<,>),
             typeof(LoggingBehavior<,>),
             typeof(ValidationBehavior<,>),
         ]);

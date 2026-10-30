@@ -188,6 +188,7 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40)); var token = timeout.Token;
         await using var env = await LifecycleQualificationEnvironment.CreateAsync(fixture.Store, "tenant-exact-target-race", token);
         var write = await env.Reservations.ProtectEventAsync(Plain(), ["/secret"], Context(env), token);
+        await env.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.NotPersisted, token);
         env.Backend.CurrentVersion = env.Backend.NewVersion;
         env.Backend.Unwrapping = (_, _) => { env.Backend.CurrentVersion = env.Backend.OldVersion; return ValueTask.CompletedTask; };
         var rotation = new PayloadKeyRotationCoordinator(fixture.Store, env.Roots, env.Leases, env.Backend, new(), _ => true, "qualification-actor");

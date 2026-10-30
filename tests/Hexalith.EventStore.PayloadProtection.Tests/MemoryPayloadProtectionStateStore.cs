@@ -13,6 +13,8 @@ internal sealed class MemoryPayloadProtectionStateStore(TimeProvider? timeProvid
     internal Action? BeforeCommit { get; set; }
     /// <summary>Gets or sets an ambiguous acknowledgement fault after atomic persistence.</summary>
     internal bool LoseNextAcknowledgement { get; set; }
+    /// <summary>Gets or sets a one-shot result returned before submitting any fixture mutation.</summary>
+    internal PayloadStateCommitResult? NextCommitResult { get; set; }
     /// <summary>Gets the number of atomic requests.</summary>
     internal int Commits { get; private set; }
     /// <summary>Gets the committed constructive audit records for fault/no-leak assertions.</summary>
@@ -49,6 +51,7 @@ internal sealed class MemoryPayloadProtectionStateStore(TimeProvider? timeProvid
         {
             Expire();
             Commits++;
+            if (NextCommitResult is { } forced) { NextCommitResult = null; return ValueTask.FromResult(forced); }
             mutations.Select(m => m.Key).Distinct(StringComparer.Ordinal).Count().ShouldBe(mutations.Count);
             foreach (PayloadProtectionStateMutation mutation in mutations)
             {

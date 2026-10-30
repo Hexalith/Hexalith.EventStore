@@ -282,7 +282,14 @@ A selected or inherited reference cannot be retired by an older operation. There
 TTL or background deletion of selected evidence. Include identity inventories, nodes, message indexes,
 checkpoints and retained batch metadata in the same ordered backup/restore and retention policy.
 
-Upgrade every reader, writer and maintenance process before allowing paged checkpoints to be written.
+The new rebuild dispatcher writes paged identity evidence for every owner a
+rebuild captures, except when resuming a retained legacy inline manifest. There
+is no separate paged-write switch. During a rolling upgrade, use host-owned
+controls to stop shared-rebuild submitters and retry/resume workers, then await
+completion of all in-flight rebuild calls. Keep submission and those workers
+stopped throughout the rollout. Restart submission and workers, and start or
+resume shared rebuilds, only after every reader, writer and maintenance process
+runs a version that supports paged checkpoints.
 New readers continue decoding legacy inline `CapturedEventDigests`; the existing four-argument
 `SharedProjectionCheckpoint` constructor and legacy coordinator methods remain callable. Legacy seed
 retries preserve existing paged proof; extending it uses `SeedCapturedOwnerIdentityAsync`. Rebuild retries

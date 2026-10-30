@@ -27,7 +27,7 @@ namespace Hexalith.EventStore.ServiceDefaults.Tests;
 public sealed partial class HttpHostSecurityTests
 {
     private const string Channel = "story-514-real-channel-token";
-    private const string SigningKey = "story-514-test-signing-key-at-least-32-bytes";
+    private const string SigningKey = "__HEXALITH_TEST_SIGNING_KEY_PLACEHOLDER__";
 
     /// <summary>Verifies framework Delivery Requires Actual Channel Token In Development.</summary>
     [Theory]
@@ -236,8 +236,15 @@ public sealed partial class HttpHostSecurityTests
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Configuration[DaprAppChannelToken.ConfigurationKey] = Channel;
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
-            JwtBearerAuthenticationContract.Configure(options, new JwtBearerAuthenticationOptions
-            { Issuer = "story514", Audience = "story514", SigningKey = SigningKey }));
+        {
+            var authenticationOptions = new JwtBearerAuthenticationOptions
+            {
+                Issuer = "story514",
+                Audience = "story514",
+                SigningKey = SigningKey,
+            };
+            JwtBearerAuthenticationContract.Configure(options, authenticationOptions);
+        });
         builder.Services.AddEventStoreHttpHostSecurity();
         configure?.Invoke(builder.Services);
         WebApplication app = builder.Build();

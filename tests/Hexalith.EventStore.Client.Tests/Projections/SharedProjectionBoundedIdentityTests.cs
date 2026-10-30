@@ -500,6 +500,196 @@ public sealed partial class SharedProjectionBoundedIdentityTests
         (await store.GetAsync<SharedProjectionCapturedIdentityInventory>(s_scope.StoreName, inventory)).Value!.Retired.ShouldBeTrue();
     }
 
+    /// <summary>Refuses older-receipt acknowledgement beyond a retained prefix without changing selected state.</summary>
+    /// <param name="inlineProof">Whether the retained prefix uses the legacy inline representation.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeliveryBeyondRetainedProofCannotUseAnOlderReceipt(bool inlineProof)
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = await BeginAsync(store, "prefix", 1);
+        var reference = await CaptureAsync(coordinator, "prefix", 1);
+        await PromoteAsync(coordinator, "prefix", 1, reference);
+        if (inlineProof)
+        {
+            var checkpoint = (await coordinator.GetCheckpointAsync(s_scope, "owner-a"))!;
+            store.SeedRaw(s_scope.StoreName, s_scope.CheckpointKey("owner-a"), checkpoint with
+            { CapturedIdentityReference = null, CapturedEventDigests = Digest(1) });
+        }
+        var lease = await coordinator.RefreshLeaseAsync(s_scope, "writer");
+        (await coordinator.JournalAsync(s_scope, lease, Delivery(2))).ShouldBe(SharedProjectionJournalResult.Journaled);
+        _ = await coordinator.CatchUpAsync(s_scope, Fold);
+        (await store.GetAsync<SharedProjectionDeliveryReceipt>(s_scope.StoreName,
+            s_scope.ReceiptKey(reference.Epoch, "owner-a", 4))).Value.ShouldNotBeNull();
+        _ = await coordinator.BeginAsync(s_scope, "legacy-rebuild", "legacy-inventory", new Dictionary<string, long> { ["owner-a"] = 4 });
+        await coordinator.StageAsync(s_scope, "legacy-rebuild", [ReadModelBatchOperation.Write("view", new JsonObject { ["count"] = 2 }, ReadModelBatchConcurrency.LastWrite)]);
+        await coordinator.CommitAsync(s_scope, "legacy-rebuild");
+        _ = await coordinator.CatchUpAsync(s_scope, Fold);
+        lease = await coordinator.RefreshLeaseAsync(s_scope, "writer");
+        long selected = (await coordinator.GetStatusAsync(s_scope)).ActiveGeneration;
+        byte[] beforeState = store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey)!;
+        byte[] beforeCheckpoint = store.SnapshotRaw(s_scope.StoreName, s_scope.CheckpointKey("owner-a"))!;
+        byte[] beforeView = store.SnapshotRaw(s_scope.StoreName, s_scope.PhysicalKey(selected, "view"))!;
+        int entries = store.Count;
+
+        (await coordinator.JournalAsync(s_scope, lease, Delivery(2))).ShouldBe(SharedProjectionJournalResult.RebuildRequired);
+
+        store.Count.ShouldBe(entries);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey).ShouldBe(beforeState);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.CheckpointKey("owner-a")).ShouldBe(beforeCheckpoint);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.PhysicalKey(selected, "view")).ShouldBe(beforeView);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.ReceiptKey(selected, "owner-a", 4)).ShouldBeNull();
+    }
+
+    /// <summary>Rejects out-of-range inline sequences before arithmetic can alias a retained digest.</summary>
+    /// <param name="sequence">The sequence outside the persisted one-event prefix.</param>
+    [Theory]
+    [InlineData(long.MinValue)]
+    [InlineData(-1L)]
+    [InlineData(0L)]
+    [InlineData(2L)]
+    // The old unchecked offset multiplication wrapped this sequence back to digest 1.
+    [InlineData((1L << 59) + 1)]
+    [InlineData(long.MaxValue)]
+    public async Task InlineDigestSequenceAdmissionPrecedesOffsetArithmetic(long sequence)
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        string key = s_scope.CheckpointKey("owner-a");
+        store.SeedRaw(s_scope.StoreName, key, new SharedProjectionCheckpoint(2, [1], 1, Digest(1)));
+        var checkpoint = (await store.GetAsync<SharedProjectionCheckpoint>(s_scope.StoreName, key)).Value!;
+        byte[] before = store.SnapshotRaw(s_scope.StoreName, key)!;
+
+        (await coordinator.CapturedIdentities.ReadDigestAsync(s_scope, "owner-a", checkpoint, sequence, TestContext.Current.CancellationToken)).ShouldBeNull();
+
+        store.SnapshotRaw(s_scope.StoreName, key).ShouldBe(before);
+        (await coordinator.CapturedIdentities.ReadDigestAsync(s_scope, "owner-a", checkpoint, 1, TestContext.Current.CancellationToken)).ShouldBe(Digest(1));
+    }
+
+    /// <summary>Preserves selected checkpoints, identity evidence and the epoch when direct retirement is refused.</summary>
+    [Fact]
+    public async Task SelectedOwnerProofCannotBeRetiredBeforeAnotherEpoch()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = await BeginAsync(store, "selected", 65);
+        var reference = await CaptureAsync(coordinator, "selected", 65);
+        await PromoteAsync(coordinator, "selected", 65, reference);
+        string[] keys = [s_scope.StateKey, s_scope.CheckpointKey("owner-a"),
+            SharedProjectionCapturedIdentityStore.InventoryKey(reference),
+            SharedProjectionCapturedIdentityStore.NodeKey(reference, reference.RootDigest)];
+        byte[][] before = keys.Select(key => store.SnapshotRaw(s_scope.StoreName, key)!).ToArray();
+        int entries = store.Count;
+
+        await Should.ThrowAsync<InvalidOperationException>(() => coordinator.CapturedIdentities.RetireAsync(s_scope, reference));
+
+        store.Count.ShouldBe(entries);
+        for (int index = 0; index < keys.Length; index++) store.SnapshotRaw(s_scope.StoreName, keys[index]).ShouldBe(before[index]);
+        await coordinator.CapturedIdentities.ValidateCompleteAsync(s_scope, reference);
+        (await coordinator.GetStatusAsync(s_scope)).ActiveGeneration.ShouldBe(reference.Epoch);
+    }
+
+    /// <summary>Refuses sealed evidence contradicting a pending delivery while retaining selected state.</summary>
+    [Fact]
+    public async Task ContradictoryPendingDeliveryCannotPromoteSealedOwnerEvidence()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = await BeginAsync(store, "selected", 65);
+        var first = await CaptureAsync(coordinator, "selected", 65);
+        await PromoteAsync(coordinator, "selected", 65, first);
+        var lease = await coordinator.RefreshLeaseAsync(s_scope, "writer");
+        (await coordinator.JournalAsync(s_scope, lease, Delivery(66))).ShouldBe(SharedProjectionJournalResult.Journaled);
+        _ = await coordinator.BeginAsync(s_scope, "pending", "pending-inventory", new Dictionary<string, long> { ["owner-a"] = 134 }, allowCoveredJournal: true);
+        var candidate = await CaptureAsync(coordinator, "pending", 67, changed: 66);
+        (await coordinator.CanPromoteCapturedOwnerIdentityAsync(s_scope, "pending", "owner-a", 67, candidate)).ShouldBeTrue();
+        byte[] beforeState = store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey)!;
+        byte[] beforeCheckpoint = store.SnapshotRaw(s_scope.StoreName, s_scope.CheckpointKey("owner-a"))!;
+        byte[] beforeView = store.SnapshotRaw(s_scope.StoreName, s_scope.PhysicalKey(first.Epoch, "view"))!;
+
+        (await coordinator.CanPromoteCapturedJournalOwnerIdentityAsync(s_scope, "pending", "owner-a", 67, candidate)).ShouldBeFalse();
+
+        store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey).ShouldBe(beforeState);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.CheckpointKey("owner-a")).ShouldBe(beforeCheckpoint);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.PhysicalKey(first.Epoch, "view")).ShouldBe(beforeView);
+        (await coordinator.GetStatusAsync(s_scope)).ActiveGeneration.ShouldBe(first.Epoch);
+    }
+
+    /// <summary>Refuses a changed ordinary-tail position even when every retained prefix identity matches.</summary>
+    [Fact]
+    public async Task ChangedOrdinaryTailPositionFailsDespiteMatchingRetainedPrefix()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = await BeginAsync(store, "selected", 65);
+        var first = await CaptureAsync(coordinator, "selected", 65);
+        await PromoteAsync(coordinator, "selected", 65, first);
+        var lease = await coordinator.RefreshLeaseAsync(s_scope, "writer");
+        (await coordinator.JournalAsync(s_scope, lease, Delivery(66))).ShouldBe(SharedProjectionJournalResult.Journaled);
+        _ = await coordinator.CatchUpAsync(s_scope, Fold);
+        var checkpoint = (await coordinator.GetCheckpointAsync(s_scope, "owner-a"))!;
+        _ = await coordinator.BeginAsync(s_scope, "changed-tail", "tail-inventory", new Dictionary<string, long> { ["owner-a"] = 134 });
+        var reserved = await coordinator.CapturedIdentities.BeginAsync(s_scope, "changed-tail", "owner-a", 67);
+        await AppendAsync(coordinator, "changed-tail", reserved, 1, 64);
+        long[] positions = [130, 133, 134];
+        await coordinator.CapturedIdentities.AppendAsync(s_scope, "changed-tail", reserved, 65, positions,
+            positions.SelectMany((position, index) => SharedProjectionCapturedEventIdentity.Compute("owner-a", position, index + 65, [7])).ToArray(),
+            Enumerable.Repeat(string.Empty, 3).ToArray());
+        var candidate = await coordinator.CapturedIdentities.SealAsync(s_scope, "changed-tail", reserved);
+        (await coordinator.CapturedIdentities.MatchesPrefixAsync(s_scope, candidate, checkpoint)).ShouldBeTrue();
+        (await coordinator.CanPromoteCapturedOwnerAsync(s_scope, "changed-tail", "owner-a", 67)).ShouldBeTrue();
+        byte[] beforeState = store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey)!;
+        byte[] beforeCheckpoint = store.SnapshotRaw(s_scope.StoreName, s_scope.CheckpointKey("owner-a"))!;
+        byte[] beforeView = store.SnapshotRaw(s_scope.StoreName, s_scope.PhysicalKey(first.Epoch, "view"))!;
+
+        (await coordinator.CanPromoteCapturedOwnerIdentityAsync(s_scope, "changed-tail", "owner-a", 67, candidate)).ShouldBeFalse();
+
+        store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey).ShouldBe(beforeState);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.CheckpointKey("owner-a")).ShouldBe(beforeCheckpoint);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.PhysicalKey(first.Epoch, "view")).ShouldBe(beforeView);
+        (await coordinator.GetStatusAsync(s_scope)).ActiveGeneration.ShouldBe(first.Epoch);
+    }
+
+    /// <summary>Rejects an inline vector aliased by overflow through public legacy coordinator calls.</summary>
+    /// <param name="sequence">The pending owner sequence admitted through ordinary delivery.</param>
+    [Theory]
+    [InlineData(1L)]
+    [InlineData((1L << 59) + 1)]
+    public async Task LegacyJournalPromotionCannotAliasOneDigestAtOverflowingOwnerCount(long sequence)
+    {
+        const long aliasingCount = (1L << 59) + 1;
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "writer");
+        if (sequence > 1)
+        {
+            // The public legacy seed still admits a sequence watermark without inline proof.
+            _ = await coordinator.BeginAsync(s_scope, "legacy-watermark", "legacy-inventory",
+                new Dictionary<string, long> { ["owner-a"] = 2 });
+            await coordinator.StageAsync(s_scope, "legacy-watermark",
+                [ReadModelBatchOperation.Write("view", new JsonObject { ["count"] = sequence - 1 }, ReadModelBatchConcurrency.LastWrite)]);
+            await coordinator.CommitAsync(s_scope, "legacy-watermark");
+            await coordinator.SeedCapturedOwnerSequenceAsync(s_scope, "legacy-watermark", "owner-a", sequence - 1);
+            _ = await coordinator.CatchUpAsync(s_scope, Fold);
+        }
+        var delivery = new SharedProjectionDelivery("owner-a", 4, [7], JsonSerializer.SerializeToUtf8Bytes(4L), OwnerSequenceNumber: sequence);
+        (await coordinator.JournalAsync(s_scope, await coordinator.RefreshLeaseAsync(s_scope, "writer"), delivery))
+            .ShouldBe(SharedProjectionJournalResult.Journaled);
+        _ = await coordinator.BeginAsync(s_scope, "legacy-pending", "pending-inventory",
+            new Dictionary<string, long> { ["owner-a"] = 4 }, allowCoveredJournal: true);
+        byte[] digest = SharedProjectionCapturedEventIdentity.Compute("owner-a", 4, sequence, delivery.CanonicalPayload);
+        byte[] before = store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey)!;
+
+        (await coordinator.CanPromoteCapturedJournalOwnerAsync(s_scope, "legacy-pending", "owner-a", aliasingCount, digest)).ShouldBeFalse();
+
+        store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey).ShouldBe(before);
+        if (sequence == 1)
+        {
+            (await coordinator.CanPromoteCapturedJournalOwnerAsync(s_scope, "legacy-pending", "owner-a", 1, digest)).ShouldBeTrue();
+            (await coordinator.CanPromoteCapturedJournalOwnerAsync(s_scope, "legacy-pending", "owner-a", 1, [.. digest, 0])).ShouldBeFalse();
+        }
+        // Owners without pending deliveries retain the legacy no-proof behavior.
+        (await coordinator.CanPromoteCapturedJournalOwnerAsync(s_scope, "legacy-pending", "owner-b", 1, null)).ShouldBeTrue();
+    }
+
     private static async Task<SharedProjectionEpochCoordinator> BeginAsync(InMemoryReadModelStore store, string operation, int count)
     {
         var coordinator = new SharedProjectionEpochCoordinator(store, store);

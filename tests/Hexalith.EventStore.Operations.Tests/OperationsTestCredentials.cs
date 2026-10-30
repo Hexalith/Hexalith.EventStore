@@ -23,13 +23,14 @@ internal static class OperationsTestCredentials
     internal static void Configure(IWebHostBuilder builder) => builder.ConfigureAppConfiguration((context, configuration) =>
     {
         bool production = context.HostingEnvironment.IsProduction();
+        string? configuredJwtMaterial = production ? null : SigningKey;
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             [DaprAppChannelToken.ConfigurationKey] = production ? "sidecar-secret" : Channel,
             ["Authentication:JwtBearer:Authority"] = production ? "https://operations-test.example.test" : null,
             ["Authentication:JwtBearer:Issuer"] = production ? "https://operations-test.example.test" : "operations-tests",
             ["Authentication:JwtBearer:Audience"] = "operations-tests",
-            ["Authentication:JwtBearer:SigningKey"] = production ? null : SigningKey,
+            ["Authentication:JwtBearer:SigningKey"] = configuredJwtMaterial,
             ["Authentication:JwtBearer:AllowedAlgorithms:0"] = production ? SecurityAlgorithms.RsaSha256 : SecurityAlgorithms.HmacSha256,
         });
     });

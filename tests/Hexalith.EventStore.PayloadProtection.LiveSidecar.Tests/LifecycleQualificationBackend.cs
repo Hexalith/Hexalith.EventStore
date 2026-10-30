@@ -42,15 +42,18 @@ internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, 
     /// <inheritdoc/>
     internal override ValueTask<PayloadBackendResult> WrapExactAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> dek, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested(); WrapCount++;
-        providerKeyVersionId = WrapVersionOverride ?? providerKeyVersionId;
-        if (_outcomes.Count >= 1024) { throw new InvalidOperationException("Test backend capacity exceeded."); }
-        byte[] wrapped = new byte[60]; RandomNumberGenerator.Fill(wrapped.AsSpan(0, 12));
-        using (var aes = new AesGcm(_keys[providerKeyVersionId], 16)) { aes.Encrypt(wrapped.AsSpan(0, 12), dek.Span, wrapped.AsSpan(28), wrapped.AsSpan(12, 16)); }
-        _outcomes.Add(operationId, (providerKeyVersionId, wrapped.ToArray()));
-        if (AmbiguousNextWrap) { AmbiguousNextWrap = false; CryptographicOperations.ZeroMemory(wrapped); return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Ambiguous)); }
-        Outputs.Add(wrapped);
-        return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, wrapped, providerKeyVersionId));
+        lock (_outcomes)
+        {
+            cancellationToken.ThrowIfCancellationRequested(); WrapCount++;
+            providerKeyVersionId = WrapVersionOverride ?? providerKeyVersionId;
+            if (_outcomes.Count >= 1024) { throw new InvalidOperationException("Test backend capacity exceeded."); }
+            byte[] wrapped = new byte[60]; RandomNumberGenerator.Fill(wrapped.AsSpan(0, 12));
+            using (var aes = new AesGcm(_keys[providerKeyVersionId], 16)) { aes.Encrypt(wrapped.AsSpan(0, 12), dek.Span, wrapped.AsSpan(28), wrapped.AsSpan(12, 16)); }
+            _outcomes.Add(operationId, (providerKeyVersionId, wrapped.ToArray()));
+            if (AmbiguousNextWrap) { AmbiguousNextWrap = false; CryptographicOperations.ZeroMemory(wrapped); return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Ambiguous)); }
+            Outputs.Add(wrapped);
+            return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, wrapped, providerKeyVersionId));
+        }
     }
     /// <inheritdoc/>
     internal override async ValueTask<PayloadBackendResult> UnwrapAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> wrappedDek, CancellationToken cancellationToken)

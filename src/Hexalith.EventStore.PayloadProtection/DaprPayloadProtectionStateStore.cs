@@ -54,6 +54,7 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (PayloadProtectionFormatException) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ConsistencyMismatch); }
+        catch (PayloadProtectionStateException) { throw; }
         catch (Exception exception)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -66,8 +67,8 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
     internal async ValueTask<PayloadStateCommitResult> CommitQualifiedAsync(IReadOnlyList<PayloadProtectionStateMutation> mutations, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (mutations.Count is 0 or > PayloadProtectionOperationalLimits.TransactionOperations ||
-            mutations.Sum(m => (long)PayloadProtectionOperationalLimits.Charge(m)) + 1024 > PayloadProtectionOperationalLimits.TransactionBytes || mutations.Select(m => m.Key).Distinct(StringComparer.Ordinal).Count() != mutations.Count)
+        PayloadProtectionOperationalLimits.RequireTransactionCapacity(mutations);
+        if (mutations.Count == 0 || mutations.Select(m => m.Key).Distinct(StringComparer.Ordinal).Count() != mutations.Count)
         {
             throw new PayloadProtectionFormatException();
         }

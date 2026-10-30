@@ -225,7 +225,6 @@ internal sealed class KeyReservationCoordinator
                 mutations.Add(PayloadProtectionStateMutation.Put(claim.Value with { Status = "Pending", ReasonCode = reason,
                     NotBeforeUtc = outcome == PayloadProtectionPersistenceOutcome.Unknown ? Now()
                         : PayloadProtectionStateCodec.Timestamp(PayloadProtectionStateCodec.ParseTimestamp(key.Value.CreatedAtUtc).AddHours(24)), UpdatedAtUtc = Now() }, claim.ETag));
-                mutations.Add(PayloadProtectionStateMutation.Compare(work.Head));
                 mutations.Add(PayloadProtectionStateMutation.Put(Audit(completion.Identity, completion.OperationId, "Activate", "Reserved", "Reserved",
                     completion.LifecycleEpoch, key.Value.FenceApprovalEpoch, outcome == PayloadProtectionPersistenceOutcome.Unknown ? "Pending" : "Failed", reason, key.Value, 1, Elapsed(completionStarted))));
             }
@@ -276,10 +275,29 @@ internal sealed class KeyReservationCoordinator
             string now = Now();
             var operation = new OperationV1(operationId, "Create", scope, material.KeyReference, material.DekVersion, "Started", 1, now, now, "Pending", "none");
             var reconcile = new ReconciliationV1(operationId, scope, material.KeyReference, material.DekVersion, "Create", PayloadProtectionStateCodec.Timestamp(_clock.GetUtcNow().AddSeconds(90)), 0, "Pending", "none", now);
-            WorkCatalogSnapshot work = await _catalogs.ReadWorkAsync(_roots.Require(context.Identity), cancellationToken).ConfigureAwait(false);
-            RequireCommit(await _store.CommitAsync([.. authority.Conditions, PayloadProtectionStateMutation.Compare(authority.Lifecycle),
-                PayloadProtectionStateMutation.Compare(authority.Fence), PayloadProtectionStateMutation.Put(operation), PayloadProtectionStateMutation.Put(reconcile),
-                .. _catalogs.AddWork(work, new(operationId, scope))], cancellationToken).ConfigureAwait(false));
+            for (int attempt = 0; ; attempt++)
+            {
+                authority = await AuthorityAsync(context.Identity, cancellationToken).ConfigureAwait(false);
+                WorkCatalogSnapshot work = await _catalogs.ReadWorkAsync(_roots.Require(context.Identity), cancellationToken).ConfigureAwait(false);
+                PayloadStateCommitResult result = await _store.CommitAsync([.. authority.Conditions, PayloadProtectionStateMutation.Compare(authority.Lifecycle),
+                    PayloadProtectionStateMutation.Compare(authority.Fence), PayloadProtectionStateMutation.Put(operation), PayloadProtectionStateMutation.Put(reconcile),
+                    .. _catalogs.AddWork(work, new(operationId, scope))], cancellationToken).ConfigureAwait(false);
+                if (result is PayloadStateCommitResult.Unknown or PayloadStateCommitResult.Conflict)
+                {
+                    PayloadProtectionStateValue<OperationV1>? recorded = await PayloadOperationBudget.ReadAsync<OperationV1>(_store, PayloadProtectionStateKeys.Operation(operationId), cancellationToken).ConfigureAwait(false);
+                    PayloadProtectionStateValue<ReconciliationV1>? retained = await PayloadOperationBudget.ReadAsync<ReconciliationV1>(_store, PayloadProtectionStateKeys.Reconciliation(operationId), cancellationToken).ConfigureAwait(false);
+                    work = await _catalogs.ReadWorkAsync(_roots.Require(context.Identity), cancellationToken).ConfigureAwait(false);
+                    WorkEntryV1? entry = work.Pages.SelectMany(p => p.Value.Entries).SingleOrDefault(e => e.OperationId == operationId);
+                    if (recorded is not null || retained is not null || entry is not null)
+                    {
+                        if (recorded?.Value != operation || retained?.Value != reconcile || entry?.ScopeDigest != scope) { throw Mismatch(); }
+                        break;
+                    }
+                    await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue;
+                }
+                RequireCommit(result);
+                break;
+            }
             intent = operation;
             using PayloadBackendResult response = await _executor.ExecuteAsync(_backend,
                 token => new ValueTask<PayloadBackendResult>(backendWork = _backend.WrapAsync(operationId, material.DataEncryptionKey, token).AsTask()), cancellationToken,
@@ -287,46 +305,61 @@ internal sealed class KeyReservationCoordinator
             if (response.Failure != PayloadBackendFailure.None) { throw BackendFailure(response.Failure); }
             if (response.ProviderKeyVersionId is null) { throw Mismatch(); }
             wrapped = response.TakeBytes();
-            PayloadWriteAuthority refreshed = await AuthorityAsync(context.Identity, cancellationToken).ConfigureAwait(false);
-            if (refreshed.Lifecycle.Value.Epoch != authority.Lifecycle.Value.Epoch
-                || refreshed.Fence.Value.ApprovalEpoch != authority.Fence.Value.ApprovalEpoch
-                || refreshed.Fence.Value.ApprovalId != authority.Fence.Value.ApprovalId
-                || refreshed.Fence.Value.DeploymentGeneration != authority.Fence.Value.DeploymentGeneration
-                || refreshed.Fence.Value.HighestWrittenEpoch < authority.Fence.Value.HighestWrittenEpoch
-                || (authority.Fence.Value.HighestWrittenFormat == "V2" && refreshed.Fence.Value.HighestWrittenFormat != "V2")) { throw Mismatch(); }
-            authority = refreshed;
-            PayloadProtectionStateValue<OperationV1> current = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(operationId), cancellationToken).ConfigureAwait(false);
-            PayloadProtectionStateValue<ReconciliationV1> claim = await RequiredAsync<ReconciliationV1>(PayloadProtectionStateKeys.Reconciliation(operationId), cancellationToken).ConfigureAwait(false);
-            if (current.Value != operation || claim.Value != reconcile) { throw Mismatch(); }
-            FenceV1 fence = authority.Fence.Value;
-            ulong watermark = fence.HighestWrittenFormat == "V2" ? fence.HighestWrittenEpoch : checked(fence.HighestWrittenEpoch + 1);
-            var advancedFence = fence with { HighestWrittenFormat = "V2", HighestWrittenEpoch = watermark, UpdatedAtUtc = Now() };
-            WrappedDekV1 key = PayloadProtectionStateCodec.Seal(new(context.Identity.TenantId, context.Identity.Domain, context.Identity.AggregateId, scope,
-                material.KeyReference, material.DekVersion, "Reserved", _backend.BackendId, response.ProviderKeyVersionId, "RSA-OAEP-256",
-                Base64UrlCodec.Encode(wrapped), authority.Lifecycle.Value.Epoch, fence.ApprovalEpoch, watermark, operationId, now, Now(), new('0', 64), new('0', 64)));
-            ScopeKeyIndexSnapshot scopeIndex = await _indexes.ReadScopeAsync(scope, cancellationToken).ConfigureAwait(false);
-            KekKeyIndexSnapshot inventory = await _indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(_backend.BackendId),
-                PayloadProtectionStateKeys.Digest(response.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false);
-            PayloadStateCommitResult reservationResult = await _store.CommitAsync([.. authority.Conditions, PayloadProtectionStateMutation.Compare(authority.Lifecycle),
-                PayloadProtectionStateMutation.Put(advancedFence, authority.Fence.ETag), PayloadProtectionStateMutation.Put(key),
-                .. _indexes.SetScopeEntry(scopeIndex, new(key.KeyRef, key.DekVersion, inventory.ProviderDigest, "Reserved"), true),
-                .. _indexes.SetInventoryEntry(inventory, new(scope, key.KeyRef, key.DekVersion), true),
-                PayloadProtectionStateMutation.Put(operation with { Phase = "Reserved", Attempt = backendAttempts, UpdatedAtUtc = Now() }, current.ETag),
-                PayloadProtectionStateMutation.Put(reconcile with { UpdatedAtUtc = Now() }, claim.ETag),
-                PayloadProtectionStateMutation.Put(Audit(context.Identity, operationId, "Create", null, "Reserved", key.LifecycleEpoch,
-                    fence.ApprovalEpoch, "Pending", "none", key, backendAttempts, Elapsed(started)))], cancellationToken).ConfigureAwait(false);
-            if (reservationResult == PayloadStateCommitResult.Conflict)
+            WrappedDekV1 key;
+            for (int attempt = 0; ; attempt++)
             {
-                PayloadProtectionStateValue<WrappedDekV1>? collision = await PayloadOperationBudget.ReadAsync<WrappedDekV1>(_store, PayloadProtectionStateCodec.KeyFor(key), cancellationToken).ConfigureAwait(false);
-                if (collision is not null && collision.Value.CreatingOperationId != operationId)
+                PayloadWriteAuthority refreshed = await AuthorityAsync(context.Identity, cancellationToken).ConfigureAwait(false);
+                if (refreshed.Lifecycle.Value.Epoch != authority.Lifecycle.Value.Epoch
+                    || refreshed.Fence.Value.ApprovalEpoch != authority.Fence.Value.ApprovalEpoch
+                    || refreshed.Fence.Value.ApprovalId != authority.Fence.Value.ApprovalId
+                    || refreshed.Fence.Value.DeploymentGeneration != authority.Fence.Value.DeploymentGeneration
+                    || refreshed.Fence.Value.HighestWrittenEpoch < authority.Fence.Value.HighestWrittenEpoch
+                    || (authority.Fence.Value.HighestWrittenFormat == "V2" && refreshed.Fence.Value.HighestWrittenFormat != "V2")) { throw Mismatch(); }
+                authority = refreshed;
+                PayloadProtectionStateValue<OperationV1> current = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(operationId), cancellationToken).ConfigureAwait(false);
+                PayloadProtectionStateValue<ReconciliationV1> claim = await RequiredAsync<ReconciliationV1>(PayloadProtectionStateKeys.Reconciliation(operationId), cancellationToken).ConfigureAwait(false);
+                if (current.Value != operation || claim.Value != reconcile) { throw Mismatch(); }
+                FenceV1 fence = authority.Fence.Value;
+                ulong watermark = fence.HighestWrittenFormat == "V2" ? fence.HighestWrittenEpoch : checked(fence.HighestWrittenEpoch + 1);
+                var advancedFence = fence with { HighestWrittenFormat = "V2", HighestWrittenEpoch = watermark, UpdatedAtUtc = Now() };
+                key = PayloadProtectionStateCodec.Seal(new(context.Identity.TenantId, context.Identity.Domain, context.Identity.AggregateId, scope,
+                    material.KeyReference, material.DekVersion, "Reserved", _backend.BackendId, response.ProviderKeyVersionId, "RSA-OAEP-256",
+                    Base64UrlCodec.Encode(wrapped), authority.Lifecycle.Value.Epoch, fence.ApprovalEpoch, watermark, operationId, now, Now(), new('0', 64), new('0', 64)));
+                ScopeKeyIndexSnapshot scopeIndex = await _indexes.ReadScopeAsync(scope, cancellationToken).ConfigureAwait(false);
+                KekKeyIndexSnapshot inventory = await _indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(_backend.BackendId),
+                    PayloadProtectionStateKeys.Digest(response.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false);
+                PayloadStateCommitResult reservationResult = await _store.CommitAsync([.. authority.Conditions, PayloadProtectionStateMutation.Compare(authority.Lifecycle),
+                    PayloadProtectionStateMutation.Put(advancedFence, authority.Fence.ETag), PayloadProtectionStateMutation.Put(key),
+                    .. _indexes.SetScopeEntry(scopeIndex, new(key.KeyRef, key.DekVersion, inventory.ProviderDigest, "Reserved"), true),
+                    .. _indexes.SetInventoryEntry(inventory, new(scope, key.KeyRef, key.DekVersion), true),
+                    PayloadProtectionStateMutation.Put(operation with { Phase = "Reserved", Attempt = backendAttempts, UpdatedAtUtc = Now() }, current.ETag),
+                    PayloadProtectionStateMutation.Put(reconcile with { UpdatedAtUtc = Now() }, claim.ETag),
+                    PayloadProtectionStateMutation.Put(Audit(context.Identity, operationId, "Create", null, "Reserved", key.LifecycleEpoch,
+                        fence.ApprovalEpoch, "Pending", "none", key, backendAttempts, Elapsed(started)))], cancellationToken).ConfigureAwait(false);
+                if (reservationResult == PayloadStateCommitResult.Conflict)
                 {
-                    WorkCatalogSnapshot collidedWork = await _catalogs.ReadWorkAsync(_roots.Require(context.Identity), cancellationToken).ConfigureAwait(false);
-                    RequireCommit(await _store.CommitAsync([PayloadProtectionStateMutation.Put(operation with { Phase = "Failed", Result = "Failed", ReasonCode = "consistency-mismatch", UpdatedAtUtc = Now() }, current.ETag),
-                        .. _catalogs.CompleteWork(collidedWork, claim, claim.Value with { Status = "Completed", ReasonCode = "consistency-mismatch", UpdatedAtUtc = Now() })], cancellationToken).ConfigureAwait(false));
-                    throw new PayloadKeyCollisionException();
+                    PayloadProtectionStateValue<WrappedDekV1>? collision = await PayloadOperationBudget.ReadAsync<WrappedDekV1>(_store, PayloadProtectionStateCodec.KeyFor(key), cancellationToken).ConfigureAwait(false);
+                    if (collision is not null && collision.Value.CreatingOperationId != operationId)
+                    {
+                        WorkCatalogSnapshot collidedWork = await _catalogs.ReadWorkAsync(_roots.Require(context.Identity), cancellationToken).ConfigureAwait(false);
+                        RequireCommit(await _store.CommitAsync([PayloadProtectionStateMutation.Put(operation with { Phase = "Failed", Result = "Failed", ReasonCode = "consistency-mismatch", UpdatedAtUtc = Now() }, current.ETag),
+                            .. _catalogs.CompleteWork(collidedWork, claim, claim.Value with { Status = "Completed", ReasonCode = "consistency-mismatch", UpdatedAtUtc = Now() }),
+                            PayloadProtectionStateMutation.Put(Audit(context.Identity, operationId, "Create", null, null, authority.Lifecycle.Value.Epoch,
+                                authority.Fence.Value.ApprovalEpoch, "Failed", "consistency-mismatch", null, backendAttempts, Elapsed(started)))], cancellationToken).ConfigureAwait(false));
+                        throw new PayloadKeyCollisionException();
+                    }
                 }
+                if (reservationResult == PayloadStateCommitResult.Unknown)
+                {
+                    PayloadProtectionStateValue<WrappedDekV1>? observed = await PayloadOperationBudget.ReadAsync<WrappedDekV1>(_store, PayloadProtectionStateCodec.KeyFor(key), cancellationToken).ConfigureAwait(false);
+                    PayloadProtectionStateValue<OperationV1> recorded = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(operationId), cancellationToken).ConfigureAwait(false);
+                    if (observed is null && recorded.Value == operation)
+                    { await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue; }
+                }
+                if (reservationResult == PayloadStateCommitResult.Conflict) { await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue; }
+                RequireCommit(reservationResult);
+                break;
             }
-            RequireCommit(reservationResult);
             if (_clock.GetElapsedTime(started) >= TimeSpan.FromSeconds(10)) { throw Unavailable(); }
             var completion = new PayloadProtectionCompletionContext(context.Identity, new(context.RecordSequence, context.PayloadKind, context.PayloadTypeId),
                 operationId, key.KeyRef, key.DekVersion, key.LifecycleEpoch);
@@ -349,17 +382,31 @@ internal sealed class KeyReservationCoordinator
     private async ValueTask MarkReturnedAsync(PayloadProtectionCompletionContext completion, CancellationToken cancellationToken)
     {
         using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
-        PayloadWriteAuthority authority = await AuthorityAsync(completion.Identity, cancellationToken).ConfigureAwait(false);
-        if (authority.Lifecycle.Value.Epoch != completion.LifecycleEpoch) { throw Mismatch(); }
-        PayloadProtectionStateValue<WrappedDekV1> key = await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(
-            PayloadProtectionStateKeys.ScopeDigest(completion.Identity), completion.KeyReference, completion.DekVersion), cancellationToken).ConfigureAwait(false);
-        ValidateKey(key.Value, completion);
-        if (key.Value.FenceApprovalEpoch != authority.Fence.Value.ApprovalEpoch) { throw Mismatch(); }
-        PayloadProtectionStateValue<OperationV1> operation = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(completion.OperationId), cancellationToken).ConfigureAwait(false);
-        ValidateOperation(operation.Value, completion);
-        RequireCommit(await _store.CommitAsync([.. authority.Conditions, PayloadProtectionStateMutation.Compare(authority.Lifecycle),
-            PayloadProtectionStateMutation.Compare(authority.Fence), PayloadProtectionStateMutation.Compare(key),
-            PayloadProtectionStateMutation.Put(operation.Value with { Phase = "PayloadReturned", UpdatedAtUtc = Now() }, operation.ETag)], cancellationToken).ConfigureAwait(false));
+        for (int attempt = 0; ; attempt++)
+        {
+            PayloadWriteAuthority authority = await AuthorityAsync(completion.Identity, cancellationToken).ConfigureAwait(false);
+            if (authority.Lifecycle.Value.Epoch != completion.LifecycleEpoch) { throw Mismatch(); }
+            PayloadProtectionStateValue<WrappedDekV1> key = await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(
+                PayloadProtectionStateKeys.ScopeDigest(completion.Identity), completion.KeyReference, completion.DekVersion), cancellationToken).ConfigureAwait(false);
+            ValidateKey(key.Value, completion);
+            if (key.Value.FenceApprovalEpoch != authority.Fence.Value.ApprovalEpoch) { throw Mismatch(); }
+            PayloadProtectionStateValue<OperationV1> operation = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(completion.OperationId), cancellationToken).ConfigureAwait(false);
+            ValidateOperation(operation.Value, completion);
+            PayloadStateCommitResult result = await _store.CommitAsync([.. authority.Conditions, PayloadProtectionStateMutation.Compare(authority.Lifecycle),
+                PayloadProtectionStateMutation.Compare(authority.Fence), PayloadProtectionStateMutation.Compare(key),
+                PayloadProtectionStateMutation.Put(operation.Value with { Phase = "PayloadReturned", UpdatedAtUtc = Now() }, operation.ETag)], cancellationToken).ConfigureAwait(false);
+            if (result == PayloadStateCommitResult.Unknown)
+            {
+                PayloadProtectionStateValue<OperationV1> recorded = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(completion.OperationId), cancellationToken).ConfigureAwait(false);
+                ValidateOperation(recorded.Value, completion);
+                if (recorded.Value.Phase == "PayloadReturned" && recorded.Value.Result == "Pending") { return; }
+                if (recorded.Value.Phase != "Reserved") { throw Mismatch(); }
+                await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue;
+            }
+            if (result == PayloadStateCommitResult.Conflict) { await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue; }
+            RequireCommit(result);
+            return;
+        }
     }
 
     private async ValueTask<PayloadWriteAuthority> AuthorityAsync(AggregateIdentity identity, CancellationToken cancellationToken)
@@ -392,6 +439,7 @@ internal sealed class KeyReservationCoordinator
     {
         // Cleanup has its own small bound: caller cancellation cannot erase discoverable mutation ambiguity.
         using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), _clock);
+        using var cleanupBudget = new PayloadOperationBudget(_clock, cleanup.Token, independent: true);
         try
         {
             PayloadProtectionStateValue<OperationV1>? current = await _store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(intent.OperationId), cleanup.Token).ConfigureAwait(false);
@@ -399,12 +447,15 @@ internal sealed class KeyReservationCoordinator
             if (current is null || claim is null || current.Value.OperationId != intent.OperationId || current.Value.ScopeDigest != intent.ScopeDigest
                 || claim.Value.Status != "Pending" || claim.Value.Attempt != 0
                 || current.Value.KeyRef != intent.KeyRef || current.Value.DekVersion != intent.DekVersion || current.Value.Phase is "Completed" or "Failed") { return; }
-            bool definite = failure is PayloadProtectionStateException state && state.Reason is UnreadableProtectedDataReason.ProviderDenied or UnreadableProtectedDataReason.ConsistencyMismatch;
-            string reason = definite ? (failure is PayloadProtectionStateException { Reason: UnreadableProtectedDataReason.ProviderDenied } ? "provider-denied" : "consistency-mismatch") : "ambiguous-outcome";
+            bool reserved = current.Value.Phase == "Reserved";
+            bool capacity = failure is PayloadProtectionStateException { IsAdmissionLimit: true };
+            bool definite = reserved || capacity || failure is PayloadProtectionStateException state && state.Reason is UnreadableProtectedDataReason.ProviderDenied or UnreadableProtectedDataReason.ConsistencyMismatch;
+            string reason = reserved ? "not-persisted" : capacity ? "provider-unavailable"
+                : definite ? (failure is PayloadProtectionStateException { Reason: UnreadableProtectedDataReason.ProviderDenied } ? "provider-denied" : "consistency-mismatch") : "ambiguous-outcome";
             PayloadProtectionStateValue<LifecycleV1> lifecycle = await _store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(intent.ScopeDigest), cleanup.Token).ConfigureAwait(false) ?? throw Mismatch();
             PayloadProtectionStateValue<FenceV1> fence = await _store.ReadAsync<FenceV1>(PayloadProtectionStateKeys.Fence(_roots.Require(identity)), cleanup.Token).ConfigureAwait(false) ?? throw Mismatch();
-            _ = await _store.CommitAsync([PayloadProtectionStateMutation.Put(current.Value with { Phase = definite ? "Failed" : "Ambiguous", Result = definite ? "Failed" : "Pending", Attempt = attempts, ReasonCode = reason, UpdatedAtUtc = Now() }, current.ETag),
-                PayloadProtectionStateMutation.Put(claim.Value with { ReasonCode = reason, Status = "Pending", NotBeforeUtc = foregroundStopped ? Now() : claim.Value.NotBeforeUtc, UpdatedAtUtc = Now() }, claim.ETag),
+            _ = await _store.CommitAsync([PayloadProtectionStateMutation.Put(current.Value with { Phase = reserved ? "Reserved" : definite ? "Failed" : "Ambiguous", Result = definite ? "Failed" : "Pending", Attempt = attempts, ReasonCode = reason, UpdatedAtUtc = Now() }, current.ETag),
+                PayloadProtectionStateMutation.Put(claim.Value with { ReasonCode = reason, Status = "Pending", NotBeforeUtc = reserved ? PayloadProtectionStateCodec.Timestamp(PayloadProtectionStateCodec.ParseTimestamp(current.Value.CreatedAtUtc).AddHours(24)) : foregroundStopped ? Now() : claim.Value.NotBeforeUtc, UpdatedAtUtc = Now() }, claim.ETag),
                 PayloadProtectionStateMutation.Put(Audit(identity, intent.OperationId, "Create", null, null, lifecycle.Value.Epoch, fence.Value.ApprovalEpoch, definite ? "Failed" : "Pending", reason, null, attempts, Elapsed(started)))], cleanup.Token).ConfigureAwait(false);
         }
         catch { /* A failed bounded recording attempt leaves the original indexed intent authoritative; never hide the original failure. */ }

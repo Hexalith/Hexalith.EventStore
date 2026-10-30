@@ -445,6 +445,7 @@ public static class GovernanceScopeGuardReducer
         var original = evidence.ProtectionBlockedReplacement; var phase = original?.Original; var outcome = original?.Outcome;
         if (phase?.UnissuedProof is not { } refused || outcome is null || batch.Capability is not { } issued
             || phase.CompromiseBlockReceiptId != batch.ProtectionReceiptId || phase.CommittedIssuedGuardRevision != 0
+            || batch.AttestationOrdinal == long.MaxValue
             || phase.Capability.AttestationOrdinal != batch.AttestationOrdinal + 1 || phase.Capability.BatchId != batch.BatchId
             || phase.Capability.ManifestDigest != batch.ManifestDigest || phase.Capability.DestructionSealId != issued.DestructionSealId
             || phase.Capability.DeletionRequestId != issued.DeletionRequestId || phase.Capability.TenantId != state.TenantId

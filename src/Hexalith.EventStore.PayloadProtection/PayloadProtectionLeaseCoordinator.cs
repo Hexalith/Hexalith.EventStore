@@ -72,14 +72,26 @@ internal sealed class PayloadProtectionLeaseCoordinator
         using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         string root = _roots.Require(identity);
         long started = _clock.GetTimestamp();
-        PayloadProtectionStateValue<DeploymentGenerationV1> generation = await DeploymentAsync(identity, cancellationToken).ConfigureAwait(false);
-        PayloadProtectionStateValue<MemberPageV1> member = await ServingMemberAsync(root, generation.Value.Generation, cancellationToken).ConfigureAwait(false);
-        PayloadProtectionStateValue<CapabilityLeaseV1> previous = await RequiredAsync<CapabilityLeaseV1>(PayloadProtectionStateKeys.Capability(root, generation.Value.Generation, InstanceId), cancellationToken).ConfigureAwait(false);
-        ValidateCapability(previous.Value, generation.Value);
-        CapabilityLeaseV1 renewed = Capability(root, generation.Value.Generation);
-        PayloadStateCommitResult result = await _store.CommitAsync([PayloadProtectionStateMutation.Compare(generation),
-            PayloadProtectionStateMutation.Compare(member), PayloadProtectionStateMutation.Put(renewed, previous.ETag)], cancellationToken).ConfigureAwait(false);
-        RequireCommit(result); // Uncertainty withholds traffic until a fresh confirmed renewal.
+        for (int attempt = 0; ; attempt++)
+        {
+            PayloadProtectionStateValue<DeploymentGenerationV1> generation = await DeploymentAsync(identity, cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<MemberPageV1> member = await ServingMemberAsync(root, generation.Value.Generation, cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<CapabilityLeaseV1> previous = await RequiredAsync<CapabilityLeaseV1>(PayloadProtectionStateKeys.Capability(root, generation.Value.Generation, InstanceId), cancellationToken).ConfigureAwait(false);
+            ValidateCapability(previous.Value, generation.Value);
+            CapabilityLeaseV1 renewed = Capability(root, generation.Value.Generation);
+            PayloadStateCommitResult result = await _store.CommitAsync([PayloadProtectionStateMutation.Compare(generation),
+                PayloadProtectionStateMutation.Compare(member), PayloadProtectionStateMutation.Put(renewed, previous.ETag)], cancellationToken).ConfigureAwait(false);
+            if (result == PayloadStateCommitResult.Unknown)
+            {
+                PayloadProtectionStateValue<CapabilityLeaseV1>? confirmed = await PayloadOperationBudget.ReadAsync<CapabilityLeaseV1>(_store, PayloadProtectionStateCodec.KeyFor(renewed), cancellationToken).ConfigureAwait(false);
+                if (confirmed is not null && confirmed.ETag != previous.ETag
+                    && PayloadProtectionStateCodec.Encode(confirmed.Value).AsSpan().SequenceEqual(PayloadProtectionStateCodec.Encode(renewed))) { break; }
+                await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue;
+            }
+            if (result == PayloadStateCommitResult.Conflict) { await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue; }
+            RequireCommit(result); // Uncertainty withholds traffic until a fresh confirmed renewal.
+            break;
+        }
         if (_clock.GetElapsedTime(started) >= TimeSpan.FromSeconds(40)) { throw Unavailable(); }
         lock (_gate) { _renewed[root] = started; }
     }
@@ -111,32 +123,74 @@ internal sealed class PayloadProtectionLeaseCoordinator
     internal async ValueTask<PayloadProtectionLease> AcquireReadAsync(AggregateIdentity identity, string keyRef, uint version,
         string operationId, PayloadProtectionStateValue<LifecycleV1> lifecycle, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         long started = _clock.GetTimestamp();
-        IReadOnlyList<PayloadProtectionStateMutation> authority = await AdmissionAsync(identity, lifecycle.Value, false, cancellationToken).ConfigureAwait(false);
-        DateTimeOffset now = _clock.GetUtcNow();
+        LifecycleV1 observed = lifecycle.Value;
+        DateTimeOffset issued = _clock.GetUtcNow();
         var lease = new ReadLeaseV1(operationId, PayloadProtectionStateKeys.ScopeDigest(identity), keyRef, version, InstanceId,
-            lifecycle.Value.Epoch, PayloadProtectionStateCodec.Timestamp(now), PayloadProtectionStateCodec.Timestamp(now.AddSeconds(45)));
-        RequireCommit(await _store.CommitAsync([.. authority, PayloadProtectionStateMutation.Compare(lifecycle), PayloadProtectionStateMutation.Put(lease)], cancellationToken).ConfigureAwait(false));
-        var admitted = new PayloadProtectionLease(_clock, started, TimeSpan.FromSeconds(45), lifecycle.Value.Epoch,
-            () => ReleaseReadAsync(lease));
-        try { admitted.AssertCurrent(cancellationToken); return admitted; }
-        catch { await admitted.DisposeAsync().ConfigureAwait(false); throw; }
+            observed.Epoch, PayloadProtectionStateCodec.Timestamp(issued), PayloadProtectionStateCodec.Timestamp(issued.AddSeconds(45)));
+        for (int attempt = 0; ; attempt++)
+        {
+            lifecycle = await RequiredAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(observed.ScopeDigest), cancellationToken).ConfigureAwait(false);
+            if (lifecycle.Value != observed) { throw Mismatch(); }
+            IReadOnlyList<PayloadProtectionStateMutation> authority = await AdmissionAsync(identity, lifecycle.Value, false, cancellationToken).ConfigureAwait(false);
+            PayloadStateCommitResult result = await _store.CommitAsync([.. authority, PayloadProtectionStateMutation.Compare(lifecycle), PayloadProtectionStateMutation.Put(lease)], cancellationToken).ConfigureAwait(false);
+            if (result is PayloadStateCommitResult.Unknown or PayloadStateCommitResult.Conflict)
+            {
+                PayloadProtectionStateValue<ReadLeaseV1>? confirmed = await PayloadOperationBudget.ReadAsync<ReadLeaseV1>(_store, PayloadProtectionStateCodec.KeyFor(lease), cancellationToken).ConfigureAwait(false);
+                if (confirmed is not null)
+                {
+                    if (confirmed.Value != lease) { throw Mismatch(); }
+                    result = PayloadStateCommitResult.Committed;
+                }
+                else { await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue; }
+            }
+            RequireCommit(result);
+            var admitted = new PayloadProtectionLease(_clock, started, TimeSpan.FromSeconds(45), lifecycle.Value.Epoch,
+                () => ReleaseReadAsync(lease));
+            try { admitted.AssertCurrent(cancellationToken); return admitted; }
+            catch { await admitted.DisposeAsync().ConfigureAwait(false); throw; }
+        }
     }
 
-    /// <summary>Admits an exact reservation-completion lease under current allowed authority before actor persistence.</summary>
+    /// <summary>Admits an exact foreground reservation only when its claim protects the full completion-lease interval.</summary>
     internal async ValueTask AcquireCompletionAsync(PayloadProtectionCompletionContext completion,
         PayloadProtectionStateValue<LifecycleV1> lifecycle, CancellationToken cancellationToken = default)
     {
-        if (completion.LifecycleEpoch != lifecycle.Value.Epoch) { throw Mismatch(); }
-        IReadOnlyList<PayloadProtectionStateMutation> authority = await AdmissionAsync(completion.Identity, lifecycle.Value, true, cancellationToken).ConfigureAwait(false);
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
+        LifecycleV1 observed = lifecycle.Value;
+        if (completion.LifecycleEpoch != observed.Epoch) { throw Mismatch(); }
         string scope = PayloadProtectionStateKeys.ScopeDigest(completion.Identity);
-        PayloadProtectionStateValue<WrappedDekV1> key = await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(scope, completion.KeyReference, completion.DekVersion), cancellationToken).ConfigureAwait(false);
-        if (key.Value.State != "Reserved" || key.Value.CreatingOperationId != completion.OperationId || key.Value.LifecycleEpoch != completion.LifecycleEpoch) { throw Mismatch(); }
-        DateTimeOffset now = _clock.GetUtcNow();
+        DateTimeOffset issued = _clock.GetUtcNow();
         var lease = new CompletionLeaseV1(completion.OperationId, scope, completion.KeyReference, completion.DekVersion, InstanceId,
-            lifecycle.Value.Epoch, PayloadProtectionStateCodec.Timestamp(now), PayloadProtectionStateCodec.Timestamp(now.AddSeconds(60)));
-        RequireCommit(await _store.CommitAsync([.. authority, PayloadProtectionStateMutation.Compare(lifecycle),
-            PayloadProtectionStateMutation.Compare(key), PayloadProtectionStateMutation.Put(lease)], cancellationToken).ConfigureAwait(false));
+            observed.Epoch, PayloadProtectionStateCodec.Timestamp(issued), PayloadProtectionStateCodec.Timestamp(issued.AddSeconds(60)));
+        for (int attempt = 0; ; attempt++)
+        {
+            lifecycle = await RequiredAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(observed.ScopeDigest), cancellationToken).ConfigureAwait(false);
+            if (lifecycle.Value != observed) { throw Mismatch(); }
+            IReadOnlyList<PayloadProtectionStateMutation> authority = await AdmissionAsync(completion.Identity, lifecycle.Value, true, cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<WrappedDekV1> key = await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(scope, completion.KeyReference, completion.DekVersion), cancellationToken).ConfigureAwait(false);
+            if (key.Value.State != "Reserved" || key.Value.CreatingOperationId != completion.OperationId || key.Value.LifecycleEpoch != completion.LifecycleEpoch) { throw Mismatch(); }
+            PayloadProtectionStateValue<ReconciliationV1> claim = await RequiredAsync<ReconciliationV1>(PayloadProtectionStateKeys.Reconciliation(completion.OperationId), cancellationToken).ConfigureAwait(false);
+            DateTimeOffset now = _clock.GetUtcNow();
+            if (claim.Value.Kind != "Create" || claim.Value.ScopeDigest != scope || claim.Value.KeyRef != completion.KeyReference
+                || claim.Value.DekVersion != completion.DekVersion || claim.Value.Status != "Pending" || claim.Value.Attempt != 0
+                || PayloadProtectionStateCodec.ParseTimestamp(claim.Value.NotBeforeUtc) - now < TimeSpan.FromSeconds(60)) { throw Mismatch(); }
+            PayloadStateCommitResult result = await _store.CommitAsync([.. authority, PayloadProtectionStateMutation.Compare(lifecycle),
+                PayloadProtectionStateMutation.Compare(key), PayloadProtectionStateMutation.Compare(claim), PayloadProtectionStateMutation.Put(lease)], cancellationToken).ConfigureAwait(false);
+            if (result is PayloadStateCommitResult.Unknown or PayloadStateCommitResult.Conflict)
+            {
+                PayloadProtectionStateValue<CompletionLeaseV1>? confirmed = await PayloadOperationBudget.ReadAsync<CompletionLeaseV1>(_store, PayloadProtectionStateCodec.KeyFor(lease), cancellationToken).ConfigureAwait(false);
+                if (confirmed is not null)
+                {
+                    if (confirmed.Value != lease) { throw Mismatch(); }
+                    return;
+                }
+                await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue;
+            }
+            RequireCommit(result);
+            return;
+        }
     }
 
     /// <summary>Begins graceful retirement before the full 60-second wait and explicit local clearing.</summary>
@@ -145,7 +199,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
     {
         string root = _roots.Require(identity);
         MemberCatalogSnapshot members = await _catalogs.ReadMembersAsync(root, cancellationToken).ConfigureAwait(false);
-        MemberEntryV1 member = members.Pages.SelectMany(p => p.Value.Entries).Single(e => e.InstanceId == InstanceId);
+        MemberEntryV1 member = members.Pages.SelectMany(p => p.Value.Entries).SingleOrDefault(e => e.InstanceId == InstanceId) ?? throw Mismatch();
         if (member.State == "Cleared") { return; }
         if (member.State == "Serving")
         {

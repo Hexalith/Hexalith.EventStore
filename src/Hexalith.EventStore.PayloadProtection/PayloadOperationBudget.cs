@@ -51,7 +51,7 @@ internal sealed class PayloadOperationBudget : IDisposable
         }
     }
     /// <summary>Bounds trusted evidence callbacks that may ignore cancellation and observes abandoned completion.</summary>
-    internal static async ValueTask<T> AwaitAsync<T>(Func<CancellationToken, ValueTask<T>> request, CancellationToken token)
+    internal static async ValueTask<T> AwaitAsync<T>(Func<CancellationToken, ValueTask<T>> request, CancellationToken token, bool requireCurrentResult = true)
     {
         RequireCurrent();
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, Current.Value?.Token ?? token);
@@ -59,7 +59,7 @@ internal sealed class PayloadOperationBudget : IDisposable
         try
         {
             T value = await pending.WaitAsync(linked.Token).ConfigureAwait(false);
-            token.ThrowIfCancellationRequested(); RequireCurrent();
+            if (requireCurrentResult) { token.ThrowIfCancellationRequested(); RequireCurrent(); }
             return value;
         }
         catch (OperationCanceledException)
@@ -76,7 +76,17 @@ internal sealed class PayloadOperationBudget : IDisposable
         {
             if (Interlocked.Add(ref budget._readBytes, bytes) > PayloadProtectionOperationalLimits.ReadBytes
                 || (operation ? Interlocked.Increment(ref budget._readOperations) : budget._readOperations) > PayloadProtectionOperationalLimits.ReadOperations)
-            { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }
+            { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true); }
+        }
+    }
+    /// <summary>Checks that an index's remaining maximum responses fit before starting its page enumeration.</summary>
+    internal static void RequireReadCapacity(long bytes, long operations)
+    {
+        for (PayloadOperationBudget? budget = Current.Value; budget is not null; budget = budget._parent)
+        {
+            if (budget._readBytes + bytes > PayloadProtectionOperationalLimits.ReadBytes
+                || budget._readOperations + operations > PayloadProtectionOperationalLimits.ReadOperations)
+            { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true); }
         }
     }
     /// <summary>Rejects a result returned after any enclosing monotonic deadline, even when a dependency ignored cancellation.</summary>

@@ -63,7 +63,7 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
             {
                 ["bufferedOwner"] = bufferedOwner, ["inheritOwner"] = inheritOwner,
                 ["phase"] = phase, ["pid"] = Environment.ProcessId, ["count"] = count, ["tenant"] = tenant,
-                ["measurements"] = JsonSerializer.SerializeToNode(store.Measurements), ["runtime"] = ProjectionBoundedIdentityRuntimeProof.Capture(),
+                ["measurements"] = JsonSerializer.SerializeToNode(store.Measurements),
                 ["observations"] = observations
             };
             File.WriteAllText(evidence, payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));

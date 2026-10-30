@@ -83,7 +83,11 @@ Each transaction admits at most 512 operations and 2 MiB of charged data: value,
 UTF-8 key and ETag bytes, plus 1024 bytes per operation and 1024 bytes per
 transaction for conservative framing/metadata allowance. Each enclosing engine
 phase admits at most 4096 strong reads and 16 MiB of cumulative returned values;
-it reserves a full 64 KiB response before each call. Registration and traffic
+it reserves a full 64 KiB response before each call. Whole-index enumeration
+also checks that every remaining page and the confirming head fit at the maximum
+64 KiB per response, in addition to bytes already charged to the enclosing phase.
+This conservative preflight can reject an index whose actual sparse pages would
+fit; it does not dynamically sum only the later observed page sizes. Registration and traffic
 admission also calculate the member-catalog and future clearing-proof working
 set, reserving 1 MiB and 512 reads for authority/index work. Immutable clearing
 acknowledgements are read once per resume; permanent Cleared members require no
@@ -92,6 +96,18 @@ Real Dapr qualification demonstrates the exact charged transaction boundary and
 257 completed writer reservations with both indexes spanning two pages, plus
 257 retained registered process incarnations. This is the measured supported
 case; it does not qualify every structural maximum or a production throughput.
+Index membership currently rewrites every page in the affected scope/KEK
+inventory. Therefore one heavily shared KEK can reach the transaction ceiling
+before the structural entry maximum; rotation's complete inventory verification
+can independently reach the read ceiling. These ceilings depend on actual record
+sizes, page count and the enclosing authority/work transaction, rather than a
+fixed supported key count. Oversized plans fail before submission with the typed
+`ProviderUnavailable` admission result; capacity exhaustion is not a transient
+read failure and does not enter the read retry loop. State-conflict recovery
+never repeats backend mutations, and ambiguous backend outcomes are reconciled
+by stable operation ID. Confirmed transient backend failures retain the bounded
+retry policy. An unreturned Create with a durable Reserved record remains quarantinable.
+A separate capacity redesign is required before Story 8.7 host wiring.
 Transactions above the operational limit are rejected with output/completion
 withheld. Read-budget exhaustion retains discoverable indexed work for a later
 phase. Structurally valid workloads above this profile's limits remain

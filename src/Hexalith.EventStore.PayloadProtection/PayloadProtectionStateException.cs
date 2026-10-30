@@ -7,11 +7,15 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal sealed class PayloadProtectionStateException : Exception
 {
     /// <summary>Creates a typed state failure with a fixed message.</summary>
-    internal PayloadProtectionStateException(UnreadableProtectedDataReason reason) : base("Payload protection state operation failed.")
+    internal PayloadProtectionStateException(UnreadableProtectedDataReason reason, bool isAdmissionLimit = false) : base("Payload protection state operation failed.")
     {
         Reason = Enum.IsDefined(reason) ? reason : UnreadableProtectedDataReason.ConsistencyMismatch;
+        IsAdmissionLimit = isAdmissionLimit;
     }
 
     /// <summary>Gets the closed public failure classification.</summary>
     internal UnreadableProtectedDataReason Reason { get; }
+
+    /// <summary>Gets whether a qualified operational limit rejected admission before submitting a transaction.</summary>
+    internal bool IsAdmissionLimit { get; }
 }

@@ -30,7 +30,7 @@ public sealed class InteractionEventReplayAuthorityFailureTests
         bindings.AcquireCompletionLeaseAsync(binding, Arg.Any<CancellationToken>()).Returns(true);
         var engine = new InteractionPayloadProtectionService(fixture.Registry, fixture.Keys, bindings, TimeProvider.System);
         var occurrence = new PayloadProtectionOccurrenceContext(identity.Sequence, identity.Kind, identity.PayloadTypeId);
-        byte[] clear = JsonSerializer.SerializeToUtf8Bytes(new { ProtectedContent = new { Target = identity.Target, Value = new { Secret = "reader-canary" } } });
+        byte[] clear = JsonSerializer.SerializeToUtf8Bytes(new { ProtectedContent = new { Target = identity.Target, Value = new { Secret = "__HEXALITH_TEST_SECRET__" } } });
         var write = await engine.ProtectEventPayloadAsync(identity.Owner, Substitute.For<IEventPayload>(), identity.PayloadTypeId,
             clear, "json", occurrence, TestContext.Current.CancellationToken);
         await engine.CompletePayloadProtectionAsync(write.CompletionContext!, PayloadProtectionPersistenceOutcome.Persisted,

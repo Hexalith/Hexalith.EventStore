@@ -211,7 +211,7 @@ When using a project reference during local development, reference the generator
 
 Generated controllers now name the shared `EventStoreHuman` policy. When upgrading
 an existing generated API host, register shared HTTP security after its validated
-Bearer authentication and enroll the runtime boundary before authorization and
+bearer-token authentication and enroll the runtime boundary before authorization and
 endpoint execution:
 
 ```csharp

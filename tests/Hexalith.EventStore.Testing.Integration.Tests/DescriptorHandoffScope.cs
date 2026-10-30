@@ -54,7 +54,7 @@ internal sealed class DescriptorHandoffScope : IDisposable
             ["HEXALITH_G4_RUN_ID"] = "sample-owner-run",
             ["HEXALITH_G4_TENANT"] = "sample-synthetic-tenant",
             ["HEXALITH_G4_RESOURCE_NAMESPACE"] = "sample-data",
-            ["HEXALITH_G4_ACCESS_TOKEN"] = "private-runner-token",
+            ["HEXALITH_G4_ACCESS_TOKEN"] = "__HEXALITH_TEST_TOKEN__",
             ["HEXALITH_TEST_ENDPOINT_CREDENTIALS_PATH"] = invocation && credentials ? credentialPath : string.Empty,
         })
         {

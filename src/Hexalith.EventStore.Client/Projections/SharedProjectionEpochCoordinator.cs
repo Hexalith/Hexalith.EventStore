@@ -458,7 +458,8 @@ public sealed partial class SharedProjectionEpochCoordinator
             if (pending.Parked || pending.Failure is not null || !pending.PayloadReady
                 || lastSequenceNumber < 1
                 || pending.OwnerSequenceNumber <= 0 || pending.OwnerSequenceNumber > lastSequenceNumber
-                || capturedEventDigests is null || capturedEventDigests.Length != lastSequenceNumber * 32)
+                || capturedEventDigests is null || capturedEventDigests.Length % 32 != 0
+                || capturedEventDigests.LongLength / 32 != lastSequenceNumber)
             {
                 return false;
             }
@@ -479,11 +480,12 @@ public sealed partial class SharedProjectionEpochCoordinator
         byte[] canonicalPayload,
         byte[] capturedEventDigests)
     {
-        long offset = (pending.OwnerSequenceNumber - 1) * 32;
-        return offset >= 0 && offset + 32 <= capturedEventDigests.Length
-            && SharedProjectionCapturedEventIdentity.Compute(pending.SourceStream,
+        if (pending.OwnerSequenceNumber < 1 || pending.OwnerSequenceNumber > capturedEventDigests.LongLength / 32)
+            return false;
+        int offset = checked((int)((pending.OwnerSequenceNumber - 1) * 32));
+        return SharedProjectionCapturedEventIdentity.Compute(pending.SourceStream,
                 pending.EnvelopePosition, pending.OwnerSequenceNumber, canonicalPayload).AsSpan()
-                .SequenceEqual(capturedEventDigests.AsSpan((int)offset, 32));
+                .SequenceEqual(capturedEventDigests.AsSpan(offset, 32));
     }
 
     /// <summary>Checks owner checkpoint continuity before a captured generation is promoted.</summary>
@@ -795,6 +797,12 @@ public sealed partial class SharedProjectionEpochCoordinator
                             scope, delivery.SourceStream, capturedOwner, delivery.OwnerSequenceNumber, cancellationToken).ConfigureAwait(false);
                         if (identities is null)
                         {
+                            if (capturedOwner?.CapturedIdentityReference is not null
+                                || capturedOwner?.CapturedEventDigests is not null)
+                            {
+                                return SharedProjectionJournalResult.RebuildRequired;
+                            }
+
                             // The older nonpartitioned rebuild contract did not seed event identities.
                             // A receipt from the previously selected epoch can still prove an event
                             // that ordinary delivery had already accepted before that rebuild.
@@ -814,18 +822,13 @@ public sealed partial class SharedProjectionEpochCoordinator
                                 digest, cancellationToken).ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
                             continue;
                         }
-                        if (capturedOwner is null || delivery.OwnerSequenceNumber > capturedOwner.OwnerSequenceNumber)
-                        {
-                            return SharedProjectionJournalResult.RebuildRequired;
-                        }
-                        int offset = 0;
                         if (!SharedProjectionCapturedEventIdentity.Compute(
                                 delivery.SourceStream, delivery.EnvelopePosition,
                                 delivery.OwnerSequenceNumber, delivery.CanonicalPayload).AsSpan()
-                            .SequenceEqual(identities.AsSpan(offset, 32)))
+                            .SequenceEqual(identities))
                         {
                             if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery,
-                                Convert.ToHexString(identities.AsSpan(offset, 32)), digest, cancellationToken)
+                                Convert.ToHexString(identities), digest, cancellationToken)
                                 .ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
                             continue;
                         }

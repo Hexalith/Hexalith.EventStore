@@ -21,13 +21,13 @@ public sealed class LifecycleDrainTests
         var claims = new PayloadReconciliationClaims(fixture.Store, fixture.Clock);
         ReconciliationV1 claim = (await claims.TryClaimAsync(new(Operation, fixture.Scope)))!.Value;
         (await lifecycle.ResumeAsync(fixture.Identity, claim)).ShouldBeFalse();
-        waits.ShouldBe(1);
+        waits.ShouldBe(0);
         (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(fixture.Scope)))!.Value.State.ShouldBe("Invalidating");
         await lifecycle.AcknowledgeAsync(fixture.Identity, Operation);
-        fixture.Clock.Advance(TimeSpan.FromSeconds(30));
+        fixture.Clock.Advance(TimeSpan.FromSeconds(90));
         claim = (await claims.TryClaimAsync(new(Operation, fixture.Scope)))!.Value;
         (await lifecycle.ResumeAsync(fixture.Identity, claim)).ShouldBeTrue();
-        waits.ShouldBe(2); // A resumed drain never reuses an earlier wait or a wall-clock timestamp.
+        waits.ShouldBe(1); // A resumed drain never reuses an earlier wait or a wall-clock timestamp.
         LifecycleV1 terminal = (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(fixture.Scope)))!.Value;
         terminal.State.ShouldBe("Invalidated"); terminal.Epoch.ShouldBe(3ul);
         (await new PayloadProtectionCatalogs(fixture.Store, fixture.Clock).ReadWorkAsync(fixture.Root)).Head.Value.EntryCount.ShouldBe(0u);

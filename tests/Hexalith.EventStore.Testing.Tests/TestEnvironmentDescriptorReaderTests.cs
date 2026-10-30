@@ -61,7 +61,7 @@ public sealed class TestEnvironmentDescriptorReaderTests
         {
             case "version": root["schema"] = "secret-value"; break;
             case "policy": root["policyId"] = "secret-value"; break;
-            case "unknown": root["secret-value"] = "secret-value"; break;
+            case "unknown": root["secret-value"] = "__HEXALITH_TEST_SECRET__"; break;
             case "identity": bindings["run"]!["ownerRunId"] = "secret-value"; break;
             case "attempt": bindings["run"]!["attemptId"] = bindings["run"]!["runId"]!.GetValue<string>(); break;
             case "resource-duplicate": env["resources"]!.AsArray().Add(env["resources"]![0]!.DeepClone()); break;
@@ -184,7 +184,7 @@ public sealed class TestEnvironmentDescriptorReaderTests
     {
         using var file = new DescriptorTestFile();
         using TestEnvironmentDescriptor environment = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
-        environment.BindCredentials(environment.RunId, environment.SyntheticTenantId, environment.DataIsolationId, "private-runner-token");
+        environment.BindCredentials(environment.RunId, environment.SyntheticTenantId, environment.DataIsolationId, "__HEXALITH_TEST_TOKEN__");
         using HttpClient client = environment.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(2));
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();

@@ -59,7 +59,7 @@ public sealed class DescriptorFixtureTests
         await using var fixture = new DescriptorInvocationFixture();
         await fixture.InitializeAsync();
         fixture.InvocationClient.BaseAddress.ShouldBe(new Uri("http://127.0.0.1:18081/v1.0/invoke/declared-owner/method/api/v1/"));
-        fixture.InvocationClient.DefaultRequestHeaders.Authorization.ShouldNotBeNull().Parameter.ShouldBe("private-runner-token");
+        fixture.InvocationClient.DefaultRequestHeaders.Authorization.ShouldNotBeNull().Parameter.ShouldBe("__HEXALITH_TEST_TOKEN__");
         fixture.InvocationClient.DefaultRequestHeaders.Contains("dapr-api-token").ShouldBeFalse();
         await fixture.DisposeAsync();
         Should.Throw<ObjectDisposedException>(() => fixture.InvocationClient);

@@ -45,7 +45,7 @@ public sealed class ReviewWorkerTests
         var late = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); held.RetainUntil(late.Task);
         using var worker = new PayloadProtectionReconciler(f.Store, roots, lifecycle, f.Backend.BackendId, _ => true, "fixture-actor", f.Clock);
         using (var budget = new PayloadOperationBudget(TimeProvider.System, default, TimeSpan.FromMilliseconds(30)))
-        { (await worker.RunPassAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2))).ShouldBe(0); }
+        { (await worker.RunPassAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2))).ShouldBe(1); } // A failed acknowledgement no longer skips independent claim bookkeeping.
         (await f.Store.ReadAsync<CacheClearAckV1>(PayloadProtectionStateKeys.ClearAck(f.Scope, 2, f.Leases.InstanceId))).ShouldBeNull();
         (await worker.RunPassAsync()).ShouldBe(1);
         late.SetResult(); held.Dispose();

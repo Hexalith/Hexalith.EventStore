@@ -79,9 +79,13 @@ class SourcePostActivationEvidenceTests(unittest.TestCase):
     def test_independent_native_boundaries_refuse_missing_call_policy_and_state_mutations(self):
         original = self.actual['observation']
         self.assertTrue(original['rejectedEffectOriginals'])
-        for mutation in ('call', 'rotation', 'trim', 'pending', 'wrapped', 'holder', 'receipt', 'boolean'):
+        for mutation in ('missing', 'empty', 'missing-producer', 'missing-producer-and-proofs', 'call', 'rotation', 'trim', 'pending', 'wrapped', 'holder', 'receipt', 'boolean'):
             changed = copy.deepcopy(original)
             if mutation == 'missing': del changed['rejectedEffectOriginals']
+            elif mutation == 'empty': changed['rejectedEffectOriginals'] = []
+            elif mutation.startswith('missing-producer'):
+                changed.pop('producerIdentity'); changed.pop('copyOriginals')
+                if mutation == 'missing-producer-and-proofs': changed.pop('rejectedEffectOriginals')
             elif mutation == 'call': changed['rejectedEffectOriginals'][0]['Call']['Id'] = 'undispatched'
             else:
                 proof = changed['rejectedEffectOriginals'][0]['After']

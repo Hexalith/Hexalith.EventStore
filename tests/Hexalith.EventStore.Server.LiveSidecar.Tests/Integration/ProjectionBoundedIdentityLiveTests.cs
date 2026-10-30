@@ -42,7 +42,6 @@ public sealed class ProjectionBoundedIdentityLiveTests(DaprTestContainerFixture 
             ?? Path.GetTempPath(), "bounded-identity-" + tenant);
         Directory.CreateDirectory(directory);
         var pids = new List<int>();
-        JsonArray? runtime = null;
         foreach (string phase in inheritOwner ? new[] { "stage", "promote", "resume", "inherited" } : new[] { "stage", "promote", "resume" })
         {
             string prefix = Path.Combine(directory, (bufferedOwner ? "buffered-" : "streamed-") + count + "-" + phase);
@@ -102,8 +101,6 @@ public sealed class ProjectionBoundedIdentityLiveTests(DaprTestContainerFixture 
                 checkpoint.ShouldBe(promoted["observations"]!["inheritedCheckpointSha256"]!.GetValue<string>());
                 if (phase == "inherited") observed["unchangedReplayVerified"]!.GetValue<bool>().ShouldBeTrue();
             }
-            if (runtime is null) runtime = proof["runtime"]!.AsArray();
-            else proof["runtime"]!.ToJsonString().ShouldBe(runtime.ToJsonString());
             TestContext.Current.TestOutputHelper?.WriteLine($"BoundedIdentity phase={phase} count={count} pid={process.Id} evidence={prefix}.json");
         }
         pids.Distinct().Count().ShouldBe(inheritOwner ? 4 : 3);

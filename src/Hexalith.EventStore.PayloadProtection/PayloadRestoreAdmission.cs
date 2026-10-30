@@ -31,7 +31,6 @@ internal sealed class PayloadRestoreAdmission(IPayloadProtectionStateStore store
         token = local.Token;
         var conditions = new Dictionary<string, PayloadProtectionStateMutation>(StringComparer.Ordinal);
         PayloadProtectionLease? lease = null;
-        bool returned = false;
         try
         {
             RestoredBackupAdmissionState state = RestoredBackupAdmissionState.Accepted;
@@ -100,21 +99,19 @@ internal sealed class PayloadRestoreAdmission(IPayloadProtectionStateStore store
                 // The existing workflow receives no accepted result from stale observations.
                 PayloadProtectionStateValue<FenceV1> confirmedFence = await RequiredAsync<FenceV1>(PayloadProtectionStateKeys.Fence(root), token).ConfigureAwait(false);
                 PayloadProtectionStateValue<LifecycleV1> confirmedLifecycle = await RequiredAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(scope), token).ConfigureAwait(false);
-                if (confirmedFence.ETag != liveFence.ETag || confirmedLifecycle.ETag != liveLifecycle.ETag) { state = RestoredBackupAdmissionState.OperatorDecisionRequired; }
+                if (state == RestoredBackupAdmissionState.Accepted && (confirmedFence.ETag != liveFence.ETag || confirmedLifecycle.ETag != liveLifecycle.ETag)) { state = RestoredBackupAdmissionState.OperatorDecisionRequired; }
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
             catch (PayloadProtectionFormatException) { state = RestoredBackupAdmissionState.Quarantined; }
-            catch (PayloadProtectionStateException) { state = RestoredBackupAdmissionState.OperatorDecisionRequired; }
+            catch (PayloadProtectionStateException) when (state != RestoredBackupAdmissionState.Quarantined) { state = RestoredBackupAdmissionState.OperatorDecisionRequired; }
+            catch (PayloadProtectionStateException) { /* Quarantine is irreversible within this admission. */ }
             string reason = RestoredBackupAdmissionResult.ReasonCodeFor(state);
             var result = new RestoredBackupAdmissionResult(request.AdmissionId, state, request.TenantId, request.Domain, request.AggregateId,
                 request.FromSequence, request.ToSequence, request.BackupManifestId, request.ProtectionMetadataVersion, request.KeyReferencePolicy,
                 request.KeyAliasFingerprint, state == RestoredBackupAdmissionState.Accepted ? null : "consistency-mismatch", reason,
                 RestoredBackupAdmissionResult.NextActionFor(state), request.CorrelationId, null, request.OperatorActorId, _clock.GetUtcNow(), false);
-            RestoredBackupAdmissionResult recorded = await PayloadOperationBudget.AwaitAsync(ct => recordDecision(result, state == RestoredBackupAdmissionState.Accepted ? conditions.Values.ToArray() : [], ct), token).ConfigureAwait(false);
+            RestoredBackupAdmissionResult recorded = await PayloadOperationBudget.AwaitAsync(ct => recordDecision(result, state == RestoredBackupAdmissionState.Accepted ? conditions.Values.ToArray() : [], ct), token, requireCurrentResult: false).ConfigureAwait(false);
             if (recorded != result) { throw Mismatch(); }
-            token.ThrowIfCancellationRequested();
-            local.AssertCurrent(token); PayloadOperationBudget.RequireCurrent();
-            returned = true;
             return recorded;
 
             void Add(PayloadProtectionStateMutation condition)
@@ -129,7 +126,7 @@ internal sealed class PayloadRestoreAdmission(IPayloadProtectionStateStore store
             {
                 using var cleanup = new PayloadOperationBudget(_clock, default, independent: true);
                 try { await lease.DisposeAsync().ConfigureAwait(false); }
-                catch when (!returned) { /* Preserve the original cancellation/failure; expiry never supplies clearing proof. */ }
+                catch { /* A lease-release failure cannot undo a recorded decision or replace the original failure. */ }
             }
         }
     }

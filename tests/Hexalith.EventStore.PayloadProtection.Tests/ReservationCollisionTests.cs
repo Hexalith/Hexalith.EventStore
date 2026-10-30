@@ -39,6 +39,8 @@ public sealed class ReservationCollisionTests
         WorkCatalogSnapshot work = await new PayloadProtectionCatalogs(fixture.Store, fixture.Clock).ReadWorkAsync(fixture.Root);
         work.Head.Value.EntryCount.ShouldBe(1u);
         work.Pages.SelectMany(p => p.Value.Entries).Single().OperationId.ShouldBe(write.Completion.OperationId);
+        fixture.Store.Audits.Single(a => a.OperationId != write.Completion.OperationId).Result.ShouldBe("Failed");
+        fixture.Store.Audits.Single(a => a.OperationId != write.Completion.OperationId).ReasonCode.ShouldBe("consistency-mismatch");
         foreach (byte[] dek in deks) { CryptographicOperations.ZeroMemory(dek); }
     }
 }
