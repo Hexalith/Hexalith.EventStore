@@ -15,10 +15,10 @@ public class RouteCatalogSurfaceTests
     {
         ReadOnlyMemory<byte> first = "{\"amount\":1,\"optional\":null,\"extra\":{\"a\":1,\"b\":2}}"u8.ToArray();
         ReadOnlyMemory<byte> reordered = "{\"extra\":{\"b\":2,\"a\":1},\"optional\":null,\"amount\":1}"u8.ToArray();
-        var hash = DomainService.CanonicalIntentPayload.Sha256CanonicalJson(first);
-        DomainService.CanonicalIntentPayload.Sha256CanonicalJson(reordered).ShouldBe(hash);
-        DomainService.CanonicalIntentPayload.Sha256CanonicalJson("{\"amount\":1,\"optional\":null,\"extra\":{\"a\":1,\"b\":3}}"u8.ToArray()).ShouldNotBe(hash);
-        DomainService.CanonicalIntentPayload.Sha256CanonicalJson("{\"amount\":1,\"extra\":{\"a\":1,\"b\":2}}"u8.ToArray()).ShouldNotBe(hash);
+        var hash = Hexalith.EventStore.DomainService.CanonicalIntentPayload.Sha256CanonicalJson(first);
+        Hexalith.EventStore.DomainService.CanonicalIntentPayload.Sha256CanonicalJson(reordered).ShouldBe(hash);
+        Hexalith.EventStore.DomainService.CanonicalIntentPayload.Sha256CanonicalJson("{\"amount\":1,\"optional\":null,\"extra\":{\"a\":1,\"b\":3}}"u8.ToArray()).ShouldNotBe(hash);
+        Hexalith.EventStore.DomainService.CanonicalIntentPayload.Sha256CanonicalJson("{\"amount\":1,\"extra\":{\"a\":1,\"b\":2}}"u8.ToArray()).ShouldNotBe(hash);
     }
     [Theory]
     [InlineData("ui", "agent-eligible", false, true)]
