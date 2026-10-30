@@ -6289,3 +6289,23 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
   summary: Bound retained route catalog activation attempts and completed rollback transitions without losing replay and recovery fences.
   evidence: RouteCatalogAuthority.PrepareAsync and RollbackAsync append to Attempts and CompletedTransitions without a cap, segmentation or pruning; every dispatch acquisition/release reads or rewrites the same state value. Repeated valid lifecycle operations can exceed its storage/transport envelope. The separate catalog feature is independent of captured owner identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Preserve the published-compatibility test process failure across the tee pipeline.
+  evidence: The separate integration.yml published-compatibility command has no explicit shell or pipefail; a default-style bash -e pipeline with a failing producer exits 0. This intervening job is independent of bounded identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Reject intersecting abort-repair target keys and source guards before reserving an epoch.
+  evidence: SharedProjectionEpochCoordinator.AbortRepair.cs validates uniqueness within each collection but not their intersection; deleting a guarded target makes the next source verification fail and prevents completion of the immutable reservation. The separate repair API is not used by bounded identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Establish whether an abort-repair certificate can be absent after a conforming CAS conflict (medium, unverified).
+  evidence: RepairAbortMetadataAsync proceeds after TrySaveAsync returns false and its certificate reread is null, but the store contract defines false as ETag conflict and no supported certificate deletion was traced. Prove a conforming conflict/absence sequence or a concurrent certificate-erasure caller before claiming permanent receipt loss.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Admit abort-repair request dimensions before cloning all caller input.
+  evidence: RepairAbortMetadataAsync serializes and deserializes the complete request before IsValidAbortRepairRequest enforces counts and its 256-KiB bound, duplicating oversized input before rejection. This separate repair API is unchanged by bounded identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Reject malformed persisted content task identifiers and quiesced fence values.
+  evidence: DaprAuthoritativeContentStore.ReadLedgerAsync validates only collection existence/count for SealedTasks and QuiescedTaskFences. A negative restored quiesced fence is accepted and weakens the subsequent positive-fence comparison; this is a separate content-state validation issue, without an authorization-bypass claim.

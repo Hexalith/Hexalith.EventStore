@@ -85,6 +85,37 @@ Repository-relative directory aliases below identify exact task locations:
 
 ## Review Triage Log
 
+### Current-source completion review — 2026-10-30
+
+All three layers returned before classification. Their input was the preserved
+historical-baseline diff at `/tmp/bounded-owner-current-review-input-z5hqokbm.diff`,
+including intervening features and a deletion inventory without retired evidence
+bodies. Detailed tracing covered bounded storage, handoff, inheritance, public
+dispatch, source capture, process replacement and the observer; review was not
+exhaustive across the other 1,241 diff blocks. Every finding is classified below
+before grouping. Earlier matching rows retain their verdict without another
+verification or deferred entry.
+
+| Finding | Verdict / route | Evidence and decision |
+| --- | --- | --- |
+| B1: published qualification loses a failing producer exit through `tee` | medium / defer | The separate `published-compatibility` step supplies no explicit shell or `pipefail`; parent confirmed `bash -e -c 'false \| tee /dev/null'` exits 0. This job was added by intervening published-compatibility work and does not run the bounded live class. |
+| B2: abort repair permits a target/source-guard overlap | medium / defer | `IsValidAbortRepairRequest` checks uniqueness inside each collection but not their intersection. A present target can satisfy its guard, be deleted, then fail the subsequent `VerifyRepairSourceAsync`, leaving the reserved repair unable to finish. This separate repair API is unchanged in this invocation and is not called by bounded identity. |
+| B3: absent certificate after a failed save does not stop repair | maybe-false / defer (medium unverified) | The null reread branch can reach deletion, but `IReadModelStore.TrySaveAsync` defines false as ETag conflict, and no certificate-erasure caller was established. Demonstrate a conforming store returning conflict followed by absence, or a supported concurrent certificate removal, before claiming loss of retained evidence. This is separate repair work. |
+| B4: abort repair clones input before bounded admission | medium / defer | `RepairAbortMetadataAsync` serializes and deserializes the caller's complete request before its collection and 256-KiB checks. Oversized input therefore incurs duplicate allocation before rejection. This unchanged repair API is independent of bounded identity. |
+| B5: completed repair retry fails after closeout | medium / carried defer | Carried from Fresh resumption B2: `RequireOperation(Aborting)` still precedes the completed-receipt check at the same location. Preserve its existing verdict and follow-up without duplication. |
+| B6: content ledger accepts malformed persisted task/fence entries | medium / defer | `ReadLedgerAsync` checks collection existence/count only; an invalid task key or nonpositive quiesced fence survives. The upload guard then compares a positive supplied fence against that negative value. This is a persisted-state validation gap in separate content work, not a claim that domain authorization is bypassed. |
+| B7: content metadata ledger has no byte admission | medium / carried defer | Carried from Corrected-graph R9: the same entry-count/metadata-size mismatch remains in `Canonicalize` and `MutateAsync`. No additional ledger entry or corruption claim. |
+| B8: valid multiple fixture endpoints collide | medium / carried defer | Carried from Corrected-graph R7: the same `ResourceId`-only client key collides for distinct declared endpoints. Preserve the existing fixture follow-up. |
+| B9: cross-host redirect skips catalog invocation fencing | medium / carried defer | Carried from Fresh resumption B10 and Corrected-graph R1: the same `IsSameHost` condition remains. Preserve the client-side verdict without a receiver authorization claim or another ledger entry. |
+| B10: ordinary redirect handling buffers every request body | medium / carried defer | Carried from Corrected-graph R3: `CaptureReplayableContentAsync` still reads the complete content before the first send. Preserve the existing independent routing follow-up. |
+| E1: an accepted ordinary tail may change in a later rebuild | high / carried defer | Carried from Resumption review Blind R1 and Fresh resumption B4: the retained-prefix comparison and checkpoint-position check still omit ordinary-tail receipt identity. This pre-existing defect is not a bounded-retention regression. |
+| VG1: existing observer regressions are not selected by CI | low / patch | Accepted as a pre-verified gap: the 11-test observer suite, including FIFO rejection, passes locally but neither the selected Python commands nor the observer-disabled live lane runs it in CI. Add the existing suite to the current Linux Python checks. This needs no new protocol and differs from the earlier rejected C# caller-test proposal. |
+
+The surviving roots are independent. VG1 is the sole direct correction; five
+separate issues are deferred (one explicitly unverified), and six findings carry
+earlier decisions without duplicate follow-ups. No frozen intent, public surface,
+storage schema or implementation loopback changes.
+
 ### Corrected-graph completion review — 2026-10-30
 
 All three layers returned before classification. Edge-case review returned no
@@ -1102,3 +1133,129 @@ deletion bodies: `/tmp/bounded-owner-resume-20261030-final-gmem5_x8.diff`.
 Final HEAD observed: `28ccd32c95ab521755d12deee5d7ad16927e7c92`; the Git
 index has no staged diff. Frozen intent and the original baseline remain intact.
 No owned test, worker, sidecar or review subprocess remains.
+
+### Current-source verification — 2026-10-30
+
+The complete spec was read; `context: []` supplies no additional inputs. The
+bounded implementation, regression tests and rollout/rollback guidance were
+already present; initial verification needed no source or test change. Completion
+review subsequently enrolled the existing observer suite in CI and recorded five
+independent follow-ups. Origin was clean `main` at
+`4dde72ef8cce4252edcd793d012bc40bb668f746`. CI run/link: none; these are local
+SDK **10.0.403**, .NET **10.0.14**, Dapr CLI **1.18.2** / runtime **1.18.7** results.
+
+Build/test commands ran sequentially and every process was awaited. From the
+owning repository root (the variable abbreviates the exact retained output path;
+logs use the corresponding build or XML basename):
+
+```bash
+bounded_run=/tmp/bounded-owner-20261030-current-ySZ3fb
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*SharedProjectionBoundedIdentityTests' -xml "$bounded_run/client.xml"
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -result-xml "$bounded_run/client-full.xml"
+dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -class '*DomainPartitionedSharedProjectionRebuildTests' -result-xml "$bounded_run/domain.xml"
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -result-xml "$bounded_run/domain-full.xml"
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SharedProjectionSourceBeginProducerTests' -class '*SharedProjectionSourceRosterActorTests' -result-xml "$bounded_run/server.xml"
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml "$bounded_run/server-full.xml"
+python3 -m unittest discover -s tools/tests -p test_bounded_worker_observer.py -v
+rsync -a --exclude='.git' --exclude='bin/' --exclude='obj/' --exclude='node_modules/' --exclude='.agents/' --exclude='.codex/' --exclude='.claude/' --exclude='.venv/' --exclude='_bmad/' --exclude='_bmad-output/' --exclude='evidence/' --exclude='/references/*/references/' /home/administrator/projects/hexalith/eventstore/ "$bounded_run/snapshot/"
+cd "$bounded_run/snapshot"
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE="$bounded_run/runtime.json" BOUNDED_IDENTITY_GENERATED_SOURCE_DIR="$bounded_run/live/generated" dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityRuntimeProofTests' -result-xml "$bounded_run/runtime.xml"
+BOUNDED_IDENTITY_EVIDENCE_DIR="$bounded_run/live" BOUNDED_IDENTITY_GENERATED_SOURCE_DIR="$bounded_run/live/generated" dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityLiveTests' -result-xml "$bounded_run/live.xml"
+```
+
+All four builds passed with **zero warnings/errors**. Every test command reports
+zero xUnit errors and not-run cases:
+
+| Run | Passed | Failed | Skipped | Exit |
+| --- | ---: | ---: | ---: | ---: |
+| Client bounded identity | 50 | 0 | 0 | 0 |
+| Domain partitioned rebuild | 144 | 0 | 0 | 0 |
+| Server source producer/roster | 30 | 0 | 0 | 0 |
+| Full Client | 2,249 | 1 | 2 | 1 |
+| Full Domain | 1,286 | 0 | 1 | 0 |
+| Full Server | 6,431 | 12 | 25 | 1 |
+| Snapshot runtime preflight | 9 | 0 | 0 | 0 |
+| Snapshot complete live class | 9 | 0 | 0 | 0 |
+
+The observer suite separately passed **11/11**, with no failures/errors/skips.
+Client's sole failure remains the routing-header ownership guard; Server's 12
+remain the callback-quota, SignalR metadata-cap and secret-guard cases, seven
+query-provenance cases and two actor-auth cases recorded above. Existing skips
+remain separate opt-in/ATDD lanes. No bounded-matrix test failed or was skipped;
+no foreign failure was fixed or waived.
+
+The independent source capture at `2026-10-30T09:55:33.702827+00:00` matched all
+**21,294** input files against origin; all captured bytes remain unchanged.
+`snapshot-origin.json` retains the input manifest, whose compact, key-sorted
+`sourceFiles` SHA-256 is
+`2bad90424a08512647d8fb13bb022aa91e40b95c643eb9619c643ed75f474ec7`.
+The complete live class ran from `2026-10-30T09:56:01.2008546+00:00` through
+`2026-10-30T10:47:57.2676486+00:00` (**3,116.217 seconds**). All four large-owner
+Streamed/Buffered scenarios completed interrupted staging, partial second-owner
+handoff, recovery, growth through 32,770 where applicable, repeated rebuild and
+historical identity/conflict checks; inherited scenarios also proved unchanged
+replay from an omitted original owner.
+
+Parent independently checked every passing live XML case and named frozen-matrix
+unit method, all **30 distinct worker PIDs**, interruption/handoff observations,
+inherited checkpoint hash equality and worker runtime arrays. All **eight** actual
+PE/PDB files and **1,525** source documents match their recorded hashes and PDB
+checksums, including captured generated bytes. Compact, key-sorted runtime proof
+SHA-256: `5eba6db49d8162c171e22c051014ac264bffea68df9d478a5bc9ea84eba7b92c`.
+Maximum physical/canonical batch: **110,620 bytes / 68 operations**; identity:
+**12,302 bytes**; checkpoint: **1,696 bytes**; owner manifest: **1,258 bytes**.
+Every phase meets the 100-operation/one-MiB limits. Runner, all workers and the
+owned sidecar targeting app port **46295** exited. Final local audit:
+`/tmp/bounded-owner-20261030-current-ySZ3fb/final-audit.json`.
+
+Shared-checkout unit results and snapshot live results retain their separate
+source/binary identities. HEAD remains unchanged; the later foreign edit to
+`docs/implementation/ext-protection-1-owner-acceptance.md` was preserved. The
+broad gate remains red, so status stays `in-progress`; no overall regression,
+package/release or Folders acceptance is claimed. Frozen intent and the original
+baseline remain intact. No Git staging/commit/push, dependency pin change,
+publication, deployment, nested-submodule update or retired qualification-tool/
+committed-evidence restoration was performed.
+
+### Current-source review correction and closeout — 2026-10-30
+
+All three review layers returned, and all 12 findings received individual verdicts
+before grouping. One verification gap was corrected: the existing 11-test
+`test_bounded_worker_observer.py` suite now runs in the Linux `live-sidecar` job
+alongside its existing Python checks. Five independent follow-ups were appended
+to `deferred-work.md`, one explicitly unverified; six previously logged findings
+were carried without duplicate entries. No production or test source changed.
+
+After the implementation agent's successful checks, parent independently ran:
+
+```bash
+python3 -m unittest discover -s tools/tests -p test_bounded_worker_observer.py -v > /tmp/bounded-owner-20261030-current-ySZ3fb/observer-parent-after-review.log 2>&1
+actionlint .github/workflows/integration.yml
+git diff --check
+```
+
+All commands exited 0; all **11 observer tests passed**, without failures, errors
+or skips. Parent read the three-line workflow addition and rechecked the final
+XML counts, frozen block and original baseline. The completed **9/9** live matrix
+and **224** focused Client/Domain/Server passes remain tied to their recorded
+source/binary graphs. The CI-selection change postdates the snapshot; no C#
+rebuild or repeat of the long live lane was needed for this workflow-only edit,
+and those results are not relabeled as a run of the final workflow. CI run/link:
+none.
+
+Owned changes are the CI enrollment, this spec and five appended deferred entries.
+The foreign acceptance-document edit was preserved. The broader gate still has
+one Client and 12 Server failures, so status returns to `in-progress`; no overall
+regression, package/release or Folders acceptance is claimed. The generic done
+and commit steps are not performed: the failed regression gate and explicit
+no-commit boundary remain in force. No Git staging, commit, push, dependency pin
+change, publication, deployment or retired evidence machinery restoration occurred.
+
+Final unstaged cumulative diff, including untracked files and omitting historical
+deletion bodies: `/tmp/bounded-owner-current-audit-z5hqokbm.diff`. Final HEAD:
+`4dde72ef8cce4252edcd793d012bc40bb668f746`; the Git index has no staged changes.
+All owned test, worker and sidecar processes exited.
