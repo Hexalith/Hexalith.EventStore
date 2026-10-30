@@ -13,6 +13,13 @@ public sealed class DevelopmentCompositionBootstrapTests
 {
     [Fact]
     public async Task EveryActualHostMustPrepareAndAgreeBeforePrivateBootstrapCanServe()
+        => await VerifyPrivateBootstrapAsync(false);
+
+    [Fact]
+    public async Task CompletedPrivateAttemptCannotBeReplayedByParticipantRestart()
+        => await VerifyPrivateBootstrapAsync(true);
+
+    private static async Task VerifyPrivateBootstrapAsync(bool restart)
     {
         var fixture = new RouteCatalogTestFixture();
         string directory = Path.Combine(Path.GetTempPath(), "catalog-bootstrap-" + Guid.NewGuid().ToString("N"));
@@ -42,6 +49,14 @@ public sealed class DevelopmentCompositionBootstrapTests
             var state = await fixture.Store.ReadAsync(default);
             state.State.Committed!.RequiredHosts.ShouldBe(fixture.Hosts);
             state.State.Pending.ShouldBeNull();
+            if (restart)
+            {
+                var original = fixture.Observations[0];
+                await Should.ThrowAsync<IOException>(() => DevelopmentRouteCatalogBootstrap.ActivateAsync(providers[0], directory,
+                    original.HostId, hosts[0], "private-attempt", hosts, (_, _) => Task.FromResult(original), _ => fixture.Envelope, bound.Token));
+                (await fixture.Store.ReadAsync(default)).State.Epoch.ShouldBe(state.State.Epoch);
+                (await fixture.Store.ReadAsync(default)).State.Committed!.RootDigest.ShouldBe(state.State.Committed.RootDigest);
+            }
         }
         finally
         {

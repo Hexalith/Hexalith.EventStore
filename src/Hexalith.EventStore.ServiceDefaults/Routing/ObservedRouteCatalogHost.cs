@@ -42,6 +42,22 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
             authority = observation.AuthorityCoordinates,
             receiver = observation.ReceiverSurface,
         }));
+        if (observation.SelectedAppIds is not null || observation.DeclaredInvocations is not null)
+        {
+            if (observation.SelectedAppIds is null || observation.DeclaredInvocations is null
+                || !observation.SelectedAppIds.Contains(observation.AppId, StringComparer.Ordinal)
+                || observation.SelectedAppIds.Any(string.IsNullOrWhiteSpace)
+                || observation.SelectedAppIds.Distinct(StringComparer.Ordinal).Count() != observation.SelectedAppIds.Count
+                || observation.DeclaredInvocations.Any(invocation => string.IsNullOrWhiteSpace(invocation.CallerAppId)
+                    || string.IsNullOrWhiteSpace(invocation.Method) || invocation.HttpMethods is not { Count: > 0 }))
+                throw new RouteCatalogUnavailableException("An exact selected application and declared caller inventory is required.", RouteCatalogRefusalReason.Configuration);
+            topology = Hash(JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                topology, selectedApps = observation.SelectedAppIds.Order(StringComparer.Ordinal).ToArray(),
+                declaredInvocations = observation.DeclaredInvocations.OrderBy(invocation => invocation.CallerAppId, StringComparer.Ordinal)
+                    .ThenBy(invocation => invocation.Method, StringComparer.Ordinal).ToArray(),
+            }));
+        }
         return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile));
     }
 
@@ -68,7 +84,8 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 || !metadata.TryGetProperty("name", out var name) || name.GetString() != coordinates.StateStore)
                 throw new RouteCatalogUnavailableException("Loaded authority component disagrees with the selected state store.", RouteCatalogRefusalReason.Topology);
             RouteCatalogTopologyValidator.ValidateDevelopment(actual.TopologyDocuments[0], actual.TopologyDocuments[1], envelope,
-                activation.RequiredHosts, actual.AppId, activation.AuxiliaryOperations, actual.ReceiverSurface);
+                activation.RequiredHosts, actual.AppId, activation.AuxiliaryOperations, actual.ReceiverSurface,
+                actual.SelectedAppIds, actual.DeclaredInvocations);
         }
         catch (RouteCatalogValidationException)
         {

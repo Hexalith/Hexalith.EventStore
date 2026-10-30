@@ -34,7 +34,12 @@ public static class DevelopmentRouteCatalogInputs
                 boundProofCallers = configuredKeys,
                 applicationChannelTokenConfigured = !string.IsNullOrEmpty(configuration["APP_API_TOKEN"]),
                 sidecarApiTokenConfigured = !string.IsNullOrEmpty(configuration["DAPR_API_TOKEN"]),
-            }), admission, capabilities, auxiliary, Operations: declarations.Count == 0 ? [] : null);
+            }), admission, capabilities, auxiliary, Operations: declarations.Count == 0 ? [] : null)
+        {
+            SelectedAppIds = section.GetSection("SelectedAppIds").Get<string[]>(),
+            DeclaredInvocations = section["DeclaredInvocations"] is { } invocations
+                ? JsonSerializer.Deserialize<RouteCatalogDeclaredInvocation[]>(invocations) ?? [] : null,
+        };
     }
 
     private static bool NonsecretAuthenticationSetting(string key)

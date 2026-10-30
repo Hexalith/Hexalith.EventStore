@@ -18,7 +18,7 @@ public sealed class RouteCatalogEligibilityBehavior<TRequest, TResponse>(IHttpCo
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
-        if (contexts.HttpContext is not { } context || services.GetService<IRouteCatalogAuthority>() is not { } authority
+        if (services.GetService<IRouteCatalogAuthority>() is not { } authority
             || request is not SubmitCommand && request is not SubmitQuery) return await next().ConfigureAwait(false);
         var (kind, tenant, domain, discriminator) = request switch
         {
@@ -30,6 +30,8 @@ public sealed class RouteCatalogEligibilityBehavior<TRequest, TResponse>(IHttpCo
         await using var release = lease.ConfigureAwait(false);
         if (lease.Snapshot.Envelope.SchemaVersion == 3)
         {
+            if (contexts.HttpContext is not { } context)
+                throw new CommandAuthorizationException(tenant, domain, discriminator, "An authenticated surface is required for schema-three submission.");
             var selected = lease.Snapshot.Resolve(kind, tenant, domain, discriminator);
             var operation = lease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId);
             bool workload = context.User.HasClaim(c => c.Type == EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)

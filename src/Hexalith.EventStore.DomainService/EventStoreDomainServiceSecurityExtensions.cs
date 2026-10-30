@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.DomainService;
@@ -117,6 +118,9 @@ public static class EventStoreDomainServiceSecurityExtensions
                     && endpoint.Metadata.GetMetadata<DomainRouteCatalogGuardMetadata>() is null;
                 if (canonicalPostWithoutGuard || EventStoreDomainServiceEndpointInventory.Validate([endpoint], fallbackPolicy: null).Count > 0)
                 {
+                    Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogRefusalDiagnostics.Report(
+                        context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.DomainService.Security"),
+                        canonicalPostWithoutGuard ? "domain-catalog-guard-missing" : "domain-endpoint-inventory", new UnauthorizedAccessException());
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     return;
                 }

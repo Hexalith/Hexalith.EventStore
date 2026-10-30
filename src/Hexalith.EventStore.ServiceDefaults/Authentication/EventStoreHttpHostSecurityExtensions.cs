@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.ServiceDefaults.Authentication;
 
@@ -91,12 +92,16 @@ public static class EventStoreHttpHostSecurityExtensions
             if (context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null
                 && !EventStoreHttpEndpointInventory.IsProbe(context.Request.Path.Value))
             {
+                Routing.RouteCatalogRefusalDiagnostics.Report(context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.HttpSecurity"),
+                    "http-anonymous-surface", new UnauthorizedAccessException());
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }
             if (context.GetEndpoint() is { } endpoint
                 && (await EventStoreHttpEndpointInventory.ValidateAsync([endpoint], context.RequestServices).ConfigureAwait(false)).Count > 0)
             {
+                Routing.RouteCatalogRefusalDiagnostics.Report(context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.HttpSecurity"),
+                    "http-endpoint-inventory", new UnauthorizedAccessException());
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }

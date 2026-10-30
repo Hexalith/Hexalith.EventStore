@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.ServiceDefaults.Routing;
 
@@ -46,8 +47,17 @@ public sealed class FiniteRouteCatalogReceiver
             {
                 if (!DaprAppChannelToken.IsAdmitted(DaprAppChannelToken.Verify(context.Request, app.Configuration, app.Environment)))
                 { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
-                if (!fence.Allows(context.Request.Path.Value ?? string.Empty, context.Request.Method, context.GetEndpoint()))
-                { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+                bool probe = HttpMethods.IsGet(context.Request.Method)
+                    && EventStoreHttpEndpointInventory.IsProbe(context.Request.Path.Value)
+                    && context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
+                string? refusal = probe ? null : fence.RefusalBoundary(context.Request.Path.Value ?? string.Empty, context.Request.Method, context.GetEndpoint());
+                if (refusal is not null)
+                {
+                    RouteCatalogRefusalDiagnostics.Report(app.Services.GetService<ILoggerFactory>()?.CreateLogger<FiniteRouteCatalogReceiver>(),
+                        refusal, new RouteCatalogUnavailableException("The finite receiver refused the current endpoint admission.", RouteCatalogRefusalReason.Inventory));
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
             }
             await next(context).ConfigureAwait(false);
         });
@@ -119,11 +129,17 @@ public sealed class FiniteRouteCatalogReceiver
     private bool Intersects(string path) => _prefixes.Any(prefix => path.Equals(prefix, StringComparison.OrdinalIgnoreCase)
         || path.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase));
 
-    internal bool Allows(string path, string verb, Endpoint? endpoint) => _surface is not null
-        && _allowed.TryGetValue((path.ToLowerInvariant(), verb), out var actual) && ReferenceEquals(actual.Endpoint, endpoint)
-        && endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null
-        && endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains(verb, StringComparer.Ordinal) == true
-        && endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(a => a.Policy ?? string.Empty).Order(StringComparer.Ordinal)
-            .SequenceEqual(actual.Policies, StringComparer.Ordinal)
-        && _operation!(actual.Endpoint) == actual.Operation;
+    internal bool Allows(string path, string verb, Endpoint? endpoint) => RefusalBoundary(path, verb, endpoint) is null;
+
+    private string? RefusalBoundary(string path, string verb, Endpoint? endpoint)
+    {
+        if (_surface is null) return "finite-capture-pending";
+        if (!_allowed.TryGetValue((path.ToLowerInvariant(), verb), out var actual)) return "finite-operation-unenrolled";
+        if (!ReferenceEquals(actual.Endpoint, endpoint)) return "finite-endpoint-changed";
+        if (endpoint!.Metadata.GetMetadata<IAllowAnonymous>() is not null
+            || endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains(verb, StringComparer.Ordinal) != true
+            || !endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(a => a.Policy ?? string.Empty).Order(StringComparer.Ordinal)
+                .SequenceEqual(actual.Policies, StringComparer.Ordinal)) return "finite-policy-changed";
+        return _operation!(actual.Endpoint) == actual.Operation ? null : "finite-operation-changed";
+    }
 }

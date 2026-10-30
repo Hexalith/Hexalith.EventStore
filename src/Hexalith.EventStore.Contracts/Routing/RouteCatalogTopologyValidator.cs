@@ -11,10 +11,30 @@ public static class RouteCatalogTopologyValidator
     public static void ValidateDevelopment(ReadOnlyMemory<byte> componentBytes, ReadOnlyMemory<byte> configurationBytes,
         RouteCatalogEnvelope envelope, IReadOnlyList<RouteCatalogHostIdentity> hosts, string localAppId,
         IReadOnlyList<RouteCatalogAuxiliaryOperation>? auxiliary = null, RouteCatalogReceiverSurface? receiver = null)
+        => ValidateDevelopment(componentBytes, configurationBytes, envelope, hosts, localAppId, auxiliary, receiver, null, null);
+
+    /// <summary>Validates the same authority boundary while retaining owner-declared transport grants for applications absent from this fixed run.</summary>
+    public static void ValidateDevelopment(ReadOnlyMemory<byte> componentBytes, ReadOnlyMemory<byte> configurationBytes,
+        RouteCatalogEnvelope envelope, IReadOnlyList<RouteCatalogHostIdentity> hosts, string localAppId,
+        IReadOnlyList<RouteCatalogAuxiliaryOperation>? auxiliary, RouteCatalogReceiverSurface? receiver,
+        IReadOnlyList<string>? selectedAppIds, IReadOnlyList<RouteCatalogDeclaredInvocation>? declaredInvocations)
     {
         ArgumentNullException.ThrowIfNull(envelope);
         ArgumentNullException.ThrowIfNull(hosts);
         if (envelope.Profile != "Development") throw Failure("owner-bound-production-topology-required");
+        bool completeInventory = selectedAppIds is not null && declaredInvocations is not null;
+        if (selectedAppIds is not null || declaredInvocations is not null)
+        {
+            if (envelope.SchemaVersion != 3 || !completeInventory
+                || selectedAppIds is null || declaredInvocations is null
+                || selectedAppIds.Any(string.IsNullOrWhiteSpace)
+                || declaredInvocations.Any(invocation => string.IsNullOrWhiteSpace(invocation.CallerAppId) || string.IsNullOrWhiteSpace(invocation.Method)
+                    || invocation.HttpMethods is not { Count: > 0 } || invocation.HttpMethods.Any(verb => verb is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS")))
+                || selectedAppIds.Distinct(StringComparer.Ordinal).Count() != selectedAppIds.Count
+                || declaredInvocations.Select(invocation => (invocation.CallerAppId, invocation.Method)).Distinct().Count() != declaredInvocations.Count
+                || hosts.Any(host => !selectedAppIds.Contains(host.AppId, StringComparer.Ordinal)))
+                throw Failure("unqualified-selected-application-inventory");
+        }
         try
         {
             using JsonDocument component = JsonDocument.Parse(componentBytes);
@@ -49,17 +69,45 @@ public static class RouteCatalogTopologyValidator
             foreach (JsonElement policy in policies.EnumerateArray())
             {
                 string caller = policy.GetProperty("appId").GetString()!;
-                if (!hosts.Any(h => h.AppId == caller) || !callers.Add(caller) || policy.GetProperty("defaultAction").GetString() != "deny")
+                if (!callers.Add(caller) || policy.GetProperty("defaultAction").GetString() != "deny")
                     throw Failure("undeclared-acl-app-id-or-default-grant");
+                bool participant = hosts.Any(host => host.AppId == caller);
+                if (completeInventory)
+                {
+                    if (!declaredInvocations!.Any(invocation => invocation.CallerAppId == caller)) throw Failure("undeclared-acl-app-id-or-default-grant");
+                    foreach (var grant in policy.GetProperty("operations").EnumerateArray().Where(grant => grant.GetProperty("action").GetString() == "allow"))
+                        if (!declaredInvocations!.Any(invocation => invocation.CallerAppId == caller
+                            && invocation.Method.TrimStart('/') == grant.GetProperty("name").GetString()!.TrimStart('/')
+                            && invocation.HttpMethods.Order(StringComparer.Ordinal).SequenceEqual(grant.GetProperty("httpVerb").EnumerateArray()
+                                .Select(verb => verb.GetString()!).Order(StringComparer.Ordinal), StringComparer.Ordinal)))
+                            throw Failure("undeclared-acl-operation");
+                }
+                if (completeInventory && !selectedAppIds!.Contains(caller, StringComparer.Ordinal))
+                {
+                    if (!declaredInvocations!.Any(invocation => invocation.CallerAppId == caller)) throw Failure("undeclared-acl-app-id-or-default-grant");
+                    // Preserve exact existing owner declarations for an absent caller; no caller or
+                    // operation can be introduced by copying fingerprints from a candidate.
+                    continue;
+                }
+                if (!participant && !completeInventory) throw Failure("undeclared-acl-app-id-or-default-grant");
                 foreach (JsonElement grant in policy.GetProperty("operations").EnumerateArray())
                 {
                     if (grant.GetProperty("action").GetString() != "allow") continue;
                     string method = grant.GetProperty("name").GetString()!.TrimStart('/');
                     string canonical = method.EndsWith("/*", StringComparison.Ordinal) ? method[..^2] : method;
+                    string[] verbs = [.. grant.GetProperty("httpVerb").EnumerateArray().Select(v => v.GetString()!)];
+                    if (envelope.SchemaVersion == 3 && method is "ready" or "health" or "alive")
+                    {
+                        if (verbs.Length != 1 || verbs[0] != "GET" || receiver is null || !receiver.Endpoints.Any(endpoint =>
+                            endpoint.Pattern == "/" + method && endpoint.Anonymous && !endpoint.IsPattern
+                            && (endpoint.Methods.Count == 0 || endpoint.Methods.SequenceEqual(["GET"], StringComparer.Ordinal))))
+                            throw Failure("unqualified-readiness-probe-grant");
+                        continue;
+                    }
+                    if (!participant) throw Failure("selected-acl-caller-lacks-catalog-enrollment");
                     if (!methods.ContainsKey(canonical) || (canonical != method && (receiver is null
                         || !methods.Keys.Any(child => child.StartsWith(canonical + "/", StringComparison.Ordinal)))))
                         throw Failure("undeclared-acl-operation");
-                    string[] verbs = [.. grant.GetProperty("httpVerb").EnumerateArray().Select(v => v.GetString()!)];
                     string expected = canonical == "internal/routing/catalog-generation" ? "GET" : "POST";
                     if (verbs.Length != 1 || verbs[0] != expected) throw Failure("unbounded-acl-http-verb");
                     if (receiver is not null) ValidateFiniteReceiver(receiver, canonical, verbs[0], methods);

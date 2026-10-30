@@ -27,6 +27,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.DomainService;
@@ -294,9 +295,11 @@ public static class EventStoreDomainServiceExtensions {
                 // unavailable verifier is a bounded 503 before any domain work, never a raw server error.
                 DomainServiceRequest verified;
                 CompleteCommandSource? completeSource;
+                string admissionBoundary = "domain-complete-source";
                 try {
                     // Authenticate the original wire request before trusted administrator normalization changes its digest.
                     completeSource = DomainServiceRequestRouter.AdmitCompleteSource(serviceProvider, request);
+                    admissionBoundary = "domain-administrator-normalization";
                     verified = await DomainServiceAdministratorAssertions
                         .RebuildAsync(serviceProvider, request, cancellationToken)
                         .ConfigureAwait(false);
@@ -304,7 +307,11 @@ public static class EventStoreDomainServiceExtensions {
                 catch (DomainServiceAdministratorVerificationException) {
                     return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
                 }
-                catch (UnauthorizedAccessException) { return Results.StatusCode(StatusCodes.Status403Forbidden); }
+                catch (UnauthorizedAccessException exception) {
+                    Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogRefusalDiagnostics.Report(
+                        serviceProvider.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.DomainService.Receiver"), admissionBoundary, exception);
+                    return Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
 
                 DomainServiceWireResult result;
                 try
@@ -320,6 +327,8 @@ public static class EventStoreDomainServiceExtensions {
                 catch (Exception exception) when (exception is UnauthorizedAccessException
                     or System.Reflection.TargetInvocationException { InnerException: UnauthorizedAccessException })
                 {
+                    Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogRefusalDiagnostics.Report(
+                        serviceProvider.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.DomainService.Receiver"), "domain-command", exception);
                     httpContext.Response.ContentLength = 0;
                     return Results.StatusCode(StatusCodes.Status403Forbidden);
                 }

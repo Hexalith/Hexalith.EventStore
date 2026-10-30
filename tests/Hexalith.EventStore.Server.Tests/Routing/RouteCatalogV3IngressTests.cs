@@ -42,6 +42,50 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 public class RouteCatalogV3IngressTests
 {
     [Fact]
+    public async Task RegisteredPipelineRefusesNonHttpSchemaThreeCommandsAndQueriesBeforeTerminalEffects()
+    {
+        var original = new RouteCatalogTestFixture().Envelope;
+        var operations = original.Declarations.Select(d => new RouteOperationContract(d.RouteId, d.ContractVersion,
+            d.Kind == "projection" || d.Execution!.RequiresDelegatedContext ? "internal" : "public", "agent-eligible",
+            JsonSerializer.SerializeToElement(new { type = "object" }), JsonSerializer.SerializeToElement(new { type = "object" }), string.Empty,
+            d.Kind, d.Domain, d.MessageType ?? d.ProjectionType)).Select(o => o with { Digest = RouteCatalogCodec.ComputeOperationContractDigest(o) }).ToArray();
+        var envelope = VersionedRouteCatalogBuilder.Build(new(1, "Development", original.Declarations, operations,
+            original.Routes.Select(route => new RouteCompositionBinding(route.RouteId, route.AppId, route.Method, route.ContractVersion, false, route.ResolverTenantPattern)).ToArray(), original.Idempotency));
+        var snapshot = new CommittedRouteCatalogSnapshot(RouteCatalogCodec.Encode(envelope), RouteCatalogCodec.ComputeRootDigest(envelope), 1);
+        var authority = Substitute.For<IRouteCatalogAuthority>();
+        int leases = 0;
+        authority.AcquireAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            leases++;
+            return new RouteCatalogDispatchLease(snapshot, () => { leases--; return Task.CompletedTask; });
+        });
+        var commands = Substitute.For<IRequestHandler<SubmitCommand, SubmitCommandResult>>();
+        var queries = Substitute.For<IRequestHandler<SubmitQuery, SubmitQueryResult>>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddEventStore();
+        services.AddSingleton(authority);
+        services.AddSingleton(Substitute.For<ITenantValidator>());
+        services.AddSingleton(Substitute.For<IRbacValidator>());
+        services.RemoveAll<IRequestHandler<SubmitCommand, SubmitCommandResult>>();
+        services.RemoveAll<IRequestHandler<SubmitQuery, SubmitQueryResult>>();
+        services.AddSingleton(commands); services.AddSingleton(queries);
+        await using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IHttpContextAccessor>().HttpContext.ShouldBeNull();
+        var mediator = provider.GetRequiredService<IMediator>();
+        var command = original.Declarations.First(declaration => declaration.Kind == "command");
+        var query = original.Declarations.First(declaration => declaration.Kind == "query");
+        await Should.ThrowAsync<CommandAuthorizationException>(() => mediator.Send(new SubmitCommand("message", "tenant-a", command.Domain,
+            "aggregate", command.MessageType!, "{}"u8.ToArray(), "correlation", "untrusted-background"), TestContext.Current.CancellationToken));
+        await Should.ThrowAsync<CommandAuthorizationException>(() => mediator.Send(new SubmitQuery("tenant-a", query.Domain,
+            "aggregate", query.MessageType!, "{}"u8.ToArray(), "correlation", "untrusted-background"), TestContext.Current.CancellationToken));
+        await commands.DidNotReceive().Handle(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+        await queries.DidNotReceive().Handle(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        leases.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task MetadataWithoutRegisteredAuthorityReturnsUnavailable()
     {
         using var provider = new ServiceCollection().BuildServiceProvider();

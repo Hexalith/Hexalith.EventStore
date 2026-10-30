@@ -22,4 +22,13 @@ public sealed record RouteCatalogHostObservation(string HostId, string AppId,
     IReadOnlyList<RouteCatalogAuxiliaryOperation>? AuxiliaryOperations = null,
     RouteCatalogStateCoordinates? AuthorityCoordinates = null,
     RouteCatalogReceiverSurface? ReceiverSurface = null,
-    IReadOnlyList<RouteOperationContract>? Operations = null);
+    IReadOnlyList<RouteOperationContract>? Operations = null)
+{
+    /// <summary>Gets the actual fixed application closure selected by this run, including services without catalog operations.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? SelectedAppIds { get; init; }
+
+    /// <summary>Gets callers independently loaded from this receiver's existing owner transport declarations.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<RouteCatalogDeclaredInvocation>? DeclaredInvocations { get; init; }
+}
