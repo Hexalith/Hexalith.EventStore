@@ -39,6 +39,15 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Set up supported Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked npm dependencies
+        run: npm ci
+
       - name: Verify owner qualification policy and recovery offline
         env:
           EXT_PROTECTION_INTEROP_CONFIGURATION: Release

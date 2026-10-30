@@ -549,7 +549,8 @@ public sealed partial class SharedProjectionBoundedIdentityTests
     [InlineData(-1L)]
     [InlineData(0L)]
     [InlineData(2L)]
-    [InlineData(576460752303423489L)]
+    // The old unchecked offset multiplication wrapped this sequence back to digest 1.
+    [InlineData((1L << 59) + 1)]
     [InlineData(long.MaxValue)]
     public async Task InlineDigestSequenceAdmissionPrecedesOffsetArithmetic(long sequence)
     {
@@ -645,6 +646,48 @@ public sealed partial class SharedProjectionBoundedIdentityTests
         store.SnapshotRaw(s_scope.StoreName, s_scope.CheckpointKey("owner-a")).ShouldBe(beforeCheckpoint);
         store.SnapshotRaw(s_scope.StoreName, s_scope.PhysicalKey(first.Epoch, "view")).ShouldBe(beforeView);
         (await coordinator.GetStatusAsync(s_scope)).ActiveGeneration.ShouldBe(first.Epoch);
+    }
+
+    /// <summary>Rejects an inline vector aliased by overflow through public legacy coordinator calls.</summary>
+    /// <param name="sequence">The pending owner sequence admitted through ordinary delivery.</param>
+    [Theory]
+    [InlineData(1L)]
+    [InlineData((1L << 59) + 1)]
+    public async Task LegacyJournalPromotionCannotAliasOneDigestAtOverflowingOwnerCount(long sequence)
+    {
+        const long aliasingCount = (1L << 59) + 1;
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "writer");
+        if (sequence > 1)
+        {
+            // The public legacy seed still admits a sequence watermark without inline proof.
+            _ = await coordinator.BeginAsync(s_scope, "legacy-watermark", "legacy-inventory",
+                new Dictionary<string, long> { ["owner-a"] = 2 });
+            await coordinator.StageAsync(s_scope, "legacy-watermark",
+                [ReadModelBatchOperation.Write("view", new JsonObject { ["count"] = sequence - 1 }, ReadModelBatchConcurrency.LastWrite)]);
+            await coordinator.CommitAsync(s_scope, "legacy-watermark");
+            await coordinator.SeedCapturedOwnerSequenceAsync(s_scope, "legacy-watermark", "owner-a", sequence - 1);
+            _ = await coordinator.CatchUpAsync(s_scope, Fold);
+        }
+        var delivery = new SharedProjectionDelivery("owner-a", 4, [7], JsonSerializer.SerializeToUtf8Bytes(4L), OwnerSequenceNumber: sequence);
+        (await coordinator.JournalAsync(s_scope, await coordinator.RefreshLeaseAsync(s_scope, "writer"), delivery))
+            .ShouldBe(SharedProjectionJournalResult.Journaled);
+        _ = await coordinator.BeginAsync(s_scope, "legacy-pending", "pending-inventory",
+            new Dictionary<string, long> { ["owner-a"] = 4 }, allowCoveredJournal: true);
+        byte[] digest = SharedProjectionCapturedEventIdentity.Compute("owner-a", 4, sequence, delivery.CanonicalPayload);
+        byte[] before = store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey)!;
+
+        (await coordinator.CanPromoteCapturedJournalOwnerAsync(s_scope, "legacy-pending", "owner-a", aliasingCount, digest)).ShouldBeFalse();
+
+        store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey).ShouldBe(before);
+        if (sequence == 1)
+        {
+            (await coordinator.CanPromoteCapturedJournalOwnerAsync(s_scope, "legacy-pending", "owner-a", 1, digest)).ShouldBeTrue();
+            (await coordinator.CanPromoteCapturedJournalOwnerAsync(s_scope, "legacy-pending", "owner-a", 1, [.. digest, 0])).ShouldBeFalse();
+        }
+        // Owners without pending deliveries retain the legacy no-proof behavior.
+        (await coordinator.CanPromoteCapturedJournalOwnerAsync(s_scope, "legacy-pending", "owner-b", 1, null)).ShouldBeTrue();
     }
 
     private static async Task<SharedProjectionEpochCoordinator> BeginAsync(InMemoryReadModelStore store, string operation, int count)

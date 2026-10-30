@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.DomainService.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -397,6 +398,59 @@ public sealed partial class DomainPartitionedSharedProjectionRebuildTests
             ExpectedHistoryFingerprint: DomainSharedProjectionRebuildFingerprint.ComputeHistory("owner-a", false, events)))).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
         preparationPasses.ShouldBe(2);
         await BoundedFinishAsync(provider, identity, accepted);
+        (await coordinator.GetCheckpointAsync(scope, "owner-a"))!.OwnerSequenceNumber.ShouldBe(1);
+    }
+
+    /// <summary>Accepts an owner ordinal once when another accumulation completes during identity reservation.</summary>
+    [Fact]
+    public async Task ConcurrentOrdinalCompletionDuringIdentityReservationCannotAppendInventoryTwice()
+    {
+        var store = new InMemoryReadModelStore();
+        var receiptFault = new ReceiptFaultStore(store) { FailNextReceipt = true };
+        var handler = new OutputOnlyPartitionedHandler();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        using var provider = Provider(receiptFault, store, coordinator, handler);
+        var scope = handler.CreateScope("tenant-a");
+        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
+        var identity = Identity("concurrent-buffered-identity-reservation");
+        var events = BoundedHistory(1);
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        string history = DomainSharedProjectionRebuildFingerprint.ComputeHistory("owner-a", false, events);
+        string inventory = DomainSharedProjectionRebuildFingerprint.AppendInventory(
+            DomainSharedProjectionRebuildFingerprint.EmptyInventory, 0, history);
+        // A receipt outage leaves the real immutable paged manifest installed while
+        // ordinal zero is still unaccepted. Its CreateOnly write cannot mask the session fence.
+        (await BoundedAccumulateAsync(provider, identity, events, requireSuccess: false)).Status.ShouldBe(ProjectionDispatchStatus.Indeterminate);
+        var pending = (await store.GetAsync<DomainSharedProjectionRebuildSessionState>(StoreName, sessionKey)).Value!;
+        pending.AcceptedAggregateCount.ShouldBe(0);
+        var reference = pending.PendingCapturedIdentityReference.ShouldNotBeNull();
+        (await store.GetAsync<DomainSharedProjectionStoredPartitionManifest>(StoreName,
+            DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(sessionKey, 0))).Value!.CapturedIdentityReference.ShouldNotBeNull();
+        var request = new DomainSharedProjectionRebuildRequest(DomainSharedProjectionRebuildProtocol.Version,
+            DomainSharedProjectionRebuildAction.AccumulateComplete, identity, AggregateOrdinal: 0,
+            AggregateId: "owner-a", PartCount: 1, ExpectedHistoryFingerprint: history);
+        var observedStore = new DispositionFailingReadModelStore(store);
+        DomainSharedProjectionRebuildResponse? concurrentCompletion = null;
+        observedStore.BeforeReadAsync = async key =>
+        {
+            if (key != "shared-identity-v1:" + reference.NamespaceHash) return;
+            observedStore.BeforeReadAsync = null;
+            concurrentCompletion = await BoundedRebuildAsync(provider, request);
+        };
+        using var replacement = Provider(observedStore, store, new SharedProjectionEpochCoordinator(observedStore, store), handler);
+        var retried = await BoundedRebuildAsync(replacement, request);
+
+        concurrentCompletion.ShouldNotBeNull();
+        concurrentCompletion.Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        var session = (await store.GetAsync<DomainSharedProjectionRebuildSessionState>(StoreName, sessionKey)).Value!;
+        session.AcceptedAggregateCount.ShouldBe(1);
+        session.InventoryFingerprint.ShouldBe(inventory);
+        session.LastAggregateId.ShouldBe("owner-a");
+        session.PendingCapturedIdentityReference.ShouldBeNull();
+        retried.Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        retried.AcceptedAggregateCount.ShouldBe(1);
+        retried.InventoryFingerprint.ShouldBe(inventory);
+        await BoundedFinishAsync(provider, identity, retried);
         (await coordinator.GetCheckpointAsync(scope, "owner-a"))!.OwnerSequenceNumber.ShouldBe(1);
     }
 

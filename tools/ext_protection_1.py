@@ -199,10 +199,8 @@ def validate_profile(path, record, plan_sha):
             raise Blocked('ROLE_IDENTITY_MISSING')
         identities.append(config['identity'])
         credentials.append(credential)
-        value = os.environ[credential[4:]].encode("utf-8")
-        if not 1 <= len(value) <= 16384:
-            raise Blocked("CREDENTIAL_REFERENCE_NOT_INSTALLED")
-        credential_values.append(value)
+        validate_role_credential(os.environ[credential[4:]])
+        credential_values.append(os.environ[credential[4:]].encode("utf-8"))
         anchors.append(anchor_identity(anchor))
     if any(hmac.compare_digest(credential_values[i], credential_values[j]) for i in range(3) for j in range(i)) \
             or any(len(set(values)) != 3 for values in (identities, credentials, anchors)):
@@ -977,20 +975,55 @@ def verify_statement(statement, signature, anchor, directory):
         raise Blocked('SIGNED_ROLE_PROOF_INVALID')
 
 
-def isolated_environment(credential_reference, dotnet_root=None):
+def validate_role_credential(value):
+    if not isinstance(value, str) or not value or any(ord(char) < 0x21 or ord(char) > 0x7E for char in value) or len('Bearer ' + value) > 8192:
+        raise Blocked('CREDENTIAL_REFERENCE_NOT_INSTALLED')
+    return value
+
+
+def qualification_platform_root(eventstore_root):
+    root = Path(eventstore_root)
+    project = 'Hexalith.Platform.Protection.Qualification.Executor'
+    declared = root / 'references' / 'Hexalith.Platform'
+    if (declared / 'src' / project / (project + '.csproj')).is_file():
+        return declared
+    sibling = root.parent / 'platform'
+    if (sibling / 'src' / project / (project + '.csproj')).is_file():
+        return sibling
+    raise Blocked('QUALIFICATION_PLATFORM_CHECKOUT_MISSING')
+
+
+def isolated_environment(credential_reference, dotnet_root=None, accepted_configuration_sha256=None):
     name = role_credential_name(credential_reference)
     if not re.fullmatch(r'[A-Z][A-Z0-9_]*', name) or not os.environ.get(name):
         raise Blocked('CREDENTIAL_REFERENCE_NOT_INSTALLED')
     environment = {'PATH': os.defpath, 'LANG': 'C.UTF-8', 'LC_ALL': 'C.UTF-8', name: os.environ[name]}
     if dotnet_root is not None:
         environment['DOTNET_ROOT'] = str(dotnet_root)
+    if accepted_configuration_sha256 is not None:
+        if not isinstance(accepted_configuration_sha256, str) or not re.fullmatch(r'[0-9a-fA-F]{64}', accepted_configuration_sha256):
+            raise Blocked('ROLE_CONFIGURATION_PIN_MISMATCH')
+        environment['EXT_PROTECTION_ACCEPTED_ROLE_CONFIGURATION_SHA256'] = accepted_configuration_sha256
     return environment
+
+
+def accepted_role_configuration(config, role, inventory):
+    client = Path(config['executable']).parent / ('protection-role.' + role + '.json')
+    if isinstance(inventory, dict):
+        pin = inventory.get(str(client))
+        if not isinstance(pin, str) or not re.fullmatch(r'[0-9a-fA-F]{64}', pin):
+            raise Blocked('ROLE_CONFIGURATION_PIN_MISMATCH')
+        return pin
+    if client.is_file() and not client.is_symlink():
+        return digest(client.read_bytes())
+    return None
 
 
 def revalidate_installation(config, engine):
     role = read_json(config['installationManifest']).get('role')
-    validate_role_installation(role, config)
+    inventory = validate_role_installation(role, config)
     pinned_file(engine['path'], engine['sha256'])
+    return inventory
 
 
 class Role:
@@ -1005,10 +1038,11 @@ class Role:
         role_credential_name(self.config['credentialReference'])
         pinned_file(self.config['executable'], self.config['executableSha256'])
         pinned_file(self.config['publicAnchorFile'], self.config['publicAnchorSha256'])
-        revalidate_installation(self.config, self.engine)
+        inventory = revalidate_installation(self.config, self.engine)
         self.trust_snapshot.recheck_pins(VerificationBudget())
         result = subprocess.run([self.config['executable']], input=canonical(request), capture_output=True, timeout=60,
-                                env=isolated_environment(self.config['credentialReference'], Path(read_json(self.config['installationManifest'])['dotnetHost']).parent))
+                                env=isolated_environment(self.config['credentialReference'], Path(read_json(self.config['installationManifest'])['dotnetHost']).parent,
+                                                         accepted_role_configuration(self.config, self.name, inventory)))
         if result.returncode or len(result.stdout) > 16 * 1024 * 1024:
             raise Blocked('ROLE_RESULT_UNCERTAIN')
         try:
@@ -2194,6 +2228,13 @@ def rejection_statuses(step, checks):
     return {'Conflict', 'Denied'}
 
 
+def require_executed_operation_producer(original, expected, binding, attempt_name, selected_producer):
+    native_record(original, 'OperationId RequestSha256 Role BindingDigest AttemptId Producer SafeRequest', 'OPERATION_PRODUCER_ORIGINAL_SCHEMA_INVALID')
+    require(original['OperationId'] == expected['operationId'] and original['RequestSha256'] == expected['requestSha256']
+            and original['Role'] == 'executor' and original['BindingDigest'] == binding and original['AttemptId'] == attempt_name
+            and original['Producer'] == selected_producer, 'OPERATION_PRODUCER_ORIGINAL_SUBSTITUTED')
+
+
 def execute(profile, record, plan, attempt, recover=None):
     binding = digest({'target': profile['targetCommit'], 'platformTarget': profile['platformTargetCommit'],
                       'roleProgramContract': profile['roleProgramContract'], 'profile': record['profileSha256'], 'plan': profile['planSha256'],
@@ -2290,10 +2331,7 @@ def execute(profile, record, plan, attempt, recover=None):
         producer_originals = response(observed).get('operationProducerOriginals')
         require(isinstance(producer_originals, list) and len(producer_originals) == len(expected_operations), 'OPERATION_PRODUCER_ORIGINALS_MISSING')
         for original, expected in zip(producer_originals, expected_operations):
-            native_record(original, 'OperationId RequestSha256 Role BindingDigest AttemptId Producer', 'OPERATION_PRODUCER_ORIGINAL_SCHEMA_INVALID')
-            require(original['OperationId'] == expected['operationId'] and original['RequestSha256'] == expected['requestSha256']
-                    and original['Role'] == 'executor' and original['BindingDigest'] == binding and original['AttemptId'] == attempt.name
-                    and original['Producer'] == selected_producer, 'OPERATION_PRODUCER_ORIGINAL_SUBSTITUTED')
+            require_executed_operation_producer(original, expected, binding, attempt.name, selected_producer)
         evaluate(response(observed), case, targets, canary, profile['targetCommit'], profile['engineBinary']['sha256'], profile['capabilityTrust'], profile['roles'])
         durable(attempt / (case['id'] + '-persisted-observation.json'), observed)
         durable(attempt / (case['id'] + '-assertions.json'), {'case': case['id'], 'checks': case['checks'], 'status': 'PASS'})

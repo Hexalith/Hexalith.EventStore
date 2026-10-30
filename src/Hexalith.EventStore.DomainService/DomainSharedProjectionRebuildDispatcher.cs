@@ -1091,7 +1091,9 @@ public static class DomainSharedProjectionRebuildDispatcher {
                     || state.LastAggregateId != observed.LastAggregateId
                     || state.InventoryFingerprint != observed.InventoryFingerprint
                     || state.PendingScratchChunkCount != chunks.Length
-                    || state.PendingCapturedIdentityReference != (capturedReference with { RootDigest = string.Empty, Height = 0, LastPosition = 0 }))
+                    || state.PendingCapturedIdentityReference is not { } pendingIdentity
+                    || pendingIdentity.NamespaceHash != capturedReference.NamespaceHash
+                    || pendingIdentity.Count != capturedReference.Count)
                     continue;
             }
             var manifest = new DomainSharedProjectionStoredPartitionManifest(

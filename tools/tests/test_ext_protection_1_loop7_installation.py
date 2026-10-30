@@ -63,7 +63,7 @@ class ShippedRoleClosureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temporary = tempfile.TemporaryDirectory(prefix='protection-shipped-closure-'); cls.addClassCleanup(cls.temporary.cleanup)
-        cls.directory = Path(cls.temporary.name); cls.platform = ROOT.parent / 'platform'
+        cls.directory = Path(cls.temporary.name); cls.platform = v.qualification_platform_root(ROOT)
         cls.host = Path(shutil.which('dotnet')).resolve(); cls.roles = {}
         cls.template = max((cls.host.parent / 'packs/Microsoft.NETCore.App.Host.linux-x64').glob('10.0.*/runtimes/linux-x64/native/apphost'), key=lambda path: tuple(map(int, path.parts[-5].split('.'))))
         for role in v.ROLE_NAMES:
@@ -180,7 +180,9 @@ class ShippedRoleClosureTests(unittest.TestCase):
                 with self.assertRaisesRegex(v.Blocked, 'ROLE_RESULT_UNCERTAIN'): client.request({'operationId': 'handoff'})
         self.assertEqual(len(captured), 1)
         child = captured[0]
-        self.assertEqual(set(child), {'PATH', 'LANG', 'LC_ALL', 'DOTNET_ROOT', config['credentialReference'][4:]})
+        client = Path(config['executable']).parent / 'protection-role.executor.json'
+        self.assertEqual(set(child), {'PATH', 'LANG', 'LC_ALL', 'DOTNET_ROOT', config['credentialReference'][4:], 'EXT_PROTECTION_ACCEPTED_ROLE_CONFIGURATION_SHA256'})
+        self.assertEqual(child['EXT_PROTECTION_ACCEPTED_ROLE_CONFIGURATION_SHA256'], v.digest(client.read_bytes()))
         self.assertEqual(child['DOTNET_ROOT'], str(self.host.parent))
         self.assertNotIn('DOTNET_STARTUP_HOOKS', child); self.assertNotIn('LD_PRELOAD', child)
 
