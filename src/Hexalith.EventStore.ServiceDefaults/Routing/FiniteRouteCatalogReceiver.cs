@@ -32,7 +32,19 @@ public sealed class FiniteRouteCatalogReceiver
         ArgumentNullException.ThrowIfNull(operation);
         if (string.IsNullOrEmpty(app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"])) return app;
         var fence = app.Services.GetRequiredService<FiniteRouteCatalogReceiver>();
-        fence._currentEndpoints = () => app.Services.GetRequiredService<EndpointDataSource>().Endpoints;
+        // The framework route source materializes new endpoint instances on each read. Share one
+        // cache with the actual routing matcher, rather than comparing independently built inventories.
+        app.Use(next =>
+        {
+            ICollection<EndpointDataSource> sources = ((IEndpointRouteBuilder)app).DataSources;
+            foreach (EndpointDataSource source in sources.ToArray())
+            {
+                sources.Remove(source);
+                sources.Add(new FiniteRouteCatalogEndpointDataSource(source));
+            }
+            fence._currentEndpoints = () => sources.SelectMany(source => source.Endpoints);
+            return next;
+        });
         fence.ReadPrefixes(app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"]!);
         if (string.IsNullOrEmpty(app.Configuration[DaprAppChannelToken.ConfigurationKey]))
             throw new RouteCatalogUnavailableException("The finite Development receiver requires a configured actual sidecar channel token.");
@@ -63,7 +75,7 @@ public sealed class FiniteRouteCatalogReceiver
         });
         app.Lifetime.ApplicationStarted.Register(() =>
         {
-            try { fence.Capture(app.Services.GetRequiredService<EndpointDataSource>().Endpoints,
+            try { fence.Capture(fence._currentEndpoints!(),
                 app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"]!, operation); }
             catch (Exception exception) { fence._captured.TrySetException(exception); throw; }
         });
@@ -96,7 +108,7 @@ public sealed class FiniteRouteCatalogReceiver
         var grants = acl.GetProperty("policies").EnumerateArray().SelectMany(policy => policy.GetProperty("operations").EnumerateArray())
             .Where(grant => grant.GetProperty("action").GetString() == "allow")
             .Select(grant => grant.GetProperty("name").GetString() ?? string.Empty).ToArray();
-        if (grants.Any(grant => grant.Length == 0 || grant.Contains('*', StringComparison.Ordinal)
+        if (grants.Any(grant => grant.Trim('/').TrimEnd('*').TrimEnd('/').Length == 0 || grant.Contains('*', StringComparison.Ordinal)
             && (!grant.EndsWith("/*", StringComparison.Ordinal) || grant.Count(c => c == '*') != 1)))
             throw new RouteCatalogUnavailableException("The actual receiver ACL contains an unsupported wildcard shape.");
         _prefixes = grants.Select(grant => "/" + grant.Trim('/').TrimEnd('*').TrimEnd('/')).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
