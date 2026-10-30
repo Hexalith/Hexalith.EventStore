@@ -20,4 +20,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Fixtures/ready-owner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

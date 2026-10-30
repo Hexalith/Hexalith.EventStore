@@ -19,7 +19,7 @@ The current `tools/release-packages.json` manifest contains 14 packages, all ver
 | Hexalith.EventStore.Server | Server-side domain processors, aggregate actors, DAPR state/pub-sub integration | Host command processing, state rehydration, persistence, and event publishing | In the hosting project that runs the event store server |
 | Hexalith.EventStore.SignalR | SignalR client helper for projection change notifications | React to read-model invalidation signals in web or desktop clients | In clients that need live projection refresh |
 | Hexalith.EventStore.Testing | In-memory fakes, gateway doubles, builders, and test helpers | Build deterministic tests for command/event and public gateway flows | In unit or integration test projects |
-| Hexalith.EventStore.Testing.Integration | DAPR/Aspire integration-test harness for domain modules | Run repeatable topology-backed domain-service tests | In Docker/Aspire integration test projects |
+| Hexalith.EventStore.Testing.Integration | Descriptor fixtures for Platform-owned environments | Consume runner-owned domain-service endpoints | In declared Platform integration test suites |
 | Hexalith.EventStore.Aspire | .NET Aspire hosting extensions for DAPR topology orchestration | Compose the local distributed topology in an Aspire AppHost | In your AppHost project for local development orchestration |
 | Hexalith.EventStore.ServiceDefaults | Shared OpenTelemetry, health-check, HTTP-resilience, and service-discovery defaults | Apply the platform's observability/resilience defaults to a domain service or API host | Transitively via DomainService, or directly in dedicated API hosts |
 | Hexalith.EventStore.DomainService | Domain-service host SDK — convention discovery, DAPR endpoints, query/projection/event-consumer seams, telemetry, health | Author a domain module with domain code plus a two-line host | The platform hosting reference a new domain-service host needs |
@@ -79,7 +79,7 @@ graph TD
 - **Server** depends on both Client and Contracts.
 - **SignalR** depends on Contracts and adds a lightweight helper over `Microsoft.AspNetCore.SignalR.Client`.
 - **Testing** depends on Client, Contracts, and Server (it provides gateway doubles plus fake implementations of server-side components for integration testing).
-- **Testing.Integration** builds on Testing, Client, Server, and DomainService for DAPR/Aspire-backed integration fixtures.
+- **Testing.Integration** builds on Testing, Client, and Server for descriptor-only fixtures. It has no Aspire hosting or domain-service bootstrap dependency.
 - **Aspire** is fully independent — it has no dependency on any other Hexalith.EventStore package. It only depends on Aspire hosting libraries.
 - **ServiceDefaults** is a shared service-configuration package (OpenTelemetry, health checks, HTTP resilience, service discovery). It is consumed transitively by the DomainService SDK.
 - **DomainService** is the domain-service host SDK. It depends on Client and ServiceDefaults and bundles all hosting/DAPR-endpoint/discovery boilerplate so a domain-service host references this one package for platform hosting. It owns canonical command, replay, query, projection, operational-index, and domain-event subscription endpoint mapping; domain code supplies handlers and contracts. A domain may also own a contracts-only library when shared command/query identities are needed by the domain service, a dedicated generated API host, and UI metadata consumers.
@@ -495,9 +495,31 @@ $ dotnet add package Hexalith.EventStore.Testing
 
 ### Hexalith.EventStore.Testing.Integration
 
-DAPR/Aspire integration-test harness for EventStore-backed domain modules. It provides reusable sidecar/bootstrap helpers, Aspire topology fixtures, and support-safe diagnostics for tests that must verify real topology behavior.
+Descriptor-only integration fixtures for Platform-owned environments. `TestEnvironmentDescriptorReader`
+in **Testing** embeds the authoritative `hexalith.test-environment.v1` schema, validates strict bounded
+UTF-8 JSON, policy, semantic identities and timing, and requires ready synthetic isolation and passed
+required startup tasks before exposing endpoints. Credentials remain in the runner's private channel.
 
-Use it for Docker/Aspire-backed tests where a simple unit-test fake is insufficient.
+API migration: replace `AspireTopologyFixtureBase<TAppHost>` with `AspireTopologyFixtureBase` and
+supply `TestEnvironmentEndpoint(ResourceId, ModuleId, EndpointName, Timeout, Authenticated)` entries
+through `Resources`. There is no AppHost type, startup argument, port or prerequisite override.
+`DaprDomainServiceTestFixtureBase` now requires explicit `DomainService` and `Sidecar` bindings;
+`ConfigureDomain`, local host registration, `/process` mapping, captured host errors and
+`SkipIfUnavailable` were removed. `DaprFact` never skips a missing handoff. Optional performance
+opt-in remains separate.
+
+Run these suites through `hexalith-module test` so `HEXALITH_TEST_ENVIRONMENT_PATH` is an absolute
+private descriptor file and the existing `HEXALITH_G4_RUN_ID`, `HEXALITH_G4_TENANT`,
+`HEXALITH_G4_RESOURCE_NAMESPACE` and `HEXALITH_G4_ACCESS_TOKEN` channel agrees with its identity.
+Missing, malformed, oversized, inconsistent or unready handoffs fail without allocating clients or
+starting infrastructure. Exact resource/module/endpoint selection never infers a fallback. Clients
+have finite request bounds, reject hosted endpoints and credential-bearing redirects, and cancel
+outstanding requests on disposal. Disposal failures propagate; runner resources retain their owner.
+
+Bootstrap remains private to the non-packaged EventStore repository integration tests. Frozen
+consumer topology tests remain a separate compatibility lane. This migration qualifies no attached
+execution, expiry enforcement, termination reporting or package acceptance; those remain separate
+work. Timing validation preserves v1 hold and deadline arithmetic without renewing any expiry.
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Testing.Integration

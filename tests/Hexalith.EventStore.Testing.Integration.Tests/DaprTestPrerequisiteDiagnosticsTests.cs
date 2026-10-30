@@ -8,15 +8,11 @@ namespace Hexalith.EventStore.Testing.Integration.Tests;
 
 public class DaprTestPrerequisiteDiagnosticsTests {
     [Fact]
-    public void SkipReason_NamesDaprPrerequisiteCategoriesWithoutSecrets() {
-        string reason = DaprTestPrerequisites.SkipReason;
-
-        reason.ShouldContain("DAPR integration prerequisites are unavailable");
-        reason.ShouldContain("dapr init");
-        reason.ShouldContain("Redis");
-        reason.ShouldContain("placement");
-        reason.ShouldContain("scheduler");
-        AssertSupportSafe(reason);
+    public void DaprFact_DoesNotSkipMissingRunnerHandoffs() {
+        var attribute = new DaprFactAttribute();
+        attribute.Skip.ShouldBeNull();
+        attribute.SkipUnless.ShouldBeNull();
+        attribute.SkipType.ShouldBeNull();
     }
 
     [Fact]
@@ -24,7 +20,7 @@ public class DaprTestPrerequisiteDiagnosticsTests {
         int placementPort = DaprLocalEndpoints.PlacementPort;
         int schedulerPort = DaprLocalEndpoints.SchedulerPort;
 
-        string message = DaprDomainServiceTestFixtureBase.BuildPrerequisiteFailureMessage(
+        string message = DaprDiagnostics.BuildPrerequisiteFailureMessage(
             [
                 "Redis is not responding to PING on localhost:6379",
                 $"Dapr placement service is not reachable on localhost:{placementPort}",
@@ -48,7 +44,7 @@ public class DaprTestPrerequisiteDiagnosticsTests {
     [InlineData("component initialization failed for state.redis.")]
     [InlineData("statestore init timeout while loading actor state store.")]
     public void InfrastructureStartupClassifier_SkipsNarrowDaprStartupFailures(string message) {
-        bool result = DaprDomainServiceTestFixtureBase.IsDaprInfrastructureStartupFailure(new InvalidOperationException(message));
+        bool result = DaprDiagnostics.IsDaprInfrastructureStartupFailure(new InvalidOperationException(message));
 
         result.ShouldBeTrue();
     }
@@ -59,7 +55,7 @@ public class DaprTestPrerequisiteDiagnosticsTests {
     [InlineData("Service invocation to /process returned a product error.")]
     [InlineData("Tenant aggregate rejected duplicate command input.")]
     public void InfrastructureStartupClassifier_DoesNotSkipProductFailures(string message) {
-        bool result = DaprDomainServiceTestFixtureBase.IsDaprInfrastructureStartupFailure(new InvalidOperationException(message));
+        bool result = DaprDiagnostics.IsDaprInfrastructureStartupFailure(new InvalidOperationException(message));
 
         result.ShouldBeFalse();
     }
@@ -70,7 +66,7 @@ public class DaprTestPrerequisiteDiagnosticsTests {
         string compactJwt = string.Join('.', "eyJ" + Guid.NewGuid().ToString("N"), "eyJ" + Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N"));
         string passwordValue = Guid.NewGuid().ToString("N");
         string accountKey = Guid.NewGuid().ToString("N");
-        string diagnostic = DaprDomainServiceTestFixtureBase.ToSupportSafeDiagnostic(
+        string diagnostic = DaprDiagnostics.ToSupportSafeDiagnostic(
             string.Concat("Bear", "er ", opaqueToken, " ", compactJwt, " Pass", "word=", passwordValue, " Account", "Key=", accountKey, " redis://cache.local:6379 10.1.2.3 ")
             + "issuer=https://identity.internal.example/realms/hexalith tenantId='tenant-prod-001' userId=\"real-user\" email=real-user@example.com");
 
