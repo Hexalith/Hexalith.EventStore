@@ -19,6 +19,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// Read endpoints require ReadOnly policy. Write endpoints require Admin policy.
 /// </summary>
 [ApiController]
+[Authorize(Policy = "EventStoreHuman")]
 [Route("api/v1/admin/tenants")]
 [Tags("Admin - Tenants")]
 public class AdminTenantsController(
@@ -31,7 +32,6 @@ public class AdminTenantsController(
     /// Adds a user to a tenant.
     /// </summary>
     [HttpPost("{tenantId}/users")]
-    [Authorize(Policy = "EventStoreHuman")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]

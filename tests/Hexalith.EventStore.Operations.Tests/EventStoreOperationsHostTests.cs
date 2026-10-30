@@ -91,7 +91,7 @@ public sealed class EventStoreOperationsHostTests
             });
         using HttpClient client = factory.CreateClient();
         using var request = new HttpRequestMessage(new HttpMethod(method), path);
-        request.Headers.TryAddWithoutValidation(DaprAppChannelTokenMiddleware.HeaderName, "sidecar-secret")
+        request.Headers.TryAddWithoutValidation("dapr-api-token", "sidecar-secret")
             .ShouldBeTrue();
         if (string.Equals(method, "POST", StringComparison.Ordinal))
         {

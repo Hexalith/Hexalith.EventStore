@@ -1,9 +1,11 @@
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Fixtures;
+using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Shouldly;
 
@@ -22,14 +24,21 @@ public class OpenApiE2ETests {
 
     public OpenApiE2ETests(AspireContractTestFixture fixture) => _fixture = fixture;
 
+    private Task<HttpResponseMessage> GetAuthorizedAsync(string path) {
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            TestJwtTokenGenerator.GenerateToken(tenants: ["tenant-a"], domains: ["counter"], permissions: ["command:query"]));
+        return _fixture.EventStoreClient.SendAsync(request);
+    }
+
     /// <summary>
     /// AC #19: OpenAPI JSON includes the query endpoint.
     /// </summary>
     [Fact]
     public async Task OpenApiJson_IncludesQueryEndpoint() {
         // Act
-        using HttpResponseMessage response = await _fixture.EventStoreClient
-            .GetAsync("/openapi/v1.json");
+        using HttpResponseMessage response = await GetAuthorizedAsync("/openapi/v1.json");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -49,8 +58,7 @@ public class OpenApiE2ETests {
     [Fact]
     public async Task OpenApiJson_IncludesCommandValidationEndpoint() {
         // Act
-        using HttpResponseMessage response = await _fixture.EventStoreClient
-            .GetAsync("/openapi/v1.json");
+        using HttpResponseMessage response = await GetAuthorizedAsync("/openapi/v1.json");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -70,8 +78,7 @@ public class OpenApiE2ETests {
     [Fact]
     public async Task OpenApiJson_IncludesQueryValidationEndpoint() {
         // Act
-        using HttpResponseMessage response = await _fixture.EventStoreClient
-            .GetAsync("/openapi/v1.json");
+        using HttpResponseMessage response = await GetAuthorizedAsync("/openapi/v1.json");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -91,8 +98,7 @@ public class OpenApiE2ETests {
     [Fact]
     public async Task OpenApiJson_ValidationEndpointResponseSchema_UsesBooleanAndNullableString() {
         // Act
-        using HttpResponseMessage response = await _fixture.EventStoreClient
-            .GetAsync("/openapi/v1.json");
+        using HttpResponseMessage response = await GetAuthorizedAsync("/openapi/v1.json");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);

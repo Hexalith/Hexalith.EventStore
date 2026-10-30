@@ -32,16 +32,31 @@ public class LiveCommandSurfaceSmokeTests {
 
     public LiveCommandSurfaceSmokeTests(AspireContractTestFixture fixture) => _fixture = fixture;
 
+    private Task<HttpResponseMessage> GetAuthorizedAsync(string path) {
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            TestJwtTokenGenerator.GenerateToken(tenants: ["tenant-a"], domains: ["counter"], permissions: ["command:query"]));
+        return _fixture.EventStoreClient.SendAsync(request);
+    }
+
+    /// <summary>The human-only documentation surface refuses anonymous callers.</summary>
+    [Fact]
+    public async Task PublicSurface_Anonymous_Returns401() {
+        using HttpResponseMessage openApi = await _fixture.EventStoreClient.GetAsync("/openapi/v1.json");
+        openApi.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
     /// <summary>
-    /// Fact A (AC #2 / AC #12): the four public-surface URLs each return 200 with the expected
-    /// Content-Type and per-URL shape — no auth header. OpenAPI version assertion is relaxed
+    /// Fact A (AC #2 / AC #12): the four documentation URLs each return 200 with the expected
+    /// Content-Type and per-URL shape for an authenticated human caller (anonymous gets 401). OpenAPI version assertion is relaxed
     /// to the 3.1.x family because Microsoft.AspNetCore.OpenApi auto-emits the library's current
     /// minor (live observation: 3.1.1) — UX-DR12's design intent is "OpenAPI 3.1, not 3.0".
     /// </summary>
     [Fact]
     public async Task PublicSurface_AllFourUrls_Return200WithExpectedShape() {
         // /swagger/index.html
-        using HttpResponseMessage swagger = await _fixture.EventStoreClient.GetAsync("/swagger/index.html");
+        using HttpResponseMessage swagger = await GetAuthorizedAsync("/swagger/index.html");
         swagger.StatusCode.ShouldBe(HttpStatusCode.OK);
         swagger.Content.Headers.ContentType?.MediaType.ShouldBe("text/html");
         string swaggerBody = await swagger.Content.ReadAsStringAsync();
@@ -49,7 +64,7 @@ public class LiveCommandSurfaceSmokeTests {
         swaggerBody.ShouldContain("<title>Swagger UI</title>");
 
         // /openapi/v1.json
-        using HttpResponseMessage openApi = await _fixture.EventStoreClient.GetAsync("/openapi/v1.json");
+        using HttpResponseMessage openApi = await GetAuthorizedAsync("/openapi/v1.json");
         openApi.StatusCode.ShouldBe(HttpStatusCode.OK);
         openApi.Content.Headers.ContentType?.MediaType.ShouldBe("application/json");
         JsonElement openApiDoc = await openApi.Content.ReadFromJsonAsync<JsonElement>();
@@ -63,14 +78,14 @@ public class LiveCommandSurfaceSmokeTests {
             "/api/v1/commands path should declare the Submit (POST) operation");
 
         // /problems/validation-error
-        using HttpResponseMessage problemValidation = await _fixture.EventStoreClient.GetAsync("/problems/validation-error");
+        using HttpResponseMessage problemValidation = await GetAuthorizedAsync("/problems/validation-error");
         problemValidation.StatusCode.ShouldBe(HttpStatusCode.OK);
         problemValidation.Content.Headers.ContentType?.MediaType.ShouldBe("text/html");
         string problemValidationBody = await problemValidation.Content.ReadAsStringAsync();
         problemValidationBody.ShouldNotBeNullOrEmpty();
 
         // /problems/concurrency-conflict — proves Story 3.5 type-URI pages are reachable, not just validation-error.
-        using HttpResponseMessage problemConcurrency = await _fixture.EventStoreClient.GetAsync("/problems/concurrency-conflict");
+        using HttpResponseMessage problemConcurrency = await GetAuthorizedAsync("/problems/concurrency-conflict");
         problemConcurrency.StatusCode.ShouldBe(HttpStatusCode.OK);
         problemConcurrency.Content.Headers.ContentType?.MediaType.ShouldBe("text/html");
         string problemConcurrencyBody = await problemConcurrency.Content.ReadAsStringAsync();
