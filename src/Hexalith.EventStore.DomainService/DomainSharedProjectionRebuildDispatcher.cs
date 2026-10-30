@@ -1076,6 +1076,24 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 : await StoreCapturedEventsAsync(sessionStore, captureCoordinator, FencedScope(handler, identity),
                     handler, identity, sessionKey, ordinal, request.AggregateId!, evolvedOwner!.Events,
                     options, cancellationToken).ConfigureAwait(false);
+            if (capturedReference is not null)
+            {
+                // Identity reservation updates the session. Reload its ETag without repeating
+                // preparation, and accept only the same accumulating owner and reservations.
+                DomainSharedProjectionRebuildSessionState observed = state;
+                entry = await sessionStore.GetAsync<DomainSharedProjectionRebuildSessionState>(
+                    handler.RebuildStoreName, sessionKey, cancellationToken).ConfigureAwait(false);
+                if (!TryValidateState(entry.Value, identity, options, out failure)) return failure!;
+                state = entry.Value!;
+                if (!state.Partitioned) return CorruptState();
+                if (state.Phase != DomainSharedProjectionRebuildPhase.Accumulating
+                    || state.AcceptedAggregateCount != ordinal
+                    || state.LastAggregateId != observed.LastAggregateId
+                    || state.InventoryFingerprint != observed.InventoryFingerprint
+                    || state.PendingScratchChunkCount != chunks.Length
+                    || state.PendingCapturedIdentityReference != (capturedReference with { RootDigest = string.Empty, Height = 0, LastPosition = 0 }))
+                    continue;
+            }
             var manifest = new DomainSharedProjectionStoredPartitionManifest(
                 ordinal, request.AggregateId!, historyFingerprint, request.IsErased, chunkHashes,
                 request.Events!.LongLength, request.IsErased || !legacyManifest ? null

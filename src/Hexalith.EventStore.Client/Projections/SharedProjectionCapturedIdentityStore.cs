@@ -261,9 +261,10 @@ public sealed class SharedProjectionCapturedIdentityStore
             var page = await ReadPageAsync(scope, reference, sequence, token).ConfigureAwait(false);
             return page.Digests.AsSpan(checked((int)(sequence - page.FirstSequence) * 32), 32).ToArray();
         }
-        long offset = (sequence - 1) * 32;
-        return checkpoint.CapturedEventDigests is { } inline && sequence > 0 && offset <= inline.LongLength - 32
-            ? inline.AsSpan(checked((int)offset), 32).ToArray() : null;
+        if (checkpoint.CapturedEventDigests is not { } inline || sequence < 1 || sequence > inline.LongLength / 32)
+            return null;
+        int offset = checked((int)((sequence - 1) * 32));
+        return inline.AsSpan(offset, 32).ToArray();
     }
 
     /// <summary>Irreversibly fences installers and reclaims unselected identity evidence after abort.</summary>
@@ -422,6 +423,7 @@ public sealed class SharedProjectionCapturedIdentityStore
         {
             await _coordinator.ReconcileCapturedIdentityKeyAsync(scope, key, token).ConfigureAwait(false);
             var value = await _store.GetAsync<JsonDocument>(scope.StoreName, key, token).ConfigureAwait(false);
+            using JsonDocument? document = value.Value;
             if (value.ETag is null) return;
             if (_store is not IReadModelConditionalEraser eraser)
                 throw new InvalidOperationException("Captured identity retirement requires conditional erasure support.");

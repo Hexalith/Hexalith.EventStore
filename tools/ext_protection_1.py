@@ -15,6 +15,9 @@ import os
 from pathlib import Path
 import re
 import secrets
+import hmac
+import atexit
+import shutil
 import subprocess
 import tempfile
 import time
@@ -35,6 +38,10 @@ OBSERVATION_VERIFICATION_SECONDS = 30
 
 class Blocked(Exception):
     """Missing or uncertain authority; no successor effect may be attempted."""
+
+
+class ValidatedRoleConfigurations(dict):
+    """Runtime-only marker: all shipped dependency/configuration closures passed validate_profile."""
 
 
 class Failed(Exception):
@@ -125,6 +132,14 @@ def exact_checkout(root, expected):
         raise Blocked('TARGET_NOT_REACHABLE_FROM_ORIGIN_MAIN')
 
 
+def paired_checkout_preflight(eventstore_root, record, profile):
+    """Checks both accepted clean local owner revisions without fetching or invoking a role."""
+    if Path(profile['platformRoot']).resolve() == Path(eventstore_root).resolve():
+        raise Blocked('DISTINCT_PLATFORM_CHECKOUT_REQUIRED')
+    exact_checkout(eventstore_root, record['TargetVersionOrCommit'])
+    exact_checkout(profile['platformRoot'], profile['platformTargetCommit'])
+
+
 def pinned_file(path, expected):
     if not isinstance(path, str) or not Path(path).is_absolute() or not HEX.fullmatch(expected or ''):
         raise Blocked('INVALID_FILE_REFERENCE')
@@ -143,13 +158,20 @@ def anchor_identity(path):
     return digest(der)
 
 
+def role_credential_name(reference):
+    """A credential name cannot be a CLR, native-loader, shell or machine-runtime control."""
+    if not isinstance(reference, str) or not re.fullmatch(r'env:EXT_PROTECTION_ROLE_[A-Z][A-Z0-9_]{0,63}', reference):
+        raise Blocked('INERT_ROLE_CREDENTIAL_NAMESPACE_REQUIRED')
+    return reference[4:]
+
+
 def validate_profile(path, record, plan_sha):
     raw = Path(path).read_bytes()
     if digest(raw) != record['profileSha256']:
         raise Blocked('PROFILE_HASH_MISMATCH')
     profile = read_json(path)
     if set(profile) != {'schema', 'targetCommit', 'platformTargetCommit', 'platformRoot', 'roleProgramContract', 'planSha256', 'tenantReferences', 'roles', 'engineBinary', 'capabilityTrust'} \
-            or profile['schema'] != 'ext-protection-1-profile/v2' \
+            or profile['schema'] != 'ext-protection-1-profile/v3' \
             or profile['targetCommit'] != record['TargetVersionOrCommit'] or profile['planSha256'] != plan_sha \
             or not re.fullmatch(r'[0-9a-f]{40}', profile['platformTargetCommit'] or '') \
             or profile['platformTargetCommit'] != record.get('platformTargetCommit') \
@@ -161,24 +183,15 @@ def validate_profile(path, record, plan_sha):
         raise Blocked('DISTINCT_TENANTS_REQUIRED')
     if set(profile['roles']) != set(ROLE_NAMES):
         raise Blocked('INDEPENDENT_ROLES_REQUIRED')
-    identities, credentials, anchors = [], [], []
+    identities, credentials, anchors, credential_values = [], [], [], []
     for role in ROLE_NAMES:
         config = profile['roles'][role]
         if set(config) != {'executable', 'executableSha256', 'publicAnchorFile', 'publicAnchorSha256', 'credentialReference', 'identity', 'installationManifest', 'installationManifestSha256'}:
             raise Blocked('ROLE_REFERENCE_SCHEMA_MISMATCH')
+        role_credential_name(config['credentialReference'])
         pinned_file(config['executable'], config['executableSha256'])
         anchor = pinned_file(config['publicAnchorFile'], config['publicAnchorSha256'])
-        manifest = read_json(pinned_file(config['installationManifest'], config['installationManifestSha256']))
-        if set(manifest) != {'files'} or not manifest['files']:
-            raise Blocked('INSTALLATION_INVENTORY_MISSING')
-        inventory = {}
-        for item in manifest['files']:
-            if set(item) != {'path', 'sha256'} or item['path'] in inventory:
-                raise Blocked('INSTALLATION_INVENTORY_CONFLICT')
-            pinned_file(item['path'], item['sha256'])
-            inventory[item['path']] = item['sha256']
-        if inventory.get(config['executable']) != config['executableSha256']:
-            raise Blocked('EXECUTABLE_NOT_IN_INSTALLATION_INVENTORY')
+        validate_role_installation(role, config)
         credential = config['credentialReference']
         if not re.fullmatch(r'env:[A-Z][A-Z0-9_]*', credential) or not os.environ.get(credential[4:]):
             raise Blocked('CREDENTIAL_REFERENCE_NOT_INSTALLED')
@@ -186,8 +199,13 @@ def validate_profile(path, record, plan_sha):
             raise Blocked('ROLE_IDENTITY_MISSING')
         identities.append(config['identity'])
         credentials.append(credential)
+        value = os.environ[credential[4:]].encode("utf-8")
+        if not 1 <= len(value) <= 16384:
+            raise Blocked("CREDENTIAL_REFERENCE_NOT_INSTALLED")
+        credential_values.append(value)
         anchors.append(anchor_identity(anchor))
-    if any(len(set(values)) != 3 for values in (identities, credentials, anchors)):
+    if any(hmac.compare_digest(credential_values[i], credential_values[j]) for i in range(3) for j in range(i)) \
+            or any(len(set(values)) != 3 for values in (identities, credentials, anchors)):
         raise Blocked('ROLE_SEPARATION_MISSING')
     validate_capability_trust(profile['capabilityTrust'], profile['roles'])
     if any(entry['tenantId'] not in tenants.values() for entry in profile['capabilityTrust']):
@@ -196,7 +214,106 @@ def validate_profile(path, record, plan_sha):
     if set(binary) != {'path', 'sha256'}:
         raise Blocked('ENGINE_BINARY_REFERENCE_MISSING')
     pinned_file(binary['path'], binary['sha256'])
+    profile['roles'] = ValidatedRoleConfigurations(profile['roles'])
     return profile
+
+
+_RUNTIME_RESOLVER = None
+
+
+def resolved_application_assets(entry, host, template):
+    """Runs only the trusted owner-checkout resolver, never a role or its entry assembly."""
+    global _RUNTIME_RESOLVER
+    if _RUNTIME_RESOLVER is None:
+        directory = Path(tempfile.mkdtemp(prefix='ext-protection-runtime-resolver-'))
+        atexit.register(shutil.rmtree, directory, ignore_errors=True)
+        source = ROOT / 'tools/ext-protection-1/runtime-closure'
+        project = directory / 'RuntimeClosure.csproj'
+        shutil.copyfile(source / 'RuntimeClosure.csproj', project)
+        shutil.copyfile(source / 'Program.cs', directory / 'Program.cs')
+        build = subprocess.run([str(Path(shutil.which('dotnet')).resolve()), 'build', str(project), '-c', 'Debug', '-nodeReuse:false', '--nologo', '-o', str(directory / 'out')],
+                               capture_output=True, timeout=120, env={'PATH': os.defpath, 'LANG': 'C.UTF-8', 'DOTNET_CLI_TELEMETRY_OPTOUT': '1'})
+        if build.returncode:
+            raise Blocked('TRUSTED_RUNTIME_RESOLVER_UNAVAILABLE')
+        _RUNTIME_RESOLVER = directory / 'out/RuntimeClosure.dll'
+    result = subprocess.run([str(host), str(_RUNTIME_RESOLVER), str(entry), str(template)], capture_output=True, timeout=15,
+                            env={'PATH': os.defpath, 'LANG': 'C.UTF-8', 'DOTNET_CLI_TELEMETRY_OPTOUT': '1'})
+    if result.returncode or len(result.stdout) > MAX_OBSERVATION_BYTES:
+        raise Blocked('APPLICATION_DEPENDENCY_RESOLUTION_FAILED')
+    return strict_json(result.stdout)
+
+
+def validate_role_installation(role, config):
+    role_credential_name(config['credentialReference'])
+    manifest = read_json(pinned_file(config['installationManifest'], config['installationManifestSha256']))
+    if not isinstance(manifest, dict) or set(manifest) != {'schema', 'role', 'entryAssembly', 'files', 'sharedFrameworkBoundary', 'dotnetHost', 'appHostTemplate'} \
+            or manifest['schema'] != 'ext-protection-1-role-installation/v2' or role not in ROLE_NAMES or manifest['role'] != role \
+            or manifest['sharedFrameworkBoundary'] != 'trusted-machine-dotnet10-sdk-framework-and-os' or not isinstance(manifest['files'], list) \
+            or not 1 <= len(manifest['files']) <= 4096:
+        raise Blocked('COMPLETE_SHIPPED_ROLE_INSTALLATION_REQUIRED')
+    inventory, physical = {}, set()
+    for item in manifest['files']:
+        if not isinstance(item, dict) or set(item) != {'path', 'sha256'} or item['path'] in inventory:
+            raise Blocked('INSTALLATION_INVENTORY_CONFLICT')
+        path = pinned_file(item['path'], item['sha256'])
+        if str(path) != str(path.resolve()) or str(path.resolve()) in physical or any(part.is_symlink() for part in [path, *path.parents]):
+            raise Blocked('INSTALLATION_PATH_OWNERSHIP_INVALID')
+        physical.add(str(path.resolve()))
+        inventory[str(path)] = item['sha256']
+    executable = Path(config['executable'])
+    expected_name = 'Hexalith.Platform.Protection.Qualification.' + role.capitalize()
+    if executable.name != expected_name or not os.access(executable, os.X_OK) or executable.read_bytes()[:4] != b'\x7fELF' or inventory.get(str(executable)) != config['executableSha256']:
+        raise Blocked('SHIPPED_FRAMEWORK_DEPENDENT_APPHOST_REQUIRED')
+    entry = executable.with_suffix('.dll')
+    deps = executable.with_suffix('.deps.json')
+    runtime = executable.with_suffix('.runtimeconfig.json')
+    # with_suffix would replace the last dotted name; apphosts have dotted assembly names.
+    entry, deps, runtime = (Path(str(executable) + suffix) for suffix in ('.dll', '.deps.json', '.runtimeconfig.json'))
+    client_path = executable.parent / ('protection-role.' + role + '.json')
+    mandatory = {str(value) for value in (executable, entry, deps, runtime, client_path)}
+    if manifest['entryAssembly'] != str(entry) or not mandatory <= set(inventory):
+        raise Blocked('APPLICATION_DEPENDENCY_PIN_MISSING')
+    options = read_json(runtime).get('runtimeOptions')
+    if not isinstance(options, dict) or options.get('tfm') != 'net10.0' or set(options) - {'tfm', 'framework', 'frameworks', 'configProperties', 'rollForward'} \
+            or options.get('rollForward', 'LatestPatch') not in ('LatestPatch', 'Minor') or Path(str(executable) + '.runtimeconfig.dev.json').exists():
+        raise Blocked('EXTERNAL_RUNTIME_RESOLUTION_UNSUPPORTED')
+    properties = options.get('configProperties', {})
+    permitted_properties = {'MSTest.EnableParentProcessQuery', 'System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization', 'System.Reflection.Metadata.MetadataUpdater.IsSupported', 'System.Globalization.Invariant', 'System.GC.Server'}
+    if not isinstance(properties, dict) or set(properties) - permitted_properties or any(type(value) is not bool for value in properties.values()):
+        raise Blocked('EXTERNAL_RUNTIME_RESOLUTION_UNSUPPORTED')
+    frameworks = options.get('frameworks', [options['framework']] if 'framework' in options else [])
+    if not frameworks or any(not isinstance(value, dict) or set(value) != {'name', 'version'} or value['name'] not in ('Microsoft.NETCore.App', 'Microsoft.AspNetCore.App')
+                             or not re.fullmatch(r'10\.0\.[0-9]+', value['version']) for value in frameworks):
+        raise Blocked('SHARED_FRAMEWORK_BOUNDARY_UNSUPPORTED')
+    client = read_json(client_path)
+    expected_fields = {'Schema', 'Role', 'Identity', 'Endpoint', 'CredentialReference', 'PublicAnchorFile', 'PublicAnchorSha256'}
+    if not isinstance(client, dict) or set(client) != expected_fields or client['Schema'] != 'ext-protection-1-role-program/v1' \
+            or client['Role'] != role or client['Identity'] != config['identity'] or client['CredentialReference'] != config['credentialReference'] \
+            or client['PublicAnchorFile'] != config['publicAnchorFile'] or client['PublicAnchorSha256'] != config['publicAnchorSha256'] \
+            or not isinstance(client['Endpoint'], str) or not re.fullmatch(r'https://[^/?#@]+(?:/[^?#]*)?', client['Endpoint']):
+        raise Blocked('ROLE_CONFIGURATION_PIN_MISMATCH')
+    mandatory.add(client['PublicAnchorFile'])
+    host = Path(manifest['dotnetHost'])
+    if str(host) != str(Path(shutil.which('dotnet')).resolve()) or str(host) not in inventory or host.read_bytes()[:4] != b'\x7fELF':
+        raise Blocked('TRUSTED_DOTNET_HOST_PIN_REQUIRED')
+    mandatory.add(str(host))
+    template = Path(manifest['appHostTemplate'])
+    if not template.is_relative_to(host.parent) or not re.fullmatch(r'packs/Microsoft\.NETCore\.App\.Host\.linux-x64/10\.0\.[0-9]+/runtimes/linux-x64/native/apphost', str(template.relative_to(host.parent))) or str(template) not in inventory:
+        raise Blocked('TRUSTED_APPHOST_TEMPLATE_PIN_REQUIRED')
+    mandatory.add(str(template))
+    resolved = resolved_application_assets(entry, host, template)
+    if not re.fullmatch(r'10\.0\.[0-9]+', resolved.get('runtime', '')) or set(resolved) != {'files', 'runtime'}:
+        raise Blocked('SHARED_FRAMEWORK_BOUNDARY_UNSUPPORTED')
+    for asset in resolved['files']:
+        if not isinstance(asset, str) or not Path(asset).is_relative_to(executable.parent):
+            raise Blocked('EXTERNAL_RUNTIME_RESOLUTION_UNSUPPORTED')
+        mandatory.add(asset)
+    if set(inventory) != mandatory:
+        raise Blocked('APPLICATION_DEPENDENCY_PIN_INCOMPLETE_OR_FOREIGN')
+    # Recheck accepted files after resolution; Role.request repeats this entire closure at invocation.
+    for path, pin in inventory.items():
+        pinned_file(path, pin)
+    return inventory
 
 
 def identity_text(value, code='IDENTITY_INVALID', byte_bound=False):
@@ -860,17 +977,19 @@ def verify_statement(statement, signature, anchor, directory):
         raise Blocked('SIGNED_ROLE_PROOF_INVALID')
 
 
-def isolated_environment(credential_reference):
-    name = credential_reference.removeprefix('env:')
+def isolated_environment(credential_reference, dotnet_root=None):
+    name = role_credential_name(credential_reference)
     if not re.fullmatch(r'[A-Z][A-Z0-9_]*', name) or not os.environ.get(name):
         raise Blocked('CREDENTIAL_REFERENCE_NOT_INSTALLED')
-    return {'PATH': os.defpath, 'LANG': 'C.UTF-8', 'LC_ALL': 'C.UTF-8', name: os.environ[name]}
+    environment = {'PATH': os.defpath, 'LANG': 'C.UTF-8', 'LC_ALL': 'C.UTF-8', name: os.environ[name]}
+    if dotnet_root is not None:
+        environment['DOTNET_ROOT'] = str(dotnet_root)
+    return environment
 
 
 def revalidate_installation(config, engine):
-    manifest = read_json(pinned_file(config['installationManifest'], config['installationManifestSha256']))
-    for item in manifest['files']:
-        pinned_file(item['path'], item['sha256'])
+    role = read_json(config['installationManifest']).get('role')
+    validate_role_installation(role, config)
     pinned_file(engine['path'], engine['sha256'])
 
 
@@ -883,12 +1002,13 @@ class Role:
         self.trust_snapshot = trust_snapshot or validate_capability_trust(capability_trust, role_configs)
 
     def request(self, request):
+        role_credential_name(self.config['credentialReference'])
         pinned_file(self.config['executable'], self.config['executableSha256'])
         pinned_file(self.config['publicAnchorFile'], self.config['publicAnchorSha256'])
         revalidate_installation(self.config, self.engine)
         self.trust_snapshot.recheck_pins(VerificationBudget())
         result = subprocess.run([self.config['executable']], input=canonical(request), capture_output=True, timeout=60,
-                                env=isolated_environment(self.config['credentialReference']))
+                                env=isolated_environment(self.config['credentialReference'], Path(read_json(self.config['installationManifest'])['dotnetHost']).parent))
         if result.returncode or len(result.stdout) > 16 * 1024 * 1024:
             raise Blocked('ROLE_RESULT_UNCERTAIN')
         try:
@@ -1573,6 +1693,140 @@ def bind_snapshot_originals(observation):
         require(all(completion[field] == first[field] for field in ('Identity', 'OperationId', 'KeyReference', 'DekVersion', 'LifecycleEpoch')), 'SNAPSHOT_COMPOSITE_IDENTITY_SUBSTITUTED')
 
 
+def typed_native_owner_outcome(value):
+    native_record(value, 'TenantId BatchId Status OwnerRevision KeyBlockSetRevision ReceiptId BlockReason BlockedKeyVersion RevocationRevision TargetReceipts', 'EXACT_NATIVE_OUTCOME_SCHEMA_INVALID')
+    aggregate_identity(value['TenantId'], value['BatchId'])
+    ordinal(value['Status'], 0, 6); ordinal(value['OwnerRevision'], maximum=MAX_NATIVE_LONG); ordinal(value['KeyBlockSetRevision'], 0, value['OwnerRevision'])
+    identity_text(value['ReceiptId'], 'EXACT_NATIVE_RECEIPT_MISSING', byte_bound=True)
+    require(isinstance(value['TargetReceipts'], list), 'EXACT_NATIVE_OUTCOME_SCHEMA_INVALID')
+    for receipt in value['TargetReceipts']:
+        native_record(receipt, 'Target OriginalBatchId ReceiptId', 'EXACT_NATIVE_OUTCOME_SCHEMA_INVALID')
+        target_key(receipt['Target']); identity_text(receipt['OriginalBatchId'], byte_bound=True); identity_text(receipt['ReceiptId'], byte_bound=True)
+    if value['BlockReason'] is not None:
+        ordinal(value['BlockReason'], 0, 1)
+    if value['RevocationRevision'] is not None:
+        ordinal(value['RevocationRevision'], maximum=MAX_NATIVE_LONG)
+    if value['BlockedKeyVersion'] is not None:
+        identity_text(value['BlockedKeyVersion'], byte_bound=True)
+    require(value['Status'] in (2, 6) or all(value[name] is None for name in ('BlockReason', 'BlockedKeyVersion', 'RevocationRevision')), 'EXACT_NATIVE_OUTCOME_SCHEMA_INVALID')
+    return value
+
+
+def ordered_consumption_request(request):
+    capture_consumption_request(request)
+    result = {key: request[key] for key in 'Capability DetachedJws CommittedIssuedGuardRevision DispatchReceiptId DispatchGuardRevision Targets'.split()}
+    result['Capability'] = {key: request['Capability'][key] for key in 'Issuer Audience TenantId DeletionRequestId DestructionSealId BatchKind BatchOrdinal BatchId ManifestDigest GuardStreamId IntendedIssuedGuardRevision AttestationOrdinal SigningAttemptOrdinal CapabilityKeyVersion'.split()}
+    result['Targets'] = [{key: target[key] for key in ('TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias')} for target in request['Targets']]
+    return result
+
+
+def stripped_native_result(value):
+    require(isinstance(value, dict), 'EXACT_RESULT_SCHEMA_INVALID')
+    return {key: item for key, item in value.items() if key not in ('status', 'effectBefore', 'effectAfter', 'pinRefusals')}
+
+
+def validate_native_call(observation, original, case, effect=False):
+    require(isinstance(original, dict) and isinstance(original.get('Call'), dict), 'EXACT_CALL_ORIGINAL_MISSING')
+    call = original['Call']
+    required = {'Id', 'Kind', 'Payload', 'OperationId', 'RequestSha256'}
+    require(required <= set(call) <= required | {'SourceDigest', 'HoldBlockedOriginal'} and type(call['Kind']) is int
+            and isinstance(call['Payload'], dict) and isinstance(call['RequestSha256'], str)
+            and re.fullmatch(r'[0-9a-f]{64}', call['RequestSha256']), 'EXACT_CALL_IDENTITY_INVALID')
+    identity_text(call['Id'], byte_bound=True)
+    identity_text(call['OperationId'], byte_bound=True)
+    require(call['Id'].startswith(case['id'] + '/') and any('/' + action + '/' in call['Id'] for action in case['steps']), 'EXACT_CALL_SCENARIO_SUBSTITUTED')
+    operations = observation.get('operationProducerOriginals')
+    require(isinstance(operations, list), 'EXACT_OPERATION_ORIGINAL_MISSING')
+    matches = [item for item in operations if item.get('OperationId') == call['OperationId']]
+    require(len(matches) == 1, 'EXACT_OPERATION_ORIGINAL_SUBSTITUTED')
+    operation = matches[0]
+    request = operation.get('SafeRequest')
+    require(operation.get('Role') == 'executor' and operation.get('RequestSha256') == call['RequestSha256']
+            and operation.get('Producer') == observation.get('producerIdentity') and isinstance(request, dict)
+            and request.get('caseId') == case['id'] and request.get('action') in case['steps']
+            and '/' + request['action'] + '/' in call['Id'] and request.get('operationId') == call['OperationId']
+            and operation.get('BindingDigest') == observation.get('producerIdentity', {}).get('BindingDigest'), 'EXACT_OPERATION_ORIGINAL_SUBSTITUTED')
+    calls = observation.get('nativeCallOriginals')
+    require(isinstance(calls, list), 'EXACT_CALL_ORIGINAL_MISSING')
+    matches = [item for item in calls if item.get('Call') == call]
+    require(len(matches) == 1 and isinstance(matches[0].get('Result'), dict), 'EXACT_CALL_ORIGINAL_SUBSTITUTED')
+    if not effect:
+        require(set(original) == {'Call', 'Result'} and original == matches[0], 'EXACT_CALL_ORIGINAL_SUBSTITUTED')
+    return call, matches[0]['Result']
+
+
+def bind_exact_recovery(observation, case):
+    recipes = {'P06': ('DestroyWithLostAcknowledgement', 8, 'LookupOriginalDestruction', 14),
+               'P35': ('LoseBlockDeliveryAndMirror', 9, 'LookupOriginalBlock', 15),
+               'P36': ('LoseActivationResult', 11, 'LookupOriginalActivation', 16)}
+    require(case.get('id') in recipes, 'EXACT_RESULT_SCENARIO_UNSUPPORTED')
+    results = observation.get('exactResults')
+    require(isinstance(results, list) and len(results) == 2, 'EXACT_RESULT_DIVERGED')
+    action, kind, lookup_action, lookup_kind = recipes[case['id']]
+    original_call, result = validate_native_call(observation, results[0], case)
+    lookup_call, looked_up = validate_native_call(observation, results[1], case)
+    require(original_call['Kind'] == kind and lookup_call['Kind'] == lookup_kind
+            and '/' + action + '/' in original_call['Id'] and '/' + lookup_action + '/' in lookup_call['Id']
+            and original_call['OperationId'] != lookup_call['OperationId'] and original_call['Id'] != lookup_call['Id'], 'EXACT_RESULT_OPERATION_SUBSTITUTED')
+    result, looked_up = stripped_native_result(result), stripped_native_result(looked_up)
+    typed_native_owner_outcome(result); typed_native_owner_outcome(looked_up)
+    require(result == looked_up, 'EXACT_RESULT_DIVERGED')
+    if kind == 8:
+        matches = [item for item in observation.get('ownerBatches', []) if item.get('Current') == original_call['Payload'] and item.get('Outcome') == result]
+        require(len(matches) == 1 and result.get('Status') == 3 and lookup_call['Payload'] == {'tenantId': result['TenantId'], 'batchId': result['BatchId']}, 'EXACT_NATIVE_TERMINAL_SUBSTITUTED')
+    else:
+        field = 'AdmissionBlockOriginal' if kind == 9 else 'ActivationOriginal'
+        for operation in observation.get('ownerOperationOriginals', []):
+            fields = {'OperationId', 'RequestDigest', 'Outcome', 'BlockedReplacementOriginal', 'ActivationOriginal'}
+            require(isinstance(operation, dict) and fields <= set(operation) <= fields | {'AdmissionBlockOriginal'}, 'EXACT_NATIVE_OPERATION_SCHEMA_INVALID')
+            typed_native_owner_outcome(operation['Outcome'])
+        payload = original_call['Payload']
+        if kind == 9:
+            native_record(payload, 'TenantId BatchId OperationId AdmissionEvidenceId', 'EXACT_NATIVE_OPERATION_SCHEMA_INVALID')
+            ordered_payload = {name: payload[name] for name in ('TenantId', 'BatchId', 'OperationId', 'AdmissionEvidenceId')}
+        else:
+            native_record(payload, 'OperationId CompromiseBlockReceiptId ExpectedKeyBlockSetRevision GuardReplacementReceiptId Replacement', 'EXACT_NATIVE_OPERATION_SCHEMA_INVALID')
+            ordinal(payload['ExpectedKeyBlockSetRevision'], 0, MAX_NATIVE_LONG)
+            ordered_payload = {name: payload[name] for name in ('OperationId', 'CompromiseBlockReceiptId', 'ExpectedKeyBlockSetRevision', 'GuardReplacementReceiptId', 'Replacement')}
+            ordered_payload['Replacement'] = ordered_consumption_request(payload['Replacement'])
+        matches = [item for item in observation.get('ownerOperationOriginals', []) if item.get(field) == payload and item.get('Outcome') == result]
+        require(len(matches) == 1 and lookup_call['Payload'] == original_call['Payload']
+                and matches[0].get('OperationId') == original_call['Payload'].get('OperationId')
+                and matches[0].get('RequestDigest') == hashlib.sha256(native_json_bytes(ordered_payload)).hexdigest().upper(), 'EXACT_NATIVE_TERMINAL_SUBSTITUTED')
+        require(result.get('Status') == (2 if kind == 9 else 0), 'EXACT_NATIVE_TERMINAL_SUBSTITUTED')
+    require(any(item.get('Current', {}).get('Capability', {}).get('BatchId') == result.get('BatchId')
+                and item.get('Current', {}).get('Capability', {}).get('TenantId') == result.get('TenantId') for item in observation.get('ownerBatches', [])), 'EXACT_NATIVE_BATCH_SUBSTITUTED')
+    identity_text(result.get('ReceiptId'), 'EXACT_NATIVE_RECEIPT_MISSING', byte_bound=True)
+
+
+def bind_reservation_recovery(observation, case):
+    require(case.get('id') in ('P25', 'P28'), 'RECOVERY_SCENARIO_UNSUPPORTED')
+    values = observation.get('reservationRecoveries')
+    require(isinstance(values, list) and len(values) == 1, 'RESERVATION_RECOVERY_ORIGINALS_MISSING')
+    value = native_record(values[0], 'Request ReservationOriginal Original Recovery OwnerOutcome ProviderOutcome', 'RESERVATION_RECOVERY_SCHEMA_INVALID')
+    request = value['Request']
+    capture_consumption_request(request)
+    original, first = validate_native_call(observation, value['Original'], case)
+    recovery, recovered = validate_native_call(observation, value['Recovery'], case)
+    action = 'ReserveBeforeAdmissionBlock' if case['id'] == 'P25' else 'CompromiseAfterReserve'
+    require(original['Kind'] == 8 and '/' + action + '/' in original['Id'] and original['Payload'] == request
+            and recovery['Kind'] == 14 and '/LookupOriginalDestruction/' in recovery['Id']
+            and original['OperationId'] != recovery['OperationId']
+            and recovery['Payload'] == {'tenantId': request['Capability']['TenantId'], 'batchId': request['Capability']['BatchId']}, 'RESERVATION_RECOVERY_CALL_SUBSTITUTED')
+    reserved = native_owner_outcome(value['ReservationOriginal'], 1)
+    consumed = native_owner_outcome(value['OwnerOutcome'], 3)
+    require(reserved['TenantId'] == consumed['TenantId'] == request['Capability']['TenantId']
+            and reserved['BatchId'] == consumed['BatchId'] == request['Capability']['BatchId']
+            and reserved['OwnerRevision'] < consumed['OwnerRevision'] and reserved['TargetReceipts'] == [], 'RESERVATION_ORIGINAL_SUBSTITUTED')
+    require(stripped_native_result(first) in (reserved, consumed) and stripped_native_result(recovered) == consumed
+            and consumed in observation.get('ownerResults', []) and value['ProviderOutcome'] in observation.get('providerResults', [])
+            and any(item.get('Current') == request and item.get('Outcome') == consumed for item in observation.get('ownerBatches', [])), 'RESERVATION_RECOVERY_TERMINAL_SUBSTITUTED')
+    provider = value['ProviderOutcome']
+    require(provider.get('ReservationReceiptId') == reserved['ReceiptId'] and provider.get('TargetReceipts') == consumed['TargetReceipts']
+            and provider.get('TenantId') == reserved['TenantId'] and provider.get('BatchId') == reserved['BatchId']
+            and provider.get('State') == 1, 'RECOVERY_REAUTHORIZED_BATCH')
+
+
 def bind_producer_originals(observation, commit, binary_sha, role_configs=None):
     """Authenticate the actual executor identity and every event/single snapshot against retained native originals."""
     producer = observation.get('producerIdentity')
@@ -1630,8 +1884,8 @@ def bind_producer_originals(observation, commit, binary_sha, role_configs=None):
     require(isinstance(locations, list) and locations, 'COPY_LOCATION_ORIGINALS_MISSING')
     location_originals = {}
     for location in locations:
-        fields = set('Cell PhysicalBacking PhysicalIdentity SourceIdentity CopyKind'.split())
-        require(isinstance(location, dict) and fields <= set(location) <= fields | {'CopyCall', 'CopyOriginal', 'PersistedDocument'}, 'COPY_LOCATION_SCHEMA_INVALID')
+        fields = set('Cell PhysicalBacking PhysicalIdentity SourceIdentity CopyKind PersistedDocument PersistedDocumentBase64'.split())
+        require(isinstance(location, dict) and fields <= set(location) <= fields | {'CopyCall', 'CopyOriginal'}, 'COPY_LOCATION_SCHEMA_INVALID')
         cell = location['Cell']
         require(isinstance(cell, dict) and set('Component Key Metadata'.split()) <= set(cell) <= set('Component Key Metadata AnchorScope CompletionKey CopyKind'.split()), 'COPY_CELL_SCHEMA_INVALID')
         require(cell.get('CopyKind') == location['CopyKind'] and isinstance(cell['Metadata'], dict)
@@ -1641,14 +1895,14 @@ def bind_producer_originals(observation, commit, binary_sha, role_configs=None):
         require(location['SourceIdentity'] == identity(cell['Component']) and location['PhysicalIdentity'] == identity(location['PhysicalBacking'])
                 and location['SourceIdentity'] not in location_originals, 'COPY_LOCATION_SUBSTITUTED')
         if location['CopyKind'] in ('backup', 'restored'):
-            require(set(location) == fields | {'CopyCall', 'CopyOriginal', 'PersistedDocument'}, 'COPY_ATOMIC_ORIGINAL_MISSING')
+            require(set(location) == fields | {'CopyCall', 'CopyOriginal'}, 'COPY_ATOMIC_ORIGINAL_MISSING')
             call, original = location['CopyCall'], location['CopyOriginal']
             native_record(original, 'CallDigest SourceIdentity SourceDigest Result', 'COPY_ATOMIC_SCHEMA_INVALID')
             source = call['Payload']
             kind = 25 if location['CopyKind'] == 'backup' else 26
             # Names are encoded by the native enum; numeric values are checked below from the fixed public contract.
             require(call['Kind'] == kind and original['CallDigest'] == hashlib.sha256(native_json_bytes(call)).hexdigest().upper()
-                    and original['SourceDigest'] == call['SourceDigest'] == hashlib.sha256(native_json_bytes(location['PersistedDocument'])).hexdigest().upper(), 'COPY_ATOMIC_ORIGINAL_SUBSTITUTED')
+                    and original['SourceDigest'] == call['SourceDigest'] == hashlib.sha256(base64.b64decode(location['PersistedDocumentBase64'], validate=True)).hexdigest().upper(), 'COPY_ATOMIC_ORIGINAL_SUBSTITUTED')
             source_id = hashlib.sha256(native_json_bytes({'Component': source['Component'], 'Key': source['Key'], 'Metadata': dict(sorted(source['Metadata'].items()))})).hexdigest().upper()
             destination = source['Key'] + (':backup' if location['CopyKind'] == 'backup' else ':restored' if source.get('AnchorScope') is None else '')
             require(original['SourceIdentity'] == source_id and cell['Component'] == source['Component'] and cell['Metadata'] == source['Metadata']
@@ -1660,6 +1914,16 @@ def bind_producer_originals(observation, commit, binary_sha, role_configs=None):
         location = record.get('sourceIdentity')
         require(isinstance(location, str) and len(location) == 64, 'COPY_PHYSICAL_IDENTITY_MISSING')
         require(location in location_originals and location_originals[location]['CopyKind'] == record['kind'], 'COPY_LOCATION_SUBSTITUTED')
+        raw_document = base64.b64decode(location_originals[location]['PersistedDocumentBase64'], validate=True)
+        require(0 < len(raw_document) <= MAX_OBSERVATION_BYTES, 'COPY_SOURCE_DOCUMENT_INVALID')
+        persisted = strict_json(raw_document)
+        require(isinstance(persisted, dict) and canonical(persisted) == canonical(location_originals[location]['PersistedDocument'])
+                and record.get('sourceDigest') == hashlib.sha256(raw_document).hexdigest().upper(), 'COPY_SOURCE_DOCUMENT_SUBSTITUTED')
+        actual_bytes = base64.b64decode(record['bytesBase64'], validate=True)
+        if record['kind'] in ('source-outbox', 'target-event'):
+            require(isinstance(persisted.get('Protected'), dict) and base64.b64decode(persisted['Protected']['PayloadBytes'], validate=True) == actual_bytes, 'COPY_SOURCE_DOCUMENT_SUBSTITUTED')
+        else:
+            require(native_json_bytes(persisted.get('State')) == actual_bytes, 'COPY_SOURCE_DOCUMENT_SUBSTITUTED')
         identity = (location_originals[location]['PhysicalIdentity'], target_key(record['target']))
         require(identity not in physical_copies, 'COPY_PHYSICAL_LOCATION_REUSED')
         physical_copies[identity] = record['kind']
@@ -1721,7 +1985,8 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
     """Assert raw persisted state and ordered receipts; no aggregate pass booleans."""
     require(observation['engineSourceRevision'] == commit and observation['engineBinarySha256'] == binary_sha, 'ENGINE_IDENTITY_MISMATCH')
     require(observation['agentsRuntimeEnabled'] is False, 'AGENTS_RUNTIME_FORBIDDEN')
-    if observation.get('producerIdentity') is not None or observation.get('copyOriginals') is not None:
+    shipped_case = isinstance(case.get('id'), str) and re.fullmatch(r'P(?:0[1-9]|[1-3][0-9]|4[01])', case['id']) is not None
+    if shipped_case or isinstance(role_configs, ValidatedRoleConfigurations) or observation.get('producerIdentity') is not None or observation.get('copyOriginals') is not None:
         bind_producer_originals(observation, commit, binary_sha, role_configs)
     roots = observation['roots']
     require(sorted(target_key(r['target']) for r in roots) == sorted(map(target_key, targets)), 'ROOT_INVENTORY_MISMATCH')
@@ -1768,22 +2033,40 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
     if 'erased' in checks:
         require(all(s == 'Destroyed' for s in states), 'INCOMPLETE_ERASURE')
         replays = observation['replays']
-        require(expected_pairs <= {(target_key(r['target']), r['kind']) for r in replays}, 'ERASED_REPLAY_MISSING')
-        require(all(r['field'] == {'State': 'Erased'} and r['externalOutcome'] == 'Unreadable' for r in replays), 'ERASED_REPLAY_INVALID')
+        require(isinstance(replays, list), 'ERASED_REPLAY_MISSING')
+        records = observation['records']
+        record_index = {(r.get('copyId'), target_key(r['target'])): r for r in records}
+        require(len(record_index) == len(records) and all(isinstance(key[0], str) and key[0] for key in record_index), 'ERASED_COPY_IDENTITY_INVALID')
+        seen = set()
+        for replay in replays:
+            require(isinstance(replay, dict) and replay.get('field') == {'State': 'Erased'} and replay.get('externalOutcome') == 'Unreadable', 'ERASED_REPLAY_INVALID')
+            key = (replay.get('copyId'), target_key(replay['target']))
+            require(key in record_index and key not in seen, 'ERASED_REPLAY_COPY_SUBSTITUTED')
+            seen.add(key)
+            record = record_index[key]
+            require(all(replay.get(field) == record.get(field) and replay.get(field) is not None for field in ('kind', 'sourceIdentity', 'sourceDigest')), 'ERASED_REPLAY_SOURCE_SUBSTITUTED')
+        require(seen == set(record_index) and expected_pairs <= {(target_key(r['target']), r['kind']) for r in replays}, 'ERASED_REPLAY_MISSING')
     if 'atomic' in checks:
         require(len(set(states)) == 1, 'PARTIAL_PROVIDER_EFFECT')
     if 'same-root' in checks:
         for target in targets:
             refs = [r['rootReference'] for r in observation['records'] if r['target'] == target]
             require(len(set(refs)) == 1 and bool(refs), 'INTERACTION_ROOT_DIVERGED')
-    if 'no-effect' in checks or 'rejectedEffectOriginals' in observation:
-        if observation.get('producerIdentity') is not None:
+    if 'no-effect' in checks or any(step.startswith('Reject') for step in case['steps']) or 'rejectedEffectOriginals' in observation:
+        if shipped_case or isinstance(role_configs, ValidatedRoleConfigurations) or observation.get('producerIdentity') is not None:
             effects = observation.get('rejectedEffectOriginals')
             require(isinstance(effects, list) and effects, 'INDEPENDENT_EFFECT_ORIGINALS_MISSING')
-            before, after = [], []
+            before, after, effect_calls = [], [], set()
+            required_rejections = {step for step in case['steps'] if step.startswith('Reject')}
+            covered_rejections = set()
             for effect in effects:
                 native_record(effect, 'Call Before After', 'EFFECT_ORIGINAL_SCHEMA_INVALID')
-                call_digest = hashlib.sha256(native_json_bytes(effect['Call'])).hexdigest().upper()
+                validate_native_call(observation, effect, case, effect=True)
+                call = effect['Call']
+                require(call['Id'] not in effect_calls, 'EFFECT_ORIGINAL_DUPLICATED')
+                effect_calls.add(call['Id'])
+                covered_rejections.update(action for action in required_rejections if '/' + action + '/' in call['Id'])
+                call_digest = hashlib.sha256(native_json_bytes(call)).hexdigest().upper()
                 for phase, values in (('before', before), ('after', after)):
                     proof = effect['Before' if phase == 'before' else 'After']
                     native_record(proof, 'TenantId StoreId EnrollmentId CallDigest Boundary CustodyStateSha256 NativePolicy Fingerprint ReceiptId', 'EFFECT_ORIGINAL_SCHEMA_INVALID')
@@ -1800,6 +2083,8 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
                         'call': call_digest, 'boundary': phase, 'fingerprint': digest})).hexdigest().upper()
                     require(digest == proof['Fingerprint'] and proof['ReceiptId'] == receipt, 'EFFECT_FINGERPRINT_SUBSTITUTED')
                     values.append(digest)
+                require(effect['Before']['Fingerprint'] == effect['After']['Fingerprint'], 'REJECTED_OPERATION_HAD_EFFECT')
+            require(covered_rejections == required_rejections, 'INDEPENDENT_EFFECT_ORIGINALS_MISSING')
             if 'no-effect' in checks:
                 require(hashlib.sha256(native_json_bytes(before)).hexdigest().upper() == observation['effectRevisionBeforeRejectedOperation']
                     and hashlib.sha256(native_json_bytes(after)).hexdigest().upper() == observation['effectRevisionAfterRejectedOperation'], 'INDEPENDENT_EFFECT_BOUNDARY_SUBSTITUTED')
@@ -1809,9 +2094,7 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
         require([r['status'] for r in observation['pinOutcomes']] == ['Pinned', 'HoldPinned', 'HoldPinned', 'Authorized', 'Unpinned'], 'HOLD_PIN_PROOF_INVALID')
         bind_pin_originals(observation, targets)
     if 'exact-results' in checks:
-        results = observation.get('exactResults')
-        require(isinstance(results, list) and 2 <= len(results) <= 3000
-                and all(canonical(r) == canonical(results[0]) for r in results), 'EXACT_RESULT_DIVERGED')
+        bind_exact_recovery(observation, case)
     if 'copies' in checks or 'restore' in checks:
         inventory = observation['copyInventoryBefore']
         require(inventory and len(inventory) == len(set(inventory)) == len(observation['copyStatesAfter']) and set(inventory) == {r['copyId'] for r in observation['copyStatesAfter']}, 'COPY_INVENTORY_INCOMPLETE')
@@ -1838,7 +2121,7 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
         require(len(winners) == 1 and winners[0]['from'] == 'Unconsumed', 'BLOCK_RESERVE_NOT_SINGLE_WINNER')
         require(all(s == 'Destroyed' for s in states) if winners[0]['to'] == 'ConsumptionReserved' else all(s != 'Destroyed' for s in states), 'RACE_STATE_CONTRADICTION')
     if 'reserved-recovery' in checks:
-        require(len({r['reservationReceiptId'] for r in observation['reservationRecoveries']}) == 1, 'RECOVERY_REAUTHORIZED_BATCH')
+        bind_reservation_recovery(observation, case)
     if 'hold-order' in checks:
         require(bool(observation['holdOrders']), 'HOLD_ORDER_PROOF_MISSING')
         for hold in observation['holdOrders']:
@@ -2035,9 +2318,7 @@ def main(argv=None):
         record = accepted_record(Path.cwd() / '_bmad-output/planning-artifacts/external-dependency-register.md')
         exact_checkout(ROOT, record['TargetVersionOrCommit'])
         profile = validate_profile(args.profile, record, digest(PLAN_FILE.read_bytes()))
-        if Path(profile['platformRoot']).resolve() == ROOT.resolve():
-            raise Blocked('DISTINCT_PLATFORM_CHECKOUT_REQUIRED')
-        exact_checkout(profile['platformRoot'], profile['platformTargetCommit'])
+        paired_checkout_preflight(ROOT, record, profile)
         execute(profile, record, plan, attempt, args.recover_journal)
         status, code = ('RECOVERED', 'EXACT_ORIGINAL_RECOVERED') if args.recover_journal else ('PASS', 'OWNER_COMPONENT_CONTRACT_PASSED')
     except (Blocked, Failed) as exc:

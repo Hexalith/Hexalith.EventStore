@@ -21,6 +21,13 @@ context: []
 > here. Do not recreate the retired evidence machinery. Frozen behavioral intent,
 > consumption boundaries and the prohibition on commits/publishing remain unchanged.
 
+> **Qualification update — 2026-10-30:** The owner has now retired runtime
+> PE/PDB/source-binding checks and the optional OS observer, as recorded in the
+> scoped review. Keep process replacement, recovery and bounded-storage assertions.
+> Current qualification uses repository tests and CI with the commit SHA. Earlier
+> runtime-proof/observer commands and results below are historical; do not restore
+> those helpers.
+
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
 ## Intent
@@ -77,6 +84,8 @@ Repository-relative directory aliases below identify exact task locations:
 
 ## Spec Change Log
 
+- 2026-10-30: The owner assigned the concurrent scoped review's direct fixes to this run. Corrected captured-prefix admission, inline sequence arithmetic, buffered session fencing and cleanup disposal; added the requested persisted-state controls and clarified the dispatcher deployment gate. The later recorded owner decision defers evidence garbage collection and converts runtime source-binding/OS-observer removal into a direct patch while retaining process-replacement coverage.
+
 - 2026-10-29: Reconciled the resumed spec with the later owner-approved
   evidence-storage simplification. The seventh task's tool and packet retention
   describe the original delivery, not work to restore. Keep the implemented
@@ -84,6 +93,136 @@ Repository-relative directory aliases below identify exact task locations:
   verification here under the current repository policy.
 
 ## Review Triage Log
+
+### Resumption review at a5b55e8c34892c30fb4feccefd5498dfe0363585 — 2026-10-30
+
+All three required layers returned before classification. The cumulative input is
+`/tmp/bounded-owner-a5b55e8-final-review-tcurw_it.diff` (9,016,876 bytes), with
+historical evidence deletion bodies omitted and this claims file supplied only
+to the edge-case layer. Blind review traced catalog HTTP fencing and installation
+verification; edge review traced bounded identity storage, coordinator replay and
+handoff, dispatcher transport/cleanup, and source capture; verification review
+traced the separate EXT-PROTECTION installation/recovery tests and CI. None claims
+exhaustive review of the 1,688 intervening file diffs.
+
+Every finding is classified below before grouping. Four findings carry earlier
+verdicts at the same locations without another verification or deferred entry.
+The verification review's final compound finding is split into its two distinct
+fixture failures. The concurrently added feature-scoped review below is a
+separate input and remains preserved; this table does not close its patch or
+decision items.
+
+| Finding | Verdict / route | Evidence and decision |
+| --- | --- | --- |
+| B1: cross-host ordinary redirect bypasses catalog invocation fencing | medium / carried defer | Carried from Fresh resumption B10 and Corrected-graph R1: the same `IsSameHost` condition remains. Keep the existing client-side finding without claiming receiver authorization bypass or adding a duplicate follow-up. |
+| B2: same-host redirect, including another port, retains Authorization | medium / carried defer | Carried from Corrected-graph R2: the same redirect-authentication branch remains. Preserve the existing native-transport parity finding and follow-up. |
+| B3: a POST body reappears after POST-to-GET followed by 307 | medium / defer | `forceGet` clears `request.Content` but leaves `replayable` intact; the following 307 reaches the non-force branch and recreates the original body on GET. No upstream guard clears it. This unchanged catalog transport belongs to separate routing work. |
+| B4: every ordinary HTTP body is buffered before first send | medium / carried defer | Carried from Corrected-graph R3 and Current-source B10: the same unconditional `CaptureReplayableContentAsync` call remains. Preserve the existing streaming/memory follow-up. |
+| B5: catalog lease ends at response headers before remote work completes | maybe-false / defer (medium unverified) | The handler disposes its lease after the transport returns `HttpResponseMessage`, but no supported invoked method was demonstrated to continue catalog-sensitive work after headers. Settle with an actual Dapr streaming receiver and concurrent activation/quiescence probe; do not claim a demonstrated fence bypass. |
+| B6: catalog lease release retries without a deadline | medium / carried defer | Carried from Corrected-graph R5: `ReleaseAsync` still uses its unbounded CAS loop and `CancellationToken.None`. Preserve the existing contention finding and follow-up. |
+| B7: role stdout/stderr are buffered before output admission | medium / defer | `Role.request` uses `capture_output=True`; its 16-MiB stdout check runs after process exit and stderr has no admission. A verbose/broken role can exhaust verifier memory before refusal. This separate qualification tool is unchanged by bounded identity. |
+| B8: OpenSSL helper inherits all role credentials and loader environment | medium / defer | `validate_profile` requires all three role values in the parent environment; `verify_statement` launches `openssl` without an `env` argument, unlike the isolated role launch. This verifies the broader credential exposure to that helper, without asserting an exploited executable/loader substitution. Independent qualification tooling owns the correction. |
+| B9: installation can change between pathname validation and launch | medium / defer | Accepted installations need not be immutable: validation hashes pathname contents, then `Role.request` opens the executable/dependencies again during launch without an ownership lock or held file binding. A concurrent replacement can therefore invalidate the checked identity. No credential-theft exploit is claimed; this is separate installation consistency work. |
+| B10: unresolved selected-RID native asset can disappear from closure | maybe-false / defer (medium unverified) | The resolver explicitly skips unresolved `runtimeTargets`, but the review did not demonstrate a required current-RID asset being omitted while a real role still loads it unpinned. Settle with a shipped native dependency, actual RID selection and omission/load controls. Keep the claim unverified rather than infer resolver semantics. |
+| E1: current-capture duplicate acknowledgement does not reread the epoch fence | medium / defer | A changed epoch after the cached state/proof read can still reach `AlreadyCaptured`. Original baseline `ae917d3e4dbab20b8982c5222a13611c3e3faf35` already awaited `ReadOwnerCheckpointAsync` and returned without rereading that fence; bounded paging adds awaits but did not create the race. Record the pre-existing stale-lease acknowledgement defect without claiming demonstrated data loss. |
+| E2: restore retired qualification runner/evidence or correct completion claim | false / rejected | The opening resumption note and Spec Change Log explicitly supersede that historical task with the approved evidence-storage simplification and prohibit restoring the retired machinery. The claimed missing current deliverable is disproved by those instructions; no spec rewrite or restoration is warranted. |
+| VG1: closure completeness tests derive their inventory from the resolver under test | medium / defer | Accepted as pre-verified: removing `Hexalith.Commons.UniqueIds.dll` from the resolver result still passed all seven closure tests because their expected manifest and mutation loop used the same reduced inventory. This verification gap is in the separate, concurrently edited installation tool, not captured identity. |
+| VG2: offline CI discovers a test that requires an uninstalled commitlint CLI | medium / defer | The paired-checkout test reads root `node_modules/@commitlint/cli/package.json`; the blocking payload-protection lane performs no npm installation and supplies no alternate CLI. A clean runner fails before that test's assertions. This is separate tooling CI work; no Git-message candidate was authored or used by this resumption. |
+| VG3: installation fixture assumes a sibling Platform checkout | medium / defer | `ShippedRoleClosureTests` unconditionally builds from `ROOT.parent / 'platform'`; the workflow initializes root-declared submodules under `references/` and creates no sibling. Its clean-runner fixture path is unsupported. This is separate installation-test setup work. |
+| VG4: recovery fallback lacks its native vector producer | medium / defer | The recovery fixture falls back to `references/Hexalith.Platform`, whose current test sources contain no `ProtectionQualificationLoop7RecoveryTests`. That fixture subsequently requires five generated vector files. The root-declared reference cannot provide this new producer merely by being initialized; independent recovery tooling must supply a qualified input. |
+
+The eleven new surviving roots are independent and are deferred separately;
+two remain explicitly unverified. No patch or implementation loopback follows
+from these three layers. This does not resolve the concurrently added scoped
+review, and the broad regression gate remains red.
+
+### Review Findings — feature-scoped review 2026-10-30
+
+Scope: unlike the earlier cumulative passes, this review read only the 30 files this
+spec owns (`ae917d3e4..a5b55e8c3`, +3,813/−197). Separate abort-repair and CI wiring
+are excluded. All four layers (blind, edge-case, verification-gap, acceptance)
+returned. Every finding was verified against the code and given a verdict before
+grouping. Result: 2 decision-needed (both resolved by the owner: one deferred, one
+converted to a patch), 10 patch, 3 defer (2 new, 1 carried), 18 rejected.
+
+- [x] [Review][Defer] Identity evidence is never reclaimed after a successful or superseded rebuild — medium. Owner decision 2026-10-30: defer to a follow-up. Reason: rebuilds are rare, and the guide already places this evidence under the operator's retention policy.
+  Each rebuild writes, under a new namespace, all of:
+  - one message-index key per event,
+  - two records per 64-event leaf, plus index nodes,
+  - one terminal batch marker per identity batch.
+
+  `RetireAsync` runs only on abort, and even then reconciles batch markers rather than reclaiming them.
+  Nothing reads message-index keys after `SealAsync`. Evidence of generations that are later superseded
+  has no reclamation path at all. The earlier inline vector was overwritten each generation. This
+  storage now grows with every rebuild: roughly 12 MB of leaf/node records plus the message keys per
+  32,769-event owner per rebuild. Selected evidence must be kept for inheritance, so a correct fix needs
+  a reachability/GC design, not a direct correction. Sources: blind, acceptance, edge-case.
+  [`src/Hexalith.EventStore.Client/Projections/SharedProjectionCapturedIdentityStore.cs:272`]
+- [x] [Review][Patch] Remove the runtime source-binding proof and the OS observer: delete `ProjectionBoundedIdentityRuntimeProof`(`Tests`), `tools/bounded_worker_observer.py`, its tests and its CI step. Keep the live process-replacement tests. Owner decision 2026-10-30: qualification is CI plus the commit SHA, per the evidence simplification. Original finding (medium):
+  - **Drift failures:** `ProjectionBoundedIdentityRuntimeProof.Capture` fails every live phase when any
+    src/tests file changes after the build. This aborted two recorded 2026-10-29 live runs and forced
+    the snapshot workflow.
+  - **Observer never runs:** `bounded_worker_observer.py` executes only when
+    `BOUNDED_IDENTITY_MAP_OBSERVER`/`BOUNDED_IDENTITY_MAP_DIR` are set. No automated lane sets them,
+    yet CI runs its 11-test suite.
+  - **Why it's a decision:** the frozen Always clause binds qualification to exact sources and binaries,
+    while the later evidence simplification makes tests + CI the proof. Source: blind.
+  [`tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs:1`]
+- [x] [Review][Patch] Delivery past the captured identity count falls into the unseeded legacy-receipt branch instead of `RebuildRequired` [`src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs:794`]
+  - **Regression:** baseline returned `RebuildRequired` when `OwnerSequenceNumber` exceeded the seeded
+    identities. Now `ReadDigestAsync` returns null for both "no identities" and "beyond the count".
+  - **Impact:** a contradictory delivery (position ≤ capture watermark, sequence > count) is classified
+    against the previous epoch's receipt. It can even be acknowledged `AlreadyCaptured`.
+  - **Fix:** restore the explicit guard when the checkpoint carries a reference or inline digests, and
+    drop the leftover `capturedOwner is null` / `int offset = 0` at :817–821.
+- [x] [Review][Patch] Inline `ReadDigestAsync` offset overflows for sequence ≥ 2^58; compare against `inline.LongLength / 32` before multiplying [`src/Hexalith.EventStore.Client/Projections/SharedProjectionCapturedIdentityStore.cs:264`]
+- [x] [Review][Patch] Buffered owner reservation invalidates the session ETag [`src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs:1076`]
+  - **Cause:** `StoreCapturedEventsAsync` saves the session (`PendingCapturedIdentityReference`). The
+    final `TrySaveAsync` at :1113 then always fails once with the stale ETag.
+  - **Cost:** every new buffered owner reruns handler chunk preparation and the full identity
+    revalidation, including per-event message reads.
+  - **Fix:** reread and fence-check the session after reservation.
+- [x] [Review][Patch] Dispose the `JsonDocument` read in `EraseAsync` [`src/Hexalith.EventStore.Client/Projections/SharedProjectionCapturedIdentityStore.cs:424`]
+- [x] [Review][Patch] Rollout guide says "before allowing paged checkpoints to be written", but no such switch exists [`docs/guides/named-projection-authoring.md:285`]
+  The effective gate is deploying the new rebuild dispatcher, which writes paged evidence for every new owner. State that directly.
+- [x] [Review][Patch] Test: `RetireAsync` refuses the currently selected reference with no later epoch (`ActiveGeneration == reference.Epoch` clause untested) [`src/Hexalith.EventStore.Client/Projections/SharedProjectionCapturedIdentityStore.cs:290`]
+- [x] [Review][Patch] Test: `CanPromoteCapturedJournalOwnerIdentityAsync` returns false for a pending delivery that contradicts the sealed identity [`src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.CapturedIdentity.cs:53`]
+- [x] [Review][Patch] Test: `MatchesCheckpointPositionAsync` as the sole rejecter, i.e. an accepted N+1 event at a different position in the next capture [`src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.CapturedIdentity.cs:154`]
+- [x] [Review][Patch] Test: streamed fold second pass rejects changed part bytes ("Owner evolution changed across streamed fold passes") [`src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs:592`]
+- [x] [Review][Defer] Server mapped-only ordinary delivery still caps an owner at 10,000 events [`src/Hexalith.EventStore.Server/Projections/ProjectionSourceGuardDelivery.cs:290`] — deferred: pre-existing.
+  The same cap is in `ProjectionDeliveryFingerprint.cs:218`, `ProjectionSourceGuardHistoryReader.cs:89` and
+  `NamedProjectionDispatchCoordinator.cs:639/648/1133`. It applies to shared-epoch routes only under mapped-only
+  streamed delivery. It is outside this spec's Code Map. Medium.
+- [x] [Review][Defer] Accepted ordinary-tail identities are not retained across generations [`src/Hexalith.EventStore.Client/Projections/SharedProjectionCapturedIdentityStore.cs:218`] — deferred: carried E1 / Resumption Blind R1 (high).
+  New consequence: an exact at-least-once replay of an accepted ordinary event after a later generation records a
+  durable `IdentityConflict`. `RepeatedOmissionPreservesPagedAndInlineOwnerProofAfterOrdinaryGrowth` asserts this
+  for both paged and inline proof, so it is pre-existing. The existing ledger entry is updated; no duplicate is added.
+
+**Rejected:**
+
+- **Blind: diff not self-contained** — false. This is an artifact of the review diff: shared files carry abort-repair hunks from `c613e55ae`, and CI wiring was excluded on purpose.
+- **Blind / acceptance / edge-case: streamed duplicate message returns `Indeterminate`, not `Failed`** — low.
+  - The producer's `RequireSuccess` throws on both statuses, and nothing is acknowledged or promoted.
+  - Legacy resume compares digests that cover `MessageId`.
+  - A typed fix needs a new exception contract, and the trigger is corrupted source history.
+- **Blind / edge-case: server capture no longer rejects owners above 10,000** — low. The spec task removes these ceilings, the server cannot see the domain's configured admission, and the domain rejects the owner loudly.
+- **Blind / verification-gap: inline 10,000 cap removed** — false. `ReadModelBatchValidation.cs:45` enforces the 1-MiB canonical manifest, as owner-decided on 2026-10-21.
+- **Blind: content digest relies on reflection JSON** — low. The risk is a future schema change, and the fix is a redesign.
+- **Blind: read amplification** — low. Carries Original Blind 5: there is no latency SLA and the live lane completes.
+- **Blind / edge-case: identity batches rewrite the epoch state** — low. It is the existing `TryWriteScratchAsync` fence. Owner-sequenced deliveries back off while Building, and CAS exhaustion is resumable.
+- **Blind: late `IReadModelConditionalEraser` check** — low. `DaprReadModelStore` implements it; a custom store fails loudly.
+- **Blind / acceptance: public store API surface** — low.
+  - The store never seeds, so no reachable path bypasses the promoted-cleanup gate.
+  - Removing shipped public API would be a breaking change.
+- **Blind: slot `Level` unchecked** — false. A corrupt slot throws before any write, so it still fails closed.
+- **Blind: journal promotion skips `LastPosition`/`ValidateComplete`** — false. The dispatcher runs both promotion checks (`:2826-2837`).
+- **Edge-case: retire throws after the epoch advances** — false. Abort uses `deferOpen`, retirement precedes `CompleteAbortAsync`, and `BeginAsync` requires `Open`. Carries Original Blind 4.
+- **Edge-case: `OwnerSequenceNumber` 0 drops reference validity** — low. `DomainProjectionDispatcher.cs:910` rejects sequence ≤ 0, so only an external unsequenced caller on a sequenced owner could trigger it.
+- **Edge-case: observer needs Python ≥ 3.11** — low. CI and local runs use 3.12+.
+- **Verification-gap: C# observer request contract not exercised** — low. Tooling only. Consistent with the Corrected-graph VG1 rejection, and subsumed by the runtime-proof decision.
+- **Acceptance: default `MaxRebuildEventCount` is 10,000** — false. The spec mandates configured admission, and the guide sets 40,000 for Folders.
+- **Acceptance: paged seed has no direct checkpoint-CAS race test** — low. The shared seed core is covered by the legacy extension-race test.
+- **Acceptance: spec lacks CI evidence** — rejected, because the fix would edit the spec under review.
 
 ### Current-source completion review — 2026-10-30
 
@@ -1259,3 +1398,215 @@ Final unstaged cumulative diff, including untracked files and omitting historica
 deletion bodies: `/tmp/bounded-owner-current-audit-z5hqokbm.diff`. Final HEAD:
 `4dde72ef8cce4252edcd793d012bc40bb668f746`; the Git index has no staged changes.
 All owned test, worker and sidecar processes exited.
+
+### Fresh bounded verification and broad gates — 2026-10-30
+
+The complete spec was read; `context: []` supplies no additional files. All seven
+implementation tasks, regression tests and reader rollout/rollback guidance were
+already present. Initial verification found no missing bounded behavior; a later
+concurrent feature-scoped review added correction work recorded separately.
+Initial checkout was clean
+`main` at `a5b55e8c34892c30fb4feccefd5498dfe0363585`; HEAD remained unchanged.
+CI run/link: none. These are local SDK **10.0.403** / .NET **10.0.14** results.
+
+The .NET builds and test runs ran sequentially from the owning repository root,
+with every process awaited. The independent Python/workflow checks also completed.
+The variable below abbreviates the exact retained output directory; each build/XML
+basename also identifies its separate `.log` file:
+
+```bash
+bounded_run=/tmp/bounded-owner-a5b55e8-iS9SFH
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*SharedProjectionBoundedIdentityTests' -xml "$bounded_run/client.xml"
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -result-xml "$bounded_run/client-full.xml"
+dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -result-xml "$bounded_run/domain-full.xml"
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -method '*ProcessPublicationTests.RegistrationCostDoesNotGrowWithHistoricalPages' -method '*ProcessPublicationTests.FreshTenantRegistrationUsesTailAfterManyTenants' -result-xml "$bounded_run/domain-process-retry.xml"
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml "$bounded_run/server-full.xml"
+python3 -m unittest discover -s tools/tests -p test_bounded_worker_observer.py -v
+actionlint .github/workflows/integration.yml
+git diff --check
+```
+
+All three builds passed with **zero warnings/errors**. All xUnit runs report zero
+errors and not-run cases:
+
+| Executed run | Passed | Failed | Skipped | Exit |
+| --- | ---: | ---: | ---: | ---: |
+| Client bounded identity class | 50 | 0 | 0 | 0 |
+| Full Client | 2,249 | 1 | 2 | 1 |
+| Full Domain | 1,284 | 2 | 1 | 1 |
+| Isolated Domain process-registration retry | 2 | 0 | 0 | 0 |
+| Full Server | 6,452 | 15 | 25 | 1 |
+
+The full Domain XML contains **144/144 passing** partitioned-rebuild cases; the
+full Server XML contains **30/30 passing** source producer/roster cases. These
+subset counts come from the executed full suites; separate focused commands were
+not run for those projects. Every named frozen-matrix unit method passed, including
+all large-owner and mutation theory rows. No bounded-matrix case failed or was
+skipped. The existing observer suite separately passed **11/11**, with zero
+failures/errors/skips; `actionlint` passed.
+
+Client's sole failure remains the routing-header ownership guard. Domain's two
+full-run failures are `ProcessPublicationTests.RegistrationCostDoesNotGrowWithHistoricalPages`
+and `FreshTenantRegistrationUsesTailAfterManyTenants`, both timing out in
+`ProcessReadDeadline` during registration-store reads. Both passed one isolated
+retry against the unchanged binaries; the original broad failures remain retained
+and unwaived. Server's 15 failures comprise the earlier callback-quota, SignalR
+metadata-cap, secret-guard, seven query-provenance and two actor-auth cases, plus
+`EventStoreAuthorizationRegistrationTests.AddEventStore_MediatRPipelineOrdering_ExecutesInCorrectOrderAsync`
+and two `DaprInternalAuthenticationHandlerTests` cases:
+`DelegatedAdministratorCredential_BootstrapsTheGlobalAdministrator` and
+`ValidSignedWorkloadCommandReachesRouter`. The pipeline assertion expects three
+behaviors while the current catalog work registers four. These separate failures
+were not changed or waived. Existing skips remain two Client isolated-Dapr cases,
+one Domain content-live case and 25 Server opt-in/ATDD cases.
+
+`unit-source-start.json` retains hashes for **4,568** EventStore-owned source/build
+inputs. The final rehash in `unit-source-final.json` found no changed or missing
+captured .NET source/build input. Five ext-protection Python files changed during
+the runs, and independent ext-protection runtime-closure/test files were added;
+all foreign edits were preserved. These local unit results describe their built
+assemblies and source-inspection environment, not one unchanged whole workspace.
+
+At that initial verification phase, the bounded production sources and test/helper
+files were byte-identical to those in the retained `4dde72ef` live snapshot. Parent independently rechecked its nine
+passing cases, 30 distinct worker PIDs, eight actual PE/PDB hashes and all **1,525**
+source documents/PDB checksums. That **9/9** complete live result and its bounded
+measurements remain historical evidence for that exact snapshot graph. The long
+live lane was not repeated: no participating bounded source changed and the broad
+gate remains red. No current-binary live qualification is claimed.
+
+The repository-required baseline smoke used the local `aspire-orchestration`
+skill and existing outputs:
+
+```bash
+UseHexalithProjectReferences=true aspire start --no-build --isolated --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json --non-interactive
+aspire wait eventstore --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --status healthy --timeout 30 --non-interactive
+aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json --non-interactive
+aspire stop --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
+```
+
+Start/describe/stop exited 0. The wait timed out after 30 seconds (exit **17**);
+the final description showed all **30** resources Running with no EventStore
+health report. This no-build smoke does not qualify the current source/binary
+graph. Logs are `/tmp/bounded-a5b55e8-aspire-*`; the owned isolated AppHost stopped
+before the builds.
+
+The broad regression gate remains red, so status stays `in-progress`. Frozen
+intent and the original baseline are unchanged. No overall regression, package/
+release or Folders acceptance is claimed. No source/test change, dependency pin
+change, Git staging/commit/push, publication, deployment, nested-submodule update
+or retired qualification-tool/committed-evidence restoration was performed.
+
+
+### Direct review corrections and final verification — 2026-10-30
+
+The owner assigned the direct scoped-review fixes to this run. All ten patch
+items are complete. The later recorded owner decision defers evidence garbage
+collection and retires the runtime source-binding/OS-observer machinery; these
+are no longer open design questions. The frozen block and original
+`baseline_commit` are preserved verbatim. No storage schema, public API or pin
+changed. The broader regression gate remains red, so status stays `in-progress`.
+
+Production corrections restore `RebuildRequired` when delivery exceeds an
+existing captured prefix, admit inline sequences before offset multiplication,
+refresh and validate the buffered accumulation session after identity reservation,
+and dispose cleanup `JsonDocument` values. Reader guidance now identifies
+new-dispatcher deployment as the paged-write gate. Seven new test methods add
+**13 cases**, including persisted-state controls for selected retirement, pending
+journal contradiction, ordinary-tail position and changed streamed evolution.
+
+Parent independently read the complete six-file correction diff and the red XML.
+Before the corrections, the new Client controls recorded **7 passed / 4 failed**:
+both paged/inline older-receipt replays returned `AlreadyCaptured`, one extreme
+inline sequence aliased the first digest, and `long.MaxValue` threw. Domain red
+controls recorded **1 passed / 1 failed**, reproducing three preparation passes
+instead of the pre-existing two-pass scratch flow. After correction, focused
+Client passed **61/61** and the two new Domain methods **2/2**, without skips,
+errors or not-run cases. Logs/XML: `/tmp/bounded-review-a5b55e8-3ONbBk`.
+
+Fresh parent verification ran sequentially from the owning repository root. All
+processes were awaited. The directory variable abbreviates the exact retained
+output path; separate build/XML basenames identify corresponding `.log` files.
+
+```bash
+bounded_final=/tmp/bounded-owner-final-a5b55e8-cwy2v5bf
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -result-xml "$bounded_final/client-full.xml"
+dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -result-xml "$bounded_final/domain-full.xml"
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml "$bounded_final/server-full.xml"
+```
+
+| Fresh full suite | Passed | Failed | Skipped | Exit |
+| --- | ---: | ---: | ---: | ---: |
+| Client | 2,260 | 1 | 2 | 1 |
+| Domain | 1,288 | 0 | 1 | 0 |
+| Server | 6,452 | 15 | 25 | 1 |
+
+All three builds passed with **zero warnings/errors**; all suites report zero
+xUnit errors/not-run cases. Their XML contains **61/61** bounded Client,
+**146/146** partitioned Domain and **30/30** source producer/roster passes:
+**237 relevant cases**, with every named frozen-matrix method and all new controls
+present as Pass. The earlier two process-registration timeouts passed in this
+fresh complete Domain run; its earlier red result remains retained separately.
+Client's sole routing-header guard and Server's 15 catalog-pipeline, callback,
+SignalR, secret-guard, authentication and query-provenance failures match the
+initial verification above. No separate runtime failure was fixed or waived.
+Existing opt-in/ATDD skips remain separate from bounded identity coverage.
+
+Before helper retirement, the corrected graph also passed nine runtime-proof
+tests and two process canaries; `commands.json` retains those exact intermediate
+commands. Those results predate the approved cleanup and do not describe the
+final test inventory. Retirement deleted the two runtime-proof C# files and the
+observer/tool tests, removed worker runtime capture and parent runtime-array
+comparison, and removed the observer CI step/generated-source environment.
+Parent inspected every changed call site. All phase, distinct-PID, recovery,
+inheritance and batch/value-bound assertions remain unchanged.
+
+The implementation agent then built the final LiveSidecar project with zero
+warnings/errors, passed `actionlint .github/workflows/integration.yml`, and found
+no active retired-helper references. Parent ran the final current canaries:
+
+```bash
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+BOUNDED_IDENTITY_EVIDENCE_DIR="$bounded_final/post-cleanup-live" dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method '*ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff' -result-xml "$bounded_final/post-cleanup-live.xml"
+git diff --check
+```
+
+Post-cleanup streamed/buffered **129-event process canaries: 2/2 passed**, zero
+failures/skips/errors/not-run, exit 0, **30.823 seconds**. Parent independently
+checked all **six distinct worker PIDs**, interrupted staging and partial
+second-owner handoff/recovery observations, absence of the retired runtime field,
+and measured bounds. All six workers exited. Maximum physical/canonical batch:
+**55,055 bytes / 68 operations**; identity **10,338 bytes**, checkpoint **1,664
+bytes**, owner manifest **1,246 bytes**. These measurements cover these short
+canaries, not a new full large-owner live run. The earlier complete 9/9 live
+matrix remains historical evidence for its separately recorded graph.
+
+`source-before.json` / `source-after.json` show unchanged .NET source/build inputs
+through the broad suites and intermediate live checks. The final rehash found
+exactly the four intended LiveSidecar input changes (two removals and two call-site
+edits), with no added source/build inputs. Unit-suite participating sources stayed
+unchanged; final LiveSidecar inputs received their own fresh build. Parent audit:
+`/tmp/bounded-owner-final-a5b55e8-cwy2v5bf/post-cleanup-audit.json`.
+
+All three required review layers completed and their individual verdicts are
+recorded above: four carried findings, one rejected historical-artifact claim,
+and eleven independent deferred follow-ups, two explicitly unverified. The
+concurrent scoped review's original nine direct items and subsequently approved
+helper retirement are now complete. Evidence garbage collection remains deferred
+by the owner's decision. Foreign EXT-PROTECTION source, tests, tools and document
+edits were preserved.
+
+Source revision: `a5b55e8c34892c30fb4feccefd5498dfe0363585` plus the recorded dirty
+changes. CI run/link: none; these are local SDK **10.0.403**, .NET **10.0.14** and
+Dapr **1.18.7** results. The broad gate still has **16 failures**, so no overall
+regression, package/release or Folders acceptance is claimed. The generic workflow
+done/commit steps are not performed. No Git staging/commit/push, dependency change,
+publication, deployment, nested-submodule update or retired-tool restoration ran.
+
+Final cumulative diff, including untracked inputs and omitting historical evidence/deletion bodies: `/tmp/bounded-owner-final-reviewed-mrmhd5gk.diff`. The Git index remains unstaged. All owned verification processes were awaited.

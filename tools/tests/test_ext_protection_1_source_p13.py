@@ -75,6 +75,20 @@ class SourceContainmentEvidenceTests(unittest.TestCase):
             with self.subTest(mutation=mutation), self.assertRaises(v.Failed):
                 self.verify(changed)
 
+    def test_actual_erased_replay_is_bound_to_every_exact_persisted_copy(self):
+        for mutation in ('identity', 'digest', 'copy', 'kind', 'duplicate', 'borrowed-copy'):
+            changed = copy.deepcopy(self.actual['observation'])
+            replay = changed['replays'][0]
+            if mutation == 'identity': replay['sourceIdentity'] = 'foreign-native-location'
+            elif mutation == 'digest': replay['sourceDigest'] = 'F' * 64
+            elif mutation == 'copy': replay['copyId'] += ':foreign'
+            elif mutation == 'kind': replay['kind'] = 'snapshot'
+            elif mutation == 'duplicate': changed['replays'][1] = copy.deepcopy(replay)
+            else:
+                donor = next(item for item in changed['replays'][1:] if item['target'] == replay['target'])
+                replay.update({name: donor[name] for name in ('copyId', 'sourceIdentity', 'sourceDigest', 'kind')})
+            with self.subTest(mutation=mutation), self.assertRaises(v.Failed): self.verify(changed)
+
 
 if __name__ == '__main__':
     unittest.main()

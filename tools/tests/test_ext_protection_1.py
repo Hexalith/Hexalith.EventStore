@@ -145,7 +145,8 @@ class ExtProtectionPolicyTests(unittest.TestCase):
         for root in observation['roots']:
             root['state'] = 'Destroyed'
         observation['replays'] = [{'target': observation['roots'][0]['target'], 'kind': 'source-outbox', 'field': {'State': 'Erased'}, 'externalOutcome': 'Unreadable'}]
-        self.evaluate(observation, ['erased'])
+        with self.assertRaisesRegex(v.Failed, 'ERASED_REPLAY_COPY_SUBSTITUTED'):
+            self.evaluate(observation, ['erased'])
         observation['replays'][0]['externalOutcome'] = 'Readable'
         with self.assertRaisesRegex(v.Failed, 'ERASED_REPLAY_INVALID'):
             self.evaluate(observation, ['erased'])
@@ -163,11 +164,12 @@ class ExtProtectionPolicyTests(unittest.TestCase):
                 v.pinned_file(str(path), pin)
 
     def test_role_environment_contains_only_its_own_credential(self):
-        with patch.dict(v.os.environ, {'EXECUTOR_TOKEN': 'one', 'OBSERVER_TOKEN': 'two', 'ENROLLMENT_TOKEN': 'three'}, clear=True):
-            environment = v.isolated_environment('env:OBSERVER_TOKEN')
-            self.assertEqual('two', environment['OBSERVER_TOKEN'])
-            self.assertNotIn('EXECUTOR_TOKEN', environment)
-            self.assertNotIn('ENROLLMENT_TOKEN', environment)
+        with patch.dict(v.os.environ, {'EXT_PROTECTION_ROLE_EXECUTOR': 'one', 'EXT_PROTECTION_ROLE_OBSERVER': 'two', 'EXT_PROTECTION_ROLE_ENROLLMENT': 'three', 'DOTNET_STARTUP_HOOKS': 'unlisted-assembly', 'LD_PRELOAD': 'unlisted-native-library', 'DOTNET_ROOT': '/unaccepted/runtime'}, clear=True):
+            environment = v.isolated_environment('env:EXT_PROTECTION_ROLE_OBSERVER')
+            self.assertEqual('two', environment['EXT_PROTECTION_ROLE_OBSERVER'])
+            self.assertNotIn('EXT_PROTECTION_ROLE_EXECUTOR', environment)
+            self.assertNotIn('EXT_PROTECTION_ROLE_ENROLLMENT', environment)
+            self.assertEqual(set(environment), {'PATH', 'LANG', 'LC_ALL', 'EXT_PROTECTION_ROLE_OBSERVER'})
 
     def test_empty_hold_orders_cannot_pass(self):
         _, observation = self.baseline()
@@ -290,10 +292,10 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
             executable.write_text('#!/bin/sh\nexit 77\n')
             executable.chmod(0o700)
             manifest = self.directory / (name + '.inventory.json')
-            manifest.write_bytes(v.canonical({'files': [{'path': str(executable), 'sha256': v.digest(executable.read_bytes())}]}))
+            manifest.write_bytes(v.canonical({'files': [{'path': str(executable), 'sha256': v.digest(executable.read_bytes())}], 'dotnetHost': '/usr/bin/dotnet'}))
             self.roles[name] = {'executable': str(executable), 'executableSha256': v.digest(executable.read_bytes()),
                                 'publicAnchorFile': str(public), 'publicAnchorSha256': v.digest(public.read_bytes()),
-                                'credentialReference': 'env:OFFLINE_' + name.upper(), 'identity': name,
+                                'credentialReference': 'env:EXT_PROTECTION_ROLE_OFFLINE_' + name.upper(), 'identity': name,
                                 'installationManifest': str(manifest), 'installationManifestSha256': v.digest(manifest.read_bytes())}
         self.trust = [{'issuer': 'offline-issuer', 'audience': 'offline-protection', 'tenantId': 'tenant-a',
                        'keyFamily': 'DeletionBatchCapabilitySigningKey', 'keyVersion': 'retained-v1',
@@ -365,7 +367,7 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
         return encoded + '..' + v.base64url(signature)
 
     def evaluate(self, observation=None):
-        v.evaluate(observation or self.observation, {'steps': [], 'checks': ['erased', 'receipts', 'capability', 'exact-results']},
+        v.evaluate(observation or self.observation, {'steps': [], 'checks': ['erased', 'receipts', 'capability']},
                    self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
 
     def cohort(self, target_sets):
@@ -452,12 +454,14 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
         replacement = copy.deepcopy(observed['guardReceipts'][0])
         replacement.update(OperationId='guard-replacement-operation', ReceiptId='guard-replacement')
         observed['guardReceipts'].append(replacement)
-        checks = ['erased', 'receipts', 'reattested', 'exact-results']
+        checks = ['erased', 'receipts', 'reattested']
         v.evaluate(observed, {'steps': [], 'checks': checks}, self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+        with self.assertRaises(v.Failed):
+            v.evaluate(observed, {'id': 'P36', 'steps': ['LoseActivationResult', 'LookupOriginalActivation'], 'checks': ['exact-results']}, self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
         for values in ([], observed['exactResults'][:1], [observed['exactResults'][0], {**observed['exactResults'][0], 'receiptId': 'changed-activation'}]):
             with self.subTest(values=values):
-                with self.assertRaisesRegex(v.Failed, 'EXACT_RESULT_DIVERGED'):
-                    self.evaluate({**observed, 'exactResults': values})
+                with self.assertRaises(v.Failed):
+                    v.bind_exact_recovery({**observed, 'exactResults': values}, {'id': 'P36', 'steps': ['LoseActivationResult', 'LookupOriginalActivation']})
         for field, value in (('BatchId', 'substituted-batch'), ('ManifestDigest', 'substituted-manifest'), ('AttestationOrdinal', 2), ('GuardReplacementReceiptId', 'missing-replacement')):
             substituted = copy.deepcopy(observed)
             substituted['activationOriginal'][field] = value
@@ -1159,39 +1163,41 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
         executable.write_text("#!/bin/sh\ncat <<'OFFLINE_JSON'\n" + json.dumps(envelope) + '\nOFFLINE_JSON\n')
         config['executableSha256'] = v.digest(executable.read_bytes())
         manifest = Path(config['installationManifest'])
-        manifest.write_bytes(v.canonical({'files': [{'path': str(executable), 'sha256': config['executableSha256']}]}))
+        manifest.write_bytes(v.canonical({'dotnetHost': '/usr/bin/dotnet', 'files': [{'path': str(executable), 'sha256': config['executableSha256']}]}))
         config['installationManifestSha256'] = v.digest(manifest.read_bytes())
         role = v.Role('executor', config, 'binding', self.directory,
                       {'path': str(engine), 'sha256': v.digest(engine.read_bytes())}, self.trust, self.roles)
-        with patch.dict(v.os.environ, {'OFFLINE_EXECUTOR': 'offline-value'}):
+        with patch.dict(v.os.environ, {'EXT_PROTECTION_ROLE_OFFLINE_EXECUTOR': 'offline-value'}), patch.object(v, 'validate_role_installation'):
             self.assertEqual(envelope, role.request(request))
         for path in (self.public, Path(self.roles['observer']['publicAnchorFile'])):
             original = path.read_bytes()
             path.write_bytes(original + b'\nchanged')
             with self.assertRaisesRegex(v.Blocked, 'MISSING_OR_CHANGED'):
-                role.request({'operationId': 'later-call'})
+                with patch.object(v, 'validate_role_installation'):
+                    role.request({'operationId': 'later-call'})
             path.write_bytes(original)
 
-    def test_profile_v2_hash_binds_separate_capability_trust_and_rejects_v1(self):
+    def test_profile_v3_hash_binds_separate_capability_trust_and_rejects_older_schema(self):
         engine = self.directory / 'engine.dll'
         engine.write_bytes(b'offline-binary')
-        profile = {'schema': 'ext-protection-1-profile/v2', 'targetCommit': 'a' * 40, 'planSha256': 'b' * 64,
+        profile = {'schema': 'ext-protection-1-profile/v3', 'targetCommit': 'a' * 40, 'planSha256': 'b' * 64,
                    'platformTargetCommit': 'c' * 40, 'platformRoot': str(self.directory), 'roleProgramContract': 'ext-protection-1-role-program/v1',
                    'tenantReferences': {'primary': 'tenant-a', 'other': 'other'}, 'roles': self.roles,
                    'engineBinary': {'path': str(engine), 'sha256': v.digest(engine.read_bytes())}, 'capabilityTrust': self.trust}
         path = self.directory / 'profile.json'
-        with patch.dict(v.os.environ, {'OFFLINE_' + name.upper(): 'offline-value' for name in v.ROLE_NAMES}):
-            for schema in ('ext-protection-1-profile/v2', 'ext-protection-1-profile/v1'):
+        with patch.dict(v.os.environ, {'EXT_PROTECTION_ROLE_OFFLINE_' + name.upper(): 'offline-value-' + name for name in v.ROLE_NAMES}):
+            for schema in ('ext-protection-1-profile/v3', 'ext-protection-1-profile/v2', 'ext-protection-1-profile/v1'):
                 profile['schema'] = schema
                 path.write_bytes(v.canonical(profile))
                 record = {'profileSha256': v.digest(path.read_bytes()), 'TargetVersionOrCommit': 'a' * 40, 'platformTargetCommit': 'c' * 40}
-                if schema.endswith('/v2'):
-                    self.assertEqual(profile, v.validate_profile(path, record, 'b' * 64))
+                if schema.endswith('/v3'):
+                    with patch.object(v, 'validate_role_installation'):
+                        self.assertEqual(profile, v.validate_profile(path, record, 'b' * 64))
                 else:
                     with self.assertRaisesRegex(v.Blocked, 'PROFILE_BINDING_MISMATCH'):
                         v.validate_profile(path, record, 'b' * 64)
 
-            profile['schema'] = 'ext-protection-1-profile/v2'
+            profile['schema'] = 'ext-protection-1-profile/v3'
             profile['platformTargetCommit'] = 'd' * 40
             path.write_bytes(v.canonical(profile))
             record['profileSha256'] = v.digest(path.read_bytes())

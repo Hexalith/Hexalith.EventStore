@@ -6228,7 +6228,7 @@ status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
   summary: Reject changed accepted ordinary-tail identities during a later shared rebuild.
-  evidence: Local executable /tmp/bounded-owner-review-repro captures 65 events, accepts ordinary event 66, then successfully promotes a changed event-66 payload. Both baseline ae917d3e4dbab20b8982c5222a13611c3e3faf35 and current code compare only the previous captured prefix and checkpoint position, leaving ordinary receipt identities unchecked.
+  evidence: Local executable /tmp/bounded-owner-review-repro captures 65 events, accepts ordinary event 66, then successfully promotes a changed event-66 payload. Both baseline ae917d3e4dbab20b8982c5222a13611c3e3faf35 and current code compare only the previous captured prefix and checkpoint position, leaving ordinary receipt identities unchecked. Same root cause (feature-scoped review 2026-10-30): an exact at-least-once replay of accepted event 66 after a later generation records a durable IdentityConflict, asserted for paged and inline proof by RepeatedOmissionPreservesPagedAndInlineOwnerProofAfterOrdinaryGrowth.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
   summary: Align streamed-owner retirement validation with the admitted contribution chunk bound.
@@ -6309,3 +6309,58 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
   summary: Reject malformed persisted content task identifiers and quiesced fence values.
   evidence: DaprAuthoritativeContentStore.ReadLedgerAsync validates only collection existence/count for SealedTasks and QuiescedTaskFences. A negative restored quiesced fence is accepted and weakens the subsequent positive-fence comparison; this is a separate content-state validation issue, without an authorization-bypass claim.
+
+## Deferred from: code review of spec-folders-12-2-bounded-owner-identity.md (2026-10-30)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Lift or derive the fixed 10,000-event owner cap on the server's mapped-only streamed ordinary-delivery path (medium, pre-existing).
+  evidence: ProjectionSourceGuardDelivery.cs:290 (`HeadSequence > 10_000` -> delivery_owner_limit_exceeded), ProjectionDeliveryFingerprint.cs:218, ProjectionDeliveryIdempotencyCoordinator.SourceGuard.cs:119, ProjectionSourceGuardHistoryReader.cs:89 and NamedProjectionDispatchCoordinator.cs:639/648/1133 all existed at baseline ae917d3e4. NamedProjectionDispatchCoordinator routes shared-epoch types through this path only under mapped-only streamed delivery, so ordinary growth past 10,000 events cannot reach a shared projection in that configuration. Bounded tests and live workers call DomainProjectionDispatcher directly and never exercise it. These files were outside the 12.2 Code Map.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Prevent discarded POST content from reappearing on a later GET redirect.
+  evidence: Resumption B3, medium: RouteCatalogInvocationHandler clears request.Content on forceGet but retains replayable; a later 307 recreates the original POST bytes on GET. This routing implementation is independent of bounded captured identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Qualify whether response-header completion releases catalog fences before remote work ends (unverified medium).
+  evidence: Resumption B5: the HTTP handler disposes its lease when its transport returns HttpResponseMessage. Establish a supported Dapr receiver that streams headers before finishing catalog-sensitive work, then probe concurrent activation/quiescence; no live fence bypass has been demonstrated.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Bound role stdout and stderr while the qualification subprocess is running.
+  evidence: Resumption B7, medium: Role.request uses capture_output=True and checks the 16-MiB stdout limit after exit; stderr has no bound. A verbose/broken role can exhaust verifier memory before refusal. Separate EXT-PROTECTION tooling owns this change.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Remove role credentials and loader controls from the OpenSSL verification helper environment.
+  evidence: Resumption B8, medium: validate_profile requires all three role values in the parent environment and verify_statement launches openssl without env isolation. The helper inherits those values; no exploited loader or executable substitution is claimed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Bind role launch to the installation bytes validated immediately before it.
+  evidence: Resumption B9, medium: validate_role_installation accepts writable installation paths and hashes pathname contents, while Role.request launches by pathname afterward. No held identity or immutable-installation lock spans those operations, so concurrent replacement can invalidate the checked identity. This is a separate installation-consistency issue, not demonstrated credential theft.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Qualify refusal of unresolved required current-RID native assets (unverified medium).
+  evidence: Resumption B10: runtime-closure/Program.cs skips unresolved runtimeTargets. Settle whether a required current-RID native asset can disappear from the manifest while a real role subsequently loads it unpinned, using actual shipped native dependency and omission/load controls; resolver semantics were not demonstrated by this review.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Recheck the epoch fence before acknowledging a current-capture historical duplicate.
+  evidence: Resumption E1, medium: JournalAsync caches state, awaits checkpoint/identity reads, then can return AlreadyCaptured after another epoch invalidates the lease. Baseline ae917d3e4dbab20b8982c5222a13611c3e3faf35 already had this awaited inline-proof path without a final epoch reread, so bounded retention did not introduce it.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Establish an independent expected dependency inventory for shipped-role closure tests.
+  evidence: Resumption VG1, medium, pre-verified: ShippedRoleClosureTests builds its manifest using resolved_application_assets, then mutates only that inventory. A reviewer omitted Hexalith.Commons.UniqueIds.dll from the resolver result and all seven tests still passed. Independent expected-asset and omission controls are needed in the separate installation test suite.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Supply the pinned commitlint CLI before payload-protection CI discovers paired-checkout tests.
+  evidence: Resumption VG2, medium: test_ext_protection_1_loop7_installation.py reads node_modules/@commitlint/cli/package.json by default. payload-protection.yml discovers it after checkout/submodule/.NET setup without npm install or an alternate CLI path, so a clean runner fails at setup.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Make shipped-role installation test setup use a supported Platform source location.
+  evidence: Resumption VG3, medium: ShippedRoleClosureTests unconditionally assumes ROOT.parent/platform, while payload-protection CI initializes only root-declared references/ submodules and creates no sibling checkout.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Provide the native recovery vector producer required by the offline qualification fixture.
+  evidence: Resumption VG4, medium: ActualNativeRecoveryEvidenceTests can fall back to references/Hexalith.Platform, but that current reference lacks ProtectionQualificationLoop7RecoveryTests and cannot emit the five vector files the fixture immediately reads. This is separate recovery-tooling setup work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Design reclamation for captured identity evidence of selected and superseded rebuild generations (medium).
+  evidence: Each rebuild writes one message-index key per event, two records per 64-event leaf plus index nodes, and one terminal batch marker per identity batch under a fresh namespace (SharedProjectionCapturedIdentityStore.cs). RetireAsync (:272) runs only on abort, and even then reconciles batch markers rather than reclaiming them. Nothing reads message-index keys after SealAsync. Superseded generations have no reclamation path. That is roughly 12 MB of leaf/node records plus the message keys per 32,769-event owner per rebuild, growing with every rebuild. Selected evidence must survive for inheritance, so this needs a reachability-based design.
+  reason: Owner decision 2026-10-30: rebuilds are rare, and the guide already places this evidence under the operator's retention policy.

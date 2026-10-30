@@ -1,10 +1,13 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Testing.Fakes;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Shouldly;
 
 namespace Hexalith.EventStore.DomainService.Tests;
@@ -350,6 +353,110 @@ public sealed partial class DomainPartitionedSharedProjectionRebuildTests
             writer.Flush();
             return SHA256.HashData(bytes.ToArray());
         }
+    }
+
+    /// <summary>Keeps fresh buffered accumulation at its existing two preparation passes through identity reservation.</summary>
+    [Fact]
+    public async Task CapturedIdentityReservationDoesNotRepeatBufferedOwnerPreparation()
+    {
+        var store = new InMemoryReadModelStore();
+        var handler = new OutputOnlyPartitionedHandler();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        int preparationPasses = 0;
+        var upcaster = Substitute.For<IEventPayloadUpcaster>();
+        upcaster.EventTypeName.Returns("Old.Contracts.CounterRaised");
+        upcaster.FromVersion.Returns(1);
+        upcaster.TargetEventTypeName.Returns(typeof(VersionedProjectionDispatchTests.RenamedEvent).FullName!);
+        upcaster.Upcast(Arg.Any<JsonObject>()).Returns(call =>
+        {
+            preparationPasses++;
+            return new JsonObject { ["Value"] = call.Arg<JsonObject>()["Amount"]!.GetValue<int>() };
+        });
+        var evolution = new EventPayloadEvolutionRegistry([typeof(VersionedProjectionDispatchTests.RenamedEvent)], [upcaster]);
+        using var provider = Provider(store, store, coordinator, handler, evolution);
+        var scope = handler.CreateScope("tenant-a");
+        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
+        var identity = Identity("fresh-buffered-reservation");
+        var events = BoundedHistory(1);
+        events[0] = events[0] with { EventTypeName = "Old.Contracts.CounterRaised", StoredPayloadVersion = 1, Payload = JsonSerializer.SerializeToUtf8Bytes(new { Amount = 7 }) };
+
+        var accepted = await BoundedAccumulateAsync(provider, identity, events);
+
+        // The existing scratch reservation needs one planning pass and one install pass.
+        // Reserving bounded identity must not add a third complete preparation.
+        preparationPasses.ShouldBe(2);
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        var session = (await store.GetAsync<DomainSharedProjectionRebuildSessionState>(StoreName, sessionKey)).Value!;
+        session.AcceptedAggregateCount.ShouldBe(1);
+        session.PendingScratchChunkCount.ShouldBe(-1);
+        session.PendingCapturedIdentityReference.ShouldBeNull();
+        (await store.GetAsync<DomainSharedProjectionStoredPartitionManifest>(StoreName,
+            DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(sessionKey, 0))).Value!.CapturedIdentityReference.ShouldNotBeNull();
+        (await BoundedRebuildAsync(provider, new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.AccumulateComplete,
+            identity, AggregateOrdinal: 0, AggregateId: "owner-a", PartCount: 1,
+            ExpectedHistoryFingerprint: DomainSharedProjectionRebuildFingerprint.ComputeHistory("owner-a", false, events)))).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        preparationPasses.ShouldBe(2);
+        await BoundedFinishAsync(provider, identity, accepted);
+        (await coordinator.GetCheckpointAsync(scope, "owner-a"))!.OwnerSequenceNumber.ShouldBe(1);
+    }
+
+    /// <summary>Refuses evolution that changes after sealing and preserves the prior selected owner state.</summary>
+    [Fact]
+    public async Task ChangedEvolutionBetweenStreamedPassesCannotReplaceSelectedOwner()
+    {
+        var store = new InMemoryReadModelStore();
+        var handler = new StreamedPartitionedHandler { FailBufferedOwnerFold = true };
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        int evolutionCalls = 0;
+        int? validationPassCount = null;
+        var upcaster = Substitute.For<IEventPayloadUpcaster>();
+        upcaster.EventTypeName.Returns("Old.Contracts.CounterRaised");
+        upcaster.FromVersion.Returns(1);
+        upcaster.TargetEventTypeName.Returns(typeof(VersionedProjectionDispatchTests.RenamedEvent).FullName!);
+        upcaster.Upcast(Arg.Any<JsonObject>()).Returns(call => new JsonObject
+        {
+            ["Value"] = call.Arg<JsonObject>()["Amount"]!.GetValue<int>()
+                + (validationPassCount is { } count && evolutionCalls++ >= count ? 1 : 0)
+        });
+        var evolution = new EventPayloadEvolutionRegistry([typeof(VersionedProjectionDispatchTests.RenamedEvent)], [upcaster]);
+        using var provider = Provider(store, store, coordinator, handler, evolution);
+        var scope = handler.CreateScope("tenant-a");
+        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
+        var events = BoundedHistory(66).Select(item => item with
+        {
+            EventTypeName = "Old.Contracts.CounterRaised", StoredPayloadVersion = 1,
+            Payload = JsonSerializer.SerializeToUtf8Bytes(new { Amount = item.SequenceNumber })
+        }).ToArray();
+        var first = Identity("stable-streamed-evolution");
+        await BoundedFinishAsync(provider, first, await BoundedAccumulateAsync(provider, first, events[..65]));
+        long selected = (await coordinator.GetStatusAsync(scope)).ActiveGeneration;
+        string checkpoint = JsonSerializer.Serialize(await coordinator.GetCheckpointAsync(scope, "owner-a"));
+        string selectedValue = JsonSerializer.Serialize((await coordinator.ReadAsync<PayloadRow>(scope, "row:owner-a")).Value);
+        evolutionCalls = 0;
+        validationPassCount = events.Length;
+        int foldedBefore = handler.StreamedEventCount;
+        var next = Identity("changed-streamed-evolution");
+
+        var rejected = await BoundedAccumulateAsync(provider, next, events, requireSuccess: false);
+
+        rejected.Status.ShouldBe(ProjectionDispatchStatus.Indeterminate);
+        rejected.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.HandlerFailure);
+        evolutionCalls.ShouldBe(events.Length * 2);
+        handler.StreamedEventCount.ShouldBe(foldedBefore);
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(next);
+        var session = (await store.GetAsync<DomainSharedProjectionRebuildSessionState>(StoreName, sessionKey)).Value!;
+        session.AcceptedAggregateCount.ShouldBe(0);
+        session.Phase.ShouldBe(DomainSharedProjectionRebuildPhase.Accumulating);
+        var pending = session.PendingCapturedIdentityReference.ShouldNotBeNull();
+        var inventory = (await store.GetAsync<JsonObject>(StoreName, "shared-identity-v1:" + pending.NamespaceHash)).Value!;
+        var sealedReference = inventory["reference"]!.Deserialize<SharedProjectionCapturedIdentityReference>(JsonSerializerOptions.Web)!;
+        sealedReference.RootDigest.ShouldNotBeEmpty();
+        await coordinator.CapturedIdentities.ValidateCompleteAsync(scope, sealedReference);
+        (await store.GetAsync<DomainSharedProjectionStoredPartitionManifest>(StoreName,
+            DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(sessionKey, 0))).Value.ShouldBeNull();
+        (await coordinator.GetStatusAsync(scope)).ActiveGeneration.ShouldBe(selected);
+        JsonSerializer.Serialize(await coordinator.GetCheckpointAsync(scope, "owner-a")).ShouldBe(checkpoint);
+        JsonSerializer.Serialize((await coordinator.ReadAsync<PayloadRow>(scope, "row:owner-a")).Value).ShouldBe(selectedValue);
     }
 
     private static ProjectionEventDto[] BoundedHistory(int count)

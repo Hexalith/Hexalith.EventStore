@@ -57,6 +57,19 @@ class ProducerOriginalTests(unittest.TestCase):
         self.assertEqual(executed.returncode, 0, executed.stdout + executed.stderr)
         observed = json.loads(vector.read_bytes())['observation']; self.verify(observed)
         self.assertEqual({record['kind'] for record in observed['records']}, {'snapshot', 'cache', 'backup', 'restored'})
+        case = {'steps': ['SealSnapshotAndCache', 'CreateBackup', 'RestoreBackup'], 'checks': ['erased']}
+        targets = [root['target'] for root in observed['roots']]
+        def verify_erased(value):
+            v.evaluate(value, case, targets, b'configured-canary', observed['engineSourceRevision'], observed['engineBinarySha256'], [], {})
+        verify_erased(observed)
+        for mutation in ('identity', 'digest', 'copy', 'duplicate', 'borrowed-copy'):
+            changed = copy.deepcopy(observed); replay = changed['replays'][0]
+            if mutation == 'identity': replay['sourceIdentity'] = 'foreign-snapshot-location'
+            elif mutation == 'digest': replay['sourceDigest'] = 'F' * 64
+            elif mutation == 'copy': replay['copyId'] += ':foreign'
+            elif mutation == 'duplicate': changed['replays'][1] = copy.deepcopy(replay)
+            else: replay.update({name: changed['replays'][1][name] for name in ('copyId', 'kind', 'sourceIdentity', 'sourceDigest')})
+            with self.subTest(erased_copy_mutation=mutation), self.assertRaises(v.Failed): verify_erased(changed)
         for mutation in ('missing-location', 'physical-alias', 'purpose', 'backup-source', 'restore-call', 'backup-document'):
             changed = copy.deepcopy(observed)
             locations = {location['CopyKind']: location for location in changed['copyLocations']}

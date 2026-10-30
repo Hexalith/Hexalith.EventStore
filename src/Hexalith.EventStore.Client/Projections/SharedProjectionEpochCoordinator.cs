@@ -795,6 +795,12 @@ public sealed partial class SharedProjectionEpochCoordinator
                             scope, delivery.SourceStream, capturedOwner, delivery.OwnerSequenceNumber, cancellationToken).ConfigureAwait(false);
                         if (identities is null)
                         {
+                            if (capturedOwner?.CapturedIdentityReference is not null
+                                || capturedOwner?.CapturedEventDigests is not null)
+                            {
+                                return SharedProjectionJournalResult.RebuildRequired;
+                            }
+
                             // The older nonpartitioned rebuild contract did not seed event identities.
                             // A receipt from the previously selected epoch can still prove an event
                             // that ordinary delivery had already accepted before that rebuild.
@@ -818,14 +824,13 @@ public sealed partial class SharedProjectionEpochCoordinator
                         {
                             return SharedProjectionJournalResult.RebuildRequired;
                         }
-                        int offset = 0;
                         if (!SharedProjectionCapturedEventIdentity.Compute(
                                 delivery.SourceStream, delivery.EnvelopePosition,
                                 delivery.OwnerSequenceNumber, delivery.CanonicalPayload).AsSpan()
-                            .SequenceEqual(identities.AsSpan(offset, 32)))
+                            .SequenceEqual(identities))
                         {
                             if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery,
-                                Convert.ToHexString(identities.AsSpan(offset, 32)), digest, cancellationToken)
+                                Convert.ToHexString(identities), digest, cancellationToken)
                                 .ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
                             continue;
                         }
