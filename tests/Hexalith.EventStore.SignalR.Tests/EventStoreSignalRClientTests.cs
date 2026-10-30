@@ -1,5 +1,11 @@
 using System.Reflection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
 
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 
@@ -79,7 +85,7 @@ public class EventStoreSignalRClientTests {
             bool callbackInvoked = false;
 
             // Subscribe before connecting — should store the group
-            await sut.SubscribeAsync("counter", "acme", () => callbackInvoked = true);
+            await sut.SubscribeAsync("counter", "acme", () => callbackInvoked = true, TestContext.Current.CancellationToken);
 
             // No exception means the group was tracked successfully
             callbackInvoked.ShouldBeFalse(); // Callback not invoked until signal received
@@ -94,8 +100,8 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await sut.SubscribeAsync("counter", "acme", () => { });
-            await sut.UnsubscribeAsync("counter", "acme");
+            await sut.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
+            await sut.UnsubscribeAsync("counter", "acme", TestContext.Current.CancellationToken);
 
             // No exception — unsubscribe completed successfully
         }
@@ -110,7 +116,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             _ = await Should.ThrowAsync<ArgumentException>(() =>
-                sut.SubscribeAsync(null!, "acme", () => { }));
+                sut.SubscribeAsync(null!, "acme", () => { }, TestContext.Current.CancellationToken));
         }
         finally {
             await sut.DisposeAsync();
@@ -123,7 +129,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             _ = await Should.ThrowAsync<ArgumentException>(() =>
-                sut.SubscribeAsync("counter", null!, () => { }));
+                sut.SubscribeAsync("counter", null!, () => { }, TestContext.Current.CancellationToken));
         }
         finally {
             await sut.DisposeAsync();
@@ -136,7 +142,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             _ = await Should.ThrowAsync<ArgumentNullException>(() =>
-                sut.SubscribeAsync("counter", "acme", null!));
+                sut.SubscribeAsync("counter", "acme", null!, TestContext.Current.CancellationToken));
         }
         finally {
             await sut.DisposeAsync();
@@ -149,7 +155,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             _ = await Should.ThrowAsync<ArgumentException>(() =>
-                sut.SubscribeAsync("counter:bad", "acme", () => { }));
+                sut.SubscribeAsync("counter:bad", "acme", () => { }, TestContext.Current.CancellationToken));
         }
         finally {
             await sut.DisposeAsync();
@@ -162,7 +168,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             _ = await Should.ThrowAsync<ArgumentException>(() =>
-                sut.UnsubscribeAsync("counter", "acme:bad"));
+                sut.UnsubscribeAsync("counter", "acme:bad", TestContext.Current.CancellationToken));
         }
         finally {
             await sut.DisposeAsync();
@@ -174,7 +180,7 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
 
-        await sut.SubscribeAsync("counter", "acme", () => { });
+        await sut.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
         await sut.DisposeAsync();
 
         // No exception — disposal completed successfully
@@ -191,8 +197,8 @@ public class EventStoreSignalRClientTests {
             void callback1() => callback1Count++;
             void callback2() => callback2Count++;
 
-            await sut.SubscribeAsync("counter", "acme", callback1);
-            await sut.SubscribeAsync("counter", "acme", callback2);
+            await sut.SubscribeAsync("counter", "acme", callback1, TestContext.Current.CancellationToken);
+            await sut.SubscribeAsync("counter", "acme", callback2, TestContext.Current.CancellationToken);
 
             InvokeProjectionChanged(sut, "counter", "acme");
 
@@ -216,7 +222,7 @@ public class EventStoreSignalRClientTests {
                 // Avoid coupling to absolute log count so a future log emission elsewhere does not break this test.
                 logEntries.Any(e => e.EventId.Id == 2090).ShouldBeTrue("receipt log (EventId 2090) must be recorded before consumer callbacks fire");
                 callbackCount++;
-            });
+            }, TestContext.Current.CancellationToken);
 
             InvokeProjectionChanged(sut, "counter", "acme");
 
@@ -242,8 +248,8 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
         try {
             int callbackCount = 0;
-            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
-            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++, TestContext.Current.CancellationToken);
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++, TestContext.Current.CancellationToken);
 
             InvokeProjectionChanged(sut, "counter", "acme");
 
@@ -263,7 +269,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
         try {
             int callbackCount = 0;
-            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++, TestContext.Current.CancellationToken);
 
             InvokeProjectionChanged(sut, "counter", "other-tenant");
 
@@ -285,7 +291,7 @@ public class EventStoreSignalRClientTests {
                 ["freshness"] = "changed",
             };
 
-            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", detail => received = detail).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", detail => received = detail, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
             InvokeProjectionChangedDetail(sut, "counter", "acme", "counter-1", metadata);
 
@@ -308,7 +314,7 @@ public class EventStoreSignalRClientTests {
         try {
             int callbackCount = 0;
 
-            await sut.SubscribeDetailAsync("counter", "acme", null, _ => callbackCount++).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", null, _ => callbackCount++, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
             InvokeProjectionChangedDetail(
                 sut,
@@ -331,7 +337,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
         try {
             int callbackCount = 0;
-            await sut.SubscribeDetailAsync("counter", "acme", "counter-2", _ => callbackCount++).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-2", _ => callbackCount++, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
             InvokeProjectionChangedDetail(
                 sut,
@@ -359,9 +365,9 @@ public class EventStoreSignalRClientTests {
             void callback1(ProjectionChangedDetail _) => callback1Count++;
             void callback2(ProjectionChangedDetail _) => callback2Count++;
 
-            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", callback1).ConfigureAwait(true);
-            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", callback2).ConfigureAwait(true);
-            await sut.UnsubscribeDetailAsync("counter", "acme", "counter-1", callback1).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", callback1, TestContext.Current.CancellationToken).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", callback2, TestContext.Current.CancellationToken).ConfigureAwait(true);
+            await sut.UnsubscribeDetailAsync("counter", "acme", "counter-1", callback1, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
             InvokeProjectionChangedDetail(
                 sut,
@@ -384,7 +390,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             _ = await Should.ThrowAsync<ArgumentException>(() =>
-                sut.SubscribeDetailAsync("counter", "acme", "counter:1", _ => { })).ConfigureAwait(true);
+                sut.SubscribeDetailAsync("counter", "acme", "counter:1", _ => { }, TestContext.Current.CancellationToken)).ConfigureAwait(true);
         }
         finally {
             await sut.DisposeAsync().ConfigureAwait(true);
@@ -397,7 +403,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             _ = await Should.ThrowAsync<ArgumentException>(() =>
-                sut.SubscribeDetailAsync("counter", "acme", new string('a', 65), _ => { })).ConfigureAwait(true);
+                sut.SubscribeDetailAsync("counter", "acme", new string('a', 65), _ => { }, TestContext.Current.CancellationToken)).ConfigureAwait(true);
         }
         finally {
             await sut.DisposeAsync().ConfigureAwait(true);
@@ -410,7 +416,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             int callbackCount = 0;
-            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", _ => callbackCount++).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", _ => callbackCount++, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
             await InvokeOnReconnectedAsync(sut, "new-connection-id").ConfigureAwait(true);
             InvokeProjectionChangedDetail(
@@ -436,7 +442,7 @@ public class EventStoreSignalRClientTests {
             var metadata = new Dictionary<string, string>(StringComparer.Ordinal) {
                 ["freshness"] = "changed",
             };
-            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", detail => received = detail).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", detail => received = detail, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
             InvokeProjectionChangedDetail(sut, "counter", "acme", "counter-1", metadata);
             metadata["freshness"] = "mutated";
@@ -460,7 +466,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
         try {
             string secretValue = Guid.NewGuid().ToString("N");
-            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", _ => { }).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", _ => { }, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
             InvokeProjectionChangedDetail(
                 sut,
@@ -492,9 +498,9 @@ public class EventStoreSignalRClientTests {
             void callback1() => callback1Count++;
             void callback2() => callback2Count++;
 
-            await sut.SubscribeAsync("counter", "acme", callback1);
-            await sut.SubscribeAsync("counter", "acme", callback2);
-            await sut.UnsubscribeAsync("counter", "acme", callback1);
+            await sut.SubscribeAsync("counter", "acme", callback1, TestContext.Current.CancellationToken);
+            await sut.SubscribeAsync("counter", "acme", callback2, TestContext.Current.CancellationToken);
+            await sut.UnsubscribeAsync("counter", "acme", callback1, TestContext.Current.CancellationToken);
 
             InvokeProjectionChanged(sut, "counter", "acme");
 
@@ -515,8 +521,8 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await sut.SubscribeAsync("counter", "acme", () => { });
-            await sut.SubscribeAsync("orders", "contoso", () => { });
+            await sut.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
+            await sut.SubscribeAsync("orders", "contoso", () => { }, TestContext.Current.CancellationToken);
 
             // Simulate reconnection event — should attempt rejoining all groups
             await InvokeOnReconnectedAsync(sut, "new-connection-id");
@@ -546,16 +552,16 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await sut.SubscribeAsync("counter", "acme", () => { });
-            await sut.SubscribeAsync("orders", "contoso", () => { });
-            await sut.UnsubscribeAsync("counter", "acme");
+            await sut.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
+            await sut.SubscribeAsync("orders", "contoso", () => { }, TestContext.Current.CancellationToken);
+            await sut.UnsubscribeAsync("counter", "acme", TestContext.Current.CancellationToken);
 
             // Reconnect — should only attempt to rejoin "orders:contoso"
             await InvokeOnReconnectedAsync(sut, "new-connection-id");
 
             // Verify original callbacks still work for remaining group
             int callbackCount = 0;
-            await sut.SubscribeAsync("orders", "contoso", () => callbackCount++);
+            await sut.SubscribeAsync("orders", "contoso", () => callbackCount++, TestContext.Current.CancellationToken);
             InvokeProjectionChanged(sut, "orders", "contoso");
             callbackCount.ShouldBe(1);
         }
@@ -571,7 +577,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             int callbackCount = 0;
-            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++, TestContext.Current.CancellationToken);
 
             // Simulate reconnection
             await InvokeOnReconnectedAsync(sut, "new-connection-id");
@@ -590,7 +596,7 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await sut.SubscribeAsync("counter", "acme", () => { });
+            await sut.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
 
             // Null connectionId is valid per SignalR spec
             await InvokeOnReconnectedAsync(sut, null);
@@ -605,7 +611,7 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
 
-        await sut.SubscribeAsync("counter", "acme", () => { });
+        await sut.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
         await sut.DisposeAsync();
 
         // After disposal, subscribed groups are cleared
@@ -619,8 +625,8 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await sut.SubscribeAsync("counter", "acme", () => { });
-            await sut.SubscribeAsync("orders", "contoso", () => { });
+            await sut.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
+            await sut.SubscribeAsync("orders", "contoso", () => { }, TestContext.Current.CancellationToken);
 
             // Simulate 3 consecutive reconnection callbacks.
             await InvokeOnReconnectedAsync(sut, "conn-1");
@@ -629,7 +635,7 @@ public class EventStoreSignalRClientTests {
 
             // Callback dispatch should still work afterward.
             int callbackCount = 0;
-            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++, TestContext.Current.CancellationToken);
             InvokeProjectionChanged(sut, "counter", "acme");
             callbackCount.ShouldBe(1);
         }
@@ -644,14 +650,14 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await sut.SubscribeAsync("counter", "acme", () => { });
+            await sut.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
 
             // Simulate first reconnection
             await InvokeOnReconnectedAsync(sut, "conn-1");
 
             // Subscribe to a new group while connected (simulating between disconnect/reconnect)
             int newGroupCallbackCount = 0;
-            await sut.SubscribeAsync("orders", "contoso", () => newGroupCallbackCount++);
+            await sut.SubscribeAsync("orders", "contoso", () => newGroupCallbackCount++, TestContext.Current.CancellationToken);
 
             // Simulate second reconnection callback.
             await InvokeOnReconnectedAsync(sut, "conn-2");
@@ -672,7 +678,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             int callbackCount = 0;
-            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++, TestContext.Current.CancellationToken);
 
             // Simulate 5 consecutive reconnection callbacks.
             for (int i = 1; i <= 5; i++) {
@@ -728,7 +734,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             // Unsubscribe a callback for a group that was never subscribed — should not throw
-            await sut.UnsubscribeAsync("nonexistent", "tenant", () => { });
+            await sut.UnsubscribeAsync("nonexistent", "tenant", () => { }, TestContext.Current.CancellationToken);
         }
         finally {
             await sut.DisposeAsync();
@@ -741,7 +747,7 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
         try {
             // Unsubscribe an entire group that was never subscribed — should not throw
-            await sut.UnsubscribeAsync("nonexistent", "tenant");
+            await sut.UnsubscribeAsync("nonexistent", "tenant", TestContext.Current.CancellationToken);
         }
         finally {
             await sut.DisposeAsync();
@@ -787,6 +793,293 @@ public class EventStoreSignalRClientTests {
         }
         finally {
             await sut.DisposeAsync();
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task RealStalledGroupInvocationCancellationSettlesAndRevokesCallback(bool leave, bool detail)
+    {
+        var control = new StalledProjectionRpc();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddSignalR();
+        builder.Services.AddSingleton(control);
+        WebApplication app = builder.Build();
+        app.MapHub<StalledProjectionHub>("/hub");
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        string address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        using var paused = new StalledProjectionReceiptLogger();
+        Task dispatch = Task.CompletedTask;
+        var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = address + "/hub" }, paused);
+        using var cancellation = new CancellationTokenSource();
+        int calls = 0;
+        void callback() => calls++;
+        void detailCallback(ProjectionChangedDetail _) => calls++;
+        try
+        {
+            await client.StartAsync(TestContext.Current.CancellationToken);
+            Task operation;
+            if (leave)
+            {
+                control.ReleaseJoin.SetResult();
+                if (detail)
+                {
+                    await client.SubscribeDetailAsync("counter", "acme", "party-1", detailCallback, TestContext.Current.CancellationToken);
+                    operation = client.UnsubscribeDetailAsync("counter", "acme", "party-1", detailCallback, cancellation.Token);
+                }
+                else
+                {
+                    await client.SubscribeAsync("counter", "acme", callback, TestContext.Current.CancellationToken);
+                    operation = client.UnsubscribeAsync("counter", "acme", callback, cancellation.Token);
+                }
+                await control.LeaveEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            }
+            else
+            {
+                operation = detail
+                    ? client.SubscribeDetailAsync("counter", "acme", "party-1", detailCallback, cancellation.Token)
+                    : client.SubscribeAsync("counter", "acme", callback, cancellation.Token);
+                await control.JoinEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+                dispatch = Task.Run(() =>
+                {
+                    if (detail)
+                    {
+                        InvokeProjectionChangedDetail(client, "counter", "acme", "party-1", new Dictionary<string, string>());
+                    }
+                    else
+                    {
+                        InvokeProjectionChanged(client, "counter", "acme");
+                    }
+                }, TestContext.Current.CancellationToken);
+                await paused.Captured.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            }
+            await cancellation.CancelAsync();
+            await Should.ThrowAsync<OperationCanceledException>(() => operation.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+            paused.Resume.Set();
+            await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            InvokeProjectionChanged(client, "counter", "acme");
+            calls.ShouldBe(0);
+            control.ReleaseJoin.TrySetResult();
+            control.ReleaseLeave.TrySetResult();
+            await (leave ? control.LeaveFinished.Task : control.JoinFinished.Task)
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            InvokeProjectionChanged(client, "counter", "acme");
+            InvokeProjectionChangedDetail(client, "counter", "acme", "party-1", new Dictionary<string, string>());
+            calls.ShouldBe(0);
+        }
+        finally
+        {
+            paused.Resume.Set();
+            await dispatch.ConfigureAwait(true);
+            control.ReleaseJoin.TrySetResult();
+            control.ReleaseLeave.TrySetResult();
+            await client.DisposeAsync();
+            await app.StopAsync(TestContext.Current.CancellationToken);
+            await app.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelledJoinPreservesAnotherSubscriberInTheSameGroup(bool detail)
+    {
+        var control = new StalledProjectionRpc();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddSignalR();
+        builder.Services.AddSingleton(control);
+        WebApplication app = builder.Build();
+        await using var applicationLifetime = app.ConfigureAwait(true);
+        app.MapHub<StalledProjectionHub>("/hub");
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        string address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = address + "/hub" });
+        using var cancellation = new CancellationTokenSource();
+        int revokedCalls = 0;
+        int survivingCalls = 0;
+        var received = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            await client.StartAsync(TestContext.Current.CancellationToken);
+            Task cancelled = detail
+                ? client.SubscribeDetailAsync("counter", "acme", "party-1", _ => revokedCalls++, cancellation.Token)
+                : client.SubscribeAsync("counter", "acme", () => revokedCalls++, cancellation.Token);
+            await control.JoinEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            void onReceived()
+            {
+                Interlocked.Increment(ref survivingCalls);
+                received.TrySetResult();
+            }
+            Task survivor = detail
+                ? client.SubscribeDetailAsync("counter", "acme", "party-1", _ => onReceived(), TestContext.Current.CancellationToken)
+                : client.SubscribeAsync("counter", "acme", onReceived, TestContext.Current.CancellationToken);
+            await cancellation.CancelAsync();
+            await Should.ThrowAsync<OperationCanceledException>(() => cancelled.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+            control.ReleaseJoin.TrySetResult();
+            await survivor.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            IHubClients clients = app.Services.GetRequiredService<IHubContext<StalledProjectionHub>>().Clients;
+            if (detail)
+            {
+                await clients.Group("counter:acme:party-1").SendAsync("ProjectionChangedDetail", "counter", "acme", "party-1",
+                    new Dictionary<string, string>(), TestContext.Current.CancellationToken);
+            }
+            else
+            {
+                await clients.Group("counter:acme").SendAsync("ProjectionChanged", "counter", "acme", TestContext.Current.CancellationToken);
+            }
+            await received.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            revokedCalls.ShouldBe(0);
+            survivingCalls.ShouldBe(1);
+        }
+        finally
+        {
+            control.ReleaseJoin.TrySetResult();
+            control.ReleaseLeave.TrySetResult();
+            await client.DisposeAsync();
+            await app.StopAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RemovalRevokesCallbackInAlreadyCapturedDispatchSnapshot(bool detail)
+    {
+        using var logger = new StalledProjectionReceiptLogger();
+        var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hub" }, logger);
+        int calls = 0;
+        void callback() => calls++;
+        void detailCallback(ProjectionChangedDetail _) => calls++;
+        Task dispatch = Task.CompletedTask;
+        try
+        {
+            if (detail)
+            {
+                await client.SubscribeDetailAsync("counter", "acme", "party-1", detailCallback, TestContext.Current.CancellationToken);
+            }
+            else
+            {
+                await client.SubscribeAsync("counter", "acme", callback, TestContext.Current.CancellationToken);
+            }
+            dispatch = Task.Run(() =>
+            {
+                if (detail)
+                {
+                    InvokeProjectionChangedDetail(client, "counter", "acme", "party-1", new Dictionary<string, string>());
+                }
+                else
+                {
+                    InvokeProjectionChanged(client, "counter", "acme");
+                }
+            }, TestContext.Current.CancellationToken);
+            await logger.Captured.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            if (detail)
+            {
+                await client.UnsubscribeDetailAsync("counter", "acme", "party-1", detailCallback, TestContext.Current.CancellationToken);
+            }
+            else
+            {
+                await client.UnsubscribeAsync("counter", "acme", callback, TestContext.Current.CancellationToken);
+            }
+            logger.Resume.Set();
+            await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            calls.ShouldBe(0);
+        }
+        finally
+        {
+            logger.Resume.Set();
+            await dispatch.ConfigureAwait(true);
+            await client.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task StartupCancellationPropagatesFromInitialStalledGroupJoin()
+    {
+        var control = new StalledProjectionRpc();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddSignalR();
+        builder.Services.AddSingleton(control);
+        WebApplication app = builder.Build();
+        await using var applicationLifetime = app.ConfigureAwait(true);
+        app.MapHub<StalledProjectionHub>("/hub");
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        string address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = address + "/hub" });
+        using var cancellation = new CancellationTokenSource();
+        try
+        {
+            await client.SubscribeAsync("counter", "acme", () => { }, TestContext.Current.CancellationToken);
+            Task start = client.StartAsync(cancellation.Token);
+            await control.JoinEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await cancellation.CancelAsync();
+            await Should.ThrowAsync<OperationCanceledException>(() => start.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            control.ReleaseJoin.TrySetResult();
+            await client.DisposeAsync();
+            await app.StopAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task LegacySignaturesExecuteWithoutCancellationArguments()
+    {
+        var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hub" });
+        try
+        {
+            // Bind and execute the exact published signatures, rather than reflecting on their presence.
+            Func<string, string, Action, Task> subscribe = client.SubscribeAsync;
+            Func<string, string, Action, Task> unsubscribe = client.UnsubscribeAsync;
+            Func<string, string, Task> unsubscribeAll = client.UnsubscribeAsync;
+            Func<string, string, Action<ProjectionChangedDetail>, Task> subscribeDetail = client.SubscribeDetailAsync;
+            Func<string, string, string?, Action<ProjectionChangedDetail>, Task> subscribeScoped = client.SubscribeDetailAsync;
+            Func<string, string, Action<ProjectionChangedDetail>, Task> unsubscribeDetail = client.UnsubscribeDetailAsync;
+            Func<string, string, string?, Action<ProjectionChangedDetail>, Task> unsubscribeScoped = client.UnsubscribeDetailAsync;
+            Func<string, string, Task> unsubscribeAllDetails = client.UnsubscribeDetailAsync;
+            Func<string, string, string?, Task> unsubscribeAllScoped = client.UnsubscribeDetailAsync;
+            Action callback = () => { };
+            Action<ProjectionChangedDetail> detailCallback = _ => { };
+            await subscribe("counter", "acme", callback);
+            await unsubscribe("counter", "acme", callback);
+            await subscribe("counter", "acme", callback);
+            await unsubscribeAll("counter", "acme");
+            await subscribeDetail("counter", "acme", detailCallback);
+            await unsubscribeDetail("counter", "acme", detailCallback);
+            await subscribeScoped("counter", "acme", "party-1", detailCallback);
+            await unsubscribeScoped("counter", "acme", "party-1", detailCallback);
+            await subscribeDetail("counter", "acme", detailCallback);
+            await unsubscribeAllDetails("counter", "acme");
+            await subscribeScoped("counter", "acme", "party-1", detailCallback);
+            await unsubscribeAllScoped("counter", "acme", "party-1");
+        }
+        finally
+        {
+            await client.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task TransitionGenerationRetainsSubIntervalOutage()
+    {
+        var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hub" });
+        try
+        {
+            long before = client.RecoveryGeneration;
+            await InvokeOnClosedAsync(client, null);
+            await InvokeOnReconnectedAsync(client, "new");
+            client.RecoveryGeneration.ShouldBeGreaterThan(before);
+        }
+        finally
+        {
+            await client.DisposeAsync().ConfigureAwait(true);
         }
     }
 
