@@ -7,6 +7,9 @@ namespace Hexalith.EventStore.Testing;
 /// <summary>Opens private descriptor files without following final links or blocking on FIFOs.</summary>
 internal static class TestEnvironmentDescriptorFile
 {
+    /// <summary>Opens a held read handle without following final links or blocking on a Unix FIFO.</summary>
+    /// <param name="path">The absolute local descriptor path.</param>
+    /// <returns>The held stream; the reader verifies its seekability and bounded size.</returns>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The returned FileStream owns the SafeFileHandle; constructor failure disposes it explicitly.")]
     internal static FileStream OpenWithoutBlocking(string path)
     {

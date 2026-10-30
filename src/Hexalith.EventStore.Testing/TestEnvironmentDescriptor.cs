@@ -12,6 +12,8 @@ public sealed class TestEnvironmentDescriptor : IDisposable
     private string? _accessToken;
     private bool _disposed;
 
+    /// <summary>Requires complete readiness and synthetic isolation after strict contract validation.</summary>
+    /// <param name="document">The detached validated v1 document.</param>
     internal TestEnvironmentDescriptor(JsonElement document)
     {
         _document = document;
@@ -146,6 +148,11 @@ public sealed class TestEnvironmentDescriptor : IDisposable
         }
     }
 
+    /// <summary>Binds only matching identities from the separate private runner channel.</summary>
+    /// <param name="runId">The producing run identity.</param>
+    /// <param name="tenantId">The supplied synthetic tenant.</param>
+    /// <param name="dataIsolationId">The supplied run-scoped data isolation.</param>
+    /// <param name="accessToken">The private runner bearer credential.</param>
     internal void BindCredentials(string? runId, string? tenantId, string? dataIsolationId, string? accessToken)
     {
         if (runId != RunId || tenantId != SyntheticTenantId || dataIsolationId != DataIsolationId

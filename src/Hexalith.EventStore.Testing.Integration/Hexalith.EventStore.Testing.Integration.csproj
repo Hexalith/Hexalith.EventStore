@@ -2,9 +2,8 @@
 
   <PropertyGroup>
     <Description>Descriptor-only test fixtures for Platform-owned environments, bounded clients and support-safe diagnostics.</Description>
-    <!-- This is test-support code (references xunit.v3 + Aspire.Hosting.Testing). xUnit1051 wants a
-         TestContext cancellation token on framework calls; the harness probes/HTTP-polls with its
-         own internal timeouts and runs outside a live test context during fixture startup. -->
+    <!-- Test-support helpers use their own finite request bounds outside a live xUnit
+         TestContext during fixture initialization. -->
     <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
