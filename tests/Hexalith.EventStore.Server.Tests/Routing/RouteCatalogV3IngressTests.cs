@@ -126,7 +126,7 @@ public class RouteCatalogV3IngressTests
         });
         builder.Services.AddAuthorization(options => options.AddPolicy(EventStoreHttpHostSecurityExtensions.HumanPolicy, policy => policy.RequireAuthenticatedUser()));
         builder.Services.AddControllers(options => options.Filters.AddService<GeneratedRouteCatalogFilter>())
-            .AddApplicationPart(typeof(Controllers.CommandsController).Assembly).AddApplicationPart(typeof(CatalogGeneratedMvcProbeController).Assembly)
+            .AddApplicationPart(typeof(Hexalith.EventStore.Controllers.CommandsController).Assembly).AddApplicationPart(typeof(CatalogGeneratedMvcProbeController).Assembly)
             .ConfigureApplicationPartManager(parts => parts.FeatureProviders.Add(new CatalogV3MvcFeature()));
         await using var app = builder.Build();
         app.Use(async (context, next) =>
