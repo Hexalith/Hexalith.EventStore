@@ -75,7 +75,7 @@ public sealed class HttpHostSecurityTests
             [DaprAppChannelToken.ConfigurationKey] = "story514-sdk-channel",
             ["EventStore:DomainService:AppId"] = "sample",
             ["Authentication:JwtBearer:Issuer"] = "story514", ["Authentication:JwtBearer:Audience"] = "sample",
-            ["Authentication:JwtBearer:SigningKey"] = "story514-sdk-signing-key-at-least-32-bytes",
+            ["Authentication:JwtBearer:SigningKey"] = "__HEXALITH_TEST_SIGNING_KEY_PLACEHOLDER__",
         });
         builder.AddEventStoreDomainService(typeof(WidgetAggregate).Assembly);
         return builder.Build();

@@ -103,7 +103,7 @@ public sealed class CatalogTransportIsolationTests
     [InlineData(ClientCertificateOption.Automatic)]
     public void NativeCertificateCredentialProxyAndConnectionSettingsSurviveIsolation(ClientCertificateOption mode)
     {
-        var proxy = new WebProxy("http://127.0.0.1:54321"); var credentials = new NetworkCredential("configured", "fixture-only");
+        var proxy = new WebProxy("http://127.0.0.1:54321"); var credentials = new NetworkCredential("<username>", "<password>");
         using var ordinary = new HttpClientHandler
         {
             AllowAutoRedirect = true, ClientCertificateOptions = mode, Credentials = credentials,

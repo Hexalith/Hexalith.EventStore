@@ -48,7 +48,7 @@ public sealed class CatalogBackendHttpTests
     [InlineData("timeout")]
     public async Task ConcreteAuthorityBackendFailuresBecomeNonsecretGatewayProblemDetails(string fault)
     {
-        const string secret = "backend-payload-private-coordinates-proof-secret";
+        const string secret = "__HEXALITH_TEST_SECRET__";
         var backendBuilder = WebApplication.CreateBuilder(); backendBuilder.Logging.ClearProviders(); backendBuilder.WebHost.UseUrls("http://127.0.0.1:0");
         await using var backend = backendBuilder.Build(); RouteCatalogActivationState persisted = RouteCatalogActivationState.Empty; int epoch = 1, stateWrites = 0;
         backend.MapGet("/v1.0/state/route-catalog/route-catalog-authority-v1", async (HttpContext context) =>

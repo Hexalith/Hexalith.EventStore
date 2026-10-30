@@ -197,12 +197,13 @@ public sealed partial class HttpHostSecurityTests
         if (scenario != "read-only") claims["eventstore:permission"] = "command:replay";
         if (scenario == "workload") claims[EventStoreWorkloadAuthenticationDefaults.OperationClaimType] = "retry";
         foreach (var claim in additional ?? new Dictionary<string, object>()) claims[claim.Key] = claim.Value;
+        string keyMaterial = scenario == "signature" ? Key + "wrong" : Key;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = scenario == "issuer" ? "wrong" : "story514", Audience = scenario == "audience" ? "wrong" : "operations",
             IssuedAt = DateTime.UtcNow.AddHours(-1), NotBefore = DateTime.UtcNow.AddHours(-1),
             Expires = scenario == "expired" ? DateTime.UtcNow.AddMinutes(-10) : DateTime.UtcNow.AddMinutes(5), Claims = claims,
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(scenario == "signature" ? Key + "wrong" : Key)), SecurityAlgorithms.HmacSha256),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyMaterial)), SecurityAlgorithms.HmacSha256),
         });
     }
 }

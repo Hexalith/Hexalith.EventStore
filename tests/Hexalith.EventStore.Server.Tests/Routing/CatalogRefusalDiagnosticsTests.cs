@@ -13,7 +13,7 @@ public sealed class CatalogRefusalDiagnosticsTests
     [Fact]
     public async Task ReadinessLogsBoundedReasonWithoutStoreMessagesOrProofs()
     {
-        const string secret = "sensitive-store-body-or-proof";
+        const string secret = "__HEXALITH_TEST_SECRET__";
         var authority = Substitute.For<IRouteCatalogAuthority>();
         authority.ReadbackAsync(Arg.Any<CancellationToken>()).Returns(_ => Task.FromException<Contracts.Routing.RouteCatalogGenerationReadback>(new IOException(secret)));
         using var capture = new CatalogRefusalLogCapture();

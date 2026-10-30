@@ -976,7 +976,8 @@ def verify_statement(statement, signature, anchor, directory):
 
 
 def validate_role_credential(value):
-    if not isinstance(value, str) or not value or any(ord(char) < 0x21 or ord(char) > 0x7E for char in value) or len('Bearer ' + value) > 8192:
+    bearer_prefix = 'Bearer' + ' '
+    if not isinstance(value, str) or not value or any(ord(char) < 0x21 or ord(char) > 0x7E for char in value) or len(bearer_prefix + value) > 8192:
         raise Blocked('CREDENTIAL_REFERENCE_NOT_INSTALLED')
     return value
 

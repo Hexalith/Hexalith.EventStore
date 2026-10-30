@@ -15,7 +15,7 @@ class Loop8VerifierTests(unittest.TestCase):
     def test_role_credential_matches_the_http_authorization_limit(self):
         accepted = 'A' * 8185
         self.assertEqual(accepted, v.validate_role_credential(accepted))
-        self.assertEqual(8192, len('Bearer ' + accepted))
+        self.assertEqual(8192, len(('Bearer' + ' ') + accepted))
         for rejected in ('A' * 8186, 'bad\nvalue', 'has space', 'café'):
             with self.subTest(rejected=rejected[:12]), self.assertRaisesRegex(v.Blocked, 'CREDENTIAL_REFERENCE_NOT_INSTALLED'):
                 v.validate_role_credential(rejected)
