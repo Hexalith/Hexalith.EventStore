@@ -54,12 +54,19 @@ public abstract class AspireTopologyFixtureBase : IAsyncLifetime
             // Validate every binding before allocating any clients.
             foreach (TestEnvironmentEndpoint resource in required)
             {
-                _ = environment.GetEndpoint(resource.ResourceId, resource.ModuleId, resource.EndpointName);
+                if (resource.DaprInvocation)
+                {
+                    if (!resource.Authenticated) throw new TestEnvironmentDescriptorException("HXT110", "Invocation bindings require the private bearer and endpoint credential channels.");
+                    _ = environment.GetDaprInvocationEndpoint(resource.ResourceId, resource.ModuleId, resource.EndpointName);
+                }
+                else _ = environment.GetEndpoint(resource.ResourceId, resource.ModuleId, resource.EndpointName);
             }
 
             foreach (TestEnvironmentEndpoint resource in required)
             {
-                _clients.Add((resource.ResourceId, resource.ModuleId, resource.EndpointName), environment.CreateHttpClient(resource.ResourceId, resource.ModuleId, resource.EndpointName, resource.Timeout, resource.Authenticated));
+                _clients.Add((resource.ResourceId, resource.ModuleId, resource.EndpointName), resource.DaprInvocation
+                    ? environment.CreateDaprInvocationClient(resource.ResourceId, resource.ModuleId, resource.EndpointName, resource.Timeout)
+                    : environment.CreateHttpClient(resource.ResourceId, resource.ModuleId, resource.EndpointName, resource.Timeout, resource.Authenticated));
             }
 
             _environment = environment;

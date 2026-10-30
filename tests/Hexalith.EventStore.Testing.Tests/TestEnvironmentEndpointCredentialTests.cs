@@ -1,0 +1,233 @@
+namespace Hexalith.EventStore.Testing.Tests;
+
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json.Nodes;
+
+using Shouldly;
+
+/// <summary>Exercises explicit private endpoint bindings and actual confined HTTP sends.</summary>
+public sealed class TestEnvironmentEndpointCredentialTests
+{
+    /// <summary>Missing private endpoint credentials never fall back to the bearer-only client.</summary>
+    [Fact]
+    public void MissingExplicitCredentialRefusesDaprClient()
+    {
+        using var files = new EndpointCredentialTestEnvironment();
+        Should.Throw<TestEnvironmentDescriptorException>(() => files.Environment.CreateDaprInvocationClient(
+            "eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromSeconds(1))).Rule.ShouldBe("HXT110");
+    }
+
+    /// <summary>The public descriptor and object representation never carry the private token.</summary>
+    [Fact]
+    public void CredentialStaysSeparateFromDescriptor()
+    {
+        using var files = new EndpointCredentialTestEnvironment();
+        files.Bind();
+        File.ReadAllText(files.DescriptorPath).ShouldNotContain(EndpointCredentialTestEnvironment.ApiToken);
+        files.Environment.ToString()!.ShouldNotContain(EndpointCredentialTestEnvironment.ApiToken);
+        files.Environment.GetDaprInvocationEndpoint("eventstore", "Hexalith.EventStore", "dapr-invocation").AbsolutePath
+            .ShouldBe("/v1.0/invoke/declared-owner/method/");
+    }
+
+    /// <summary>Every malformed or mismatched private handoff is an exact metadata-only HXT110 refusal.</summary>
+    [Theory]
+    [InlineData("run")]
+    [InlineData("tenant")]
+    [InlineData("isolation")]
+    [InlineData("resource")]
+    [InlineData("module")]
+    [InlineData("endpoint")]
+    [InlineData("uri")]
+    [InlineData("header")]
+    [InlineData("missing-value")]
+    [InlineData("crlf")]
+    [InlineData("duplicate-binding")]
+    [InlineData("duplicate-key")]
+    [InlineData("unknown-root")]
+    [InlineData("unknown-entry")]
+    [InlineData("malformed")]
+    [InlineData("utf8")]
+    [InlineData("oversized")]
+    [InlineData("private-mode")]
+    [InlineData("wrong-path")]
+    [InlineData("missing-file")]
+    public void InvalidCredentialRefusesAtomicallyWithoutValues(string mutation)
+    {
+        using var files = new EndpointCredentialTestEnvironment();
+        JsonObject root = files.Credentials;
+        JsonNode entry = root["endpoints"]![0]!;
+        switch (mutation)
+        {
+            case "run": root["runId"] = "other-run"; break;
+            case "tenant": root["syntheticTenantId"] = "other-tenant"; break;
+            case "isolation": root["dataIsolationId"] = "other-isolation"; break;
+            case "resource": entry["resourceId"] = "other-resource"; break;
+            case "module": entry["moduleId"] = "other-module"; break;
+            case "endpoint": entry["endpointName"] = "other-endpoint"; break;
+            case "uri": entry["uri"] = "http://127.0.0.1:18080/v1.0/invoke/other/method/"; break;
+            case "header": entry["headerName"] = "Authorization"; break;
+            case "missing-value": entry.AsObject().Remove("value"); break;
+            case "crlf": entry["value"] = "private\r\nheader"; break;
+            case "duplicate-binding": root["endpoints"]!.AsArray().Add(entry.DeepClone()); break;
+            case "unknown-root": root["unknown"] = "private-value"; break;
+            case "unknown-entry": entry["unknown"] = "private-value"; break;
+        }
+        files.WriteCredentials();
+        string path = files.CredentialPath;
+        switch (mutation)
+        {
+            case "duplicate-key": File.WriteAllText(path, File.ReadAllText(path).Replace("\"schema\":", "\"schema\":\"duplicate\",\"schema\":", StringComparison.Ordinal)); break;
+            case "malformed": File.WriteAllText(path, "{\"private-value\":"); break;
+            case "utf8": File.WriteAllBytes(path, [0xff, 0xfe]); break;
+            case "oversized": File.WriteAllBytes(path, new byte[65537]); break;
+            case "private-mode":
+                if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead);
+                else { File.Delete(path); Directory.CreateDirectory(path); }
+                break;
+            case "wrong-path": path += ".other"; File.Copy(files.CredentialPath, path); break;
+            case "missing-file": File.Delete(path); break;
+        }
+        TestEnvironmentDescriptorException failure = Should.Throw<TestEnvironmentDescriptorException>(() => files.Environment.BindEndpointCredentials(path, files.DescriptorPath));
+        failure.Rule.ShouldBe("HXT110");
+        failure.ToString().ShouldNotContain(EndpointCredentialTestEnvironment.ApiToken);
+        failure.ToString().ShouldNotContain(path);
+        Should.Throw<ObjectDisposedException>(() => files.Environment.GetEndpoint("eventstore", "Hexalith.EventStore", "http"));
+    }
+
+    /// <summary>A linked credential file is refused through its held nofollow handle.</summary>
+    [Fact]
+    public void LinkedCredentialFileIsRefused()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        using var files = new EndpointCredentialTestEnvironment();
+        files.WriteCredentials();
+        string target = files.CredentialPath + ".target";
+        File.Move(files.CredentialPath, target);
+        File.CreateSymbolicLink(files.CredentialPath, target);
+        Should.Throw<TestEnvironmentDescriptorException>(() => files.Environment.BindEndpointCredentials(files.CredentialPath, files.DescriptorPath)).Rule.ShouldBe("HXT110");
+    }
+
+    /// <summary>Normalized and encoded prefix escapes cannot reach a socket with the private credential.</summary>
+    [Theory]
+    [InlineData("/api/v1/tenants")]
+    [InlineData("../outside")]
+    [InlineData("../../../../v1.0/state/store/key")]
+    [InlineData("/v1.0/metadata")]
+    [InlineData("api/%2foutside")]
+    [InlineData("api/%5coutside")]
+    [InlineData("%2e%2e/%2e%2e/state")]
+    [InlineData("api/%252foutside")]
+    [InlineData("api/%252e%252e/outside")]
+    [InlineData("conflicting-header")]
+    [InlineData("host-override")]
+    [InlineData("routing-header")]
+    [InlineData("basic-auth")]
+    [InlineData("missing-bearer")]
+    [InlineData("duplicate-authorization")]
+    public async Task InvocationEscapeRefusesBeforeSending(string path)
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var files = new EndpointCredentialTestEnvironment($"http://127.0.0.1:{port}/v1.0/invoke/declared-owner/method/");
+        files.Bind();
+        using HttpClient client = files.Environment.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromSeconds(2));
+        using var request = new HttpRequestMessage(HttpMethod.Get, path is "conflicting-header" or "host-override" or "routing-header" or "basic-auth" or "missing-bearer" or "duplicate-authorization" ? "api/v1/tenants" : path);
+        if (path == "conflicting-header") request.Headers.Add("dapr-api-token", "other-credential");
+        if (path == "host-override") request.Headers.Host = "other.example";
+        if (path == "routing-header") request.Headers.Add("dapr-app-id", "other-app");
+        if (path == "basic-auth") request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", "b3RoZXI6YXBw");
+        if (path == "missing-bearer") client.DefaultRequestHeaders.Authorization = null;
+        if (path == "duplicate-authorization") request.Headers.TryAddWithoutValidation("Authorization", ["Bearer one", "Bearer two"]);
+        TestEnvironmentDescriptorException failure = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () =>
+            await client.SendAsync(request, TestContext.Current.CancellationToken));
+        failure.Rule.ShouldBe("HXT109");
+        failure.ToString().ShouldNotContain(EndpointCredentialTestEnvironment.ApiToken);
+        request.ToString().ShouldNotContain(EndpointCredentialTestEnvironment.ApiToken);
+        listener.Pending().ShouldBeFalse();
+    }
+
+    /// <summary>Relative sends preserve the exact invocation prefix and carry the two distinct supplied credentials.</summary>
+    [Theory]
+    [InlineData("", "api/v1/tenants")]
+    [InlineData("api/v1/", "tenants")]
+    public async Task RelativeInvocationSendsOnlyToSuppliedPrefix(string prefix, string relative)
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var files = new EndpointCredentialTestEnvironment($"http://127.0.0.1:{port}/v1.0/invoke/declared-owner/method/{prefix}");
+        files.Bind();
+        using HttpClient client = files.Environment.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromSeconds(5));
+        using var bound = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        bound.CancelAfter(TimeSpan.FromSeconds(10));
+        Task<HttpResponseMessage> pending = client.GetAsync(relative, bound.Token);
+        using TcpClient accepted = await listener.AcceptTcpClientAsync(bound.Token);
+        string headers = await ReadHeadersAsync(accepted.GetStream(), bound.Token);
+        headers.ShouldContain("GET /v1.0/invoke/declared-owner/method/" + prefix + relative + " HTTP/1.1");
+        headers.ShouldContain("dapr-api-token: " + EndpointCredentialTestEnvironment.ApiToken);
+        headers.ShouldContain("Authorization: Bearer " + EndpointCredentialTestEnvironment.BearerToken);
+        await accepted.GetStream().WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}"), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    /// <summary>The declared public REST prefix cannot be replaced by a framework callback on the same callee.</summary>
+    [Fact]
+    public async Task PublicInvocationPrefixRefusesCalleeFrameworkCallback()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var files = new EndpointCredentialTestEnvironment($"http://127.0.0.1:{port}/v1.0/invoke/declared-owner/method/api/v1/");
+        files.Bind();
+        using HttpClient client = files.Environment.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromSeconds(2));
+        TestEnvironmentDescriptorException failure = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () =>
+            await client.GetAsync($"http://127.0.0.1:{port}/v1.0/invoke/declared-owner/method/actors/Any/id/method/Foo", TestContext.Current.CancellationToken));
+        failure.Rule.ShouldBe("HXT109");
+        listener.Pending().ShouldBeFalse();
+    }
+
+    /// <summary>Private invocation clients retain cancellation through outstanding streamed bodies.</summary>
+    [Fact]
+    public async Task InvocationDisposalStopsStreamWithoutCallerToken()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var files = new EndpointCredentialTestEnvironment($"http://127.0.0.1:{port}/v1.0/invoke/declared-owner/method/");
+        files.Bind();
+        using HttpClient client = files.Environment.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromSeconds(10));
+        using var bound = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        bound.CancelAfter(TimeSpan.FromSeconds(10));
+        Task<HttpResponseMessage> pending = client.GetAsync("api/v1/tenants", HttpCompletionOption.ResponseHeadersRead, bound.Token);
+        using TcpClient accepted = await listener.AcceptTcpClientAsync(bound.Token);
+        _ = await ReadHeadersAsync(accepted.GetStream(), bound.Token);
+        await accepted.GetStream().WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Length: 4096\r\nConnection: close\r\n\r\nx"), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        using Stream stream = await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
+        byte[] buffer = new byte[1];
+        (await stream.ReadAsync(buffer, TestContext.Current.CancellationToken)).ShouldBe(1);
+        Task<int> blocked = stream.ReadAsync(buffer).AsTask();
+        files.Environment.Dispose();
+        Exception? failure = await Record.ExceptionAsync(async () => await blocked.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        (failure is IOException or ObjectDisposedException or OperationCanceledException).ShouldBeTrue();
+    }
+
+    private static async Task<string> ReadHeadersAsync(NetworkStream stream, CancellationToken token)
+    {
+        byte[] bytes = new byte[16384];
+        int used = 0;
+        while (used < bytes.Length)
+        {
+            int count = await stream.ReadAsync(bytes.AsMemory(used), token);
+            if (count == 0) break;
+            used += count;
+            string text = Encoding.ASCII.GetString(bytes, 0, used);
+            if (text.Contains("\r\n\r\n", StringComparison.Ordinal)) return text;
+        }
+        throw new InvalidOperationException("The bounded loopback request did not contain complete headers.");
+    }
+}

@@ -1,7 +1,9 @@
 namespace Hexalith.EventStore.Testing;
 
+using System.Net.Http.Headers;
+
 /// <summary>Links every request to fixture disposal and prevents credential-bearing redirects.</summary>
-internal sealed class TestEnvironmentRequestHandler(Uri endpoint, CancellationToken lifetime, TimeSpan timeout) : DelegatingHandler(new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false })
+internal sealed class TestEnvironmentRequestHandler(Uri endpoint, CancellationToken lifetime, TimeSpan timeout, string? endpointCredential = null) : DelegatingHandler(new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false })
 {
     /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -10,6 +12,17 @@ internal sealed class TestEnvironmentRequestHandler(Uri endpoint, CancellationTo
         if (target.Scheme != endpoint.Scheme || target.IdnHost != endpoint.IdnHost || target.Port != endpoint.Port || target.UserInfo.Length != 0)
         {
             throw new TestEnvironmentDescriptorException("HXT109", "Fixture requests must remain within their exact declared endpoint origin.");
+        }
+
+        if (endpointCredential is not null)
+        {
+            string[] authorizations = request.Headers.TryGetValues("Authorization", out var values) ? values.ToArray() : [];
+            bool bearer = authorizations.Length == 1 && AuthenticationHeaderValue.TryParse(authorizations[0], out var authorization)
+                && authorization.Scheme.Equals("Bearer", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(authorization.Parameter);
+            if (!bearer || request.Headers.Contains("dapr-app-id") || !target.AbsolutePath.StartsWith(endpoint.AbsolutePath, StringComparison.Ordinal) || HasStructuralEncoding(target)
+                || request.Headers.Host is not null || request.Headers.Contains("dapr-api-token"))
+                throw new TestEnvironmentDescriptorException("HXT109", "Credential-bearing requests must remain within the exact supplied invocation prefix without conflicting credentials.");
+            request.Headers.Add("dapr-api-token", endpointCredential);
         }
 
         CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime, cancellationToken);
@@ -26,4 +39,19 @@ internal sealed class TestEnvironmentRequestHandler(Uri endpoint, CancellationTo
             throw;
         }
     }
+    private static bool HasStructuralEncoding(Uri target)
+    {
+        string path = target.GetComponents(UriComponents.Path, UriFormat.UriEscaped);
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            if (path.Contains('\\', StringComparison.Ordinal) || path.Contains("%2f", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("%5c", StringComparison.OrdinalIgnoreCase) || path.Contains("%2e", StringComparison.OrdinalIgnoreCase)
+                || path.Split('/').Any(segment => segment is "." or "..")) return true;
+            string decoded = Uri.UnescapeDataString(path);
+            if (decoded == path) return path.Contains('%', StringComparison.Ordinal);
+            path = decoded;
+        }
+        return true;
+    }
+
 }

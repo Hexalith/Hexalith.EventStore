@@ -10,6 +10,7 @@ public sealed class TestEnvironmentDescriptor : IDisposable
     private readonly List<HttpClient> _clients = [];
     private readonly CancellationTokenSource _requests = new();
     private string? _accessToken;
+    private Dictionary<(string Resource, string Module, string Endpoint), string> _endpointCredentials = [];
     private bool _disposed;
 
     /// <summary>Requires complete readiness and synthetic isolation after strict contract validation.</summary>
@@ -111,7 +112,50 @@ public sealed class TestEnvironmentDescriptor : IDisposable
             throw new TestEnvironmentDescriptorException("HXT110", "Require an HTTP endpoint, bounded requests and the private runner credential channel.");
         }
 
-        HttpClient client = new(new TestEnvironmentRequestHandler(endpoint, _requests.Token, timeout)) { BaseAddress = endpoint, Timeout = timeout };
+        return CreateClient(endpoint, timeout, authenticated, null);
+    }
+
+    /// <summary>Creates an explicitly requested Dapr invocation client from its exact supplied URI and private endpoint credential.</summary>
+    /// <param name="resourceId">The declared resource identity.</param>
+    /// <param name="moduleId">The declaring module.</param>
+    /// <param name="endpointName">The explicit invocation endpoint name.</param>
+    /// <param name="timeout">The finite request bound, at most five minutes.</param>
+    /// <returns>A fixture-owned client confined to the supplied invocation prefix.</returns>
+    public HttpClient CreateDaprInvocationClient(string resourceId, string moduleId, string endpointName, TimeSpan timeout)
+    {
+        Uri endpoint = GetDaprInvocationEndpoint(resourceId, moduleId, endpointName);
+        if (_accessToken is null
+            || timeout <= TimeSpan.Zero || timeout > TimeSpan.FromMinutes(5)
+            || !_endpointCredentials.TryGetValue((resourceId, moduleId, endpointName), out string? credential))
+            throw new TestEnvironmentDescriptorException("HXT110", "Require the explicit supplied invocation endpoint and its matching private Dapr API credential.");
+        return CreateClient(endpoint, timeout, authenticated: true, credential);
+    }
+
+    /// <summary>Validates an explicitly required invocation binding before any fixture clients are allocated.</summary>
+    /// <param name="resourceId">The declared resource identity.</param>
+    /// <param name="moduleId">The declaring module identity.</param>
+    /// <param name="endpointName">The explicit invocation endpoint name.</param>
+    /// <returns>The exact supplied URI after its private binding is validated.</returns>
+    public Uri GetDaprInvocationEndpoint(string resourceId, string moduleId, string endpointName)
+    {
+        Uri endpoint = GetEndpoint(resourceId, moduleId, endpointName);
+        if (!TestEnvironmentEndpointCredentials.IsInvocationEndpoint(endpoint) || !_endpointCredentials.ContainsKey((resourceId, moduleId, endpointName)))
+            throw new TestEnvironmentDescriptorException("HXT110", "Require the explicit supplied invocation endpoint and its matching private Dapr API credential.");
+        return endpoint;
+    }
+
+    /// <summary>Binds only the explicit separate private endpoint channel before clients are exposed.</summary>
+    /// <param name="path">The explicit private endpoint credential path.</param>
+    /// <param name="descriptorPath">The supplied descriptor path that anchors the fixed sibling file.</param>
+    internal void BindEndpointCredentials(string path, string descriptorPath)
+    {
+        try { _endpointCredentials = TestEnvironmentEndpointCredentials.Read(path, descriptorPath, this); }
+        catch { Dispose(); throw; }
+    }
+
+    private HttpClient CreateClient(Uri endpoint, TimeSpan timeout, bool authenticated, string? endpointCredential)
+    {
+        HttpClient client = new(new TestEnvironmentRequestHandler(endpoint, _requests.Token, timeout, endpointCredential)) { BaseAddress = endpoint, Timeout = timeout };
         if (authenticated)
         {
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
@@ -141,6 +185,7 @@ public sealed class TestEnvironmentDescriptor : IDisposable
 
         _clients.Clear();
         _accessToken = null;
+        _endpointCredentials.Clear();
         _requests.Dispose();
         if (failures.Count > 0)
         {

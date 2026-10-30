@@ -40,12 +40,17 @@ public static class TestEnvironmentDescriptorReader
     /// <returns>The ready environment; invalid or missing handoffs fail without starting resources.</returns>
     public static TestEnvironmentDescriptor ReadFromEnvironment()
     {
-        TestEnvironmentDescriptor descriptor = ReadDescriptor(Environment.GetEnvironmentVariable("HEXALITH_TEST_ENVIRONMENT_PATH")!);
+        string descriptorPath = Environment.GetEnvironmentVariable("HEXALITH_TEST_ENVIRONMENT_PATH")!;
+        TestEnvironmentDescriptor descriptor = ReadDescriptor(descriptorPath);
         descriptor.BindCredentials(
             Environment.GetEnvironmentVariable("HEXALITH_G4_RUN_ID"),
             Environment.GetEnvironmentVariable("HEXALITH_G4_TENANT"),
             Environment.GetEnvironmentVariable("HEXALITH_G4_RESOURCE_NAMESPACE"),
             Environment.GetEnvironmentVariable("HEXALITH_G4_ACCESS_TOKEN"));
+        if (Environment.GetEnvironmentVariable(TestEnvironmentEndpointCredentials.EnvironmentVariable) is { } path)
+        {
+            descriptor.BindEndpointCredentials(path, descriptorPath);
+        }
         return descriptor;
     }
 

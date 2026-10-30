@@ -52,6 +52,29 @@ public sealed class DescriptorFixtureTests
         Should.Throw<ObjectDisposedException>(() => fixture.DomainClient);
     }
 
+    [Fact]
+    public async Task ExplicitInvocationRequirement_BindsExactPrivateChannelWithoutPublishingToken()
+    {
+        using var handoff = new DescriptorHandoffScope(invocation: true);
+        await using var fixture = new DescriptorInvocationFixture();
+        await fixture.InitializeAsync();
+        fixture.InvocationClient.BaseAddress.ShouldBe(new Uri("http://127.0.0.1:18081/v1.0/invoke/declared-owner/method/api/v1/"));
+        fixture.InvocationClient.DefaultRequestHeaders.Authorization.ShouldNotBeNull().Parameter.ShouldBe("private-runner-token");
+        fixture.InvocationClient.DefaultRequestHeaders.Contains("dapr-api-token").ShouldBeFalse();
+        await fixture.DisposeAsync();
+        Should.Throw<ObjectDisposedException>(() => fixture.InvocationClient);
+    }
+
+    [Fact]
+    public async Task ExplicitInvocationRequirement_RefusesMissingPrivateChannelBeforeClientExposure()
+    {
+        using var handoff = new DescriptorHandoffScope(invocation: true, credentials: false);
+        await using var fixture = new DescriptorInvocationFixture();
+        TestEnvironmentDescriptorException exception = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () => await fixture.InitializeAsync());
+        exception.Rule.ShouldBe("HXT110");
+        Should.Throw<InvalidOperationException>(() => fixture.InvocationClient);
+    }
+
     [Theory]
     [InlineData("HEXALITH_G4_RUN_ID")]
     [InlineData("HEXALITH_G4_TENANT")]

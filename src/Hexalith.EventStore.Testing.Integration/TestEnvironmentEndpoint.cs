@@ -6,4 +6,8 @@ namespace Hexalith.EventStore.Testing.Integration;
 /// <param name="EndpointName">The endpoint name.</param>
 /// <param name="Timeout">The finite request timeout.</param>
 /// <param name="Authenticated">Whether requests carry the private runner bearer credential.</param>
-public sealed record TestEnvironmentEndpoint(string ResourceId, string ModuleId, string EndpointName, TimeSpan Timeout, bool Authenticated = true);
+public sealed record TestEnvironmentEndpoint(string ResourceId, string ModuleId, string EndpointName, TimeSpan Timeout, bool Authenticated = true)
+{
+    /// <summary>Gets whether this binding explicitly requires the separate private Dapr invocation credential.</summary>
+    public bool DaprInvocation { get; init; }
+}
