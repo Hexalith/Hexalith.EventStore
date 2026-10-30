@@ -10,12 +10,13 @@ namespace Hexalith.EventStore.Controllers;
 [ApiController]
 [Route("api/v1/routing/catalog")]
 [Authorize(Policy = EventStoreHttpHostSecurityExtensions.HumanPolicy)]
-public sealed class RoutingCatalogMetadataController(IRouteCatalogAuthority authority) : ControllerBase
+public sealed class RoutingCatalogMetadataController(IRouteCatalogAuthority? authority = null) : ControllerBase
 {
     /// <summary>Returns schemas and eligibility without keys, retained history or internal target coordinates.</summary>
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
+        if (authority is null) return StatusCode(503);
         var lease = await authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var release = lease.ConfigureAwait(false);
         var envelope = lease.Snapshot.Envelope;

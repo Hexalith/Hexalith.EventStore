@@ -8,7 +8,7 @@ internal sealed class CatalogV3MvcFeature : IApplicationFeatureProvider<Controll
     public void PopulateFeature(IEnumerable<ApplicationPart> parts, ControllerFeature feature)
     {
         Type[] allowed = [typeof(Hexalith.EventStore.Controllers.CommandsController), typeof(Hexalith.EventStore.Controllers.QueriesController),
-            typeof(Hexalith.EventStore.Controllers.RoutingCatalogMetadataController), typeof(CatalogGeneratedMvcProbeController)];
+            typeof(Hexalith.EventStore.Controllers.RoutingCatalogMetadataController), typeof(CatalogV3GeneratedProbeController)];
         foreach (var other in feature.Controllers.Where(type => !allowed.Contains(type.AsType())).ToArray()) feature.Controllers.Remove(other);
     }
 }

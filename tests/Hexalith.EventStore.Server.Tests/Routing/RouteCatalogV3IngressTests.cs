@@ -30,6 +30,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
@@ -40,6 +41,14 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 
 public class RouteCatalogV3IngressTests
 {
+    [Fact]
+    public async Task MetadataWithoutRegisteredAuthorityReturnsUnavailable()
+    {
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        var controller = ActivatorUtilities.CreateInstance<Hexalith.EventStore.Controllers.RoutingCatalogMetadataController>(provider);
+        var result = await controller.Get(TestContext.Current.CancellationToken);
+        result.ShouldBeOfType<Microsoft.AspNetCore.Mvc.StatusCodeResult>().StatusCode.ShouldBe(503);
+    }
     [Fact]
     public void BootstrapRefusesAValidCatalogBoundToAnotherRunBeforeRegisteringAuthority()
     {
@@ -102,6 +111,9 @@ public class RouteCatalogV3IngressTests
         var commandEffects = new CatalogGeneratedEffectCounter();
         var generated = new CatalogGeneratedEffectCounter();
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" }); builder.WebHost.UseTestServer(); builder.Logging.ClearProviders();
+        // This HTTP component host uses the production gateway registrations with a fake terminal;
+        // unrelated Dapr workers are not part of this test's service graph.
+        builder.Host.UseDefaultServiceProvider(options => options.ValidateOnBuild = false);
         const string signingText = "schema-three-http-test-signing-key-0123456789abcdef";
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -152,7 +164,7 @@ public class RouteCatalogV3IngressTests
         var query = declarations.First(d => d.Kind == "query" && d.Domain == "counter");
         using var queryResponse = await client.PostAsJsonAsync("/api/v1/queries", new SubmitQueryRequest("tenant-a", query.Domain, "counter-a", query.MessageType!));
         queryResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden); leases.ShouldBe(0);
-        using var generatedResponse = await client.GetAsync("/catalog-generated-probe/valid");
+        using var generatedResponse = await client.GetAsync("/catalog-v3-generated-probe");
         generatedResponse.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable); generated.Effects.ShouldBe(0); leases.ShouldBe(0);
         using var metadata = await client.GetAsync("/api/v1/routing/catalog");
         metadata.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -163,5 +175,17 @@ public class RouteCatalogV3IngressTests
         using var allowed = await client.PostAsJsonAsync("/api/v1/commands", new SubmitCommandRequest("01JAAAAAAAAAAAAAAAAAAAAAAB", "tenant-a", command.Domain,
             "counter-a", command.MessageType!, JsonSerializer.SerializeToElement(new { amount = 1 })));
         allowed.StatusCode.ShouldBe(HttpStatusCode.Accepted); commandEffects.Effects.ShouldBe(1); leases.ShouldBe(0);
+        if (Environment.GetEnvironmentVariable("HEXALITH_CATALOG_HTTP_EVIDENCE_PATH") is { Length: > 0 } evidence)
+            File.WriteAllBytes(evidence, JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                purpose = "Actual MVC/JWT production-pipeline component test; the terminal handler is an effect counter, not live owner acceptance",
+                snapshot.RootDigest, generation = envelope.Generation,
+                agentCommand = (int)commandResponse.StatusCode, agentQuery = (int)queryResponse.StatusCode,
+                agentGenerated = (int)generatedResponse.StatusCode, authenticatedMetadata = (int)metadata.StatusCode,
+                uiCommandControl = (int)allowed.StatusCode, refusedCommandEffects = 0, refusedGeneratedEffects = generated.Effects,
+                allowedCommandEffects = commandEffects.Effects, outstandingLeases = leases,
+                retainedOperationAbsent = removed, retainedEntries = envelope.RetainedIdempotency!.Count,
+                internalOperationsExcluded = operations.Where(operation => operation.Ingress == "internal").Select(operation => operation.RouteId).ToArray(),
+            }));
     }
 }
