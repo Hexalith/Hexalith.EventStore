@@ -15,8 +15,21 @@ public sealed class DeclaredIdempotencyIntentAdapter<TCommand> : IDeclaredIdempo
     private readonly Func<ReadOnlyMemory<byte>, IReadOnlyDictionary<string, object?>>? _completePayloadFields;
 
     /// <summary>Creates an offline adapter; this does not register it or enable admission.</summary>
+    /// <param name="declaration">The owner command intent declaration.</param>
+    /// <param name="semanticFields">Projects the typed command into canonical semantic fields.</param>
+    public DeclaredIdempotencyIntentAdapter(
+        CommandIntentDeclaration declaration,
+        Func<TCommand, IReadOnlyDictionary<string, object?>> semanticFields)
+        : this(declaration, semanticFields, null)
+    {
+    }
+
+    /// <summary>Creates an offline adapter that can also bind a complete payload.</summary>
+    /// <param name="declaration">The owner command intent declaration.</param>
+    /// <param name="semanticFields">Projects the typed command into canonical semantic fields.</param>
+    /// <param name="completePayloadFields">Projects stored payload bytes into canonical semantic fields.</param>
     public DeclaredIdempotencyIntentAdapter(CommandIntentDeclaration declaration, Func<TCommand, IReadOnlyDictionary<string, object?>> semanticFields,
-        Func<ReadOnlyMemory<byte>, IReadOnlyDictionary<string, object?>>? completePayloadFields = null)
+        Func<ReadOnlyMemory<byte>, IReadOnlyDictionary<string, object?>>? completePayloadFields)
     {
         ArgumentNullException.ThrowIfNull(declaration);
         ArgumentNullException.ThrowIfNull(semanticFields);

@@ -60,6 +60,9 @@ public class PayloadProtectionV2ContractTests {
                 typeof(AggregateIdentity), typeof(string), typeof(byte[]), typeof(string),
                 typeof(EventStorePayloadProtectionMetadata), typeof(PayloadProtectionOccurrenceContext),
                 typeof(CancellationToken)),
+            RequireMethod(serviceType, nameof(IEventPayloadProtectionService.TryReplaySnapshotAsync),
+                typeof(AggregateIdentity), typeof(object), typeof(EventStorePayloadProtectionMetadata),
+                typeof(JsonTypeInfo), typeof(PayloadProtectionOccurrenceContext), typeof(CancellationToken)),
         ];
 
         MethodInfo[] discoveredAdditions = serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -68,7 +71,7 @@ public class PayloadProtectionV2ContractTests {
                 || method.GetParameters().Any(static parameter => parameter.ParameterType == typeof(PayloadProtectionOccurrenceContext)))
             .ToArray();
 
-        discoveredAdditions.Length.ShouldBe(8);
+        discoveredAdditions.Length.ShouldBe(9);
         discoveredAdditions.ShouldAllBe(method => additions.Contains(method));
         additions.ShouldAllBe(static method => !method.IsAbstract && method.IsVirtual);
         additions.Select(static method => method.ReturnType).ShouldBe([
@@ -80,6 +83,7 @@ public class PayloadProtectionV2ContractTests {
             typeof(Task),
             typeof(Task<PayloadDistributionResult>),
             typeof(Task<PayloadReplayResult>),
+            typeof(Task<SnapshotUnprotectionOutcome>),
         ]);
         additions.Select(static method => method.GetParameters().Select(static parameter => parameter.Name).ToArray()).ShouldBe([
             ["identity", "eventPayload", "eventTypeName", "payloadBytes", "serializationFormat", "occurrenceContext", "cancellationToken"],
@@ -90,6 +94,7 @@ public class PayloadProtectionV2ContractTests {
             ["completionContext", "persistenceOutcome", "cancellationToken"],
             ["identity", "eventTypeName", "payloadBytes", "serializationFormat", "metadata", "occurrenceContext", "cancellationToken"],
             ["identity", "eventTypeName", "payloadBytes", "serializationFormat", "metadata", "occurrenceContext", "cancellationToken"],
+            ["identity", "state", "metadata", "stateTypeInfo", "occurrenceContext", "cancellationToken"],
         ]);
         foreach (MethodInfo method in additions) {
             ParameterInfo[] parameters = method.GetParameters();
@@ -220,7 +225,10 @@ public class PayloadProtectionV2ContractTests {
             ("OperationId", typeof(string)),
             ("KeyReference", typeof(string)),
             ("DekVersion", typeof(uint)),
-            ("LifecycleEpoch", typeof(ulong)));
+            ("LifecycleEpoch", typeof(ulong)),
+            ("SnapshotContainerDigest", typeof(string)),
+            ("SnapshotEntries", typeof(PayloadProtectionCompletionContext[])),
+            ("SnapshotEntryManifest", typeof(SnapshotProtectionEntry[])));
         AssertPublicConstructor<PayloadProtectionWriteResult>(typeof(PayloadProtectionResult), typeof(PayloadProtectionCompletionContext));
         AssertPublicProperties<PayloadProtectionWriteResult>(
             ("ProtectionResult", typeof(PayloadProtectionResult)),

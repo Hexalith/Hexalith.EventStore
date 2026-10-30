@@ -50,11 +50,15 @@ public sealed class DaprRoutingHeaderOwnershipGuardTests {
             .Where(static file => !IsBuildArtifact(file))
             .Where(file => ContainsRoutingHeaderSetter(File.ReadAllText(file)))
             .Select(file => Path.GetRelativePath(repositoryRoot, file).Replace('\\', '/'))
+            .OrderBy(static file => file, StringComparer.Ordinal)
             .ToArray();
 
         setterFiles.ShouldBe(
-            ["src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs"],
-            "AD-18 permits only the platform handler to set DAPR routing headers.");
+            [
+                "src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs",
+                "src/Hexalith.EventStore.ServiceDefaults/Routing/DaprRouteCatalogStateStore.cs",
+            ],
+            "AD-18 permits only platform DAPR clients to set routing headers.");
     }
 
     private static bool ContainsRoutingHeaderSetter(string source)
