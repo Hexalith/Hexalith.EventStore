@@ -153,6 +153,9 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
         {
             return new(await TryUnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes, serializationFormat, metadata, occurrenceContext, cancellationToken).ConfigureAwait(false));
         }
+        ValidateOccurrence(identity, occurrenceContext, PayloadProtectionPayloadKind.Event, eventTypeName);
+        if (metadata?.KeyAlias is not { } exactReference || serializationFormat != "json+pdenc-v2" || !Metadata(exactReference).Equals(metadata))
+        { return new(PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata)); }
         try
         {
             bool permanentLoss = await _bindings.IsCustodyPermanentlyLostAsync(identity, cancellationToken).ConfigureAwait(false);
@@ -305,7 +308,7 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
             : await _snapshotEntries.ReadAsync(identity, state, metadata, stateTypeInfo, occurrenceContext, true, cancellationToken).ConfigureAwait(false); }
         try
         {
-            if (metadata is not { Scheme: "hexalith-pdenc-v2", KeyAlias: { } reference }) { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata); }
+            if (metadata?.KeyAlias is not { } reference || !Metadata(reference).Equals(metadata)) { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata); }
             ProtectedSnapshotPayloadV2 snapshot = state is ProtectedSnapshotPayloadV2 typed ? typed : state is JsonElement json ? ReadSnapshot(json) : throw new PayloadProtectionFormatException();
             byte[] sealedBytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, InteractionSnapshotJsonContext.Default.ProtectedSnapshotPayloadV2);
             // Positive independent loss proof is resolved before touching the former registry/ERC endpoint.
@@ -325,18 +328,20 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
                 { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata); }
                 skeleton = retained.Record.Sealed.SnapshotReplaySkeleton;
             }
-            if (skeleton is null || binding.KeyReference != reference || !await _bindings.IsIrreversiblyErasedAsync(binding, cancellationToken).ConfigureAwait(false))
+            if (binding.KeyReference != reference || !await _bindings.IsIrreversiblyErasedAsync(binding, cancellationToken).ConfigureAwait(false))
             { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted, metadata); }
-            var layout = SnapshotEntryLayout.Read(skeleton, identity.TenantId, true, cancellationToken);
-            if (layout.Entries.Length == 0 || layout.Entries.Any(entry => entry.Target != binding.Identity.Target) || layout.Values.Any(value => value is not null))
-            { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata); }
-            var restored = System.Text.Json.Nodes.JsonNode.Parse(layout.Skeleton)!;
-            foreach (var entry in layout.Entries) { SnapshotEntryLayout.Replace(restored, entry.Path, JsonSerializer.SerializeToNode(new Erased(), InteractionSnapshotJsonContext.Default.Erased)); }
-            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(restored, InteractionSnapshotJsonContext.Default.JsonNode);
+            byte[] bytes = skeleton is null
+                ? JsonSerializer.SerializeToUtf8Bytes(new Erased(), InteractionSnapshotJsonContext.Default.Erased)
+                : WholeSnapshotReplayMetadata.Materialize(skeleton, binding.Identity.Target, cancellationToken);
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                object replayed = JsonSerializer.Deserialize(bytes, stateTypeInfo)!;
+                object replayed;
+                using var erasedDocument = JsonDocument.Parse(bytes);
+                if (erasedDocument.RootElement.TryGetProperty("State", out var erasedState) && erasedState.GetString() == "Erased"
+                    && stateTypeInfo.Type != typeof(JsonElement) && stateTypeInfo.Type != typeof(object))
+                { replayed = new Erased(); }
+                else { replayed = JsonSerializer.Deserialize(bytes, stateTypeInfo)!; }
                 cancellationToken.ThrowIfCancellationRequested();
                 return SnapshotUnprotectionOutcome.Readable(replayed, metadata);
             }

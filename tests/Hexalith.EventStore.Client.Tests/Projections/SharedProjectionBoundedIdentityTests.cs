@@ -475,6 +475,31 @@ public sealed partial class SharedProjectionBoundedIdentityTests
         (await coordinator.GetCheckpointAsync(s_scope, "owner-a")).ShouldBeNull();
     }
 
+    [Fact]
+    public async Task OverflowingLeafSequenceRangeCannotPersistOutsideItsRetirementInventory()
+    {
+        const int count = 64;
+        var store = new InMemoryReadModelStore();
+        var coordinator = await BeginAsync(store, "overflowing-range", count);
+        var reference = await coordinator.CapturedIdentities.BeginAsync(s_scope, "overflowing-range", "owner-a", count);
+        string inventory = SharedProjectionCapturedIdentityStore.InventoryKey(reference);
+        byte[] beforeInventory = store.SnapshotRaw(s_scope.StoreName, inventory)!;
+        byte[] beforeEpoch = store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey)!;
+        int entries = store.Count;
+
+        await Should.ThrowAsync<InvalidOperationException>(() => coordinator.CapturedIdentities.AppendAsync(
+            s_scope, "overflowing-range", reference, long.MaxValue - 62,
+            Enumerable.Range(1, count).Select(static position => (long)position).ToArray(),
+            new byte[count * 32], Enumerable.Repeat(string.Empty, count).ToArray()));
+
+        store.Count.ShouldBe(entries);
+        store.SnapshotRaw(s_scope.StoreName, inventory).ShouldBe(beforeInventory);
+        store.SnapshotRaw(s_scope.StoreName, s_scope.StateKey).ShouldBe(beforeEpoch);
+        await coordinator.AbortAsync(s_scope, "overflowing-range", Fold);
+        await coordinator.CapturedIdentities.RetireAsync(s_scope, reference);
+        (await store.GetAsync<SharedProjectionCapturedIdentityInventory>(s_scope.StoreName, inventory)).Value!.Retired.ShouldBeTrue();
+    }
+
     private static async Task<SharedProjectionEpochCoordinator> BeginAsync(InMemoryReadModelStore store, string operation, int count)
     {
         var coordinator = new SharedProjectionEpochCoordinator(store, store);

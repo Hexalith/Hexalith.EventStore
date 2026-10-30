@@ -47,7 +47,7 @@ def mapping_rows(raw):
 
 def regular_file(path):
     """Open the claimed path without accepting a final-component symlink."""
-    descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK)
     stream = os.fdopen(descriptor, "rb")
     if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
         stream.close()

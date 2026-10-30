@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-29
+# last_updated: 2026-10-30
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -190,7 +190,7 @@ development_status:
   5-12-route-and-idempotency-catalog-schema-codec-and-envelope: done
   5-13-route-catalog-activation-and-topology-binding: done
   # Bounded HTTP-policy milestone reviewed; actor/audit and cross-owner conformance remain open.
-  5-14-authenticated-fallback-and-dapr-framework-route-protection: review
+  5-14-authenticated-fallback-and-dapr-framework-route-protection: in-progress
   epic-5-retrospective: optional
 
   epic-6: in-progress

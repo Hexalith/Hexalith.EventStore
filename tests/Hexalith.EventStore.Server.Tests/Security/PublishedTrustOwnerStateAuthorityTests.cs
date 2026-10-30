@@ -266,7 +266,36 @@ public sealed class PublishedTrustOwnerStateAuthorityTests
         a.Revision.ShouldBe(1);
     }
 
-    private static readonly string[] Phases = ["state", "operation", "legacy", "admit", "record", "recover", "verify"];
+    /// <summary>Admitted-original reads forward only to the single canonical owner enrolled for that exact scope; foreign, duplicate or absent enrollment returns unknown.</summary>
+    [Theory]
+    [InlineData("exact")][InlineData("foreign-scope")][InlineData("duplicate")][InlineData("absent")]
+    public async Task AdmittedOriginalReadForwardsOnlyToExactSingleEnrolledOwner(string vector)
+    {
+        PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create();
+        string scope = DeletionConsumptionActor.GetOwnerScope("tenant-a");
+        var transition = new AnchoredStateTransition(scope, 0, 1, new string('A', 64), Convert.ToHexString(SHA256.HashData("admitted"u8)), "admitted"u8.ToArray());
+        var owner = Substitute.For<IDeletionConsumptionOwnerStateAuthority>();
+        owner.TenantId.Returns("tenant-a");
+        owner.ScopeId.Returns(scope);
+        owner.ReadAdmittedOriginalAsync(scope, Arg.Any<CancellationToken>()).Returns(transition);
+        IReadOnlyList<IDeletionConsumptionOwnerStateAuthority> owners = vector switch
+        {
+            "duplicate" => [owner, owner],
+            "absent" => [],
+            _ => [owner],
+        };
+        var authority = new PublishedTrustDeletionConsumptionAuthority([world.Trust], world.Guard, null, null, owners);
+        string requested = vector == "foreign-scope" ? DeletionConsumptionActor.GetOwnerScope("tenant-b") : scope;
+        var original = await authority.ReadAdmittedOriginalAsync(requested, TestContext.Current.CancellationToken);
+        if (vector == "exact") { original.ShouldBeSameAs(transition); }
+        else
+        {
+            original.ShouldBeNull();
+            await owner.DidNotReceiveWithAnyArgs().ReadAdmittedOriginalAsync(default!, default);
+        }
+    }
+
+    private static readonly string[] Phases =["state", "operation", "legacy", "admit", "record", "recover", "verify"];
 
     private static Task<bool> InvokeAsync(PublishedTrustDeletionConsumptionAuthority authority, string phase, CancellationToken token)
     {

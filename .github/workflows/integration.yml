@@ -92,6 +92,9 @@ jobs:
 
   live-sidecar:
     runs-on: ubuntu-latest
+    env:
+      BOUNDED_IDENTITY_EVIDENCE_DIR: ${{ github.workspace }}/TestResults/live-sidecar/bounded-identity
+      BOUNDED_IDENTITY_GENERATED_SOURCE_DIR: ${{ github.workspace }}/TestResults/live-sidecar/bounded-identity/generated
     # The six serial owner-replacement cases add substantial work to the live
     # suite. Allow the complete suite to finish while retaining every test and
     # each process phase's existing twenty-minute bound.
@@ -233,6 +236,7 @@ jobs:
           path: |
             TestResults/**/*.trx
             TestResults/**/coverage.cobertura.xml
+            ${{ env.BOUNDED_IDENTITY_EVIDENCE_DIR }}/
           if-no-files-found: error
           retention-days: 7
 

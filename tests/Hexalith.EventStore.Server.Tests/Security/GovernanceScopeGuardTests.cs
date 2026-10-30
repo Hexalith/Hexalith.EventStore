@@ -198,7 +198,8 @@ public sealed class GovernanceScopeGuardTests
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordKeyCompromise, batch: batch with { BlockSetRevision = 1 }) with { RevocationReceipt = revocation })).Status.ShouldBe("Committed");
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.AuthorizeDispatch, batch: batch, authorization: "old-dispatch"))).Status.ShouldBe("Blocked");
         var replacement = fixture.Attest(batch with { AttestationOrdinal = 2, CapabilityKeyVersion = "healthy-key-b", BlockSetRevision = 1 });
-        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.ReplaceAttestation, batch: replacement))).Status.ShouldBe("Committed");
+        var replaced = await fixture.Apply(fixture.Command(GovernanceGuardOperation.ReplaceAttestation, batch: replacement));
+        replaced.Status.ShouldBe("Committed"); replaced.ReferenceId.ShouldBe(replacement.BatchId);
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.AuthorizeDispatch, batch: replacement, authorization: "new-dispatch"))).Status.ShouldBe("Committed");
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.CommitDispatch, batch: replacement, authorization: "new-dispatch"))).Status.ShouldBe("Committed");
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordProtectionOutcome, batch: replacement with { ProtectionOutcome = "Activated", ProtectionReceiptId = "activation-a" }))).Status.ShouldBe("Committed");
@@ -518,6 +519,36 @@ public sealed class GovernanceScopeGuardTests
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: second) with { DeletionRequestId = "deletion-b" })).Status.ShouldBe("Committed");
         fixture.State.Deletions.Single(value => value.RequestId == "deletion-a").Violations.Single(value => value.ResourceId == "overlap-resource").AcceptanceReceiptId.ShouldBe(accepted.ReceiptId);
         fixture.State.Deletions.Single(value => value.RequestId == "deletion-b").Violations.Single().AcceptanceReceiptId.ShouldBe(accepted.ReceiptId);
+    }
+
+    /// <summary>Original lookup returns only the exact committed receipt under an unchanged current lookup proof; stale, changed, foreign-intent, unperformed or unauthorized lookups return unknown.</summary>
+    [Theory]
+    [InlineData("valid")][InlineData("stale")][InlineData("changed")][InlineData("intent")][InlineData("uncommitted")][InlineData("no-authority")]
+    public async Task LookupOriginalReturnsOnlyExactCommittedReceiptUnderUnchangedCurrentProof(string vector)
+    {
+        var fixture = new GovernanceGuardFixture();
+        var command = fixture.Command(GovernanceGuardOperation.AuthorizeAdmissionFence, scope: fixture.Scope, authorization: "lookup-a");
+        var committed = await fixture.Apply(command); committed.Status.ShouldBe("Committed");
+        int reads = 0;
+        var authority = Substitute.For<IGovernanceGuardAuthority>();
+        authority.ReadLookupAsync(Arg.Any<GovernanceGuardTransition>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var proof = await fixture.Authority.ReadLookupAsync(call.Arg<GovernanceGuardTransition>(), call.ArgAt<string>(1), call.ArgAt<string>(2), call.Arg<CancellationToken>());
+            return vector switch
+            {
+                "stale" => proof! with { ValidUntil = proof.ObservedAt },
+                "changed" when Interlocked.Increment(ref reads) > 1 => proof! with { AuthorityReceiptId = "changed-lookup-receipt" },
+                _ => proof,
+            };
+        });
+        var owner = vector == "no-authority" ? new GovernanceScopeGuardOwner(fixture.Backend.Owner, TimeProvider.System) : new GovernanceScopeGuardOwner(fixture.Backend.Owner, TimeProvider.System, authority);
+        var lookup = vector == "uncommitted" ? fixture.Command(GovernanceGuardOperation.AuthorizeAdmissionFence, scope: fixture.Scope, authorization: "never-applied") : command;
+        IReadOnlyList<GuardedStateMutation> targets = vector == "intent" ? [new("foreign-target", 0, GuardedTransactionFixture.Hash([]), "foreign"u8.ToArray())] : [];
+        long prior = fixture.State.Revision;
+        var original = await owner.LookupOriginalAsync(lookup, targets, TestContext.Current.CancellationToken);
+        if (vector == "valid") { JsonSerializer.Serialize(original.ShouldNotBeNull()).ShouldBe(JsonSerializer.Serialize(committed)); }
+        else { original.ShouldBeNull(); }
+        fixture.State.Revision.ShouldBe(prior);
     }
 
 }

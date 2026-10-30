@@ -12,8 +12,16 @@ public sealed class RecoverableAnchoredStateTests : IAnchoredStateTransitionAuth
     private bool _failAdmission;
     private bool _recoveryAllowed = true;
     private bool _recordAllowed;
+    private bool _exposeAdmittedOriginal;
+    private int _admittedReads;
     private string? _anchor;
     private readonly Dictionary<string, AnchoredStateTransition> _admissions = new(StringComparer.Ordinal);
+    /// <inheritdoc/>
+    public Task<AnchoredStateTransition?> ReadAdmittedOriginalAsync(string scopeId, CancellationToken cancellationToken = default)
+    {
+        _admittedReads++;
+        return Task.FromResult(_exposeAdmittedOriginal ? _admissions.Values.SingleOrDefault(value => value.ScopeId == scopeId) : null);
+    }
     /// <inheritdoc/>
     public Task<bool> AdmitTransitionAsync(AnchoredStateTransition transition, CancellationToken cancellationToken = default)
     {
@@ -81,6 +89,23 @@ public sealed class RecoverableAnchoredStateTests : IAnchoredStateTransitionAuth
             (await RecoverableAnchoredState.CommitAsync(later, this, () => Task.FromResult(pending), value => { pending = value; return Task.CompletedTask; })).ShouldBeTrue();
             (await RecoverableAnchoredState.ReconcileAsync("scope", recovered, pending, value => value, Validate, this, Persist)).ShouldBe("later");
         }
+    }
+    /// <summary>With no retained pending carrier, only a separately authorized mutation reads the independently admitted original; ordinary reads and unknown originals stay restrictive.</summary>
+    [Theory]
+    [InlineData("valid")][InlineData("unknown")][InlineData("ordinary-read")]
+    public async Task AbsentPendingCarrierRecoversOnlyIndependentlyAdmittedOriginal(string vector)
+    {
+        _verified = false; _anchor = RecoverableAnchoredState.Digest("before"); _exposeAdmittedOriginal = vector != "unknown";
+        var original = RecoverableAnchoredState.Prepare("scope", 0, 1, "before", "after");
+        await Should.ThrowAsync<HttpRequestException>(() => RecoverableAnchoredState.CommitAsync(original, this, () => Task.FromResult<AnchoredStateTransition?>(null),
+            _ => Task.FromException(new HttpRequestException("Controlled loss of the primary pending carrier."))));
+        _admissions.Count.ShouldBe(1);
+        _recordAllowed = true; int saves = 0;
+        Task<bool> Validate(string value) => Task.FromResult(RecoverableAnchoredState.Digest(value) == _anchor);
+        Task<string> Persist(string value) { saves++; return Task.FromResult(value); }
+        var result = await RecoverableAnchoredState.ReconcileAsync("scope", "before", null, value => value, Validate, this, Persist, vector != "ordinary-read");
+        result.ShouldBe(vector == "valid" ? "after" : "before"); saves.ShouldBe(vector == "valid" ? 1 : 0);
+        _admittedReads.ShouldBe(vector == "ordinary-read" ? 0 : 1); _recoveries.ShouldBe(vector == "valid" ? 1 : 0);
     }
     /// <summary>No primary stage or journal advancement follows a denied admission or a failure after independent admission but before staging; later admitted work still progresses.</summary>
     [Theory]

@@ -29,7 +29,7 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
             try
             {
                 var sealedValue = await protector.ProtectSnapshotAsync(fragment, binding.Identity, binding.DigestKeyVersion,
-                    binding.ReservationAttemptOrdinal, binding.KeyReference, token).ConfigureAwait(false) ?? throw new InvalidOperationException("ProtectionAuthorityUnavailable");
+                    binding.ReservationAttemptOrdinal, binding.KeyReference, token, retainWholeReplayMetadata: false).ConfigureAwait(false) ?? throw new InvalidOperationException("ProtectionAuthorityUnavailable");
                 if (sealedValue.KeyReference != binding.KeyReference || sealedValue.ProtectedPathCount != 1) { throw new PayloadProtectionFormatException(); }
                 var snapshot = JsonSerializer.Deserialize(sealedValue.PayloadBytes, InteractionSnapshotJsonContext.Default.ProtectedSnapshotPayloadV2) ?? throw new PayloadProtectionFormatException();
                 entries.Add(new(entry.Path, entry.Target, binding.KeyReference, snapshot));
@@ -55,6 +55,9 @@ internal sealed class InteractionSnapshotEntriesProtector(IInteractionOccurrence
             if (carrier.Format != Format || carrier.SnapshotTypeId != parent.PayloadTypeId || carrier.Entries is not { Count: > 1 and <= 1000 }
                 || carrier.SkeletonBytes is null || metadata is not { State: PayloadProtectionState.Protected, Scheme: "hexalith-pdenc-v2" })
             { return Unreadable(metadata); }
+            var expectedMetadata = new EventStorePayloadProtectionMetadata(PayloadProtectionState.Protected, 1, "hexalith-pdenc-v2",
+                carrier.Entries[0].KeyReference, "application/json", new Dictionary<string, string> { ["snapshot-layout"] = "entries-v2" });
+            if (!expectedMetadata.Equals(metadata)) { return Unreadable(metadata); }
             var layout = SnapshotEntryLayout.Read(carrier.SkeletonBytes, owner.TenantId, true, token);
             if (layout.Entries.Length != carrier.Entries.Count || layout.Values.Any(value => value is not null)
                 || !layout.Entries.SequenceEqual(carrier.Entries.Select(entry => new SnapshotProtectionEntry(entry.Path, entry.Target)))) { return Unreadable(metadata); }

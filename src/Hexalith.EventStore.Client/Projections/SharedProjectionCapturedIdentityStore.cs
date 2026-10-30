@@ -84,8 +84,8 @@ public sealed class SharedProjectionCapturedIdentityStore
         var page = new SharedProjectionCapturedIdentityPage(0, firstSequence, positions.LongLength,
             positions.Length == 0 ? 0 : positions[^1], positions.ToArray(), digests.ToArray(), messageHashes.ToArray(), [], []);
         ValidatePage(page);
-        if ((firstSequence - 1) % EntriesPerPage != 0 || firstSequence + page.Count - 1 > reference.Count
-            || page.Count < EntriesPerPage && firstSequence + page.Count - 1 != reference.Count)
+        if ((firstSequence - 1) % EntriesPerPage != 0 || firstSequence > reference.Count
+            || page.Count != Math.Min(EntriesPerPage, reference.Count - firstSequence + 1))
             throw new InvalidOperationException("Captured identity leaf does not cover its exact reserved sequence range.");
         await WriteNodeAsync(scope, operationId, reference, page,
             (firstSequence - 1) / EntriesPerPage, cancellationToken).ConfigureAwait(false);

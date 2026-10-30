@@ -39,13 +39,17 @@ public sealed class ReviewDeadlineTests
             (await Should.ThrowAsync<PayloadProtectionStateException>(() => registry.ObserveAsync(new("tenant-a", "parties", "party-01")).AsTask().WaitAsync(TimeSpan.FromSeconds(2)))).Reason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable);
         }
         pending.SetException(new InvalidOperationException("private-erasure-deadline-canary"));
+        var clock = new SubmittedMutationDeadlineClock();
         var client = Substitute.For<DaprClient>(); var mutation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        client.ExecuteStateTransactionAsync(Arg.Any<string>(), Arg.Any<IReadOnlyList<StateTransactionRequest>>(), Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>()).Returns(mutation.Task);
+        client.ExecuteStateTransactionAsync(Arg.Any<string>(), Arg.Any<IReadOnlyList<StateTransactionRequest>>(), Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>()).Returns(_ => { clock.Expire(); return mutation.Task; });
         var store = new DaprPayloadProtectionStateStore(client); store.ConfirmQualification();
-        using (var budget = new PayloadOperationBudget(TimeProvider.System, default, TimeSpan.FromMilliseconds(30)))
+        // Encode the valid closed record before timing its submitted native mutation.
+        // First-use serializer/JIT work is not the cancellation-ignoring I/O under test.
+        var value = new WorkHeadV1(new('a', 64), 0, 0, 0, PayloadProtectionStateCodec.Timestamp(DateTimeOffset.UtcNow));
+        var changes = new[] { PayloadProtectionStateMutation.Put(value) };
+        using (var budget = new PayloadOperationBudget(clock, default, TimeSpan.FromMilliseconds(30)))
         {
-            var value = new WorkHeadV1(new('a', 64), 0, 0, 0, PayloadProtectionStateCodec.Timestamp(DateTimeOffset.UtcNow));
-            (await store.CommitAsync([PayloadProtectionStateMutation.Put(value)]).AsTask().WaitAsync(TimeSpan.FromSeconds(2))).ShouldBe(PayloadStateCommitResult.Unknown);
+            (await store.CommitAsync(changes).AsTask().WaitAsync(TimeSpan.FromSeconds(2))).ShouldBe(PayloadStateCommitResult.Unknown);
         }
         mutation.SetResult();
         await client.Received(1).ExecuteStateTransactionAsync(Arg.Any<string>(), Arg.Any<IReadOnlyList<StateTransactionRequest>>(), Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>());
