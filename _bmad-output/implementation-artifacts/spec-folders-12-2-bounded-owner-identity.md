@@ -2,7 +2,7 @@
 title: 'Folders 12.2 prerequisite: bounded captured owner identity'
 type: 'feature'
 created: '2026-10-21'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: ae917d3e4dbab20b8982c5222a13611c3e3faf35
@@ -625,3 +625,106 @@ by this run. The workflow's generic done/commit steps were not performed: the
 explicit no-commit boundary and unresolved broader regression gate take precedence.
 Status remains `in-progress`; no final workspace, package/release or Folders
 qualification is claimed.
+
+### Fresh resumption verification — 2026-10-30
+
+The complete spec was read; `context: []` names no additional inputs. The bounded
+implementation, regression tests and reader rollout/rollback guide are already
+present. Inspection found no owned defect requiring a production or test change.
+This resumption updates only this verification record, preserving the original
+baseline, frozen intent and `in-progress` status. No pins, Git index/history,
+publication, deployment or retired qualification machinery were changed by this
+task. CI run/link: none; these are local SDK 10.0.403 / .NET 10.0.14 results.
+
+Shared-checkout builds began at `52fae16c7463621c82cb7ea266823852640b4738`
+with pre-existing security/integration edits. Another session advanced HEAD to
+`d98b014a3821dcef17709ff7a6c87fd6903e6c6b`; that external work was preserved.
+All four commands below passed with zero warnings/errors. Separate logs are
+`/tmp/bounded-20261030-{client,domain,server,live}-build.log`.
+
+```bash
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+```
+
+The following direct-assembly commands ran against those builds. Each XML's
+basename also identifies its `.log` file. Independent test processes overlapped;
+no shared-checkout build was started while these tests ran.
+
+```bash
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*SharedProjectionBoundedIdentityTests' -xml /tmp/bounded-20261030-client.xml
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -class '*DomainPartitionedSharedProjectionRebuildTests' -result-xml /tmp/bounded-20261030-domain.xml
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SharedProjectionSourceBeginProducerTests' -class '*SharedProjectionSourceRosterActorTests' -result-xml /tmp/bounded-20261030-server.xml
+BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE=/tmp/bounded-20261030-runtime.json dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityRuntimeProofTests' -result-xml /tmp/bounded-20261030-runtime.xml
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -result-xml /tmp/bounded-20261030-client-full.xml
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -result-xml /tmp/bounded-20261030-domain-full.xml
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml /tmp/bounded-20261030-server-full.xml
+```
+
+| Shared-checkout run | Passed | Failed | Skipped |
+| --- | ---: | ---: | ---: |
+| Client bounded identity class | 49 | 0 | 0 |
+| Domain partitioned rebuild class | 144 | 0 | 0 |
+| Server source producer/roster classes | 30 | 0 | 0 |
+| Runtime source-binding preflight | 9 | 0 | 0 |
+| Full Client suite | 2,248 | 1 | 2 |
+| Full Domain suite | 1,286 | 0 | 1 |
+| Full Server suite | 6,421 | 12 | 25 |
+
+All runs reported zero xUnit errors and not-run cases. Focused runs and full
+Domain exited 0; full Client and Server exited 1. Broad runs finished by
+`2026-10-30T06:02:49.3195883+00:00`. Client's failure remains the routing-header
+ownership guard. Server failures remain the callback-quota case, SignalR
+metadata-cap case, secret guard, seven query-provenance cases and two actor-auth
+cases named in the preceding verification records; the former restored-deletion
+failure passed in this run. No bounded-owner test failed. Existing separate-lane
+skips remain two Client isolated-Dapr tests, one Domain content-live test and 25
+Server opt-in/ATDD cases. Foreign failures were preserved without weakening the
+broad gate.
+
+The fresh shared preflight authenticated 1,523 source-document records and four
+loaded PE/PDB pairs. All eight actual image/symbol files still matched their
+recorded hashes after the broad runs. Compact, key-sorted proof JSON SHA-256:
+`1d28ef8f03f7233c3e23b33e577ddfa88c9007dafc661b169cb01758b51c31ef`.
+These results describe their built assemblies and source checks at execution
+time; they do not qualify subsequent shared-checkout edits.
+
+To isolate the long live lane from ongoing external edits, the current complete
+source/build-input tree and root-declared submodule sources were copied using:
+
+```bash
+rsync -a --exclude='.git' --exclude='bin/' --exclude='obj/' --exclude='node_modules/' --exclude='.agents/' --exclude='.codex/' --exclude='.claude/' --exclude='.venv/' --exclude='_bmad/' --exclude='_bmad-output/' --exclude='evidence/' --exclude='/references/*/references/' /home/administrator/projects/hexalith/eventstore/ /tmp/bounded-owner-20261030-snapshot/
+```
+
+The capture at `2026-10-30T05:55:54.571314+00:00` matched all 20,427 copied
+files against clean origin `d98b014a3821dcef17709ff7a6c87fd6903e6c6b`.
+`/tmp/bounded-20261030-snapshot-origin.json` retains the complete input manifest;
+compact, key-sorted `sourceFiles` JSON SHA-256 is
+`5e1f53b92a693554cb1d32b3093d5fcd6d2f92c3ff49bf4aa808f46fa0a11460`.
+Every captured input remained unchanged after the unit runs. No branch or nested
+submodule was created, initialized or updated.
+
+The following commands ran from `/tmp/bounded-owner-20261030-snapshot`:
+
+```bash
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE=/tmp/bounded-20261030-snapshot-runtime.json dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityRuntimeProofTests' -result-xml /tmp/bounded-20261030-snapshot-runtime.xml
+BOUNDED_IDENTITY_EVIDENCE_DIR=/tmp/bounded-20261030-snapshot-live BOUNDED_IDENTITY_GENERATED_SOURCE_DIR=/tmp/bounded-20261030-snapshot-live/generated dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityLiveTests' -result-xml /tmp/bounded-20261030-snapshot-live.xml
+```
+
+Snapshot build: zero warnings/errors, log
+`/tmp/bounded-20261030-snapshot-live-build.log`. Snapshot preflight: **9 passed,
+zero failed/skipped/errors/not-run**. Its four actual PE/PDB pairs and 1,523
+source documents belong to a separate graph; compact, key-sorted proof JSON
+SHA-256 is `1b23f3d60166ef21a36c85c74dc56e0fdac6047368c6a16fc913803811216f97`.
+
+**Live lane pending at implementation handoff:** the complete nine-case snapshot
+process run is still active. Its output is
+`/tmp/bounded-20261030-snapshot-live.log`; worker records and generated-source
+captures are under `/tmp/bounded-20261030-snapshot-live`. This pending run is not a
+completed live acceptance claim. Retained 2026-10-29 live results remain tied to
+their earlier graphs. The broad gate is still red, so status remains
+`in-progress`; no overall regression, package/release or Folders qualification
+is claimed.
