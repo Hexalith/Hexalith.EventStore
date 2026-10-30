@@ -6237,3 +6237,55 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
   summary: Bound buffered-owner contribution-hash metadata independently of event count.
   evidence: The unchanged buffered AccumulatePartitionAsync persists every ChunkHashes entry in one manifest; sufficiently many legal contributions exceed the existing one-MiB canonical batch limit. This representation already failed within the old history boundary when combined with inline captured identities; buffered output-metadata paging needs its own compatibility and recovery tests.
+
+## Deferred from: code review of spec-5-14 (2026-10-30)
+
+- `IsCustodyPermanentlyLostAsync` remote call per snapshot entry / on event read path may turn a bindings outage into `Unreadable` (unverified, would be medium) — InteractionSnapshotEntriesProtector.cs:75.
+- Legacy retained seal (null skeleton) retry may compare unequal in `InteractionOccurrenceProtector.Equal` (unverified, would be medium).
+- `UseEventStoreDomainServiceEndpointSecurity` uses `GetRequiredService<EventStoreHttpEndpointSource>`; confirm all callers register security services (unverified, would be medium).
+- Sample API host never registers `AddEventStoreRouteCatalog` (`samples/Hexalith.EventStore.Sample.Api/Program.cs`), so `GeneratedRouteCatalogFilter` never installs `RouteCatalogGeneratedAction.ValidatorKey` and every generated action refuses dispatch (503) in the real host and AppHost `sample-api`. The 5.14 Sample tests inject `SampleApiCatalogTestStartupFilter`, which hides it. Pre-existing since 5.13 `00ace9281` (medium). Settle by deciding whether Sample.Api registers the route catalog (5.13 consumer migration), then add one real-host Sample test without the stub.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Make completed certified abort metadata repair retries recognize their receipt after abort closeout.
+  evidence: Parent reran /tmp/bounded-review-api-repros/bin/Debug/net10.0/repro.dll: RepairAbortMetadataAsync succeeds, AbortAsync reopens the epoch, and an identical retry throws because RequireOperation(Aborting) precedes the AbortRepairCompleted receipt check. SharedProjectionEpochCoordinator.AbortRepair.cs is unchanged from invocation HEAD 52fae16c7463621c82cb7ea266823852640b4738 and is not called by bounded identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Bound the streamed contribution-hash working set and manifest root independently of event admission.
+  evidence: Baseline ae917d3e4dbab20b8982c5222a13611c3e3faf35 and current AccumulateStreamedOwnerAsync both retain every output chunk hash in memory and every hash-page digest in one manifest. Raising the configured admission far enough exceeds the existing one-MiB canonical batch limit even though identity pages stay bounded; this unchanged output-metadata representation needs its own paging/recovery design.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Classify cross-host ordinary redirect hops before allowing a Dapr invocation to reach the transport.
+  evidence: RouteCatalogInvocationHandler.SendOrdinaryAsync calls RequiresCatalogFence only when IsSameHost is true, so localhost to 127.0.0.1/v1.0/invoke/... bypasses the client catalog guard. The file is unchanged from invocation HEAD 52fae16c7463621c82cb7ea266823852640b4738; receiver authorization behavior is not established by this client-side finding.
+
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Preserve native Authorization clearing on same-host ordinary redirects in the route catalog HTTP guard.
+  evidence: Parent reran the source harness /tmp/catalog-review-harness-k848cut_/bin/Debug/net10.0/harness.dll; native HttpClient removed the bearer on /same to /landing, while RouteCatalogInvocationHandler forwarded it. This separate routing implementation is unchanged from invocation HEAD 7b1df62102efb19da03553a890c62eb5ad6aeafe.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Preserve streaming or bounded replay admission for ordinary HTTP bodies wrapped by the route catalog filter.
+  evidence: RouteCatalogStateHttpClientFilter wraps factory primary handlers and SendOrdinaryAsync calls CaptureReplayableContentAsync before the first send with automatic redirects enabled. That method reads the complete content into a byte array without a size budget, including unrelated streaming uploads; the code is independent of bounded captured identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Resolve human-policy handling of a valid bearer accompanied by a Dapr channel credential header.
+  evidence: The actual EventStoreHumanCredentialRequirement source harness succeeds for bearer plus dapr-api-token because it checks the assertion header only. The bearer policy and endpoint inventory add no channel-header rejection. This is a separate authentication consistency issue; it does not show invalid-bearer authorization.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Bound catalog lease release under sustained CAS contention while preserving recoverable durable fences.
+  evidence: RouteCatalogDispatchLease.DisposeAsync awaits RouteCatalogAuthority.ReleaseAsync, which retries forever using CancellationToken.None and a backoff capped at 25 ms. Sustained other writers can hold a completed request beyond cancellation; backend exceptions do propagate. The unchanged routing authority is outside captured-identity replacement.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Support multiple declared endpoint clients for one resource in AspireTopologyFixtureBase.
+  evidence: Parent reran /tmp/descriptor-review-harness-elkm8044/bin/Debug/net10.0/harness.dll: the real descriptor reader accepts http/admin endpoints, but initialization throws duplicate-key ArgumentException because client storage keys only ResourceId. The bounded Dapr lane uses a different fixture; this belongs to the separate topology handoff migration.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Verify browser execution policy for active media returned by AuthoritativeContentHttpTransport (unverified medium).
+  evidence: ReadAsync copies the stored media type without attachment/CSP headers, but repository search finds no consuming route and the domain authority owns upload policy. Settle with a concrete authenticated browser consumer permitting HTML/SVG without an outer execution restriction; no deployed exploit is established. This separate content feature is unchanged.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Align authoritative-content ledger byte admission with the configured Dapr transport envelope.
+  evidence: Canonicalization accepts 1024 changes with 16 metadata values of 2048 characters; a dimension-valid illustrative pending ledger is 33823805 serialized bytes, beyond the documented 16-MiB fixture transport. MutateAsync checks entry counts but no serialized byte budget. This is a separate content admission mismatch, not proof that rejected oversized writes corrupt durable state.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Bound retained route catalog activation attempts and completed rollback transitions without losing replay and recovery fences.
+  evidence: RouteCatalogAuthority.PrepareAsync and RollbackAsync append to Attempts and CompletedTransitions without a cap, segmentation or pruning; every dispatch acquisition/release reads or rewrites the same state value. Repeated valid lifecycle operations can exceed its storage/transport envelope. The separate catalog feature is independent of captured owner identity.

@@ -59,6 +59,46 @@ class BoundedWorkerObserverTests(unittest.TestCase):
         with self.assertRaises(OSError):
             OBSERVER.authenticate_image(link, self.pdb, self.rows, self.expected)
 
+    def test_fifo_module_paths_reject_without_a_writer_and_retain_failure_receipts(self):
+        wrapper = self.directory / "fifo-observer.py"
+        wrapper.write_text(
+            "import functools,importlib.util,sys\n"
+            f"s=importlib.util.spec_from_file_location('observer',{str(SCRIPT)!r})\n"
+            "m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
+            f"m.observe=functools.partial(m.observe,required={{{self.pe.stem!r}}})\n"
+            "raise SystemExit(m.main())\n")
+        for key, fifo in (("pe", self.directory / self.pe.name),
+                          ("pdb", self.directory / "fifo-symbols.pdb")):
+            with self.subTest(path=key):
+                os.mkfifo(fifo)
+                module = {"name": self.pe.stem, "pe": str(self.pe), "pdb": str(self.pdb), **self.expected}
+                module[key] = str(fifo)
+                request = {"pid": os.getpid(), "start_ticks": OBSERVER.start_ticks(os.getpid()),
+                           "modules": [module]}
+                output = self.directory / ("fifo-" + key + "-receipts")
+                with subprocess.Popen([sys.executable, str(wrapper), "--output", str(output)],
+                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, text=True) as child:
+                    try:
+                        stdout, stderr = child.communicate(json.dumps(request), timeout=2)
+                    except subprocess.TimeoutExpired:
+                        self.fail("Observer waited for a FIFO writer: " + str(fifo))
+                    finally:
+                        if child.poll() is None:
+                            child.kill()
+                        child.wait(timeout=2)
+                        self.assertIsNotNone(child.poll())
+                    self.assertEqual(1, child.returncode, stdout + stderr)
+                    receipts = list(output.glob("*.json"))
+                    self.assertEqual(1, len(receipts))
+                    receipt = json.loads(receipts[0].read_text())
+                    self.assertFalse(receipt["passed"])
+                    self.assertEqual(["Not a regular file: " + str(fifo)], receipt["errors"])
+                    self.assertEqual(child.pid, receipt["observer_pid"])
+                    self.assertEqual(str(receipts[0]), json.loads(stdout)["receipt"])
+                    self.assertIn(str(self.pe), receipt["raw_maps"])
+                    self.assertEqual(request["start_ticks"], receipt["start_ticks_after"])
+
     def test_stale_worker_start_identity_fails_closed(self):
         request = {"pid": os.getpid(), "start_ticks": "stale", "modules": []}
         with patch.object(OBSERVER.os, "getppid", return_value=os.getpid()):

@@ -60,9 +60,15 @@ public sealed class ProjectionBoundedIdentityLiveTests(DaprTestContainerFixture 
             using var process = Process.Start(start).ShouldNotBeNull();
             pids.Add(process.Id);
             Task<string> stdout = process.StandardOutput.ReadToEndAsync(), stderr = process.StandardError.ReadToEndAsync();
-            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(20));
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            timeout.CancelAfter(TimeSpan.FromMinutes(20));
             try { await process.WaitForExitAsync(timeout.Token); }
-            catch (OperationCanceledException) { process.Kill(entireProcessTree: true); throw; }
+            catch (OperationCanceledException)
+            {
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync(CancellationToken.None);
+                throw;
+            }
             string output = await stdout + "\n" + await stderr;
             await File.WriteAllTextAsync(prefix + ".log", output, TestContext.Current.CancellationToken);
             process.ExitCode.ShouldBe(phase == (inheritOwner ? "inherited" : "resume") ? 0 : 73, output);
