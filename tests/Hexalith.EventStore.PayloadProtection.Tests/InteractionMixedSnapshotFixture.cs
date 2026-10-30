@@ -110,6 +110,6 @@ internal sealed class InteractionMixedSnapshotFixture
         var carrier = new ProtectedSnapshotEntriesV2("json+pdenc-v2-entries", Occurrence.PayloadTypeId, layout.Skeleton,
             layout.Entries.Select((entry, index) => new ProtectedSnapshotEntryV2(entry.Path, entry.Target, Bindings[index].KeyReference,
                 JsonSerializer.Deserialize<ProtectedSnapshotPayloadV2>(_originals[index].Record!.Sealed!.PayloadBytes)!)).ToArray());
-        return new(carrier, new(PayloadProtectionState.Protected, 1, "hexalith-pdenc-v2", Bindings[0].KeyReference, "application/json", null));
+        return new(carrier, new(PayloadProtectionState.Protected, 1, "hexalith-pdenc-v2", Bindings[0].KeyReference, "application/json", new Dictionary<string, string> { ["snapshot-layout"] = "entries-v2" }));
     }
 }

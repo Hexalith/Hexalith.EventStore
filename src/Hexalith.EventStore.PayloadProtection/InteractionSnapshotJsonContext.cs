@@ -10,6 +10,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 [JsonSerializable(typeof(ProtectedSnapshotPayloadV2))]
 [JsonSerializable(typeof(ProtectedSnapshotEntriesV2))]
 [JsonSerializable(typeof(Erased))]
+[JsonSerializable(typeof(WholeSnapshotReplayMetadata))]
 [JsonSerializable(typeof(SnapshotEntryFragment))]
 [JsonSerializable(typeof(SnapshotEntryOccurrenceIdentity))]
 [JsonSerializable(typeof(JsonNode))]

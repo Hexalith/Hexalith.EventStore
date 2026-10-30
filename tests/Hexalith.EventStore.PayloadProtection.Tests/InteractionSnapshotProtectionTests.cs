@@ -277,6 +277,24 @@ public sealed class InteractionSnapshotProtectionTests
         fixture.Occurrences.OwnedBuffers.All(bytes => bytes.All(value => value == 0)).ShouldBeTrue();
     }
 
+    /// <summary>Previously copied whole-object plaintext is never certified as erased by replaying unsafe historical metadata.</summary>
+    [Fact]
+    public async Task UnsafeHistoricalWholeObjectReplayMetadataRequiresIndependentSanitization()
+    {
+        var fixture = Create();
+        var write = await fixture.Service.ProtectSnapshotAsync(fixture.Binding.Identity.Owner, State("{\"ProtectedContent\":ENVELOPE}"),
+            StateType, Occurrence(fixture.Binding), TestContext.Current.CancellationToken);
+        byte[] original = fixture.Occurrences.Record!.Sealed!.PayloadBytes.ToArray();
+        fixture.Bindings.ResolveErasedStoredAsync(fixture.Binding.Identity.Owner, Occurrence(fixture.Binding), Arg.Any<byte[]>(),
+            fixture.Binding.KeyReference, Arg.Any<CancellationToken>()).Returns(fixture.Binding);
+        fixture.Bindings.ReadErasedSnapshotSkeletonAsync(fixture.Binding, Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .Returns(JsonSerializer.SerializeToUtf8Bytes(new { ConfidentialSibling = "legacy-auxiliary-plaintext-canary", ProtectedContent = new { Target = fixture.Binding.Identity.Target, Value = new { State = "Erased" } } }));
+        fixture.Bindings.IsIrreversiblyErasedAsync(fixture.Binding, Arg.Any<CancellationToken>()).Returns(true);
+        var opened = await fixture.Service.TryReplaySnapshotAsync(fixture.Binding.Identity.Owner, write.ProtectionResult.State, write.ProtectionResult.Metadata,
+            StateType, Occurrence(fixture.Binding), TestContext.Current.CancellationToken);
+        opened.IsUnreadable.ShouldBeTrue(); opened.State.ShouldBeNull(); fixture.Occurrences.Record.Sealed.PayloadBytes.ShouldBe(original);
+    }
+
     private static string Expand(string template) => template.Replace("ENVELOPE", Envelope, StringComparison.Ordinal).Replace("TARGET", Target, StringComparison.Ordinal);
     private static JsonElement State(string template) => JsonSerializer.Deserialize<JsonElement>(Expand(template));
     private static PayloadProtectionOccurrenceContext Occurrence(InteractionProtectionBinding binding)

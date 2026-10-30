@@ -19,8 +19,8 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
 
     /// <summary>Protects one exact whole snapshot through the same root/occurrence registry; the retained bytes are the complete v2 snapshot carrier.</summary>
     internal Task<InteractionOccurrenceSealedResult?> ProtectSnapshotAsync(byte[] payload, InteractionOccurrenceIdentity identity,
-        string digestVersion, long attempt, string proposedReference, CancellationToken token = default)
-        => ProtectAsync(payload, new[] { string.Empty }, identity, digestVersion, attempt, proposedReference, token);
+        string digestVersion, long attempt, string proposedReference, CancellationToken token = default, bool retainWholeReplayMetadata = true)
+        => ProtectAsync(payload, new[] { string.Empty }, identity, digestVersion, attempt, proposedReference, token, retainWholeReplayMetadata);
 
     /// <summary>Unprotects only an independently committed active original occurrence. Pending/unknown/erased root yields no plaintext.</summary>
     internal async Task<CoreUnprotectionResult> UnprotectAsync(InteractionOccurrenceIdentity identity, CancellationToken token = default)
@@ -75,7 +75,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
     }
 
     private async Task<InteractionOccurrenceSealedResult?> ProtectAsync(byte[] payload, IReadOnlyCollection<string> paths,
-        InteractionOccurrenceIdentity identity, string digestVersion, long attempt, string proposedReference, CancellationToken token)
+        InteractionOccurrenceIdentity identity, string digestVersion, long attempt, string proposedReference, CancellationToken token, bool retainWholeReplayMetadata = true)
     {
         long start = clock.GetTimestamp(); byte[]? owned = null; PayloadProtectionMaterial? material = null; ProtectedPathManifest? manifest = null;
         InteractionOccurrenceOwnedKey? rootUse = null;
@@ -119,16 +119,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
             else
             {
                 var result = _core.ProtectSnapshot(owned, Context(identity), () => material, cancellationToken: token);
-                byte[]? skeleton = null;
-                // The lower-level V2 snapshot protector also supports legacy arbitrary snapshots.
-                // Only canonical target/value layouts gain optional authenticated replay metadata.
-                try
-                {
-                    var layout = SnapshotEntryLayout.Read(owned, identity.Target.TenantId, false, token);
-                    if (layout.Entries.Length > 0) { skeleton = layout.Skeleton; }
-                }
-                catch (PayloadProtectionFormatException) { token.ThrowIfCancellationRequested(); }
-                catch (InvalidOperationException) { token.ThrowIfCancellationRequested(); }
+                byte[]? skeleton = retainWholeReplayMetadata ? WholeSnapshotReplayMetadata.Create(owned, identity.Target, token) : null;
                 encrypted = new(record.KeyReference, WriteSnapshot(result), result.Format, 1)
                 { SnapshotReplaySkeleton = skeleton };
             }
