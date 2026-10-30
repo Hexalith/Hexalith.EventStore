@@ -38,6 +38,7 @@ class SourcePostActivationEvidenceTests(unittest.TestCase):
             if built.returncode:
                 raise AssertionError(built.stdout + built.stderr)
             assembly = output / 'Hexalith.Platform.Protection.Tests.dll'
+        cls.assembly = assembly
         vector = cls.directory / 'actual.json'
         environment = dict(os.environ, EXT_PROTECTION_P34_VECTOR=str(vector))
         argv = ['dotnet', str(assembly), '-class', 'Hexalith.Platform.Protection.Tests.ErasureRootLoop2OwnerTests',
@@ -74,6 +75,59 @@ class SourcePostActivationEvidenceTests(unittest.TestCase):
                 changed['ownerBatches'][0]['Original']['Capability']['DestructionSealId'] = 'substituted'
             with self.subTest(mutation=mutation), self.assertRaises(v.Failed):
                 self.verify(changed)
+
+    def test_independent_native_boundaries_refuse_missing_call_policy_and_state_mutations(self):
+        original = self.actual['observation']
+        self.assertTrue(original['rejectedEffectOriginals'])
+        for mutation in ('call', 'rotation', 'trim', 'pending', 'wrapped', 'holder', 'receipt', 'boolean'):
+            changed = copy.deepcopy(original)
+            if mutation == 'missing': del changed['rejectedEffectOriginals']
+            elif mutation == 'call': changed['rejectedEffectOriginals'][0]['Call']['Id'] = 'undispatched'
+            else:
+                proof = changed['rejectedEffectOriginals'][0]['After']
+                if mutation == 'rotation': proof['NativePolicy']['LatestVersion'] += 1
+                elif mutation == 'trim': proof['NativePolicy']['MinAvailableVersion'] += 1
+                elif mutation == 'boolean': proof['NativePolicy']['Exportable'] = 'false'
+                elif mutation == 'receipt': proof['ReceiptId'] += 'substituted'
+                else: proof['CustodyStateSha256'] = hashlib.sha256(mutation.encode()).hexdigest().upper()
+            with self.subTest(mutation=mutation), self.assertRaises(v.Failed): self.verify(changed)
+
+
+class SourceReplacementRaceEvidenceTests(SourcePostActivationEvidenceTests):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        environment = dict(os.environ, EXT_PROTECTION_P33_VECTOR_DIRECTORY=str(cls.directory))
+        executed = subprocess.run(['dotnet', str(cls.assembly), '-class', 'Hexalith.Platform.Protection.Tests.ErasureRootLoop2OwnerTests',
+                                   '-method', '*.CompiledP33RacesBothActualOwnerOrderingsAndEmitsExactVerifierObservation', '-noColor'],
+                                  env=environment, capture_output=True, text=True, timeout=120, check=False)
+        if executed.returncode:
+            raise AssertionError(executed.stdout + executed.stderr)
+        cls.vectors = [json.loads((cls.directory / name).read_bytes()) for name in ('activation-first.json', 'compromise-first.json')]
+        cls.race_case = next(value for value in json.loads((ROOT / 'tools/ext-protection-1/plan.json').read_bytes())['cases'] if value['id'] == 'P33')
+
+    def verify_race(self, vector, observation):
+        anchor = self.directory / 'race-public.pem'; anchor.write_text(vector['publicKeyPem'])
+        trust = [dict(entry, publicAnchorFile=str(anchor), publicAnchorSha256=hashlib.sha256(anchor.read_bytes()).hexdigest()) for entry in self.trust]
+        v.evaluate(observation, self.race_case, vector['targets'], b'p33-canary', vector['engineCommit'], vector['engineBinarySha256'], trust, {})
+
+    def test_both_actual_compiled_race_orderings_pass_and_preserve_second_compromise(self):
+        for vector in self.vectors:
+            self.verify_race(vector, vector['observation'])
+            self.assertEqual(vector['observation']['ownerOutcome']['blockedKeyVersion'], 'healthy-key-b')
+            self.assertTrue(all(root['state'] == 'Active' for root in vector['observation']['roots']))
+
+    def test_actual_race_identity_order_and_compromise_substitutions_refuse(self):
+        for vector in self.vectors:
+            for mutation in ('key', 'revocation', 'activation', 'order'):
+                changed = copy.deepcopy(vector['observation'])
+                if mutation == 'key': changed['activationOutcome']['newKeyVersion'] = 'foreign-key'
+                elif mutation == 'revocation': changed['activationOutcome']['revocationRevision'] += 1
+                elif mutation == 'activation': changed['ownerBatches'][0]['Original']['Capability']['DestructionSealId'] = 'foreign-seal'
+                elif changed.get('postActivationBlockOriginal'):
+                    changed['postActivationBlockOriginal']['RevocationReceipt']['OwnerRevision'] = 1
+                else: changed['activationOriginal']['NewBlockReceiptId'] = 'foreign-block'
+                with self.subTest(mutation=mutation), self.assertRaises(v.Failed): self.verify_race(vector, changed)
 
 
 if __name__ == '__main__':

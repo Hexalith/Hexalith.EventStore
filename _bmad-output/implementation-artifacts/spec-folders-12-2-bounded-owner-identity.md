@@ -85,6 +85,34 @@ Repository-relative directory aliases below identify exact task locations:
 
 ## Review Triage Log
 
+### Resumption review — 2026-10-29
+
+All three layers completed before classification. The verification-gap layer found
+no gaps. Each blind/edge finding below was classified independently before grouping.
+The full historical-baseline diff was retained at
+`/tmp/bounded-owner-resume-wrdegjlp.diff`; its bounded source/test navigation slice
+was `/tmp/bounded-owner-source-review.diff`.
+
+| Finding | Verdict / route | Evidence and decision |
+| --- | --- | --- |
+| Blind R1: accepted ordinary tail can change in a subsequent rebuild | high / defer | The executable `/tmp/bounded-owner-review-repro` captured 65 events, accepted ordinary event 66, then promoted a different payload at 66. Baseline `ae917d3e4dbab20b8982c5222a13611c3e3faf35` already compared only the retained inline prefix and checkpoint position; this is an older receipt-to-rebuild consistency defect, not caused by bounded identity retention. |
+| Blind R2: streamed retirement uses a smaller chunk-count bound | medium / defer | Both baseline and current dispatcher admit `3 * MaxRebuildEventCount + 8` streamed chunks but reject retired counts above `MaxRebuildEventCount`. The unchanged mismatch can block terminal cleanup retries for a legal multi-chunk owner. |
+| Blind R3: worker hardcodes a Debug/source build graph | low / patch | `WriteEvidence` emits a fixed Debug/source claim even though Integration Tests runs Release/package mode. Remove that unsupported diagnostic; actual runtime PE/PDB hashes remain authoritative. |
+| Blind R4: Windows document paths are filtered out | medium / patch | `Capture` checks slash-separated `/src/` and `/tests/` before separator normalization, while portable PDB names may contain backslashes. Normalize only the selection path, retaining the original path for source reads and evidence. Group with Edge R1. |
+| Blind R5: missing ordinary source silently falls back to embedded content | medium / patch | `ReadDocumentSource` falls through to embedded content when a non-generated current source path is absent. That can conceal a deleted current source from the runtime-source check. Require ordinary source existence and retain embedded fallback for generated documents; add a missing-source regression. |
+| Blind R6: non-paged history fallback can buffer a large owner | low / rejected | The fallback is a real compatibility behavior, but production registers `EventStoreProjectionDeliveryHistoryReader`, whose `ReadPagesAsync` streams bounded pages. Restricting custom legacy readers or adding producer admission settings introduces new policy/branches for an uncommon compatibility path; no production regression or missing matrix outcome was demonstrated. |
+| Blind R7: buffered contribution hash arrays can exceed a batch | medium / defer | Buffered `AccumulatePartitionAsync` still stores all contribution hashes in one manifest and the unchanged canonical batch validator rejects oversized metadata. The same representation and failure already existed within the former event boundary when combined inline identities and many contribution hashes exceeded one MiB. Output-metadata paging is separate from this change's identity-vector replacement. |
+| Blind R8: add process interruption during identity reservation/sealing | false / rejected | No broken recovery outcome was demonstrated. Existing bounded tests interrupt preparation/installation/commit, reconstruct the coordinator and verify retirement; the live lane independently proves interrupted staging and promoted handoff through distinct processes. Every frozen interruption matrix row already ran and passed. |
+| Blind R9: add cancellation at every identity traversal | false / rejected | This is an additional test proposal without a demonstrated cancellation defect or uncovered frozen matrix outcome. Existing durable interruption/retry tests already verify retained evidence and cleanup; the proposal alone does not establish an implementation failure. |
+| Blind R10: terminated phases record but do not assert bounds | low / patch | Stage/promote call `WriteEvidence` before terminating, whereas `AssertBounds` currently runs only in resume/inherited paths. Assert the existing bounds at the common evidence-write point so every emitted worker phase enforces them. |
+| Edge R1: Windows PDB names skip source checksums | medium / patch | Independently confirmed the same separator-sensitive selection as Blind R4. Group their shared root cause into one path-normalization correction. |
+
+The four surviving corrections affect only qualification test helpers, with no
+public API or production protocol change. The three pre-existing runtime issues
+are recorded separately for follow-up; their existence is not a regression waiver.
+
+### Original implementation review
+
 | Finding | Verdict / route | Evidence and decision |
 | --- | --- | --- |
 | Blind 1: Git normalizes bound evidence | medium / patch | Generated sources contain CRLF while global C# attributes normalize to LF. Preserve this story's evidence bytes with a narrow attribute override; check filtered/raw hashes without staging. |
@@ -446,3 +474,154 @@ graph, superseding the earlier source-drift blocker only for that graph. It does
 qualify subsequent concurrent edits. The broader regression gate remains red, so
 status remains `in-progress`; no overall regression qualification, package/release
 readiness or Folders acceptance is claimed.
+
+### Clean-checkout resumption and verification — 2026-10-29
+
+This resumption started from clean `main` at
+`7e136f7e0a10140e35d86510423d58eaaa4392c9`. The complete spec was read;
+frontmatter `context: []` contains no additional files to load. Inspection found
+the bounded implementation, regression coverage and consumption/rollback guide
+already present, with no owned defect requiring a source or test change. This
+run changes only this verification record and preserves the frozen intent,
+original `baseline_commit` and `in-progress` status. No dependency pins, Git
+index/history, publication or deployment were changed, and the retired
+qualification tool/evidence packets were not recreated. CI run/link: none;
+these are local SDK 10.0.403 / .NET 10.0.14 results.
+
+Before the builds, all 19,990 files in the retained snapshot input manifest were
+rehashed against the checkout. Only the ext-protection Python test, its two
+Python cache files and its acceptance document differed; captured .NET source
+and build inputs matched. A follow-up addition inventory found no added
+EventStore-owned source/build/config input; 134 new Platform submodule files and
+two McpCli test files were outside the bounded runtime build graph. The local
+comparison record is `/tmp/bounded-7e136f7e0-input-comparison.json`. This establishes
+equivalence of the participating inputs at the audit time, not equality of the
+entire workspace or of subsequent concurrent edits.
+
+All four project builds below succeeded with zero warnings/errors. Commands ran
+sequentially from the repository root; their separate logs are
+`/tmp/bounded-7e136f7e0-{client,domain,server,live}-build.log`.
+
+```bash
+dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true
+```
+
+The following direct-assembly commands ran sequentially against those builds:
+
+```bash
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*SharedProjectionBoundedIdentityTests' -xml /tmp/bounded-7e136f7e0-client.xml
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -class '*DomainPartitionedSharedProjectionRebuildTests' -result-xml /tmp/bounded-7e136f7e0-domain.xml
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SharedProjectionSourceBeginProducerTests' -class '*SharedProjectionSourceRosterActorTests' -result-xml /tmp/bounded-7e136f7e0-server.xml
+BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE=/tmp/bounded-7e136f7e0-runtime.json dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityRuntimeProofTests' -result-xml /tmp/bounded-7e136f7e0-runtime.xml
+dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -result-xml /tmp/bounded-7e136f7e0-client-full.xml
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -result-xml /tmp/bounded-7e136f7e0-domain-full.xml
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml /tmp/bounded-7e136f7e0-server-full.xml
+```
+
+| Run | Passed | Failed | Skipped |
+| --- | ---: | ---: | ---: |
+| Client bounded identity class | 49 | 0 | 0 |
+| Domain partitioned rebuild class | 144 | 0 | 0 |
+| Server source producer/roster classes | 30 | 0 | 0 |
+| Runtime source-binding preflight | 3 | 0 | 0 |
+| Full Client suite | 2,248 | 1 | 2 |
+| Full Domain suite | 1,286 | 0 | 1 |
+| Full Server suite | 6,418 | 13 | 25 |
+
+All runs reported zero xUnit errors and zero not-run tests. Focused runs and the
+Domain suite exited 0; full Client and Server exited 1. Every frozen-matrix unit
+method named in the preceding verification table was present and passed,
+including all boundary and mutation theory rows. The focused checks completed
+between `2026-10-29T19:58:11.7337115+00:00` and
+`2026-10-29T20:02:55.4205762+00:00`; broad suites completed by
+`2026-10-29T20:12:32.9764694+00:00`. Logs share each XML's basename with `.log`.
+
+Client's failure remains
+`DaprRoutingHeaderOwnershipGuardTests.HostSources_DelegateDaprRoutingHeaderOwnershipToThePlatformHandlerOnly`
+(the additional setter is `DaprRouteCatalogStateStore`). Server's 13 failures
+match the preceding stable-snapshot section: the callback quota, restored
+deletion, SignalR metadata-cap and secret-guard cases, seven query-provenance
+cases and two actor-auth cases. No bounded-owner test failed. Existing skips
+remain the two Client isolated-Dapr tests, one Domain content-live test and 25
+Server opt-in/ATDD cases. These failures were preserved without changing foreign
+authentication, routing or secret-scan work or waiving the broad regression gate.
+
+The fresh preflight authenticated 1,523 source-document records and the four
+loaded PE/PDB pairs. Those files still matched their recorded hashes after the
+broad runs. Compact, key-sorted preflight JSON SHA-256:
+`9d2ddbf678c22183f9442c630acdcc7b2b744eafb4cf1f4a3c49fe87705201b5`.
+All four PE/PDB pairs differ from the retained snapshot binaries; source
+equivalence does not establish binary equivalence. The prior complete live
+matrix remains **9 passed, zero failed/skipped/errors** for its exact retained
+snapshot graph, with the 30 distinct worker PIDs and bounded measurements
+recorded above. That completed lane was independently checked and was not
+rerun; it did not execute against the newly built root PE/PDB pairs.
+
+After focused verification, unrelated authentication/rate-limit source and test
+edits and submodule work resumed during the broad runs. The comparison record
+separately retains the later source drift; no rebuild was performed to chase
+those edits. The new counts are outcomes of the previously built test
+assemblies, with source-inspection tests reading the shared checkout. They do
+not qualify one final unchanged workspace graph or any later edits. Foreign
+changes were preserved. The bounded implementation remains present and its
+focused matrix passes, but the broad gate remains red; no overall regression,
+package/release or Folders acceptance is claimed.
+
+
+### Resumption review corrections and final audit — 2026-10-29
+
+All three review layers completed. The triage table records all 11 findings
+before grouping: four qualification-helper corrections were applied, three
+pre-existing production issues were deferred to `deferred-work.md`, three
+proposals were rejected, and the two Windows-path reports share one correction.
+The verification-gap layer found no gaps. No production protocol or public SDK
+surface changed in this resumption.
+
+`ProjectionBoundedIdentityRuntimeProof` now normalizes separators for source
+selection while retaining the original PDB path, and refuses missing ordinary
+sources even when embedded bytes exist. Generated-source fallback remains
+supported. The runtime-proof tests cover Windows and Unix selection plus missing
+ordinary source. The process worker no longer emits the hardcoded `buildGraph`
+claim and checks bounds at its common evidence-write point, including interrupted
+stage/promote phases.
+
+The following commands ran from the repository root. The first build failed with
+`CA1062` on the new internal path predicate; its null guard was added and the same
+build command passed with zero warnings/errors on retry. Both logs are retained.
+
+```bash
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true > /tmp/bounded-review-fixes-build.log 2>&1
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true > /tmp/bounded-review-fixes-build-retry.log 2>&1
+BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE=/tmp/bounded-review-fixes-runtime.json dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -class '*ProjectionBoundedIdentityRuntimeProofTests' -result-xml /tmp/bounded-review-fixes-runtime.xml > /tmp/bounded-review-fixes-runtime.log 2>&1
+BOUNDED_IDENTITY_EVIDENCE_DIR=/tmp/bounded-review-fixes-live BOUNDED_IDENTITY_GENERATED_SOURCE_DIR=/tmp/bounded-review-fixes-live/generated dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method '*ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff' -result-xml /tmp/bounded-review-fixes-live.xml > /tmp/bounded-review-fixes-live.log 2>&1
+```
+
+Runtime-proof tests: **9 passed**. Streamed/buffered 129-event process-replacement
+canaries: **2 passed**. Both XML files report zero failures, skips, errors and
+not-run cases. The parent independently inspected these XMLs, all six distinct
+stage/promote/resume worker PIDs, absence of `buildGraph`, every phase's measured
+bounds, and all actual runtime PE/PDB hashes. All six records identify one graph
+with 1,523 source documents; compact, key-sorted runtime JSON SHA-256 is
+`5ac81cf64b2d9beda12c75b38e18e274407c9bdd104a5a32722f53083ab49003`.
+Maximum physical/canonical batch: 55,055 bytes; maximum batch operations: 68;
+identity: 10,366 bytes; checkpoint: 1,664 bytes; owner manifest: 1,246 bytes.
+These measurements cover the two new canaries, not the complete large-owner lane.
+The retained 9/9 large-owner/inheritance matrix remains tied to its earlier exact
+snapshot graph; it was not rerun after the test-helper edits. The complete unit
+suite outcomes above likewise remain evidence for their separately built graph;
+unaffected unit suites were not repeated for qualification-helper-only changes.
+
+The parent also independently checked the four earlier clean build logs, all
+226 focused XML outcomes and every named frozen-matrix method, the three complete
+suite XMLs, the retained 9/9 live XML and 30 distinct worker records, and preservation
+of the frozen intent and original baseline. Final owned changes comprise the three
+qualification test files, this spec and three appended deferred-work entries.
+Foreign edits, submodule state and external Git history changes were preserved.
+No Git staging, commit, push, publication, deployment or dependency change was made
+by this run. The workflow's generic done/commit steps were not performed: the
+explicit no-commit boundary and unresolved broader regression gate take precedence.
+Status remains `in-progress`; no final workspace, package/release or Folders
+qualification is claimed.

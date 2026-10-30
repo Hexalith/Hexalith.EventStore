@@ -47,6 +47,29 @@ class ProducerOriginalTests(unittest.TestCase):
         if len(cls.actual) != 6:
             raise AssertionError('Complete actual Pascal/lowercase/seeded/lost-retention observation inventory required')
 
+    def test_actual_native_snapshot_cache_backup_and_restore_have_distinct_bound_purposes(self):
+        assembly = Path(os.environ['EXT_PROTECTION_SNAPSHOT_COMPONENT_ASSEMBLY']) if os.environ.get('EXT_PROTECTION_SNAPSHOT_COMPONENT_ASSEMBLY') else None
+        if assembly is None:
+            self.skipTest('Separate configured source run is covered when an exact component assembly is supplied')
+        vector = self.directory / 'physical-copies.json'
+        environment = dict(os.environ, EXT_PROTECTION_COPY_VECTOR=str(vector))
+        executed = subprocess.run(['dotnet', str(assembly), '-class', 'Hexalith.Platform.Protection.Tests.ErasureRootLoop5ConfiguredSealTests', '-noColor'], env=environment, capture_output=True, text=True, timeout=120, check=False)
+        self.assertEqual(executed.returncode, 0, executed.stdout + executed.stderr)
+        observed = json.loads(vector.read_bytes())['observation']; self.verify(observed)
+        self.assertEqual({record['kind'] for record in observed['records']}, {'snapshot', 'cache', 'backup', 'restored'})
+        for mutation in ('missing-location', 'physical-alias', 'purpose', 'backup-source', 'restore-call', 'backup-document'):
+            changed = copy.deepcopy(observed)
+            locations = {location['CopyKind']: location for location in changed['copyLocations']}
+            if mutation == 'missing-location': changed.pop('copyLocations')
+            elif mutation == 'physical-alias': locations['cache']['PhysicalIdentity'] = locations['snapshot']['PhysicalIdentity']
+            elif mutation == 'purpose':
+                locations['cache']['CopyKind'] = 'snapshot'; locations['cache']['Cell']['CopyKind'] = 'snapshot'
+                next(record for record in changed['records'] if record['kind'] == 'cache')['kind'] = 'snapshot'
+            elif mutation == 'backup-source': locations['backup']['CopyOriginal']['SourceDigest'] = 'F' * 64
+            elif mutation == 'restore-call': locations['restored']['CopyCall']['Id'] = 'undispatched'
+            else: locations['backup']['PersistedDocument']['State'] = {'substituted': True}
+            with self.subTest(mutation=mutation), self.assertRaises(v.Failed): self.verify(changed)
+
     def verify(self, observation):
         return v.bind_producer_originals(observation, observation['engineSourceRevision'], observation['engineBinarySha256'])
 

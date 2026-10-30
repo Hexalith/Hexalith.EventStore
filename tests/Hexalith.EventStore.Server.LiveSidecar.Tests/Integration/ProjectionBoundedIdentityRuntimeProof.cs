@@ -43,7 +43,7 @@ internal static class ProjectionBoundedIdentityRuntimeProof
                 var document = metadata.GetDocument(handle);
                 string path = metadata.GetString(document.Name);
                 // SDK-generated sources are separately bound by their containing PE/PDB.
-                if (!path.Contains("/src/", StringComparison.Ordinal) && !path.Contains("/tests/", StringComparison.Ordinal)) continue;
+                if (!IsRuntimeSourcePath(path)) continue;
                 byte[] bytes = ReadValidatedDocumentSource(metadata, handle, path), expected = metadata.GetBlobBytes(document.Hash);
                 string sourceHash = Convert.ToHexString(SHA256.HashData(bytes));
                 bool generated = IsGeneratedPath(path);
@@ -115,7 +115,11 @@ internal static class ProjectionBoundedIdentityRuntimeProof
     /// <summary>Prefers authenticated embedded generated source while retaining current ordinary source authority.</summary>
     internal static byte[] ReadDocumentSource(MetadataReader metadata, DocumentHandle handle, string path)
     {
-        if (!IsGeneratedPath(path) && File.Exists(path)) return File.ReadAllBytes(path);
+        if (!IsGeneratedPath(path))
+        {
+            if (!File.Exists(path)) throw new InvalidOperationException("Current runtime PDB source is unavailable: " + path);
+            return File.ReadAllBytes(path);
+        }
         foreach (var debugHandle in metadata.GetCustomDebugInformation(handle))
         {
             var debug = metadata.GetCustomDebugInformation(debugHandle);
@@ -134,6 +138,14 @@ internal static class ProjectionBoundedIdentityRuntimeProof
         }
         if (File.Exists(path)) return File.ReadAllBytes(path);
         throw new InvalidOperationException("Runtime PDB source is unavailable and is not embedded: " + path);
+    }
+
+    /// <summary>Selects runtime source documents using either platform's path separators.</summary>
+    internal static bool IsRuntimeSourcePath(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        string normalized = path.Replace('\\', '/');
+        return normalized.Contains("/src/", StringComparison.Ordinal) || normalized.Contains("/tests/", StringComparison.Ordinal);
     }
 
     /// <summary>Recognizes generated paths by complete build-output directory segments on either platform.</summary>

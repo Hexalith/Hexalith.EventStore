@@ -6221,3 +6221,19 @@ status: open
 ## Deferred from: code review of spec-5-14-authenticated-fallback-and-dapr-framework-route-protection.md, chunk A (2026-10-29)
 
 - `DaprSidecarChannelAuthenticationHandler` fails any request carrying an `Authorization` header with `CredentialConflict` (`src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprSidecarChannelAuthenticationHandler.cs:38`). Severity unverified (would be medium): Dapr service invocation forwards caller headers, so a channel-only route reached by a caller that also sends a bearer would be denied. Settle by confirming in chunks B/C that `ProjectionNotificationController` callers and the Operations relay never combine the channel scheme with a bearer.
+
+## Deferred from: code review of spec-5-14-authenticated-fallback-and-dapr-framework-route-protection (2026-10-29)
+
+- `ReminderCallbackTokenFilter` (`src/Hexalith.EventStore.DomainService/ReminderCallbackTokenFilter.cs:35,90`) still admits tokenless Development callbacks. Unverified medium; settle by confirming the reminder callback route also requires the channel policy.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Reject changed accepted ordinary-tail identities during a later shared rebuild.
+  evidence: Local executable /tmp/bounded-owner-review-repro captures 65 events, accepts ordinary event 66, then successfully promotes a changed event-66 payload. Both baseline ae917d3e4dbab20b8982c5222a13611c3e3faf35 and current code compare only the previous captured prefix and checkpoint position, leaving ordinary receipt identities unchecked.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Align streamed-owner retirement validation with the admitted contribution chunk bound.
+  evidence: Baseline and current DomainSharedProjectionRebuildDispatcher admit up to 3 * MaxRebuildEventCount + 8 streamed chunks, while ReconcileRetiredPartitionOwnersAsync rejects ChunkCount above MaxRebuildEventCount, so legal multi-chunk terminal cleanup retries can fail.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md`
+  summary: Bound buffered-owner contribution-hash metadata independently of event count.
+  evidence: The unchanged buffered AccumulatePartitionAsync persists every ChunkHashes entry in one manifest; sufficiently many legal contributions exceed the existing one-MiB canonical batch limit. This representation already failed within the old history boundary when combined with inline captured identities; buffered output-metadata paging needs its own compatibility and recovery tests.

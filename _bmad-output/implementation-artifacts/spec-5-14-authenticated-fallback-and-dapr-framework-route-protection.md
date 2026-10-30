@@ -214,3 +214,23 @@ Code review 2026-10-29, chunk A of 4 (`src/Hexalith.EventStore.ServiceDefaults`,
 - `low` — Fixed framework-route list may miss other `/dapr/*` routes: unreachable here; topic metadata covers subscribed handlers.
 - `low` — Embedded-authority token route 400s behind a TLS-terminating proxy: affects only explicitly nonconforming Development fixtures and fails loudly.
 - `low` — Missing `WWW-Authenticate` on the Swagger 401, duplicated header-count checks, null-`effective` message wording: cosmetic.
+
+Code review 2026-10-29, chunk B+C of 4 (all `src/` production code, baseline `5945ba8b3`..working tree; chunk D tests/docs still unreviewed). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor.
+
+- [ ] [Review][Decision] `/problems` error-reference pages now require the human policy — problem-details `type` URLs point at `/problems/*`, so clients following the link get 401. Options: (1) keep human-only and accept it, (2) keep `/problems` publicly readable as an explicit documented exception (conflicts with "no anonymous exception"), (3) serve problem pages from a non-API static surface. [src/Hexalith.EventStore/OpenApi/ErrorReferenceEndpoints.cs:~149]
+- [ ] [Review][Patch] Tier-3 live tests still expect anonymous 200 on `/openapi/v1.json`, swagger and `/problems` routes — they now get 401; authenticate `EventStoreClient` with the token the sibling Tier-3 tests use and add one anonymous-401 control. [tests/Hexalith.EventStore.IntegrationTests/ContractTests/LiveCommandSurfaceSmokeTests.cs:44, OpenApiE2ETests.cs:32-95]
+- [ ] [Review][Patch] Operations `DaprAppChannelTokenMiddleware` and `DaprAppChannelSecurity.RequiresToken` are unreferenced by `Program.cs`; delete them and `DaprAppChannelTokenMiddlewareTests.cs` (live protection is in `EventStoreOperationsHostTests`/`HttpHostSecurityTests`). [src/Hexalith.EventStore.Operations/Security/DaprAppChannelTokenMiddleware.cs]
+- [ ] [Review][Patch] `AdminTenantsController` carries `[Authorize(Policy = "EventStoreHuman")]` on one action only; move it to class level so the library matches the Admin host's composed policies. [src/Hexalith.EventStore.Admin.Server/Controllers/AdminTenantsController.cs:31]
+- [x] [Review][Defer] `ReminderCallbackTokenFilter` still admits tokenless Development callbacks (`IsConfigured => IsDevelopment() || ...`, line 35/90) — deferred: not touched by this diff; actor routes separately require the channel policy. Would be medium if a reminder callback route lacks that policy; settle by confirming the reminder route's endpoint metadata.
+
+#### Rejected (chunk B+C)
+
+- `false` — `IsConfigured` leaves an unused `environment` parameter (CS9113): `IsValid` still passes `environment` to `Verify`.
+- `false` — Dead-letter `unidentified` tenant fails `IsCanonicalTenant`: the value matches `[a-z0-9-]`.
+- `false` — Operations omitting `dapr-caller-app-id` bypasses Admin binding: frozen spec says the header "can only deny mismatches"; role/tenant come from the validated credential.
+- `false` — Operations Development start without a token is unsafe: every relay call is rejected at request time, fail-closed.
+- `false` — Swagger/browser access impossible without a header: header-only human surface is the frozen intent.
+- `false` — Admin `PostConfigure` null policy: `AddAdminApi` registers the three policies; absence fails loudly at startup.
+- `low` — Per-request `ValidateAsync` cost, silent 403/404 on late endpoints, literal `"EventStoreHuman"`/`"Bearer"` strings, duplicated role mapping, relay body buffering/overflow arithmetic, `/HEALTH` casing 403, exception-driven `Finally` fallback, unused `NotRequired`/`isDevelopment` shims (already scoped by the chunk A patch), snapshot-protector layout change in an unrelated commit, formatting/using order: no demonstrated user harm, or fix adds complexity.
+- `low` — `RequirePublicEndpoint` removed without `[Obsolete]`/diagnostic: the generic startup message fails loudly and the spec intends no anonymous exceptions.
+- `low` — Generated `[Authorize(Policy="EventStoreHuman")]` needs host registration: sample/catalog hosts register it; a missing policy fails loudly.

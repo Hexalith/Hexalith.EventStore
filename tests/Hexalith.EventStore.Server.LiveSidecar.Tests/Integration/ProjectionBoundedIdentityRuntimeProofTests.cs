@@ -8,6 +8,16 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 /// <summary>Checks source and loaded-image binding before an expensive Dapr/process qualification.</summary>
 public sealed class ProjectionBoundedIdentityRuntimeProofTests
 {
+    [Theory]
+    [InlineData("/checkout/src/Module/Type.cs", true)]
+    [InlineData("/checkout/tests/Module.Tests/TypeTests.cs", true)]
+    [InlineData("C:\\checkout\\src\\Module\\Type.cs", true)]
+    [InlineData("C:\\checkout\\tests\\Module.Tests\\TypeTests.cs", true)]
+    [InlineData("C:\\checkout\\tools\\Type.cs", false)]
+    [InlineData("/checkout/tools/Type.cs", false)]
+    public void RuntimeSourceSelectionAcceptsBothPlatformPathSeparators(string path, bool expected)
+        => ProjectionBoundedIdentityRuntimeProof.IsRuntimeSourcePath(path).ShouldBe(expected);
+
     [Fact]
     public void LoadedImagesMatchExactPortablePdbDocuments()
     {
@@ -51,9 +61,15 @@ public sealed class ProjectionBoundedIdentityRuntimeProofTests
             if (generated)
                 ProjectionBoundedIdentityRuntimeProof.ReadValidatedDocumentSource(metadata, handle, path).ShouldBe(embedded);
             else
+            {
                 Should.Throw<InvalidOperationException>(() =>
                     ProjectionBoundedIdentityRuntimeProof.ReadValidatedDocumentSource(metadata, handle, path))
                     .Message.ShouldBe("Runtime PDB source differs: " + path);
+                File.Delete(path);
+                Should.Throw<InvalidOperationException>(() =>
+                    ProjectionBoundedIdentityRuntimeProof.ReadValidatedDocumentSource(metadata, handle, path))
+                    .Message.ShouldBe("Current runtime PDB source is unavailable: " + path);
+            }
         }
         finally
         {

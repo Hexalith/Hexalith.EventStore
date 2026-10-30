@@ -58,13 +58,13 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
         DomainSharedProjectionRebuildRequest Action(DomainSharedProjectionRebuildAction action) => new(DomainSharedProjectionRebuildProtocol.Version, action, identity);
         void WriteEvidence()
         {
+            AssertBounds();
             var payload = new JsonObject
             {
                 ["bufferedOwner"] = bufferedOwner, ["inheritOwner"] = inheritOwner,
                 ["phase"] = phase, ["pid"] = Environment.ProcessId, ["count"] = count, ["tenant"] = tenant,
                 ["measurements"] = JsonSerializer.SerializeToNode(store.Measurements), ["runtime"] = ProjectionBoundedIdentityRuntimeProof.Capture(),
-                ["observations"] = observations,
-                ["buildGraph"] = "Debug;UseHexalithProjectReferences=true;net10.0"
+                ["observations"] = observations
             };
             File.WriteAllText(evidence, payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         }
@@ -109,7 +109,6 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
             observations["unchangedReplayVerified"] = true;
             (await OrdinaryAsync(Event("owner-a", 1) with { MessageId = "contradictory-original" })).ShouldBe(ProjectionDispatchStatus.Failed);
             (await coordinator.GetStatusAsync(scope)).DeliveryConflicts.ShouldNotBeEmpty();
-            AssertBounds();
             WriteEvidence();
             return;
         }
@@ -157,7 +156,6 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
         {
             (await OrdinaryAsync(Event("owner-a", 1) with { MessageId = "contradictory-original" })).ShouldBe(ProjectionDispatchStatus.Failed);
             (await coordinator.GetStatusAsync(scope)).DeliveryConflicts.ShouldNotBeEmpty();
-            AssertBounds();
             WriteEvidence();
             return;
         }
@@ -169,7 +167,6 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
         (await Send(Action(DomainSharedProjectionRebuildAction.Commit))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
         (await Send(Action(DomainSharedProjectionRebuildAction.Verify))).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
         await ObserveInheritedOwnerAsync();
-        AssertBounds();
         WriteEvidence();
         // A distinct worker must prove the inherited original owner over persisted Dapr state.
         Environment.Exit(73);

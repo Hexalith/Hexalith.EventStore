@@ -1141,6 +1141,20 @@ def bind_replacement_original(observation):
     ordinal(original['RevocationRevision'])
     requests = observation.get('consumptionRequests')
     require(isinstance(requests, list) and requests and original['BatchId'] == requests[0]['Capability']['BatchId'], 'ACTIVATION_ORIGINAL_SUBSTITUTED')
+    if observation.get('producerIdentity') is not None:
+        owners = observation.get('ownerBatches')
+        require(isinstance(owners, list) and len(owners) == 1, 'ACTIVATION_OWNER_ORIGINAL_MISSING')
+        owner = native_record(owners[0], 'Original Current Outcome BlockedReplacement', 'ACTIVATION_OWNER_SCHEMA_INVALID')
+        historical, current = owner['Original'], owner['Current']
+        capture_consumption_request(historical)
+        capture_consumption_request(current)
+        logical = 'Issuer Audience TenantId DeletionRequestId DestructionSealId BatchKind BatchOrdinal BatchId ManifestDigest GuardStreamId'.split()
+        require(current == requests[0] and owner['BlockedReplacement'] is None
+                and all(historical['Capability'][key] == current['Capability'][key] for key in logical)
+                and historical['Targets'] == current['Targets']
+                and historical['Capability']['AttestationOrdinal'] + 1 == current['Capability']['AttestationOrdinal']
+                and owner['Outcome']['ReceiptId'] == original['NewBlockReceiptId']
+                and owner['Outcome']['BlockedKeyVersion'] == original['NewKeyVersion'], 'ACTIVATION_OWNER_ORIGINAL_SUBSTITUTED')
     require(original['NewBlockReceiptId'] == value['newBlockReceiptId']
             and original['NewKeyVersion'] == value['newKeyVersion'] == observation['ownerOutcome']['blockedKeyVersion']
             and original['RevocationRevision'] == value['revocationRevision'] == observation['ownerOutcome']['revocationRevision'],
@@ -1571,12 +1585,27 @@ def bind_producer_originals(observation, commit, binary_sha, role_configs=None):
         require(producer['RoleIdentity'] == role_configs['executor']['identity'], 'EXECUTOR_PRODUCER_ROLE_SUBSTITUTED')
     def bind_execution(retained):
         fields = set('SourceIdentity Bindings SealedPayloadSha256 CompletionDigest Completion Producer'.split())
-        require(isinstance(retained, dict) and fields <= set(retained) <= fields | {'Call'}, 'COPY_PRODUCER_ORIGINAL_SCHEMA_INVALID')
+        require(isinstance(retained, dict) and fields <= set(retained) <= fields | {'Call', 'CopyPurposes'}, 'COPY_PRODUCER_ORIGINAL_SCHEMA_INVALID')
+        purposes = retained.get('CopyPurposes')
+        if purposes is not None:
+            require(isinstance(purposes, dict) and 1 <= len(purposes) <= 2
+                    and all(isinstance(key, str) and re.fullmatch(r'[0-9A-F]{64}', key)
+                            and value in ('source-outbox', 'target-event', 'snapshot', 'cache') for key, value in purposes.items()), 'COPY_PURPOSE_SCHEMA_INVALID')
         call = retained.get('Call')
         if call is None and not role_configs:
+            require(purposes is None, 'COPY_PURPOSE_EXECUTION_ORIGINAL_MISSING')
             return
         native_record(call, 'Id Kind Payload OperationId RequestSha256', 'SOURCE_EXECUTION_ORIGINAL_MISSING')
         require(type(call['Kind']) is int and call['Kind'] in (0, 3) and isinstance(call['Payload'], dict), 'SOURCE_EXECUTION_CALL_INVALID')
+        source = call['Payload'].get('Source', call['Payload'].get('source'))
+        require(isinstance(source, dict), 'COPY_PURPOSE_SOURCE_MISSING')
+        def location(key):
+            return hashlib.sha256(native_json_bytes({'Component': source['Component'], 'Key': key,
+                       'Metadata': dict(sorted(source['Metadata'].items()))})).hexdigest().upper()
+        identity = retained['Bindings'][0]['Identity']
+        expected_purposes = {location(source['Key']): 'snapshot', location(source['Key'] + ':cache'): 'cache'} if call['Kind'] == 3 else {
+            location(source['Key']): 'target-event' if identity['Owner']['AggregateId'] == identity['Target']['AgentInteractionId'] else 'source-outbox'}
+        require(purposes == expected_purposes and retained['SourceIdentity'] == location(source['Key']), 'COPY_PURPOSE_SUBSTITUTED')
         identity_text(call['Id'], byte_bound=True)
         identity_text(call['OperationId'], byte_bound=True)
         require(isinstance(call['RequestSha256'], str) and re.fullmatch(r'[a-f0-9]{64}', call['RequestSha256']), 'SOURCE_EXECUTION_REQUEST_INVALID')
@@ -1596,7 +1625,44 @@ def bind_producer_originals(observation, commit, binary_sha, role_configs=None):
     originals = observation.get('copyOriginals', [])
     require(isinstance(originals, list), 'COPY_NATIVE_ORIGINALS_MISSING')
     required = {}
+    physical_copies = {}
+    locations = observation.get('copyLocations')
+    require(isinstance(locations, list) and locations, 'COPY_LOCATION_ORIGINALS_MISSING')
+    location_originals = {}
+    for location in locations:
+        fields = set('Cell PhysicalBacking PhysicalIdentity SourceIdentity CopyKind'.split())
+        require(isinstance(location, dict) and fields <= set(location) <= fields | {'CopyCall', 'CopyOriginal', 'PersistedDocument'}, 'COPY_LOCATION_SCHEMA_INVALID')
+        cell = location['Cell']
+        require(isinstance(cell, dict) and set('Component Key Metadata'.split()) <= set(cell) <= set('Component Key Metadata AnchorScope CompletionKey CopyKind'.split()), 'COPY_CELL_SCHEMA_INVALID')
+        require(cell.get('CopyKind') == location['CopyKind'] and isinstance(cell['Metadata'], dict)
+                and isinstance(location['PhysicalBacking'], str) and location['PhysicalBacking'].strip(), 'COPY_LOCATION_SUBSTITUTED')
+        def identity(component):
+            return hashlib.sha256(native_json_bytes({'Component': component, 'Key': cell['Key'], 'Metadata': dict(sorted(cell['Metadata'].items()))})).hexdigest().upper()
+        require(location['SourceIdentity'] == identity(cell['Component']) and location['PhysicalIdentity'] == identity(location['PhysicalBacking'])
+                and location['SourceIdentity'] not in location_originals, 'COPY_LOCATION_SUBSTITUTED')
+        if location['CopyKind'] in ('backup', 'restored'):
+            require(set(location) == fields | {'CopyCall', 'CopyOriginal', 'PersistedDocument'}, 'COPY_ATOMIC_ORIGINAL_MISSING')
+            call, original = location['CopyCall'], location['CopyOriginal']
+            native_record(original, 'CallDigest SourceIdentity SourceDigest Result', 'COPY_ATOMIC_SCHEMA_INVALID')
+            source = call['Payload']
+            kind = 25 if location['CopyKind'] == 'backup' else 26
+            # Names are encoded by the native enum; numeric values are checked below from the fixed public contract.
+            require(call['Kind'] == kind and original['CallDigest'] == hashlib.sha256(native_json_bytes(call)).hexdigest().upper()
+                    and original['SourceDigest'] == call['SourceDigest'] == hashlib.sha256(native_json_bytes(location['PersistedDocument'])).hexdigest().upper(), 'COPY_ATOMIC_ORIGINAL_SUBSTITUTED')
+            source_id = hashlib.sha256(native_json_bytes({'Component': source['Component'], 'Key': source['Key'], 'Metadata': dict(sorted(source['Metadata'].items()))})).hexdigest().upper()
+            destination = source['Key'] + (':backup' if location['CopyKind'] == 'backup' else ':restored' if source.get('AnchorScope') is None else '')
+            require(original['SourceIdentity'] == source_id and cell['Component'] == source['Component'] and cell['Metadata'] == source['Metadata']
+                    and cell['Key'] == destination, 'COPY_ATOMIC_LOCATION_SUBSTITUTED')
+        else:
+            require(set(location) == fields, 'COPY_LOCATION_SCHEMA_INVALID')
+        location_originals[location['SourceIdentity']] = location
     for record in observation['records']:
+        location = record.get('sourceIdentity')
+        require(isinstance(location, str) and len(location) == 64, 'COPY_PHYSICAL_IDENTITY_MISSING')
+        require(location in location_originals and location_originals[location]['CopyKind'] == record['kind'], 'COPY_LOCATION_SUBSTITUTED')
+        identity = (location_originals[location]['PhysicalIdentity'], target_key(record['target']))
+        require(identity not in physical_copies, 'COPY_PHYSICAL_LOCATION_REUSED')
+        physical_copies[identity] = record['kind']
         raw = base64.b64decode(record['bytesBase64'], validate=True)
         document = strict_json(raw)
         if document.get('Format') == 'json+pdenc-v2-entries':
@@ -1630,6 +1696,14 @@ def bind_producer_originals(observation, commit, binary_sha, role_configs=None):
                 and writer['SealedPayloadSha256'] == digest_value and isinstance(writer['ReceiptId'], str) and writer['ReceiptId'].strip(),
                 'COPY_WRITER_ORIGINAL_SUBSTITUTED')
         bind_execution(retained)
+        purposes = retained.get('CopyPurposes')
+        location = record['sourceIdentity']
+        if record['kind'] in ('backup', 'restored'):
+            require(location_originals[location]['CopyOriginal']['SourceIdentity'] in (purposes or {}), 'COPY_PURPOSE_SUBSTITUTED')
+        else:
+            legacy_kind = 'snapshot' if binding['Identity']['Kind'] == 2 else ('target-event' if binding['Identity']['Owner']['AggregateId'] == record['target']['AgentInteractionId'] else 'source-outbox')
+            require((isinstance(purposes, dict) and purposes.get(location) == record['kind'])
+                    or (purposes is None and retained.get('SourceIdentity') == location and record['kind'] == legacy_kind), 'COPY_PURPOSE_SUBSTITUTED')
         require(retained['Bindings'] == [binding] and retained['SealedPayloadSha256'] == digest_value and retained['Producer'] == producer,
                 'COPY_PRODUCER_ORIGINAL_SUBSTITUTED')
         completion = retained['Completion']
@@ -1702,8 +1776,35 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
         for target in targets:
             refs = [r['rootReference'] for r in observation['records'] if r['target'] == target]
             require(len(set(refs)) == 1 and bool(refs), 'INTERACTION_ROOT_DIVERGED')
-    if 'no-effect' in checks:
-        require(observation['effectRevisionAfterRejectedOperation'] == observation['effectRevisionBeforeRejectedOperation'], 'REJECTED_OPERATION_HAD_EFFECT')
+    if 'no-effect' in checks or 'rejectedEffectOriginals' in observation:
+        if observation.get('producerIdentity') is not None:
+            effects = observation.get('rejectedEffectOriginals')
+            require(isinstance(effects, list) and effects, 'INDEPENDENT_EFFECT_ORIGINALS_MISSING')
+            before, after = [], []
+            for effect in effects:
+                native_record(effect, 'Call Before After', 'EFFECT_ORIGINAL_SCHEMA_INVALID')
+                call_digest = hashlib.sha256(native_json_bytes(effect['Call'])).hexdigest().upper()
+                for phase, values in (('before', before), ('after', after)):
+                    proof = effect['Before' if phase == 'before' else 'After']
+                    native_record(proof, 'TenantId StoreId EnrollmentId CallDigest Boundary CustodyStateSha256 NativePolicy Fingerprint ReceiptId', 'EFFECT_ORIGINAL_SCHEMA_INVALID')
+                    require(proof['CallDigest'] == call_digest and proof['Boundary'] == phase and proof['TenantId'] == targets[0]['TenantId']
+                            and proof['StoreId'] == observation['producerIdentity']['StoreId']
+                            and proof['EnrollmentId'] == observation['producerIdentity']['EnrollmentId'], 'EFFECT_ORIGINAL_SUBSTITUTED')
+                    native_record(proof['NativePolicy'], 'LatestVersion MinEncryptionVersion MinDecryptionVersion MinAvailableVersion Derived Exportable AllowPlaintextBackup DeletionAllowed', 'NATIVE_EFFECT_POLICY_MISSING')
+                    require(all(type(proof['NativePolicy'][name]) is int and proof['NativePolicy'][name] >= 0
+                                for name in ('LatestVersion', 'MinEncryptionVersion', 'MinDecryptionVersion', 'MinAvailableVersion')), 'NATIVE_EFFECT_POLICY_INVALID')
+                    require(isinstance(proof['CustodyStateSha256'], str) and re.fullmatch(r'[0-9A-F]{64}', proof['CustodyStateSha256'])
+                            and all(type(proof['NativePolicy'][name]) is bool for name in ('Derived', 'Exportable', 'AllowPlaintextBackup', 'DeletionAllowed')), 'NATIVE_EFFECT_POLICY_INVALID')
+                    digest = hashlib.sha256(native_json_bytes({'CustodyStateSha256': proof['CustodyStateSha256'], 'NativePolicy': proof['NativePolicy']})).hexdigest().upper()
+                    receipt = 'erc-effect:' + hashlib.sha256(native_json_bytes({'tenant': proof['TenantId'], 'StoreId': proof['StoreId'], 'EnrollmentId': proof['EnrollmentId'],
+                        'call': call_digest, 'boundary': phase, 'fingerprint': digest})).hexdigest().upper()
+                    require(digest == proof['Fingerprint'] and proof['ReceiptId'] == receipt, 'EFFECT_FINGERPRINT_SUBSTITUTED')
+                    values.append(digest)
+            if 'no-effect' in checks:
+                require(hashlib.sha256(native_json_bytes(before)).hexdigest().upper() == observation['effectRevisionBeforeRejectedOperation']
+                    and hashlib.sha256(native_json_bytes(after)).hexdigest().upper() == observation['effectRevisionAfterRejectedOperation'], 'INDEPENDENT_EFFECT_BOUNDARY_SUBSTITUTED')
+        if 'no-effect' in checks:
+            require(observation['effectRevisionAfterRejectedOperation'] == observation['effectRevisionBeforeRejectedOperation'], 'REJECTED_OPERATION_HAD_EFFECT')
     if 'pin' in checks:
         require([r['status'] for r in observation['pinOutcomes']] == ['Pinned', 'HoldPinned', 'HoldPinned', 'Authorized', 'Unpinned'], 'HOLD_PIN_PROOF_INVALID')
         bind_pin_originals(observation, targets)

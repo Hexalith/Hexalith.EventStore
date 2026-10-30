@@ -1,3 +1,5 @@
+> Current status — review round 5 requires corrections. Loop-4 review candidates Platform `6666ec6ee681730af9b904978c1e21b67614ecce` and EventStore `8e6be5f55175e6ba979df43f40c8713a42f5f50d` are withdrawn. Earlier passes/proposals are historical; no new accepted target/profile/date or installed/physical qualification is established.
+
 > Current status — complete loop-4 source candidates and verification are ready for independent review; all earlier review candidates remain withdrawn. No accepted target/profile/date or installed/physical qualification is established.
 
 ## Parent loop-4 source review candidates — 2026-10-30
@@ -627,3 +629,14 @@ The 2026-10-18 discovery sentence is stale for Platform's internal, unregistered
 A restored actor snapshot and a retained OpenBao revival are not current authority. The retained native result still records restored plaintext with `g1Qualified:false` and was not rerun. This section does not change the Agents register. It does not run Live, OQ-5.4-1, an Agents consumer, provisioning, or a destructive probe.
 
 The final staged check added the existing CRLF actor whitespace rule to `.gitattributes`, preserving the exact executed source bytes. The initial loop-4 candidate objects remain historical; the complete review pair above supersedes them. No runtime code changed and the existing verification remains applicable.
+
+
+## Loop-5 isolated implementation handback — 2026-10-30
+
+The [loop-5 handback](../../../platform/docs/implementation/ext-protection-1-loop5/README.md) records the same-ERC bounded authoritative occurrence index, exact copy-purpose/backing proof, private-signer/trust/genesis startup checks, complete recipe/permission preflight, independently retained native effect boundaries and exact-call recovery. It states the restrictive Unknown window for read results lost before their separate native-original CAS. Both actual P33 orderings and the full P20 observer/Python no-effect path are covered.
+
+Final local qualification verification passes Protection 471 total/465 executed/six native-only skips, existing lifecycle 42, EventStore 444, contracts 14, payload 897, offline 116 and harness 12; Source retains all 41 cases with liveExecuted:false. Required Debug/project-reference/-nodeReuse:false host/three-role/analyzer builds are clean. Fresh final native-v7 passes all five/zero failures/errors/skips in 2,534.671 seconds with full 1,000 targets, actual 9 MiB state, a 9,485,043-byte native head, both history rows, native 256-owner/occurrence index, all shipped restricted-policy checks and verified owned-container absence/tmpfs unmount. Fresh native and final qualification graphs remain separate with exact manifests/source-difference evidence.
+
+Status remains in-progress for parent scoped merge, source candidate capture, task/matrix audit and review. No replacement immutable target, accepted profile/date or Committed/Available record is proposed. Physical-copy qualification and the complete independently installed 41-case command remain external/unestablished, and production destruction remains independently gated. The existing owner command and missing acceptance inputs remain unchanged and unrun.
+
+The native-v3 run exhausted its existing one-hour budget and remains BlockedUnknown with complete owned cleanup. Final v7 retains the exact unchanged workload and guards after a verified bounded immutable-index IO correction; its fresh all-five result passes with verified cleanup. Final qualification-v8 is separately pinned/mirrored; only two qualification production files and two tests differ from native-v7, with 117 native-relevant files byte-identical and no whole-binary equality claim.
