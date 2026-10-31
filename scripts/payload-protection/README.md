@@ -29,3 +29,9 @@ cases visibly predecessor-gated.
 
 Normative digest:
 `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`.
+
+The current Python verifier selects cryptography 50.0.2 (Python 3.9 or later).
+The active fixture manifest binds the current verifier dependency lock separately
+from its frozen vector/normative baseline source. Updating that dependency lock
+preserves every golden vector, normative digest and expected derived value; both
+independent verifiers must still produce equivalent derived objects.
