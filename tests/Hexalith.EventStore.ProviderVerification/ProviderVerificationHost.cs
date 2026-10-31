@@ -242,8 +242,9 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
         services.AddSingleton<ICommandRouter, StatefulCommandRouter>();
 
         // Contract verification substitutes the routers and serves no committed route catalog. Compose the
-        // command handler through the Server's isolated-protocol seam and omit catalog eligibility, which
-        // would otherwise refuse every submission for lack of a bound catalog host identity.
+        // command handler and query controller through their isolated-protocol seams and omit catalog
+        // eligibility, which would otherwise refuse every submission for lack of a bound catalog host identity.
+        services.Replace(ServiceDescriptor.Singleton<Microsoft.AspNetCore.Mvc.Controllers.IControllerActivator, ProviderVerificationControllerActivator>());
         services.RemoveAll<MediatR.IRequestHandler<SubmitCommand, SubmitCommandResult>>();
         services.AddScoped<MediatR.IRequestHandler<SubmitCommand, SubmitCommandResult>>(provider =>
             new Hexalith.EventStore.Server.Pipeline.SubmitCommandHandler(
