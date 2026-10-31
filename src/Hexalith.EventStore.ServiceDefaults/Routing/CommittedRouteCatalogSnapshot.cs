@@ -50,6 +50,26 @@ public sealed class CommittedRouteCatalogSnapshot
         { ProjectionTypes = Array.AsReadOnly(c.ProjectionTypes.ToArray()) }).ToArray());
     }
 
+    /// <summary>Freezes a complete verified activation, including opt-in v2 membership and independently observed runtime coordinates.</summary>
+    public CommittedRouteCatalogSnapshot(RouteCatalogActivation activation, long epoch, string? localAppId, RouteCatalogStateCoordinates? coordinates)
+        : this((activation ?? throw new ArgumentNullException(nameof(activation))).CanonicalCatalog, activation.RootDigest, epoch,
+            activation.AuxiliaryOperations, activation.ProjectionCapabilities, localAppId)
+    {
+        TechnicalHttpCatalogBinding.Validate(activation);
+        TechnicalHttpReceivers = TechnicalHttpCatalogBinding.Freeze(activation.TechnicalHttpReceivers) ?? Array.AsReadOnly(Array.Empty<RouteCatalogTechnicalHttpReceiver>());
+        if (TechnicalHttpReceivers.Count > 0 && (coordinates is null || string.IsNullOrWhiteSpace(localAppId)))
+            throw new RouteCatalogUnavailableException("Technical v2 dispatch requires independently observed local authority coordinates and identity.", RouteCatalogRefusalReason.Configuration);
+        ActivationBindingDigest = TechnicalHttpReceivers.Count == 0 ? null : RouteCatalogActivationBinding.ComputeDigest(activation);
+        AuthorityCoordinates = coordinates;
+    }
+
+    /// <summary>Gets deeply frozen technical action membership, separate from executable domain routes.</summary>
+    public IReadOnlyList<RouteCatalogTechnicalHttpReceiver> TechnicalHttpReceivers { get; } = Array.AsReadOnly(Array.Empty<RouteCatalogTechnicalHttpReceiver>());
+    /// <summary>Gets the full run-bound v2 activation identity; absent for legacy snapshots.</summary>
+    public string? ActivationBindingDigest { get; }
+    /// <summary>Gets the independently selected local Dapr authority coordinates.</summary>
+    public RouteCatalogStateCoordinates? AuthorityCoordinates { get; }
+
     /// <summary>Gets the monotonic commit/rollback fence.</summary>
     public long Epoch { get; }
     /// <summary>Gets the independently verified Dapr identity of the acquiring host.</summary>

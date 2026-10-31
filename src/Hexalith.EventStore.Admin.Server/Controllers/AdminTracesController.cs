@@ -14,6 +14,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// Operates on a different URL namespace (/traces/{tenantId}/{correlationId}) because
 /// the trace map takes a correlation ID as primary identifier, not a stream identity.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = "EventStoreHuman")]
 [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]

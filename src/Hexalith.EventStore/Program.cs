@@ -54,8 +54,14 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
 app.UseEventStoreHttpHostSecurity();
 app.UseAuthorization();
 if (!string.IsNullOrEmpty(app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:CatalogPath"]))
-    Hexalith.EventStore.ServiceDefaults.Routing.FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app,
-        Hexalith.EventStore.Server.Routing.RunScopedRouteCatalogGateway.Operation, technical: true);
+{
+    if (Hexalith.EventStore.ServiceDefaults.Routing.TechnicalHttpRouteCatalogReceiver.IsEnabled(app.Configuration))
+        Hexalith.EventStore.ServiceDefaults.Routing.TechnicalHttpRouteCatalogReceiver.UseDevelopmentTechnicalHttpCatalogReceiver(app,
+            Hexalith.EventStore.Server.Routing.RunScopedRouteCatalogGateway.Operation);
+    else
+        Hexalith.EventStore.ServiceDefaults.Routing.FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app,
+            Hexalith.EventStore.Server.Routing.RunScopedRouteCatalogGateway.Operation);
+}
 app.UseCloudEvents();
 
 bool declarativeSubscriptions = app.Configuration.GetValue<bool>("Dapr:DeclarativeSubscriptions");

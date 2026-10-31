@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -51,15 +50,33 @@ public static class DevelopmentRouteCatalogAspireExtensions
         this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> gateway,
         IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyList<DevelopmentRouteCatalogReceiver> receivers,
         string stateStoreComponentPath, string daprNamespace = "default")
-        => Compose(builder, gateway, owners, receivers, ReadYamlOrJson(stateStoreComponentPath), daprNamespace);
+        => throw new InvalidOperationException("Explicit owner custody and the retained idempotency digest ring are required; an empty routing cell does not prove a new business backend.");
+
+    /// <summary>Composes an explicitly owned backend using its retained key ring and successor history.</summary>
+    public static DevelopmentRouteCatalogComposition AddEventStoreDevelopmentRouteCatalog(
+        this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> gateway,
+        IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyList<DevelopmentRouteCatalogReceiver> receivers,
+        string stateStoreComponentPath, DevelopmentRouteCatalogCompositionOptions options, string daprNamespace = "default")
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return Compose(builder, gateway, owners, receivers, ReadYamlOrJson(stateStoreComponentPath), options, daprNamespace);
+    }
 
     /// <summary>Uses the backend selected by the actual SDK state-store model, with ordinary modeled late overrides preserved.</summary>
     public static DevelopmentRouteCatalogComposition AddEventStoreDevelopmentRouteCatalog(
         this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> gateway,
         IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyList<DevelopmentRouteCatalogReceiver> receivers,
         IResourceBuilder<IDaprComponentResource> stateStore, string daprNamespace = "default")
+        => throw new InvalidOperationException("Explicit owner custody and the retained idempotency digest ring are required; an empty routing cell does not prove a new business backend.");
+
+    /// <summary>Composes the actual SDK backend with an explicit owner profile and retained key ring.</summary>
+    public static DevelopmentRouteCatalogComposition AddEventStoreDevelopmentRouteCatalog(
+        this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> gateway,
+        IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyList<DevelopmentRouteCatalogReceiver> receivers,
+        IResourceBuilder<IDaprComponentResource> stateStore, DevelopmentRouteCatalogCompositionOptions options, string daprNamespace = "default")
     {
         ArgumentNullException.ThrowIfNull(stateStore);
+        ArgumentNullException.ThrowIfNull(options);
         var backend = stateStore.Resource.Annotations.OfType<EventStoreRedisBackendAnnotation>().SingleOrDefault()
             ?? throw new InvalidOperationException("An SDK-selected state backend or explicit owner component input is required.");
         if (stateStore.Resource.Type != "state.redis") throw new InvalidOperationException("The selected SDK state backend is not Redis.");
@@ -68,12 +85,12 @@ public static class DevelopmentRouteCatalogAspireExtensions
             ["kind"] = "Component", ["spec"] = new JsonObject { ["type"] = "state.redis", ["metadata"] = new JsonArray(
                 new JsonObject { ["name"] = "redisHost", ["value"] = backend.DefaultRedisHost }) },
         };
-        return Compose(builder, gateway, owners, receivers, component, daprNamespace);
+        return Compose(builder, gateway, owners, receivers, component, options, daprNamespace);
     }
 
     private static DevelopmentRouteCatalogComposition Compose(IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> gateway,
         IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyList<DevelopmentRouteCatalogReceiver> receivers,
-        JsonObject stateComponent, string daprNamespace)
+        JsonObject stateComponent, DevelopmentRouteCatalogCompositionOptions options, string daprNamespace)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(gateway);
@@ -101,7 +118,10 @@ public static class DevelopmentRouteCatalogAspireExtensions
             throw new InvalidOperationException("Duplicate or incomplete owner invocation declarations are not admitted.");
         string[] hosts = receivers.Select(receiver => receiver.Project.Resource.Name).Order(StringComparer.Ordinal).ToArray();
         string gatewayAppId = apps[gateway.Resource];
-        var catalog = BuildCatalog(gatewayAppId, owners, apps);
+        var custody = new DevelopmentRouteCatalogCustody(options);
+        RouteCatalogEnvelope catalog;
+        try { catalog = BuildCatalog(gatewayAppId, owners, apps, options, custody); }
+        catch { custody.Dispose(); throw; }
         string root = RouteCatalogCodec.ComputeRootDigest(catalog);
         string instance = Guid.NewGuid().ToString("N");
         string directory = Directory.CreateTempSubdirectory("hexalith-route-catalog-").FullName;
@@ -109,8 +129,10 @@ public static class DevelopmentRouteCatalogAspireExtensions
         try
         {
             Write(directory, "catalog.json", RouteCatalogCodec.Encode(catalog));
-            Write(directory, "receipt.json", JsonSerializer.SerializeToUtf8Bytes(new { instanceId = instance, rootDigest = root }));
-            string componentName = "routing-" + instance;
+            Write(directory, "receipt.json", receivers.Any(receiver => receiver.TechnicalHttp)
+                ? JsonSerializer.SerializeToUtf8Bytes(new { instanceId = instance, rootDigest = root, bindingVersion = 2 })
+                : JsonSerializer.SerializeToUtf8Bytes(new { instanceId = instance, rootDigest = root }));
+            string componentName = options.AuthorityComponentName;
             JsonObject component = stateComponent.DeepClone().AsObject();
             if (component["kind"]?.GetValue<string>() != "Component" || component["spec"]?["type"]?.GetValue<string>() != "state.redis")
                 throw new InvalidOperationException("The actual shared Redis component is required.");
@@ -124,10 +146,13 @@ public static class DevelopmentRouteCatalogAspireExtensions
                 authority.WithMetadata(item!["name"]!.GetValue<string>(), literal);
             }
             var observer = new DevelopmentRouteCatalogComponentObserver(authority.Resource, receivers.Select(receiver => receiver.Project.Resource).ToArray(), apps,
-                receivers.ToDictionary(receiver => receiver.Project.Resource, receiver => Path.Combine(directory, receiver.Project.Resource.Name + ".configuration.json")));
+                receivers.ToDictionary(receiver => receiver.Project.Resource, receiver => Path.Combine(directory, receiver.Project.Resource.Name + ".configuration.json")),
+                directory, custody.BackendBytes);
             builder.Services.AddSingleton<IDistributedApplicationEventingSubscriber>(observer);
-            string digestKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-            var key = builder.AddParameter("catalog-" + instance + "-digest-key", () => digestKey, secret: true);
+            if (receivers.Any(receiver => receiver.ActorStateOwners.Count > 0))
+                builder.Services.AddSingleton<IDistributedApplicationEventingSubscriber>(new DevelopmentRouteCatalogOwnerReadObserver(builder, receivers, apps, directory));
+            var keys = options.DigestKeys.ToDictionary(pair => pair.Key, pair =>
+                builder.AddParameter("catalog-" + instance + "-digest-" + pair.Key, () => pair.Value, secret: true), StringComparer.Ordinal);
             foreach (var receiver in receivers)
             {
                 var project = receiver.Project;
@@ -155,7 +180,18 @@ public static class DevelopmentRouteCatalogAspireExtensions
                 Set("Directory", directory); Set("HostId", project.Resource.Name); Set("AppId", apps[project.Resource]);
                 Set("CoordinatorHostId", gateway.Resource.Name); Set("AttemptId", instance); Set("InstanceId", instance);
                 Set("AuthorityRole", RouteCatalogAuthorityComponentPolicy.IsolatedRole);
+                if (receiver.TechnicalHttp)
+                {
+                    Set("ReceiverProfile", RouteCatalogTechnicalHttpPolicy.FenceVersion);
+                    if (!ReferenceEquals(project.Resource, gateway.Resource)) Set("Role", "admin-receiver");
+                }
+                if (receivers.Any(peer => peer.TechnicalHttp)) Set("BindingVersion", "2");
                 Set("CatalogPath", Path.Combine(directory, "catalog.json")); Set("RootDigest", root);
+                if (custody.PredecessorActivationPath is { } predecessor)
+                {
+                    Set("PredecessorActivationPath", predecessor);
+                    Set("PredecessorReadbackPath", custody.PredecessorReadbackPath!);
+                }
                 project.WithEnvironment(context => context.EnvironmentVariables["EventStore__RouteCatalog__DevelopmentBootstrap__ComponentPath"] = observer.ComponentPath
                     ?? throw new InvalidOperationException("The actual modeled authority has not been rendered."));
                 Set("AccessControlPath", aclPath);
@@ -164,7 +200,7 @@ public static class DevelopmentRouteCatalogAspireExtensions
                 string[] selectedApps = apps.Values.Order(StringComparer.Ordinal).ToArray();
                 for (int i = 0; i < selectedApps.Length; i++) Set("SelectedAppIds__" + i, selectedApps[i]);
                 project.WithEnvironment("EventStore__RouteCatalog__StateStore", componentName)
-                    .WithEnvironment("EventStore__RouteCatalog__StateKey", instance + "-authority")
+                    .WithEnvironment("EventStore__RouteCatalog__StateKey", options.AuthorityStateKey)
                     .WithEnvironment("EventStore__DomainService__AppId", apps[project.Resource]);
                 foreach (var wait in project.Resource.Annotations.OfType<WaitAnnotation>().Where(wait => wait.WaitType == WaitType.WaitUntilHealthy
                     && receivers.Any(peer => ReferenceEquals(peer.Project.Resource, wait.Resource))).ToArray())
@@ -180,18 +216,20 @@ public static class DevelopmentRouteCatalogAspireExtensions
             }
             gateway.WithEnvironment("EventStore__IdempotencyAdmission__Enabled", "true")
                 .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeySource", "Configuration")
-                .WithEnvironment("EventStore__IdempotencyAdmission__ActiveDigestKeyVersion", "development-v1")
-                .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeys__development-v1", key)
-                .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeySecretStoreName", "secretstore")
-                .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeySecretName", "eventstore-idempotency-ring")
-                .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeySecretGeneration", "development-v1");
-            return new(directory, root);
+                .WithEnvironment("EventStore__IdempotencyAdmission__ActiveDigestKeyVersion", options.ActiveDigestKeyGeneration)
+                .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeySecretStoreName", options.SecretStore)
+                .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeySecretName", options.LogicalSecretName)
+                .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeySecretGeneration", options.SecretMapGeneration);
+            foreach (var key in keys) gateway.WithEnvironment("EventStore__IdempotencyAdmission__DigestKeys__" + key.Key, key.Value);
+            return new(directory, root, custody);
         }
-        catch { Directory.Delete(directory, recursive: true); throw; }
+        catch { custody.Dispose(); Directory.Delete(directory, recursive: true); throw; }
     }
 
-    private static RouteCatalogEnvelope BuildCatalog(string gatewayAppId, IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyDictionary<ProjectResource, string> apps)
+    private static RouteCatalogEnvelope BuildCatalog(string gatewayAppId, IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyDictionary<ProjectResource, string> apps,
+        DevelopmentRouteCatalogCompositionOptions options, DevelopmentRouteCatalogCustody custody)
     {
+        long generation = custody.PredecessorBytes is null ? 1 : checked(RouteCatalogCodec.Decode(custody.PredecessorBytes, custody.PredecessorRootDigest).Generation + 1);
         List<RouteContractDeclaration> declarations = []; List<RouteOperationContract> operations = [];
         List<RouteCompositionBinding> bindings = []; List<IdempotencyCatalogEntry> policies = [];
         foreach (var owner in owners)
@@ -210,12 +248,24 @@ public static class DevelopmentRouteCatalogAspireExtensions
                         throw new InvalidOperationException("The owner actor query differs from its existing SDK method contract.");
                     bindings.Add(new(route.RouteId, actorQuery ? gatewayAppId : apps[owner.Project.Resource], methods[route.RouteId], route.ContractVersion, false, "*"));
                 }
-                policies.AddRange(commands.Select(command => DevelopmentIdempotencyBindings.Bind(command, 1, gatewayAppId)));
+                policies.AddRange(commands.Select(command =>
+                {
+                    var policy = DevelopmentIdempotencyBindings.Bind(command, generation, gatewayAppId) with
+                    {
+                        ActiveDigestKeyGeneration = options.ActiveDigestKeyGeneration,
+                        ReaderDigestKeyGenerations = options.DigestKeys.Keys.Order(StringComparer.Ordinal).ToArray(),
+                        SecretStore = options.SecretStore, LogicalSecretName = options.LogicalSecretName,
+                        SecretMapGeneration = options.SecretMapGeneration,
+                        KeyMap = options.DigestKeys.Keys.Order(StringComparer.Ordinal).Select(key => new DigestKeyMapReference(key, key)).ToArray(),
+                    };
+                    return policy with { ContentDigest = RouteCatalogCodec.ComputeIdempotencyEntryDigest(policy) };
+                }));
             }
         }
         if (bindings.Count != declarations.Count || declarations.Any(declaration => declaration.Execution?.TargetKind != "domain-service" && !RouteCatalogProjectionActorPolicy.IsQuery(declaration)))
             throw new InvalidOperationException("Every selected domain-service declaration requires one compiled receiver binding.");
-        return VersionedRouteCatalogBuilder.Build(new(1, "Development", declarations, operations, bindings, policies));
+        return VersionedRouteCatalogBuilder.Build(new(generation, "Development", declarations, operations, bindings, policies,
+            custody.PredecessorBytes, custody.PredecessorRootDigest));
     }
 
     private static IDaprSidecarResource Sidecar(ProjectResource project) => project.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;

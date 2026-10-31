@@ -33,7 +33,7 @@ public static class RunScopedRouteCatalogGateway
             foreach (string scheme in new[] { "DaprInternal", RouteCatalogEndpointExtensions.WorkloadScheme })
                 if (policy?.StartsWith(scheme + ":", StringComparison.Ordinal) == true) return policy[(scheme.Length + 1)..];
         if (!policies.Contains(EventStoreHttpHostSecurityExtensions.HumanPolicy, StringComparer.Ordinal)) return null;
-        return DevelopmentTechnicalHttpTransport.Operation(endpoint) ?? path switch
+        return path switch
         {
             "api/v1/commands" => EventStoreOperationIdentifiers.GatewayCommandSubmit,
             "api/v1/queries" => "eventstore:query-read",
@@ -69,9 +69,19 @@ public static class RunScopedRouteCatalogGateway
         }
         return services.AddEventStoreDevelopmentRouteCatalogBootstrap(configuration, async (provider, token) =>
         {
-            var fence = provider.GetRequiredService<FiniteRouteCatalogReceiver>();
-            await fence.WaitForCaptureAsync(token).ConfigureAwait(false);
-            var receiver = fence.Observe();
+            RouteCatalogReceiverSurface receiver;
+            if (TechnicalHttpRouteCatalogReceiver.IsEnabled(configuration))
+            {
+                var technical = provider.GetRequiredService<TechnicalHttpRouteCatalogReceiver>();
+                await technical.WaitForCaptureAsync(token).ConfigureAwait(false);
+                receiver = technical.Observe();
+            }
+            else
+            {
+                var finite = provider.GetRequiredService<FiniteRouteCatalogReceiver>();
+                await finite.WaitForCaptureAsync(token).ConfigureAwait(false);
+                receiver = finite.Observe();
+            }
             using var scope = provider.CreateScope();
             var declarations = CompiledRouteCatalogDeclarations.Read(owners);
             var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, appId,

@@ -20,7 +20,9 @@ builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
 builder.Services.AddProblemDetails();
 builder.Services.AddAdminApi(builder.Configuration);
-builder.Services.AddEventStoreDevelopmentAdminCatalog(builder.Configuration);
+bool technicalAdmin = builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Role"] == "admin-receiver";
+if (technicalAdmin) builder.Services.AddEventStoreDevelopmentAdminCatalog(builder.Configuration);
+else builder.Services.AddEventStoreDevelopmentCallerCatalog(builder.Configuration, "eventstore-admin");
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAdminAuthContext, HttpContextAdminAuthContext>();
 builder.Services
@@ -46,6 +48,7 @@ builder.Services.PostConfigure<AuthorizationOptions>(options =>
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(AdminStreamsController).Assembly);
 
+
 WebApplication app = builder.Build();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
@@ -70,7 +73,8 @@ if (app.Environment.IsDevelopment()
 app.UseEventStoreHttpHostSecurity();
 app.UseAuthorization();
 app.MapControllers();
-app.UseEventStoreDevelopmentAdminCatalog();
+if (technicalAdmin) app.UseEventStoreDevelopmentAdminCatalog();
+else app.UseEventStoreDevelopmentCallerCatalog();
 
 app.Run();
 

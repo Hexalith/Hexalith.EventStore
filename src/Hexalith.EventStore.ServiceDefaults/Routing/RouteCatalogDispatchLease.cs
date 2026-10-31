@@ -12,6 +12,13 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     /// <summary>Gets this dispatch's immutable authority.</summary>
     public CommittedRouteCatalogSnapshot Snapshot { get; } = snapshot;
 
+    /// <summary>Refuses creating new work from a receiver lifetime that has already closed.</summary>
+    internal void RequireOpenForExecution()
+    {
+        lock (_stateGate)
+            if (_closedForExecution) throw new RouteCatalogUnavailableException("A disposed catalog dispatch scope cannot admit detached work.");
+    }
+
     /// <summary>Enrolls the complete captured scope before any remote factory can run, or refuses it without effects.</summary>
     internal static void EnrollRemote(IReadOnlyList<RouteCatalogDispatchLease> leases)
     {

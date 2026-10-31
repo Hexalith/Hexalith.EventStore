@@ -19,6 +19,7 @@ namespace Hexalith.EventStore.Controllers;
 /// EventStore-side operator projection rebuild lifecycle endpoints.
 /// Requires the authenticated principal to hold the GlobalAdministrator role (P-D1).
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/admin/projections")]
@@ -338,7 +339,7 @@ public sealed partial class AdminProjectionRebuildController(
 
     /// <summary>Activates the store-global projection delivery v2 writer protocol after maintenance quiescence.</summary>
     [HttpPost("delivery-writer-protocol/activate")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProjectionDeliveryWriterProtocolResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
@@ -378,7 +379,7 @@ public sealed partial class AdminProjectionRebuildController(
                 body.DowngradeProhibitedAcknowledged),
             cancellationToken).ConfigureAwait(false);
         return status switch {
-            ProjectionDeliveryCutoverStatus.Activated => Ok(new { status = "Activated" }),
+            ProjectionDeliveryCutoverStatus.Activated => Ok(new ProjectionDeliveryWriterProtocolResponse("Activated")),
             ProjectionDeliveryCutoverStatus.PreconditionsFailed => ProblemWithReason(
                 StatusCodes.Status400BadRequest,
                 "Bad Request",
@@ -399,7 +400,7 @@ public sealed partial class AdminProjectionRebuildController(
 
     /// <summary>Hydrates exact delivery receipts from EventStore without invoking projection handlers.</summary>
     [HttpPost("{tenantId}/{projectionName}/delivery-reconciliation/{domain}/{aggregateId}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProjectionDeliveryReconciliationResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
@@ -453,11 +454,7 @@ public sealed partial class AdminProjectionRebuildController(
             .ReconcileFromEventStoreAsync(identity, projectionName, operatorId, cancellationToken)
             .ConfigureAwait(false);
         return result.Status switch {
-            ProjectionDeliveryReconciliationStatus.Completed => Ok(new {
-                status = "Completed",
-                result.ReasonCode,
-                result.PreservedSequence,
-            }),
+            ProjectionDeliveryReconciliationStatus.Completed => Ok(new ProjectionDeliveryReconciliationResponse("Completed", result.ReasonCode, result.PreservedSequence)),
             ProjectionDeliveryReconciliationStatus.ScopeDenied => ProblemWithReason(
                 StatusCodes.Status403Forbidden,
                 "Forbidden",

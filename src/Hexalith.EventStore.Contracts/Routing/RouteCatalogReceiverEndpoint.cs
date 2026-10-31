@@ -25,4 +25,7 @@ public sealed record RouteCatalogReceiverEndpoint(string Pattern, IReadOnlyList<
     /// <summary>Gets the closed SDK discovery or signed notification callback binding.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RouteCatalogDaprCallbackTransport? DaprCallback { get; init; }
+    /// <summary>Gets concrete owner ACL paths independently matched against this actual compiled framework action.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<RouteCatalogHttpGrant>? TechnicalGrants { get; init; }
 }

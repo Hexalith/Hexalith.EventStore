@@ -12,6 +12,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// <summary>
 /// REST API controller for querying DAPR infrastructure — components and sidecar info.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = "EventStoreHuman")]
 [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]

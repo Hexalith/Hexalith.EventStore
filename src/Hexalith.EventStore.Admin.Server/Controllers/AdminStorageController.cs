@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// <summary>
 /// REST API controller for querying and managing storage, snapshots, and compaction.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = "EventStoreHuman")]
 [Route("api/v1/admin/storage")]

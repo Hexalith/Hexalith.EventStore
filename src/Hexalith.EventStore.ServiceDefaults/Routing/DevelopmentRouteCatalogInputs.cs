@@ -33,15 +33,22 @@ public static class DevelopmentRouteCatalogInputs
         var settings = configuration.AsEnumerable().Where(entry => entry.Value is not null && NonsecretAuthenticationSetting(entry.Key))
             .OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase).ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.OrdinalIgnoreCase);
         var configuredKeys = configuration.GetSection("Authentication:BoundStreamRead:PublicKeys").GetChildren().Select(child => child.Key).Order(StringComparer.Ordinal).ToArray();
+        byte[] authentication = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            settings, boundProofCallers = configuredKeys,
+            applicationChannelTokenConfigured = !string.IsNullOrEmpty(configuration["APP_API_TOKEN"]),
+            sidecarApiTokenConfigured = !string.IsNullOrEmpty(configuration["DAPR_API_TOKEN"]),
+        });
+        var actorStateOwners = DevelopmentActorStateOwnerBoundary.ReadObserved(configuration);
+        if (actorStateOwners.Length > 0)
+        {
+            var document = System.Text.Json.Nodes.JsonNode.Parse(authentication)!.AsObject();
+            document["actorStateOwners"] = JsonSerializer.SerializeToNode(actorStateOwners);
+            authentication = JsonSerializer.SerializeToUtf8Bytes(document);
+        }
         return new(host, actualAppId, declarations, targets,
             section.GetSection("RequiredHostIds").Get<string[]>() ?? [], [component, acl],
-            JsonSerializer.SerializeToUtf8Bytes(new
-            {
-                settings,
-                boundProofCallers = configuredKeys,
-                applicationChannelTokenConfigured = !string.IsNullOrEmpty(configuration["APP_API_TOKEN"]),
-                sidecarApiTokenConfigured = !string.IsNullOrEmpty(configuration["DAPR_API_TOKEN"]),
-            }), admission, capabilities, auxiliary, Operations: declarations.Count == 0 ? [] : null)
+            authentication, admission, capabilities, auxiliary, Operations: declarations.Count == 0 ? [] : null)
         {
             SelectedAppIds = section.GetSection("SelectedAppIds").Get<string[]>(),
             DeclaredInvocations = section["DeclaredInvocations"] is { } invocations

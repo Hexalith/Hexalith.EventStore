@@ -8,7 +8,7 @@ internal sealed class TechnicalCatalogMemoryStore : IRouteCatalogStateStore
     private readonly object _gate = new();
     private long _etag;
     private RouteCatalogActivationState _state = RouteCatalogActivationState.Empty;
-    public RouteCatalogStateCoordinates Coordinates { get; } = new("route-catalog", "admin-technical-test", "http://127.0.0.1:3500/");
+    public RouteCatalogStateCoordinates Coordinates { get; set; } = new("route-catalog", "admin-technical-test", "http://127.0.0.1:3500/");
     public Task<(RouteCatalogActivationState State, string ETag)> ReadAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

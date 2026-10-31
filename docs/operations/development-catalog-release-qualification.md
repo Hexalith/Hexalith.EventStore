@@ -5,7 +5,7 @@ the normal pull request, exact-source CI and protected release workflow. The
 requirements below govern qualification; this checkpoint establishes no package or
 downstream Platform acceptance.
 
-The complete production candidate is commit
+The initial production candidate at that checkpoint was commit
 `5e3c2f0e60b114cdaab52594ccbb254829d40e0f`, based on
 `ad383a96394307154b0026643245fdbb9a24dd4e`. Review the
 [full 54-file production and verification diff](https://github.com/Hexalith/Hexalith.EventStore/compare/ad383a96394307154b0026643245fdbb9a24dd4e...5e3c2f0e60b114cdaab52594ccbb254829d40e0f),
@@ -59,3 +59,13 @@ At this checkpoint, Platform story 3.3 still required the owner releases, normal
 Builds pin/tool updates and ordinary Release/package activation proof. Historical
 private packages and local source runs cannot close that boundary. Hosted activation
 remains outside this work.
+
+Subsequent source qualification adds a separately opted-in SDK technical HTTP
+composite, complete schema-three/v2 activation identity, actual native actor/pub-sub
+callback observation, receiver-owned technical/background leases and exact native
+owner-read credential handoff. Its current behavior and compatibility boundary are
+described in the [SDK profile notes](../reference/development-route-catalog.md).
+These additions require a fresh complete source audit, the normal current-base PR
+route and exact-source CI/release proof. The historical bypass and failed-CI facts
+above remain part of that handoff; neither local tests nor a cancelled workflow
+establish publication qualification.

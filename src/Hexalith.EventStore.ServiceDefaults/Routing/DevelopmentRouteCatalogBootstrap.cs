@@ -4,6 +4,7 @@ using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -27,6 +28,10 @@ public static class DevelopmentRouteCatalogBootstrap
         string host = Identifier(section["HostId"]);
         string coordinator = Identifier(section["CoordinatorHostId"]);
         string attempt = Identifier(section["AttemptId"]);
+        string? bindingVersion = section["BindingVersion"];
+        if (bindingVersion is not (null or "1" or "2"))
+            throw new RouteCatalogUnavailableException("The configured catalog binding version is unsupported.", RouteCatalogRefusalReason.Configuration);
+        bool expectedTechnicalBinding = bindingVersion == "2";
         if (section["CatalogPath"] is { Length: > 0 } catalogPath)
         {
             string instance = Identifier(section["InstanceId"]);
@@ -36,6 +41,12 @@ public static class DevelopmentRouteCatalogBootstrap
             if (receipt.RootElement.GetProperty("instanceId").GetString() != instance
                 || receipt.RootElement.GetProperty("rootDigest").GetString() != section["RootDigest"])
                 throw new InvalidOperationException("The catalog instance differs from this environment descriptor binding.");
+            if (receipt.RootElement.TryGetProperty("bindingVersion", out var expected))
+            {
+                if (expected.GetInt32() != 2 || bindingVersion != "2")
+                    throw new RouteCatalogUnavailableException("The peer binding version differs from its owned composition receipt.", RouteCatalogRefusalReason.Configuration);
+                expectedTechnicalBinding = true;
+            }
             _ = RouteCatalogCodec.Decode(File.ReadAllBytes(catalogPath), section["RootDigest"]);
         }
         string[] hosts = section.GetSection("RequiredHostIds").Get<string[]>() ?? [];
@@ -48,16 +59,26 @@ public static class DevelopmentRouteCatalogBootstrap
 
         async Task<RouteCatalogHostObservation> Capture(IServiceProvider provider, CancellationToken token)
         {
+            if (expectedTechnicalBinding && (section["BindingVersion"] != "2"
+                || !provider.GetRequiredService<IOptions<RouteCatalogHostOptions>>().Value.RequireTechnicalHttpBinding))
+                throw new RouteCatalogUnavailableException("The enrolled peer's effective v2 binding mode changed.", RouteCatalogRefusalReason.Configuration);
             var actual = await observe(provider, token).ConfigureAwait(false);
+            var ownerOptions = provider.GetRequiredService<IOptions<RouteCatalogHostOptions>>().Value;
+            ownerOptions.ActorStateOwnerBoundary?.RequireUnchanged(ownerOptions.DevelopmentActorStateOwners);
             if (actual.HostId != host || !actual.RequiredHostIds.Order(StringComparer.Ordinal).SequenceEqual(hosts.Order(StringComparer.Ordinal), StringComparer.Ordinal))
                 throw new RouteCatalogUnavailableException("The actual host inventory differs from its owning Development composition.");
             return actual with { AuthorityCoordinates = provider.GetRequiredService<IRouteCatalogStateStore>().Coordinates
                 ?? throw new RouteCatalogUnavailableException("The authority has no independently selected coordinates.") };
         }
         services.AddEventStoreRouteCatalog(configuration);
-        services.AddSingleton<FiniteRouteCatalogReceiver>();
+        services.TryAddSingleton<FiniteRouteCatalogReceiver>();
+        services.TryAddSingleton<TechnicalHttpRouteCatalogReceiver>();
         services.AddEventStoreRouteCatalogObservation(Capture);
-        services.Configure<RouteCatalogHostOptions>(options => { options.Profile = "Development"; options.DevelopmentFixture = true; });
+        services.Configure<RouteCatalogHostOptions>(options =>
+        {
+            options.Profile = "Development"; options.DevelopmentFixture = true;
+            options.RequireTechnicalHttpBinding = section["BindingVersion"] == "2" || section["ReceiverProfile"] == RouteCatalogTechnicalHttpPolicy.FenceVersion;
+        });
         services.AddSingleton<IHostedService>(provider => new DevelopmentRouteCatalogBootstrapWorker(provider, directory, host, coordinator, attempt, hosts, Capture, construct));
         return services;
     }
@@ -88,9 +109,39 @@ public static class DevelopmentRouteCatalogBootstrap
             var catalog = construct!(observations);
             if (catalog.Profile != "Development" || catalog.SchemaVersion is not (2 or 3))
                 throw new RouteCatalogUnavailableException("Development bootstrap requires a complete executable catalog.");
-            var candidate = new RouteCatalogActivation(attempt, RouteCatalogCodec.Encode(catalog), RouteCatalogCodec.ComputeRootDigest(catalog), null,
+            string? predecessorRoot = null;
+            var configuration = provider.GetService<IConfiguration>()?.GetSection("EventStore:RouteCatalog:DevelopmentBootstrap");
+            if (configuration?["PredecessorActivationPath"] is { Length: > 0 } predecessorPath)
+            {
+                var predecessor = await ReadAsync<RouteCatalogActivation>(predecessorPath, token).ConfigureAwait(false);
+                var held = await ReadAsync<RouteCatalogGenerationReadback>(configuration["PredecessorReadbackPath"]
+                    ?? throw new RouteCatalogUnavailableException("The retained predecessor omitted its complete readback."), token).ConfigureAwait(false);
+                var priorCatalog = RouteCatalogCodec.Decode(predecessor.CanonicalCatalog, predecessor.RootDigest);
+                if (predecessor.TrustProof != RouteCatalogActivationBinding.ComputeDigest(predecessor)
+                    || !held.Serving || held.Epoch <= 0 || held.RootDigest != predecessor.RootDigest || held.Generation != priorCatalog.Generation
+                    || held.RouteFacetDigest != priorCatalog.RouteFacetDigest || held.IdempotencyFacetDigest != priorCatalog.IdempotencyFacetDigest
+                    || held.Profile != priorCatalog.Profile || catalog.Generation != checked(priorCatalog.Generation + 1)
+                    || !held.RequiredHosts.OrderBy(peer => peer.HostId, StringComparer.Ordinal).SequenceEqual(predecessor.RequiredHosts.OrderBy(peer => peer.HostId, StringComparer.Ordinal))
+                    || predecessor.TechnicalHttpReceivers is { Count: > 0 }
+                        && (held.AttemptId != predecessor.AttemptId || held.ActivationBindingDigest != RouteCatalogActivationBinding.ComputeDigest(predecessor)))
+                    throw new RouteCatalogUnavailableException("The retained predecessor identity is incomplete or changed.");
+                await RetryBackendAsync(async () =>
+                {
+                    var (persisted, _) = await provider.GetRequiredService<IRouteCatalogStateStore>().ReadAsync(token).ConfigureAwait(false);
+                    if (persisted.Committed is not { } committed || persisted.Epoch != held.Epoch || persisted.Pending is not null || persisted.Leases.Count != 0
+                        || RouteCatalogActivationBinding.ComputeDigest(committed) != RouteCatalogActivationBinding.ComputeDigest(predecessor))
+                        throw new RouteCatalogUnavailableException("The actual authority is not the exact retained, quiescent predecessor.");
+                }, token).ConfigureAwait(false);
+                predecessorRoot = predecessor.RootDigest;
+            }
+            var candidate = new RouteCatalogActivation(attempt, RouteCatalogCodec.Encode(catalog), RouteCatalogCodec.ComputeRootDigest(catalog), predecessorRoot,
                 observations.Select(ObservedRouteCatalogHost.Identity).ToArray(), "Development-fixture", string.Empty,
                 observations.SelectMany(o => o.AuxiliaryOperations!).ToArray(), observations.SelectMany(o => o.ProjectionCapabilities!).ToArray());
+            var technical = observations.Where(observation => observation.ReceiverSurface?.FenceVersion == RouteCatalogTechnicalHttpPolicy.FenceVersion)
+                .Select(observation => new RouteCatalogTechnicalHttpReceiver(observation.AppId, RouteCatalogTechnicalHttpPolicy.FenceVersion,
+                    observation.ReceiverSurface!.TechnicalHttp ?? throw new RouteCatalogUnavailableException("The technical receiver omitted its actual action inventory."))
+                    { Invocations = observation.DeclaredInvocations }).ToArray();
+            candidate = candidate with { TechnicalHttpReceivers = technical.Length == 0 ? null : technical };
             candidate = candidate with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(candidate) };
             await WriteAsync(activationPath, candidate, token).ConfigureAwait(false);
         }

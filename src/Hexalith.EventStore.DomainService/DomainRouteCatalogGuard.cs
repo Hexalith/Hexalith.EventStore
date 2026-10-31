@@ -24,8 +24,7 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                 && Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Surface(context.HttpContext.User) != "service")
                 throw new RouteCatalogUnavailableException("The domain receiver requires an authenticated service surface in addition to its workload policy.");
             var headers = context.HttpContext.Request.Headers;
-            if (headers[RouteCatalogInvocationHandler.RootHeader].Count != 1 || headers[RouteCatalogInvocationHandler.RootHeader][0] != snapshot.RootDigest
-                || headers[RouteCatalogInvocationHandler.EpochHeader].Count != 1 || headers[RouteCatalogInvocationHandler.EpochHeader][0] != snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            if (!RouteCatalogPeerBinding.Matches(headers, snapshot))
                 throw new RouteCatalogUnavailableException("The incoming call does not bind this committed generation.");
             string appId = options.Value.Identity?.AppId ?? throw new RouteCatalogUnavailableException("The receiver has no catalog host identity.");
             string method = context.HttpContext.Request.Path.Value!.TrimStart('/');

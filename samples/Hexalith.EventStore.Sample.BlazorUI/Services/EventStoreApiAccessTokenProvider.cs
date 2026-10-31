@@ -140,7 +140,7 @@ public sealed class EventStoreApiAccessTokenProvider(
 
         var payload = new Dictionary<string, object> {
             ["sub"] = subject,
-            ["eventstore:surface"] = "ui",
+            [Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.ClaimType] = "ui",
             ["iss"] = issuer,
             ["aud"] = audience,
             ["iat"] = now.ToUnixTimeSeconds(),

@@ -34,6 +34,13 @@ namespace Hexalith.EventStore.Controllers;
 public partial class QueriesController : ControllerBase {
     private static readonly object BoundOwnerCatalogAdmissionKey = new();
 
+    /// <summary>Requires the additional owner proof throughout this action's in-flight dispatch, even if endpoint metadata or the path changes.</summary>
+    internal static bool RequiresBoundOwnerCatalogAdmission(HttpContext context)
+        => context.Items.ContainsKey(BoundOwnerCatalogAdmissionKey)
+            || context.Request.Path == "/api/v1/queries/owner-authority/workload"
+            || context.GetEndpoint()?.Metadata.GetMetadata<Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor>()?.MethodInfo
+                == typeof(QueriesController).GetMethod(nameof(SubmitBoundOwnerAuthorityAsync));
+
     /// <summary>Recognizes only this controller's verified, exact in-flight owner-query admission under the same captured generation.</summary>
     internal static bool HasVerifiedBoundOwnerCatalogAdmission(HttpContext context, SubmitQuery request,
         Hexalith.EventStore.ServiceDefaults.Routing.CommittedRouteCatalogSnapshot snapshot)

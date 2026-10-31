@@ -50,7 +50,7 @@ public class DevelopmentAdminTransportTests
     }
 
     [Theory]
-    [InlineData("missing-generation", System.Net.HttpStatusCode.ServiceUnavailable)]
+    [InlineData("missing-binding", System.Net.HttpStatusCode.ServiceUnavailable)]
     [InlineData("wrong-channel", System.Net.HttpStatusCode.Unauthorized)]
     [InlineData("insufficient-role", System.Net.HttpStatusCode.Forbidden)]
     [InlineData("foreign-pattern", System.Net.HttpStatusCode.Forbidden)]
@@ -70,8 +70,9 @@ public class DevelopmentAdminTransportTests
         string path = change == "foreign-pattern" ? "/api/v1/admin/foreign/one"
             : change == "ungranted-delete" ? "/api/v1/admin/storage/tenant-a/counter/counter-state/snapshot-policy" : "/api/v1/admin/dapr/actors/ProjectionActor/state?id=actor-one";
         using var request = host.Request(path,
-            role: change == "insufficient-role" ? "ReadOnly" : "Admin", generation: change != "missing-generation",
+            role: change == "insufficient-role" ? "ReadOnly" : "Admin",
             channel: change == "wrong-channel" ? "forged" : null);
+        if (change == "missing-binding") request.Headers.Remove(RouteCatalogInvocationHandler.BindingHeader);
         if (change == "ungranted-delete") request.Method = HttpMethod.Delete;
         using var response = await host.Client.SendAsync(request, TestContext.Current.CancellationToken);
         response.StatusCode.ShouldBe(expected, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -110,14 +111,17 @@ public class DevelopmentAdminTransportTests
         await using var host = new TechnicalAdminHost();
         await host.StartAsync();
         var activation = (await host.Store.ReadAsync(default)).State.Committed.ShouldNotBeNull();
-        var operation = activation.AuxiliaryOperations!.Single(operation => operation.Method == "api/v1/admin/dapr/actors/{actorType}/state");
+        var descriptor = activation.TechnicalHttpReceivers!.Single().Endpoints.Single(endpoint => endpoint.Pattern == "/api/v1/admin/dapr/actors/{actorType}/state");
+        descriptor.Methods.ShouldBe(["GET"]);
+        var operation = new RouteCatalogAuxiliaryOperation("admin-test", descriptor.Pattern.Trim('/'), "sdk-technical-http", "admin")
+        { Http = DevelopmentTechnicalHttpTransport.Observe(host.Endpoints.Single(endpoint => endpoint.RoutePattern.RawText == descriptor.Pattern.Trim('/'))) };
         DevelopmentTechnicalHttpTransport.Matches(operation, "api/v1/admin/dapr/actors/ProjectionActor/state", "GET").ShouldBeTrue();
         DevelopmentTechnicalHttpTransport.Matches(operation, "api/v1/admin/dapr/actors/ProjectionActor/state", "PUT").ShouldBeFalse();
         DevelopmentTechnicalHttpTransport.Matches(operation, "api/v1/admin/dapr/actors/ProjectionActor/foreign", "GET").ShouldBeFalse();
         DevelopmentTechnicalHttpTransport.Matches(operation, "api/v1/admin/dapr/actors/%252f/state", "GET").ShouldBeFalse();
         DevelopmentTechnicalHttpTransport.Matches(operation, "api/v1/admin/dapr/actors/../state", "GET").ShouldBeFalse();
-        var policy = activation.AuxiliaryOperations!.Single(operation => operation.Method == "api/v1/admin/storage/{tenantId}/{domain}/{aggregateType}/snapshot-policy");
-        policy.Http.ShouldNotBeNull().Verbs.ShouldBe("PUT");
+        activation.TechnicalHttpReceivers!.Single().Endpoints.Single(endpoint => endpoint.Pattern == "/api/v1/admin/storage/{tenantId}/{domain}/{aggregateType}/snapshot-policy"
+            && endpoint.Methods.Contains("PUT")).Methods.ShouldBe(["PUT"]);
     }
 
     [Fact]
@@ -142,8 +146,8 @@ public class DevelopmentAdminTransportTests
         envelope = RouteCatalogCodec.Seal(envelope with { Generation = 2, Routes = envelope.Routes.Select(route => route with { Generation = 2 }).ToArray() });
         var forged = before with { AttemptId = "forged-code", CanonicalCatalog = RouteCatalogCodec.Encode(envelope),
             RootDigest = RouteCatalogCodec.ComputeRootDigest(envelope), PredecessorRootDigest = before.RootDigest,
-            AuxiliaryOperations = before.AuxiliaryOperations!.Select(operation => operation.Http is null ? operation
-                : operation with { Http = operation.Http with { CodeDigest = new string('0', 64) } }).ToArray() };
+            TechnicalHttpReceivers = before.TechnicalHttpReceivers!.Select(receiver => receiver with
+            { Endpoints = receiver.Endpoints.Select(endpoint => endpoint with { FilterDigest = new string('0', 64) }).ToArray() }).ToArray() };
         forged = forged with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(forged) };
         await Should.ThrowAsync<RouteCatalogUnavailableException>(() => host.Authority.PrepareAsync(forged));
         var after = (await host.Store.ReadAsync(default)).State;

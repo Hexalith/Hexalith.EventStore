@@ -8,6 +8,7 @@ using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -166,8 +167,8 @@ public sealed partial class DaprSnapshotPolicyRepository(
         }
 
         try {
-            List<SnapshotPolicy>? policies = await daprClient
-                .GetStateAsync<List<SnapshotPolicy>>(_stateStoreName, ScopeKey(identity.TenantId), cancellationToken: cancellationToken)
+            List<SnapshotPolicy>? policies = await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
+                .GetStateAsync<List<SnapshotPolicy>>(_stateStoreName, ScopeKey(identity.TenantId), cancellationToken: cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
             int? interval = policies?
                 .FirstOrDefault(policy => Matches(policy, identity))
@@ -213,8 +214,8 @@ public sealed partial class DaprSnapshotPolicyRepository(
             : validationResult;
 
     private async Task<List<SnapshotPolicy>> ReadPoliciesAsync(string key, CancellationToken ct) {
-        List<SnapshotPolicy>? policies = await daprClient
-            .GetStateAsync<List<SnapshotPolicy>>(_stateStoreName, key, cancellationToken: ct)
+        List<SnapshotPolicy>? policies = await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
+            .GetStateAsync<List<SnapshotPolicy>>(_stateStoreName, key, cancellationToken: ct), ct)
             .ConfigureAwait(false);
         return policies ?? [];
     }
@@ -226,13 +227,13 @@ public sealed partial class DaprSnapshotPolicyRepository(
         Func<IReadOnlyList<SnapshotPolicy>, List<SnapshotPolicy>> mutate,
         CancellationToken ct) {
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
-            (List<SnapshotPolicy>? existing, string etag) = await daprClient
-                .GetStateAndETagAsync<List<SnapshotPolicy>>(_stateStoreName, key, cancellationToken: ct)
+            (List<SnapshotPolicy>? existing, string etag) = await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
+                .GetStateAndETagAsync<List<SnapshotPolicy>>(_stateStoreName, key, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
 
             List<SnapshotPolicy> normalized = NormalizeAndMerge(existing ?? [], repairPolicies);
             List<SnapshotPolicy> updated = Sort(mutate(normalized));
-            bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+            bool saved = await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
                 .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
             if (saved) {

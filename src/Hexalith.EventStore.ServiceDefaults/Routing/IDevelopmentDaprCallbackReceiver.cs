@@ -8,7 +8,7 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 internal interface IDevelopmentDaprCallbackReceiver
 {
     /// <summary>Observes only the installed SDK mapper/action with its exact topic and channel metadata.</summary>
-    RouteCatalogDaprCallbackTransport? Observe(RouteEndpoint endpoint);
+    RouteCatalogDaprCallbackTransport? Observe(RouteEndpoint endpoint, TechnicalHttpObservationPass? pass = null);
     /// <summary>Recognizes the actual absent programmatic discovery protocol in explicitly declarative mode.</summary>
     bool IsAbsentDiscovery(HttpContext context);
 }

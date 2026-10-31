@@ -9,6 +9,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -25,6 +26,7 @@ namespace Hexalith.EventStore.Controllers;
 /// <summary>
 /// EventStore-owned admin storage write routes.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/admin/storage")]
@@ -203,8 +205,7 @@ public sealed class AdminStorageCommandController(
             new ActorId(identity.ActorId),
             "AggregateActor");
 
-        ManualSnapshotResult actorResult = await RouteCatalogRemoteCall.InvokeAsync(() => actor
-            .CreateManualSnapshotAsync(request.CorrelationId), ct)
+        ManualSnapshotResult actorResult = await RouteCatalogRemoteExecution.InvokeAsync(() => actor.CreateManualSnapshotAsync(request.CorrelationId), ct)
             .ConfigureAwait(false);
 
         string operationId = actorResult.SequenceNumber > 0
@@ -270,8 +271,8 @@ public sealed class AdminStorageCommandController(
     private async Task<bool> UpsertJobIndexAsync(string scope, SnapshotJob job, CancellationToken ct) {
         string key = $"{SnapshotJobIndexPrefix}{scope}";
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
-            (List<SnapshotJob>? existing, string etag) = await daprClient
-                .GetStateAndETagAsync<List<SnapshotJob>>(_stateStoreName, key, cancellationToken: ct)
+            (List<SnapshotJob>? existing, string etag) = await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
+                .GetStateAndETagAsync<List<SnapshotJob>>(_stateStoreName, key, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
 
             List<SnapshotJob> updated = [.. (existing ?? [])
@@ -281,7 +282,7 @@ public sealed class AdminStorageCommandController(
                 .ThenBy(j => j.OperationId, StringComparer.Ordinal)
                 .Take(MaxJobsPerIndex)];
 
-            bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+            bool saved = await RouteCatalogRemoteExecution.InvokeAsync(() => daprClient
                 .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
             if (saved) {

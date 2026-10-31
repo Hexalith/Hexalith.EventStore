@@ -92,6 +92,8 @@ public sealed class NativeActorCatalogLiveTests
             ["Authentication:JwtBearer:Issuer"] = "native-catalog", ["Authentication:JwtBearer:Audience"] = appId,
             ["Authentication:JwtBearer:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)), ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
             ["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"] = directory, ["EventStore:RouteCatalog:DevelopmentBootstrap:HostId"] = "native",
+            ["EventStore:RouteCatalog:DevelopmentBootstrap:ReceiverProfile"] = RouteCatalogTechnicalHttpPolicy.FenceVersion,
+            ["EventStore:RouteCatalog:DevelopmentBootstrap:BindingVersion"] = "2",
             ["EventStore:RouteCatalog:DevelopmentBootstrap:RequiredHostIds:0"] = "native", ["EventStore:RouteCatalog:DevelopmentBootstrap:SelectedAppIds:0"] = appId,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:ComponentPath"] = componentPath, ["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"] = aclPath,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:DeclaredInvocations"] = JsonSerializer.Serialize(new[] { new RouteCatalogDeclaredInvocation(appId, "/**", ["GET", "POST", "PUT"]) }),
@@ -171,6 +173,16 @@ public sealed class NativeActorCatalogLiveTests
                 { await Task.Delay(100, grpcReady.Token); }
             }
             using var direct = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{sidecar.AppPort}") };
+            // The real native health mapper has no method metadata. Its preactivation
+            // protocol admits GET only, before any committed catalog or native effects.
+            foreach (var method in new[] { HttpMethod.Get, HttpMethod.Post, HttpMethod.Put, HttpMethod.Delete, HttpMethod.Patch, HttpMethod.Head, HttpMethod.Options })
+            {
+                using var health = new HttpRequestMessage(method, "/healthz"); health.Headers.Add("dapr-api-token", appToken);
+                using var healthResponse = await direct.SendAsync(health, TestContext.Current.CancellationToken);
+                healthResponse.StatusCode.ShouldBe(method == HttpMethod.Get ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
+            }
+            var beforeActivation = await store.ReadAsync(TestContext.Current.CancellationToken);
+            beforeActivation.State.Committed.ShouldBeNull(); beforeActivation.State.Leases.ShouldBeEmpty();
             using (var discovery = new HttpRequestMessage(HttpMethod.Get, "/dapr/subscribe"))
             {
                 discovery.Headers.Add("dapr-api-token", appToken);
@@ -199,6 +211,8 @@ public sealed class NativeActorCatalogLiveTests
             var envelope = RouteCatalogCodec.Seal(new RouteCatalogEnvelope(3, 1, "Development", false, observation.Declarations,
                 observation.Targets.Select(target => target with { OperationContractDigest = observation.Operations.Single(operation => operation.RouteId == target.RouteId).Digest }).ToArray(), [], "", "", observation.Operations, []));
             var activation = new RouteCatalogActivation("native-actors", RouteCatalogCodec.Encode(envelope), RouteCatalogCodec.ComputeRootDigest(envelope), null, [identity], "Development-fixture", "", observation.AuxiliaryOperations);
+            activation = activation with { TechnicalHttpReceivers = [new(appId, RouteCatalogTechnicalHttpPolicy.FenceVersion,
+                observer.TechnicalHttp ?? throw new InvalidOperationException("The actual Gateway technical inventory is required."))] };
             activation = activation with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(activation) };
             RouteCatalogTopologyValidator.ValidateDevelopment(observation.TopologyDocuments[0], observation.TopologyDocuments[1], envelope, [identity], appId,
                 observation.AuxiliaryOperations, observation.ReceiverSurface, observation.SelectedAppIds, observation.DeclaredInvocations);

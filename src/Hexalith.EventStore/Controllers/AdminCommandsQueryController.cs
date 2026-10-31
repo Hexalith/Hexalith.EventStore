@@ -12,6 +12,7 @@ namespace Hexalith.EventStore.Controllers;
 /// Serves recent command activity for the admin UI Commands page.
 /// The admin server queries this endpoint via DAPR service invocation.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]

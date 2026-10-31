@@ -144,8 +144,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             if (state.Leases.Count >= 4096) throw new RouteCatalogUnavailableException("The durable dispatch lease inventory requires draining.");
             return state with { LastLease = sequence, Leases = [.. state.Leases, new RouteCatalogDispatchFence(sequence, leaseId, options.Value.Identity!.HostId, state.Committed.RootDigest, state.Epoch)] };
         }, cancellationToken).ConfigureAwait(false);
-        return new(new(captured!.CanonicalCatalog, captured.RootDigest, epoch, captured.AuxiliaryOperations, captured.ProjectionCapabilities,
-            options.Value.Identity!.AppId), () => ReleaseAsync(leaseId));
+        return new(new(captured!, epoch, options.Value.Identity!.AppId, store.Coordinates), () => ReleaseAsync(leaseId));
     }
 
     /// <inheritdoc/>
@@ -157,7 +156,11 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         await ValidateAsync(committed, cancellationToken).ConfigureAwait(false);
         RouteCatalogEnvelope envelope = Catalog(committed);
         return new(state.Epoch, envelope.Generation, committed.RootDigest, envelope.RouteFacetDigest,
-            envelope.IdempotencyFacetDigest, envelope.Profile, Array.AsReadOnly(committed.RequiredHosts.ToArray()), state.Pending is null && state.Leases.Count < 4096);
+            envelope.IdempotencyFacetDigest, envelope.Profile, Array.AsReadOnly(committed.RequiredHosts.ToArray()), state.Pending is null && state.Leases.Count < 4096)
+        {
+            AttemptId = committed.TechnicalHttpReceivers is { Count: > 0 } ? committed.AttemptId : null,
+            ActivationBindingDigest = committed.TechnicalHttpReceivers is { Count: > 0 } ? RouteCatalogActivationBinding.ComputeDigest(committed) : null,
+        };
     }
 
     private async Task ReleaseAsync(string leaseId)
@@ -215,6 +218,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     private static RouteCatalogEnvelope Catalog(RouteCatalogActivation activation) => RouteCatalogCodec.Decode(activation.CanonicalCatalog, activation.RootDigest);
     private static RouteCatalogActivation Freeze(RouteCatalogActivation candidate) => candidate with
     {
+        TechnicalHttpReceivers = TechnicalHttpCatalogBinding.Freeze(candidate.TechnicalHttpReceivers),
         CanonicalCatalog = candidate.CanonicalCatalog.ToArray(), RequiredHosts = Array.AsReadOnly(candidate.RequiredHosts.ToArray()),
         AuxiliaryOperations = Array.AsReadOnly((candidate.AuxiliaryOperations ?? []).Select(operation => operation with { Http = operation.Http is { } http ? http with { Grants = http.Grants is null ? null : Array.AsReadOnly(http.Grants.ToArray()) } : null }).ToArray()),
         ProjectionCapabilities = Array.AsReadOnly((candidate.ProjectionCapabilities ?? []).Select(c => c with

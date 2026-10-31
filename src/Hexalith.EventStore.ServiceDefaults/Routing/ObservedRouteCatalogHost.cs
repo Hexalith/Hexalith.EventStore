@@ -70,6 +70,14 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
         if (actual.AuthorityCoordinates != coordinates)
             throw new RouteCatalogUnavailableException("Observed authority coordinates disagree with the effective state store.", RouteCatalogRefusalReason.Configuration);
         RouteCatalogHostIdentity identity = Identity(actual);
+        TechnicalHttpCatalogBinding.Validate(activation);
+        var expectedTechnical = activation.TechnicalHttpReceivers?.SingleOrDefault(receiver => receiver.AppId == actual.AppId);
+        bool installedTechnical = actual.ReceiverSurface?.FenceVersion == RouteCatalogTechnicalHttpPolicy.FenceVersion;
+        if (installedTechnical != (expectedTechnical is not null)
+            || installedTechnical && (actual.ReceiverSurface!.TechnicalHttp is not { Count: > 0 } endpoints
+                || !TechnicalHttpCatalogBinding.Equivalent(new(actual.AppId, actual.ReceiverSurface.FenceVersion, endpoints)
+                    { Invocations = actual.DeclaredInvocations }, expectedTechnical!)))
+            throw new RouteCatalogUnavailableException("The complete installed technical action inventory differs from committed membership.", RouteCatalogRefusalReason.Inventory);
         RouteCatalogEnvelope envelope = RouteCatalogCodec.Decode(activation.CanonicalCatalog, activation.RootDigest);
         if (envelope.SchemaVersion == 3 && (actual.Operations is null
             || !actual.Operations.Select(o => o.RouteId).Order(StringComparer.Ordinal).SequenceEqual(actual.Declarations.Select(d => d.RouteId).Order(StringComparer.Ordinal), StringComparer.Ordinal)

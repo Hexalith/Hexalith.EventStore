@@ -8,7 +8,7 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 internal interface IDevelopmentNativeActorReceiver
 {
     /// <summary>Observes only an actual owner-installed native framework endpoint.</summary>
-    RouteCatalogNativeActorTransport? Observe(RouteEndpoint endpoint);
+    RouteCatalogNativeActorTransport? Observe(RouteEndpoint endpoint, TechnicalHttpObservationPass? pass = null);
     /// <summary>Refuses unregistered methods/types and foreign caller identities, retaining native same-app channel trust.</summary>
     bool Allows(HttpContext context);
     /// <summary>Retains the existing typed projection-query policy inside the committed native scope.</summary>

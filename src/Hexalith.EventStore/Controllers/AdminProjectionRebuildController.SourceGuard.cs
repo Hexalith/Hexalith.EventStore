@@ -12,12 +12,14 @@ public sealed partial class AdminProjectionRebuildController
 {
     /// <summary>Qualifies the existing same-C source/model binding without enabling guarded delivery.</summary>
     [HttpPost("{tenantId}/source-guard/{domain}/{aggregateId}/{projectionName}/qualify")]
+    [ProducesResponseType(typeof(ProjectionSourceGuardQualificationResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> QualifySourceGuardAsync(string tenantId, string domain, string aggregateId, string projectionName,
         [FromBody] ProjectionSourceGuardQualificationRequestBody? body, CancellationToken cancellationToken)
         => MaintainSourceGuardAsync(tenantId, domain, aggregateId, projectionName, body, false, cancellationToken);
 
     /// <summary>Explicitly admits only an inventoried qualified scope using first-write/CAS maintenance authority.</summary>
     [HttpPost("{tenantId}/source-guard/{domain}/{aggregateId}/{projectionName}/activate")]
+    [ProducesResponseType(typeof(ProjectionSourceGuardQualificationResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> ActivateSourceGuardAsync(string tenantId, string domain, string aggregateId, string projectionName,
         [FromBody] ProjectionSourceGuardQualificationRequestBody? body, CancellationToken cancellationToken)
         => MaintainSourceGuardAsync(tenantId, domain, aggregateId, projectionName, body, true, cancellationToken);
@@ -53,7 +55,7 @@ public sealed partial class AdminProjectionRebuildController
         ProjectionSourceGuardQualificationResult result = await qualification.QualifyAsync(identity, projectionName,
             body.ExpectedHead, body.ExpectedIncarnation, maintenance, activate, body.ExpectedPreviousIncarnation, cancellationToken).ConfigureAwait(false);
         if (result.Qualified || result.ReasonCode == "empty_no_work")
-            return Ok(new { result.Qualified, result.Activated, result.ReasonCode, result.PreservedSequence });
+            return Ok(new ProjectionSourceGuardQualificationResponse(result.Qualified, result.Activated, result.ReasonCode, result.PreservedSequence));
         return ProblemWithReason(result.ReasonCode == "delivery_state_unavailable" ? 503 : 409,
             "Source guard maintenance incomplete", "The inventoried source and selected model could not be qualified.", result.ReasonCode);
     }

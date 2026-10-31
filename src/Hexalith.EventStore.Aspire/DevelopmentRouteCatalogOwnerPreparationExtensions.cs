@@ -133,13 +133,23 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
         Task output = PumpAsync(process.StandardOutput.BaseStream, stdout, deadline);
         Task error = PumpAsync(process.StandardError.BaseStream, stderr, deadline);
         try { await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false); }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException cancellation)
         {
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             if (!process.HasExited) process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            try { await process.WaitForExitAsync(cleanup.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException exception)
+            {
+                throw new InvalidOperationException("Selected child cancellation could not confirm owned process termination within the cleanup deadline.", new AggregateException(cancellation, exception));
+            }
             throw;
         }
-        finally { await Task.WhenAll(output, error).ConfigureAwait(false); }
+        finally
+        {
+            // The diagnostic pumps share the original deadline. Even a failed termination
+            // cannot extend the finite preparation API by leaving inherited pipe handles open.
+            await Task.WhenAll(output, error).WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        }
         if (process.ExitCode != 0) throw new InvalidOperationException($"Selected child {name} failed with exit code {process.ExitCode}.");
     }
 

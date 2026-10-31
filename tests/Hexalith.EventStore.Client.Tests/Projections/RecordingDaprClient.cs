@@ -42,6 +42,8 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public Action<string, ReadOnlyMemory<byte>> AfterTrySaveByteState { get; set; }
 
+    public Action<string, object> AfterSaveTypedState { get; set; }
+
     public IReadOnlyList<(string Key, byte[] Value, string ETag, ConcurrencyMode Concurrency)> TrySaveByteOperations => _trySaveByteOperations;
 
     public IReadOnlyList<(string Key, string ETag, ConcurrencyMode Concurrency)> TryDeleteByteOperations => _tryDeleteByteOperations;
@@ -308,6 +310,7 @@ internal sealed class RecordingDaprClient : DaprClient
         cancellationToken.ThrowIfCancellationRequested();
         if (!PersistTypedState) throw new NotSupportedException();
         _byteStore[key] = (JsonSerializer.SerializeToUtf8Bytes(value, JsonSerializerOptions), NextByteETag());
+        AfterSaveTypedState?.Invoke(key, value);
         return Task.CompletedTask;
     }
 

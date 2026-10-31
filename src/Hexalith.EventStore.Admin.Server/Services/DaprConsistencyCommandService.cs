@@ -79,8 +79,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         string key = $"{CheckKeyPrefix}{checkId}";
 
         try {
-            ConsistencyCheckResult? existing = await _daprClient
-                .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
+            ConsistencyCheckResult? existing = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
 
             if (existing is null) {
@@ -125,6 +125,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         }
 
         string checkId = UniqueIdHelper.GenerateSortableUniqueStringId();
+        IRouteCatalogBackgroundWork? background = null;
 
         try {
             // Concurrency guard: check for active check on same tenant
@@ -132,6 +133,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                 return new AdminOperationResult(false, checkId, "A check is already active for this tenant.", "Conflict");
             }
 
+            background = await RouteCatalogRemoteExecution.AcquireBackgroundAsync(ct).ConfigureAwait(false);
             DateTimeOffset now = DateTimeOffset.UtcNow;
             DateTimeOffset timeoutUtc = now + TimeSpan.FromMinutes(TimeoutMinutes);
 
@@ -154,8 +156,11 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             await SaveCheckResultAsync(key, initialResult, ct).ConfigureAwait(false);
             await AppendToIndexAsync(checkId, ct).ConfigureAwait(false);
 
-            // Fire background scan
-            _ = Task.Run(() => RunBackgroundScanAsync(checkId, tenantId, domain, checkTypes), CancellationToken.None);
+            // The existing detached scan owns its own admitted lifetime before acceptance.
+            IRouteCatalogBackgroundWork? owned = background;
+            _ = Task.Run(() => owned is null ? RunBackgroundScanAsync(checkId, tenantId, domain, checkTypes)
+                : owned.RunAsync(() => RunBackgroundScanAsync(checkId, tenantId, domain, checkTypes)), CancellationToken.None);
+            background = null;
 
             _logger.LogInformation("Consistency check '{CheckId}' triggered for tenant '{TenantId}', domain '{Domain}'.", checkId, tenantId ?? "all", domain ?? "all");
             return new AdminOperationResult(true, checkId, "Consistency check started.", null);
@@ -167,13 +172,16 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             _logger.LogError(ex, "Failed to trigger consistency check.");
             return new AdminOperationResult(false, checkId, "Failed to trigger consistency check.", "InternalError");
         }
+        finally {
+            if (background is not null) await background.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     private async Task AppendToIndexAsync(string checkId, CancellationToken ct) {
         for (int attempt = 0; attempt < MaxETagRetries; attempt++) {
             try {
-                (List<string>? existing, string etag) = await _daprClient
-                    .GetStateAndETagAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct)
+                (List<string>? existing, string etag) = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                    .GetStateAndETagAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct), ct)
                     .ConfigureAwait(false);
 
                 List<string> index = existing ?? [];
@@ -207,8 +215,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
 
     private async Task<bool> HasActiveCheckForTenantAsync(string? tenantId, CancellationToken ct) {
         try {
-            List<string>? index = await _daprClient
-                .GetStateAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct)
+            List<string>? index = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                .GetStateAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
 
             if (index is null or { Count: 0 }) {
@@ -217,8 +225,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
 
             foreach (string existingCheckId in index) {
                 string key = $"{CheckKeyPrefix}{existingCheckId}";
-                ConsistencyCheckResult? check = await _daprClient
-                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
+                ConsistencyCheckResult? check = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct), ct)
                     .ConfigureAwait(false);
 
                 if (check is null) {
@@ -258,8 +266,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         CancellationToken scanToken = scanCts.Token;
         try {
             // Update status to Running
-            ConsistencyCheckResult? current = await _daprClient
-                .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key)
+            ConsistencyCheckResult? current = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: scanToken), scanToken)
                 .ConfigureAwait(false);
 
             if (current is null || current.Status == ConsistencyCheckStatus.Cancelled) {
@@ -294,7 +302,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             int streamsChecked = 0;
 
             if (projectionCheckRequested) {
-                List<ConsistencyAnomaly> projectionAnomalies = await CheckProjectionPositionsAsync(tenantId, domain).ConfigureAwait(false);
+                List<ConsistencyAnomaly> projectionAnomalies = await CheckProjectionPositionsAsync(tenantId, domain, scanToken).ConfigureAwait(false);
                 totalAnomaliesFound += projectionAnomalies.Count;
                 AddAnomaliesWithinCap(anomalies, projectionAnomalies);
             }
@@ -303,8 +311,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                 scanToken.ThrowIfCancellationRequested();
 
                 // Check if cancelled
-                ConsistencyCheckResult? latestState = await _daprClient
-                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: scanToken)
+                ConsistencyCheckResult? latestState = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: scanToken), scanToken)
                     .ConfigureAwait(false);
 
                 if (latestState?.Status == ConsistencyCheckStatus.Cancelled) {
@@ -357,8 +365,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         catch (Exception ex) {
             _logger.LogError(ex, "Consistency check '{CheckId}' failed.", checkId);
             try {
-                ConsistencyCheckResult? current = await _daprClient
-                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key)
+                ConsistencyCheckResult? current = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key), CancellationToken.None)
                     .ConfigureAwait(false);
 
                 if (current is not null) {
@@ -427,24 +435,24 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
 
     private readonly record struct ContinuityResult(SequenceRange? EvaluatedRange, long EvaluatedEventCount, bool StreamReadCompleted);
 
-    private async Task<List<ConsistencyAnomaly>> CheckProjectionPositionsAsync(string? tenantId, string? domain) {
+    private async Task<List<ConsistencyAnomaly>> CheckProjectionPositionsAsync(string? tenantId, string? domain, CancellationToken cancellationToken) {
         List<ConsistencyAnomaly> anomalies = [];
         string scope = tenantId ?? "all";
         string projectionIndexKey = $"admin:projections:{scope}";
         string storageOverviewKey = $"admin:storage-overview:{scope}";
 
         try {
-            List<ProjectionStatus>? projections = await _daprClient
-                .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, projectionIndexKey)
+            List<ProjectionStatus>? projections = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, projectionIndexKey, cancellationToken: cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
 
-            StorageOverview? overview = await _daprClient
-                .GetStateAsync<StorageOverview>(_options.StateStoreName, storageOverviewKey)
+            StorageOverview? overview = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                .GetStateAsync<StorageOverview>(_options.StateStoreName, storageOverviewKey, cancellationToken: cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
 
             if (projections is null && tenantId is not null) {
-                projections = await _daprClient
-                    .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, "admin:projections:all")
+                projections = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                    .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, "admin:projections:all", cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 projections = projections?
                     .Where(p => p.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
@@ -783,8 +791,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
 
         string snapshotKey = $"{stream.TenantId}:{stream.Domain}:{stream.AggregateId}:snapshot";
         try {
-            object? snapshot = await _daprClient
-                .GetStateAsync<object>(_options.StateStoreName, snapshotKey, cancellationToken: ct)
+            object? snapshot = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                .GetStateAsync<object>(_options.StateStoreName, snapshotKey, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
             if (TryExtractLong(snapshot, "sequenceNumber", "SequenceNumber", "sequence", "Sequence", "lastSequence", "LastSequence", "position", "Position") is long snapshotSequence
                 && snapshotSequence > stream.LastEventSequence) {

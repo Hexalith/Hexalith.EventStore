@@ -8,4 +8,8 @@ public sealed record RouteCatalogReceiverSurface(string FenceVersion, IReadOnlyL
     /// <summary>Gets the separately opted-in generated human GET inventory; absent for finite service dispatch.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<RouteCatalogGeneratedRestEndpoint>? GeneratedRest { get; init; }
+
+    /// <summary>Gets separately opted-in installed SDK technical actions; absent for unchanged finite-v1 receivers.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<RouteCatalogTechnicalHttpEndpoint>? TechnicalHttp { get; init; }
 }

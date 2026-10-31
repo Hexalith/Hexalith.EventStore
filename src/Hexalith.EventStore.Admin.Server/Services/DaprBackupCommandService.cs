@@ -238,8 +238,8 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         }
 
         string key = AdmissionKey(request.TenantId, request.AdmissionId);
-        RestoredBackupAdmissionResult? existing = await _daprClient
-            .GetStateAsync<RestoredBackupAdmissionResult>(_options.StateStoreName, key, cancellationToken: ct)
+        RestoredBackupAdmissionResult? existing = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .GetStateAsync<RestoredBackupAdmissionResult>(_options.StateStoreName, key, cancellationToken: ct), ct)
             .ConfigureAwait(false);
         if (existing is not null) {
             return existing with { IdempotentReplay = true };
@@ -276,8 +276,8 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         }
 
         string key = AdmissionKey(tenantId, admissionId);
-        RestoredBackupAdmissionResult? existing = await _daprClient
-            .GetStateAsync<RestoredBackupAdmissionResult>(_options.StateStoreName, key, cancellationToken: ct)
+        RestoredBackupAdmissionResult? existing = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .GetStateAsync<RestoredBackupAdmissionResult>(_options.StateStoreName, key, cancellationToken: ct), ct)
             .ConfigureAwait(false) ?? throw new KeyNotFoundException("Restored-backup admission record was not found.");
         if (existing.State == decision) {
             return existing with { IdempotentReplay = true };
@@ -341,8 +341,8 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         }
 
         string scopeStateKey = WorkflowScopeKey(request.Identity.ComputeScopeKey());
-        CryptoShreddingWorkflowDecision? existing = await _daprClient
-            .GetStateAsync<CryptoShreddingWorkflowDecision>(_options.StateStoreName, scopeStateKey, cancellationToken: ct)
+        CryptoShreddingWorkflowDecision? existing = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .GetStateAsync<CryptoShreddingWorkflowDecision>(_options.StateStoreName, scopeStateKey, cancellationToken: ct), ct)
             .ConfigureAwait(false);
         if (existing is not null) {
             return existing with { IdempotentReplay = true };

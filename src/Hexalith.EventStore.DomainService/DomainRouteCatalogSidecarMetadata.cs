@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-
 using Dapr;
 
 using Hexalith.EventStore.Contracts.Routing;
@@ -34,7 +32,7 @@ internal sealed class DomainRouteCatalogSidecarMetadata(RequestDelegate? actualR
             throw new RouteCatalogUnavailableException("The actual SDK subscription metadata differs from its configured component, topic or mode.");
         var assembly = typeof(EventStoreDomainEventsEndpointExtensions).Assembly;
         return new(typeof(EventStoreDomainEventsEndpointExtensions).FullName!,
-            Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(assembly.Location))), pubsub, topic);
+            TechnicalHttpActionObservation.AssemblyIdentity(assembly)[^64..], pubsub, topic);
     }
 
     internal static RouteCatalogSidecarTransport? ObserveEndpoint(RouteEndpoint endpoint)

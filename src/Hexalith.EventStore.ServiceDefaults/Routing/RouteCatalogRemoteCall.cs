@@ -14,10 +14,10 @@ public static class RouteCatalogRemoteCall
         return new RouteCatalogRemoteScope(lease);
     }
     /// <summary>Captures the prior scope and enrolls this lease for actual remote calls.</summary>
-    internal static IReadOnlyList<RouteCatalogDispatchLease>? Push(RouteCatalogDispatchLease? lease)
+    internal static IReadOnlyList<RouteCatalogDispatchLease>? Push(RouteCatalogDispatchLease? lease, bool isolated = false)
     {
         var prior = Active.Value;
-        if (lease is not null) Active.Value = [.. prior ?? [], lease];
+        if (lease is not null) Active.Value = isolated ? [lease] : [.. prior ?? [], lease];
         RouteCatalogRemoteExecution.Current = Active.Value is { } leases ? new RouteCatalogRemoteBoundary(leases) : null;
         return prior;
     }
