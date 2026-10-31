@@ -33,7 +33,7 @@ public static class DevelopmentRouteCatalogAspireExtensions
         {
             string callerId = policy!["appId"]!.GetValue<string>();
             var selected = callers.Where(caller => caller.Resource.Name == callerId || AppId(caller.Resource) == callerId).ToArray();
-            if (selected.Length != 1 || policy["defaultAction"]?.GetValue<string>() != "deny")
+            if (selected.Length == 0 || selected.Select(caller => AppId(caller.Resource)).Distinct(StringComparer.Ordinal).Count() != 1 || policy["defaultAction"]?.GetValue<string>() != "deny")
                 throw new InvalidOperationException("An existing receiver caller lacks one independently selected resource.");
             foreach (var grant in policy["operations"]!.AsArray())
             {
@@ -89,10 +89,20 @@ public static class DevelopmentRouteCatalogAspireExtensions
             throw new InvalidOperationException("An exact gateway, owner and receiver cohort is required.");
         var selected = builder.Resources.OfType<ProjectResource>().Where(project => project.Annotations.OfType<DaprSidecarAnnotation>().Any()).ToArray();
         var apps = selected.ToDictionary(project => project, project => AppId(project));
-        if (apps.Values.Distinct(StringComparer.Ordinal).Count() != apps.Count
-            || receivers.Any(receiver => !apps.ContainsKey(receiver.Project.Resource))
+        if (receivers.Any(receiver => !apps.ContainsKey(receiver.Project.Resource))
             || receivers.SelectMany(receiver => receiver.Invocations).Any(invocation => !apps.ContainsKey(invocation.Caller.Resource)))
             throw new InvalidOperationException("Every receiver and declared caller must have one actual selected Dapr identity.");
+        if (apps.GroupBy(pair => pair.Value, StringComparer.Ordinal).Any(group => group.Count() > 1
+            && group.Any(pair => !receivers.Any(receiver => ReferenceEquals(receiver.Project.Resource, pair.Key)))))
+            throw new InvalidOperationException("Every physical replica of an enrolled logical application must enroll independently.");
+        var logicalOwners = owners.GroupBy(owner => apps[owner.Project.Resource], StringComparer.Ordinal).Select(group =>
+        {
+            if (group.Select(owner => (Contracts: Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(owner.Contracts.Location))),
+                    Adapters: Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(owner.Adapters.Location)))))
+                .Distinct().Count() != 1)
+                throw new InvalidOperationException("Replica owner declarations and adapters must have identical independently selected executable bytes.");
+            return group.OrderBy(owner => owner.Project.Resource.Name, StringComparer.Ordinal).First();
+        }).ToArray();
         var invocations = receivers.ToDictionary(receiver => receiver.Project.Resource, receiver => receiver.Invocations
             .Select(invocation => new RouteCatalogDeclaredInvocation(apps[invocation.Caller.Resource], invocation.Method, invocation.HttpMethods)).ToArray());
         if (invocations.Values.Any(grants => grants.Select(grant => (grant.CallerAppId, grant.Method)).Distinct().Count() != grants.Length
@@ -101,7 +111,7 @@ public static class DevelopmentRouteCatalogAspireExtensions
             throw new InvalidOperationException("Duplicate or incomplete owner invocation declarations are not admitted.");
         string[] hosts = receivers.Select(receiver => receiver.Project.Resource.Name).Order(StringComparer.Ordinal).ToArray();
         string gatewayAppId = apps[gateway.Resource];
-        var catalog = BuildCatalog(gatewayAppId, owners, apps);
+        var catalog = BuildCatalog(gatewayAppId, logicalOwners, apps);
         string root = RouteCatalogCodec.ComputeRootDigest(catalog);
         string instance = Guid.NewGuid().ToString("N");
         string directory = Directory.CreateTempSubdirectory("hexalith-route-catalog-").FullName;
@@ -161,7 +171,7 @@ public static class DevelopmentRouteCatalogAspireExtensions
                 Set("AccessControlPath", aclPath);
                 Set("DeclaredInvocations", JsonSerializer.Serialize(grants));
                 for (int i = 0; i < hosts.Length; i++) Set("RequiredHostIds__" + i, hosts[i]);
-                string[] selectedApps = apps.Values.Order(StringComparer.Ordinal).ToArray();
+                string[] selectedApps = apps.Values.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
                 for (int i = 0; i < selectedApps.Length; i++) Set("SelectedAppIds__" + i, selectedApps[i]);
                 project.WithEnvironment("EventStore__RouteCatalog__StateStore", componentName)
                     .WithEnvironment("EventStore__RouteCatalog__StateKey", instance + "-authority")
@@ -173,10 +183,10 @@ public static class DevelopmentRouteCatalogAspireExtensions
                     project.WaitForStart(builder.CreateResourceBuilder(wait.Resource));
                 }
             }
-            for (int i = 0; i < owners.Count; i++)
+            for (int i = 0; i < logicalOwners.Length; i++)
             {
-                gateway.WithEnvironment("EventStore__RouteCatalog__DevelopmentBootstrap__OwnerAssemblies__" + i, owners[i].Contracts.Location);
-                gateway.WithEnvironment("EventStore__RouteCatalog__DevelopmentBootstrap__AdapterAssemblies__" + i, owners[i].Adapters.Location);
+                gateway.WithEnvironment("EventStore__RouteCatalog__DevelopmentBootstrap__OwnerAssemblies__" + i, logicalOwners[i].Contracts.Location);
+                gateway.WithEnvironment("EventStore__RouteCatalog__DevelopmentBootstrap__AdapterAssemblies__" + i, logicalOwners[i].Adapters.Location);
             }
             gateway.WithEnvironment("EventStore__IdempotencyAdmission__Enabled", "true")
                 .WithEnvironment("EventStore__IdempotencyAdmission__DigestKeySource", "Configuration")

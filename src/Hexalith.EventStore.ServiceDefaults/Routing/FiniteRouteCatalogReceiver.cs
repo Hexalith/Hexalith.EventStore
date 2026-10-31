@@ -205,15 +205,14 @@ public sealed class FiniteRouteCatalogReceiver
         var grants = acl.GetProperty("policies").EnumerateArray().SelectMany(policy => policy.GetProperty("operations").EnumerateArray())
             .Where(grant => grant.GetProperty("action").GetString() == "allow")
             .Select(grant => grant.GetProperty("name").GetString() ?? string.Empty).ToArray();
-        if (grants.Any(grant => !(_technical && grant is "/**" or "/*") && (grant.Trim('/').TrimEnd('*').TrimEnd('/').Length == 0 || grant.Contains('*', StringComparison.Ordinal)
-            && (!grant.EndsWith("/*", StringComparison.Ordinal) || grant.Count(c => c == '*') != 1))))
+        if (grants.Any(grant => RouteCatalogDaprGrant.Prefix(grant, _technical) is null))
             throw new RouteCatalogUnavailableException("The actual receiver ACL contains an unsupported wildcard shape.");
-        _prefixes = grants.Select(grant => "/" + grant.Trim('/').TrimEnd('*').TrimEnd('/')).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        _prefixes = grants.Select(grant => RouteCatalogDaprGrant.Prefix(grant, _technical)!).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         _grants.Clear();
         if (_technical)
         foreach (var grant in acl.GetProperty("policies").EnumerateArray().SelectMany(policy => policy.GetProperty("operations").EnumerateArray())
             .Where(grant => grant.GetProperty("action").GetString() == "allow"))
-            _grants.Add(("/" + grant.GetProperty("name").GetString()!.Trim('/').TrimEnd('*').TrimEnd('/'),
+            _grants.Add((RouteCatalogDaprGrant.Prefix(grant.GetProperty("name").GetString()!, _technical)!,
                 grant.GetProperty("httpVerb").EnumerateArray().Select(verb => verb.GetString()!).ToArray(), grant.GetProperty("name").GetString()!));
     }
 

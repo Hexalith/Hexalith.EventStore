@@ -73,6 +73,31 @@ public static class DevelopmentRouteCatalogBootstrap
         var actual = await capture(provider, token).ConfigureAwait(false);
         // This identity is calculated before a proposal exists and is recaptured by the authority on every lifecycle operation.
         provider.GetRequiredService<IOptions<RouteCatalogHostOptions>>().Value.Identity = ObservedRouteCatalogHost.Identity(actual);
+        var authority = provider.GetRequiredService<IRouteCatalogAuthority>();
+        var stateStore = provider.GetRequiredService<IRouteCatalogStateStore>();
+        RouteCatalogActivationState retained;
+        while (true)
+        {
+            try { (retained, _) = await stateStore.ReadAsync(token).ConfigureAwait(false); break; }
+            catch (RouteCatalogUnavailableException exception) when (exception.Category == RouteCatalogRefusalReason.Backend)
+            { await Task.Delay(100, token).ConfigureAwait(false); }
+        }
+        if (retained.Committed is { } committed && committed.AttemptId == attempt)
+        {
+            var recorded = await ReadAsync<RouteCatalogActivation>(Path.Combine(directory, "activation.json"), token).ConfigureAwait(false);
+            if (RouteCatalogActivationBinding.ComputeDigest(recorded) != RouteCatalogActivationBinding.ComputeDigest(committed))
+                throw new RouteCatalogUnavailableException("Retained activation files differ from the actual authority state.");
+            // A child restart recaptures its real inputs and validates persisted CAS authority.
+            // Old coordination files never count as fresh readiness and are never overwritten.
+            var resumed = await authority.ReadbackAsync(token).ConfigureAwait(false);
+            if (!resumed.Serving || resumed.RootDigest != committed.RootDigest
+                || !resumed.RequiredHosts.Contains(ObservedRouteCatalogHost.Identity(actual))
+                || !hosts.Order(StringComparer.Ordinal).SequenceEqual(resumed.RequiredHosts.Select(required => required.HostId).Order(StringComparer.Ordinal), StringComparer.Ordinal))
+                throw new RouteCatalogUnavailableException("The restarted host cannot resume the exact retained committed generation.");
+            await WriteAsync(Path.Combine(directory, host + ".resume-" + Guid.NewGuid().ToString("N") + ".json"),
+                new { observation = ObservedRouteCatalogHost.Identity(actual), readback = resumed }, token).ConfigureAwait(false);
+            return;
+        }
         await WriteAsync(Path.Combine(directory, host + ".observation.json"), actual, token).ConfigureAwait(false);
         string activationPath = Path.Combine(directory, "activation.json");
         if (host == coordinator)
@@ -85,18 +110,23 @@ public static class DevelopmentRouteCatalogBootstrap
                     throw new RouteCatalogUnavailableException("A participant supplied a different exact host inventory.");
                 observations.Add(observed);
             }
-            var catalog = construct!(observations);
+            var logical = observations.GroupBy(observation => observation.AppId, StringComparer.Ordinal).Select(group =>
+            {
+                if (!RouteCatalogReplicaPolicy.Equivalent(group.Select(ObservedRouteCatalogHost.Identity)))
+                    throw new RouteCatalogUnavailableException("Physical replicas disagree about their executable, inventory or authentication policy.");
+                return group.First();
+            }).ToArray();
+            var catalog = construct!(logical);
             if (catalog.Profile != "Development" || catalog.SchemaVersion is not (2 or 3))
                 throw new RouteCatalogUnavailableException("Development bootstrap requires a complete executable catalog.");
             var candidate = new RouteCatalogActivation(attempt, RouteCatalogCodec.Encode(catalog), RouteCatalogCodec.ComputeRootDigest(catalog), null,
                 observations.Select(ObservedRouteCatalogHost.Identity).ToArray(), "Development-fixture", string.Empty,
-                observations.SelectMany(o => o.AuxiliaryOperations!).ToArray(), observations.SelectMany(o => o.ProjectionCapabilities!).ToArray());
+                logical.SelectMany(o => o.AuxiliaryOperations!).ToArray(), logical.SelectMany(o => o.ProjectionCapabilities!).ToArray());
             candidate = candidate with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(candidate) };
             await WriteAsync(activationPath, candidate, token).ConfigureAwait(false);
         }
         var activation = await ReadAsync<RouteCatalogActivation>(activationPath, token).ConfigureAwait(false);
         if (activation.AttemptId != attempt) throw new RouteCatalogUnavailableException("A different activation attempt occupies the private directory.");
-        var authority = provider.GetRequiredService<IRouteCatalogAuthority>();
         await RetryBackendAsync(() => authority.PrepareAsync(activation, token), token).ConfigureAwait(false);
         var ready = await authority.ReadyAsync(attempt, token).ConfigureAwait(false);
         await WriteAsync(Path.Combine(directory, host + ".ready.json"), ready, token).ConfigureAwait(false);
@@ -139,6 +169,14 @@ public static class DevelopmentRouteCatalogBootstrap
         var stream = new FileStream(pending, options);
         await using (stream.ConfigureAwait(false))
             await JsonSerializer.SerializeAsync(stream, value, cancellationToken: token).ConfigureAwait(false);
-        File.Move(pending, path, overwrite: false);
+        try { File.Move(pending, path, overwrite: false); }
+        catch (IOException) when (File.Exists(path))
+        {
+            byte[] existing = await File.ReadAllBytesAsync(path, token).ConfigureAwait(false);
+            byte[] proposed = await File.ReadAllBytesAsync(pending, token).ConfigureAwait(false);
+            File.Delete(pending);
+            if (!existing.AsSpan().SequenceEqual(proposed))
+                throw new RouteCatalogUnavailableException("Immutable private coordination inputs changed; an owner successor transition is required.");
+        }
     }
 }

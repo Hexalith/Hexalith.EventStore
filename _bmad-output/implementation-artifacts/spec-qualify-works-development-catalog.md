@@ -6,7 +6,7 @@ created: 2026-10-31
 
 The Works workspace upgrade requires the existing domain runtime, gateway, Admin and Operations hosts to participate in one real Development catalog. This candidate preserves the native transport qualification source at `5938ab989d905bf37ed4f72136ea65ff6094a802`, including the earlier native request buffering fix, and the packaging qualification branch at `c7b927c30f3af7a48d2f0d6aad5b822308cf0113`. Neither historical source nor its records are relabeled as current acceptance.
 
-The domain auxiliary API binds one concrete POST endpoint to its existing canonical workload policy, exact request-owner assembly, actual installed delegate and static tenant/domain extractor. The existing receiver fence and observed auxiliary inventory retain the same owner binding. Missing generation, altered code/delegate/policy, foreign tenant/domain and target overrides refuse before business work. An owner may classify a malformed request as 400 only after the code and generation checks pass.
+The domain auxiliary API binds one concrete POST endpoint to its existing canonical workload policy, exact request-owner assembly, actual installed delegate and static tenant/domain extractor. The existing receiver fence and observed auxiliary inventory retain the same owner binding. Missing generation, altered code/delegate/policy, foreign tenant/domain and target overrides refuse before business work. Malformed owner scopes return400 and unauthorized owner scopes403 only after code and generation checks pass.
 
 The SDK subscription mapper now provides its own private delegate witness. Its configured topic and existing channel policy are observed without turning ordinary Dapr pub/sub deliveries into workload JWT calls. Operations similarly observes only its five existing compiled dead-letter operator endpoints, with the original human, channel, tenant and role checks retained. These additions create no public message operations or permissions.
 
@@ -22,4 +22,17 @@ Local verification on this candidate:
 - Corresponding builds passed with zero warnings and errors.
 - The consuming Works private Debug lane passed 115 guarded HTTP, catalog inventory and request cancellation tests, with no skips.
 
-Required hosted CI, the complete real four-host Works cohort, actual SDK publication and subsequent package-mode consumer qualification remain pending. A broader DomainService test run was interrupted after source changed and is not recorded as a passing run. These local results do not authorize publication without the exact-source required gates.
+Required hosted CI, the complete real Works cohort, including independently enrolled physical HA replicas, actual SDK publication and subsequent package-mode consumer qualification remain pending. A broader DomainService test run was interrupted after source changed and is not recorded as a passing run. These local results do not authorize publication without the exact-source required gates.
+
+The intermediate review fix batch adds outer cancellation forwarding with actual
+publisher/index/status-store lost-response controls, retained SDK grant matching,
+exact existing workload-action policy qualification, independently code-bound
+logical replicas and verified exact-generation child resume. The existing signed
+owner-query protocol obtains a private controller-owned admission only after its
+signature, configured allowlist and originating proof checks. That admission binds
+the exact in-flight query, payload, principal, HTTP context/endpoint and catalog
+epoch; it does not admit ordinary service calls to public UI-only operations.
+
+Stable retained digest-key custody, changed-coordinate successor composition,
+complete rollback capture/restore, canonical Works gateway/cohort qualification and
+new exact-source hosted CI remain pending. No publication is claimed.

@@ -9,11 +9,13 @@ public sealed class DaprRoutingHeaderOwnershipGuardTests {
         "TryAddWithoutValidation\\s*\\(\\s*\"dapr-(?:app-id|api-token)\"",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    [Fact]
-    public void GuardDetection_WithHostLocalSetter_ReportsTheOffendingHost() {
+    [Theory]
+    [InlineData("dapr-app-id")]
+    [InlineData("dapr-api-token")]
+    public void GuardDetection_WithHostLocalSetter_ReportsTheOffendingHost(string header) {
         string[] violations = FindViolations(
-            "samples/Example/Services/DaprAppIdHandler.cs",
-            "public sealed class DaprAppIdHandler : DelegatingHandler { request.Headers.TryAddWithoutValidation(\"dapr-app-id\", appId); }");
+            "samples/Example/Services/RequestHandler.cs",
+            "public sealed class RequestHandler : DelegatingHandler { request.Headers.TryAddWithoutValidation(\"" + header + "\", appId); }");
 
         violations.ShouldNotBeEmpty();
         violations.ShouldAllBe(static violation => violation.Contains("samples/Example", StringComparison.Ordinal));
@@ -57,6 +59,7 @@ public sealed class DaprRoutingHeaderOwnershipGuardTests {
             [
                 "src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs",
                 "src/Hexalith.EventStore.ServiceDefaults/Routing/DaprRouteCatalogStateStore.cs",
+                "src/Hexalith.EventStore.ServiceDefaults/Routing/RouteCatalogInvocationHandler.cs",
             ],
             "AD-18 permits only platform DAPR clients to set routing headers.");
     }

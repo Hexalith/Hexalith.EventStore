@@ -16,6 +16,7 @@ internal sealed class DomainRouteCatalogFilter(IDomainRouteCatalogGuard guard, M
         try { lease = await guard.AcquireAsync(context).ConfigureAwait(false); }
         catch (OperationCanceledException) when (context.HttpContext.RequestAborted.IsCancellationRequested) { throw; }
         catch (DomainRouteCatalogBadAuxiliaryRequestException) { return Results.BadRequest(); }
+        catch (DomainRouteCatalogForbiddenAuxiliaryRequestException) { return Results.StatusCode(StatusCodes.Status403Forbidden); }
         catch (DomainRouteCatalogMissingLegacyReceiverException) { return Results.NotFound(); }
         catch (Exception exception) { RouteCatalogRefusalDiagnostics.Report(logger, "receiver", exception); return Results.StatusCode(503); }
         try

@@ -49,7 +49,7 @@ public static class RouteCatalogTopologyValidator
                 throw Failure("unqualified-shared-authority-component");
             string?[] scopes = [.. root.GetProperty("scopes").EnumerateArray().Select(s => s.GetString())];
             if (scopes.Any(string.IsNullOrWhiteSpace) || scopes.Distinct(StringComparer.Ordinal).Count() != scopes.Length
-                || !scopes.Order(StringComparer.Ordinal).SequenceEqual(hosts.Select(h => h.AppId).Order(StringComparer.Ordinal), StringComparer.Ordinal))
+                || !scopes.Order(StringComparer.Ordinal).SequenceEqual(hosts.Select(h => h.AppId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal), StringComparer.Ordinal))
                 throw Failure("component-app-id-scope-drift");
             JsonElement acl = configuration.RootElement.GetProperty("spec").GetProperty("accessControl");
             if (acl.GetProperty("defaultAction").GetString() != "deny" || string.IsNullOrWhiteSpace(acl.GetProperty("trustDomain").GetString()))
@@ -145,13 +145,9 @@ public static class RouteCatalogTopologyValidator
     private static bool ValidateTechnicalReceiver(RouteCatalogReceiverSurface receiver, string grant, string[] verbs,
         IReadOnlyList<RouteCatalogAuxiliaryOperation> auxiliary, string localAppId, IReadOnlyDictionary<string, string> legacy)
     {
-        string prefix;
-        if (grant is "**" or "*") prefix = "";
-        else if (grant.EndsWith("/*", StringComparison.Ordinal) && grant.Count(character => character == '*') == 1) prefix = grant[..^2];
-        else if (!grant.Contains('*', StringComparison.Ordinal)) prefix = grant;
-        else throw Failure("unsupported-technical-acl-pattern");
-        var reachable = receiver.Endpoints.Where(endpoint => endpoint.Http?.Grants?.Any(witness => witness.Method.Trim('/') == grant.Trim('/')) == true || prefix.Length == 0 || endpoint.Pattern.Trim('/').Equals(prefix, StringComparison.OrdinalIgnoreCase)
-            || endpoint.Pattern.Trim('/').StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (RouteCatalogDaprGrant.Prefix(grant, technical: true) is null) throw Failure("unsupported-technical-acl-pattern");
+        var reachable = receiver.Endpoints.Where(endpoint => RouteCatalogDaprGrant.Intersects(grant, endpoint.Pattern)
+            || RouteCatalogDaprGrant.Describes(grant, endpoint.Pattern)).ToArray();
         var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null)).ToArray();
         if (technical.Length == 0) return false;
         if (verbs.Length == 0 || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length
@@ -172,7 +168,7 @@ public static class RouteCatalogTopologyValidator
             else if (endpoint.Http is { } http)
             {
                 if (endpoint.Anonymous || endpoint.Policies.Count == 0 || endpoint.Policies.Any(string.IsNullOrWhiteSpace)
-                    || !endpoint.Policies.Contains("EventStoreHuman", StringComparer.Ordinal)
+                    || !RouteCatalogSdkHttpPolicy.Allows(http.Owner, endpoint.Pattern, endpoint.Methods, endpoint.Policies)
                     || endpoint.Http.Grants is not { Count: > 0 } witnesses
                     || !witnesses.Any(witness => witness.Method.Trim('/') == grant.Trim('/') && verbs.Any(verb => witness.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal)))
                     || endpoint.Methods.Count == 0 || !endpoint.Methods.All(verb => http.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal))

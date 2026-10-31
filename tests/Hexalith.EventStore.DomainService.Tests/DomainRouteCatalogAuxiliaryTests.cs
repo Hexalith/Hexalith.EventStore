@@ -25,6 +25,8 @@ public sealed class DomainRouteCatalogAuxiliaryTests
     [InlineData("root")]
     [InlineData("epoch")]
     [InlineData("tenant")]
+    [InlineData("blank-tenant")]
+    [InlineData("blank-domain")]
     [InlineData("domain")]
     [InlineData("owner")]
     [InlineData("service-surface")]
@@ -67,7 +69,8 @@ public sealed class DomainRouteCatalogAuxiliaryTests
         context.Request.Headers[RouteCatalogInvocationHandler.RootHeader] = scenario == "root" ? new string('0', 64) : snapshot.RootDigest;
         context.Request.Headers[RouteCatalogInvocationHandler.EpochHeader] = scenario == "epoch" ? "2" : "1";
         context.User = new ClaimsPrincipal(new ClaimsIdentity(scenario == "service-surface" ? [] : [new Claim("eventstore:surface", "service")], "verified-workload"));
-        var request = new AuxiliaryRequest(scenario == "tenant" ? "tenant-b" : "tenant-a", scenario == "domain" ? "foreign" : "widget");
+        var request = new AuxiliaryRequest(scenario == "blank-tenant" ? " " : scenario == "tenant" ? "tenant-b" : "tenant-a",
+            scenario == "blank-domain" ? " " : scenario == "domain" ? "foreign" : "widget");
         var invocation = new DefaultEndpointFilterInvocationContext(context, request);
         if (scenario == "valid")
         {
@@ -75,7 +78,19 @@ public sealed class DomainRouteCatalogAuxiliaryTests
             released.ShouldBe(0);
             await lease.DisposeAsync();
         }
-        else await Should.ThrowAsync<RouteCatalogUnavailableException>(() => guard.AcquireAsync(invocation));
+        else
+        {
+            bool invoked = false;
+            object? result = await new DomainRouteCatalogFilter(guard).InvokeAsync(invocation, _ =>
+            { invoked = true; return ValueTask.FromResult<object?>(Results.NoContent()); });
+            invoked.ShouldBeFalse();
+            ((IStatusCodeHttpResult)result!).StatusCode.ShouldBe(scenario switch
+            {
+                "blank-tenant" or "blank-domain" => 400,
+                "tenant" or "domain" => 403,
+                _ => 503,
+            });
+        }
         released.ShouldBe(1);
     }
 

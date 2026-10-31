@@ -23,7 +23,7 @@ internal sealed class RouteCatalogTestFixture
     public RouteCatalogEnvelope Envelope { get; }
     public RouteCatalogHostObservation[] Observations { get; }
 
-    public RouteCatalogTestFixture(RouteCatalogStateCoordinates? coordinates = null)
+    public RouteCatalogTestFixture(RouteCatalogStateCoordinates? coordinates = null, string? replicaAppId = null)
     {
         if (coordinates is not null) Store.Coordinates = coordinates;
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -39,6 +39,18 @@ internal sealed class RouteCatalogTestFixture
             Envelope.Routes.Where(r => r.AppId == app).ToArray(), appIds,
             [System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { kind = "Component", metadata = new { name = Store.Coordinates.StateStore }, spec = new { type = "state.redis", metadata = new[] { new { name = "keyPrefix", value = "none" } } }, scopes = appIds }),
              System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { spec = new { accessControl = new { defaultAction = "deny", trustDomain = "public" } } })], Encoding.UTF8.GetBytes("observed-authentication-v1"), app == "eventstore" ? admission : [], [], [], Store.Coordinates))];
+        if (replicaAppId is not null)
+        {
+            string replicaHost = replicaAppId + "-ha";
+            string[] required = [.. appIds, replicaHost];
+            var executable = new Dictionary<string, string> { [typeof(SampleCatalog).Assembly.FullName!] =
+                Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(typeof(SampleCatalog).Assembly.Location))) };
+            var original = Observations.Single(observation => observation.AppId == replicaAppId);
+            Observations = [.. Observations.Select(observation => observation with
+            { RequiredHostIds = required, ExecutableOwners = observation.AppId == replicaAppId ? executable : null }),
+                original with { HostId = replicaHost, RequiredHostIds = required, ExecutableOwners = executable,
+                    TopologyDocuments = [.. original.TopologyDocuments, Encoding.UTF8.GetBytes("independent-replica-sidecar-coordinates")] }];
+        }
         Hosts = [.. Observations.Select(ObservedRouteCatalogHost.Identity)];
         Authorities = [.. Hosts.Select(host => CreateAuthority(host))];
     }

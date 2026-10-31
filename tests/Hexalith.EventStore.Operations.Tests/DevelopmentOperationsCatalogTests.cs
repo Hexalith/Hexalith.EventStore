@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Authorization;
@@ -29,6 +30,9 @@ public sealed class DevelopmentOperationsCatalogTests
             var owner = DevelopmentTechnicalHttpTransport.Observe(endpoint).ShouldNotBeNull();
             owner.Owner.ShouldBe("Hexalith.EventStore.Operations.Endpoints.DeadLetterOperationsEndpointExtensions");
             owner.CodeDigest.Length.ShouldBe(64);
+            DevelopmentTechnicalHttpTransport.GrantReaches("/internal/dead-letters/**", endpoint.RoutePattern.RawText!).ShouldBeTrue();
+            RouteCatalogDaprGrant.Allows("/internal/dead-letters/**", endpoint.RoutePattern.RawText!).ShouldBeTrue();
+            RouteCatalogDaprGrant.Allows("/internal/dead-letters/**", "/internal/dead-letters-other/count").ShouldBeFalse();
             owner.Verbs.ShouldBe(endpoint.RoutePattern.RawText is "/internal/dead-letters" or "/internal/dead-letters/count" ? "GET" : "POST");
             var foreign = new RouteEndpoint(static _ => Task.CompletedTask, endpoint.RoutePattern, endpoint.Order, endpoint.Metadata, endpoint.DisplayName);
             DevelopmentTechnicalHttpTransport.Observe(foreign).ShouldBeNull();

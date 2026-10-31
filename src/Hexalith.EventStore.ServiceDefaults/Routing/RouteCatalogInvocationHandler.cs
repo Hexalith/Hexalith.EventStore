@@ -176,7 +176,7 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
             throw new RouteCatalogUnavailableException("Owner actor-state reads require the actual enrolled Admin receiver scope.");
         request.Headers.Remove("dapr-api-token");
         request.Headers.TryAddWithoutValidation("dapr-api-token", owners[0].ApiToken);
-        return await RouteCatalogRemoteCall.InvokeAsync(() => InvocationTransport().SendAsync(request, token)).ConfigureAwait(false);
+        return await RouteCatalogRemoteCall.InvokeAsync(() => InvocationTransport().SendAsync(request, token), token).ConfigureAwait(false);
     }
 
     private HttpMessageInvoker InvocationTransport() => _invocationTransport

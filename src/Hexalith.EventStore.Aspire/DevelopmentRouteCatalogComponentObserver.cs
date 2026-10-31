@@ -60,7 +60,7 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
         metadata.Add(new JsonObject { ["name"] = "keyPrefix", ["value"] = "name" });
         component["metadata"]!["labels"] ??= new JsonObject();
         component["metadata"]!["labels"]![RouteCatalogAuthorityComponentPolicy.RoleLabel] = RouteCatalogAuthorityComponentPolicy.IsolatedRole;
-        component["scopes"] = JsonSerializer.SerializeToNode(participants.Select(participant => selectedAppIds[participant]).Order(StringComparer.Ordinal).ToArray());
+        component["scopes"] = JsonSerializer.SerializeToNode(participants.Select(participant => selectedAppIds[participant]).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
         // The toolkit has no public scopes builder. Update only the role/scopes of its actual
         // modeled output in place; preserve its late-resolved backend/auth metadata and loading path.
         await File.WriteAllBytesAsync(path, JsonSerializer.SerializeToUtf8Bytes(component), token).ConfigureAwait(false);

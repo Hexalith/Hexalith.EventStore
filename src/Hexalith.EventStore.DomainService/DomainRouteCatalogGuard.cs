@@ -41,7 +41,7 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                         && operation.Operation == auxiliary.Route.Operation && operation.Domain == auxiliary.Domain && operation.DomainAuxiliary == owner))
                     throw new RouteCatalogUnavailableException("The auxiliary endpoint code or scope differs from its committed owner binding.");
                 var scope = auxiliary.Scope(request);
-                ValidateAuxiliaryTenant(snapshot, appId, scope.Domain, scope.Tenant);
+                ValidateAuxiliaryTenant(snapshot, appId, scope.Domain, scope.Tenant, ownerAuxiliary: true);
                 return lease;
             }
             if (!EventStoreDomainServiceRoutes.Operational.Any(route => route.Route == "/" + method))
@@ -146,13 +146,16 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
             EventStoreDomainServiceRoutes.Operational.Single(route => route.Route == "/" + method).Operation);
     }
 
-    private static void ValidateAuxiliaryTenant(CommittedRouteCatalogSnapshot snapshot, string appId, string domain, string tenant)
+    private static void ValidateAuxiliaryTenant(CommittedRouteCatalogSnapshot snapshot, string appId, string domain, string tenant, bool ownerAuxiliary = false)
     {
         var scoped = snapshot.Envelope.Routes.Where(r => r.AppId == appId
             && snapshot.Envelope.Declarations.Any(d => d.RouteId == r.RouteId && d.Domain == domain && d.Kind == "command" && d.Execution!.TargetKind == "domain-service")).ToArray();
-        if (scoped.Length == 0 || !scoped.Any(r => r.ResolverTenantPattern is null or "*" || r.ResolverTenantPattern == tenant))
+        if (scoped.Length == 0)
+            throw new RouteCatalogUnavailableException("The auxiliary owner has no committed command scope.");
+        if (!scoped.Any(r => r.ResolverTenantPattern is null or "*" || r.ResolverTenantPattern == tenant))
+        {
+            if (ownerAuxiliary) throw new DomainRouteCatalogForbiddenAuxiliaryRequestException();
             throw new RouteCatalogUnavailableException("The auxiliary request tenant is outside the committed domain scope.");
+        }
     }
 }
-
-internal sealed class DomainRouteCatalogMissingLegacyReceiverException : Exception;

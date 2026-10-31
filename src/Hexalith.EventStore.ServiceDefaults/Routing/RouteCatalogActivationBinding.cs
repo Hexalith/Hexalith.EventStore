@@ -17,9 +17,9 @@ public static class RouteCatalogActivationBinding
             || string.IsNullOrWhiteSpace(activation.Owner) || activation.RequiredHosts is not { Count: > 0 and <= 256 }
             || activation.RequiredHosts.Any(h => h is null || string.IsNullOrWhiteSpace(h.HostId)
                 || string.IsNullOrWhiteSpace(h.AppId) || !Digest(h.InventoryDigest) || !Digest(h.TopologyDigest)
-                || string.IsNullOrWhiteSpace(h.AuthenticationFingerprint))
+                || string.IsNullOrWhiteSpace(h.AuthenticationFingerprint) || h.ExecutableDigest is not null && !Digest(h.ExecutableDigest))
             || activation.RequiredHosts.Select(h => h.HostId).Distinct(StringComparer.Ordinal).Count() != activation.RequiredHosts.Count
-            || activation.RequiredHosts.Select(h => h.AppId).Distinct(StringComparer.Ordinal).Count() != activation.RequiredHosts.Count
+            || activation.RequiredHosts.GroupBy(h => h.AppId, StringComparer.Ordinal).Any(group => !RouteCatalogReplicaPolicy.Equivalent(group))
             || (activation.PredecessorRootDigest is not null && !Digest(activation.PredecessorRootDigest))
             || (activation.AuxiliaryOperations is { } auxiliary && (auxiliary.Any(a => a is null
                 || !activation.RequiredHosts.Any(h => h.AppId == a.AppId) || string.IsNullOrWhiteSpace(a.Method)

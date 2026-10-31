@@ -58,7 +58,15 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                     .ThenBy(invocation => invocation.Method, StringComparer.Ordinal).ToArray(),
             }));
         }
-        return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile));
+        string? executable = null;
+        if (observation.ExecutableOwners is { } owners)
+        {
+            if (owners.Count == 0 || owners.Any(owner => string.IsNullOrWhiteSpace(owner.Key)
+                || owner.Value is not { Length: 64 } || !owner.Value.All(char.IsAsciiHexDigitLower)))
+                throw new RouteCatalogUnavailableException("The actual executable owner identities are incomplete.", RouteCatalogRefusalReason.Inventory);
+            executable = Hash(JsonSerializer.SerializeToUtf8Bytes(owners.OrderBy(owner => owner.Key, StringComparer.Ordinal).ToArray()));
+        }
+        return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile)) { ExecutableDigest = executable };
     }
 
     /// <inheritdoc/>

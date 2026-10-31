@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
@@ -31,6 +32,27 @@ namespace Hexalith.EventStore.Controllers;
 [Consumes("application/json")]
 [Tags("Queries")]
 public partial class QueriesController : ControllerBase {
+    private static readonly object BoundOwnerCatalogAdmissionKey = new();
+
+    /// <summary>Recognizes only this controller's verified, exact in-flight owner-query admission under the same captured generation.</summary>
+    internal static bool HasVerifiedBoundOwnerCatalogAdmission(HttpContext context, SubmitQuery request,
+        Hexalith.EventStore.ServiceDefaults.Routing.CommittedRouteCatalogSnapshot snapshot)
+    {
+        if (!context.Items.TryGetValue(BoundOwnerCatalogAdmissionKey, out var value)
+            || value is not ValueTuple<HttpContext, SubmitQuery, ClaimsPrincipal, Endpoint?, byte[], string, long> admitted
+            || !ReferenceEquals(admitted.Item1, context) || !ReferenceEquals(admitted.Item2, request)
+            || !ReferenceEquals(admitted.Item3, context.User) || !ReferenceEquals(admitted.Item4, context.GetEndpoint())
+            || admitted.Item6 != snapshot.RootDigest || admitted.Item7 != snapshot.Epoch
+            || !CryptographicOperations.FixedTimeEquals(admitted.Item5, SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(request)))
+            || RouteCatalogSurfacePolicy.Surface(context.User) != "service" || !request.IsDelegated
+            || string.IsNullOrWhiteSpace(request.OriginalActorId) || request.AuthenticatedWorkloadId != context.User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value
+            || context.Request.Method != "POST" || context.Request.Path != "/api/v1/queries/owner-authority/workload"
+            || !context.User.HasClaim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType, EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery)) return false;
+        var action = context.GetEndpoint()?.Metadata.GetMetadata<Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor>();
+        return action is not null && action.MethodInfo == typeof(QueriesController).GetMethod(nameof(SubmitBoundOwnerAuthorityAsync))
+            && action.ControllerTypeInfo.AsType() == typeof(QueriesController);
+    }
+
     private IMediator mediator { get; }
     private IETagService eTagService { get; }
     private ITenantValidator tenantValidator { get; }
@@ -156,7 +178,23 @@ public partial class QueriesController : ControllerBase {
                 ? [audience.Trim()] : null) { CallerAuthority = ownerAuthority };
         if (query.QueryType == Hexalith.EventStore.Contracts.Projections.InspectProjectionCurrentQuery.QueryType)
             return await InspectProjectionCurrentAsync(request, ownerAuthority, correlationId, cancellationToken).ConfigureAwait(false);
-        SubmitQueryResult result = await mediator.Send(submitted, cancellationToken).ConfigureAwait(false);
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        bool hadPriorAdmission = HttpContext.Items.TryGetValue(BoundOwnerCatalogAdmissionKey, out object? priorAdmission);
+        if (catalogLease?.Snapshot.Envelope.SchemaVersion == 3)
+        {
+            if (RouteCatalogSurfacePolicy.Surface(User) != "service") return Forbid();
+            _ = catalogLease.Snapshot.Resolve("query", query.Tenant, query.Domain, query.QueryType);
+            HttpContext.Items[BoundOwnerCatalogAdmissionKey] = (HttpContext, submitted, User, HttpContext.GetEndpoint(),
+                SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(submitted)), catalogLease.Snapshot.RootDigest, catalogLease.Snapshot.Epoch);
+        }
+        SubmitQueryResult result;
+        try { result = await mediator.Send(submitted, cancellationToken).ConfigureAwait(false); }
+        finally
+        {
+            if (hadPriorAdmission) HttpContext.Items[BoundOwnerCatalogAdmissionKey] = priorAdmission;
+            else HttpContext.Items.Remove(BoundOwnerCatalogAdmissionKey);
+        }
         Response.Headers.CacheControl = "no-store";
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload,
             Metadata: NormalizeProducerMetadata(result.Metadata)));
