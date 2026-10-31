@@ -142,6 +142,7 @@ public static class DevelopmentRouteCatalogAspireExtensions
                 receivers.ToDictionary(receiver => receiver.Project.Resource, receiver => Path.Combine(directory, receiver.Project.Resource.Name + ".configuration.json")),
                 directory, custody.BackendBytes);
             builder.Services.AddSingleton<IDistributedApplicationEventingSubscriber>(observer);
+            var componentPath = new DevelopmentRouteCatalogComponentPath(observer);
             var keys = options.DigestKeys.ToDictionary(pair => pair.Key, pair =>
                 builder.AddParameter("catalog-" + instance + "-digest-" + pair.Key, () => pair.Value, secret: true), StringComparer.Ordinal);
             foreach (var receiver in receivers)
@@ -173,8 +174,7 @@ public static class DevelopmentRouteCatalogAspireExtensions
                 Set("AuthorityRole", RouteCatalogAuthorityComponentPolicy.IsolatedRole);
                 Set("CatalogPath", Path.Combine(directory, "catalog.json")); Set("RootDigest", root);
                 if (custody.PredecessorRootDigest is { } predecessor) Set("PredecessorRootDigest", predecessor);
-                project.WithEnvironment(context => context.EnvironmentVariables["EventStore__RouteCatalog__DevelopmentBootstrap__ComponentPath"] = observer.ComponentPath
-                    ?? throw new InvalidOperationException("The actual modeled authority has not been rendered."));
+                project.WithEnvironment(context => context.EnvironmentVariables["EventStore__RouteCatalog__DevelopmentBootstrap__ComponentPath"] = componentPath);
                 Set("AccessControlPath", aclPath);
                 Set("DeclaredInvocations", JsonSerializer.Serialize(grants));
                 for (int i = 0; i < hosts.Length; i++) Set("RequiredHostIds__" + i, hosts[i]);

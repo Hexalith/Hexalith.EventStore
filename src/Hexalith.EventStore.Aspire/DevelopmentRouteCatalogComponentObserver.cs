@@ -7,7 +7,6 @@ using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
 using CommunityToolkit.Aspire.Hosting.Dapr;
 using Hexalith.EventStore.Contracts.Routing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.Aspire;
 
@@ -17,6 +16,7 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
     string custodyRunDirectory, byte[]? retainedBackend) : IDistributedApplicationEventingSubscriber
 {
     internal string? ComponentPath { get; private set; }
+    private readonly object _custodyGate = new();
 
     /// <inheritdoc/>
     public Task SubscribeAsync(IDistributedApplicationEventing eventing, DistributedApplicationExecutionContext executionContext, CancellationToken cancellationToken)
@@ -67,42 +67,60 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
         // workload issuer credentials and unrelated application secrets keep their deletion policy.
         var references = metadata.Where(item => item?["secretKeyRef"] is not null)
             .Select(item => item!["secretKeyRef"]!["name"]!.GetValue<string>()).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-        Dictionary<string, string> bindings = new(StringComparer.Ordinal);
-        foreach (var participant in participants)
+        if (references.Length == 0) CaptureBackend(new Dictionary<string, string>(StringComparer.Ordinal));
+        else foreach (var participant in participants)
         {
             var sidecar = participant.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
             var executable = startup.Model.Resources.OfType<ExecutableResource>().Single(resource => resource.Name == sidecar.Name + "-cli");
-            Dictionary<string, object> environment = new(StringComparer.Ordinal);
-            foreach (var callback in executable.Annotations.OfType<EnvironmentCallbackAnnotation>())
-                await callback.Callback(new EnvironmentCallbackContext(startup.Services.GetRequiredService<DistributedApplicationExecutionContext>(), executable, environment, token)).ConfigureAwait(false);
-            foreach (string reference in references)
+            // Resolve only referenced backend values in the actual sidecar's environment stage.
+            // Running every callback here would force mTLS/issuer credential reads before their
+            // resources exist. Necessary endpoint/parameter providers may also await allocation.
+            executable.Annotations.Add(new EnvironmentCallbackAnnotation(async context =>
             {
-                if (!environment.TryGetValue(reference, out object? value)) throw new InvalidOperationException("An actual authority backend dependency cannot be retained from its selected sidecar.");
-                string? resolved = value switch
+                Dictionary<string, string> bindings = new(StringComparer.Ordinal);
+                foreach (string reference in references)
                 {
-                    string literal => literal,
-                    IValueProvider provider => await provider.GetValueAsync(token).ConfigureAwait(false),
-                    _ => throw new InvalidOperationException("An authority backend dependency has no supported owner value provider."),
-                };
-                if (resolved is null || bindings.TryGetValue(reference, out string? previous) && previous != resolved)
-                    throw new InvalidOperationException("Physical receivers selected different actual authority backend dependencies.");
-                bindings[reference] = resolved;
+                    if (!context.EnvironmentVariables.TryGetValue(reference, out object? value))
+                        throw new InvalidOperationException("An actual authority backend dependency cannot be retained from its selected sidecar.");
+                    bindings[reference] = value switch
+                    {
+                        string literal => literal,
+                        IValueProvider provider => await provider.GetValueAsync(context.CancellationToken).ConfigureAwait(false)
+                            ?? throw new InvalidOperationException("The selected backend dependency is unavailable."),
+                        _ => throw new InvalidOperationException("An authority backend dependency has no supported owner value provider."),
+                    };
+                }
+                CaptureBackend(bindings);
+            }));
+        }
+
+        void CaptureBackend(Dictionary<string, string> bindings)
+        {
+            var backend = component.DeepClone().AsObject();
+            backend.Remove("scopes");
+            backend["metadata"]!.AsObject().Remove("labels");
+            foreach (var item in backend["spec"]!["metadata"]!.AsArray())
+                if (item?["secretKeyRef"] is JsonObject reference)
+                {
+                    item!["value"] = bindings[reference["name"]!.GetValue<string>()];
+                    item.AsObject().Remove("secretKeyRef");
+                }
+            byte[] backendBytes = JsonSerializer.SerializeToUtf8Bytes(backend);
+            if (retainedBackend is not null && !retainedBackend.AsSpan().SequenceEqual(backendBytes))
+                throw new InvalidOperationException("The retained authority backend changed. Restore its exact owner profile; a new backend requires a separately verified state handoff.");
+            lock (_custodyGate)
+            {
+                RetainExact("authority.backend.json", backendBytes);
+                RetainExact("authority.dependencies.json", JsonSerializer.SerializeToUtf8Bytes(bindings));
             }
         }
-        var backend = component.DeepClone().AsObject();
-        backend.Remove("scopes");
-        backend["metadata"]!.AsObject().Remove("labels");
-        foreach (var item in backend["spec"]!["metadata"]!.AsArray())
-            if (item?["secretKeyRef"] is JsonObject reference)
-            {
-                item!["value"] = bindings[reference["name"]!.GetValue<string>()];
-                item.AsObject().Remove("secretKeyRef");
-            }
-        byte[] backendBytes = JsonSerializer.SerializeToUtf8Bytes(backend);
-        if (retainedBackend is not null && !retainedBackend.AsSpan().SequenceEqual(backendBytes))
-            throw new InvalidOperationException("The retained authority backend changed. Restore its exact owner profile; a new backend requires a separately verified state handoff.");
-        DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.backend.json"), backendBytes);
-        DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.dependencies.json"), JsonSerializer.SerializeToUtf8Bytes(bindings));
+        void RetainExact(string name, byte[] bytes)
+        {
+            string target = Path.Combine(custodyRunDirectory, name);
+            if (!File.Exists(target)) DevelopmentRouteCatalogCustody.WriteNew(target, bytes);
+            else if (!File.ReadAllBytes(target).AsSpan().SequenceEqual(bytes))
+                throw new InvalidOperationException("Physical receivers selected different actual authority backend dependencies.");
+        }
         DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.component.json"), JsonSerializer.SerializeToUtf8Bytes(component));
         // The toolkit has no public scopes builder. Update only the role/scopes of its actual
         // modeled output in place; preserve its late-resolved backend/auth metadata and loading path.
