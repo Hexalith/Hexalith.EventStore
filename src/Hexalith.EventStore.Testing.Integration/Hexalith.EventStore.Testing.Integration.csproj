@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="Dapr.Actors.AspNetCore" />
+    <PackageReference Include="StackExchange.Redis" />
     <!-- Library that defines custom xUnit attributes/fixtures: use the extensibility core (not the
          full xunit.v3 metapackage, which requires an executable test project). Assert flows in
          transitively via the Hexalith.EventStore.Testing project reference. -->
