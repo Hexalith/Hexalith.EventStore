@@ -24,8 +24,12 @@ public sealed class FaultExperimentTests
                 actions.Add("settled-request");
             }, () =>
             {
-                actions.Add("failed-accounting");
-                throw new InvalidDataException("duplicate provider execution");
+                actions.Add("sdk-send-count");
+                throw new InvalidDataException("duplicate SDK send");
+            }, () =>
+            {
+                actions.Add("provider-accounting-and-instrumentation-removal");
+                return Task.CompletedTask;
             }, () =>
             {
                 actions.Add("complete-reservation-and-witness");
@@ -34,6 +38,6 @@ public sealed class FaultExperimentTests
         failure.InnerExceptions[0].ShouldBeSameAs(original);
         failure.InnerExceptions.Count.ShouldBe(2);
         pending.Task.IsCompleted.ShouldBeTrue();
-        actions.ShouldBe(new[] { "break-gate", "settled-request", "failed-accounting", "complete-reservation-and-witness" });
+        actions.ShouldBe(new[] { "break-gate", "settled-request", "sdk-send-count", "provider-accounting-and-instrumentation-removal", "complete-reservation-and-witness" });
     }
 }

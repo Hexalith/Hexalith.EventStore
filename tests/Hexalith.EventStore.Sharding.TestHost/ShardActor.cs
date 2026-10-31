@@ -23,19 +23,29 @@ public sealed class ShardActor(ActorHost host, RunFence fence, AttemptJournal? a
     public async Task<ShardReply> ApplyAsync(ShardRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        attempts?.Record(request, Id.GetId(), "actor-entry");
         string outcome = "failed";
+        Exception? failure = null;
         try
         {
+            RecordAttempt(request, "actor-entry");
             ShardReply reply = await ApplyCoreAsync(request);
             outcome = reply.Code;
             return reply;
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+            throw;
         }
         finally
         {
             // A caller timeout is not actor termination. This flushed observation follows
             // the complete turn body, including failed-save cache eviction.
-            attempts?.Record(request, Id.GetId(), "actor-exit", outcome);
+            try { RecordAttempt(request, "actor-exit", outcome); }
+            catch (Exception reportingFailure) when (failure is not null)
+            {
+                failure.Data["attempt-journal:actor-exit"] = reportingFailure;
+            }
         }
     }
 
@@ -161,9 +171,19 @@ public sealed class ShardActor(ActorHost host, RunFence fence, AttemptJournal? a
 
         try
         {
-            attempts?.Record(request, Id.GetId(), "save-start");
+            RecordAttempt(request, "save-start");
+        }
+        catch
+        {
+            // No save was attempted. Evict staged values before propagating the
+            // observation failure so runtime turn completion cannot publish them.
+            await StateManager.ClearCacheAsync(CancellationToken.None);
+            throw;
+        }
+
+        try
+        {
             await StateManager.SaveStateAsync(fence.Token);
-            attempts?.Record(request, Id.GetId(), "save-complete");
         }
         catch (Exception exception)
         {
@@ -171,10 +191,27 @@ public sealed class ShardActor(ActorHost host, RunFence fence, AttemptJournal? a
             // the provider may have committed. Never report an unchanged-state denial,
             // and never let a later turn flush or allocate from this pending cache.
             await StateManager.ClearCacheAsync(CancellationToken.None);
-            attempts?.Record(request, Id.GetId(), "save-failed", exception.GetType().Name);
+            try { RecordAttempt(request, "save-failed", exception.GetType().Name); }
+            catch (Exception reportingFailure)
+            {
+                exception.Data["attempt-journal:save-failed"] = reportingFailure;
+            }
             throw;
         }
 
+        // Failure to observe a completed save must fail the experiment, without
+        // relabeling the actual successful persistence operation as a failed save.
+        RecordAttempt(request, "save-complete");
         return new(true, "saved", next, first, count);
+    }
+
+    private void RecordAttempt(ShardRequest request, string stage, string? detail = null)
+    {
+        try { attempts?.Record(request, Id.GetId(), stage, detail); }
+        catch (Exception exception)
+        {
+            exception.Data["attempt-journal-stage"] = stage;
+            throw;
+        }
     }
 }

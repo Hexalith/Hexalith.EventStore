@@ -572,6 +572,60 @@ public sealed class PublishedTrustReplacementAuthorityTests
     {
         var f = new PublishedTrustReplacementFixture();
         var token = TestContext.Current.CancellationToken;
+        var (request, proof, setAcceptBlockedProof) = PrepareUnissued(f);
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeTrue();
+        setAcceptBlockedProof(false);
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
+        setAcceptBlockedProof(true);
+        f.State = f.State with { Revision = f.State.Revision + 1 };
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
+        f.State = f.State with { Revision = proof.CurrentGuardRevision, EpochId = "epoch-mutated" };
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
+    }
+
+    /// <summary>R11-BH-2: the unissued branch requires the same independent current blocked-replacement evidence as the issued branch, and its refusal status stays enforced.</summary>
+    [Fact]
+    public async Task UnissuedProofRequiresIndependentCurrentnessAndARefusalStatus()
+    {
+        var f = new PublishedTrustReplacementFixture();
+        var token = TestContext.Current.CancellationToken;
+        var (request, proof, _) = PrepareUnissued(f);
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeTrue();
+        await f.Evidence.Received().VerifyCurrentBlockedReplacementAsync(Arg.Any<DeletionBlockedReplacementReconciliation>(), f.State.Revision,
+            DeletionConsumptionIdentity.Digest(f.State), Arg.Any<CancellationToken>());
+
+        // A permissive journal cannot replace denied independent current evidence (repeated guard reads are not that proof).
+        f.Evidence.VerifyCurrentBlockedReplacementAsync(Arg.Any<DeletionBlockedReplacementReconciliation>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
+
+        // The refusal-status half of the claim: a committed (issued) receipt never satisfies the unissued branch.
+        f.RetainCurrentGuard();
+        f.Evidence.VerifyCurrentBlockedReplacementAsync(Arg.Any<DeletionBlockedReplacementReconciliation>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var committed = request with { UnissuedProof = proof with { Refusal = proof.Refusal with { Status = "Committed" } } };
+        (await f.Authority.VerifyBlockedReplacementAsync(committed, token)).ShouldBeFalse();
+    }
+
+    /// <summary>R11-EC-6: an unissued proof carrying a nonzero issued revision is refused before the journal is consulted.</summary>
+    [Fact]
+    public async Task UnissuedProofWithNonzeroIssuedRevisionIsRefusedBeforeTheJournal()
+    {
+        var f = new PublishedTrustReplacementFixture();
+        var token = TestContext.Current.CancellationToken;
+        var (request, _, _) = PrepareUnissued(f);
+        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeTrue();
+        f.Journal.ClearReceivedCalls();
+        foreach (long issued in new[] { 1L, request.UnissuedProof!.CurrentGuardRevision, long.MaxValue })
+        {
+            Should.Throw<ArgumentException>(() => DeletionConsumptionIdentity.Capture(request with { CommittedIssuedGuardRevision = issued }));
+            (await f.Authority.VerifyBlockedReplacementAsync(request with { CommittedIssuedGuardRevision = issued }, token)).ShouldBeFalse();
+        }
+        await f.Journal.DidNotReceive().VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+    }
+
+    private static (DeletionBlockedReplacementReconciliation Request, GovernanceRejectedIssueOriginal Proof, Action<bool> SetAcceptBlockedProof) PrepareUnissued(PublishedTrustReplacementFixture f)
+    {
         f.SetBatch(f.Batch with { ProtectionOutcome = "ConsumptionBlocked:CapabilityKeyCompromise" });
         var successor = f.Replacement.Capability with { AttestationOrdinal = f.Batch.AttestationOrdinal + 1 };
         var signed = f.SignedSubstitution(successor, f.Replacement.Targets);
@@ -610,14 +664,9 @@ public sealed class PublishedTrustReplacementAuthorityTests
                 && Encoding.UTF8.GetString(proof.TargetBytes) == expected;
             return blocked && acceptBlockedProof;
         });
-        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeTrue();
-        acceptBlockedProof = false;
-        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
-        acceptBlockedProof = true;
-        f.State = f.State with { Revision = f.State.Revision + 1 };
-        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
-        f.State = f.State with { Revision = proof.CurrentGuardRevision, EpochId = "epoch-mutated" };
-        (await f.Authority.VerifyBlockedReplacementAsync(request, token)).ShouldBeFalse();
+        // Independent current evidence observes this exact guard snapshot.
+        f.RetainCurrentGuard();
+        return (request, proof, value => acceptBlockedProof = value);
     }
 
     private static Task<bool> VerifySuccessorAsync(PublishedTrustReplacementFixture fixture, bool activation,

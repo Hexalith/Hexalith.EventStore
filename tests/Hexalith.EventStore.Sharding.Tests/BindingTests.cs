@@ -11,6 +11,24 @@ namespace Hexalith.EventStore.Sharding.Tests;
 /// <summary>Deterministic pre-resource checks for deadline, binding and physical identities.</summary>
 public sealed class BindingTests
 {
+    /// <summary>Only proxy mode adds its authorizing phases to the preserved direct-provider authority.</summary>
+    /// <param name="proxy">Whether the bound run selects provider COMMIT fault instrumentation.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AuthorizationIncludesTheSelectedProviderPhase(bool proxy)
+    {
+        const string direct = "spec-4-6-isolated-postgresql-recovery.md and spec-4-6-isolated-dapr-postgresql-sharding.md; owner jpiquot; conversation 01a18ded-3ceb-7c92-b5f5-dbf1e38a4686";
+        string authorization = ShardingFixture.AuthorizationFor(proxy);
+        if (proxy)
+        {
+            authorization.ShouldContain("spec-4-6-provider-commit-ambiguity.md");
+            authorization.ShouldContain("spec-4-6-provider-review-corrections.md");
+            authorization.ShouldEndWith(direct);
+        }
+        else authorization.ShouldBe(direct);
+    }
+
     /// <summary>Missing, noncanonical, expired and overly long expiry inputs fail closed.</summary>
     /// <param name="value">The invalid operator input.</param>
     [Theory]

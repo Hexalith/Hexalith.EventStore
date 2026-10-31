@@ -5,7 +5,8 @@ namespace Hexalith.EventStore.Sharding.TestHost;
 
 /// <summary>Flushes optional test-only observations to per-host files outside runtime scratch.</summary>
 /// <param name="binding">The manifest binding containing the optional journal directory.</param>
-public sealed class AttemptJournal(RunBinding binding)
+/// <param name="beforeAppend">An optional deterministic journal-failure test hook.</param>
+public sealed class AttemptJournal(RunBinding binding, Action<string>? beforeAppend = null)
 {
     private readonly object _sync = new();
 
@@ -23,6 +24,7 @@ public sealed class AttemptJournal(RunBinding binding)
         if (request.OperationId is null || !binding.Configuration.TryGetValue("attempt-journal-directory", out string? directory)) return;
         if (!Path.IsPathFullyQualified(directory) || !Directory.Exists(directory))
             throw new InvalidOperationException("The attempt journal must use its pre-bound retained directory.");
+        beforeAppend?.Invoke(stage);
         byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new AttemptObservation(request.OperationId, stage,
             Environment.ProcessId, DateTimeOffset.UtcNow, actorId, request, detail)) + "\n");
         lock (_sync)

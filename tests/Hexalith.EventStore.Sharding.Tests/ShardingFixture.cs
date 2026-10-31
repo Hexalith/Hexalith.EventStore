@@ -161,7 +161,7 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
                 var configuration = new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["scope"] = "isolated synthetic local development only; production_evidence_qualified=false",
-                    ["authorization"] = "spec-4-6-isolated-postgresql-recovery.md and spec-4-6-isolated-dapr-postgresql-sharding.md; owner jpiquot; conversation 01a18ded-3ceb-7c92-b5f5-dbf1e38a4686",
+                    ["authorization"] = AuthorizationFor(_providerCommitProxy),
                     ["machine"] = Environment.MachineName,
                     ["docker-endpoint"] = _dockerEndpoint,
                     ["app-id"] = _runId,
@@ -430,8 +430,20 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
         bool proxyAbsent = _faultProxy is null;
         if (_faultProxy is not null)
         {
-            try { await _faultProxy.DisposeAsync(); proxyAbsent = await VerifyProxyAbsentAsync(); }
-            catch (Exception exception) { failures.Add("provider proxy: " + exception.Message); }
+            try { await _faultProxy.DisposeAsync(); }
+            catch (Exception exception) { failures.Add("provider proxy disposal: " + exception.Message); }
+            try
+            {
+                proxyAbsent = await VerifyProxyAbsentAsync();
+                if (!proxyAbsent)
+                {
+                    string cause = !_faultProxy.Stopped || _faultProxy.ActiveConnections != 0
+                        ? $"proxy has not drained: stopped={_faultProxy.Stopped}, activeSessions={_faultProxy.ActiveConnections}"
+                        : "bound port accepts connections: 127.0.0.1:" + _proxyPort;
+                    failures.Add("provider proxy absence check: " + cause);
+                }
+            }
+            catch (Exception exception) { failures.Add("provider proxy absence check: " + exception.Message); }
             Record("provider-proxy-drained", ProxyObservation());
         }
         await DrainActivitiesAsync(failures);
@@ -949,6 +961,11 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
     }
 
     private static string Canonical(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
+    /// <summary>Retains direct-provider authority and binds the additional authorizing proxy phases when enabled.</summary>
+    internal static string AuthorizationFor(bool providerCommitProxy)
+        => (providerCommitProxy ? "spec-4-6-provider-commit-ambiguity.md and spec-4-6-provider-review-corrections.md; " : string.Empty)
+            + "spec-4-6-isolated-postgresql-recovery.md and spec-4-6-isolated-dapr-postgresql-sharding.md; owner jpiquot; conversation 01a18ded-3ceb-7c92-b5f5-dbf1e38a4686";
 
     private static string FindRoot()
     {
