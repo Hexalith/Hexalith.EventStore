@@ -135,7 +135,17 @@ public static class DevelopmentRouteCatalogBootstrap
         var activation = await ReadAsync<RouteCatalogActivation>(activationPath, token).ConfigureAwait(false);
         if (activation.AttemptId != attempt) throw new RouteCatalogUnavailableException("A different activation attempt occupies the private directory.");
         await RetryBackendAsync(() => authority.PrepareAsync(activation, token), token).ConfigureAwait(false);
-        var ready = await authority.ReadyAsync(attempt, token).ConfigureAwait(false);
+        RouteCatalogHostAttestation ready;
+        while (true)
+        {
+            try { ready = await authority.ReadyAsync(attempt, token).ConfigureAwait(false); break; }
+            catch (RouteCatalogUnavailableException exception) when (exception.Category == RouteCatalogRefusalReason.Draining)
+            {
+                // Prepare has already fenced new ingress. Waiting cannot release a lease;
+                // only actual completion or an explicit owner verifier can make Ready succeed.
+                await Task.Delay(100, token).ConfigureAwait(false);
+            }
+        }
         await WriteAsync(Path.Combine(directory, host + ".ready.json"), ready, token).ConfigureAwait(false);
         foreach (string required in hosts)
         {

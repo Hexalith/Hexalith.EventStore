@@ -19,6 +19,7 @@ public static partial class RouteCatalogRefusalDiagnostics
                 RouteCatalogRefusalReason.Topology => "topology-disagreement",
                 RouteCatalogRefusalReason.Inventory => "installed-inventory-disagreement",
                 RouteCatalogRefusalReason.Backend => "store-or-transport-unavailable",
+                RouteCatalogRefusalReason.Draining => "prior-dispatch-draining",
                 _ => "catalog-disagreement",
             },
             Contracts.Routing.RouteCatalogValidationException => "catalog-invalid",

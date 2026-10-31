@@ -39,7 +39,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         {
             RouteCatalogActivation pending = RequirePending(state, attemptId);
             await ValidateAsync(pending, cancellationToken).ConfigureAwait(false);
-            if (state.Leases.Count != 0) throw new RouteCatalogUnavailableException("Prior dispatch is still draining.");
+            if (state.Leases.Count != 0) throw new RouteCatalogUnavailableException("Prior dispatch is still draining.", RouteCatalogRefusalReason.Draining);
             RouteCatalogEnvelope envelope = Catalog(pending);
             RouteCatalogHostIdentity host = options.Value.Identity!;
             receipt = new(attemptId, RouteCatalogActivationBinding.ComputeDigest(pending), envelope.Generation,
@@ -107,12 +107,25 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         await UpdateAsync(async state =>
         {
             RouteCatalogActivation committed = state.Committed ?? throw new RouteCatalogUnavailableException("No committed generation can verify quiescence.");
-            await ValidateAsync(committed, cancellationToken).ConfigureAwait(false);
+            if (state.Pending is { } successor)
+            {
+                _ = RequirePending(state, successor.AttemptId);
+                // The old fleet can be genuinely stopped, with different physical coordinates
+                // from the independently prepared successor. Never relabel its old identities
+                // as current. Require the real successor and retain the old owner's trust too.
+                if (successor.PredecessorRootDigest != committed.RootDigest || Catalog(successor).Generation <= Catalog(committed).Generation
+                    || Catalog(committed).Profile != options.Value.Profile)
+                    throw new RouteCatalogUnavailableException("Quiescence requires the exact trusted committed predecessor of this successor.");
+                await ValidateAsync(successor, cancellationToken).ConfigureAwait(false);
+                await trust.ValidateAsync(committed, RouteCatalogActivationBinding.ComputeDigest(committed), cancellationToken).ConfigureAwait(false);
+            }
+            else await ValidateAsync(committed, cancellationToken).ConfigureAwait(false);
             RouteCatalogDispatchFence fence = state.Leases.SingleOrDefault(l => l.LeaseId == request.LeaseId)
                 ?? throw new RouteCatalogUnavailableException("The exact durable dispatch fence does not exist.");
             if (quiescenceVerifier is null || string.IsNullOrWhiteSpace(request.Proof)
                 || fence.RootDigest != request.RootDigest || fence.Epoch != request.Epoch
-                || committed.RootDigest != fence.RootDigest || state.Epoch != fence.Epoch)
+                || committed.RootDigest != fence.RootDigest || state.Epoch != fence.Epoch
+                || !committed.RequiredHosts.Any(host => host.HostId == fence.HostId))
                 throw new RouteCatalogUnavailableException("Owner-verified evidence for this exact dispatch and generation is required.");
             await quiescenceVerifier.VerifyAsync(request, fence, cancellationToken).ConfigureAwait(false);
             return state with { Leases = [.. state.Leases.Where(l => l.LeaseId != fence.LeaseId)] };
@@ -210,8 +223,14 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     }
 
     private static RouteCatalogActivation RequirePending(RouteCatalogActivationState state, string attemptId)
-        => state.Pending is { } pending && pending.AttemptId == attemptId ? pending
-            : throw new RouteCatalogUnavailableException("The activation attempt is not prepared.");
+    {
+        if (state.Pending is not { } pending || pending.AttemptId != attemptId)
+            throw new RouteCatalogUnavailableException("The activation attempt is not prepared.");
+        var recorded = state.Attempts.Where(attempt => attempt.AttemptId == attemptId).ToArray();
+        if (recorded.Length != 1 || recorded[0].BindingDigest != RouteCatalogActivationBinding.ComputeDigest(pending))
+            throw new RouteCatalogUnavailableException("The prepared activation differs from its immutable attempt binding.");
+        return pending;
+    }
     private static RouteCatalogEnvelope Catalog(RouteCatalogActivation activation) => RouteCatalogCodec.Decode(activation.CanonicalCatalog, activation.RootDigest);
     private static RouteCatalogActivation Freeze(RouteCatalogActivation candidate) => candidate with
     {

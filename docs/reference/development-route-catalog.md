@@ -103,6 +103,19 @@ inherit continuity from copied files. Backend replacement requires a separately
 qualified owner state handoff. Independent host observation is published before waiting
 for that backend, preserving diagnostics when the backend or coordinator is absent.
 
+A prepared transition keeps new dispatch fenced while prior durable leases drain.
+Bootstrap waits for that specific condition under the owning application's lifetime;
+it does not expire or discard a lease. Ambiguous completion requires an explicit
+`IRouteCatalogQuiescenceVerifier` that proves the exact old dispatch has stopped.
+There is no default verifier. A changed-coordinate successor may reconcile through
+its own independently observed pending activation, only when its immutable attempt
+binding, predecessor and increasing generation agree. The old committed profile and
+owner trust remain verified, and each fence must belong to the old required roster
+and exact root/epoch. Old identities are never rewritten to look current. Every CAS
+retry repeats authority and owner-proof validation; copied receipts, caller timeout
+or elapsed time cannot substitute for actual quiescence. Every new physical host
+must still become ready before the successor can commit.
+
 Retained SDK ACL declarations use the Dapr 1.18 trie rules. Literal nodes match
 prefixes; scalar `/*` is selected only for the final requested segment; terminal
 `/**` also covers descendants. The retained workload status `/*/*` spelling is
