@@ -1627,7 +1627,12 @@ public sealed class ReleasePackageManifestTests
         => packageId switch
         {
             "Hexalith.EventStore.Admin.Abstractions" => ["Hexalith.EventStore.Contracts"],
-            "Hexalith.EventStore.Aspire" => ["Hexalith.EventStore.Contracts"],
+            "Hexalith.EventStore.Aspire" =>
+            [
+                "Hexalith.EventStore.Client",
+                "Hexalith.EventStore.Contracts",
+                "Hexalith.EventStore.ServiceDefaults",
+            ],
             "Hexalith.EventStore.Admin.Server" =>
             [
                 "Hexalith.EventStore.Admin.Abstractions",

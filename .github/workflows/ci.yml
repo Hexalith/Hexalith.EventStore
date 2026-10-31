@@ -65,6 +65,10 @@ jobs:
       build-timeout-minutes: 180
       test-platform: microsoft-testing-platform
       run-consumer-validation: true
+      dapr-version: '1.18.2'
+      dapr-runtime-version: '1.18.7'
+      integration-test-projects: |
+        tests/Hexalith.EventStore.AppHost.Tests
       unit-test-projects: |
         tests/Hexalith.EventStore.Client.Tests
         tests/Hexalith.EventStore.ServiceDefaults.Tests
@@ -77,7 +81,6 @@ jobs:
         tests/Hexalith.EventStore.Operations.Tests
         tests/Hexalith.EventStore.Admin.Server.Host.Tests
         tests/Hexalith.EventStore.Admin.UI.Tests
-        tests/Hexalith.EventStore.AppHost.Tests
         tests/Hexalith.EventStore.DomainService.Tests
         tests/Hexalith.EventStore.QueryRouting.Tests
         tests/Hexalith.EventStore.RestApi.Generators.Tests
