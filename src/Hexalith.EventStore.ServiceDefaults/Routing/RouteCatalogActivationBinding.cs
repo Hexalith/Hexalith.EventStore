@@ -24,6 +24,10 @@ public static class RouteCatalogActivationBinding
             || (activation.AuxiliaryOperations is { } auxiliary && (auxiliary.Any(a => a is null
                 || !activation.RequiredHosts.Any(h => h.AppId == a.AppId) || string.IsNullOrWhiteSpace(a.Method)
                 || string.IsNullOrWhiteSpace(a.Operation) || string.IsNullOrWhiteSpace(a.Domain)
+                || a.Sidecar is { } sidecar && (envelope.SchemaVersion != 3 || !Digest(sidecar.CodeDigest)
+                    || string.IsNullOrWhiteSpace(sidecar.Owner) || string.IsNullOrWhiteSpace(sidecar.PubSubName)
+                    || string.IsNullOrWhiteSpace(sidecar.TopicName) || a.Operation != "sdk-sidecar:domain-events"
+                    || a.Method.IndexOfAny(['*', '{', '}']) >= 0 || a.Http is not null || a.NativeActor is not null || a.DaprCallback is not null)
                 || a.DaprCallback is { } callback && (envelope.SchemaVersion != 3 || a.Http is not null || a.NativeActor is not null
                     || callback.Kind is not ("subscribe" or "projection-notification")
                     || a.Method != (callback.Kind == "subscribe" ? "dapr/subscribe" : "projections/changed")

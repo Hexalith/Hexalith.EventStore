@@ -58,7 +58,7 @@ public partial class DaprProjectionChangeNotifier(
                 options.Value.PubSubName,
                 topic,
                 notification,
-                cancellationToken)).ConfigureAwait(false);
+                cancellationToken), cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -149,7 +149,7 @@ public partial class DaprProjectionChangeNotifier(
                 currentOptions.PubSubName,
                 topic,
                 notification,
-                cancellationToken)).ConfigureAwait(false);
+                cancellationToken), cancellationToken).ConfigureAwait(false);
             return;
         }
 

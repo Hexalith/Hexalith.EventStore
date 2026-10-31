@@ -9,6 +9,9 @@ namespace Hexalith.EventStore.Contracts.Routing;
 /// <param name="Domain">Exact owning domain.</param>
 public sealed record RouteCatalogAuxiliaryOperation(string AppId, string Method, string Operation, string Domain)
 {
+    /// <summary>Gets the actual SDK subscription delegate, component and topic binding.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RouteCatalogSidecarTransport? Sidecar { get; init; }
     /// <summary>Gets the closed existing SDK HTTP transport binding; absent for legacy auxiliary calls.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RouteCatalogHttpTransport? Http { get; init; }

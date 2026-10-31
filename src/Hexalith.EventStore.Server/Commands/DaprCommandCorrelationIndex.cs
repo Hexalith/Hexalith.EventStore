@@ -185,6 +185,6 @@ public sealed class DaprCommandCorrelationIndex(
             etag ?? string.Empty,
             s_stateOptions,
             metadata,
-            cancellationToken));
+            cancellationToken), cancellationToken);
     }
 }

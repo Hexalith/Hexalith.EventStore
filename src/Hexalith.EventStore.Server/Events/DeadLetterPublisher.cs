@@ -63,7 +63,7 @@ public partial class DeadLetterPublisher(
                 deadLetterTopic,
                 safeMessage,
                 metadata,
-                cancellationToken)).ConfigureAwait(false);
+                cancellationToken), cancellationToken).ConfigureAwait(false);
 
             // Rule #5: Never log command payload or event payload data (SEC-5).
             // Rule #9: correlationId in every structured log entry.

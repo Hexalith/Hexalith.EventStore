@@ -230,7 +230,7 @@ public partial class EventPublisher(
                     topic,
                     publishEnvelope,
                     metadata,
-                    cancellationToken)).ConfigureAwait(false);
+                    cancellationToken), cancellationToken).ConfigureAwait(false);
 
                 publishedCount++;
             }

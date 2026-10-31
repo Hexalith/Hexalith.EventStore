@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
@@ -31,6 +32,27 @@ namespace Hexalith.EventStore.Controllers;
 [Consumes("application/json")]
 [Tags("Queries")]
 public partial class QueriesController : ControllerBase {
+    private static readonly object BoundOwnerCatalogAdmissionKey = new();
+
+    /// <summary>Recognizes only this controller's verified, exact in-flight owner-query admission under the same captured generation.</summary>
+    internal static bool HasVerifiedBoundOwnerCatalogAdmission(HttpContext context, SubmitQuery request,
+        Hexalith.EventStore.ServiceDefaults.Routing.CommittedRouteCatalogSnapshot snapshot)
+    {
+        if (!context.Items.TryGetValue(BoundOwnerCatalogAdmissionKey, out var value)
+            || value is not ValueTuple<HttpContext, SubmitQuery, ClaimsPrincipal, Endpoint?, byte[], string, long> admitted
+            || !ReferenceEquals(admitted.Item1, context) || !ReferenceEquals(admitted.Item2, request)
+            || !ReferenceEquals(admitted.Item3, context.User) || !ReferenceEquals(admitted.Item4, context.GetEndpoint())
+            || admitted.Item6 != snapshot.RootDigest || admitted.Item7 != snapshot.Epoch
+            || !CryptographicOperations.FixedTimeEquals(admitted.Item5, SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(request)))
+            || RouteCatalogSurfacePolicy.Surface(context.User) != "service" || !request.IsDelegated
+            || string.IsNullOrWhiteSpace(request.OriginalActorId) || request.AuthenticatedWorkloadId != context.User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value
+            || context.Request.Method != "POST" || context.Request.Path != "/api/v1/queries/owner-authority/workload"
+            || !context.User.HasClaim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType, EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery)) return false;
+        var action = context.GetEndpoint()?.Metadata.GetMetadata<Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor>();
+        return action is not null && action.MethodInfo == typeof(QueriesController).GetMethod(nameof(SubmitBoundOwnerAuthorityAsync))
+            && action.ControllerTypeInfo.AsType() == typeof(QueriesController);
+    }
+
     private IMediator mediator { get; }
     private IETagService eTagService { get; }
     private ITenantValidator tenantValidator { get; }
@@ -156,7 +178,23 @@ public partial class QueriesController : ControllerBase {
                 ? [audience.Trim()] : null) { CallerAuthority = ownerAuthority };
         if (query.QueryType == Hexalith.EventStore.Contracts.Projections.InspectProjectionCurrentQuery.QueryType)
             return await InspectProjectionCurrentAsync(request, ownerAuthority, correlationId, cancellationToken).ConfigureAwait(false);
-        SubmitQueryResult result = await mediator.Send(submitted, cancellationToken).ConfigureAwait(false);
+        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        bool hadPriorAdmission = HttpContext.Items.TryGetValue(BoundOwnerCatalogAdmissionKey, out object? priorAdmission);
+        if (catalogLease?.Snapshot.Envelope.SchemaVersion == 3)
+        {
+            if (RouteCatalogSurfacePolicy.Surface(User) != "service") return Forbid();
+            _ = catalogLease.Snapshot.Resolve("query", query.Tenant, query.Domain, query.QueryType);
+            HttpContext.Items[BoundOwnerCatalogAdmissionKey] = (HttpContext, submitted, User, HttpContext.GetEndpoint(),
+                SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(submitted)), catalogLease.Snapshot.RootDigest, catalogLease.Snapshot.Epoch);
+        }
+        SubmitQueryResult result;
+        try { result = await mediator.Send(submitted, cancellationToken).ConfigureAwait(false); }
+        finally
+        {
+            if (hadPriorAdmission) HttpContext.Items[BoundOwnerCatalogAdmissionKey] = priorAdmission;
+            else HttpContext.Items.Remove(BoundOwnerCatalogAdmissionKey);
+        }
         Response.Headers.CacheControl = "no-store";
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload,
             Metadata: NormalizeProducerMetadata(result.Metadata)));
@@ -203,14 +241,25 @@ public partial class QueriesController : ControllerBase {
         var catalogLease = catalogAuthority is null ? null
             : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        bool protectedInternalIdentity = false;
         if (catalogLease is not null)
         {
             var selected = catalogLease.Snapshot.Resolve("query", request.Tenant, request.Domain, request.QueryType);
-            if (catalogLease.Snapshot.Envelope.SchemaVersion == 3
-                && !Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Allows(
-                    catalogLease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId), User))
-                return Forbid();
-            if ((!string.IsNullOrWhiteSpace(request.ProjectionType) && request.ProjectionType != selected.Declaration.ProjectionType)
+            if (catalogLease.Snapshot.Envelope.SchemaVersion == 3)
+            {
+                var operation = catalogLease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId);
+                // The existing exact-scope identity reader protocol has always used this wire.
+                // This candidate is not admitted until the configured authority issues its bound proof below.
+                protectedInternalIdentity = operation.Ingress == "internal"
+                    && Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Surface(User) == "service"
+                    && IdentityOperationCatalog.RequiresAdmission(request.QueryType)
+                    && identityAdmission?.RequiresAdmission(request.Domain, request.QueryType) == true;
+                if (!protectedInternalIdentity && !Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Allows(operation, User))
+                    return Forbid();
+            }
+            bool legacyIdentityHint = protectedInternalIdentity && selected.Declaration.ProjectionType is null
+                && request.ProjectionType == request.Domain && string.IsNullOrWhiteSpace(request.ProjectionActorType);
+            if ((!legacyIdentityHint && !string.IsNullOrWhiteSpace(request.ProjectionType) && request.ProjectionType != selected.Declaration.ProjectionType)
                 || (!string.IsNullOrWhiteSpace(request.ProjectionActorType) && request.ProjectionActorType != selected.Declaration.Execution!.ActorType))
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The selected query target differs from committed authority.");
         }
@@ -240,13 +289,15 @@ public partial class QueriesController : ControllerBase {
             var scope = new IdentityAdmissionScope(request.Tenant, request.Domain, request.AggregateId,
                 request.QueryType, correlationId, correlationId, IdentityAdmissionProof.Digest(payloadBytes));
             identityProof = await identityAdmission.AdmitAsync(User, scope, payloadBytes, cancellationToken).ConfigureAwait(false);
-            if (identityProof is null)
+            if (string.IsNullOrWhiteSpace(identityProof))
             {
                 return StatusCode(StatusCodes.Status403Forbidden);
             }
 
             Response.Headers.CacheControl = "no-store";
         }
+
+        if (protectedInternalIdentity && string.IsNullOrWhiteSpace(identityProof)) return Forbid();
 
         QueryCallerAuthority? callerAuthority;
         try
@@ -267,7 +318,7 @@ public partial class QueriesController : ControllerBase {
             CorrelationId: correlationId,
             UserId: userId,
             EntityId: entityId,
-            ProjectionType: string.IsNullOrWhiteSpace(request.ProjectionType)
+            ProjectionType: protectedInternalIdentity ? null : string.IsNullOrWhiteSpace(request.ProjectionType)
                 ? (catalogAuthority is null ? request.Domain : null)
                 : request.ProjectionType,
             ProjectionActorType: request.ProjectionActorType,
