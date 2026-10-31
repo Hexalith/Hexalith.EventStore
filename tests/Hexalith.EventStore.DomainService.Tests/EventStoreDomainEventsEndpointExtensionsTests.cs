@@ -81,13 +81,13 @@ public sealed class EventStoreDomainEventsEndpointExtensionsTests {
         witness.Observe(endpoint).TopicName.ShouldBe("widgets.events");
         var metadata = endpoint.Metadata.Where(item => item is not ITopicMetadata).ToList();
         if (mutation != "removed") metadata.Add(mutation switch {
-            "component" => new TopicAttribute("foreign-component", "widgets.events"),
-            "topic" => new TopicAttribute("event-pubsub", "foreign.events"),
+            "component" => new TopicAttribute("foreign-component", "widgets.events") { EnableRawPayload = false },
+            "topic" => new TopicAttribute("event-pubsub", "foreign.events") { EnableRawPayload = false },
             "raw" => new TopicAttribute("event-pubsub", "widgets.events") { EnableRawPayload = true },
-            "dead-letter" => new TopicAttribute("event-pubsub", "widgets.events") { DeadLetterTopic = "foreign.dead-letter" },
-            _ => new TopicAttribute("event-pubsub", "widgets.events"),
+            "dead-letter" => new TopicAttribute("event-pubsub", "widgets.events") { EnableRawPayload = false, DeadLetterTopic = "foreign.dead-letter" },
+            _ => new TopicAttribute("event-pubsub", "widgets.events") { EnableRawPayload = false },
         });
-        if (mutation == "extra") metadata.Add(new TopicAttribute("event-pubsub", "widgets.events"));
+        if (mutation == "extra") metadata.Add(new TopicAttribute("event-pubsub", "widgets.events") { EnableRawPayload = false });
         var changed = new RouteEndpoint(endpoint.RequestDelegate, endpoint.RoutePattern, endpoint.Order, new EndpointMetadataCollection(metadata), endpoint.DisplayName);
         Should.Throw<RouteCatalogUnavailableException>(() => witness.Observe(changed));
     }

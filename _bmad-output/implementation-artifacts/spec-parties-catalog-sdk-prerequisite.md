@@ -89,6 +89,10 @@ source override; no nested dependency is initialized.
 - Same actual delegate with seven altered topic metadata forms: all seven fail
   before the witness correction; all17 subscription mapping/metadata cases and
   six existing HTTP/channel security cases pass afterward.
+- Topic/component replacement metadata explicitly retains the actual SDK
+  EnableRawPayload=false value. Removing only the component/topic comparisons
+  now produces exactly two failures among17 cases; restoring them gives17/17.
+  The unrelated flag cannot mask a missing topic-specific validation anymore.
 - Normal isolated whole-solution Release build: zero warnings/errors.
 - Exact final routing/query/notifier suite: 643 pass, zero skips.
 - Exact real native actor/callback suite: three pass, zero skips.
