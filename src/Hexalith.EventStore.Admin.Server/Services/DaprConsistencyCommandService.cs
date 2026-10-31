@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Contracts.Routing;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
@@ -183,8 +184,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                     index.RemoveAt(index.Count - 1);
                 }
 
-                bool saved = await _daprClient
-                    .TrySaveStateAsync(_options.StateStoreName, IndexKey, index, etag, cancellationToken: ct)
+                bool saved = await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+                    .TrySaveStateAsync(_options.StateStoreName, IndexKey, index, etag, cancellationToken: ct), ct)
                     .ConfigureAwait(false);
 
                 if (saved) {
@@ -913,8 +914,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             ["ttlInSeconds"] = (TtlDays * 24 * 60 * 60).ToString(System.Globalization.CultureInfo.InvariantCulture),
         };
 
-        await _daprClient
-            .SaveStateAsync(_options.StateStoreName, key, result, metadata: metadata, cancellationToken: ct)
+        await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .SaveStateAsync(_options.StateStoreName, key, result, metadata: metadata, cancellationToken: ct), ct)
             .ConfigureAwait(false);
     }
 }

@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using System.Security.Claims;
 
 using Dapr.Actors;
@@ -57,7 +58,7 @@ public sealed partial class AdminProjectionRebuildController
             cancellationToken.ThrowIfCancellationRequested();
             IAggregateActor actor = factory.CreateActorProxy<IAggregateActor>(new ActorId(identity.ActorId),
                 actorOptions.Value.AggregateActorTypeName);
-            SourceProofInspection result = await actor.BootstrapSourceProofAsync(request).ConfigureAwait(false);
+            SourceProofInspection result = await RouteCatalogRemoteCall.InvokeAsync(() => actor.BootstrapSourceProofAsync(request), cancellationToken).ConfigureAwait(false);
             return Ok(new { result.Status, result.CurrentSequence, result.Erased, SourceIncarnation = result.Proof?.SourceIncarnation });
         }
         catch (OperationCanceledException) { throw; }
