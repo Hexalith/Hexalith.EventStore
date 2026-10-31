@@ -7,12 +7,14 @@ using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
 using CommunityToolkit.Aspire.Hosting.Dapr;
 using Hexalith.EventStore.Contracts.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>Binds observations to the ordinary toolkit-rendered authority after all modeled backend overrides and before any child starts.</summary>
 internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentResource authority, IReadOnlyList<ProjectResource> participants,
-    IReadOnlyDictionary<ProjectResource, string> selectedAppIds, IReadOnlyDictionary<ProjectResource, string> accessControlPaths) : IDistributedApplicationEventingSubscriber
+    IReadOnlyDictionary<ProjectResource, string> selectedAppIds, IReadOnlyDictionary<ProjectResource, string> accessControlPaths,
+    string custodyRunDirectory, byte[]? retainedBackend) : IDistributedApplicationEventingSubscriber
 {
     internal string? ComponentPath { get; private set; }
 
@@ -61,6 +63,47 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
         component["metadata"]!["labels"] ??= new JsonObject();
         component["metadata"]!["labels"]![RouteCatalogAuthorityComponentPolicy.RoleLabel] = RouteCatalogAuthorityComponentPolicy.IsolatedRole;
         component["scopes"] = JsonSerializer.SerializeToNode(participants.Select(participant => selectedAppIds[participant]).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
+        // Retain only dependencies actually referenced by the rendered authority. Run-scoped
+        // workload issuer credentials and unrelated application secrets keep their deletion policy.
+        var references = metadata.Where(item => item?["secretKeyRef"] is not null)
+            .Select(item => item!["secretKeyRef"]!["name"]!.GetValue<string>()).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        Dictionary<string, string> bindings = new(StringComparer.Ordinal);
+        foreach (var participant in participants)
+        {
+            var sidecar = participant.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
+            var executable = startup.Model.Resources.OfType<ExecutableResource>().Single(resource => resource.Name == sidecar.Name + "-cli");
+            Dictionary<string, object> environment = new(StringComparer.Ordinal);
+            foreach (var callback in executable.Annotations.OfType<EnvironmentCallbackAnnotation>())
+                await callback.Callback(new EnvironmentCallbackContext(startup.Services.GetRequiredService<DistributedApplicationExecutionContext>(), executable, environment, token)).ConfigureAwait(false);
+            foreach (string reference in references)
+            {
+                if (!environment.TryGetValue(reference, out object? value)) throw new InvalidOperationException("An actual authority backend dependency cannot be retained from its selected sidecar.");
+                string? resolved = value switch
+                {
+                    string literal => literal,
+                    IValueProvider provider => await provider.GetValueAsync(token).ConfigureAwait(false),
+                    _ => throw new InvalidOperationException("An authority backend dependency has no supported owner value provider."),
+                };
+                if (resolved is null || bindings.TryGetValue(reference, out string? previous) && previous != resolved)
+                    throw new InvalidOperationException("Physical receivers selected different actual authority backend dependencies.");
+                bindings[reference] = resolved;
+            }
+        }
+        var backend = component.DeepClone().AsObject();
+        backend.Remove("scopes");
+        backend["metadata"]!.AsObject().Remove("labels");
+        foreach (var item in backend["spec"]!["metadata"]!.AsArray())
+            if (item?["secretKeyRef"] is JsonObject reference)
+            {
+                item!["value"] = bindings[reference["name"]!.GetValue<string>()];
+                item.AsObject().Remove("secretKeyRef");
+            }
+        byte[] backendBytes = JsonSerializer.SerializeToUtf8Bytes(backend);
+        if (retainedBackend is not null && !retainedBackend.AsSpan().SequenceEqual(backendBytes))
+            throw new InvalidOperationException("The retained authority backend changed. Restore its exact owner profile; a new backend requires a separately verified state handoff.");
+        DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.backend.json"), backendBytes);
+        DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.dependencies.json"), JsonSerializer.SerializeToUtf8Bytes(bindings));
+        DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.component.json"), JsonSerializer.SerializeToUtf8Bytes(component));
         // The toolkit has no public scopes builder. Update only the role/scopes of its actual
         // modeled output in place; preserve its late-resolved backend/auth metadata and loading path.
         await File.WriteAllBytesAsync(path, JsonSerializer.SerializeToUtf8Bytes(component), token).ConfigureAwait(false);

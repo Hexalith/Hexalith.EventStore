@@ -71,6 +71,7 @@ public sealed class DevelopmentRouteCatalogAspireTests
     [InlineData("duplicate-receiver")]
     [InlineData("unselected-caller")]
     [InlineData("duplicate-grant")]
+    [InlineData("missing-custody")]
     public async Task ActualResourcesOwnCanonicalCatalogFiniteAclAndPrivateAuthorityAsync(string scenario)
     {
         ArgumentNullException.ThrowIfNull(scenario);
@@ -114,14 +115,24 @@ public sealed class DevelopmentRouteCatalogAspireTests
             }
             if (scenario == "missing-gateway") receivers = [receivers[1]];
             if (scenario == "duplicate-receiver") receivers = [.. receivers, receivers[1]];
+            var custody = new DevelopmentRouteCatalogCompositionOptions(Path.Combine(input, "custody"), "routing-owned-session", "owned-authority",
+                "development-v1", new Dictionary<string, string> { ["development-v1"] = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)) }, "development-v1");
             if (scenario is not ("valid" or "sdk-backend" or "replica" or "replica-owner"))
             {
-                Should.Throw<InvalidOperationException>(() => builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session"));
+                int resources = builder.Resources.Count;
+                var refusal = Should.Throw<InvalidOperationException>(() => builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session",
+                    scenario == "missing-custody" ? null : custody));
                 builder.Resources.OfType<ParameterResource>().ShouldBeEmpty();
+                if (scenario == "missing-custody")
+                {
+                    refusal.Message.ShouldContain("empty routing cell does not prove business state is new");
+                    builder.Resources.Count.ShouldBe(resources);
+                    Directory.Exists(custody.CustodyDirectory).ShouldBeFalse();
+                }
                 return;
             }
-            await using (var catalog = sdk is not null ? builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, sdk.StateStore, "owned-session")
-                : builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session"))
+            await using (var catalog = sdk is not null ? builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, sdk.StateStore, "owned-session", custody)
+                : builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session", custody))
             {
                 privateDirectory = catalog.Directory;
                 RouteCatalogEnvelope decoded = RouteCatalogCodec.Decode(await File.ReadAllBytesAsync(Path.Combine(catalog.Directory, "catalog.json"), TestContext.Current.CancellationToken), catalog.RootDigest);

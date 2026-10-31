@@ -8,7 +8,7 @@ canonical schema-three bytes before children start. Every participant independen
 observes its installed endpoints, policies, operations, sidecar identity and actual
 rendered authority component before the shared authority commits the generation.
 
-The modeled Redis authority has a unique component name, `keyPrefix=name`, no actor
+The modeled Redis authority has an owner-profile component name, `keyPrefix=name`, no actor
 role and exactly the selected participant scopes. It preserves the selected backend
 and late metadata overrides. The helper locates the component through the sidecar's
 actual resources path after rendering and refuses changes to the observed backend,
@@ -72,6 +72,36 @@ after recapturing its current inputs and validating the retained activation bind
 It emits a new resume receipt and preserves prior readiness records and durable
 leases. Changed coordinates or ownership require a successor transition; they are
 never accepted by overwriting coordination files.
+
+Composition requires `DevelopmentRouteCatalogCompositionOptions`. Supply an absolute
+private custody directory, stable authority component/state-key names, the existing
+complete digest key ring and its active/map generations. The helper never generates
+replacement digest material. Provision a first key only together with an actually new,
+owner-isolated business backend. Default `dapr init` Redis can retain business receipts;
+an absent routing cell, lifecycle record or custody directory does not prove freshness.
+Restore the original private owner profile, or select an owned isolated profile before
+starting. Missing custody options refuse before model resources or child processes are
+created. Changing retained key bytes, key identities or authority coordinates refuses;
+automatic rotation and lost-key recovery are not supplied by this helper.
+
+The profile has exclusive ownership while its composition exists. On disposal, after
+the application and children stop, complete canonical bytes, actual rendered authority
+and ACL inputs, private resolved backend dependencies, activation/readiness/commit and
+resume receipts are copied into immutable, hash-inventoried custody before temporary
+inputs are removed. Private digest material remains in the owner profile. Files retain
+owner-only permissions. Run-scoped workload issuer credentials are not exported. If a
+complete committed cohort cannot be retained, disposal preserves the private run
+directory and reports refusal rather than deleting the only recovery inputs.
+
+Recomposition builds a higher generation through `VersionedRouteCatalogBuilder` using
+the retained canonical predecessor bytes and root, preserving historical idempotency
+entries. Fresh physical observations bind the new attempt. The backend must be the
+same retained authority backend; every host independently verifies that its actual CAS
+cell has the expected predecessor, prepares, becomes ready and commits. Missing hosts
+or outstanding durable leases prevent serving the successor. An empty/new cell cannot
+inherit continuity from copied files. Backend replacement requires a separately
+qualified owner state handoff. Independent host observation is published before waiting
+for that backend, preserving diagnostics when the backend or coordinator is absent.
 
 Retained SDK ACL declarations use the Dapr 1.18 trie rules. Literal nodes match
 prefixes; scalar `/*` is selected only for the final requested segment; terminal

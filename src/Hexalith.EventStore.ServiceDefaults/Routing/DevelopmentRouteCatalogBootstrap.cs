@@ -27,6 +27,9 @@ public static class DevelopmentRouteCatalogBootstrap
         string host = Identifier(section["HostId"]);
         string coordinator = Identifier(section["CoordinatorHostId"]);
         string attempt = Identifier(section["AttemptId"]);
+        string? predecessor = section["PredecessorRootDigest"];
+        if (predecessor is not null && (predecessor.Length != 64 || predecessor.Any(character => !char.IsAsciiHexDigitLower(character))))
+            throw new InvalidOperationException("The retained predecessor root is invalid.");
         if (section["CatalogPath"] is { Length: > 0 } catalogPath)
         {
             string instance = Identifier(section["InstanceId"]);
@@ -58,7 +61,7 @@ public static class DevelopmentRouteCatalogBootstrap
         services.AddSingleton<FiniteRouteCatalogReceiver>();
         services.AddEventStoreRouteCatalogObservation(Capture);
         services.Configure<RouteCatalogHostOptions>(options => { options.Profile = "Development"; options.DevelopmentFixture = true; });
-        services.AddSingleton<IHostedService>(provider => new DevelopmentRouteCatalogBootstrapWorker(provider, directory, host, coordinator, attempt, hosts, Capture, construct));
+        services.AddSingleton<IHostedService>(provider => new DevelopmentRouteCatalogBootstrapWorker(provider, directory, host, coordinator, attempt, hosts, Capture, construct, predecessor));
         return services;
     }
 
@@ -68,11 +71,14 @@ public static class DevelopmentRouteCatalogBootstrap
 
     internal static async Task ActivateAsync(IServiceProvider provider, string directory, string host, string coordinator,
         string attempt, IReadOnlyList<string> hosts, Func<IServiceProvider, CancellationToken, Task<RouteCatalogHostObservation>> capture,
-        Func<IReadOnlyList<RouteCatalogHostObservation>, RouteCatalogEnvelope>? construct, CancellationToken token)
+        Func<IReadOnlyList<RouteCatalogHostObservation>, RouteCatalogEnvelope>? construct, CancellationToken token, string? predecessorRootDigest = null)
     {
         var actual = await capture(provider, token).ConfigureAwait(false);
         // This identity is calculated before a proposal exists and is recaptured by the authority on every lifecycle operation.
         provider.GetRequiredService<IOptions<RouteCatalogHostOptions>>().Value.Identity = ObservedRouteCatalogHost.Identity(actual);
+        // Independent observation is available even when the backend or coordinator is absent.
+        // Existing documents remain immutable and must still match this fresh capture exactly.
+        await WriteAsync(Path.Combine(directory, host + ".observation.json"), actual, token).ConfigureAwait(false);
         var authority = provider.GetRequiredService<IRouteCatalogAuthority>();
         var stateStore = provider.GetRequiredService<IRouteCatalogStateStore>();
         RouteCatalogActivationState retained;
@@ -98,7 +104,8 @@ public static class DevelopmentRouteCatalogBootstrap
                 new { observation = ObservedRouteCatalogHost.Identity(actual), readback = resumed }, token).ConfigureAwait(false);
             return;
         }
-        await WriteAsync(Path.Combine(directory, host + ".observation.json"), actual, token).ConfigureAwait(false);
+        if (retained.Committed?.RootDigest != predecessorRootDigest)
+            throw new RouteCatalogUnavailableException("Private custody does not name the actual committed authority predecessor. Restore the retained cell and profile; a new backend cannot inherit continuity from copied receipts.");
         string activationPath = Path.Combine(directory, "activation.json");
         if (host == coordinator)
         {
@@ -119,7 +126,7 @@ public static class DevelopmentRouteCatalogBootstrap
             var catalog = construct!(logical);
             if (catalog.Profile != "Development" || catalog.SchemaVersion is not (2 or 3))
                 throw new RouteCatalogUnavailableException("Development bootstrap requires a complete executable catalog.");
-            var candidate = new RouteCatalogActivation(attempt, RouteCatalogCodec.Encode(catalog), RouteCatalogCodec.ComputeRootDigest(catalog), null,
+            var candidate = new RouteCatalogActivation(attempt, RouteCatalogCodec.Encode(catalog), RouteCatalogCodec.ComputeRootDigest(catalog), predecessorRootDigest,
                 observations.Select(ObservedRouteCatalogHost.Identity).ToArray(), "Development-fixture", string.Empty,
                 logical.SelectMany(o => o.AuxiliaryOperations!).ToArray(), logical.SelectMany(o => o.ProjectionCapabilities!).ToArray());
             candidate = candidate with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(candidate) };
