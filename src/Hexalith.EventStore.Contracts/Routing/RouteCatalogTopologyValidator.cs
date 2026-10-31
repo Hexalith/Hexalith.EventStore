@@ -148,12 +148,24 @@ public static class RouteCatalogTopologyValidator
         if (RouteCatalogDaprGrant.Prefix(grant, technical: true) is null) throw Failure("unsupported-technical-acl-pattern");
         var reachable = receiver.Endpoints.Where(endpoint => RouteCatalogDaprGrant.Intersects(grant, endpoint.Pattern)
             || RouteCatalogDaprGrant.Describes(grant, endpoint.Pattern)).ToArray();
+        // Path prefixes alone do not grant another HTTP verb. Validate the independently
+        // captured metadata before filtering, so malformed or contradictory evidence cannot
+        // disappear from qualification merely by claiming an unrelated verb.
+        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
+        {
+            if (endpoint.Methods is not { Count: > 0 } methods || methods.Distinct(StringComparer.Ordinal).Count() != methods.Count
+                || methods.Any(method => method is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS")))
+                throw Failure("unqualified-technical-receiver-methods");
+            if (endpoint.Http is { } http && !methods.Order(StringComparer.Ordinal)
+                .SequenceEqual(http.Verbs.Split(' ').Order(StringComparer.Ordinal), StringComparer.Ordinal))
+                throw Failure("technical-receiver-method-evidence-drift");
+        }
         var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.DaprCallback is not null)).ToArray();
         if (technical.Length == 0) return false;
         if (verbs.Length == 0 || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length
             || verbs.Any(verb => !technical.Any(endpoint => endpoint.Methods.Contains(verb, StringComparer.Ordinal))))
             throw Failure("unqualified-technical-http-verb");
-        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
+        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted && endpoint.Methods.Any(method => verbs.Contains(method, StringComparer.Ordinal))))
         {
             if (endpoint.DaprCallback is { } callback)
             {

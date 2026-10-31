@@ -43,6 +43,11 @@ public sealed class FiniteRouteCatalogReceiver
         Func<RouteEndpoint, RouteCatalogDomainAuxiliaryTransport?> domainAuxiliary)
         => UseFiniteDevelopmentRouteCatalogReceiver(app, operation, false, domainAuxiliary, null);
 
+    /// <summary>Binds the actual SDK channel-only subscription through its finite committed receiver.</summary>
+    public static WebApplication UseFiniteDevelopmentRouteCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> operation,
+        Func<RouteEndpoint, RouteCatalogSidecarTransport?> sidecar)
+        => UseFiniteDevelopmentRouteCatalogReceiver(app, operation, false, null, sidecar);
+
     /// <summary>Binds existing SDK channel-only subscription callbacks through the same concrete receiver fence.</summary>
     public static WebApplication UseFiniteDevelopmentRouteCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> operation,
         Func<RouteEndpoint, RouteCatalogDomainAuxiliaryTransport?> domainAuxiliary, Func<RouteEndpoint, RouteCatalogSidecarTransport?> sidecar)
@@ -170,6 +175,35 @@ public sealed class FiniteRouteCatalogReceiver
                 {
                     try { await next(context).ConfigureAwait(false); }
                     catch { callbackLease.Retain(); throw; }
+                }
+                return;
+            }
+            if (context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
+                && context.GetEndpoint() is RouteEndpoint sidecarEndpoint && fence._sidecar?.Invoke(sidecarEndpoint) is { } sidecar)
+            {
+                // Native pub/sub delivery carries the real app-channel token, not a fabricated
+                // workload sender stamp. Bind its actual delegate/topic to the committed local host.
+                RouteCatalogDispatchLease? sidecarLease = null;
+                try
+                {
+                    sidecarLease = await app.Services.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                    var snapshot = sidecarLease.Snapshot;
+                    if (snapshot.Envelope.SchemaVersion != 3 || snapshot.Envelope.Profile != "Development" || snapshot.LocalAppId is null
+                        || !snapshot.AuxiliaryOperations.Any(operation => operation.AppId == snapshot.LocalAppId
+                            && operation.Method == sidecarEndpoint.RoutePattern.RawText!.Trim('/')
+                            && operation.Operation == "sdk-sidecar:domain-events" && operation.Sidecar == sidecar))
+                        throw new RouteCatalogUnavailableException("The actual SDK subscription code, component and topic are not committed.");
+                }
+                catch (RouteCatalogUnavailableException)
+                {
+                    if (sidecarLease is not null) await sidecarLease.DisposeAsync().ConfigureAwait(false);
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable; return;
+                }
+                await using (sidecarLease.ConfigureAwait(false))
+                using (RouteCatalogRemoteCall.Enter(sidecarLease))
+                {
+                    try { await next(context).ConfigureAwait(false); }
+                    catch { sidecarLease.Retain(); throw; }
                 }
                 return;
             }

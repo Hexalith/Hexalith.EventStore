@@ -49,9 +49,10 @@ public static class EventStoreDomainEventsEndpointExtensions {
         string path = options.SubscriptionRoute;
         string pubsub = options.PubSubName;
         string topic = options.TopicName;
-        endpoint.Finally(builder => builder.Metadata.Add(new DomainRouteCatalogSidecarMetadata(builder.RequestDelegate, path, pubsub, topic)));
+        bool declarative = endpoints.ServiceProvider.GetService<IConfiguration>()?.GetValue<bool>("Dapr:DeclarativeSubscriptions") == true;
+        endpoint.Finally(builder => builder.Metadata.Add(new DomainRouteCatalogSidecarMetadata(builder.RequestDelegate, path, pubsub, topic, declarative)));
 
-        if (endpoints.ServiceProvider.GetService<IConfiguration>()?.GetValue<bool>("Dapr:DeclarativeSubscriptions") != true)
+        if (!declarative)
         {
             _ = endpoint.WithTopic(options.PubSubName, options.TopicName);
         }

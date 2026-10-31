@@ -95,9 +95,10 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 activation.RequiredHosts, actual.AppId, activation.AuxiliaryOperations, actual.ReceiverSurface,
                 actual.SelectedAppIds, actual.DeclaredInvocations);
         }
-        catch (RouteCatalogValidationException)
+        catch (RouteCatalogValidationException failure)
         {
-            throw new RouteCatalogUnavailableException("Loaded topology disagrees with the candidate.", RouteCatalogRefusalReason.Topology);
+            throw new RouteCatalogUnavailableException("Loaded topology disagrees with the candidate: "
+                + string.Join(", ", failure.Diagnostics.Select(diagnostic => diagnostic.Code).Distinct(StringComparer.Ordinal).Take(16)) + ".", RouteCatalogRefusalReason.Topology);
         }
         if (!actual.RequiredHostIds.Order(StringComparer.Ordinal).SequenceEqual(activation.RequiredHosts.Select(h => h.HostId).Order(StringComparer.Ordinal), StringComparer.Ordinal)
             || actual.Declarations.Select(d => d.RouteId).Distinct(StringComparer.Ordinal).Count() != actual.Declarations.Count

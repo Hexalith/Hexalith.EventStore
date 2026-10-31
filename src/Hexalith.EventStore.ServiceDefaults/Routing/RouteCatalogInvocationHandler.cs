@@ -102,6 +102,16 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
     public const string EpochHeader = "X-Hexalith-Route-Catalog-Epoch";
 
     /// <inheritdoc/>
+    protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        // Existing synchronous SDK clients must traverse the same redirect checks and durable
+        // dispatch scope. A separate worker avoids blocking a caller's synchronization context;
+        // ExecutionContext still carries the actual enclosing catalog lease.
+        return Task.Run(() => SendAsync(request, cancellationToken), cancellationToken).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
