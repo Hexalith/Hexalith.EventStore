@@ -6,6 +6,7 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 public static class RouteCatalogRemoteCall
 {
     private static readonly AsyncLocal<IReadOnlyList<RouteCatalogDispatchLease>?> Active = new();
+    internal static IReadOnlyList<RouteCatalogDispatchLease> Current => Active.Value ?? [];
     /// <summary>Enters a receiver execution scope; disposal restores its enclosing scope without releasing the lease.</summary>
     public static IDisposable Enter(RouteCatalogDispatchLease lease)
     {
@@ -32,6 +33,12 @@ public static class RouteCatalogRemoteCall
 
     /// <summary>Awaits one actual remote call without a return value.</summary>
     public static Task InvokeAsync(Func<Task> invoke) => RouteCatalogRemoteExecution.InvokeAsync(invoke);
+
+    /// <summary>Refuses cancellation before dispatch, then tracks one actual remote call.</summary>
+    public static Task<T> InvokeAsync<T>(Func<Task<T>> invoke, CancellationToken token) => RouteCatalogRemoteExecution.InvokeAsync(invoke, token);
+
+    /// <summary>Refuses cancellation before dispatch, then tracks one actual void remote call.</summary>
+    public static Task InvokeAsync(Func<Task> invoke, CancellationToken token) => RouteCatalogRemoteExecution.InvokeAsync(invoke, token);
 
     /// <summary>Tracks an RPC on a client already created and validated locally, before remote enrollment begins.</summary>
     public static Task<TResult> InvokeAsync<TClient, TResult>(TClient client, Func<TClient, Task<TResult>> invoke)

@@ -19,6 +19,18 @@ public sealed class DaprRoutingHeaderOwnershipGuardTests {
         violations.ShouldAllBe(static violation => violation.Contains("samples/Example", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("dapr-app-id")]
+    [InlineData("dapr-api-token")]
+    public void GuardDetection_WithUnnamedHostHeaderSetter_ReportsTheOffendingHost(string header) {
+        string[] violations = FindViolations(
+            "samples/Example/Services/UnownedRoutingHandler.cs",
+            "request.Headers.TryAddWithoutValidation(\"" + header + "\", value);");
+
+        violations.Length.ShouldBe(1);
+        violations[0].ShouldContain("samples/Example/Services/UnownedRoutingHandler.cs");
+    }
+
     [Fact]
     public void HostSources_DelegateDaprRoutingHeaderOwnershipToThePlatformHandlerOnly() {
         string repositoryRoot = RepositoryRoot();
@@ -57,6 +69,7 @@ public sealed class DaprRoutingHeaderOwnershipGuardTests {
             [
                 "src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs",
                 "src/Hexalith.EventStore.ServiceDefaults/Routing/DaprRouteCatalogStateStore.cs",
+                "src/Hexalith.EventStore.ServiceDefaults/Routing/RouteCatalogInvocationHandler.cs",
             ],
             "AD-18 permits only platform DAPR clients to set routing headers.");
     }

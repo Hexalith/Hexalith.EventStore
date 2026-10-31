@@ -72,6 +72,7 @@ public sealed class EventStoreApiAccessTokenProviderTests
 
         validatedToken.ShouldBeOfType<JwtSecurityToken>().Header.Alg.ShouldBe(SecurityAlgorithms.HmacSha256);
         principal.FindFirst("sub")!.Value.ShouldBe("sample-user");
+        principal.FindAll("eventstore:surface").Select(claim => claim.Value).ShouldBe(["ui"]);
         principal.FindFirst("tenants")!.Value.ShouldContain("tenant-a");
         principal.FindFirst("domains")!.Value.ShouldContain("counter");
         principal.FindFirst("permissions")!.Value.ShouldContain("query:read");

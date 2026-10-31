@@ -46,7 +46,13 @@ public static class EventStoreDomainEventsEndpointExtensions {
             // Pub/sub delivery is sidecar-originated: it must present the Dapr app-channel token.
             .RequireEventStoreSidecarChannel();
 
-        if (endpoints.ServiceProvider.GetService<IConfiguration>()?.GetValue<bool>("Dapr:DeclarativeSubscriptions") != true)
+        string path = options.SubscriptionRoute;
+        string pubsub = options.PubSubName;
+        string topic = options.TopicName;
+        bool declarative = endpoints.ServiceProvider.GetService<IConfiguration>()?.GetValue<bool>("Dapr:DeclarativeSubscriptions") == true;
+        endpoint.Finally(builder => builder.Metadata.Add(new DomainRouteCatalogSidecarMetadata(builder.RequestDelegate, path, pubsub, topic, declarative)));
+
+        if (!declarative)
         {
             _ = endpoint.WithTopic(options.PubSubName, options.TopicName);
         }

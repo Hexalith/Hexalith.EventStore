@@ -60,6 +60,13 @@ public static class RouteCatalogDomainObservation
         var result = new List<RouteCatalogAuxiliaryOperation>();
         foreach (var endpoint in endpoints.OfType<RouteEndpoint>())
         {
+            if (endpoint.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>() is { } subscription)
+            {
+                var owner = subscription.Observe(endpoint);
+                foreach (string domain in domains) result.Add(new(appId, endpoint.RoutePattern.RawText!.TrimStart('/'),
+                    DomainRouteCatalogSidecarMetadata.Operation, domain) { Sidecar = owner });
+                continue;
+            }
             var route = EventStoreDomainServiceRoutes.Operational.SingleOrDefault(r => r.Route == endpoint.RoutePattern.RawText);
             if (route is null) continue;
             if (endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null
