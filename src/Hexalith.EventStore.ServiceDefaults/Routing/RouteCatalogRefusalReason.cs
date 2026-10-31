@@ -15,4 +15,6 @@ public enum RouteCatalogRefusalReason
     Inventory,
     /// <summary>The authoritative state transport or response is unavailable.</summary>
     Backend,
+    /// <summary>A prepared transition is fenced while prior durable dispatches drain or receive owner-verified reconciliation.</summary>
+    Draining,
 }

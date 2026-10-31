@@ -48,6 +48,14 @@ public sealed class EventStoreDomainEventsEndpointExtensionsTests {
         IHttpMethodMetadata methodMetadata = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>().ShouldNotBeNull();
         methodMetadata.HttpMethods.ShouldContain(HttpMethods.Post);
 
+        var owner = endpoint.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>().ShouldNotBeNull().Observe(endpoint);
+        owner.PubSubName.ShouldBe("event-pubsub");
+        owner.TopicName.ShouldBe("widgets.events");
+        owner.CodeDigest.Length.ShouldBe(64);
+        var copied = new RouteEndpoint(static _ => Task.CompletedTask, endpoint.RoutePattern, endpoint.Order, endpoint.Metadata, endpoint.DisplayName);
+        Should.Throw<Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException>(() =>
+            copied.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>()!.Observe(copied));
+
         if (declarative)
         {
             endpoint.Metadata.GetMetadata<ITopicMetadata>().ShouldBeNull();

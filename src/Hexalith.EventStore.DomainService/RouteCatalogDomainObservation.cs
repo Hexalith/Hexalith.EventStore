@@ -67,6 +67,15 @@ public static class RouteCatalogDomainObservation
                     DomainRouteCatalogSidecarMetadata.Operation, domain) { Sidecar = owner });
                 continue;
             }
+            if (endpoint.Metadata.GetMetadata<DomainRouteCatalogAuxiliaryMetadata>() is { } auxiliary)
+            {
+                var owner = auxiliary.Observe(endpoint);
+                if (!domains.Contains(auxiliary.Domain, StringComparer.Ordinal))
+                    throw new RouteCatalogUnavailableException("An auxiliary endpoint has no actual local domain owner.");
+                result.Add(new(appId, endpoint.RoutePattern.RawText!.TrimStart('/'), auxiliary.Route.Operation, auxiliary.Domain)
+                    { DomainAuxiliary = owner });
+                continue;
+            }
             var route = EventStoreDomainServiceRoutes.Operational.SingleOrDefault(r => r.Route == endpoint.RoutePattern.RawText);
             if (route is null) continue;
             if (endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null

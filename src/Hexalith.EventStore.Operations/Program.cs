@@ -4,6 +4,7 @@ using Hexalith.EventStore.Operations.Actors;
 using Hexalith.EventStore.Operations.Configuration;
 using Hexalith.EventStore.Operations.Endpoints;
 using Hexalith.EventStore.Operations.Replay;
+using Hexalith.EventStore.Operations.Routing;
 using Hexalith.EventStore.Operations.Security;
 using Hexalith.EventStore.Operations.Telemetry;
 using Hexalith.EventStore.ServiceDefaults;
@@ -19,6 +20,7 @@ _ = DaprAppChannelSecurity.ValidateConfiguration(
 builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
 builder.Services.AddOperationsHttpSecurity();
+builder.Services.AddDevelopmentOperationsCatalog(builder.Configuration);
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<EventStoreOperationsTelemetry>();
@@ -38,6 +40,7 @@ app.UseEventStoreHttpHostSecurity();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseOperationsHumanRelayScope();
+app.UseDevelopmentOperationsCatalog();
 
 app.MapDefaultEndpoints();
 app.MapDeadLetterOperations();

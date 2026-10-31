@@ -39,13 +39,16 @@ public sealed class TechnicalHttpRouteCatalogReceiver
 
     /// <summary>Installs only the opted-in composite. Direct HTTP and all actual MVC action guards retain their normal behavior.</summary>
     public static WebApplication UseDevelopmentTechnicalHttpCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> core)
+        => UseDevelopmentTechnicalHttpCatalogReceiver(app, core, null);
+
+    internal static WebApplication UseDevelopmentTechnicalHttpCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> core, TechnicalHttpRouteCatalogReceiver? instance)
     {
         ArgumentNullException.ThrowIfNull(app); ArgumentNullException.ThrowIfNull(core);
         if (!IsEnabled(app.Configuration)) throw new RouteCatalogUnavailableException("The technical receiver requires explicit versioned opt-in.");
         if (!app.Environment.IsDevelopment() || string.IsNullOrEmpty(app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"])
             || string.IsNullOrEmpty(app.Configuration[DaprAppChannelToken.ConfigurationKey]))
             throw new RouteCatalogUnavailableException("The technical receiver requires an owned Development composition and actual channel credential.");
-        var fence = app.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>();
+        var fence = instance ?? app.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>();
         fence._services = app.Services; fence._core = core;
         fence._native = app.Services.GetService<IDevelopmentNativeActorReceiver>();
         fence._callbacks = app.Services.GetService<IDevelopmentDaprCallbackReceiver>();

@@ -21,6 +21,7 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
     private byte[]? _currentBackend;
     private DistributedApplicationExecutionContext? _execution;
     internal string? ComponentPath { get; private set; }
+    private readonly object _custodyGate = new();
 
     /// <inheritdoc/>
     public Task SubscribeAsync(IDistributedApplicationEventing eventing, DistributedApplicationExecutionContext executionContext, CancellationToken cancellationToken)
@@ -39,19 +40,8 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
         await _publication.WaitAsync(token).ConfigureAwait(false);
         try
         {
-            string path = ComponentPath ?? throw new InvalidOperationException("The actual authority component has not been rendered.");
-            DevelopmentRouteCatalogCustody.RequirePrivate(path);
-            JsonObject component = DevelopmentRouteCatalogAspireExtensions.ReadYamlOrJson(path);
+            var component = ValidateRenderedComponent();
             var metadata = component["spec"]!["metadata"]!.AsArray();
-            if (authority.Options?.LocalPath is not null || component["kind"]?.GetValue<string>() != "Component"
-                || component["metadata"]?["name"]?.GetValue<string>() != authority.Name || component["spec"]?["type"]?.GetValue<string>() != "state.redis"
-                || component["metadata"]?["labels"]?[RouteCatalogAuthorityComponentPolicy.RoleLabel]?.GetValue<string>() != RouteCatalogAuthorityComponentPolicy.IsolatedRole
-                || metadata.Any(item => item?["name"]?.GetValue<string>() == "actorStateStore")
-                || metadata.Count(item => item?["name"]?.GetValue<string>() == "keyPrefix") != 1
-                || metadata.Single(item => item?["name"]?.GetValue<string>() == "keyPrefix")?["value"]?.GetValue<string>() != "name"
-                || !component["scopes"]!.AsArray().Select(value => value!.GetValue<string>()).Order(StringComparer.Ordinal)
-                    .SequenceEqual(participants.Select(peer => selectedAppIds[peer]).Order(StringComparer.Ordinal), StringComparer.Ordinal))
-                throw new InvalidOperationException("The actual authority role, scopes or isolated key prefix changed before resource execution.");
             var references = metadata.Where(item => item?["secretKeyRef"] is not null)
                 .Select(item => item!["secretKeyRef"]!["name"]!.GetValue<string>()).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
             Dictionary<string, object> environment = new(StringComparer.Ordinal);
@@ -70,26 +60,59 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
                 };
                 bindings[reference] = resolved ?? throw new InvalidOperationException("An actual authority backend dependency is unresolved.");
             }
-            var backend = component.DeepClone().AsObject(); backend.Remove("scopes"); backend["metadata"]!.AsObject().Remove("labels");
-            foreach (var item in backend["spec"]!["metadata"]!.AsArray())
-                if (item?["secretKeyRef"] is JsonObject reference)
-                {
-                    item!["value"] = bindings[reference["name"]!.GetValue<string>()];
-                    item.AsObject().Remove("secretKeyRef");
-                }
-            byte[] backendBytes = JsonSerializer.SerializeToUtf8Bytes(backend);
-            if (retainedBackend is not null && !retainedBackend.AsSpan().SequenceEqual(backendBytes)
-                || _currentBackend is not null && !_currentBackend.AsSpan().SequenceEqual(backendBytes))
-                throw new InvalidOperationException("The actual retained authority backend changed. Restore its exact owner profile; another backend requires a verified state handoff.");
-            if (_currentBackend is null)
-            {
-                DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.backend.json"), backendBytes);
-                DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.dependencies.json"), JsonSerializer.SerializeToUtf8Bytes(bindings));
-                DevelopmentRouteCatalogCustody.WriteNew(Path.Combine(custodyRunDirectory, "authority.component.json"), JsonSerializer.SerializeToUtf8Bytes(component));
-                _currentBackend = backendBytes;
-            }
+            CaptureBackend(component, bindings);
         }
         finally { _publication.Release(); }
+    }
+
+    private JsonObject ValidateRenderedComponent()
+    {
+        string path = ComponentPath ?? throw new InvalidOperationException("The actual authority component has not been rendered.");
+        DevelopmentRouteCatalogCustody.RequirePrivate(path);
+        JsonObject component = DevelopmentRouteCatalogAspireExtensions.ReadYamlOrJson(path);
+        var metadata = component["spec"]!["metadata"]!.AsArray();
+        if (authority.Options?.LocalPath is not null || component["kind"]?.GetValue<string>() != "Component"
+            || component["metadata"]?["name"]?.GetValue<string>() != authority.Name || component["spec"]?["type"]?.GetValue<string>() != "state.redis"
+            || component["metadata"]?["labels"]?[RouteCatalogAuthorityComponentPolicy.RoleLabel]?.GetValue<string>() != RouteCatalogAuthorityComponentPolicy.IsolatedRole
+            || metadata.Any(item => item?["name"]?.GetValue<string>() == "actorStateStore")
+            || metadata.Count(item => item?["name"]?.GetValue<string>() == "keyPrefix") != 1
+            || metadata.Single(item => item?["name"]?.GetValue<string>() == "keyPrefix")?["value"]?.GetValue<string>() != "name"
+            || !component["scopes"]!.AsArray().Select(value => value!.GetValue<string>()).Order(StringComparer.Ordinal)
+                .SequenceEqual(participants.Select(peer => selectedAppIds[peer]).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new InvalidOperationException("The actual authority role, scopes or isolated key prefix changed before resource execution.");
+        return component;
+    }
+
+    private void CaptureBackend(JsonObject component, Dictionary<string, string> bindings)
+    {
+        var backend = component.DeepClone().AsObject();
+        backend.Remove("scopes");
+        backend["metadata"]!.AsObject().Remove("labels");
+        foreach (var item in backend["spec"]!["metadata"]!.AsArray())
+            if (item?["secretKeyRef"] is JsonObject reference)
+            {
+                item!["value"] = bindings[reference["name"]!.GetValue<string>()];
+                item.AsObject().Remove("secretKeyRef");
+            }
+        byte[] backendBytes = JsonSerializer.SerializeToUtf8Bytes(backend);
+        if (retainedBackend is not null && !retainedBackend.AsSpan().SequenceEqual(backendBytes)
+            || _currentBackend is not null && !_currentBackend.AsSpan().SequenceEqual(backendBytes))
+            throw new InvalidOperationException("The actual retained authority backend changed. Restore its exact owner profile; another backend requires a verified state handoff.");
+        lock (_custodyGate)
+        {
+            RetainExact("authority.backend.json", backendBytes);
+            RetainExact("authority.dependencies.json", JsonSerializer.SerializeToUtf8Bytes(bindings));
+            RetainExact("authority.component.json", JsonSerializer.SerializeToUtf8Bytes(component));
+            _currentBackend = backendBytes;
+        }
+    }
+
+    private void RetainExact(string name, byte[] bytes)
+    {
+        string target = Path.Combine(custodyRunDirectory, name);
+        if (!File.Exists(target)) DevelopmentRouteCatalogCustody.WriteNew(target, bytes);
+        else if (!File.ReadAllBytes(target).AsSpan().SequenceEqual(bytes))
+            throw new InvalidOperationException("The actual retained authority backend changed; physical receivers selected different actual authority backend dependencies.");
     }
 
     private async Task ObserveAsync(BeforeStartEvent startup, CancellationToken token)
@@ -130,11 +153,42 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
         metadata.Add(new JsonObject { ["name"] = "keyPrefix", ["value"] = "name" });
         component["metadata"]!["labels"] ??= new JsonObject();
         component["metadata"]!["labels"]![RouteCatalogAuthorityComponentPolicy.RoleLabel] = RouteCatalogAuthorityComponentPolicy.IsolatedRole;
-        component["scopes"] = JsonSerializer.SerializeToNode(participants.Select(participant => selectedAppIds[participant]).Order(StringComparer.Ordinal).ToArray());
+        component["scopes"] = JsonSerializer.SerializeToNode(participants.Select(participant => selectedAppIds[participant]).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
         // The toolkit has no public scopes builder. Update only the role/scopes of its actual
         // modeled output in place; preserve its late-resolved backend/auth metadata and loading path.
         await File.WriteAllBytesAsync(path, JsonSerializer.SerializeToUtf8Bytes(component), token).ConfigureAwait(false);
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         ComponentPath = path;
+        // Retain only dependencies actually referenced by the rendered authority. Run-scoped
+        // workload issuer credentials and unrelated application secrets keep their deletion policy.
+        var references = metadata.Where(item => item?["secretKeyRef"] is not null)
+            .Select(item => item!["secretKeyRef"]!["name"]!.GetValue<string>()).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        if (references.Length == 0) CaptureBackend(ValidateRenderedComponent(), new Dictionary<string, string>(StringComparer.Ordinal));
+        else foreach (var participant in participants)
+        {
+            var sidecar = participant.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
+            var executable = startup.Model.Resources.OfType<ExecutableResource>().Single(resource => resource.Name == sidecar.Name + "-cli");
+            // Resolve only referenced backend values in the actual sidecar's environment stage.
+            // Running every callback here would force mTLS/issuer credential reads before their
+            // resources exist. Necessary endpoint/parameter providers may also await allocation.
+            executable.Annotations.Add(new EnvironmentCallbackAnnotation(async context =>
+            {
+                var verifiedComponent = ValidateRenderedComponent();
+                Dictionary<string, string> bindings = new(StringComparer.Ordinal);
+                foreach (string reference in references)
+                {
+                    if (!context.EnvironmentVariables.TryGetValue(reference, out object? value))
+                        throw new InvalidOperationException("An actual authority backend dependency cannot be retained from its selected sidecar.");
+                    bindings[reference] = value switch
+                    {
+                        string literal => literal,
+                        IValueProvider provider => await provider.GetValueAsync(context.CancellationToken).ConfigureAwait(false)
+                            ?? throw new InvalidOperationException("The selected backend dependency is unavailable."),
+                        _ => throw new InvalidOperationException("An authority backend dependency has no supported owner value provider."),
+                    };
+                }
+                CaptureBackend(verifiedComponent, bindings);
+            }));
+        }
     }
 }

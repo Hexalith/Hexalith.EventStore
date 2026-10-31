@@ -106,6 +106,16 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
     public const string EpochHeader = "X-Hexalith-Route-Catalog-Epoch";
 
     /// <inheritdoc/>
+    protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        // Existing synchronous SDK clients must traverse the same redirect checks and durable
+        // dispatch scope. A separate worker avoids blocking a caller's synchronization context;
+        // ExecutionContext still carries the actual enclosing catalog lease.
+        return Task.Run(() => SendAsync(request, cancellationToken), cancellationToken).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -199,7 +209,7 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         return await RouteCatalogRemoteCall.InvokeAsync(() => InvocationTransport().SendAsync(request, token), token).ConfigureAwait(false);
     }
 
-private static bool OwnedEndpoint(CommittedRouteCatalogSnapshot snapshot, Uri request)
+    private static bool OwnedEndpoint(CommittedRouteCatalogSnapshot snapshot, Uri request)
     {
         if (snapshot.AuthorityCoordinates is null || snapshot.ActivationBindingDigest is null) return false;
         var owned = new Uri(snapshot.AuthorityCoordinates.HttpEndpoint, UriKind.Absolute);
@@ -207,7 +217,6 @@ private static bool OwnedEndpoint(CommittedRouteCatalogSnapshot snapshot, Uri re
             && request.Port == owned.Port && request.UserInfo.Length == 0 && request.Fragment.Length == 0
             && owned.AbsolutePath == "/" && (request.AbsolutePath.StartsWith(InvokePrefix, StringComparison.Ordinal)
                 || !request.AbsolutePath.Contains(InvokePrefix, StringComparison.OrdinalIgnoreCase));
-
     }
 
     private HttpMessageInvoker InvocationTransport() => _invocationTransport

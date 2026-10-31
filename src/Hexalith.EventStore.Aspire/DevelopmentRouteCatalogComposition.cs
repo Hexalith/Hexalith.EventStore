@@ -26,8 +26,11 @@ public sealed class DevelopmentRouteCatalogComposition : IAsyncDisposable
         _disposed = true;
         try
         {
-            _custody.Retain(Directory);
-            if (System.IO.Directory.Exists(Directory)) System.IO.Directory.Delete(Directory, recursive: true);
+            if (System.IO.Directory.Exists(Directory))
+            {
+                _custody.Retain(Directory);
+                System.IO.Directory.Delete(Directory, recursive: true);
+            }
             return ValueTask.CompletedTask;
         }
         finally { _custody.Dispose(); }

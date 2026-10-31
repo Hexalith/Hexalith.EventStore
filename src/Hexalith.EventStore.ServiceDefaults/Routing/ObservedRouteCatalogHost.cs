@@ -58,7 +58,15 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                     .ThenBy(invocation => invocation.Method, StringComparer.Ordinal).ToArray(),
             }));
         }
-        return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile));
+        string? executable = null;
+        if (observation.ExecutableOwners is { } owners)
+        {
+            if (owners.Count == 0 || owners.Any(owner => string.IsNullOrWhiteSpace(owner.Key)
+                || owner.Value is not { Length: 64 } || !owner.Value.All(char.IsAsciiHexDigitLower)))
+                throw new RouteCatalogUnavailableException("The actual executable owner identities are incomplete.", RouteCatalogRefusalReason.Inventory);
+            executable = Hash(JsonSerializer.SerializeToUtf8Bytes(owners.OrderBy(owner => owner.Key, StringComparer.Ordinal).ToArray()));
+        }
+        return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile)) { ExecutableDigest = executable };
     }
 
     /// <inheritdoc/>
@@ -72,7 +80,8 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
         RouteCatalogHostIdentity identity = Identity(actual);
         TechnicalHttpCatalogBinding.Validate(activation);
         var expectedTechnical = activation.TechnicalHttpReceivers?.SingleOrDefault(receiver => receiver.AppId == actual.AppId);
-        bool installedTechnical = actual.ReceiverSurface?.FenceVersion == RouteCatalogTechnicalHttpPolicy.FenceVersion;
+        bool installedTechnical = actual.ReceiverSurface?.FenceVersion == RouteCatalogTechnicalHttpPolicy.FenceVersion
+            && (actual.ReceiverSurface.TechnicalHttp is not null || !actual.ReceiverSurface.Endpoints.Any(endpoint => endpoint.Http is not null));
         if (installedTechnical != (expectedTechnical is not null)
             || installedTechnical && (actual.ReceiverSurface!.TechnicalHttp is not { Count: > 0 } endpoints
                 || !TechnicalHttpCatalogBinding.Equivalent(new(actual.AppId, actual.ReceiverSurface.FenceVersion, endpoints)
@@ -95,9 +104,10 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 activation.RequiredHosts, actual.AppId, activation.AuxiliaryOperations, actual.ReceiverSurface,
                 actual.SelectedAppIds, actual.DeclaredInvocations);
         }
-        catch (RouteCatalogValidationException)
+        catch (RouteCatalogValidationException failure)
         {
-            throw new RouteCatalogUnavailableException("Loaded topology disagrees with the candidate.", RouteCatalogRefusalReason.Topology);
+            throw new RouteCatalogUnavailableException("Loaded topology disagrees with the candidate: "
+                + string.Join(", ", failure.Diagnostics.Select(diagnostic => diagnostic.Code).Distinct(StringComparer.Ordinal).Take(16)) + ".", RouteCatalogRefusalReason.Topology);
         }
         if (!actual.RequiredHostIds.Order(StringComparer.Ordinal).SequenceEqual(activation.RequiredHosts.Select(h => h.HostId).Order(StringComparer.Ordinal), StringComparer.Ordinal)
             || actual.Declarations.Select(d => d.RouteId).Distinct(StringComparer.Ordinal).Count() != actual.Declarations.Count

@@ -16,7 +16,7 @@ public sealed class DevelopmentCompositionBootstrapTests
         => await VerifyPrivateBootstrapAsync(false);
 
     [Fact]
-    public async Task CompletedPrivateAttemptCannotBeReplayedByParticipantRestart()
+    public async Task CompletedPrivateAttemptResumesWithoutReplayingActivation()
         => await VerifyPrivateBootstrapAsync(true);
 
     private static async Task VerifyPrivateBootstrapAsync(bool restart)
@@ -32,6 +32,7 @@ public sealed class DevelopmentCompositionBootstrapTests
             var tasks = fixture.Observations.Select((actual, index) =>
             {
                 var services = new ServiceCollection();
+                services.AddSingleton<IRouteCatalogStateStore>(fixture.Store);
                 services.AddSingleton<IOptions<RouteCatalogHostOptions>>(Options.Create(new RouteCatalogHostOptions
                 { Profile = "Development", DevelopmentFixture = true }));
                 services.AddSingleton<IRouteCatalogAuthority>(provider => new RouteCatalogAuthority(fixture.Store,
@@ -52,8 +53,13 @@ public sealed class DevelopmentCompositionBootstrapTests
             if (restart)
             {
                 var original = fixture.Observations[0];
-                await Should.ThrowAsync<IOException>(() => DevelopmentRouteCatalogBootstrap.ActivateAsync(providers[0], directory,
-                    original.HostId, hosts[0], "private-attempt", hosts, (_, _) => Task.FromResult(original), _ => fixture.Envelope, bound.Token));
+                byte[] committedReceipt = await File.ReadAllBytesAsync(Path.Combine(directory, original.HostId + ".committed.json"));
+                await DevelopmentRouteCatalogBootstrap.ActivateAsync(providers[0], directory,
+                    original.HostId, hosts[0], "private-attempt", hosts, (_, _) => Task.FromResult(original), _ => fixture.Envelope, bound.Token);
+                Directory.GetFiles(directory, original.HostId + ".resume-*.json").ShouldHaveSingleItem();
+                (await File.ReadAllBytesAsync(Path.Combine(directory, original.HostId + ".committed.json"))).ShouldBe(committedReceipt);
+                (await fixture.Store.ReadAsync(default)).ETag.ShouldBe(state.ETag);
+                (await fixture.Store.ReadAsync(default)).State.Attempts.ShouldBe(state.State.Attempts);
                 (await fixture.Store.ReadAsync(default)).State.Epoch.ShouldBe(state.State.Epoch);
                 (await fixture.Store.ReadAsync(default)).State.Committed!.RootDigest.ShouldBe(state.State.Committed.RootDigest);
             }

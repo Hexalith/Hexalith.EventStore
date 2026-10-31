@@ -146,7 +146,7 @@ dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.Event
 
 LANG=th_TH.UTF-8 LC_ALL=th_TH.UTF-8 dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ShardActorRecoveryTests'
 
-DAPR_HTTP_ENDPOINT=http://127.0.0.1:1 DAPR_GRPC_ENDPOINT=http://127.0.0.1:1 DAPR_API_TOKEN=synthetic-parent-token APP_API_TOKEN=synthetic-parent-token EVENTSTORE_SHARDING_EXPIRES_UTC=2026-10-31T09:20:00Z dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderRecoveryTests' -class '*SyntheticShardingTests' -class 'Hexalith.EventStore.Sharding.Tests.LifecycleTests'
+DAPR_HTTP_ENDPOINT=http://127.0.0.1:1 DAPR_GRPC_ENDPOINT=http://127.0.0.1:1 DAPR_API_TOKEN=${DAPR_API_TOKEN} APP_API_TOKEN=${APP_API_TOKEN} EVENTSTORE_SHARDING_EXPIRES_UTC=2026-10-31T09:20:00Z dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderRecoveryTests' -class '*SyntheticShardingTests' -class 'Hexalith.EventStore.Sharding.Tests.LifecycleTests'
 
 EVENTSTORE_SHARDING_EXPIRES_UTC=2026-10-31T09:13:15Z dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ExpiryLifecycleTests' -explicit only
 

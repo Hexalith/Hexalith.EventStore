@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Cryptography;
 
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
@@ -33,7 +34,22 @@ public static class DevelopmentDomainRouteCatalog
             var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, identity.AppId, declarations,
                 Targets(local, endpoints, declarations), [], RouteCatalogDomainObservation.Capabilities(local),
                 RouteCatalogDomainObservation.Auxiliary(local, endpoints), token).ConfigureAwait(false);
-            return actual with { ReceiverSurface = fence.Observe(), Operations = CompiledRouteCatalogDeclarations.ReadOperations(contractOwners) };
+            var discovery = local.GetRequiredService<DiscoveryResult>();
+            Assembly[] implementations = [.. contractOwners, typeof(DevelopmentDomainRouteCatalog).Assembly,
+                .. contractOwners.SelectMany(owner => owner.GetReferencedAssemblies()).Select(Assembly.Load),
+                .. discovery.Projections.Select(projection => projection.Type.Assembly),
+                .. discovery.Aggregates.SelectMany(aggregate => local.GetRequiredKeyedService<IDomainProcessor>(aggregate.DomainName)
+                    is IDomainCommandPayloadInventory inventory ? inventory.CommandPayloadTypes : Array.Empty<Type>()).Select(type => type.Assembly),
+                .. discovery.Aggregates.Select(aggregate => aggregate.Type.Assembly),
+                .. discovery.Aggregates.Select(aggregate => local.GetRequiredKeyedService<IDomainProcessor>(aggregate.DomainName).GetType().Assembly),
+                .. local.GetServices<IDomainQueryHandler>().Select(handler => handler.GetType().Assembly),
+                .. local.GetServices<IAsyncDomainProjectionHandler>().Select(handler => handler.GetType().Assembly)];
+            return actual with
+            {
+                ReceiverSurface = fence.Observe(), Operations = CompiledRouteCatalogDeclarations.ReadOperations(contractOwners),
+                ExecutableOwners = implementations.Distinct().OrderBy(assembly => assembly.FullName, StringComparer.Ordinal)
+                    .ToDictionary(assembly => assembly.FullName!, assembly => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(assembly.Location))), StringComparer.Ordinal),
+            };
         });
     }
 

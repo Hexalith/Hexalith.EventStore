@@ -65,12 +65,17 @@ public sealed class DevelopmentRouteCatalogAspireTests
     [InlineData("late-authority-prefix")]
     [InlineData("late-authority-scope")]
     [InlineData("technical")]
+    [InlineData("replica")]
+    [InlineData("replica-owner")]
+    [InlineData("missing-replica")]
+    [InlineData("conflicting-owner")]
     [InlineData("production")]
     [InlineData("empty-owners")]
     [InlineData("missing-gateway")]
     [InlineData("duplicate-receiver")]
     [InlineData("unselected-caller")]
     [InlineData("duplicate-grant")]
+    [InlineData("missing-custody")]
     public async Task ActualResourcesOwnCanonicalCatalogFiniteAclAndPrivateAuthorityAsync(string scenario)
     {
         ArgumentNullException.ThrowIfNull(scenario);
@@ -109,16 +114,32 @@ public sealed class DevelopmentRouteCatalogAspireTests
             if (scenario == "unselected-caller") grants = [new(builder.AddProject<EventStoreProjectMetadata>("no-sidecar"), "process", ["POST"])];
             if (scenario == "duplicate-grant") grants = [grants[0], grants[0]];
             DevelopmentRouteCatalogReceiver[] receivers = [new(gateway, []) { TechnicalHttp = scenario == "technical" }, new(domain, grants)];
+            if (scenario is "replica" or "replica-owner" or "missing-replica" or "conflicting-owner")
+            {
+                var replica = Project("domain-ha", "domain-owned-session");
+                if (scenario != "missing-replica") receivers = [.. receivers, new(replica, grants)];
+                if (scenario is "replica-owner" or "conflicting-owner") owners = [.. owners,
+                    new(replica, scenario == "conflicting-owner" ? typeof(RouteCatalogCodec).Assembly : owners[0].Contracts, owners[0].Adapters)];
+            }
             if (scenario == "missing-gateway") receivers = [receivers[1]];
             if (scenario == "duplicate-receiver") receivers = [.. receivers, receivers[1]];
-            if (scenario is not ("valid" or "sdk-backend" or "technical" or "late-backend" or "late-authority-prefix" or "late-authority-scope"))
+            var custody = DevelopmentCatalogModelCustody.Create(input);
+            if (scenario is not ("valid" or "sdk-backend" or "technical" or "late-backend" or "late-authority-prefix" or "late-authority-scope" or "replica" or "replica-owner"))
             {
-                Should.Throw<InvalidOperationException>(() => builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, DevelopmentCatalogModelCustody.Create(input), "owned-session"));
+                int resources = builder.Resources.Count;
+                var refusal = Should.Throw<InvalidOperationException>(() => builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session",
+                    scenario == "missing-custody" ? null : custody));
                 builder.Resources.OfType<ParameterResource>().ShouldBeEmpty();
+                if (scenario == "missing-custody")
+                {
+                    refusal.Message.ShouldContain("empty routing cell does not prove business state is new");
+                    builder.Resources.Count.ShouldBe(resources);
+                    Directory.Exists(custody.CustodyDirectory).ShouldBeFalse();
+                }
                 return;
             }
-            await using (var catalog = sdk is not null ? builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, sdk.StateStore, DevelopmentCatalogModelCustody.Create(input), "owned-session")
-                : builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, DevelopmentCatalogModelCustody.Create(input), "owned-session"))
+            await using (var catalog = sdk is not null ? builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, sdk.StateStore, custody, "owned-session")
+                : builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, custody, "owned-session"))
             {
                 privateDirectory = catalog.Directory;
                 RouteCatalogEnvelope decoded = RouteCatalogCodec.Decode(await File.ReadAllBytesAsync(Path.Combine(catalog.Directory, "catalog.json"), TestContext.Current.CancellationToken), catalog.RootDigest);
@@ -128,6 +149,16 @@ public sealed class DevelopmentRouteCatalogAspireTests
                 DevelopmentIdempotencyBindings.Bind(DevelopmentCatalogProbeDeclarations.Commands[0], 1).ConsumerAppId.ShouldBe("eventstore");
                 var modeledAuthority = builder.Resources.OfType<DaprComponentResource>().Single(resource => resource.Name.StartsWith("routing-", StringComparison.Ordinal));
                 modeledAuthority.Options?.LocalPath.ShouldBeNull();
+                Dictionary<string, object> beforeRendering = [];
+                foreach (var callback in gateway.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+                    await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, gateway.Resource, beforeRendering, TestContext.Current.CancellationToken));
+                const string componentEnvironment = "EventStore__RouteCatalog__DevelopmentBootstrap__ComponentPath";
+                var deferred = beforeRendering[componentEnvironment].ShouldBeOfType<DevelopmentRouteCatalogComponentPath>();
+                await Should.ThrowAsync<InvalidOperationException>(async () => await deferred.GetValueAsync(TestContext.Current.CancellationToken));
+                Dictionary<string, object> secondCapture = [];
+                foreach (var callback in gateway.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+                    await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, gateway.Resource, secondCapture, TestContext.Current.CancellationToken));
+                secondCapture[componentEnvironment].ShouldBeSameAs(deferred);
                 var endpoint = infrastructure.Resource.Annotations.OfType<EndpointAnnotation>().Single(annotation => annotation.Name == "tcp");
                 endpoint.AllocatedEndpoint = new AllocatedEndpoint(endpoint, "127.0.0.1", 46379);
                 var password = builder.AddParameter("late-private-redis-password", string.Empty, secret: true);
@@ -136,10 +167,28 @@ public sealed class DevelopmentRouteCatalogAspireTests
                     .WithMetadata("redisPassword", password.Resource).WithMetadata("keyPrefix", "none").WithMetadata("actorStateStore", "true");
                 await using var application = builder.Build();
                 var eventing = application.Services.GetRequiredService<IDistributedApplicationEventing>();
+                bool dependenciesStarted = false;
+                int unrelatedCredentialReads = 0;
                 foreach (var subscriber in application.Services.GetServices<IDistributedApplicationEventingSubscriber>().Where(subscriber =>
                     subscriber.GetType().Name == "DaprDistributedApplicationLifecycleHook" || subscriber is DevelopmentRouteCatalogComponentObserver))
+                {
+                    if (subscriber is DevelopmentRouteCatalogComponentObserver)
+                        eventing.Subscribe<BeforeStartEvent>((startup, _) =>
+                        {
+                            foreach (var executable in startup.Model.Resources.OfType<ExecutableResource>())
+                                executable.Annotations.Add(new EnvironmentCallbackAnnotation(context =>
+                                {
+                                    if (!dependenciesStarted) throw new InvalidOperationException("Unrelated mTLS material is unavailable before its actual resource starts.");
+                                    unrelatedCredentialReads++;
+                                    context.EnvironmentVariables["UNRELATED_MTLS_PRIVATE_MATERIAL"] = "model-only-issuer-private-material";
+                                }));
+                            return Task.CompletedTask;
+                        });
                     await subscriber.SubscribeAsync(eventing, builder.ExecutionContext, TestContext.Current.CancellationToken);
+                }
                 await eventing.PublishAsync(new BeforeStartEvent(application.Services, application.Services.GetRequiredService<DistributedApplicationModel>()), TestContext.Current.CancellationToken);
+                unrelatedCredentialReads.ShouldBe(0);
+                dependenciesStarted = true;
                 var observedAuthority = application.Services.GetServices<IDistributedApplicationEventingSubscriber>().OfType<DevelopmentRouteCatalogComponentObserver>().Single();
                 string authorityPath = observedAuthority.ComponentPath.ShouldNotBeNull();
                 using var component = JsonDocument.Parse(await File.ReadAllBytesAsync(authorityPath, TestContext.Current.CancellationToken));
@@ -151,6 +200,17 @@ public sealed class DevelopmentRouteCatalogAspireTests
                 string redisReference = actualMetadata.Single(item => item.GetProperty("name").GetString() == "redisHost").GetProperty("secretKeyRef").GetProperty("name").GetString()!;
                 File.ReadAllText(authorityPath).ShouldNotContain("localhost:16379");
                 File.ReadAllText(authorityPath).ShouldNotContain("localhost:6379");
+                if (scenario is "late-authority-prefix" or "late-authority-scope")
+                {
+                    JsonObject changed = JsonNode.Parse(File.ReadAllBytes(authorityPath))!.AsObject();
+                    if (scenario == "late-authority-prefix") changed["spec"]!["metadata"]!.AsArray().Single(item => item!["name"]!.GetValue<string>() == "keyPrefix")!["value"] = "none";
+                    else changed["scopes"]!.AsArray().Add("foreign-owner");
+                    await File.WriteAllBytesAsync(authorityPath, JsonSerializer.SerializeToUtf8Bytes(changed), TestContext.Current.CancellationToken);
+                    (await Should.ThrowAsync<InvalidOperationException>(() => eventing.PublishAsync(new BeforeResourceStartedEvent(gateway.Resource, application.Services), TestContext.Current.CancellationToken)))
+                        .Message.ShouldContain("before resource execution");
+                    File.Exists(Path.Combine(catalog.Directory, "authority.backend.json")).ShouldBeFalse();
+                    return;
+                }
                 int allocatedPort = 48000;
                 foreach (var executable in application.Services.GetRequiredService<DistributedApplicationModel>().Resources.OfType<ExecutableResource>())
                 {
@@ -163,17 +223,6 @@ public sealed class DevelopmentRouteCatalogAspireTests
                         await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, executable, effective, TestContext.Current.CancellationToken));
                     effective[redisReference].ShouldBe("127.0.0.1:46379");
                 }
-                if (scenario is "late-authority-prefix" or "late-authority-scope")
-                {
-                    JsonObject changed = JsonNode.Parse(File.ReadAllBytes(authorityPath))!.AsObject();
-                    if (scenario == "late-authority-prefix") changed["spec"]!["metadata"]!.AsArray().Single(item => item!["name"]!.GetValue<string>() == "keyPrefix")!["value"] = "none";
-                    else changed["scopes"]!.AsArray().Add("foreign-owner");
-                    await File.WriteAllBytesAsync(authorityPath, JsonSerializer.SerializeToUtf8Bytes(changed), TestContext.Current.CancellationToken);
-                    (await Should.ThrowAsync<InvalidOperationException>(() => eventing.PublishAsync(new BeforeResourceStartedEvent(gateway.Resource, application.Services), TestContext.Current.CancellationToken)))
-                        .Message.ShouldContain("before resource execution");
-                    File.Exists(Path.Combine(catalog.Directory, "authority.backend.json")).ShouldBeFalse();
-                    return;
-                }
                 await eventing.PublishAsync(new BeforeResourceStartedEvent(gateway.Resource, application.Services), TestContext.Current.CancellationToken);
                 if (scenario == "late-backend")
                 {
@@ -185,6 +234,18 @@ public sealed class DevelopmentRouteCatalogAspireTests
                     File.ReadAllBytes(backendReceipt).ShouldBe(previous);
                     return;
                 }
+                unrelatedCredentialReads.ShouldBe(2);
+                string dependencies = File.ReadAllText(Path.Combine(catalog.Directory, "authority.dependencies.json"));
+                dependencies.ShouldContain("127.0.0.1:46379");
+                dependencies.ShouldNotContain("model-only-issuer-private-material");
+                var actualExecutable = application.Services.GetRequiredService<DistributedApplicationModel>().Resources.OfType<ExecutableResource>()
+                    .Single(executable => executable.Name == "eventstore-dapr-cli");
+                var changedBackend = new Dictionary<string, object> { [redisReference] = "different-effective-backend" };
+                foreach (var metadataItem in actualMetadata.Where(item => item.TryGetProperty("secretKeyRef", out _)))
+                    changedBackend.TryAdd(metadataItem.GetProperty("secretKeyRef").GetProperty("name").GetString()!, string.Empty);
+                await Should.ThrowAsync<InvalidOperationException>(() => actualExecutable.Annotations.OfType<EnvironmentCallbackAnnotation>().Last()
+                    .Callback(new EnvironmentCallbackContext(builder.ExecutionContext, actualExecutable, changedBackend, TestContext.Current.CancellationToken)));
+                File.ReadAllText(Path.Combine(catalog.Directory, "authority.dependencies.json")).ShouldBe(dependencies);
                 using var acl = JsonDocument.Parse(await File.ReadAllBytesAsync(Sidecar(domain).Annotations.OfType<DaprSidecarOptionsAnnotation>().Single().Options.Config!, TestContext.Current.CancellationToken));
                 var incoming = acl.RootElement.GetProperty("spec").GetProperty("accessControl").GetProperty("policies").EnumerateArray().Single();
                 incoming.GetProperty("appId").GetString().ShouldBe("eventstore-owned-session"); incoming.GetProperty("namespace").GetString().ShouldBe("owned-session");
@@ -196,7 +257,7 @@ public sealed class DevelopmentRouteCatalogAspireTests
                 Dictionary<string, IConfigurationRoot> configurations = [];
                 IReadOnlyList<IdempotencyCatalogEntry> installedAdmission = [];
                 RouteCatalogStateCoordinates? actualCoordinates = null;
-                foreach (var project in new[] { gateway, domain })
+                foreach (var project in receivers.Select(receiver => receiver.Project))
                 {
                     Dictionary<string, object> environment = [];
                     foreach (var callback in project.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
@@ -206,11 +267,15 @@ public sealed class DevelopmentRouteCatalogAspireTests
                     else environment.ShouldNotContainKey("EventStore__RouteCatalog__DevelopmentBootstrap__BindingVersion");
                     environment["EventStore__RouteCatalog__DevelopmentBootstrap__AppId"].ShouldBe(project == gateway ? "eventstore-owned-session" : "domain-owned-session");
                     environment["APP_API_TOKEN"].ShouldBeOfType<ParameterResource>().Secret.ShouldBeTrue();
-                    environment["EventStore__RouteCatalog__DevelopmentBootstrap__ComponentPath"].ShouldBe(authorityPath);
+                    (await ((IValueProvider)environment[componentEnvironment]).GetValueAsync(TestContext.Current.CancellationToken)).ShouldBe(authorityPath);
                     Dictionary<string, string?> effective = [];
                     foreach (var item in environment)
-                        effective[item.Key.Replace("__", ":", StringComparison.Ordinal)] = item.Value is ParameterResource value
-                            ? await value.GetValueAsync(TestContext.Current.CancellationToken) : item.Value.ToString();
+                        effective[item.Key.Replace("__", ":", StringComparison.Ordinal)] = item.Value switch
+                        {
+                            ParameterResource value => await value.GetValueAsync(TestContext.Current.CancellationToken),
+                            DevelopmentRouteCatalogComponentPath value => await value.GetValueAsync(TestContext.Current.CancellationToken),
+                            _ => item.Value.ToString(),
+                        };
                     // DCP allocation is modeled above. Resolve this one actual sidecar HTTP
                     // coordinate without waiting on unrelated dashboard/gRPC expressions.
                     effective["DAPR_HTTP_ENDPOINT"] = "http://127.0.0.1:" + effective["DAPR_HTTP_PORT"];
@@ -252,20 +317,23 @@ public sealed class DevelopmentRouteCatalogAspireTests
         {
             var configuration = configurations[host];
             string app = configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AppId"]!;
-            RouteCatalogEntry[] targets = host == "domain" ? declarations.Select(declaration => new RouteCatalogEntry(declaration.RouteId, 1,
+            RouteCatalogEntry[] targets = app == "domain-owned-session" ? declarations.Select(declaration => new RouteCatalogEntry(declaration.RouteId, 1,
                 RouteCatalogCodec.ComputeDeclarationDigest(declaration), app, DevelopmentCatalogProbeDeclarations.ReceiverMethods[declaration.RouteId],
                 declaration.ContractVersion, declaration.CredentialKind, declaration.Operation, false, "*")).ToArray() : [];
             var observed = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, app, declarations, targets, host == "eventstore" ? admission : [], [], [], TestContext.Current.CancellationToken);
-            return observed with { AuthorityCoordinates = coordinates, Operations = DevelopmentCatalogProbeDeclarations.Operations };
+            return observed with { AuthorityCoordinates = coordinates, Operations = DevelopmentCatalogProbeDeclarations.Operations,
+                ExecutableOwners = app == "domain-owned-session" ? new Dictionary<string, string> { [typeof(DevelopmentCatalogProbeDeclarations).Assembly.FullName!] =
+                    Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(DevelopmentCatalogProbeDeclarations).Assembly.Location))) } : null };
         }
-        var gateway = await Capture("eventstore"); var domain = await Capture("domain");
+        var observations = await Task.WhenAll(configurations.Keys.Select(Capture));
+        var gateway = observations.Single(observation => observation.HostId == "eventstore");
         var identity = ObservedRouteCatalogHost.Identity(gateway);
         var options = Options.Create(new RouteCatalogHostOptions { Identity = identity, Profile = "Development", DevelopmentFixture = true });
         var store = new DevelopmentCatalogModelStateStore(coordinates);
         var authority = new RouteCatalogAuthority(store, new DevelopmentRouteCatalogTrustValidator(options, environment), options,
             new ObservedRouteCatalogHost(_ => Capture("eventstore")));
         var candidate = new RouteCatalogActivation("model-rendered-input", RouteCatalogCodec.Encode(catalog), RouteCatalogCodec.ComputeRootDigest(catalog), null,
-            [identity, ObservedRouteCatalogHost.Identity(domain)], "Development-fixture", string.Empty);
+            observations.Select(ObservedRouteCatalogHost.Identity).ToArray(), "Development-fixture", string.Empty);
         candidate = candidate with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(candidate) };
         await authority.PrepareAsync(candidate, TestContext.Current.CancellationToken);
         await authority.ReadyAsync(candidate.AttemptId, TestContext.Current.CancellationToken);

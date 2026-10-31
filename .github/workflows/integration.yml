@@ -60,6 +60,7 @@ jobs:
             --configuration Release -m:1 -p:UseHexalithProjectReferences=false \
             -p:UseMicrosoftTestingPlatformRunner=true
       - name: Run isolated published qualification and ownership regressions
+        shell: bash
         run: |
           mkdir -p "$P1R_QUALIFICATION_OUTPUT_ROOT"
           dotnet tests/Hexalith.EventStore.PublishedCompatibility.Tests/bin/Release/net10.0/Hexalith.EventStore.PublishedCompatibility.Tests.dll \

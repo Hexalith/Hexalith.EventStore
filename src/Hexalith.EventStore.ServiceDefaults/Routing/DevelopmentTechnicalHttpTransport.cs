@@ -22,7 +22,7 @@ public static class DevelopmentTechnicalHttpTransport
     private static readonly string[] Gateway = ["AdminCommandsQueryController", "AdminProjectionRebuildController", "AdminStorageCommandController",
         "AdminStreamQueryController", "AdminTraceQueryController", "CommandStatusController", "CommandValidationController",
         "CommandsController", "QueriesController", "QueryValidationController", "ReplayController", "RetainedIdentityHistoryController",
-        "RoutingCatalogMetadataController", "StreamsController"];
+        "RoutingCatalogMetadataController", "StreamsController", "TrustedEffectsController"];
     private static readonly string[] Admin = ["AdminTypeCatalogController", "AdminTracesController", "AdminTenantsController", "AdminStreamsController",
         "AdminStorageController", "AdminProjectionsController", "AdminHealthController", "AdminDeadLettersController", "AdminDaprController",
         "AdminConsistencyController", "AdminBackupsController"];
@@ -31,6 +31,10 @@ public static class DevelopmentTechnicalHttpTransport
     public static RouteCatalogHttpTransport? Observe(RouteEndpoint endpoint)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
+        if (endpoint.Metadata.GetMetadata<IDevelopmentSdkHttpWitness>() is { } witness
+            && witness.GetType().Assembly.GetName().Name == "Hexalith.EventStore.Operations"
+            && witness.GetType().FullName == "Hexalith.EventStore.Operations.Routing.DevelopmentOperationsHttpWitness")
+            return witness.Observe(endpoint);
         var action = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>();
         if (action is null || !ExecutesAction(endpoint.RequestDelegate, action)
             || action.MethodInfo.DeclaringType != action.ControllerTypeInfo.AsType()
@@ -41,11 +45,14 @@ public static class DevelopmentTechnicalHttpTransport
         bool admin = assembly == "Hexalith.EventStore.Admin.Server" && type.Namespace == "Hexalith.EventStore.Admin.Server.Controllers" && Admin.Contains(type.Name, StringComparer.Ordinal);
         if (!gateway && !admin) return null;
         string[] policies = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(policy => policy.Policy ?? "").ToArray();
-        if (!policies.Contains(EventStoreHttpHostSecurityExtensions.HumanPolicy, StringComparer.Ordinal)
-            || policies.Any(string.IsNullOrWhiteSpace) || admin && !policies.Any(policy => policy is "AdminReadOnly" or "AdminOperator" or "AdminFull")) return null;
+        var compiledPolicies = type.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
+            .Concat(action.MethodInfo.GetCustomAttributes<AuthorizeAttribute>(inherit: true)).Select(attribute => attribute.Policy).Where(policy => policy is not null);
+        if (compiledPolicies.Any(policy => !policies.Contains(policy!, StringComparer.Ordinal))) return null;
+        if (policies.Any(string.IsNullOrWhiteSpace) || admin && !policies.Any(policy => policy is "AdminReadOnly" or "AdminOperator" or "AdminFull")) return null;
         string[] verbs = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Order(StringComparer.Ordinal).ToArray() ?? [];
         if (verbs.Length == 0 || verbs.Any(verb => verb is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS"))) return null;
         string pattern = (endpoint.RoutePattern.RawText ?? "").Trim('/');
+        if (!RouteCatalogSdkHttpPolicy.Allows(type.FullName!, pattern, verbs, policies)) return null;
         var prefix = type.GetCustomAttribute<RouteAttribute>()?.Template;
         if (prefix is null || !action.MethodInfo.GetCustomAttributes<HttpMethodAttribute>().Any(attribute =>
             (prefix.Trim('/') + "/" + (attribute.Template ?? "").Trim('/')).Trim('/') == pattern
@@ -152,26 +159,16 @@ public static class DevelopmentTechnicalHttpTransport
         ArgumentNullException.ThrowIfNull(grant);
         ArgumentNullException.ThrowIfNull(path);
 
-        grant = grant.Trim('/');
-        string prefix = grant.TrimEnd('*').TrimEnd('/');
-        path = path.Trim('/');
-        if (path.Equals(prefix, StringComparison.OrdinalIgnoreCase)) return true;
-        if (prefix.Length > 0 && !path.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase)) return false;
-        // Dapr's literal nodes return their policy before the path ends. Its single-stage
-        // wildcard explicitly waits for the last segment; /** has no such depth bound.
-        string remainder = prefix.Length == 0 ? path : path[(prefix.Length + 1)..];
-        return !grant.EndsWith("*", StringComparison.Ordinal) || grant.EndsWith("**", StringComparison.Ordinal)
-            || !remainder.Contains('/', StringComparison.Ordinal);
+        return CanonicalPath(path) && RouteCatalogDaprGrant.Allows(grant, Uri.UnescapeDataString(path));
     }
 
-    /// <summary>Tests a known route shape against an actual broad prefix or concrete ACL grant.</summary>
+    /// <summary>Binds a compiled route to an intersecting or exactly described retained ACL declaration; concrete requests still require GrantAllows.</summary>
     public static bool GrantReaches(string grant, string pattern)
     {
         ArgumentNullException.ThrowIfNull(grant);
         ArgumentNullException.ThrowIfNull(pattern);
 
-        string prefix = grant.Trim('/').TrimEnd('*').TrimEnd('/');
-        return prefix.Length == 0 || GrantAllows(grant, pattern) || MatchesShape(pattern, prefix);
+        return RouteCatalogDaprGrant.Intersects(grant, pattern) || RouteCatalogDaprGrant.Describes(grant, pattern);
     }
 
     /// <summary>Accepts escaped scalar data but refuses encoded path structure, double escapes and ambiguous segments before decoding.</summary>

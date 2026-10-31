@@ -49,7 +49,7 @@ public static class RouteCatalogTopologyValidator
                 throw Failure("unqualified-shared-authority-component");
             string?[] scopes = [.. root.GetProperty("scopes").EnumerateArray().Select(s => s.GetString())];
             if (scopes.Any(string.IsNullOrWhiteSpace) || scopes.Distinct(StringComparer.Ordinal).Count() != scopes.Length
-                || !scopes.Order(StringComparer.Ordinal).SequenceEqual(hosts.Select(h => h.AppId).Order(StringComparer.Ordinal), StringComparer.Ordinal))
+                || !scopes.Order(StringComparer.Ordinal).SequenceEqual(hosts.Select(h => h.AppId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal), StringComparer.Ordinal))
                 throw Failure("component-app-id-scope-drift");
             JsonElement acl = configuration.RootElement.GetProperty("spec").GetProperty("accessControl");
             if (acl.GetProperty("defaultAction").GetString() != "deny" || string.IsNullOrWhiteSpace(acl.GetProperty("trustDomain").GetString()))
@@ -66,6 +66,11 @@ public static class RouteCatalogTopologyValidator
             foreach (var operation in auxiliary ?? [])
                 if (operation.AppId == localAppId)
                 {
+                    if (operation.DomainAuxiliary is { } owner && (receiver is null
+                        || !receiver.Endpoints.Any(endpoint => endpoint.Pattern == "/" + operation.Method && endpoint.Admitted
+                            && !endpoint.Anonymous && !endpoint.IsPattern && endpoint.Methods.SequenceEqual(["POST"], StringComparer.Ordinal)
+                            && endpoint.Operation == operation.Operation && endpoint.DomainAuxiliary == owner)))
+                        throw Failure("domain-auxiliary-owner-binding-drift");
                     if (operation.Sidecar is { } subscription && (receiver is null
                         || !receiver.Endpoints.Any(endpoint => endpoint.Pattern == "/" + operation.Method && endpoint.Admitted
                             && !endpoint.Anonymous && !endpoint.IsPattern && endpoint.Methods.SequenceEqual(["POST"], StringComparer.Ordinal)
@@ -121,7 +126,8 @@ public static class RouteCatalogTopologyValidator
                     if (completeInventory && RouteCatalogTechnicalHttpPolicy.AdmitsGrant(receiver, method, verbs, methods, participant)) continue;
                     if (!participant) throw Failure("selected-acl-caller-lacks-catalog-enrollment");
                     if (RouteCatalogGeneratedRestPolicy.AdmitsControlGrant(receiver, method, verbs)) continue;
-                    if (receiver?.FenceVersion == "eventstore-finite-sdk-http-receiver-v2"
+                    if (receiver?.FenceVersion is "eventstore-finite-sdk-http-receiver-v2" or RouteCatalogTechnicalHttpPolicy.FenceVersion
+                        && receiver.TechnicalHttp is null
                         && ValidateTechnicalReceiver(receiver, method, verbs, auxiliary ?? [], localAppId, methods)) continue;
                     if (!methods.ContainsKey(canonical) || (canonical != method && (receiver is null
                         || !methods.Keys.Any(child => child.StartsWith(canonical + "/", StringComparison.Ordinal)))))
@@ -141,19 +147,27 @@ public static class RouteCatalogTopologyValidator
     private static bool ValidateTechnicalReceiver(RouteCatalogReceiverSurface receiver, string grant, string[] verbs,
         IReadOnlyList<RouteCatalogAuxiliaryOperation> auxiliary, string localAppId, IReadOnlyDictionary<string, string> legacy)
     {
-        string prefix;
-        if (grant is "**" or "*") prefix = "";
-        else if (grant.EndsWith("/*", StringComparison.Ordinal) && grant.Count(character => character == '*') == 1) prefix = grant[..^2];
-        else if (!grant.Contains('*', StringComparison.Ordinal)) prefix = grant;
-        else throw Failure("unsupported-technical-acl-pattern");
-        var reachable = receiver.Endpoints.Where(endpoint => endpoint.Http?.Grants?.Any(witness => witness.Method.Trim('/') == grant.Trim('/')) == true || prefix.Length == 0 || endpoint.Pattern.Trim('/').Equals(prefix, StringComparison.OrdinalIgnoreCase)
-            || endpoint.Pattern.Trim('/').StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (RouteCatalogDaprGrant.Prefix(grant, technical: true) is null) throw Failure("unsupported-technical-acl-pattern");
+        var reachable = receiver.Endpoints.Where(endpoint => RouteCatalogDaprGrant.Intersects(grant, endpoint.Pattern)
+            || RouteCatalogDaprGrant.Describes(grant, endpoint.Pattern)).ToArray();
+        // Path prefixes alone do not grant another HTTP verb. Validate the independently
+        // captured metadata before filtering, so malformed or contradictory evidence cannot
+        // disappear from qualification merely by claiming an unrelated verb.
+        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
+        {
+            if (endpoint.Methods is not { Count: > 0 } methods || methods.Distinct(StringComparer.Ordinal).Count() != methods.Count
+                || methods.Any(method => method is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS")))
+                throw Failure("unqualified-technical-receiver-methods");
+            if (endpoint.Http is { } http && !methods.Order(StringComparer.Ordinal)
+                .SequenceEqual(http.Verbs.Split(' ').Order(StringComparer.Ordinal), StringComparer.Ordinal))
+                throw Failure("technical-receiver-method-evidence-drift");
+        }
         var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.DaprCallback is not null)).ToArray();
         if (technical.Length == 0) return false;
         if (verbs.Length == 0 || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length
             || verbs.Any(verb => !technical.Any(endpoint => endpoint.Methods.Contains(verb, StringComparer.Ordinal))))
             throw Failure("unqualified-technical-http-verb");
-        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
+        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted && endpoint.Methods.Any(method => verbs.Contains(method, StringComparer.Ordinal))))
         {
             if (endpoint.DaprCallback is { } callback)
             {
@@ -180,7 +194,7 @@ public static class RouteCatalogTopologyValidator
             else if (endpoint.Http is { } http)
             {
                 if (endpoint.Anonymous || endpoint.Policies.Count == 0 || endpoint.Policies.Any(string.IsNullOrWhiteSpace)
-                    || !endpoint.Policies.Contains("EventStoreHuman", StringComparer.Ordinal)
+                    || !RouteCatalogSdkHttpPolicy.Allows(http.Owner, endpoint.Pattern, endpoint.Methods, endpoint.Policies)
                     || endpoint.Http.Grants is not { Count: > 0 } witnesses
                     || !witnesses.Any(witness => witness.Method.Trim('/') == grant.Trim('/') && verbs.Any(verb => witness.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal)))
                     || endpoint.Methods.Count == 0 || !endpoint.Methods.All(verb => http.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal))
@@ -205,7 +219,7 @@ public static class RouteCatalogTopologyValidator
     private static void ValidateFiniteReceiver(RouteCatalogReceiverSurface receiver, string prefix, string verb,
         IReadOnlyDictionary<string, string> operations)
     {
-        if (receiver.FenceVersion is not ("eventstore-finite-dapr-receiver-v1" or "eventstore-finite-sdk-http-receiver-v2") || receiver.Endpoints is not { Count: > 0 }
+        if (receiver.FenceVersion is not ("eventstore-finite-dapr-receiver-v1" or "eventstore-finite-sdk-http-receiver-v2" or RouteCatalogTechnicalHttpPolicy.FenceVersion) || receiver.Endpoints is not { Count: > 0 }
             || receiver.Endpoints.Any(endpoint => endpoint is null || string.IsNullOrEmpty(endpoint.Pattern)
                 || endpoint.Methods is null || endpoint.Policies is null))
             throw Failure("missing-effective-finite-receiver-fence");

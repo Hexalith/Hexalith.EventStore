@@ -47,32 +47,30 @@ public sealed class RouteCatalogFixtureToolTests
     [InlineData("complete")]
     [InlineData("timeout")]
     [InlineData("cancellation")]
+    [InlineData("timeout-closed-pipes")]
+    [InlineData("cancellation-closed-pipes")]
     public async Task OwnedInfrastructureSubprocessHasBoundedCancellationAndNormalCompletion(string mode)
     {
+        ArgumentNullException.ThrowIfNull(mode);
         string scratch = Path.Combine(Path.GetTempPath(), "catalog-tool-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(scratch);
         try
         {
             string script = Path.Combine(scratch, "tool.sh"), pid = Path.Combine(scratch, "child.pid");
-            await File.WriteAllTextAsync(script, mode != "complete" ? "sleep 60 &\necho $! > \"$1\"\nwait\n" : "printf 'completed'\n");
+            string sleep = mode.EndsWith("closed-pipes", StringComparison.Ordinal) ? "sleep 60 >/dev/null 2>/dev/null" : "sleep 60";
+            await File.WriteAllTextAsync(script, mode != "complete" ? sleep + " &\necho $! > \"$1\"\nwait\n" : "printf 'completed'\n");
             var start = new ProcessStartInfo("bash"); start.ArgumentList.Add(script); start.ArgumentList.Add(pid);
             if (mode != "complete")
             {
-                using var cancellation = new CancellationTokenSource(mode == "cancellation" ? TimeSpan.FromSeconds(1) : Timeout.InfiniteTimeSpan);
+                using var cancellation = new CancellationTokenSource(mode.StartsWith("cancellation", StringComparison.Ordinal) ? TimeSpan.FromSeconds(1) : Timeout.InfiniteTimeSpan);
                 var elapsed = Stopwatch.StartNew();
                 await Should.ThrowAsync<OperationCanceledException>(() => RouteCatalogOwnedProcess.RunAsync(start,
-                    mode == "timeout" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(10), cancellation.Token));
+                    mode.StartsWith("timeout", StringComparison.Ordinal) ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(10), cancellation.Token));
+                elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
                 int child = int.Parse(await File.ReadAllTextAsync(pid));
                 string state = "/proc/" + child + "/stat";
-                string? childState = null;
-                do
-                {
-                    childState = await ReadOwnedChildStateAsync(() => File.ReadAllTextAsync(state));
-                    if (childState is null or "Z") break;
-                    // Killing a process tree requests each child's termination; the parent
-                    // can exit before the kernel finishes scheduling its child's signal.
-                    if (elapsed.Elapsed < TimeSpan.FromSeconds(7)) await Task.Delay(TimeSpan.FromMilliseconds(10));
-                }
-                while (elapsed.Elapsed < TimeSpan.FromSeconds(7));
+                // Cleanup must acknowledge owned descendants before returning; preserve the
+                // strict immediate check while accepting an already-exited /proc entry atomically.
+                string? childState = await ReadOwnedChildStateAsync(() => File.ReadAllTextAsync(state));
                 if (childState is not null) childState.ShouldBe("Z", $"Owned child {child} remained in state {childState} after cancellation cleanup.");
                 elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
             }
