@@ -1089,6 +1089,7 @@ public sealed class ReleasePackageManifestTests
             ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Domain"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
             ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Host"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
             ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Probe"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
+            ["tests/Hexalith.EventStore.Sharding.TestHost"] = "tests/Hexalith.EventStore.Sharding.Tests",
         };
 
         string[] ignoredProjects = ["tests/Hexalith.EventStore.Client.TestContracts", "tests/Hexalith.EventStore.TestSubscriber"];
