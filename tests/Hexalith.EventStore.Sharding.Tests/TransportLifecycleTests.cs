@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
@@ -25,7 +27,7 @@ public sealed class TransportLifecycleTests
         }));
         IShardActor proxy = new ActorProxyFactory(new ActorProxyOptions
         {
-            HttpEndpoint = "http://127.0.0.1:1", UseJsonSerialization = true, DaprApiToken = "inherited-token-sentinel",
+            HttpEndpoint = "http://127.0.0.1:1", UseJsonSerialization = true, DaprApiToken = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)),
             RequestTimeout = TimeSpan.FromSeconds(5),
         }, handler).CreateActorProxy<IShardActor>(new ActorId(ShardIdentity.Encode("tenant-sentinel", "domain")), ShardActor.ActorType);
         var tracker = new RunActivityTracker();

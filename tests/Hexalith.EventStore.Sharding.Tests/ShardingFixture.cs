@@ -667,7 +667,7 @@ internal sealed class ShardingFixture : IAsyncDisposable
         node.Sidecar = null;
     }
 
-    private string CreateComponent() => $$"""
+    private string CreateComponent() => $"""
         apiVersion: dapr.io/v1alpha1
         kind: Component
         metadata:
@@ -677,11 +677,11 @@ internal sealed class ShardingFixture : IAsyncDisposable
           version: v1
           metadata:
           - name: connectionString
-            value: "host=127.0.0.1 port={{_postgresPort}} user=postgres password={{_password}} dbname=sharding sslmode=disable connect_timeout=5"
+            value: "host=127.0.0.1 port={_postgresPort} user=postgres password={_password} dbname=sharding sslmode=disable connect_timeout=5"
           - name: actorStateStore
             value: "true"
         scopes:
-        - {{_runId}}
+        - {_runId}
         """;
 
     private string CreateDiscovery() => $$"""

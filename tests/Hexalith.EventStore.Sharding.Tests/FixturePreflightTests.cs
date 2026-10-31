@@ -29,12 +29,17 @@ public sealed class FixturePreflightTests
     [Theory]
     [InlineData("tcp://127.0.0.1:2375")]
     [InlineData("tcp://remote.example:2376")]
-    [InlineData("ssh://operator@remote.example")]
+    [InlineData("ssh://remote.example")]
     [InlineData("http://localhost:2375")]
     [InlineData("unix://remote.example/var/run/docker.sock")]
     [InlineData("npipe:////remote/pipe/docker_engine")]
     public async Task RemoteDockerEndpointCreatesNoResourcesAsync(string endpoint)
     {
+        if (string.Equals(endpoint, "ssh://remote.example", StringComparison.Ordinal))
+        {
+            endpoint = new UriBuilder(endpoint) { UserName = Environment.UserName }.Uri.AbsoluteUri;
+        }
+
         await using var fixture = new ShardingFixture();
         string expiry = DateTimeOffset.UtcNow.AddMinutes(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
         await Should.ThrowAsync<InvalidOperationException>(() => fixture.InitializeAsync(readExpiry: () => expiry,
