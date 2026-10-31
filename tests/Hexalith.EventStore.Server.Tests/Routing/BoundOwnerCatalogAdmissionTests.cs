@@ -32,11 +32,14 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Routing;
 
-/// <summary>Public UI-only metadata preserves only the existing signed, allowlisted owner-query protocol.</summary>
+/// <summary>Signed owner admission adds an exact in-flight proof while public operations retain their declared surface eligibility.</summary>
 public sealed class BoundOwnerCatalogAdmissionTests
 {
     [Theory]
     [InlineData("valid")]
+    [InlineData("confirmation")]
+    [InlineData("ui-only")]
+    [InlineData("changed-endpoint")]
     [InlineData("signature")]
     [InlineData("unconfigured-caller")]
     [InlineData("actor")]
@@ -56,7 +59,7 @@ public sealed class BoundOwnerCatalogAdmissionTests
     {
         var original = new RouteCatalogTestFixture().Envelope;
         var operations = original.Declarations.Select(declaration => new RouteOperationContract(declaration.RouteId, declaration.ContractVersion,
-            declaration.Kind == "projection" || declaration.Execution!.RequiresDelegatedContext ? "internal" : "public", "UI-only",
+            declaration.Kind == "projection" || declaration.Execution!.RequiresDelegatedContext ? "internal" : "public", scenario == "ui-only" ? "UI-only" : scenario == "confirmation" ? "confirmation-required" : "agent-eligible",
             JsonSerializer.SerializeToElement(new { type = "object" }), JsonSerializer.SerializeToElement(new { type = "object" }), string.Empty,
             declaration.Kind, declaration.Domain, declaration.MessageType ?? declaration.ProjectionType))
             .Select(operation => operation with { Digest = RouteCatalogCodec.ComputeOperationContractDigest(operation) }).ToArray();
@@ -114,6 +117,7 @@ public sealed class BoundOwnerCatalogAdmissionTests
             if (scenario == "mutated-query") query = query with { QueryType = "foreign-query" };
             if (scenario == "mutated-payload") query.Payload[0] ^= 1;
             if (scenario == "stale-authority") epoch = 2;
+            if (scenario == "changed-endpoint") context.SetEndpoint(new Endpoint(_ => Task.CompletedTask, new EndpointMetadataCollection(), "foreign"));
             if (scenario == "foreign-route") context.Request.Path = "/api/v1/queries";
             if (scenario == "copied-marker")
             {
@@ -138,16 +142,16 @@ public sealed class BoundOwnerCatalogAdmissionTests
             _ => request,
         };
         if (scenario == "signature") context.Request.Headers[BoundOwnerQueryProof.HeaderName] = "invalid";
-        if (scenario is "copied-marker" or "mutated-actor" or "mutated-tenant" or "mutated-query" or "mutated-payload" or "foreign-route" or "stale-authority")
+        if (scenario is "copied-marker" or "mutated-actor" or "mutated-tenant" or "mutated-query" or "mutated-payload" or "foreign-route" or "stale-authority" or "changed-endpoint" or "ui-only")
             await Should.ThrowAsync<CommandAuthorizationException>(() => controller.SubmitBoundOwnerAuthorityAsync(request, default));
         else
         {
             var response = await controller.SubmitBoundOwnerAuthorityAsync(request, default);
-            if (scenario == "valid") response.ShouldBeOfType<OkObjectResult>();
+            if (scenario is "valid" or "confirmation") response.ShouldBeOfType<OkObjectResult>();
             else response.ShouldBeOfType<ForbidResult>();
         }
         leases.ShouldBe(0);
-        terminal.Calls.ShouldBe(scenario == "valid" ? 1 : 0);
+        terminal.Calls.ShouldBe(scenario is "valid" or "confirmation" ? 1 : 0);
         if (dispatched is not null)
         {
             accessor.HttpContext = context;

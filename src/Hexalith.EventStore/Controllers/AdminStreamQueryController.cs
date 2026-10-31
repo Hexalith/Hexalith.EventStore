@@ -32,6 +32,7 @@ namespace Hexalith.EventStore.Controllers;
 /// This controller provides the computation layer for admin stream queries;
 /// the Admin.Server AdminStreamsController provides the REST facade.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]

@@ -17,6 +17,9 @@ public sealed class RouteCatalogHostOptions
     /// <summary>Gets or sets the independently configured exact Dapr recipients of catalog control calls.</summary>
     public IReadOnlyList<string> ControlPlaneAppIds { get; set; } = [];
 
+    /// <summary>Gets or sets explicit v2 invocation intent and owned-coordinate enforcement for technical cohorts.</summary>
+    public bool RequireTechnicalHttpBinding { get; set; }
+
     /// <summary>Gets or sets the owner factory for a separate redirect-disabled invocation primary transport.
     /// Custom transports require this factory; it must preserve their effective security/connection settings,
     /// return a separately owned handler and contain no application delegating handlers.</summary>
@@ -24,6 +27,8 @@ public sealed class RouteCatalogHostOptions
 
     /// <summary>Gets or sets explicit private Development owner-sidecar read coordinates and owner-specific API credentials.</summary>
     public IReadOnlyList<DevelopmentActorStateOwner> DevelopmentActorStateOwners { get; set; } = [];
+
+    internal DevelopmentActorStateOwnerBoundary? ActorStateOwnerBoundary { get; set; }
 
     /// <summary>Gets or sets the shared Dapr authority component. Dedicated authorities use keyPrefix name;
     /// legacy none components require an independently isolated backend when callers lack business-store access.</summary>

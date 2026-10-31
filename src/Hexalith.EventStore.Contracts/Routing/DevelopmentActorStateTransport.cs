@@ -14,11 +14,16 @@ public static class DevelopmentActorStateTransport
 
     /// <summary>Sends an owner-state or metadata GET using the independently configured owner's token when private qualification is installed.</summary>
     public static Task<HttpResponseMessage> SendAsync(HttpClient client, HttpRequestMessage request, string ownerAppId, CancellationToken token)
+        => SendAsync(client, request, ownerAppId, HttpCompletionOption.ResponseHeadersRead, token);
+
+    /// <summary>Preserves the owning service's completion/timeout contract for its existing read path.</summary>
+    public static Task<HttpResponseMessage> SendAsync(HttpClient client, HttpRequestMessage request, string ownerAppId,
+        HttpCompletionOption completion, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerAppId);
         request.Options.Set(Owner, ownerAppId);
-        return client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+        return client.SendAsync(request, completion, token);
     }
 }

@@ -14,6 +14,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// REST API controller for querying system health and DAPR component status.
 /// Health is system-wide — no tenant scoping.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = "EventStoreHuman")]
 [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]

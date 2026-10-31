@@ -58,6 +58,7 @@ public class CommandStatusController(
     /// <response code="404">No command status found for the given message or correlation identifier.</response>
     /// <response code="409">The identifier matches multiple commands or authorized tenant scopes.</response>
     /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
+    [Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
     [HttpGet("{messageId}")]
     [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
     [ProducesResponseType(typeof(CommandStatusResponse), StatusCodes.Status200OK)]
@@ -209,8 +210,10 @@ public class CommandStatusController(
     }
 
     /// <summary>Reads one tenant-bound, message-primary status for an authenticated workload.</summary>
+    [Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
     [HttpGet("workload/{tenant}/{messageId}")]
     [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayCommandStatusPolicy)]
+    [ProducesResponseType(typeof(CommandStatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetWorkloadStatus(string tenant, string messageId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value)

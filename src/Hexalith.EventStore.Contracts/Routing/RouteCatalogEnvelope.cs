@@ -2,8 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Routing;
 
-/// <summary>Closed schema v1/v2 construction envelope. Possession of this envelope grants no activation or signing authority.</summary>
-/// <param name="SchemaVersion">Exactly 1 for the original shape, or 2 for explicit handler and resolver-scope metadata.</param>
+/// <summary>Closed schema v1/v2/v3 construction envelope. Possession of this envelope grants no activation or signing authority.</summary>
+/// <param name="SchemaVersion">Exactly 1 for the original shape, 2 for explicit handler and resolver-scope metadata, or 3 for owner operation schemas, surface eligibility and retained idempotency.</param>
 /// <param name="Generation">Positive complete catalog generation.</param>
 /// <param name="Profile">Explicit composition profile.</param>
 /// <param name="AllowRuntimeOverrides">May be true only for the exact Development profile.</param>

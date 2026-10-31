@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Hexalith.EventStore.Controllers;
 
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/commands/validate")]

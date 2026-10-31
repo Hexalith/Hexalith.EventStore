@@ -19,12 +19,9 @@ namespace Hexalith.EventStore.Routing;
 internal sealed class DevelopmentDaprCallbackReceiver(EndpointDataSource endpoints, IConfiguration configuration,
     IOptions<ProjectionChangeNotifierOptions> options) : IDevelopmentDaprCallbackReceiver
 {
-    private static readonly string Code = Digest(typeof(ProjectionNotificationController).Assembly);
-    private static readonly string Framework = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(
-        Digest(typeof(DaprEndpointRouteBuilderExtensions).Assembly) + "|" + Digest(typeof(ControllerBase).Assembly))));
     private static readonly MethodInfo Notify = typeof(ProjectionNotificationController).GetMethod(nameof(ProjectionNotificationController.OnProjectionChanged))!;
 
-    public RouteCatalogDaprCallbackTransport? Observe(RouteEndpoint endpoint)
+    public RouteCatalogDaprCallbackTransport? Observe(RouteEndpoint endpoint, TechnicalHttpObservationPass? pass = null)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
         string path = endpoint.RoutePattern.RawText?.Trim('/') ?? "";
@@ -34,7 +31,10 @@ internal sealed class DevelopmentDaprCallbackReceiver(EndpointDataSource endpoin
         string verb = kind == "subscribe" ? "GET" : "POST";
         if (endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.SequenceEqual([verb], StringComparer.Ordinal) != true) return null;
         string identity = "projection-notification|" + options.Value.PubSubName + "|*.*.projection-changed|" + Declarative;
-        return new(kind, verb, Code, Framework, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity))));
+        string code = Digest(typeof(ProjectionNotificationController).Assembly, pass);
+        string framework = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(
+            Digest(typeof(DaprEndpointRouteBuilderExtensions).Assembly, pass) + "|" + Digest(typeof(ControllerBase).Assembly, pass))));
+        return new(kind, verb, code, framework, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity))));
     }
 
     public bool IsAbsentDiscovery(HttpContext context) => Declarative && Inventory() && context.GetEndpoint() is null
@@ -85,5 +85,6 @@ internal sealed class DevelopmentDaprCallbackReceiver(EndpointDataSource endpoin
         return fields.Length == 1 && fields[0].GetValue(closure) is null;
     }
 
-    private static string Digest(Assembly assembly) => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(assembly.Location)));
+    private static string Digest(Assembly assembly, TechnicalHttpObservationPass? pass)
+        => (pass?.AssemblyIdentity(assembly) ?? TechnicalHttpActionObservation.AssemblyIdentity(assembly))[^64..];
 }

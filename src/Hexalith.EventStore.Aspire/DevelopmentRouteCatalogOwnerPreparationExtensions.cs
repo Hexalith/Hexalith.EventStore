@@ -1,11 +1,14 @@
+using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Security.Cryptography;
 using System.Text.Json;
 
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Hexalith.EventStore.ServiceDefaults.Routing;
+using Hexalith.EventStore.Contracts.Routing;
 using Microsoft.Extensions.Hosting;
 
 namespace Hexalith.EventStore.Aspire;
@@ -18,6 +21,23 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
     /// Failed preparation retains private diagnostics at the path named by the exception. Dispose successful preparation after the application.</remarks>
     public static async Task<DevelopmentRouteCatalogPreparedOwner> PrepareEventStoreDevelopmentOwnerAsync(
         this IResourceBuilder<ProjectResource> project, TimeSpan timeout, CancellationToken cancellationToken = default)
+        => await PrepareAsync(project, timeout, null, null, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Builds the selected child and reads its explicit split declaration and adapter assemblies from the same evaluated output.</summary>
+    /// <remarks>Names are DLL basenames in the actual selected runtime dependency closure. Missing or mismatched split artifacts refuse;
+    /// the root executable's attributes never substitute for an explicitly named artifact. The existing launch, deadline and snapshot rules apply.</remarks>
+    public static async Task<DevelopmentRouteCatalogPreparedOwner> PrepareEventStoreDevelopmentOwnerAsync(
+        this IResourceBuilder<ProjectResource> project, string declarationAssemblyFileName, string adapterAssemblyFileName,
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ValidateArtifactName(declarationAssemblyFileName, nameof(declarationAssemblyFileName));
+        ValidateArtifactName(adapterAssemblyFileName, nameof(adapterAssemblyFileName));
+        return await PrepareAsync(project, timeout, declarationAssemblyFileName, adapterAssemblyFileName, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<DevelopmentRouteCatalogPreparedOwner> PrepareAsync(IResourceBuilder<ProjectResource> project,
+        TimeSpan timeout, string? declarationFileName, string? adapterFileName, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
         if (timeout <= TimeSpan.Zero || timeout > TimeSpan.FromMinutes(10)) throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -69,6 +89,11 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
                 || string.IsNullOrWhiteSpace(values.GetProperty("TargetFramework").GetString())
                 || !string.IsNullOrWhiteSpace(launch.BuildConfiguration) && configuration != launch.BuildConfiguration
                 || !File.Exists(target)) throw new InvalidOperationException("The selected child evaluated build differs from its launch identity.");
+            if (declarationFileName is not null)
+            {
+                RequireActualArtifact(Path.GetDirectoryName(target)!, declarationFileName);
+                RequireActualArtifact(Path.GetDirectoryName(target)!, adapterFileName!);
+            }
             byte[] targetHash = SHA256.HashData(await File.ReadAllBytesAsync(target, deadline.Token).ConfigureAwait(false));
             string snapshot = Path.Combine(directory, "metadata"); System.IO.Directory.CreateDirectory(snapshot);
             Dictionary<string, string> identities = [];
@@ -88,11 +113,19 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
                 throw new InvalidOperationException("The selected child target changed before its immutable metadata was prepared.");
             context = new(metadataPath, loadedSdk);
             context.VerifySharedSdkIdentity();
-            Assembly assembly = context.LoadFromAssemblyPath(metadataPath);
-            var routes = CompiledRouteCatalogDeclarations.Read([assembly]);
-            var operations = CompiledRouteCatalogDeclarations.ReadOperations([assembly]);
-            if (!assembly.GetCustomAttributesData().Any(attribute => attribute.AttributeType.FullName == "Hexalith.EventStore.DomainService.RouteCatalogAdapterSourceAttribute"))
+            Assembly rootAssembly = context.LoadFromAssemblyPath(metadataPath);
+            Assembly declarations = declarationFileName is null ? rootAssembly : LoadArtifact(context, metadataPath, declarationFileName);
+            Assembly adapters = adapterFileName is null ? rootAssembly : LoadArtifact(context, metadataPath, adapterFileName);
+            var routes = CompiledRouteCatalogDeclarations.Read([declarations]);
+            var operations = CompiledRouteCatalogDeclarations.ReadOperations([declarations]);
+            if (!adapters.GetCustomAttributesData().Any(attribute => attribute.AttributeType.FullName == "Hexalith.EventStore.DomainService.RouteCatalogAdapterSourceAttribute"))
                 throw new InvalidOperationException("The selected child lacks its actual compiled command adapter factory.");
+            if (declarationFileName is not null)
+            {
+                ValidateSplitAdapters(declarations, adapters, routes);
+                RequireActualArtifact(Path.GetDirectoryName(target)!, declarationFileName);
+                RequireActualArtifact(Path.GetDirectoryName(target)!, adapterFileName!);
+            }
             foreach (var dependency in identities)
                 if (dependency.Value != Digest(await File.ReadAllBytesAsync(Path.Combine(Path.GetDirectoryName(target)!, dependency.Key), deadline.Token).ConfigureAwait(false))
                     || dependency.Value != Digest(await File.ReadAllBytesAsync(Path.Combine(snapshot, dependency.Key), deadline.Token).ConfigureAwait(false)))
@@ -104,21 +137,87 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
                 configuration, targetFramework = values.GetProperty("TargetFramework").GetString(), sdk = values.GetProperty("NETCoreSdkVersion").GetString(),
                 workingDirectory = start.WorkingDirectory,
                 buildEnvironmentDigest = Digest(JsonSerializer.SerializeToUtf8Bytes((launch.BuildEnvironment ?? []).OrderBy(variable => variable.Key, StringComparer.Ordinal))),
-                targetPath = target, metadataPath, targetSha256 = Convert.ToHexStringLower(targetHash), assembly = assembly.FullName, moduleVersionId = assembly.ManifestModule.ModuleVersionId,
+                targetPath = target, metadataPath, targetSha256 = Convert.ToHexStringLower(targetHash), assembly = rootAssembly.FullName, moduleVersionId = rootAssembly.ManifestModule.ModuleVersionId,
                 declarations = routes.Select(route => route.RouteId).ToArray(), operations = operations.Select(operation => new { operation.RouteId, operation.Digest }).ToArray(),
                 dependencies = identities.Select(dependency => new { name = dependency.Key, sha256 = dependency.Value }).ToArray(),
                 loadedSdk = loadedSdk.OrderBy(dependency => dependency.Key.FullName, StringComparer.Ordinal)
                     .Select(dependency => new { assembly = dependency.Key.FullName, moduleVersionId = dependency.Key.ManifestModule.ModuleVersionId, sha256 = dependency.Value }).ToArray(),
             };
+            var receiptNode = JsonSerializer.SerializeToNode(receipt)!;
+            if (declarationFileName is not null)
+            {
+                object Artifact(string name, Assembly assembly) => new
+                {
+                    fileName = name, sourcePath = Path.Combine(Path.GetDirectoryName(target)!, name), metadataPath = assembly.Location,
+                    assembly = assembly.FullName, moduleVersionId = assembly.ManifestModule.ModuleVersionId, sha256 = identities[name],
+                };
+                receiptNode["ownerArtifacts"] = JsonSerializer.SerializeToNode(new
+                {
+                    declarations = Artifact(declarationFileName, declarations), adapters = Artifact(adapterFileName!, adapters),
+                });
+            }
             using (var receiptFile = PrivateFile(Path.Combine(directory, "preparation.json")))
-                await JsonSerializer.SerializeAsync(receiptFile, receipt, cancellationToken: deadline.Token).ConfigureAwait(false);
-            return new(new(project, assembly, assembly), directory, context);
+                await JsonSerializer.SerializeAsync(receiptFile, receiptNode, cancellationToken: deadline.Token).ConfigureAwait(false);
+            return new(new(project, declarations, adapters), directory, context);
         }
         catch (Exception exception)
         {
             context?.Unload();
             throw new InvalidOperationException($"Selected child owner preparation refused; private diagnostics: {directory}", exception);
         }
+    }
+
+    private static void ValidateArtifactName(string name, string parameter)
+    {
+        ArgumentNullException.ThrowIfNull(name, parameter);
+        if (string.IsNullOrWhiteSpace(name) || !name.EndsWith(".dll", StringComparison.Ordinal) || name.Length <= 4
+            || name.IndexOfAny(['/', '\\', ':']) >= 0 || name.Any(char.IsControl) || name != Path.GetFileName(name))
+            throw new ArgumentException("A split owner artifact requires one DLL basename in the selected child output.", parameter);
+    }
+
+    private static void RequireActualArtifact(string output, string name)
+    {
+        var entry = new FileInfo(Path.Combine(output, name));
+        if (!entry.Exists || entry.LinkTarget is not null || (entry.Attributes & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidOperationException($"The explicit split owner artifact '{name}' is absent or is not an actual regular selected output file.");
+    }
+
+    private static Assembly LoadArtifact(DevelopmentRouteCatalogOwnerLoadContext context, string rootTarget, string name)
+    {
+        string path = Path.Combine(Path.GetDirectoryName(rootTarget)!, name);
+        var identity = AssemblyName.GetAssemblyName(path);
+        if (identity.Name != Path.GetFileNameWithoutExtension(name))
+            throw new InvalidOperationException($"The explicit split owner artifact '{name}' does not match its actual assembly name.");
+        string? resolved = new AssemblyDependencyResolver(rootTarget).ResolveAssemblyToPath(identity);
+        if (path != rootTarget && (resolved is null || Path.GetFullPath(resolved) != path))
+            throw new InvalidOperationException($"The explicit split owner artifact '{name}' is outside the selected runtime dependency closure.");
+        return context.LoadFromAssemblyPath(path);
+    }
+
+    private static void ValidateSplitAdapters(Assembly declarations, Assembly adapters, IReadOnlyList<RouteContractDeclaration> routes)
+    {
+        var commands = declarations.GetCustomAttributes<RouteCatalogDeclarationSourceAttribute>()
+            .SelectMany(source => source.SourceType.GetProperty("Commands", BindingFlags.Public | BindingFlags.Static)?.GetValue(null)
+                as IEnumerable<CommandIntentDeclaration> ?? throw new InvalidOperationException("The split owner has no complete compiled command inventory.")).ToArray();
+        List<CommandIntentDeclaration> actual = [];
+        foreach (var source in adapters.GetCustomAttributesData().Where(attribute =>
+            attribute.AttributeType.FullName == "Hexalith.EventStore.DomainService.RouteCatalogAdapterSourceAttribute"))
+        {
+            if (source.ConstructorArguments.Single().Value is not Type factory
+                || factory.GetMethod("Create", BindingFlags.Public | BindingFlags.Static, Type.EmptyTypes)?.Invoke(null, null) is not IEnumerable values)
+                throw new InvalidOperationException("The split owner adapter factory cannot provide its actual compiled declarations.");
+            foreach (object adapter in values)
+            {
+                if (adapter?.GetType().GetProperty("Declaration")?.GetValue(adapter) is not CommandIntentDeclaration command)
+                    throw new InvalidOperationException("The split owner adapter factory has an undeclared command adapter.");
+                actual.Add(command);
+            }
+        }
+        if (!commands.Select(command => RouteCatalogCodec.ComputeDeclarationDigest(command.Route)).Order(StringComparer.Ordinal)
+                .SequenceEqual(routes.Where(route => route.Kind == "command").Select(RouteCatalogCodec.ComputeDeclarationDigest).Order(StringComparer.Ordinal), StringComparer.Ordinal)
+            || !commands.Select(command => JsonSerializer.Serialize(command)).Order(StringComparer.Ordinal)
+                .SequenceEqual(actual.Select(command => JsonSerializer.Serialize(command)).Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new InvalidOperationException("The explicit split adapter inventory differs from its selected compiled owner declarations.");
     }
 
     private static string Digest(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
@@ -133,13 +232,23 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
         Task output = PumpAsync(process.StandardOutput.BaseStream, stdout, deadline);
         Task error = PumpAsync(process.StandardError.BaseStream, stderr, deadline);
         try { await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false); }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException cancellation)
         {
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             if (!process.HasExited) process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            try { await process.WaitForExitAsync(cleanup.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException exception)
+            {
+                throw new InvalidOperationException("Selected child cancellation could not confirm owned process termination within the cleanup deadline.", new AggregateException(cancellation, exception));
+            }
             throw;
         }
-        finally { await Task.WhenAll(output, error).ConfigureAwait(false); }
+        finally
+        {
+            // The diagnostic pumps share the original deadline. Even a failed termination
+            // cannot extend the finite preparation API by leaving inherited pipe handles open.
+            await Task.WhenAll(output, error).WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        }
         if (process.ExitCode != 0) throw new InvalidOperationException($"Selected child {name} failed with exit code {process.ExitCode}.");
     }
 

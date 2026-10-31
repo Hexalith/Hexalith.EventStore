@@ -43,7 +43,7 @@ internal sealed partial class ProjectionSourceGuardQualification(IProjectionDeli
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            SourceProofInspection before = await source.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+            SourceProofInspection before = await Hexalith.EventStore.Contracts.Routing.RouteCatalogRemoteExecution.InvokeAsync(() => source.InspectSourceProofAsync().WaitAsync(cancellationToken), cancellationToken).ConfigureAwait(false);
             ProjectionDeliveryStateReadResult read = await states.ReadAsync(identity, projection, cancellationToken).ConfigureAwait(false);
             ProjectionDeliveryState? original = read.State;
             preserved = original?.LastDeliveredSequence ?? 0;
@@ -55,7 +55,7 @@ internal sealed partial class ProjectionSourceGuardQualification(IProjectionDeli
                 ProjectionLifecycleSnapshot emptyLifecycle = await lifecycle.ReadSnapshotAsync(identity, projection, cancellationToken).ConfigureAwait(false);
                 ProjectionOwnerProofResult emptyModel = await owners.ReadAsync(identity, catalog, projection, emptyLifecycle, cancellationToken).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
-                if (await source.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false) != before)
+                if (await Hexalith.EventStore.Contracts.Routing.RouteCatalogRemoteExecution.InvokeAsync(() => source.InspectSourceProofAsync().WaitAsync(cancellationToken), cancellationToken).ConfigureAwait(false) != before)
                     return new(false, false, "head_changed", preserved);
                 return new(false, false, original is null && !before.Erased && emptyLifecycle.Phase == ProjectionLifecyclePhase.Idle
                     && emptyModel.Proof is null && emptyModel.ReasonCode == "delivery_rebuild_required"
@@ -122,7 +122,7 @@ internal sealed partial class ProjectionSourceGuardQualification(IProjectionDeli
                 || atCheckpoint.HeadMessageId != original.LastCompletedMessageId)
                 return new(false, false, "source_conflict", preserved);
             cancellationToken.ThrowIfCancellationRequested();
-            if (await source.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false) != before
+            if (await Hexalith.EventStore.Contracts.Routing.RouteCatalogRemoteExecution.InvokeAsync(() => source.InspectSourceProofAsync().WaitAsync(cancellationToken), cancellationToken).ConfigureAwait(false) != before
                 || await lifecycle.ReadSnapshotAsync(identity, projection, cancellationToken).ConfigureAwait(false) != idle)
                 return new(false, false, "head_changed", preserved);
             ProjectionOwnerProofResult rechecked = await owners.ReadAsync(identity, catalog, projection, idle, cancellationToken).ConfigureAwait(false);
@@ -174,7 +174,7 @@ internal sealed partial class ProjectionSourceGuardQualification(IProjectionDeli
                         || audit.SourceGuardMaintenance is not { } recorded || !SameMaintenance(recorded, maintenance))
                         return new(false, false, "delivery_reconciliation_required", preserved);
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (await source.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false) != before
+                    if (await Hexalith.EventStore.Contracts.Routing.RouteCatalogRemoteExecution.InvokeAsync(() => source.InspectSourceProofAsync().WaitAsync(cancellationToken), cancellationToken).ConfigureAwait(false) != before
                         || await lifecycle.ReadSnapshotAsync(identity, projection, cancellationToken).ConfigureAwait(false) != idle)
                         return new(false, false, "head_changed", preserved);
                     return new(true, activate, "delivery_reconciled", preserved);

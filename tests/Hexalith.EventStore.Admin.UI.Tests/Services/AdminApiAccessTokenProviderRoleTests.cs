@@ -41,6 +41,7 @@ public class AdminApiAccessTokenProviderRoleTests {
         validatedToken.Header.Alg.ShouldBe(SecurityAlgorithms.HmacSha256);
         principal.FindFirst("sub")!.Value.ShouldBe("test-user");
         principal.FindAll("eventstore:surface").Select(claim => claim.Value).ShouldBe(["ui"]);
+        payload.EnumerateObject().Count(property => property.Name == "eventstore:surface").ShouldBe(1);
         payload.GetProperty(AdminClaimTypes.Role).GetString().ShouldBe(selectedRole.ToString());
         payload.GetProperty("sub").GetString().ShouldBe("test-user");
         payload.GetProperty("iss").GetString().ShouldBe("hexalith-dev");

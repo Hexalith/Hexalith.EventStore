@@ -47,7 +47,8 @@ public sealed class DevelopmentAdminTransportReviewTests
     public async Task FrameworkLongAndRegexConstraintsAndEscapedScalarApplyToActualOwnedTemplates()
     {
         await using var host = new TechnicalAdminHost(); await host.StartAsync();
-        var operations = (await host.Store.ReadAsync(default)).State.Committed!.AuxiliaryOperations!;
+        var operations = host.Endpoints.Select(endpoint => (Endpoint: endpoint, Http: DevelopmentTechnicalHttpTransport.Observe(endpoint))).Where(pair => pair.Http is not null)
+            .Select(pair => new RouteCatalogAuxiliaryOperation("admin-test", pair.Endpoint.RoutePattern.RawText!.Trim('/'), "sdk-technical-http", "admin") { Http = pair.Http }).ToArray();
         var numeric = operations.Single(operation => operation.Method == "api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber:long}");
         DevelopmentTechnicalHttpTransport.Matches(numeric, "api/v1/admin/streams/t/d/a/events/9223372036854775807", "GET").ShouldBeTrue();
         DevelopmentTechnicalHttpTransport.Matches(numeric, "api/v1/admin/streams/t/d/a/events/not-long", "GET").ShouldBeFalse();
@@ -64,8 +65,7 @@ public sealed class DevelopmentAdminTransportReviewTests
     {
         const string concrete = "/api/v1/admin/dapr/actors/ProjectionActor/state";
         await using var host = new TechnicalAdminHost(); await host.StartAsync(concrete);
-        var operation = (await host.Store.ReadAsync(default)).State.Committed!.AuxiliaryOperations!.Single(operation => operation.Http != null);
-        operation.Http!.Grants!.Single().Method.ShouldBe(concrete);
+        (await host.Store.ReadAsync(default)).State.Committed!.TechnicalHttpReceivers!.Single().Invocations!.Single().Method.ShouldBe(concrete);
         host.Backend.GetActorInstanceStateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new Hexalith.EventStore.Admin.Abstractions.Models.Dapr.DaprActorInstanceState("ProjectionActor", "one", [], 0, DateTimeOffset.UtcNow));
         using var admitted = host.Request(concrete + "?id=one");
         using var response = await host.SendThroughGuardAsync(admitted);
@@ -134,7 +134,7 @@ public sealed class DevelopmentAdminTransportReviewTests
         var observation = System.Text.Json.JsonSerializer.Deserialize<RouteCatalogHostObservation>(await File.ReadAllBytesAsync(Path.Combine(host.DirectoryPath, "admin.observation.json"), TestContext.Current.CancellationToken))!;
         observation.AppId.ShouldBe("admin-test");
         observation.ReceiverSurface!.FenceVersion.ShouldBe(FiniteRouteCatalogReceiver.TechnicalVersion);
-        observation.AuxiliaryOperations.ShouldContain(operation => operation.Http != null);
+        observation.ReceiverSurface.TechnicalHttp.ShouldNotBeEmpty();
         observation.ReceiverSurface.Endpoints.ShouldContain(endpoint => endpoint.Pattern == "/internal/routing/catalog/prepare" && endpoint.Admitted && endpoint.Http == null);
         using var request = host.Request("/api/v1/admin/dapr/actors/ProjectionActor/state?id=one");
         using var response = await host.Client.SendAsync(request, TestContext.Current.CancellationToken);

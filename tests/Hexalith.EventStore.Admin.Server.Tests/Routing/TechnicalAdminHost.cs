@@ -51,6 +51,10 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
     internal IDaprInfrastructureQueryService Backend { get; } = Substitute.For<IDaprInfrastructureQueryService>();
     internal HttpClient Client { get; private set; } = null!;
     internal string Root { get; private set; } = "";
+    internal string Binding { get; private set; } = "";
+    internal IConfiguration Configuration => (_native?.Services ?? _app.Services).GetRequiredService<IConfiguration>();
+    internal RouteCatalogHostOptions Options => (_native?.Services ?? _app.Services).GetRequiredService<IOptions<RouteCatalogHostOptions>>().Value;
+    internal IServiceScope CreateScope() => _app.Services.CreateScope();
     internal HttpClient CreateOwnerClient() => _app.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
     internal long Epoch { get; private set; } = 1;
     internal string DirectoryPath => _directory;
@@ -77,11 +81,10 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
             ["AdminServer:HealthHistoryEnabled"] = "false",
             ["AdminServer:EventStoreDaprHttpEndpoint"] = ownerEndpoint,
             ["AdminServer:EventStoreAppId"] = "domain-test",
-            ["EventStore:RouteCatalog:DevelopmentActorStateOwners:0:AppId"] = ownerEndpoint is null ? null : "domain-test",
-            ["EventStore:RouteCatalog:DevelopmentActorStateOwners:0:HttpEndpoint"] = ownerEndpoint,
-            ["EventStore:RouteCatalog:DevelopmentActorStateOwners:0:ApiToken"] = ownerToken,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"] = _directory,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:HostId"] = "admin",
+            ["EventStore:RouteCatalog:DevelopmentBootstrap:ReceiverProfile"] = RouteCatalogTechnicalHttpPolicy.FenceVersion,
+            ["EventStore:RouteCatalog:DevelopmentBootstrap:BindingVersion"] = "2",
             ["EventStore:RouteCatalog:DevelopmentBootstrap:ComponentPath"] = component,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"] = acl,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:RequiredHostIds:0"] = "admin",
@@ -90,6 +93,15 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
             ["EventStore:RouteCatalog:DevelopmentBootstrap:SelectedAppIds:1"] = "domain-test",
             ["EventStore:RouteCatalog:DevelopmentBootstrap:DeclaredInvocations"] = JsonSerializer.Serialize(new[] { new RouteCatalogDeclaredInvocation("admin-test", grant ?? "/**", grantVerbs) }),
         });
+        if (ownerEndpoint is not null)
+        {
+            string receipt = Path.Combine(_directory, "admin.actor-state-owners.json");
+            await File.WriteAllBytesAsync(receipt, JsonSerializer.SerializeToUtf8Bytes(new[] { new DevelopmentActorStateOwnerObservation("domain-test", new Uri(ownerEndpoint.TrimEnd('/') + "/").AbsoluteUri, true) }));
+            builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:ActorStateOwnersPath"] = receipt;
+            builder.Configuration["EventStore:RouteCatalog:DevelopmentActorStateOwners:0:AppId"] = "domain-test";
+            builder.Configuration["EventStore:RouteCatalog:DevelopmentActorStateOwners:0:HttpEndpoint"] = ownerEndpoint;
+            builder.Configuration["EventStore:RouteCatalog:DevelopmentActorStateOwners:0:ApiToken"] = ownerToken;
+        }
         if (nativeBootstrap)
         {
             var config = builder.Configuration.AsEnumerable().Where(pair => pair.Key.StartsWith("EventStore:", StringComparison.Ordinal) || pair.Key.StartsWith("AdminServer:", StringComparison.Ordinal) || pair.Key == "APP_API_TOKEN").ToDictionary(pair => pair.Key, pair => pair.Value);
@@ -111,6 +123,7 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
                 await Task.Delay(25, timeout.Token);
             var committed = (await Store.ReadAsync(default)).State.Committed!;
             Root = committed.RootDigest;
+            Binding = RouteCatalogActivationBinding.ComputeDigest(committed);
             return;
         }
         builder.Services.AddSingleton(Dapr);
@@ -135,7 +148,7 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
         builder.Services.AddEventStoreRouteCatalog(builder.Configuration);
         builder.Services.AddSingleton<IRouteCatalogStateStore>(Store);
         builder.Services.AddSingleton<FiniteRouteCatalogReceiver>();
-        builder.Services.Configure<RouteCatalogHostOptions>(options => { options.Profile = "Development"; options.DevelopmentFixture = true; });
+        builder.Services.Configure<RouteCatalogHostOptions>(options => { options.Profile = "Development"; options.DevelopmentFixture = true; options.RequireTechnicalHttpBinding = true; });
         builder.Services.AddEventStoreRouteCatalogObservation(async (provider, token) =>
         {
             var surface = provider.GetRequiredService<FiniteRouteCatalogReceiver>().Observe();
@@ -150,6 +163,7 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
             .RequireAuthorization(AdminAuthorizationPolicies.ReadOnly);
         FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(_app, DevelopmentTechnicalHttpTransport.Operation, technical: true);
         await _app.StartAsync(TestContext.Current.CancellationToken);
+        Store.Coordinates = Store.Coordinates with { HttpEndpoint = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single() + "/" };
         var surface = _app.Services.GetRequiredService<FiniteRouteCatalogReceiver>().Observe();
         var observation = (await DevelopmentRouteCatalogInputs.CaptureAsync(builder.Configuration, "admin-test", [], [], [], [],
             DevelopmentTechnicalHttpTransport.Auxiliary(surface, "admin-test", "admin"))) with { ReceiverSurface = surface, AuthorityCoordinates = Store.Coordinates };
@@ -161,8 +175,10 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
         var envelope = RouteCatalogCodec.Seal(new RouteCatalogEnvelope(3, 1, "Development", false, domain.Declarations, domain.Targets, [], "", "", domain.Operations, []));
         Root = RouteCatalogCodec.ComputeRootDigest(envelope);
         var activation = new RouteCatalogActivation("technical-attempt", RouteCatalogCodec.Encode(envelope), Root, null,
-            [identity, domainIdentity], "Development-fixture", "", observation.AuxiliaryOperations);
+            [identity, domainIdentity], "Development-fixture", "", observation.AuxiliaryOperations)
+        { TechnicalHttpReceivers = [new("admin-test", RouteCatalogTechnicalHttpPolicy.FenceVersion, surface.TechnicalHttp!) { Invocations = observation.DeclaredInvocations }] };
         activation = activation with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(activation) };
+        Binding = activation.TrustProof;
         var authority = (_native?.Services ?? _app.Services).GetRequiredService<IRouteCatalogAuthority>();
         var domainAuthority = _domain.Services.GetRequiredService<IRouteCatalogAuthority>();
         await authority.PrepareAsync(activation); await domainAuthority.PrepareAsync(activation);
@@ -184,6 +200,7 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
             ["Authentication:JwtBearer:Issuer"] = "technical-admin", ["Authentication:JwtBearer:Audience"] = "domain-test",
             ["Authentication:JwtBearer:SigningKey"] = Key, ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
             ["EventStore:RouteCatalog:DevelopmentBootstrap:HostId"] = "domain",
+            ["EventStore:RouteCatalog:DevelopmentBootstrap:BindingVersion"] = "2",
             ["EventStore:RouteCatalog:DevelopmentBootstrap:ComponentPath"] = component,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"] = acl,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:RequiredHostIds:0"] = "admin",
@@ -242,7 +259,7 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Headers.Add(DaprAppChannelToken.HeaderName, channel ?? Channel);
-        if (generation) { request.Headers.Add(RouteCatalogInvocationHandler.RootHeader, Root); request.Headers.Add(RouteCatalogInvocationHandler.EpochHeader, Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture)); }
+        if (generation) { request.Headers.Add(RouteCatalogInvocationHandler.RootHeader, Root); request.Headers.Add(RouteCatalogInvocationHandler.EpochHeader, Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture)); request.Headers.Add(RouteCatalogInvocationHandler.BindingHeader, Binding); }
         return request;
     }
 
@@ -256,7 +273,7 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
         var peer = _domain.Services.GetRequiredService<IRouteCatalogAuthority>();
         await Authority.PrepareAsync(next); await peer.PrepareAsync(next);
         await Authority.ReadyAsync(next.AttemptId); await peer.ReadyAsync(next.AttemptId); await Authority.CommitAsync(next.AttemptId);
-        Root = next.RootDigest; Epoch = 2;
+        Root = next.RootDigest; Epoch = 2; Binding = next.TrustProof;
     }
 
     internal async Task<HttpResponseMessage> SendThroughGuardAsync(HttpRequestMessage request)
@@ -264,6 +281,7 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
         var services = new ServiceCollection();
         services.AddSingleton((_native?.Services ?? _app.Services).GetRequiredService<IRouteCatalogAuthority>());
         services.AddEventStoreRouteCatalog(new ConfigurationBuilder().Build());
+        services.Configure<RouteCatalogHostOptions>(options => options.RequireTechnicalHttpBinding = true);
         services.AddHttpClient("technical-sender", client => client.BaseAddress = Client.BaseAddress)
             .AddEventStoreDaprServiceInvocation("admin-test", Channel);
         using var provider = services.BuildServiceProvider();

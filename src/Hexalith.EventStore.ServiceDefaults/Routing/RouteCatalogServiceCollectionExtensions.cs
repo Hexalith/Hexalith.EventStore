@@ -17,6 +17,8 @@ public static class RouteCatalogServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(observe);
         services.AddSingleton<IRouteCatalogHostObserver>(provider => new ObservedRouteCatalogHost(async token =>
         {
+            var ownerOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RouteCatalogHostOptions>>().Value;
+            ownerOptions.ActorStateOwnerBoundary?.RequireUnchanged(ownerOptions.DevelopmentActorStateOwners);
             var actual = await observe(provider, token).ConfigureAwait(false);
             var coordinates = provider.GetRequiredService<IRouteCatalogStateStore>().Coordinates
                 ?? throw new RouteCatalogUnavailableException("The authority state store has no independently selected coordinates.", RouteCatalogRefusalReason.Configuration);
@@ -32,8 +34,14 @@ public static class RouteCatalogServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
         if (services.Any(d => d.ServiceType == typeof(RouteCatalogRegistration))) return services;
         services.AddSingleton<RouteCatalogRegistration>();
+        if (TechnicalHttpRouteCatalogReceiver.IsEnabled(configuration)) services.TryAddSingleton<TechnicalHttpRouteCatalogReceiver>();
         services.TryAddSingleton<IConfiguration>(configuration);
         services.AddOptions<RouteCatalogHostOptions>().Bind(configuration.GetSection("EventStore:RouteCatalog"));
+        if (configuration.GetSection("EventStore:RouteCatalog:DevelopmentActorStateOwners").GetChildren().Any())
+        {
+            var boundary = new DevelopmentActorStateOwnerBoundary(configuration);
+            services.Configure<RouteCatalogHostOptions>(options => options.ActorStateOwnerBoundary = boundary);
+        }
         services.AddHttpClient("route-catalog-state");
         services.TryAddEnumerable(ServiceDescriptor.Singleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, RouteCatalogStateHttpClientFilter>());
         services.TryAddSingleton<IRouteCatalogStateStore, DaprRouteCatalogStateStore>();

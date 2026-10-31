@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// <summary>
 /// REST API controller for consistency check operations.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = "EventStoreHuman")]
 [Route("api/v1/admin/consistency")]

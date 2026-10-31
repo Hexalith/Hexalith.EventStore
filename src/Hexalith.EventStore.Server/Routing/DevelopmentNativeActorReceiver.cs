@@ -20,9 +20,6 @@ namespace Hexalith.EventStore.Server.Routing;
 /// <summary>Observes real SDK actor registration and native Dapr endpoint delegates; message guards remain actor-owned.</summary>
 internal sealed class DevelopmentNativeActorReceiver(ActorRuntime runtime, IOptions<ActorRuntimeOptions> options, HealthCheckService healthChecks, IConfiguration configuration) : IDevelopmentNativeActorReceiver
 {
-    private static readonly string Code = Digest(typeof(AggregateActor).Assembly);
-    private static readonly string Framework = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(
-        Digest(typeof(ActorsEndpointRouteBuilderExtensions).Assembly) + "|" + Digest(typeof(ActorRuntime).Assembly) + "|" + Digest(typeof(HealthCheckMiddleware).Assembly))));
     private static readonly IReadOnlyDictionary<string, (string Kind, string Verb)> Paths = new Dictionary<string, (string, string)>(StringComparer.Ordinal)
     {
         ["dapr/config"] = ("config", "GET"), ["healthz"] = ("health", "GET"),
@@ -32,7 +29,7 @@ internal sealed class DevelopmentNativeActorReceiver(ActorRuntime runtime, IOpti
         ["actors/{actorTypeName}/{actorId}/method/timer/{timerName}"] = ("timer", "PUT"),
     };
 
-    public RouteCatalogNativeActorTransport? Observe(RouteEndpoint endpoint)
+    public RouteCatalogNativeActorTransport? Observe(RouteEndpoint endpoint, TechnicalHttpObservationPass? pass = null)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
         if (!Paths.TryGetValue(endpoint.RoutePattern.RawText!.Trim('/'), out var path)
@@ -59,7 +56,10 @@ internal sealed class DevelopmentNativeActorReceiver(ActorRuntime runtime, IOpti
         string identity = string.Join('\n', actors.OrderBy(actor => actor.Type.ActorTypeName, StringComparer.Ordinal).Select(actor =>
             actor.Type.ActorTypeName + "|" + actor.Type.ImplementationType.FullName + "|" + actor.Type.IsRemindable + "|"
             + string.Join(';', actor.Type.InterfaceTypes.SelectMany(type => type.GetMethods()).Select(method => method.ToString()).Order(StringComparer.Ordinal))));
-        return new(path.Kind, path.Verb, Code, Framework, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity))));
+        string code = Digest(typeof(AggregateActor).Assembly, pass);
+        string framework = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(
+            Digest(typeof(ActorsEndpointRouteBuilderExtensions).Assembly, pass) + "|" + Digest(typeof(ActorRuntime).Assembly, pass) + "|" + Digest(typeof(HealthCheckMiddleware).Assembly, pass))));
+        return new(path.Kind, path.Verb, code, framework, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity))));
     }
 
     public bool Allows(HttpContext context)
@@ -125,5 +125,6 @@ internal sealed class DevelopmentNativeActorReceiver(ActorRuntime runtime, IOpti
             .Any(field => field.FieldType == typeof(HealthCheckService) && ReferenceEquals(field.GetValue(middleware), healthChecks));
     }
 
-    private static string Digest(Assembly assembly) => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(assembly.Location)));
+    private static string Digest(Assembly assembly, TechnicalHttpObservationPass? pass)
+        => (pass?.AssemblyIdentity(assembly) ?? TechnicalHttpActionObservation.AssemblyIdentity(assembly))[^64..];
 }

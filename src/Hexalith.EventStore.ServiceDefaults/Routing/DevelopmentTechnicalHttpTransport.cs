@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Reflection;
 using System.Security.Cryptography;
 
@@ -20,7 +19,6 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 public static class DevelopmentTechnicalHttpTransport
 {
     private static readonly ServiceProvider RoutingServices = new ServiceCollection().AddRouting().BuildServiceProvider();
-    private static readonly ConcurrentDictionary<(string Path, long Size, long Ticks), string> Code = new();
     private static readonly string[] Gateway = ["AdminCommandsQueryController", "AdminProjectionRebuildController", "AdminStorageCommandController",
         "AdminStreamQueryController", "AdminTraceQueryController", "CommandStatusController", "CommandValidationController",
         "CommandsController", "QueriesController", "QueryValidationController", "ReplayController", "RetainedIdentityHistoryController",
@@ -53,9 +51,7 @@ public static class DevelopmentTechnicalHttpTransport
             (prefix.Trim('/') + "/" + (attribute.Template ?? "").Trim('/')).Trim('/') == pattern
             && attribute.HttpMethods.Order(StringComparer.Ordinal).SequenceEqual(verbs, StringComparer.Ordinal))) return null;
         if (endpoint.RoutePattern.Parameters.Any(parameter => parameter.IsCatchAll || parameter.IsOptional || parameter.Default is not null)) return null;
-        var file = new FileInfo(type.Assembly.Location);
-        string digest = Code.GetOrAdd((file.FullName, file.Length, file.LastWriteTimeUtc.Ticks),
-            key => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(key.Path))));
+        string digest = TechnicalHttpActionObservation.AssemblyIdentity(type.Assembly)[^64..];
         return new(type.FullName!, string.Join(' ', verbs), digest);
     }
 
@@ -79,7 +75,7 @@ public static class DevelopmentTechnicalHttpTransport
         ArgumentNullException.ThrowIfNull(surface);
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
-        return surface.Endpoints.Where(endpoint => endpoint.Admitted).GroupBy(endpoint => endpoint.Pattern, StringComparer.Ordinal)
+        return surface.Endpoints.Where(endpoint => endpoint.Admitted && endpoint.Operation != RouteCatalogTechnicalHttpPolicy.Operation).GroupBy(endpoint => endpoint.Pattern, StringComparer.Ordinal)
             .Select(group =>
             {
                 var endpoints = group.ToArray();
@@ -98,7 +94,9 @@ public static class DevelopmentTechnicalHttpTransport
                     throw new RouteCatalogUnavailableException("The same Dapr callback has conflicting actual subscription inventories.");
                 if (endpoints.Any(endpoint => endpoint.NativeActor != first.NativeActor))
                     throw new RouteCatalogUnavailableException("The same native route has conflicting installed framework inventories.");
-                return new RouteCatalogAuxiliaryOperation(appId, first.Pattern.TrimStart('/'), first.Operation!, domain) { Http = http, NativeActor = first.NativeActor, DaprCallback = first.DaprCallback };
+                if (endpoints.Any(endpoint => endpoint.Sidecar != first.Sidecar))
+                    throw new RouteCatalogUnavailableException("The same sidecar route has conflicting installed subscription inventories.");
+                return new RouteCatalogAuxiliaryOperation(appId, first.Pattern.TrimStart('/'), first.Operation!, domain) { Http = http, NativeActor = first.NativeActor, Sidecar = first.Sidecar, DaprCallback = first.DaprCallback };
             }).ToArray();
     }
 

@@ -13,4 +13,9 @@ namespace Hexalith.EventStore.Contracts.Routing;
 public sealed record RouteCatalogActivation(string AttemptId, byte[] CanonicalCatalog, string RootDigest,
     string? PredecessorRootDigest, IReadOnlyList<RouteCatalogHostIdentity> RequiredHosts, string Owner, string TrustProof,
     IReadOnlyList<RouteCatalogAuxiliaryOperation>? AuxiliaryOperations = null,
-    IReadOnlyList<RouteCatalogProjectionCapability>? ProjectionCapabilities = null);
+    IReadOnlyList<RouteCatalogProjectionCapability>? ProjectionCapabilities = null)
+{
+    /// <summary>Gets optional installed technical receivers. Nonempty membership requires activation-binding v2 and compatible SDK hosts.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<RouteCatalogTechnicalHttpReceiver>? TechnicalHttpReceivers { get; init; }
+}

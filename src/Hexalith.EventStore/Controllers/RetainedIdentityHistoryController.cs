@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Hexalith.EventStore.Controllers;
 
 /// <summary>Explicitly composed internal attribution endpoint; ordinary stream privileges do not grant it.</summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
 [Route("api/v1/identity-history")]
@@ -15,6 +16,8 @@ public sealed class RetainedIdentityHistoryController(RetainedIdentityHistorySou
     /// <summary>Reads only the exact current owner-authorized purpose; missing composition fails closed.</summary>
     [HttpPost("read")]
     [RequestSizeLimit(16_384)]
+    [ProducesResponseType(typeof(RetainedIdentityHistoryReadResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RetainedIdentityHistoryReadResult), StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<RetainedIdentityHistoryReadResult>> ReadAsync(
         RetainedIdentityHistoryReadRequest request, CancellationToken cancellationToken)
     {

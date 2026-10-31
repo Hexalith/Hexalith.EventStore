@@ -18,7 +18,7 @@ public sealed partial class AdminProjectionRebuildController
 {
     /// <summary>Bootstraps an inventoried source chain while the complete writer fleet is quiesced.</summary>
     [HttpPost("{tenantId}/source-proof/{domain}/{aggregateId}/bootstrap")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProjectionSourceProofBootstrapResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
@@ -58,8 +58,8 @@ public sealed partial class AdminProjectionRebuildController
             cancellationToken.ThrowIfCancellationRequested();
             IAggregateActor actor = factory.CreateActorProxy<IAggregateActor>(new ActorId(identity.ActorId),
                 actorOptions.Value.AggregateActorTypeName);
-            SourceProofInspection result = await RouteCatalogRemoteCall.InvokeAsync(() => actor.BootstrapSourceProofAsync(request), cancellationToken).ConfigureAwait(false);
-            return Ok(new { result.Status, result.CurrentSequence, result.Erased, SourceIncarnation = result.Proof?.SourceIncarnation });
+            SourceProofInspection result = await Hexalith.EventStore.Contracts.Routing.RouteCatalogRemoteExecution.InvokeAsync(() => actor.BootstrapSourceProofAsync(request), cancellationToken).ConfigureAwait(false);
+            return Ok(new ProjectionSourceProofBootstrapResponse(result.Status, result.CurrentSequence, result.Erased, result.Proof?.SourceIncarnation));
         }
         catch (OperationCanceledException) { throw; }
         catch (InvalidOperationException)

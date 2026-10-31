@@ -18,6 +18,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// REST API controller for tenant management operations.
 /// Read endpoints require ReadOnly policy. Write endpoints require Admin policy.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = "EventStoreHuman")]
 [Route("api/v1/admin/tenants")]

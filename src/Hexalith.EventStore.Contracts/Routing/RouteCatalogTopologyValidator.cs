@@ -118,6 +118,7 @@ public static class RouteCatalogTopologyValidator
                     // A generated public human query is ingress, with its own SDK filter and
                     // captured owner schemas. Its forwarding BFF gains no authority-store scope.
                     if (completeInventory && RouteCatalogGeneratedRestPolicy.AdmitsGrant(envelope, receiver, method, verbs)) continue;
+                    if (completeInventory && RouteCatalogTechnicalHttpPolicy.AdmitsGrant(receiver, method, verbs, methods, participant)) continue;
                     if (!participant) throw Failure("selected-acl-caller-lacks-catalog-enrollment");
                     if (RouteCatalogGeneratedRestPolicy.AdmitsControlGrant(receiver, method, verbs)) continue;
                     if (receiver?.FenceVersion == "eventstore-finite-sdk-http-receiver-v2"

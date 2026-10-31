@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// REST API controller for querying the event/command/aggregate type catalog.
 /// Type catalog is tenant-agnostic — types are registered globally via reflection.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = "EventStoreHuman")]
 [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]

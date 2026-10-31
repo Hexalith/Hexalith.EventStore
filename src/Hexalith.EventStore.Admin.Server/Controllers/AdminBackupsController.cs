@@ -16,6 +16,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 /// <summary>
 /// REST API controller for backup and restore operations.
 /// </summary>
+[Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = "EventStoreHuman")]
 [Route("api/v1/admin/backups")]

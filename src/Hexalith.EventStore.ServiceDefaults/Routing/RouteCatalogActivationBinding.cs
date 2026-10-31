@@ -51,6 +51,9 @@ public static class RouteCatalogActivationBinding
         {
             throw new RouteCatalogUnavailableException("Incomplete or ambiguous activation identity or required host set.");
         }
+        TechnicalHttpCatalogBinding.Validate(activation);
+        if (activation.TechnicalHttpReceivers is { Count: > 0 } && envelope.SchemaVersion != 3)
+            throw new RouteCatalogUnavailableException("Technical activation v2 requires the complete schema 3 owner catalog.", RouteCatalogRefusalReason.Inventory);
         var capabilities = activation.ProjectionCapabilities ?? [];
         if (capabilities.Any(c => c is null || string.IsNullOrWhiteSpace(c.Fingerprint) || c.ProjectionTypes is not { Count: > 0 }
             || c.ProjectionTypes.Distinct(StringComparer.Ordinal).Count() != c.ProjectionTypes.Count
@@ -59,7 +62,7 @@ public static class RouteCatalogActivationBinding
                 && envelope.Routes.Any(r => r.RouteId == d.RouteId && r.AppId == c.AppId && r.ContractVersion == c.ContractVersion && r.Method == "project/v2"))))
             || capabilities.Select(c => (c.AppId, c.Domain, c.ContractVersion)).Distinct().Count() != capabilities.Count)
             throw new RouteCatalogUnavailableException("Named projection capabilities disagree with declared executable targets.");
-        return Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
+        byte[] binding = JsonSerializer.SerializeToUtf8Bytes(new
         {
             purpose = "route-catalog-activation", version = 1,
             activation.AttemptId, activation.RootDigest, activation.PredecessorRootDigest,
@@ -69,7 +72,22 @@ public static class RouteCatalogActivationBinding
                 .ThenBy(a => a.Domain, StringComparer.Ordinal).ThenBy(a => a.Method, StringComparer.Ordinal).ThenBy(a => a.Operation, StringComparer.Ordinal).ToArray(),
             capabilities = capabilities.OrderBy(c => c.AppId, StringComparer.Ordinal).ThenBy(c => c.Domain, StringComparer.Ordinal)
                 .ThenBy(c => c.ContractVersion, StringComparer.Ordinal).Select(c => c with { ProjectionTypes = c.ProjectionTypes.Order(StringComparer.Ordinal).ToArray() }).ToArray(),
-        })));
+        });
+        if (activation.TechnicalHttpReceivers is { Count: > 0 } technical)
+        {
+            // Keep the exact legacy v1 preimage above when technical membership is absent.
+            var versioned = System.Text.Json.Nodes.JsonNode.Parse(binding)!.AsObject();
+            versioned["version"] = 2;
+            versioned["technicalHttpReceivers"] = JsonSerializer.SerializeToNode(technical.OrderBy(receiver => receiver.AppId, StringComparer.Ordinal)
+                .Select(receiver => receiver with
+                {
+                    Endpoints = receiver.Endpoints.OrderBy(TechnicalHttpCatalogBinding.Key, StringComparer.Ordinal).ToArray(),
+                    Invocations = receiver.Invocations?.OrderBy(TechnicalHttpCatalogBinding.InvocationKey, StringComparer.Ordinal)
+                        .Select(invocation => invocation with { HttpMethods = invocation.HttpMethods.Order(StringComparer.Ordinal).ToArray() }).ToArray(),
+                }).ToArray());
+            binding = System.Text.Encoding.UTF8.GetBytes(versioned.ToJsonString());
+        }
+        return Convert.ToHexStringLower(SHA256.HashData(binding));
     }
 
     private static bool Digest(string? value) => value is { Length: 64 } && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');

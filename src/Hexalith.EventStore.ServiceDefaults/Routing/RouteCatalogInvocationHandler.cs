@@ -17,6 +17,7 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
     private readonly HttpMessageInvoker? _invocationTransport;
     private readonly HttpMessageInvoker? _ordinaryRedirectTransport;
     private readonly bool _authorityStateClient;
+    private readonly bool _requireTechnicalHttpBinding;
     private readonly bool _followOrdinaryRedirects;
     private readonly int _maxAutomaticRedirections;
     private readonly bool _disableRedirectAuthentication;
@@ -38,6 +39,7 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         Transport = transport;
         _transport = new(transport);
         _authorityStateClient = authorityStateClient;
+        _requireTechnicalHttpBinding = options?.Value.RequireTechnicalHttpBinding == true;
         HttpMessageHandler? guarded = null;
         try
         {
@@ -98,6 +100,8 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
 
     /// <summary>Header binding a downstream call to exact retained bytes.</summary>
     public const string RootHeader = "X-Hexalith-Route-Catalog-Root";
+    /// <summary>Header binding opt-in v2 dispatch to the complete run-specific activation, including peer observations.</summary>
+    public const string BindingHeader = "X-Hexalith-Route-Catalog-Binding";
     /// <summary>Header binding a downstream call to its monotonic commit/rollback fence.</summary>
     public const string EpochHeader = "X-Hexalith-Route-Catalog-Epoch";
 
@@ -113,6 +117,9 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         if (path is not null && Uri.UnescapeDataString(path).StartsWith("/v1.0/actors/", StringComparison.OrdinalIgnoreCase))
             throw new RouteCatalogUnavailableException("Raw actor invocation has no proven typed catalog scope.");
         bool pathInvocation = path?.StartsWith(InvokePrefix, StringComparison.Ordinal) == true;
+        if (_requireTechnicalHttpBinding && !pathInvocation
+            && path?.Contains(InvokePrefix, StringComparison.OrdinalIgnoreCase) == true)
+            throw new RouteCatalogUnavailableException("The v2 service invocation URI has an unsupported base path.", RouteCatalogRefusalReason.Configuration);
         string[] targets = request.Headers.TryGetValues("dapr-app-id", out var headerTargets) ? headerTargets.ToArray() : [];
         if (!pathInvocation && targets.Length == 0)
             return await SendOrdinaryAsync(request, cancellationToken).ConfigureAwait(false);
@@ -131,25 +138,37 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
                 throw new RouteCatalogUnavailableException("The catalog control recipient is not independently configured.");
             request.Headers.Remove(RootHeader);
             request.Headers.Remove(EpochHeader);
+            request.Headers.Remove(BindingHeader);
             return await InvocationTransport().SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         HttpMessageInvoker invocation = InvocationTransport();
         RouteCatalogDispatchLease lease = await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var release = lease.ConfigureAwait(false);
+        if (lease.Snapshot.TechnicalHttpReceivers.Count > 0 && (!OwnedEndpoint(lease.Snapshot, request.RequestUri!)
+            || !DevelopmentTechnicalHttpTransport.CanonicalPath(rawMethod)))
+            throw new RouteCatalogUnavailableException("The v2 invocation uses a different Dapr runtime endpoint.", RouteCatalogRefusalReason.Configuration);
         if (!lease.Snapshot.Envelope.Routes.Any(r => r.AppId == appId && r.Method == method)
-            && !lease.Snapshot.AuxiliaryOperations.Any(a => a.NativeActor is null && a.DaprCallback is null && a.AppId == appId && (a.Http is null
-                ? a.Method == method : DevelopmentTechnicalHttpTransport.Matches(a, rawMethod, request.Method.Method))))
+            && !lease.Snapshot.AuxiliaryOperations.Any(auxiliary => auxiliary.NativeActor is null && auxiliary.DaprCallback is null && auxiliary.Sidecar is null && auxiliary.Http is null
+                && auxiliary.AppId == appId && auxiliary.Method == method)
+            && !TechnicalHttpCatalogBinding.Matches(lease.Snapshot.TechnicalHttpReceivers, appId, method, request.Method.Method, lease.Snapshot.LocalAppId))
             throw new RouteCatalogUnavailableException("The Dapr invocation target is outside the committed catalog and auxiliary inventory.");
         request.Headers.Remove(RootHeader);
         request.Headers.Remove(EpochHeader);
+        request.Headers.Remove(BindingHeader);
+        if (lease.Snapshot.TechnicalHttpReceivers.Count > 0)
+            request.Headers.TryAddWithoutValidation(BindingHeader, lease.Snapshot.ActivationBindingDigest);
         request.Headers.TryAddWithoutValidation(RootHeader, lease.Snapshot.RootDigest);
         request.Headers.TryAddWithoutValidation(EpochHeader, lease.Snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return await lease.InvokeRemoteAsync(() => invocation.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
+
     private async Task<HttpResponseMessage> SendOwnerReadAsync(HttpRequestMessage request, string appId, CancellationToken token)
     {
         var options = _options?.Value;
+        if (options?.ActorStateOwnerBoundary is not { } boundary)
+            throw new RouteCatalogUnavailableException("Owner sidecar reads require the independent selected-owner handoff.", RouteCatalogRefusalReason.Configuration);
+        boundary.RequireUnchanged(options.DevelopmentActorStateOwners);
         var owners = options?.DevelopmentActorStateOwners.Where(owner => owner.AppId == appId).ToArray() ?? [];
         if (request.Headers.Contains("dapr-app-id") || IsUnsupportedBasicInvocation(request)
             || options is not { DevelopmentFixture: true, Profile: "Development" } || owners.Length != 1
@@ -169,14 +188,26 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         // Actor state has six path segments: v1.0/actors/type/id/state/key.
         if (!metadata && pieces.Length != 6) throw new RouteCatalogUnavailableException("The owner state key must be one scalar segment.");
         if (!metadata && !RouteCatalogRemoteCall.Current.Any(lease => lease.Snapshot.Envelope.SchemaVersion == 3
-            && lease.Snapshot.Envelope.Profile == "Development" && lease.Snapshot.AuxiliaryOperations.Any(operation => operation.AppId == lease.Snapshot.LocalAppId
-                && operation.Http?.Owner.StartsWith("Hexalith.EventStore.Admin.Server.Controllers.", StringComparison.Ordinal) == true)
+            && lease.Snapshot.Envelope.Profile == "Development" && lease.Snapshot.ActivationBindingDigest is not null
+            && lease.Snapshot.TechnicalHttpReceivers.Any(receiver => receiver.AppId == lease.Snapshot.LocalAppId
+                && receiver.Endpoints.Any(action => action.ActionIdentity.StartsWith("Hexalith.EventStore.Admin.Server,", StringComparison.Ordinal)))
             && (lease.Snapshot.Envelope.Routes.Any(route => route.AppId == appId)
                 || lease.Snapshot.AuxiliaryOperations.Any(operation => operation.AppId == appId))))
             throw new RouteCatalogUnavailableException("Owner actor-state reads require the actual enrolled Admin receiver scope.");
         request.Headers.Remove("dapr-api-token");
         request.Headers.TryAddWithoutValidation("dapr-api-token", owners[0].ApiToken);
-        return await RouteCatalogRemoteCall.InvokeAsync(() => InvocationTransport().SendAsync(request, token)).ConfigureAwait(false);
+        return await RouteCatalogRemoteCall.InvokeAsync(() => InvocationTransport().SendAsync(request, token), token).ConfigureAwait(false);
+    }
+
+private static bool OwnedEndpoint(CommittedRouteCatalogSnapshot snapshot, Uri request)
+    {
+        if (snapshot.AuthorityCoordinates is null || snapshot.ActivationBindingDigest is null) return false;
+        var owned = new Uri(snapshot.AuthorityCoordinates.HttpEndpoint, UriKind.Absolute);
+        return request.Scheme == owned.Scheme && request.IdnHost.Equals(owned.IdnHost, StringComparison.OrdinalIgnoreCase)
+            && request.Port == owned.Port && request.UserInfo.Length == 0 && request.Fragment.Length == 0
+            && owned.AbsolutePath == "/" && (request.AbsolutePath.StartsWith(InvokePrefix, StringComparison.Ordinal)
+                || !request.AbsolutePath.Contains(InvokePrefix, StringComparison.OrdinalIgnoreCase));
+
     }
 
     private HttpMessageInvoker InvocationTransport() => _invocationTransport

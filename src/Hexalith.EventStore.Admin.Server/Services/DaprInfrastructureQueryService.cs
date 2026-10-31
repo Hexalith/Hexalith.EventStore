@@ -1221,7 +1221,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         try {
             HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/metadata");
-            using HttpResponseMessage response = await DevelopmentActorStateTransport.SendAsync(httpClient, request, _options.EventStoreAppId, ct)
+            using HttpResponseMessage response = await DevelopmentActorStateTransport.SendAsync(httpClient, request, _options.EventStoreAppId, HttpCompletionOption.ResponseContentRead, ct)
                 .ConfigureAwait(false);
             _ = response.EnsureSuccessStatusCode();
 
