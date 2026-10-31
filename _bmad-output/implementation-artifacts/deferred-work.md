@@ -6403,3 +6403,19 @@ status: open
   summary: Make pending payload-protection lifecycle work observable (low).
   evidence: Review pass 3 decision D5 (BH11). `PayloadProtectionDiagnosticScope` defaults to `Unavailable`, so drain-waiting, pending-persistence and batch-cap returns record Unavailable metrics. The closed result enum has no pending value, and no coordinator logs which member, acknowledgement or operation blocks a drain.
   reason: Owner decision 2026-10-30: belongs to Story 8.7/8.11 operability work.
+
+## Deferred from: code review of spec-8-5-policy-and-key-lifecycle-mechanics.md, Group A (2026-10-30)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Pin the PF-02-qualified Dapr state-store profile before granting payload-protection readiness (unverified, would be medium).
+  evidence: Review pass 5 AA1. `InspectCapabilitiesAsync` checks only the ETAG/TRANSACTIONAL/TTL metadata flags, and `ProbeAsync` calls `ConfirmQualification` (`PayloadProtectionCapabilityProbe.cs:51`) before returning the component `type:version`. A single-client functional probe cannot detect weak reads, and the 2 MiB/512-operation operational limits are qualified only for the live-lane PostgreSQL v2 profile. Settle with Story 8.7 host wiring, which selects the component.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Derive successor-registry root-removal evidence from durable state (unverified, would be medium).
+  evidence: Review pass 5 AA3. `PayloadProtectionScopeRegistry.ValidateSuccessor` (`:55`) trusts a caller-supplied `provenClearedRoots` set and never checks unfinished work; only `KeyStateProtocolTests` calls it. Amendment §1 forbids removing a root with unfinished work or members not proven cleared. Story 8.7 host integration must derive the set from an empty work catalog plus all-`Cleared` members.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Require a shared Dapr key namespace for the payload-protection state store (unverified, would be medium).
+  evidence: Review pass 5 BH15. The KEK inventory (`PayloadKeyIndexes.cs:52-90`) and member catalogs are environment-wide and assume every engine host shares one keyspace. Dapr's default `keyPrefix=appid` gives each app ID a private namespace, so per-app inventories would each look complete, and rotation could treat a KEK version as unused while another app's keys still use it. Nothing detects or documents the required setting. Story 8.7 host wiring must require `keyPrefix: none` or one fixed name for this store.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Let a successor build read fence/deployment/capability records written under a previous effective authority digest (medium).
+  evidence: Review pass 5 AA2. `PayloadProtectionStateCodec.ValidateSemantics` rejects any `FenceV1`/`DeploymentGenerationV1` `approvedSpecDigest`, and any `CapabilityLeaseV1` `specDigest`, different from the compiled `AuthorityDigest` (`:271,275,279`), as corruption. The first build with an amended authority therefore cannot decode the predecessor records to close the old generation, open a successor (§13.1) or observe the irreversible watermark (§13.3), and the coordinators' explicit digest checks never fire. Nothing breaks while only one authority exists. A fix decodes the sha format only and keeps strict digest comparison in every admission path.
+  reason: Owner decision 2026-10-31: generation succession across authority amendments belongs to Story 8.7 rollout/host wiring.
