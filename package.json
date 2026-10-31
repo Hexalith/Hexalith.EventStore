@@ -10,13 +10,13 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "semantic-release": "^25.0.5",
+    "semantic-release": "^25.0.9",
     "@semantic-release/exec": "^7.1.0",
-    "@semantic-release/github": "^12.0.8",
+    "@semantic-release/github": "^12.0.10",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/release-notes-generator": "^14.1.1",
-    "@commitlint/cli": "21.1.0",
-    "@commitlint/config-conventional": "21.1.0",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
     "husky": "^9.1.7"
   }
 }
