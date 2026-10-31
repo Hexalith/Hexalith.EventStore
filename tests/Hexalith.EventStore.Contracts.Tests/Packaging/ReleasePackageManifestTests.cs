@@ -478,6 +478,14 @@ public sealed class ReleasePackageManifestTests
     [InlineData("scripts/validate-nuget-packages.py", "gateway-dependency-loss", "internal dependency contract failed")]
     [InlineData("tools/validate-release-packages.py", "client-dependency-loss", "internal dependency contract failed")]
     [InlineData("scripts/validate-nuget-packages.py", "client-dependency-loss", "internal dependency contract failed")]
+    [InlineData("tools/validate-release-packages.py", "aspire-client-dependency-loss", "missing Hexalith.EventStore.Client")]
+    [InlineData("scripts/validate-nuget-packages.py", "aspire-client-dependency-loss", "missing Hexalith.EventStore.Client")]
+    [InlineData("tools/validate-release-packages.py", "aspire-service-defaults-dependency-loss", "missing Hexalith.EventStore.ServiceDefaults")]
+    [InlineData("scripts/validate-nuget-packages.py", "aspire-service-defaults-dependency-loss", "missing Hexalith.EventStore.ServiceDefaults")]
+    [InlineData("tools/validate-release-packages.py", "aspire-client-version-drift", "expected version")]
+    [InlineData("scripts/validate-nuget-packages.py", "aspire-client-version-drift", "expected version")]
+    [InlineData("tools/validate-release-packages.py", "aspire-service-defaults-version-drift", "expected version")]
+    [InlineData("scripts/validate-nuget-packages.py", "aspire-service-defaults-version-drift", "expected version")]
     [InlineData("tools/validate-release-packages.py", "external-dependency-loss", "external Hexalith dependency contract failed")]
     [InlineData("scripts/validate-nuget-packages.py", "external-dependency-loss", "external Hexalith dependency contract failed")]
     [InlineData("tools/validate-release-packages.py", "gateway-dependency-version-drift", "expected version")]
@@ -1327,6 +1335,11 @@ public sealed class ReleasePackageManifestTests
             {
                 dependencies = [];
             }
+            else if (package.Id == "Hexalith.EventStore.Aspire" && mutation is "aspire-client-dependency-loss" or "aspire-service-defaults-dependency-loss")
+            {
+                string missing = mutation == "aspire-client-dependency-loss" ? "Hexalith.EventStore.Client" : ServiceDefaultsPackageId;
+                dependencies = dependencies.Where(dependency => dependency != missing).ToArray();
+            }
             else if (mutation == "external-dependency-loss" && package.Id == "Hexalith.EventStore.Contracts")
             {
                 dependencies = ExpectedInternalDependencies(package.Id);
@@ -1384,7 +1397,13 @@ public sealed class ReleasePackageManifestTests
                             "archive-drive-relative-entry" => ["C:leaked-from-package.txt"],
                             _ => [],
                         },
-                });
+                },
+                mismatchedDependency: package.Id == "Hexalith.EventStore.Aspire" ? mutation switch
+                {
+                    "aspire-client-version-drift" => "Hexalith.EventStore.Client",
+                    "aspire-service-defaults-version-drift" => ServiceDefaultsPackageId,
+                    _ => null,
+                } : null);
         }
 
         if (mutation == "extra")
@@ -1422,7 +1441,8 @@ public sealed class ReleasePackageManifestTests
         string version,
         IEnumerable<string> dependencies,
         string dependencyVersion,
-        SyntheticPackageOptions? options = null)
+        SyntheticPackageOptions? options = null,
+        string? mismatchedDependency = null)
     {
         SyntheticPackageOptions fixture = options ?? new SyntheticPackageOptions();
         string[] declaredDependencies = fixture.DuplicateDependencies
@@ -1432,7 +1452,7 @@ public sealed class ReleasePackageManifestTests
             => dependencyIds.Select(dependency => new XElement(
                 NuspecNamespace + "dependency",
                 new XAttribute("id", dependency),
-                new XAttribute("version", dependencyVersion)));
+                new XAttribute("version", dependency == mismatchedDependency ? "999.3.5-fixture" : dependencyVersion)));
 
         // Real `dotnet pack` output always groups dependencies by target framework;
         // the ungrouped shape is a nuspec-legal alternative the parser must also police.
@@ -1627,7 +1647,12 @@ public sealed class ReleasePackageManifestTests
         => packageId switch
         {
             "Hexalith.EventStore.Admin.Abstractions" => ["Hexalith.EventStore.Contracts"],
-            "Hexalith.EventStore.Aspire" => ["Hexalith.EventStore.Contracts"],
+            "Hexalith.EventStore.Aspire" =>
+            [
+                "Hexalith.EventStore.Client",
+                "Hexalith.EventStore.Contracts",
+                "Hexalith.EventStore.ServiceDefaults",
+            ],
             "Hexalith.EventStore.Admin.Server" =>
             [
                 "Hexalith.EventStore.Admin.Abstractions",
