@@ -24,6 +24,12 @@ public static class RouteCatalogActivationBinding
             || (activation.AuxiliaryOperations is { } auxiliary && (auxiliary.Any(a => a is null
                 || !activation.RequiredHosts.Any(h => h.AppId == a.AppId) || string.IsNullOrWhiteSpace(a.Method)
                 || string.IsNullOrWhiteSpace(a.Operation) || string.IsNullOrWhiteSpace(a.Domain)
+                || a.DaprCallback is { } callback && (envelope.SchemaVersion != 3 || a.Http is not null || a.NativeActor is not null
+                    || callback.Kind is not ("subscribe" or "projection-notification")
+                    || a.Method != (callback.Kind == "subscribe" ? "dapr/subscribe" : "projections/changed")
+                    || a.Operation != "sdk-dapr-callback:" + callback.Kind
+                    || callback.Verbs != (callback.Kind == "subscribe" ? "GET" : "POST")
+                    || !Digest(callback.CodeDigest) || !Digest(callback.FrameworkDigest) || !Digest(callback.InventoryDigest))
                 || a.NativeActor is { } native && (envelope.SchemaVersion != 3 || a.Http is not null
                     || native.Kind is not ("config" or "health" or "method" or "reminder" or "timer" or "deactivate")
                     || !Digest(native.CodeDigest) || !Digest(native.FrameworkDigest) || !Digest(native.InventoryDigest)

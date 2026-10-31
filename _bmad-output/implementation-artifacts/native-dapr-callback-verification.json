@@ -1,0 +1,356 @@
+{
+  "schemaVersion": 1,
+  "owner": "Hexalith.EventStore",
+  "status": "verified-awaiting-parent-integration",
+  "baseline": "5938ab989d905bf37ed4f72136ea65ff6094a802",
+  "worktree": "/tmp/eventstore-development-pubsub-callbacks",
+  "sourceBuildVersion": "3.130.0",
+  "publishedPackageClaim": false,
+  "externalCatalog": {
+    "path": "/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+    "sha256": "1d4b477b459f89d4b2e5c52a8d5e429d2af6fe3a6cd14c3102c3a544842983e3"
+  },
+  "files": [
+    "_bmad-output/implementation-artifacts/native-dapr-callback-verification.json",
+    "_bmad-output/implementation-artifacts/spec-qualify-native-dapr-callbacks.md",
+    "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogAuxiliaryOperation.cs",
+    "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogDaprCallbackTransport.cs",
+    "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogReceiverEndpoint.cs",
+    "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogTopologyValidator.cs",
+    "src/Hexalith.EventStore.Gateway/Routing/DevelopmentDaprCallbackReceiver.cs",
+    "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/DevelopmentTechnicalHttpTransport.cs",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/FiniteRouteCatalogReceiver.cs",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/IDevelopmentDaprCallbackReceiver.cs",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/RouteCatalogActivationBinding.cs",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/RouteCatalogInvocationHandler.cs",
+    "src/Hexalith.EventStore/Controllers/ProjectionNotificationController.cs",
+    "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/NativeCallbackRpcObserver.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NativeActorCatalogLiveTests.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Routing/DaprCallbackActivationBindingTests.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Routing/DevelopmentDaprCallbackReceiverTests.cs"
+  ],
+  "sourceHashes": {
+    "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogAuxiliaryOperation.cs": "f3da2d8531a24ae94fdeaecc6b3210b2d12ed190a4e5020436a866b1aa48c917",
+    "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogDaprCallbackTransport.cs": "9352af48653da974115e7230028a77b77ab211368c3daf580a9ffce74f93d873",
+    "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogReceiverEndpoint.cs": "1981165410df3dc4ecf8d25b128a8ffd90d7f1cf297116577097282696cf07f3",
+    "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogTopologyValidator.cs": "8a63ea8a70ee552005604e19c4397cd1b32b45aed0eb0bdd9a2a405641c7d844",
+    "src/Hexalith.EventStore.Gateway/Routing/DevelopmentDaprCallbackReceiver.cs": "1d2f8ac804261049d897611cd461cd877a73acbc2135a530b24540111600a0c0",
+    "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj": "1d9d94bae92d30b81f25f5a1a5fa7a11f5a00332f21381b51ad0597010d13518",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/DevelopmentTechnicalHttpTransport.cs": "4f3432b240f877e2e6a422786ac3f0e5555cc0c665e651eaac79fd2f8534a7b6",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/FiniteRouteCatalogReceiver.cs": "c9d380bb7a818f55ee769c1922f9050238867e5f0b2f5bf551375531cc8dadfd",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/IDevelopmentDaprCallbackReceiver.cs": "586e3fb1b1f41ba33d64bc96e32fa5b738dcc7fb58508b1100cc11ce1e8f7662",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/RouteCatalogActivationBinding.cs": "f6439f614706a98395ee994eb7f52b602ff6592f853a4e1ec3a92e3738453df2",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/RouteCatalogInvocationHandler.cs": "41465670bc7538158e0cd5cfaf1570981970683e563b1a77d304f6de2f5258db",
+    "src/Hexalith.EventStore/Controllers/ProjectionNotificationController.cs": "13b7c7e7fa1cd70cefb4aa5263ee6b217b74d29e0611b3c5b3a6f71c4c8dcb3a",
+    "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs": "15d94515e7355b2147f0b119453f048a5c70a6b15bb0e004d3dec8cf8dae5364",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/NativeCallbackRpcObserver.cs": "593f561273ea259716195230a6e51a69a30fe684483fb030b602e94ebd2dbe4a",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NativeActorCatalogLiveTests.cs": "89384b38673f3138dd6fdee93c4e61d77d1cb97d84713562194c3f82cff38242",
+    "tests/Hexalith.EventStore.Server.Tests/Routing/DaprCallbackActivationBindingTests.cs": "db5848bd28df94c6e2a45ea0327463679676b5362e32745b4733589e741bcdac",
+    "tests/Hexalith.EventStore.Server.Tests/Routing/DevelopmentDaprCallbackReceiverTests.cs": "4b367fcd46a46238156d6f8a3b9d37efe76c1586a18b7ff5373528ba8411f80c"
+  },
+  "checks": [
+    {
+      "project": "Hexalith.EventStore.Server.Tests",
+      "buildCommand": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "-c",
+        "Release",
+        "--disable-build-servers",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true",
+        "-p:Version=3.130.0",
+        "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-warnaserror"
+      ],
+      "buildLog": "/tmp/es-callback-final-build-Hexalith.EventStore.Server.Tests.log",
+      "buildExit": 0,
+      "testCommand": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "*DevelopmentDaprCallbackReceiverTests",
+        "-class",
+        "*DaprCallbackActivationBindingTests",
+        "-class",
+        "*DevelopmentNativeActorReceiverTests",
+        "-class",
+        "*DevelopmentGatewayAdminMetadataTests",
+        "-class",
+        "*ProjectionSubscriptionMetadataTests",
+        "-class",
+        "*HttpHostSecurityTests",
+        "-class",
+        "*DaprInternalAuthenticationHandlerTests",
+        "-class",
+        "*DaprProjectionChangeNotifierTests",
+        "-class",
+        "*DaprProjectionChangeNotifierSignalRTests",
+        "-class",
+        "*CatalogHttpTransportTests",
+        "-class",
+        "*CatalogTransportIsolationTests",
+        "-class",
+        "*RouteCatalogTopologyIsolationTests",
+        "-class",
+        "*CatalogSchemaThreePolicyTests",
+        "-class",
+        "*RouteCatalogActivationTests",
+        "-class",
+        "*CatalogInstalledObservationTests",
+        "-class",
+        "*CatalogLifecycleAmendmentTests",
+        "-result-xml",
+        "/tmp/es-callback-final-Hexalith.EventStore.Server.Tests.xml"
+      ],
+      "testLog": "/tmp/es-callback-final-Hexalith.EventStore.Server.Tests.log",
+      "testXml": "/tmp/es-callback-final-Hexalith.EventStore.Server.Tests.xml",
+      "testExit": 0,
+      "counts": {
+        "total": 184,
+        "passed": 184,
+        "failed": 0,
+        "skipped": 0,
+        "not-run": 0,
+        "errors": 0
+      },
+      "seconds": "14.427",
+      "buildLogSha256": "d699acda4cb696a604457533d4e210b61000c43ac9c84a802eb29b0ab01532e5",
+      "testLogSha256": "1de32ab0b6a04c3ad9748ed60e96600cef324cf55b83bab12ac2a68626cc975a",
+      "testXmlSha256": "e32dc935c090f1fe586c7fe57046110ec32ebb9ef8334ce78d4b48b40c3b994f",
+      "actualClasses": [
+        "Hexalith.EventStore.Server.Tests.Authentication.DaprInternalAuthenticationHandlerTests",
+        "Hexalith.EventStore.Server.Tests.Controllers.ProjectionSubscriptionMetadataTests",
+        "Hexalith.EventStore.Server.Tests.HttpHostSecurityTests",
+        "Hexalith.EventStore.Server.Tests.Projections.DaprProjectionChangeNotifierSignalRTests",
+        "Hexalith.EventStore.Server.Tests.Projections.DaprProjectionChangeNotifierTests",
+        "Hexalith.EventStore.Server.Tests.Routing.CatalogHttpTransportTests",
+        "Hexalith.EventStore.Server.Tests.Routing.CatalogInstalledObservationTests",
+        "Hexalith.EventStore.Server.Tests.Routing.CatalogLifecycleAmendmentTests",
+        "Hexalith.EventStore.Server.Tests.Routing.CatalogSchemaThreePolicyTests",
+        "Hexalith.EventStore.Server.Tests.Routing.CatalogTransportIsolationTests",
+        "Hexalith.EventStore.Server.Tests.Routing.DaprCallbackActivationBindingTests",
+        "Hexalith.EventStore.Server.Tests.Routing.DevelopmentDaprCallbackReceiverTests",
+        "Hexalith.EventStore.Server.Tests.Routing.DevelopmentGatewayAdminMetadataTests",
+        "Hexalith.EventStore.Server.Tests.Routing.DevelopmentNativeActorReceiverTests",
+        "Hexalith.EventStore.Server.Tests.Routing.RouteCatalogActivationTests",
+        "Hexalith.EventStore.Server.Tests.Routing.RouteCatalogTopologyIsolationTests"
+      ]
+    },
+    {
+      "project": "Hexalith.EventStore.ServiceDefaults.Tests",
+      "buildCommand": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.ServiceDefaults.Tests/Hexalith.EventStore.ServiceDefaults.Tests.csproj",
+        "-c",
+        "Release",
+        "--disable-build-servers",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true",
+        "-p:Version=3.130.0",
+        "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-warnaserror"
+      ],
+      "buildLog": "/tmp/es-callback-final-build-Hexalith.EventStore.ServiceDefaults.Tests.log",
+      "buildExit": 0,
+      "testCommand": [
+        "dotnet",
+        "tests/Hexalith.EventStore.ServiceDefaults.Tests/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.Tests.dll",
+        "-class",
+        "*FiniteRouteCatalogReceiverTests",
+        "-class",
+        "*RouteCatalogOptInTests",
+        "-class",
+        "*DevelopmentAuxiliaryClientCatalogTests",
+        "-class",
+        "*RouteCatalogDispatchLeaseCancellationTests",
+        "-class",
+        "*RouteCatalogRemoteCancellationTests",
+        "-class",
+        "*GeneratedRestRouteCatalogTopologyTests",
+        "-class",
+        "*GeneratedRestRouteCatalogPolicyTests",
+        "-class",
+        "*GeneratedRestRouteCatalogReceiverTests",
+        "-result-xml",
+        "/tmp/es-callback-final-Hexalith.EventStore.ServiceDefaults.Tests.xml"
+      ],
+      "testLog": "/tmp/es-callback-final-Hexalith.EventStore.ServiceDefaults.Tests.log",
+      "testXml": "/tmp/es-callback-final-Hexalith.EventStore.ServiceDefaults.Tests.xml",
+      "testExit": 0,
+      "counts": {
+        "total": 95,
+        "passed": 95,
+        "failed": 0,
+        "skipped": 0,
+        "not-run": 0,
+        "errors": 0
+      },
+      "seconds": "1.043",
+      "buildLogSha256": "5ed87b2768db26591daab52e9cd7ed347342d822d4a75e54fda6dd15cf151b96",
+      "testLogSha256": "29c82ff55f6fa48a8ef250b9f24d99f4f68ea92abac2219cb960c3cb6638a815",
+      "testXmlSha256": "5fa748bd2d59aaf8836e459bbe0235b5c27edd04b837a1cc7d5852209da9015a",
+      "actualClasses": [
+        "Hexalith.EventStore.ServiceDefaults.Tests.DevelopmentAuxiliaryClientCatalogTests",
+        "Hexalith.EventStore.ServiceDefaults.Tests.FiniteRouteCatalogReceiverTests",
+        "Hexalith.EventStore.ServiceDefaults.Tests.GeneratedRest.GeneratedRestRouteCatalogPolicyTests",
+        "Hexalith.EventStore.ServiceDefaults.Tests.GeneratedRest.GeneratedRestRouteCatalogReceiverTests",
+        "Hexalith.EventStore.ServiceDefaults.Tests.GeneratedRest.GeneratedRestRouteCatalogTopologyTests",
+        "Hexalith.EventStore.ServiceDefaults.Tests.RouteCatalogDispatchLeaseCancellationTests",
+        "Hexalith.EventStore.ServiceDefaults.Tests.RouteCatalogOptInTests",
+        "Hexalith.EventStore.ServiceDefaults.Tests.RouteCatalogRemoteCancellationTests"
+      ]
+    },
+    {
+      "project": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "buildCommand": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+        "-c",
+        "Release",
+        "--disable-build-servers",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true",
+        "-p:Version=3.130.0",
+        "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-warnaserror"
+      ],
+      "buildLog": "/tmp/es-callback-final-build-Hexalith.EventStore.Server.LiveSidecar.Tests.log",
+      "buildExit": 0,
+      "testCommand": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-class",
+        "*NativeActorCatalogLiveTests",
+        "-result-xml",
+        "/tmp/es-callback-final-Hexalith.EventStore.Server.LiveSidecar.Tests.xml"
+      ],
+      "testLog": "/tmp/es-callback-final-Hexalith.EventStore.Server.LiveSidecar.Tests.log",
+      "testXml": "/tmp/es-callback-final-Hexalith.EventStore.Server.LiveSidecar.Tests.xml",
+      "testExit": 0,
+      "counts": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not-run": 0,
+        "errors": 0
+      },
+      "seconds": "11.160",
+      "buildLogSha256": "29b6e945facda58b839d834933b47e7b41ccd21430bc7ada8e06c1a9ac2c78f5",
+      "testLogSha256": "5ea8ab4e680beae3956a1ca768340e44e80a6706e73c889c0538337d7b9313a3",
+      "testXmlSha256": "1617dc8222a9daf3e99fbda9fb922576e92352b92ef98bd5250507c4640e2638",
+      "actualClasses": [
+        "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NativeActorCatalogLiveTests"
+      ]
+    }
+  ],
+  "trackedSourceScanner": {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "-method",
+      "*SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+      "-result-xml",
+      "/tmp/es-callback-scanner.xml"
+    ],
+    "environment": {
+      "GIT_INDEX_FILE": "/tmp/es-callback-candidate.index"
+    },
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "normalIndexUntouched": true,
+    "log": "/tmp/es-callback-scanner.log"
+  },
+  "totalFocusedCasesIncludingScanner": 283,
+  "failed": 0,
+  "skipped": 0,
+  "notRun": 0,
+  "nativeFacts": {
+    "runtime": "1.18.7",
+    "runtimeSourceCommit": "b32a815fa2260983e181b95272ea555fe17d3895",
+    "binarySha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+    "runtimeLockSha256": "326a24228313b4f76428f3091bfa449ba00c6a37fc4bdca55fb78409ab433238",
+    "dotnetDaprSdk": "1.19.0",
+    "mapperSourceCommit": "05f093ad5ee38de377872fee9021010fe5b6dc35",
+    "actualModes": [
+      {
+        "component": "pubsub",
+        "declarative": false
+      },
+      {
+        "component": "in-memory-events",
+        "declarative": false
+      },
+      {
+        "component": "in-memory-events",
+        "declarative": true
+      }
+    ],
+    "discovery": "Actual MapSubscribeHandler returns owning configured component and unchanged *.*.projection-changed metadata; explicit declarative mode has no mapper/topic metadata and authenticated native404.",
+    "delivery": "All three cases additionally install the disclosed fixture-owned exact declarative topic tenant-a.counter.projection-changed. Actual SDK signed publication and actual pinned daprd/in-memory broker deliver cloud events to the real notification action. The real ETag actor writes Redis and reloads the same value after deactivation. No programmatic wildcard delivery claim.",
+    "firstPublicationRpcCount": 1,
+    "totalObservedPublicationRpcCountAfterProjectionUpdate": 2,
+    "rootOrEpochHeadersOnFirstObservedNativeCallback": false,
+    "catalog": "Actual Redis authority prepare/ready/commit and schema3 callback/code/topic inventory lease; notification refuses503 before activation.",
+    "negativeRequests": [
+      "missing APP token401",
+      "invalid APP token401",
+      "missing signed provenance403",
+      "signed tenant binding mismatch403",
+      "signed projection binding mismatch403"
+    ],
+    "retainedNativeChecks": [
+      "persisted count7 projection write/deactivate/query",
+      "actual AggregateActor activation/read",
+      "actual scheduled reminder callback/removal",
+      "unknown actor/method and foreign caller refusal",
+      "final durable leases empty"
+    ],
+    "cleanup": "All three owned app/sidecar/Redis resources disposed and private run directories removed; no producer process remains."
+  },
+  "brokerLimitation": {
+    "componentVersion": "1.18.6",
+    "sources": [
+      "https://github.com/dapr/components-contrib/blob/v1.18.6/common/eventbus/event_bus.go",
+      "https://github.com/dapr/components-contrib/blob/v1.18.6/pubsub/in-memory/in-memory.go",
+      "https://github.com/dapr/components-contrib/blob/v1.18.6/pubsub/redis/redis.go"
+    ],
+    "facts": "In-memory supports exact or suffix-star prefix subscriptions; Redis uses exact stream names. Existing embedded-star SDK discovery pattern does not supply delivery on either. Production subscription policy is unchanged. Exact fixture subscription supplies the separately labelled delivery proof."
+  },
+  "abi": {
+    "compiledAgainstPublishedPackage": "Hexalith.EventStore.Contracts/3.129.0",
+    "unchangedConsumerPEsha256": "4e585add5af7f27f826b00061bb3cf14582140c5877186d856a57c276a0f9393",
+    "command": [
+      "dotnet",
+      "/tmp/es-admin-sdk0-abi/bin/Release/net10.0/Abi.dll"
+    ],
+    "runtimeContractsSha256": "91f7e5fe36ca7f1e6273501f14e4f03bf62b65486da4d4f2ff682b3570684b86",
+    "logSha256": "5b8f946f45b9cf725d35a3573bb8c2e7f38bcd73ef4096ad506729e978592b6d",
+    "oldConstructorAndDeconstruct": true,
+    "legacyJson": "{\"AppId\":\"app\",\"Method\":\"method\",\"Operation\":\"operation\",\"Domain\":\"domain\"}",
+    "exitCode": 0
+  },
+  "commitlint": {
+    "version": "21.2.4",
+    "candidate": "fix: preserve native dapr callback delivery\n",
+    "logSha256": "1ab1d13fc6f704791e4259ad3185447f6adec795d6a54d52d7e0b22db9377e92",
+    "exitCode": 0
+  },
+  "deletions": [],
+  "remaining": [
+    "Parent integrate/push preserved5938 plus this bounded delta",
+    "Full owner hosted gates and official SDK publication/verification",
+    "Full Root actual topology qualification against the published cohort",
+    "Existing programmatic embedded-star broker limitation is disclosed, not repaired or claimed as delivery proof"
+  ]
+}

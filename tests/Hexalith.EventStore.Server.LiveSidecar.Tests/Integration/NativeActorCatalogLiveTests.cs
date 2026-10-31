@@ -1,3 +1,7 @@
+using Dapr;
+using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Server.Projections;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -33,8 +37,11 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 /// <summary>Real pinned daprd and native SDK actor callbacks under the private technical Gateway fence.</summary>
 public sealed class NativeActorCatalogLiveTests
 {
-    [Fact]
-    public async Task NativeQueryRegisteredActorsAndLifecycleKeepActualChannelCatalogAndMethodBoundaries()
+    [Theory]
+    [InlineData("pubsub", false)]
+    [InlineData("in-memory-events", false)]
+    [InlineData("in-memory-events", true)]
+    public async Task NativeQueryRegisteredActorsAndLifecycleKeepActualChannelCatalogAndMethodBoundaries(string component, bool declarative)
     {
         string directory = Path.Combine(Path.GetTempPath(), "native-catalog-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -49,7 +56,17 @@ public sealed class NativeActorCatalogLiveTests
             if (actor) metadata.Add(new { name = "actorStateStore", value = "true" });
             await File.WriteAllTextAsync(Path.Combine(resources, name + ".yaml"), JsonSerializer.Serialize(new { apiVersion = "dapr.io/v1alpha1", kind = "Component", metadata = new { name, @namespace = appId }, spec = new { type, version = "v1", metadata }, scopes = new[] { appId } }));
         }
-        await Component("statestore", "state.redis", true); await Component("pubsub", "pubsub.redis", false);
+        await Component("statestore", "state.redis", true); await Component(component, "pubsub.in-memory", false);
+        // This exact fixture-owned subscription supplies real native delivery on the pinned
+        // broker. Programmatic discovery metadata is tested separately; its embedded-star
+        // pattern is not supported by this broker and earns no wildcard-delivery claim.
+        {
+            await File.WriteAllTextAsync(Path.Combine(resources, "projection-subscription.yaml"), JsonSerializer.Serialize(new
+            {
+                apiVersion = "dapr.io/v2alpha1", kind = "Subscription", metadata = new { name = "projection-changed", @namespace = appId },
+                spec = new { pubsubname = component, topic = "tenant-a.counter.projection-changed", routes = new { @default = "projections/changed" } }, scopes = new[] { appId },
+            }));
+        }
         string aclPath = Path.Combine(directory, "acl.json");
         await File.WriteAllTextAsync(aclPath, JsonSerializer.Serialize(new { apiVersion = "dapr.io/v1alpha1", kind = "Configuration", metadata = new { name = appId }, spec = new { accessControl = new { defaultAction = "deny", trustDomain = "public", policies = new[] { new { appId, @namespace = appId, trustDomain = "public", defaultAction = "deny", operations = new[] { new { name = "/**", httpVerb = new[] { "GET", "POST", "PUT" }, action = "allow" } } } } } } }));
         string componentPath = Path.Combine(directory, "authority.json");
@@ -65,6 +82,10 @@ public sealed class NativeActorCatalogLiveTests
         builder.WebHost.UseUrls($"http://127.0.0.1:{sidecar.AppPort}");
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["Dapr:DeclarativeSubscriptions"] = declarative.ToString(),
+            ["EventStore:ProjectionChanges:PubSubName"] = component, ["EventStore:ProjectionChanges:Transport"] = "PubSub",
+            ["EventStore:ProjectionChanges:ProvenanceAudience"] = appId, ["EventStore:ProjectionChanges:AllowedPublishers:0"] = appId,
+            ["Authentication:DaprInternal:Audience"] = appId, ["Authentication:WorkloadIssuer:Workload"] = appId,
             ["APP_API_TOKEN"] = appToken, ["NAMESPACE"] = appId, ["DAPR_HTTP_ENDPOINT"] = sidecar.HttpEndpoint, ["DAPR_GRPC_ENDPOINT"] = sidecar.GrpcEndpoint,
             ["EventStore:DomainService:AppId"] = appId, ["EventStore:DomainService:ServiceVersion"] = "v1",
             ["EventStore:DataProtection:PersistToStateStore"] = "false",
@@ -75,12 +96,13 @@ public sealed class NativeActorCatalogLiveTests
             ["EventStore:RouteCatalog:DevelopmentBootstrap:ComponentPath"] = componentPath, ["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"] = aclPath,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:DeclaredInvocations"] = JsonSerializer.Serialize(new[] { new RouteCatalogDeclaredInvocation(appId, "/**", ["GET", "POST", "PUT"]) }),
         });
-        builder.Services.AddEventStore(); builder.Services.AddEventStoreServer(builder.Configuration); builder.Services.AddEventStoreDomainQueryRouting();
+        builder.Services.AddEventStore(); builder.Services.AddEventStoreServer(builder.Configuration); builder.Services.AddEventStoreDomainQueryRouting(); builder.Services.AddEventStoreWorkloadAssertionIssuer(builder.Configuration);
         builder.Services.AddControllers().AddApplicationPart(typeof(Hexalith.EventStore.Controllers.CommandsController).Assembly);
         // In-process hosting has no Aspire-injected process environment. Configure the real
         // native client after the API registration, using this owned sidecar's actual endpoints.
+        using var rpcObserver = new NativeCallbackRpcObserver();
         builder.Services.RemoveAll<DaprClient>();
-        builder.Services.AddSingleton(new DaprClientBuilder().UseHttpEndpoint(sidecar.HttpEndpoint).UseGrpcEndpoint(sidecar.GrpcEndpoint).Build());
+        builder.Services.AddSingleton(new DaprClientBuilder().UseHttpEndpoint(sidecar.HttpEndpoint).UseGrpcEndpoint(sidecar.GrpcEndpoint).UseGrpcChannelOptions(new Grpc.Net.Client.GrpcChannelOptions { HttpHandler = rpcObserver }).Build());
         builder.Services.Configure<ActorRuntimeOptions>(options => options.HttpEndpoint = sidecar.HttpEndpoint);
         var proxyFactory = new ActorProxyFactory(new ActorProxyOptions { HttpEndpoint = sidecar.HttpEndpoint });
         builder.Services.AddSingleton<IActorProxyFactory>(proxyFactory);
@@ -100,15 +122,30 @@ public sealed class NativeActorCatalogLiveTests
         await using var app = builder.Build();
         var store = app.Services.GetRequiredService<IRouteCatalogStateStore>();
         app.UseRouting();
+        var notificationObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool notificationHadHttpGeneration = false;
+        int notificationCount = 0;
+        var secondNotificationObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var reminderObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         app.Use(async (context, next) =>
         {
+            bool cloudEvent = context.Request.ContentType?.StartsWith("application/cloudevents+json", StringComparison.OrdinalIgnoreCase) == true;
             await next(context);
+            if (cloudEvent && context.Request.Path == "/projections/changed" && context.Response.StatusCode == StatusCodes.Status200OK)
+            {
+                notificationHadHttpGeneration = context.Request.Headers.ContainsKey(RouteCatalogInvocationHandler.RootHeader)
+                    || context.Request.Headers.ContainsKey(RouteCatalogInvocationHandler.EpochHeader);
+                if (Interlocked.Increment(ref notificationCount) == 2) secondNotificationObserved.TrySetResult(true);
+                notificationObserved.TrySetResult(true);
+            }
             if (context.Request.Path.Value?.EndsWith("/method/remind/native-catalog-proof", StringComparison.Ordinal) == true
                 && context.Response.StatusCode == StatusCodes.Status200OK) reminderObserved.TrySetResult(true);
         });
         app.UseEventStoreHttpHostSecurity(); app.UseAuthentication(); app.UseAuthorization();
-        app.MapControllers(); app.MapActorsHandlers().WithMetadata(EventStoreActorCallbackEndpointMetadata.Instance).RequireEventStoreChannel();
+        app.UseCloudEvents();
+        app.MapControllers().WithEventStoreProjectionNotifications(app.Services, declarative);
+        if (!declarative) app.MapSubscribeHandler().RequireEventStoreChannel();
+        app.MapActorsHandlers().WithMetadata(EventStoreActorCallbackEndpointMetadata.Instance).RequireEventStoreChannel();
         FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app, RunScopedRouteCatalogGateway.Operation, technical: true);
         try
         {
@@ -125,12 +162,31 @@ public sealed class NativeActorCatalogLiveTests
                 try
                 {
                     var loaded = await client.GetMetadataAsync(grpcReady.Token);
+                    loaded.Id.ShouldBe(appId);
                     loaded.Components.Select(component => component.Name).ShouldContain("catalog-test");
                     loaded.Components.Select(component => component.Name).ShouldContain("statestore");
                     break;
                 }
                 catch (Dapr.DaprException exception) when (exception.InnerException is Grpc.Core.RpcException { StatusCode: Grpc.Core.StatusCode.Unavailable })
                 { await Task.Delay(100, grpcReady.Token); }
+            }
+            using var direct = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{sidecar.AppPort}") };
+            using (var discovery = new HttpRequestMessage(HttpMethod.Get, "/dapr/subscribe"))
+            {
+                discovery.Headers.Add("dapr-api-token", appToken);
+                using var discovered = await direct.SendAsync(discovery, TestContext.Current.CancellationToken);
+                discovered.StatusCode.ShouldBe(declarative ? HttpStatusCode.NotFound : HttpStatusCode.OK);
+                if (!declarative)
+                {
+                    using var subscriptions = JsonDocument.Parse(await discovered.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+                    subscriptions.RootElement.EnumerateArray().Single(item => item.GetProperty("topic").GetString() == "*.*.projection-changed")
+                        .EnumerateObject().Single(property => property.Name.Equals("pubsubname", StringComparison.OrdinalIgnoreCase)).Value.GetString().ShouldBe(component);
+                }
+            }
+            using (var pending = new HttpRequestMessage(HttpMethod.Post, "/projections/changed"))
+            {
+                pending.Headers.Add("dapr-api-token", appToken); pending.Content = JsonContent.Create(new ProjectionChangedNotification("counter", "tenant-a"));
+                using var refused = await direct.SendAsync(pending, TestContext.Current.CancellationToken); refused.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
             }
             using var scope = app.Services.CreateScope();
             var observer = app.Services.GetRequiredService<FiniteRouteCatalogReceiver>().Observe();
@@ -148,10 +204,61 @@ public sealed class NativeActorCatalogLiveTests
                 observation.AuxiliaryOperations, observation.ReceiverSurface, observation.SelectedAppIds, observation.DeclaredInvocations);
             var authority = app.Services.GetRequiredService<IRouteCatalogAuthority>();
             await authority.PrepareAsync(activation); await authority.ReadyAsync(activation.AttemptId); await authority.CommitAsync(activation.AttemptId);
+            var etag = proxyFactory.CreateActorProxy<IETagActor>(new ActorId("counter:tenant-a"), ETagActor.ETagActorTypeName);
+            (await etag.GetCurrentETagAsync()).ShouldBeNull();
+            string provenance = (await app.Services.GetRequiredService<IWorkloadAssertionIssuer>().IssueAsync(new WorkloadAssertionRequest(appId,
+                EventStoreWorkloadOperations.ProjectionNotify, new Dictionary<string, string>
+                {
+                    [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = "tenant-a",
+                    [EventStoreWorkloadAuthenticationDefaults.ProjectionTypeBindingClaimType] = "counter",
+                    [EventStoreWorkloadAuthenticationDefaults.TopicBindingClaimType] = "tenant-a.counter.projection-changed",
+                }), TestContext.Current.CancellationToken)).ShouldNotBeNull();
+            foreach (string failure in new[] { "missing-channel", "invalid-channel", "missing-provenance", "wrong-tenant", "wrong-projection" })
+            {
+                var notification = new ProjectionChangedNotification(failure == "wrong-projection" ? "greeting" : "counter", failure == "wrong-tenant" ? "tenant-b" : "tenant-a")
+                    { Provenance = failure == "missing-provenance" ? null : provenance };
+                using var invalid = new HttpRequestMessage(HttpMethod.Post, "/projections/changed") { Content = JsonContent.Create(notification) };
+                if (failure != "missing-channel") invalid.Headers.Add("dapr-api-token", failure == "invalid-channel" ? "invalid" : appToken);
+                using var denied = await direct.SendAsync(invalid, TestContext.Current.CancellationToken);
+                denied.StatusCode.ShouldBe(failure.EndsWith("channel", StringComparison.Ordinal) ? HttpStatusCode.Unauthorized : HttpStatusCode.Forbidden);
+                (await etag.GetCurrentETagAsync()).ShouldBeNull();
+            }
+            // Observe actual sidecar subscriptions before one real SDK signed publication.
+            using (var metadata = new HttpClient { BaseAddress = new Uri(sidecar.HttpEndpoint) })
+            using (var ready = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken))
+            {
+                ready.CancelAfter(TimeSpan.FromSeconds(30));
+                while (true)
+                {
+                    using var current = JsonDocument.Parse(await metadata.GetStringAsync("/v1.0/metadata", ready.Token));
+                    if (current.RootElement.GetProperty("subscriptions").EnumerateArray().Any(item => item.EnumerateObject().Single(property => property.Name.Equals("pubsubname", StringComparison.OrdinalIgnoreCase)).Value.GetString() == component
+                        && item.GetProperty("topic").GetString() == "tenant-a.counter.projection-changed")) break;
+                    await Task.Delay(100, ready.Token);
+                }
+            }
+            var notifier = app.Services.GetRequiredService<IProjectionChangeNotifier>();
+            notifier.ShouldBeOfType<DaprProjectionChangeNotifier>();
+            var notificationOptions = app.Services.GetRequiredService<IOptions<ProjectionChangeNotifierOptions>>().Value;
+            notificationOptions.Transport.ShouldBe(ProjectionChangeTransport.PubSub); notificationOptions.PubSubName.ShouldBe(component);
+            notificationOptions.ProvenanceAudience.ShouldBe(appId);
+            await notifier.NotifyProjectionChangedAsync("counter", "tenant-a", cancellationToken: TestContext.Current.CancellationToken);
+            rpcObserver.PublishCalls.ShouldBe(1);
+            await notificationObserved.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            notificationHadHttpGeneration.ShouldBeFalse();
+            string persistedETag = (await etag.GetCurrentETagAsync()).ShouldNotBeNull();
+            using (var deactivateETag = new HttpRequestMessage(HttpMethod.Delete, "/actors/ETagActor/counter:tenant-a"))
+            {
+                deactivateETag.Headers.Add("dapr-api-token", appToken);
+                using var removed = await direct.SendAsync(deactivateETag, TestContext.Current.CancellationToken); removed.StatusCode.ShouldBe(HttpStatusCode.OK);
+            }
+            (await etag.GetCurrentETagAsync()).ShouldBe(persistedETag);
             string actorId = "counter:tenant-a:one";
             var actor = proxyFactory.Create(new ActorId(actorId), "ProjectionActor");
             await actor.InvokeMethodAsync(nameof(IProjectionWriteActor.UpdateProjectionAsync), ProjectionState.FromJsonElement("counter", "tenant-a", JsonSerializer.SerializeToElement(new { count = 7 })), TestContext.Current.CancellationToken);
-            using var direct = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{sidecar.AppPort}") };
+            // The real projection update emits another signed notification. Observe its completed
+            // receiver scope before asserting the final durable lease inventory.
+            await secondNotificationObserved.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            rpcObserver.PublishCalls.ShouldBe(2);
             // Re-activation must load the previously persisted projection from the real actor store.
             using (var deactivatePersisted = new HttpRequestMessage(HttpMethod.Delete, $"/actors/ProjectionActor/{actorId}"))
             {
