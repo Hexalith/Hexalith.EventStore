@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 
 using Dapr.Client;
+using Hexalith.EventStore.Contracts.Routing;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
@@ -649,8 +650,8 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         try {
             HttpClient client = _httpClientFactory.CreateClient();
-            using HttpResponseMessage response = await client
-                .GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct)
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            using HttpResponseMessage response = await DevelopmentActorStateTransport.SendAsync(client, request, _options.EventStoreAppId, ct)
                 .ConfigureAwait(false);
 
             if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.NoContent) {
@@ -1219,8 +1220,8 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         try {
             HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
-            using HttpResponseMessage response = await httpClient
-                .GetAsync($"{baseUrl}/v1.0/metadata", ct)
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/metadata");
+            using HttpResponseMessage response = await DevelopmentActorStateTransport.SendAsync(httpClient, request, _options.EventStoreAppId, ct)
                 .ConfigureAwait(false);
             _ = response.EnsureSuccessStatusCode();
 

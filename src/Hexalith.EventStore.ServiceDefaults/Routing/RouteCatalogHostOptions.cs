@@ -22,6 +22,9 @@ public sealed class RouteCatalogHostOptions
     /// return a separately owned handler and contain no application delegating handlers.</summary>
     public Func<HttpMessageHandler, HttpMessageHandler>? InvocationTransportFactory { get; set; }
 
+    /// <summary>Gets or sets explicit private Development owner-sidecar read coordinates and owner-specific API credentials.</summary>
+    public IReadOnlyList<DevelopmentActorStateOwner> DevelopmentActorStateOwners { get; set; } = [];
+
     /// <summary>Gets or sets the shared Dapr authority component. Dedicated authorities use keyPrefix name;
     /// legacy none components require an independently isolated backend when callers lack business-store access.</summary>
     public string StateStore { get; set; } = "route-catalog";

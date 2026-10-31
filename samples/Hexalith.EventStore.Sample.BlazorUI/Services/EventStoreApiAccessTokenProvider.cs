@@ -140,6 +140,7 @@ public sealed class EventStoreApiAccessTokenProvider(
 
         var payload = new Dictionary<string, object> {
             ["sub"] = subject,
+            ["eventstore:surface"] = "ui",
             ["iss"] = issuer,
             ["aud"] = audience,
             ["iat"] = now.ToUnixTimeSeconds(),

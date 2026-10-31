@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
@@ -98,13 +99,13 @@ public sealed partial class ProjectionCheckpointTracker(
                     maxSequence,
                     DateTimeOffset.UtcNow);
 
-                bool saved = await daprClient
+                bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
                         key,
                         checkpoint,
                         etag,
-                        cancellationToken: cancellationToken)
+                        cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
 
                 if (saved) {
@@ -139,13 +140,13 @@ public sealed partial class ProjectionCheckpointTracker(
         ValidateIdentity(identity);
         ArgumentNullException.ThrowIfNull(etag);
 
-        return await daprClient
+        return await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
             .TryDeleteStateAsync(
                 options.Value.CheckpointStateStoreName,
                 GetStateKey(identity),
                 etag,
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                cancellationToken: cancellationToken)
+                cancellationToken: cancellationToken), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -221,7 +222,7 @@ public sealed partial class ProjectionCheckpointTracker(
                 .GetStateAndETagAsync<ProjectionCheckpoint>(stateStoreName, scopedKey, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             if (currentScoped is null) {
-                _ = await daprClient
+                _ = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
                         scopedKey,
@@ -232,7 +233,7 @@ public sealed partial class ProjectionCheckpointTracker(
                             migratedValue,
                             DateTimeOffset.UtcNow),
                         scopedEtag,
-                        cancellationToken: cancellationToken)
+                        cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
             }
             else {
@@ -360,13 +361,13 @@ public sealed partial class ProjectionCheckpointTracker(
                     maxSequence,
                     DateTimeOffset.UtcNow);
 
-                bool saved = await daprClient
+                bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
                         key,
                         checkpoint,
                         etag,
-                        cancellationToken: cancellationToken)
+                        cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
 
                 if (saved) {
@@ -407,13 +408,13 @@ public sealed partial class ProjectionCheckpointTracker(
         ArgumentNullException.ThrowIfNull(etag);
 
         // Erase the projection-scoped checkpoint only.
-        bool erased = await daprClient
+        bool erased = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
             .TryDeleteStateAsync(
                 options.Value.CheckpointStateStoreName,
                 GetProjectionScopedStateKey(identity, projectionName),
                 etag,
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                cancellationToken: cancellationToken)
+                cancellationToken: cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
         // Ensure the migration marker is present after a successful erase (or idempotent absence) so a
@@ -471,21 +472,21 @@ public sealed partial class ProjectionCheckpointTracker(
         ValidateIdentity(identity);
         ValidateProjectionName(projectionName);
         ArgumentNullException.ThrowIfNull(etag);
-        return await daprClient.TryDeleteStateAsync(
+        return await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.TryDeleteStateAsync(
             options.Value.CheckpointStateStoreName,
             ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projectionName),
             etag,
             new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
     private async Task MarkMigratedAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken) =>
-        await daprClient
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
             .SaveStateAsync(
                 options.Value.CheckpointStateStoreName,
                 GetMigratedMarkerKey(identity, projectionName),
                 new ProjectionCheckpointMigrationMarker(true),
-                cancellationToken: cancellationToken)
+                cancellationToken: cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
     /// <inheritdoc/>
@@ -697,8 +698,8 @@ public sealed partial class ProjectionCheckpointTracker(
                         ? new ProjectionIdentityIndex(targetPageNumber + 1, Math.Min(existingScopes.Length, IdentityPageSize))
                         : index;
                     if (recoveredIndex == index
-                        || await daprClient
-                            .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, recoveredIndex, indexEtag, cancellationToken: cancellationToken)
+                        || await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                            .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, recoveredIndex, indexEtag, cancellationToken: cancellationToken), cancellationToken)
                             .ConfigureAwait(false)) {
                         return true;
                     }
@@ -715,8 +716,8 @@ public sealed partial class ProjectionCheckpointTracker(
                     // throwing for every new scope in the affected scope-index.
                     if (targetPageNumber == index.PageCount - 1 && index.LastPageCount < IdentityPageSize) {
                         ProjectionIdentityIndex correctedIndex = index with { LastPageCount = IdentityPageSize };
-                        _ = await daprClient
-                            .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, correctedIndex, indexEtag, cancellationToken: cancellationToken)
+                        _ = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                            .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, correctedIndex, indexEtag, cancellationToken: cancellationToken), cancellationToken)
                             .ConfigureAwait(false);
                     }
 
@@ -725,8 +726,8 @@ public sealed partial class ProjectionCheckpointTracker(
 
                 ProjectionIdentityScope[] updatedScopes = existingScopes.Append(scope).ToArray();
 
-                bool pageSaved = await daprClient
-                    .TrySaveStateAsync(stateStoreName, pageKey, new ProjectionIdentityScopePage(updatedScopes), pageEtag, cancellationToken: cancellationToken)
+                bool pageSaved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                    .TrySaveStateAsync(stateStoreName, pageKey, new ProjectionIdentityScopePage(updatedScopes), pageEtag, cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (!pageSaved) {
                     continue;
@@ -736,8 +737,8 @@ public sealed partial class ProjectionCheckpointTracker(
                     ? new ProjectionIdentityIndex(index.PageCount + 1, 1)
                     : index with { LastPageCount = updatedScopes.Length };
 
-                bool indexSaved = await daprClient
-                    .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, updatedIndex, indexEtag, cancellationToken: cancellationToken)
+                bool indexSaved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                    .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, updatedIndex, indexEtag, cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (indexSaved) {
                     return true;
@@ -801,8 +802,8 @@ public sealed partial class ProjectionCheckpointTracker(
                         ? new ProjectionIdentityIndex(targetPageNumber + 1, Math.Min(existingIdentities.Length, IdentityPageSize))
                         : index;
                     if (recoveredIndex == index
-                        || await daprClient
-                            .TrySaveStateAsync(stateStoreName, indexKey, recoveredIndex, indexEtag, cancellationToken: cancellationToken)
+                        || await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                            .TrySaveStateAsync(stateStoreName, indexKey, recoveredIndex, indexEtag, cancellationToken: cancellationToken), cancellationToken)
                             .ConfigureAwait(false)) {
                         return true;
                     }
@@ -818,8 +819,8 @@ public sealed partial class ProjectionCheckpointTracker(
                     // forever, exhausting retries and throwing for every new aggregate in the scope.
                     if (targetPageNumber == index.PageCount - 1 && index.LastPageCount < IdentityPageSize) {
                         ProjectionIdentityIndex correctedIndex = index with { LastPageCount = IdentityPageSize };
-                        _ = await daprClient
-                            .TrySaveStateAsync(stateStoreName, indexKey, correctedIndex, indexEtag, cancellationToken: cancellationToken)
+                        _ = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                            .TrySaveStateAsync(stateStoreName, indexKey, correctedIndex, indexEtag, cancellationToken: cancellationToken), cancellationToken)
                             .ConfigureAwait(false);
                     }
 
@@ -828,8 +829,8 @@ public sealed partial class ProjectionCheckpointTracker(
 
                 ProjectionIdentity[] updatedIdentities = existingIdentities.Append(identity).ToArray();
 
-                bool pageSaved = await daprClient
-                    .TrySaveStateAsync(stateStoreName, pageKey, new ProjectionIdentityPage(updatedIdentities), pageEtag, cancellationToken: cancellationToken)
+                bool pageSaved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                    .TrySaveStateAsync(stateStoreName, pageKey, new ProjectionIdentityPage(updatedIdentities), pageEtag, cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (!pageSaved) {
                     continue;
@@ -839,8 +840,8 @@ public sealed partial class ProjectionCheckpointTracker(
                     ? new ProjectionIdentityIndex(index.PageCount + 1, 1)
                     : index with { LastPageCount = updatedIdentities.Length };
 
-                bool indexSaved = await daprClient
-                    .TrySaveStateAsync(stateStoreName, indexKey, updatedIndex, indexEtag, cancellationToken: cancellationToken)
+                bool indexSaved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                    .TrySaveStateAsync(stateStoreName, indexKey, updatedIndex, indexEtag, cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (indexSaved) {
                     return true;

@@ -3,6 +3,10 @@
   "story": "8.2",
   "normativeDigest": "de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e",
   "eventStoreSource": "dfc0ac557c43363159b55bffb4d40feceab1f787",
+  "verificationToolchain": {
+    "cryptography": "50.0.2",
+    "baselineSourceMeaning": "Frozen vector and normative baseline; verifier dependency hashes describe current inputs."
+  },
   "files": [
     {
       "path": "g-001.json",
@@ -34,7 +38,7 @@
     },
     {
       "path": "../../../../../scripts/payload-protection/requirements.txt",
-      "sha256": "70c867286e0e8fae9c36dff5d479b0a017c1b2892e03382cbf772608714cce74",
+      "sha256": "8b5c18678b29b5e8e0fb586a35ac1dce3ccd9da321e8f12ace0e118350b4e568",
       "toolchain": "Python dependency lock"
     }
   ],

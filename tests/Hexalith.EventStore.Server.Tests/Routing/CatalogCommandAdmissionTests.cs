@@ -1,4 +1,5 @@
 using Dapr.Actors.Client;
+using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 
@@ -49,6 +50,41 @@ public sealed class CatalogCommandAdmissionTests
             statuses.ReceivedCalls().ShouldBeEmpty(); archives.ReceivedCalls().ShouldBeEmpty(); router.ReceivedCalls().ShouldBeEmpty();
         }
         (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AdvisoryStatusLostResponsePreservesSubmissionAndDurableCatalogFence()
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var first = fixture.Candidate();
+        await fixture.ActivateAsync(first);
+        DaprClient backend = Substitute.For<DaprClient>();
+        CommandStatusRecord? persisted = null;
+        backend.SaveStateAsync(
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Do<CommandStatusRecord>(status => persisted = status),
+            Arg.Any<StateOptions>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(new TimeoutException("Status persisted; response lost.")));
+        var statuses = new DaprCommandStatusStore(backend, Options.Create(new CommandStatusOptions()), NullLogger<DaprCommandStatusStore>.Instance);
+        ICommandArchiveStore archives = Substitute.For<ICommandArchiveStore>();
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(new CommandProcessingResult(true));
+        var handler = new SubmitCommandHandler(fixture.Authorities[0], statuses, archives, router, null, null,
+            new NoOpProjectionUpdateOrchestrator(), NullLogger<SubmitCommandHandler>.Instance);
+        SubmitCommand command = Command();
+
+        SubmitCommandResult result = await handler.Handle(command, default);
+
+        result.MessageId.ShouldBe(command.MessageId);
+        persisted.ShouldNotBeNull();
+        persisted.MessageId.ShouldBe(command.MessageId);
+        persisted.Status.ShouldBe(CommandStatus.Received);
+        await router.Received(1).RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+        (await fixture.Store.ReadAsync(default)).State.Leases.ShouldHaveSingleItem();
+        var successor = fixture.Candidate(2, first.RootDigest);
+        await fixture.Authorities[0].PrepareAsync(successor);
+        await Should.ThrowAsync<RouteCatalogUnavailableException>(() => fixture.Authorities[0].ReadyAsync(successor.AttemptId));
+        await Should.ThrowAsync<RouteCatalogUnavailableException>(() => fixture.Authorities[0].CommitAsync(successor.AttemptId));
     }
 
     [Theory]

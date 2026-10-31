@@ -58,7 +58,15 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                     .ThenBy(invocation => invocation.Method, StringComparer.Ordinal).ToArray(),
             }));
         }
-        return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile));
+        string? executable = null;
+        if (observation.ExecutableOwners is { } owners)
+        {
+            if (owners.Count == 0 || owners.Any(owner => string.IsNullOrWhiteSpace(owner.Key)
+                || owner.Value is not { Length: 64 } || !owner.Value.All(char.IsAsciiHexDigitLower)))
+                throw new RouteCatalogUnavailableException("The actual executable owner identities are incomplete.", RouteCatalogRefusalReason.Inventory);
+            executable = Hash(JsonSerializer.SerializeToUtf8Bytes(owners.OrderBy(owner => owner.Key, StringComparer.Ordinal).ToArray()));
+        }
+        return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile)) { ExecutableDigest = executable };
     }
 
     /// <inheritdoc/>
@@ -116,7 +124,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 !actual.ProjectionCapabilities!.Any(installed => installed.AppId == c.AppId && installed.Domain == c.Domain
                     && installed.ContractVersion == c.ContractVersion && installed.Fingerprint == c.Fingerprint
                     && installed.ProjectionTypes.Order(StringComparer.Ordinal).SequenceEqual(c.ProjectionTypes.Order(StringComparer.Ordinal), StringComparer.Ordinal)))
-            || (activation.AuxiliaryOperations ?? []).Where(a => a.AppId == actual.AppId).Any(a => !actual.AuxiliaryOperations!.Contains(a)))
+            || (activation.AuxiliaryOperations ?? []).Where(a => a.AppId == actual.AppId).Any(a => !actual.AuxiliaryOperations!.Any(installed => JsonSerializer.Serialize(installed) == JsonSerializer.Serialize(a))))
             throw new RouteCatalogUnavailableException("The proposed admission, named projection capability or auxiliary operation disagrees with installed local policy.", RouteCatalogRefusalReason.Inventory);
         return identity;
     }

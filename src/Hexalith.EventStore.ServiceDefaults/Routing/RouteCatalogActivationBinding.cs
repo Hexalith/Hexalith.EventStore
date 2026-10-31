@@ -17,14 +17,39 @@ public static class RouteCatalogActivationBinding
             || string.IsNullOrWhiteSpace(activation.Owner) || activation.RequiredHosts is not { Count: > 0 and <= 256 }
             || activation.RequiredHosts.Any(h => h is null || string.IsNullOrWhiteSpace(h.HostId)
                 || string.IsNullOrWhiteSpace(h.AppId) || !Digest(h.InventoryDigest) || !Digest(h.TopologyDigest)
-                || string.IsNullOrWhiteSpace(h.AuthenticationFingerprint))
+                || string.IsNullOrWhiteSpace(h.AuthenticationFingerprint) || h.ExecutableDigest is not null && !Digest(h.ExecutableDigest))
             || activation.RequiredHosts.Select(h => h.HostId).Distinct(StringComparer.Ordinal).Count() != activation.RequiredHosts.Count
-            || activation.RequiredHosts.Select(h => h.AppId).Distinct(StringComparer.Ordinal).Count() != activation.RequiredHosts.Count
+            || activation.RequiredHosts.GroupBy(h => h.AppId, StringComparer.Ordinal).Any(group => !RouteCatalogReplicaPolicy.Equivalent(group))
             || (activation.PredecessorRootDigest is not null && !Digest(activation.PredecessorRootDigest))
             || (activation.AuxiliaryOperations is { } auxiliary && (auxiliary.Any(a => a is null
                 || !activation.RequiredHosts.Any(h => h.AppId == a.AppId) || string.IsNullOrWhiteSpace(a.Method)
-                || string.IsNullOrWhiteSpace(a.Operation) || string.IsNullOrWhiteSpace(a.Domain))
-                || auxiliary.Distinct().Count() != auxiliary.Count))
+                || string.IsNullOrWhiteSpace(a.Operation) || string.IsNullOrWhiteSpace(a.Domain)
+                || new object?[] { a.NativeActor, a.Http, a.DomainAuxiliary, a.Sidecar, a.DaprCallback }.Count(owner => owner is not null) > 1
+                || a.DomainAuxiliary is { } domain && (envelope.SchemaVersion != 3 || !Digest(domain.CodeDigest)
+                    || string.IsNullOrWhiteSpace(domain.Owner) || string.IsNullOrWhiteSpace(domain.RequestType)
+                    || string.IsNullOrWhiteSpace(domain.ScopeMethod) || a.Method.IndexOfAny(['*', '{', '}']) >= 0)
+                || a.Sidecar is { } sidecar && (envelope.SchemaVersion != 3 || !Digest(sidecar.CodeDigest)
+                    || string.IsNullOrWhiteSpace(sidecar.Owner) || string.IsNullOrWhiteSpace(sidecar.PubSubName)
+                    || string.IsNullOrWhiteSpace(sidecar.TopicName) || a.Operation != "sdk-sidecar:domain-events"
+                    || a.Method.IndexOfAny(['*', '{', '}']) >= 0)
+                || a.DaprCallback is { } callback && (envelope.SchemaVersion != 3 || a.Http is not null || a.NativeActor is not null
+                    || callback.Kind is not ("subscribe" or "projection-notification")
+                    || a.Method != (callback.Kind == "subscribe" ? "dapr/subscribe" : "projections/changed")
+                    || a.Operation != "sdk-dapr-callback:" + callback.Kind
+                    || callback.Verbs != (callback.Kind == "subscribe" ? "GET" : "POST")
+                    || !Digest(callback.CodeDigest) || !Digest(callback.FrameworkDigest) || !Digest(callback.InventoryDigest))
+                || a.NativeActor is { } native && (envelope.SchemaVersion != 3 || a.Http is not null
+                    || native.Kind is not ("config" or "health" or "method" or "reminder" or "timer" or "deactivate")
+                    || !Digest(native.CodeDigest) || !Digest(native.FrameworkDigest) || !Digest(native.InventoryDigest)
+                    || native.Verbs != (native.Kind is "config" or "health" ? "GET" : native.Kind == "deactivate" ? "DELETE" : "PUT"))
+                || a.Http is { } http && (envelope.SchemaVersion != 3 || !Digest(http.CodeDigest) || string.IsNullOrWhiteSpace(http.Owner)
+                    || http.Grants is not { Count: > 0 } grants || grants.Any(grant => string.IsNullOrWhiteSpace(grant.Method)
+                        || string.IsNullOrWhiteSpace(grant.Verbs) || grant.Verbs.Split(' ').Any(verb => !http.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal)))
+                    || http.Verbs.Split(' ') is not { Length: > 0 } verbs
+                    || verbs.Any(verb => verb is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS"))
+                    || !verbs.Order(StringComparer.Ordinal).SequenceEqual(verbs, StringComparer.Ordinal)
+                    || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length))
+                || auxiliary.Select(operation => JsonSerializer.Serialize(operation)).Distinct(StringComparer.Ordinal).Count() != auxiliary.Count))
             || envelope.Routes.Any(r => !activation.RequiredHosts.Any(h => h.AppId == r.AppId))
             || envelope.Idempotency.Any(i => !activation.RequiredHosts.Any(h => h.AppId == i.ConsumerAppId)))
         {

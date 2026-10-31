@@ -24,6 +24,10 @@ public sealed record RouteCatalogHostObservation(string HostId, string AppId,
     RouteCatalogReceiverSurface? ReceiverSurface = null,
     IReadOnlyList<RouteOperationContract>? Operations = null)
 {
+    /// <summary>Gets SHA256 identities of the actual loaded owner implementation assemblies, without paths or credentials.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? ExecutableOwners { get; init; }
+
     /// <summary>Gets the actual fixed application closure selected by this run, including services without catalog operations.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? SelectedAppIds { get; init; }

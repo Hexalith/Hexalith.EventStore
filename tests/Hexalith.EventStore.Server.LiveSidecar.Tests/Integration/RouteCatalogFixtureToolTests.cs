@@ -47,28 +47,71 @@ public sealed class RouteCatalogFixtureToolTests
     [InlineData("complete")]
     [InlineData("timeout")]
     [InlineData("cancellation")]
+    [InlineData("timeout-closed-pipes")]
+    [InlineData("cancellation-closed-pipes")]
     public async Task OwnedInfrastructureSubprocessHasBoundedCancellationAndNormalCompletion(string mode)
     {
+        ArgumentNullException.ThrowIfNull(mode);
         string scratch = Path.Combine(Path.GetTempPath(), "catalog-tool-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(scratch);
         try
         {
             string script = Path.Combine(scratch, "tool.sh"), pid = Path.Combine(scratch, "child.pid");
-            await File.WriteAllTextAsync(script, mode != "complete" ? "sleep 60 &\necho $! > \"$1\"\nwait\n" : "printf 'completed'\n");
+            string sleep = mode.EndsWith("closed-pipes", StringComparison.Ordinal) ? "sleep 60 >/dev/null 2>/dev/null" : "sleep 60";
+            await File.WriteAllTextAsync(script, mode != "complete" ? sleep + " &\necho $! > \"$1\"\nwait\n" : "printf 'completed'\n");
             var start = new ProcessStartInfo("bash"); start.ArgumentList.Add(script); start.ArgumentList.Add(pid);
             if (mode != "complete")
             {
-                using var cancellation = new CancellationTokenSource(mode == "cancellation" ? TimeSpan.FromSeconds(1) : Timeout.InfiniteTimeSpan);
+                using var cancellation = new CancellationTokenSource(mode.StartsWith("cancellation", StringComparison.Ordinal) ? TimeSpan.FromSeconds(1) : Timeout.InfiniteTimeSpan);
                 var elapsed = Stopwatch.StartNew();
                 await Should.ThrowAsync<OperationCanceledException>(() => RouteCatalogOwnedProcess.RunAsync(start,
-                    mode == "timeout" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(10), cancellation.Token));
+                    mode.StartsWith("timeout", StringComparison.Ordinal) ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(10), cancellation.Token));
                 elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
                 int child = int.Parse(await File.ReadAllTextAsync(pid));
                 string state = "/proc/" + child + "/stat";
-                if (File.Exists(state)) (await File.ReadAllTextAsync(state)).Split(' ')[2].ShouldBe("Z");
+                // Cleanup must acknowledge owned descendants before returning; preserve the
+                // strict immediate check while accepting an already-exited /proc entry atomically.
+                string? childState = await ReadOwnedChildStateAsync(() => File.ReadAllTextAsync(state));
+                if (childState is not null) childState.ShouldBe("Z", $"Owned child {child} remained in state {childState} after cancellation cleanup.");
+                elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
             }
             else (await RouteCatalogOwnedProcess.RunAsync(start, TimeSpan.FromSeconds(1))).ShouldBe("completed");
         }
         finally { Directory.Delete(scratch, true); }
+    }
+
+    /// <summary>Accepts only process-state read failures which prove that the owned child disappeared.</summary>
+    [Theory]
+    [InlineData("file")]
+    [InlineData("directory")]
+    [InlineData("process")]
+    public async Task MissingOwnedChildStateIsAccepted(string kind)
+    {
+        Exception error = kind switch
+        {
+            "file" => new FileNotFoundException(),
+            "directory" => new DirectoryNotFoundException(),
+            "process" => new IOException("No such process", 3),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+        (await ReadOwnedChildStateAsync(() => Task.FromException<string>(error))).ShouldBeNull();
+    }
+
+    /// <summary>Preserves unrelated I/O failures while observing owned child state.</summary>
+    [Fact]
+    public async Task UnexpectedOwnedChildStateReadFailureIsPreserved()
+    {
+        var error = new IOException("Unrelated owned fixture read failure", 5);
+        IOException actual = await Should.ThrowAsync<IOException>(() => ReadOwnedChildStateAsync(() => Task.FromException<string>(error)));
+        actual.ShouldBeSameAs(error);
+    }
+
+    private static async Task<string?> ReadOwnedChildStateAsync(Func<Task<string>> read)
+    {
+        try { return (await read()).Split(' ')[2]; }
+        catch (FileNotFoundException) { return null; }
+        catch (DirectoryNotFoundException) { return null; }
+        // Linux may return ESRCH after /proc was opened; .NET preserves that errno in HResult.
+        catch (IOException error) when (error.HResult == 3) { return null; }
     }
 
     private static async Task<string> FakeDockerAsync(string scratch, string contextEndpoint)

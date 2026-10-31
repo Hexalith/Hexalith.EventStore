@@ -83,7 +83,7 @@ public partial class ProjectionNotificationController(
 
             long startedTimestamp = Stopwatch.GetTimestamp();
             Log.ActorInvocationStarted(logger, actorId, HttpContext?.TraceIdentifier, DateTimeOffset.UtcNow);
-            _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+            _ = await Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogRemoteCall.InvokeAsync(() => proxy.RegenerateAsync()).ConfigureAwait(false);
             Log.ActorInvocationCompleted(logger, actorId, HttpContext?.TraceIdentifier, DateTimeOffset.UtcNow,
                 Stopwatch.GetElapsedTime(startedTimestamp).TotalMilliseconds);
 

@@ -56,6 +56,14 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
         }
     }
 
+    /// <summary>Isolates real native actors in this fixture's bounded placement/scheduler namespace.</summary>
+    internal void ConfigureNativeActorNamespace(string value)
+    {
+        if (value.Length is < 1 or > 63 || value.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '-'))
+            throw new ArgumentException("A private native actor namespace must be a bounded DNS label.", nameof(value));
+        _start.Environment["NAMESPACE"] = value;
+    }
+
     public async Task StartAsync()
     {
         _process = Process.Start(_start) ?? throw new InvalidOperationException("Cannot start the owned catalog fixture sidecar.");

@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using System.Diagnostics;
 
@@ -224,12 +225,12 @@ public partial class EventPublisher(
                     ["cloudevent.id"] = eventEnvelope.MessageId,
                 };
 
-                await daprClient.PublishEventAsync(
+                await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.PublishEventAsync(
                     pubSubName,
                     topic,
                     publishEnvelope,
                     metadata,
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken), cancellationToken).ConfigureAwait(false);
 
                 publishedCount++;
             }

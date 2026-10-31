@@ -113,6 +113,35 @@ public class RouteCatalogTopologyIsolationTests
             .Diagnostics.Single().Code.ShouldBe("unqualified-readiness-probe-grant");
     }
 
+    [Theory]
+    [InlineData("globstar", "valid")]
+    [InlineData("double-scalar", "valid")]
+    [InlineData("globstar", "owner")]
+    [InlineData("double-scalar", "policy")]
+    [InlineData("globstar", "verb")]
+    [InlineData("double-scalar", "broader-grant")]
+    public void RetainedSdkGrantRequiresExactEndpointOwnerPolicyAndDeclaration(string shape, string fault)
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var envelope = SchemaThree(fixture.Envelope);
+        string grant = shape == "globstar" ? "/internal/dead-letters/**" : "/api/v1/commands/status/workload/*/*";
+        string pattern = shape == "globstar" ? "/internal/dead-letters/count" : "/api/v1/commands/status/workload/{tenant}/{messageId}";
+        string owner = shape == "globstar" ? "Hexalith.EventStore.Operations.Endpoints.DeadLetterOperationsEndpointExtensions"
+            : "Hexalith.EventStore.Controllers.CommandStatusController";
+        string[] policies = shape == "globstar" ? ["EventStoreHuman", "OperationsHumanRelay:count"] : ["DaprInternal:eventstore:command-status"];
+        var http = new RouteCatalogHttpTransport(owner, "GET", RouteCatalogTestFixture.Hash("actual-code")) { Grants = [new(grant, "GET")] };
+        const string operation = "sdk-http:retained";
+        var endpoint = new RouteCatalogReceiverEndpoint(pattern, ["GET"], operation,
+            fault == "policy" ? ["EventStoreHuman"] : policies, false, pattern.Contains('{'), true) { Http = http };
+        var auxiliary = new RouteCatalogAuxiliaryOperation(fixture.Hosts[0].AppId, pattern.Trim('/'), operation, "sdk-owner")
+        { Http = fault == "owner" ? http with { CodeDigest = RouteCatalogTestFixture.Hash("foreign-code") } : http };
+        void Validate() => RouteCatalogTopologyValidator.ValidateDevelopment(fixture.Observations[0].TopologyDocuments[0],
+            Acl(fixture.Hosts[0].AppId, fault == "broader-grant" ? "/**" : grant, fault == "verb" ? "POST" : "GET"),
+            envelope, fixture.Hosts, fixture.Hosts[0].AppId, [auxiliary], new(FiniteRouteCatalogReceiver.TechnicalVersion, [endpoint]));
+        if (fault == "valid") Validate();
+        else Should.Throw<RouteCatalogValidationException>(Validate);
+    }
+
     private static byte[] Acl(string caller, string method, string verb) => JsonSerializer.SerializeToUtf8Bytes(new
     {
         spec = new { accessControl = new { defaultAction = "deny", trustDomain = "public", policies = new[]

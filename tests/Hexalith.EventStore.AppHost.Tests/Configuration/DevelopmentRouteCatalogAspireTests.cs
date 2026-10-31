@@ -61,12 +61,17 @@ public sealed class DevelopmentRouteCatalogAspireTests
     [Theory(Timeout = 30000)]
     [InlineData("valid")]
     [InlineData("sdk-backend")]
+    [InlineData("replica")]
+    [InlineData("replica-owner")]
+    [InlineData("missing-replica")]
+    [InlineData("conflicting-owner")]
     [InlineData("production")]
     [InlineData("empty-owners")]
     [InlineData("missing-gateway")]
     [InlineData("duplicate-receiver")]
     [InlineData("unselected-caller")]
     [InlineData("duplicate-grant")]
+    [InlineData("missing-custody")]
     public async Task ActualResourcesOwnCanonicalCatalogFiniteAclAndPrivateAuthorityAsync(string scenario)
     {
         ArgumentNullException.ThrowIfNull(scenario);
@@ -101,16 +106,33 @@ public sealed class DevelopmentRouteCatalogAspireTests
             if (scenario == "unselected-caller") grants = [new(builder.AddProject<EventStoreProjectMetadata>("no-sidecar"), "process", ["POST"])];
             if (scenario == "duplicate-grant") grants = [grants[0], grants[0]];
             DevelopmentRouteCatalogReceiver[] receivers = [new(gateway, []), new(domain, grants)];
+            if (scenario is "replica" or "replica-owner" or "missing-replica" or "conflicting-owner")
+            {
+                var replica = Project("domain-ha", "domain-owned-session");
+                if (scenario != "missing-replica") receivers = [.. receivers, new(replica, grants)];
+                if (scenario is "replica-owner" or "conflicting-owner") owners = [.. owners,
+                    new(replica, scenario == "conflicting-owner" ? typeof(RouteCatalogCodec).Assembly : owners[0].Contracts, owners[0].Adapters)];
+            }
             if (scenario == "missing-gateway") receivers = [receivers[1]];
             if (scenario == "duplicate-receiver") receivers = [.. receivers, receivers[1]];
-            if (scenario is not ("valid" or "sdk-backend"))
+            var custody = new DevelopmentRouteCatalogCompositionOptions(Path.Combine(input, "custody"), "routing-owned-session", "owned-authority",
+                "development-v1", new Dictionary<string, string> { ["development-v1"] = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)) }, "development-v1");
+            if (scenario is not ("valid" or "sdk-backend" or "replica" or "replica-owner"))
             {
-                Should.Throw<InvalidOperationException>(() => builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session"));
+                int resources = builder.Resources.Count;
+                var refusal = Should.Throw<InvalidOperationException>(() => builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session",
+                    scenario == "missing-custody" ? null : custody));
                 builder.Resources.OfType<ParameterResource>().ShouldBeEmpty();
+                if (scenario == "missing-custody")
+                {
+                    refusal.Message.ShouldContain("empty routing cell does not prove business state is new");
+                    builder.Resources.Count.ShouldBe(resources);
+                    Directory.Exists(custody.CustodyDirectory).ShouldBeFalse();
+                }
                 return;
             }
-            await using (var catalog = sdk is not null ? builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, sdk.StateStore, "owned-session")
-                : builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session"))
+            await using (var catalog = sdk is not null ? builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, sdk.StateStore, "owned-session", custody)
+                : builder.AddEventStoreDevelopmentRouteCatalog(gateway, owners, receivers, state, "owned-session", custody))
             {
                 privateDirectory = catalog.Directory;
                 RouteCatalogEnvelope decoded = RouteCatalogCodec.Decode(await File.ReadAllBytesAsync(Path.Combine(catalog.Directory, "catalog.json"), TestContext.Current.CancellationToken), catalog.RootDigest);
@@ -164,7 +186,7 @@ public sealed class DevelopmentRouteCatalogAspireTests
                 Dictionary<string, IConfigurationRoot> configurations = [];
                 IReadOnlyList<IdempotencyCatalogEntry> installedAdmission = [];
                 RouteCatalogStateCoordinates? actualCoordinates = null;
-                foreach (var project in new[] { gateway, domain })
+                foreach (var project in receivers.Select(receiver => receiver.Project))
                 {
                     Dictionary<string, object> environment = [];
                     foreach (var callback in project.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
@@ -218,20 +240,23 @@ public sealed class DevelopmentRouteCatalogAspireTests
         {
             var configuration = configurations[host];
             string app = configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AppId"]!;
-            RouteCatalogEntry[] targets = host == "domain" ? declarations.Select(declaration => new RouteCatalogEntry(declaration.RouteId, 1,
+            RouteCatalogEntry[] targets = app == "domain-owned-session" ? declarations.Select(declaration => new RouteCatalogEntry(declaration.RouteId, 1,
                 RouteCatalogCodec.ComputeDeclarationDigest(declaration), app, DevelopmentCatalogProbeDeclarations.ReceiverMethods[declaration.RouteId],
                 declaration.ContractVersion, declaration.CredentialKind, declaration.Operation, false, "*")).ToArray() : [];
             var observed = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, app, declarations, targets, host == "eventstore" ? admission : [], [], [], TestContext.Current.CancellationToken);
-            return observed with { AuthorityCoordinates = coordinates, Operations = DevelopmentCatalogProbeDeclarations.Operations };
+            return observed with { AuthorityCoordinates = coordinates, Operations = DevelopmentCatalogProbeDeclarations.Operations,
+                ExecutableOwners = app == "domain-owned-session" ? new Dictionary<string, string> { [typeof(DevelopmentCatalogProbeDeclarations).Assembly.FullName!] =
+                    Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(DevelopmentCatalogProbeDeclarations).Assembly.Location))) } : null };
         }
-        var gateway = await Capture("eventstore"); var domain = await Capture("domain");
+        var observations = await Task.WhenAll(configurations.Keys.Select(Capture));
+        var gateway = observations.Single(observation => observation.HostId == "eventstore");
         var identity = ObservedRouteCatalogHost.Identity(gateway);
         var options = Options.Create(new RouteCatalogHostOptions { Identity = identity, Profile = "Development", DevelopmentFixture = true });
         var store = new DevelopmentCatalogModelStateStore(coordinates);
         var authority = new RouteCatalogAuthority(store, new DevelopmentRouteCatalogTrustValidator(options, environment), options,
             new ObservedRouteCatalogHost(_ => Capture("eventstore")));
         var candidate = new RouteCatalogActivation("model-rendered-input", RouteCatalogCodec.Encode(catalog), RouteCatalogCodec.ComputeRootDigest(catalog), null,
-            [identity, ObservedRouteCatalogHost.Identity(domain)], "Development-fixture", string.Empty);
+            observations.Select(ObservedRouteCatalogHost.Identity).ToArray(), "Development-fixture", string.Empty);
         candidate = candidate with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(candidate) };
         await authority.PrepareAsync(candidate, TestContext.Current.CancellationToken);
         await authority.ReadyAsync(candidate.AttemptId, TestContext.Current.CancellationToken);
