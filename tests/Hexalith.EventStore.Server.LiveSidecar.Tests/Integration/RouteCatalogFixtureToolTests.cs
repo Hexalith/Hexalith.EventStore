@@ -61,14 +61,58 @@ public sealed class RouteCatalogFixtureToolTests
                 var elapsed = Stopwatch.StartNew();
                 await Should.ThrowAsync<OperationCanceledException>(() => RouteCatalogOwnedProcess.RunAsync(start,
                     mode == "timeout" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(10), cancellation.Token));
-                elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
                 int child = int.Parse(await File.ReadAllTextAsync(pid));
                 string state = "/proc/" + child + "/stat";
-                if (File.Exists(state)) (await File.ReadAllTextAsync(state)).Split(' ')[2].ShouldBe("Z");
+                bool exited = false;
+                string? lastState = null;
+                do
+                {
+                    lastState = await ReadOwnedChildStateAsync(() => File.ReadAllTextAsync(state));
+                    exited = lastState is null or "Z";
+                    if (!exited && elapsed.Elapsed < TimeSpan.FromSeconds(7)) await Task.Delay(10);
+                }
+                while (!exited && elapsed.Elapsed < TimeSpan.FromSeconds(7));
+                exited.ShouldBeTrue($"Owned child {child} remained in state {lastState} after cancellation cleanup.");
+                elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
             }
             else (await RouteCatalogOwnedProcess.RunAsync(start, TimeSpan.FromSeconds(1))).ShouldBe("completed");
         }
         finally { Directory.Delete(scratch, true); }
+    }
+
+    /// <summary>Accepts only process-state read failures which prove that the owned child disappeared.</summary>
+    [Theory]
+    [InlineData("file")]
+    [InlineData("directory")]
+    [InlineData("process")]
+    public async Task MissingOwnedChildStateIsAccepted(string kind)
+    {
+        Exception error = kind switch
+        {
+            "file" => new FileNotFoundException(),
+            "directory" => new DirectoryNotFoundException(),
+            "process" => new IOException("No such process", 3),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+        (await ReadOwnedChildStateAsync(() => Task.FromException<string>(error))).ShouldBeNull();
+    }
+
+    /// <summary>Preserves unrelated I/O failures while observing owned child state.</summary>
+    [Fact]
+    public async Task UnexpectedOwnedChildStateReadFailureIsPreserved()
+    {
+        var error = new IOException("Unrelated owned fixture read failure", 5);
+        IOException actual = await Should.ThrowAsync<IOException>(() => ReadOwnedChildStateAsync(() => Task.FromException<string>(error)));
+        actual.ShouldBeSameAs(error);
+    }
+
+    private static async Task<string?> ReadOwnedChildStateAsync(Func<Task<string>> read)
+    {
+        try { return (await read()).Split(' ')[2]; }
+        catch (FileNotFoundException) { return null; }
+        catch (DirectoryNotFoundException) { return null; }
+        // Linux may return ESRCH after /proc was opened; .NET preserves that errno in HResult.
+        catch (IOException error) when (error.HResult == 3) { return null; }
     }
 
     private static async Task<string> FakeDockerAsync(string scratch, string contextEndpoint)

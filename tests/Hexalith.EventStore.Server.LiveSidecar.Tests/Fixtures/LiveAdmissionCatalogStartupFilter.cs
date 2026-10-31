@@ -11,7 +11,7 @@ internal sealed class LiveAdmissionCatalogStartupFilter : IStartupFilter
     {
         app.Use(async (context, following) =>
         {
-            context.Request.EnableBuffering(bufferThreshold: 30 * 1024, bufferLimit: 1024 * 1024);
+            context.Request.EnableBuffering(bufferThreshold: 30 * 1024);
             await following(context).ConfigureAwait(false);
         });
         next(app);

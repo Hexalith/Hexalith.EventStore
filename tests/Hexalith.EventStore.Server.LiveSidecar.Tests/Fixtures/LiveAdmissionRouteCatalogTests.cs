@@ -1,8 +1,13 @@
+using System.Security.Cryptography;
+using System.Text;
+
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -13,6 +18,64 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 
 public class LiveAdmissionRouteCatalogTests
 {
+    /// <summary>Preserves large nonseekable bodies, exact read positions and immutable catalog selection.</summary>
+    [Theory]
+    [InlineData("/actors/AggregateActor/tenant-b:counter:id/method/ProcessCommandAsync", false, "tenant-b", false)]
+    [InlineData("/actors/AggregateActor/tenant-b:counter:id/method/ProcessCommandAsync", false, "tenant-b", true)]
+    [InlineData("/project/rebuild/stage/v1", true, "tenant-a", false)]
+    [InlineData("/project/rebuild/stage/v1", true, "tenant-a", true)]
+    public async Task StartupBufferingPreservesLargeNonseekableRequestsAndCatalogScope(string path, bool json, string tenant, bool partial)
+    {
+        byte[] body = json
+            ? Encoding.UTF8.GetBytes("{\"tenant\":\"tenant-a\",\"padding\":\"" + new string('x', 2_097_152) + "\"}")
+            : Enumerable.Repeat((byte)255, 2_097_216).ToArray();
+        using var input = new MemoryStream(body);
+        using var observed = new LiveByteCountingStream(input);
+        observed.CanSeek.ShouldBeFalse();
+        var context = new DefaultHttpContext();
+        context.Request.Path = path;
+        context.Request.Body = observed;
+        var http = new HttpContextAccessor { HttpContext = context };
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var app = new ApplicationBuilder(services);
+        new LiveAdmissionCatalogStartupFilter().Configure(builder => builder.Run(async requestContext =>
+        {
+            using var consumed = new MemoryStream();
+            int consumedBytes = partial ? 257 : body.Length;
+            if (partial)
+            {
+                byte[] prefix = new byte[consumedBytes];
+                await requestContext.Request.Body.ReadExactlyAsync(prefix);
+                await consumed.WriteAsync(prefix);
+            }
+            else await requestContext.Request.Body.CopyToAsync(consumed);
+            consumed.Length.ShouldBe((long)consumedBytes);
+            SHA256.HashData(consumed.ToArray()).ShouldBe(SHA256.HashData(body.AsSpan(0, consumedBytes)));
+            long position = requestContext.Request.Body.Position;
+            position.ShouldBe((long)consumedBytes);
+            var (authority, _, _, _) = Create(http);
+            await using var lease = await authority.AcquireAsync();
+            lease.Snapshot.Resolve("command", tenant, "counter", "IncrementCounter").Target.ResolverTenantPattern.ShouldBe(tenant);
+            requestContext.Request.Body.Position.ShouldBe(position);
+            using var remaining = new MemoryStream();
+            await requestContext.Request.Body.CopyToAsync(remaining);
+            remaining.Length.ShouldBe(body.LongLength - consumedBytes);
+            SHA256.HashData(remaining.ToArray()).ShouldBe(SHA256.HashData(body.AsSpan(consumedBytes)));
+            requestContext.Request.Body.Position = 0;
+            using var replayed = new MemoryStream();
+            await requestContext.Request.Body.CopyToAsync(replayed);
+            replayed.Length.ShouldBe(body.LongLength);
+            SHA256.HashData(replayed.ToArray()).ShouldBe(SHA256.HashData(body));
+            observed.Bytes.ShouldBe(body.LongLength);
+        }))(app);
+        try { await app.Build()(context); }
+        finally
+        {
+            http.HttpContext = null;
+            await context.Request.Body.DisposeAsync();
+        }
+    }
+
     [Theory]
     [InlineData("/actors/AggregateActor/tenant-b:counter:id/method/ProcessCommandAsync", false, "tenant-b")]
     [InlineData("/api/v1/commands", true, "tenant-a")]
