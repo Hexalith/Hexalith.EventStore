@@ -21,4 +21,7 @@ public sealed record RouteCatalogAuxiliaryOperation(string AppId, string Method,
     /// <summary>Gets the independently observed existing native SDK actor transport, when explicitly qualified.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RouteCatalogNativeActorTransport? NativeActor { get; init; }
+    /// <summary>Gets the closed SDK discovery or signed notification callback binding.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RouteCatalogDaprCallbackTransport? DaprCallback { get; init; }
 }

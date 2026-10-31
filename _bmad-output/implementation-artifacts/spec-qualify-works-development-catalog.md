@@ -6,7 +6,7 @@ created: 2026-10-31
 
 The Works workspace upgrade requires the existing domain runtime, gateway, Admin and Operations hosts to participate in one real Development catalog. This candidate preserves the native transport qualification source at `5938ab989d905bf37ed4f72136ea65ff6094a802`, including the earlier native request buffering fix, and the packaging qualification branch at `c7b927c30f3af7a48d2f0d6aad5b822308cf0113`. Neither historical source nor its records are relabeled as current acceptance.
 
-The domain auxiliary API binds one concrete POST endpoint to its existing canonical workload policy, exact request-owner assembly, actual installed delegate and static tenant/domain extractor. The existing receiver fence and observed auxiliary inventory retain the same owner binding. Missing generation, altered code/delegate/policy, foreign tenant/domain and target overrides refuse before business work. Malformed owner scopes return400 and unauthorized owner scopes403 only after code and generation checks pass.
+The domain auxiliary API binds one concrete POST endpoint to its existing canonical workload policy, exact request-owner assembly, actual installed delegate and static tenant/domain extractor. The existing receiver fence and observed auxiliary inventory retain the same owner binding. Missing generation, altered code/delegate/policy, foreign tenant/domain and target overrides refuse before business work. Malformed owner scopes return 400 and unauthorized owner scopes 403 only after code and generation checks pass.
 
 The SDK subscription mapper now provides its own private delegate witness. Its configured topic and existing channel policy are observed without turning ordinary Dapr pub/sub deliveries into workload JWT calls. Operations similarly observes only its five existing compiled dead-letter operator endpoints, with the original human, channel, tenant and role checks retained. These additions create no public message operations or permissions.
 
@@ -36,3 +36,11 @@ epoch; it does not admit ordinary service calls to public UI-only operations.
 Stable retained digest-key custody, changed-coordinate successor composition,
 complete rollback capture/restore, canonical Works gateway/cohort qualification and
 new exact-source hosted CI remain pending. No publication is claimed.
+
+The subsequent reconciliation preserves the complete qualification branch through
+`6b9004d942e280724ca5bf554f3862ab23af68a0`, including genuine native SDK callback
+ownership, immutable publication recorder fixtures and both Direct notifier RPC
+fences. Both ETag RPC boundaries already receive caller cancellation. Merge
+resolution retains all callback/domain/subscription owner bindings and the strict
+owned-process acknowledgement before return; atomic disappearance observations
+continue to distinguish vanished children from unrelated I/O errors.

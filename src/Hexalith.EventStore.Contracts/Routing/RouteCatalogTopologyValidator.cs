@@ -148,14 +148,26 @@ public static class RouteCatalogTopologyValidator
         if (RouteCatalogDaprGrant.Prefix(grant, technical: true) is null) throw Failure("unsupported-technical-acl-pattern");
         var reachable = receiver.Endpoints.Where(endpoint => RouteCatalogDaprGrant.Intersects(grant, endpoint.Pattern)
             || RouteCatalogDaprGrant.Describes(grant, endpoint.Pattern)).ToArray();
-        var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null)).ToArray();
+        var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.DaprCallback is not null)).ToArray();
         if (technical.Length == 0) return false;
         if (verbs.Length == 0 || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length
             || verbs.Any(verb => !technical.Any(endpoint => endpoint.Methods.Contains(verb, StringComparer.Ordinal))))
             throw Failure("unqualified-technical-http-verb");
         foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
         {
-            if (endpoint.NativeActor is { } native)
+            if (endpoint.DaprCallback is { } callback)
+            {
+                string expected = callback.Kind == "subscribe" ? "GET" : "POST";
+                string path = callback.Kind == "subscribe" ? "dapr/subscribe" : "projections/changed";
+                if (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.Anonymous || endpoint.IsPattern
+                    || !endpoint.Policies.SequenceEqual(["EventStoreSidecarChannel"], StringComparer.Ordinal)
+                    || callback.Kind is not ("subscribe" or "projection-notification") || endpoint.Pattern.Trim('/') != path
+                    || !endpoint.Methods.SequenceEqual([expected], StringComparer.Ordinal) || callback.Verbs != expected
+                    || new[] { callback.CodeDigest, callback.FrameworkDigest, callback.InventoryDigest }.Any(digest => digest is not { Length: 64 } || !digest.All(char.IsAsciiHexDigitLower))
+                    || !auxiliary.Any(operation => operation.AppId == localAppId && operation.Method == path && operation.Operation == endpoint.Operation && operation.DaprCallback == callback))
+                    throw Failure("unbound-sdk-dapr-callback-receiver");
+            }
+            else if (endpoint.NativeActor is { } native)
             {
                 string expected = native.Kind is "config" or "health" ? "GET" : native.Kind == "deactivate" ? "DELETE" : "PUT";
                 if (endpoint.Anonymous || !endpoint.Policies.SequenceEqual(["EventStoreSidecarChannel"], StringComparer.Ordinal)

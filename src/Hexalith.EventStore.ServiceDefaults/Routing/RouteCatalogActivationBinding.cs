@@ -24,7 +24,7 @@ public static class RouteCatalogActivationBinding
             || (activation.AuxiliaryOperations is { } auxiliary && (auxiliary.Any(a => a is null
                 || !activation.RequiredHosts.Any(h => h.AppId == a.AppId) || string.IsNullOrWhiteSpace(a.Method)
                 || string.IsNullOrWhiteSpace(a.Operation) || string.IsNullOrWhiteSpace(a.Domain)
-                || new object?[] { a.NativeActor, a.Http, a.DomainAuxiliary, a.Sidecar }.Count(owner => owner is not null) > 1
+                || new object?[] { a.NativeActor, a.Http, a.DomainAuxiliary, a.Sidecar, a.DaprCallback }.Count(owner => owner is not null) > 1
                 || a.DomainAuxiliary is { } domain && (envelope.SchemaVersion != 3 || !Digest(domain.CodeDigest)
                     || string.IsNullOrWhiteSpace(domain.Owner) || string.IsNullOrWhiteSpace(domain.RequestType)
                     || string.IsNullOrWhiteSpace(domain.ScopeMethod) || a.Method.IndexOfAny(['*', '{', '}']) >= 0)
@@ -32,6 +32,12 @@ public static class RouteCatalogActivationBinding
                     || string.IsNullOrWhiteSpace(sidecar.Owner) || string.IsNullOrWhiteSpace(sidecar.PubSubName)
                     || string.IsNullOrWhiteSpace(sidecar.TopicName) || a.Operation != "sdk-sidecar:domain-events"
                     || a.Method.IndexOfAny(['*', '{', '}']) >= 0)
+                || a.DaprCallback is { } callback && (envelope.SchemaVersion != 3 || a.Http is not null || a.NativeActor is not null
+                    || callback.Kind is not ("subscribe" or "projection-notification")
+                    || a.Method != (callback.Kind == "subscribe" ? "dapr/subscribe" : "projections/changed")
+                    || a.Operation != "sdk-dapr-callback:" + callback.Kind
+                    || callback.Verbs != (callback.Kind == "subscribe" ? "GET" : "POST")
+                    || !Digest(callback.CodeDigest) || !Digest(callback.FrameworkDigest) || !Digest(callback.InventoryDigest))
                 || a.NativeActor is { } native && (envelope.SchemaVersion != 3 || a.Http is not null
                     || native.Kind is not ("config" or "health" or "method" or "reminder" or "timer" or "deactivate")
                     || !Digest(native.CodeDigest) || !Digest(native.FrameworkDigest) || !Digest(native.InventoryDigest)

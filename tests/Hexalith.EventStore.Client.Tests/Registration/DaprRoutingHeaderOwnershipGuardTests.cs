@@ -14,11 +14,23 @@ public sealed class DaprRoutingHeaderOwnershipGuardTests {
     [InlineData("dapr-api-token")]
     public void GuardDetection_WithHostLocalSetter_ReportsTheOffendingHost(string header) {
         string[] violations = FindViolations(
-            "samples/Example/Services/RequestHandler.cs",
-            "public sealed class RequestHandler : DelegatingHandler { request.Headers.TryAddWithoutValidation(\"" + header + "\", appId); }");
+            "samples/Example/Services/DaprAppIdHandler.cs",
+            "public sealed class DaprAppIdHandler : DelegatingHandler { request.Headers.TryAddWithoutValidation(\"" + header + "\", appId); }");
 
         violations.ShouldNotBeEmpty();
         violations.ShouldAllBe(static violation => violation.Contains("samples/Example", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("dapr-app-id")]
+    [InlineData("dapr-api-token")]
+    public void GuardDetection_WithUnnamedHostHeaderSetter_ReportsTheOffendingHost(string header) {
+        string[] violations = FindViolations(
+            "samples/Example/Services/UnownedRoutingHandler.cs",
+            "request.Headers.TryAddWithoutValidation(\"" + header + "\", value);");
+
+        violations.Length.ShouldBe(1);
+        violations[0].ShouldContain("samples/Example/Services/UnownedRoutingHandler.cs");
     }
 
     [Fact]

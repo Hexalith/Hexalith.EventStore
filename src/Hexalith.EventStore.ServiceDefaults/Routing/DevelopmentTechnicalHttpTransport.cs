@@ -66,7 +66,8 @@ public static class DevelopmentTechnicalHttpTransport
         return new(type.FullName!, string.Join(' ', verbs), digest);
     }
 
-    private static bool ExecutesAction(RequestDelegate? request, ControllerActionDescriptor action)
+    /// <summary>Verifies the actual selected MVC delegate captures the same action descriptor.</summary>
+    internal static bool ExecutesAction(RequestDelegate? request, ControllerActionDescriptor action)
     {
         if (request is null || request.GetInvocationList().Length != 1 || request.Target is not { } closure
             || request.Method.Module.Assembly != typeof(ControllerBase).Assembly
@@ -100,9 +101,11 @@ public static class DevelopmentTechnicalHttpTransport
                     http = owner with { Verbs = string.Join(' ', endpoints.SelectMany(endpoint => endpoint.Methods).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)),
                         Grants = endpoints.SelectMany(endpoint => endpoint.Http!.Grants ?? []).Distinct().OrderBy(grant => grant.Method, StringComparer.Ordinal).ThenBy(grant => grant.Verbs, StringComparer.Ordinal).ToArray() };
                 }
+                if (endpoints.Any(endpoint => endpoint.DaprCallback != first.DaprCallback))
+                    throw new RouteCatalogUnavailableException("The same Dapr callback has conflicting actual subscription inventories.");
                 if (endpoints.Any(endpoint => endpoint.NativeActor != first.NativeActor))
                     throw new RouteCatalogUnavailableException("The same native route has conflicting installed framework inventories.");
-                return new RouteCatalogAuxiliaryOperation(appId, first.Pattern.TrimStart('/'), first.Operation!, domain) { Http = http, NativeActor = first.NativeActor };
+                return new RouteCatalogAuxiliaryOperation(appId, first.Pattern.TrimStart('/'), first.Operation!, domain) { Http = http, NativeActor = first.NativeActor, DaprCallback = first.DaprCallback };
             }).ToArray();
     }
 

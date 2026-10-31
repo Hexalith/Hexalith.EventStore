@@ -68,7 +68,7 @@ public partial class DaprProjectionChangeNotifier(
             new ActorId(actorId),
             ETagActor.ETagActorTypeName);
 
-        _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+        _ = await RouteCatalogRemoteCall.InvokeAsync(() => proxy.RegenerateAsync(), cancellationToken).ConfigureAwait(false);
 
         // Broadcast to SignalR clients (fail-open — ADR-18.5a)
         try {
@@ -159,7 +159,7 @@ public partial class DaprProjectionChangeNotifier(
             new ActorId(actorId),
             ETagActor.ETagActorTypeName);
 
-        _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+        _ = await RouteCatalogRemoteCall.InvokeAsync(() => proxy.RegenerateAsync(), cancellationToken).ConfigureAwait(false);
 
         // Broadcast to SignalR clients (fail-open — ADR-18.5a)
         try {

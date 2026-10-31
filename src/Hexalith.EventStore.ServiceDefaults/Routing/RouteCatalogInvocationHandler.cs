@@ -137,7 +137,7 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         RouteCatalogDispatchLease lease = await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var release = lease.ConfigureAwait(false);
         if (!lease.Snapshot.Envelope.Routes.Any(r => r.AppId == appId && r.Method == method)
-            && !lease.Snapshot.AuxiliaryOperations.Any(a => a.NativeActor is null && a.AppId == appId && (a.Http is null
+            && !lease.Snapshot.AuxiliaryOperations.Any(a => a.NativeActor is null && a.DaprCallback is null && a.AppId == appId && (a.Http is null
                 ? a.Method == method : DevelopmentTechnicalHttpTransport.Matches(a, rawMethod, request.Method.Method))))
             throw new RouteCatalogUnavailableException("The Dapr invocation target is outside the committed catalog and auxiliary inventory.");
         request.Headers.Remove(RootHeader);
