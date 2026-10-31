@@ -42,6 +42,7 @@
     <Project Path="src/Hexalith.EventStore/Hexalith.EventStore.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Hexalith.EventStore.Platform.IntegrationTests/Hexalith.EventStore.Platform.IntegrationTests.csproj" />
     <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Hexalith.EventStore.Admin.Abstractions.Tests/Hexalith.EventStore.Admin.Abstractions.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Admin.Cli.Tests/Hexalith.EventStore.Admin.Cli.Tests.csproj" />

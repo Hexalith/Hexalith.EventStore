@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <IsTestProject>true</IsTestProject>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Hexalith.EventStore.Testing.Integration/Hexalith.EventStore.Testing.Integration.csproj" Condition="'$(UseHexalithProjectReferences)' == 'true'" />
+    <PackageReference Include="Hexalith.EventStore.Testing.Integration" Condition="'$(UseHexalithProjectReferences)' != 'true'" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="StackExchange.Redis" />
+  </ItemGroup>
+  <ItemGroup><Using Include="Xunit" /></ItemGroup>
+</Project>
