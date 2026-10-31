@@ -31,6 +31,33 @@ public class RouteCatalogV3Tests
         Should.Throw<RouteCatalogValidationException>(() => VersionedRouteCatalogBuilder.Build(input));
     }
 
+    [Theory]
+    [InlineData("projection")]
+    [InlineData("delegated-query")]
+    public void InternalOperationsCannotBeExposedPubliclyEvenWithFreshDigests(string kind)
+    {
+        var input = Input(8);
+        var declaration = input.Declarations.First(d => kind == "projection" ? d.Kind == "projection" : d.Execution!.RequiresDelegatedContext);
+        var changed = input.Operations.Single(o => o.RouteId == declaration.RouteId) with { Ingress = "public" };
+        changed = changed with { Digest = RouteCatalogCodec.ComputeOperationContractDigest(changed) };
+        Should.Throw<RouteCatalogValidationException>(() => VersionedRouteCatalogBuilder.Build(input with
+        { Operations = input.Operations.Select(o => o.RouteId == changed.RouteId ? changed : o).ToArray() }))
+            .Diagnostics.ShouldContain(d => d.Code == "internal-operation-is-public" && d.Path == declaration.RouteId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DuplicateOwnerDiagnosticIdentifiesTheRoute(bool operation)
+    {
+        var input = Input(8);
+        string route = input.Declarations[0].RouteId;
+        var invalid = operation ? input with { Operations = [.. input.Operations, input.Operations.Single(o => o.RouteId == route)] }
+            : input with { Declarations = [.. input.Declarations, input.Declarations[0]] };
+        Should.Throw<RouteCatalogValidationException>(() => VersionedRouteCatalogBuilder.Build(invalid))
+            .Diagnostics.ShouldContain(d => d.Code == "duplicate-owner-operation" && d.Path == route);
+    }
+
     [Fact]
     public void SuppliedCommittedRootMustMatchTheExactHistoryBytes()
     {

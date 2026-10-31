@@ -209,7 +209,7 @@ public class RouteCatalogV3IngressTests
         using var queryResponse = await client.PostAsJsonAsync("/api/v1/queries", new SubmitQueryRequest("tenant-a", query.Domain, "counter-a", query.MessageType!));
         queryResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden); leases.ShouldBe(0);
         using var generatedResponse = await client.GetAsync("/catalog-v3-generated-probe");
-        generatedResponse.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable); generated.Effects.ShouldBe(0); leases.ShouldBe(0);
+        generatedResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden); generated.Effects.ShouldBe(0); leases.ShouldBe(0);
         using var metadata = await client.GetAsync("/api/v1/routing/catalog");
         metadata.StatusCode.ShouldBe(HttpStatusCode.OK);
         string content = await metadata.Content.ReadAsStringAsync();

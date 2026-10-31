@@ -61,6 +61,58 @@ public class RouteCatalogTopologyIsolationTests
             .TopologyDigest.ShouldNotBe(identity.TopologyDigest);
     }
 
+    [Theory]
+    [InlineData("process", "valid", null)]
+    [InlineData("process/*", "valid", null)]
+    [InlineData("process", "missing-fence", "missing-effective-finite-receiver-fence")]
+    [InlineData("process", "no-parent", "acl-grant-has-no-finite-authenticated-receiver")]
+    [InlineData("process", "anonymous-child", "reachable-receiver-is-not-an-exact-authenticated-operation")]
+    [InlineData("process/*", "pattern-child", "reachable-receiver-is-not-an-exact-authenticated-operation")]
+    [InlineData("process", "wrong-operation", "reachable-receiver-is-not-an-exact-authenticated-operation")]
+    [InlineData("process", "wrong-verb", "unbounded-acl-http-verb")]
+    [InlineData("process/*", "no-child-inventory", "undeclared-acl-operation")]
+    public void PrefixGrantsRequireAnExactFiniteAuthenticatedReceiver(string method, string fault, string? refusal)
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var envelope = SchemaThree(fixture.Envelope);
+        const string operation = "domain-service:process";
+        var endpoints = new List<RouteCatalogReceiverEndpoint>
+        {
+            new("/process", ["POST"], operation, ["workload-policy"], false, false, true),
+            new("/process/child", ["POST"], operation, ["workload-policy"], false, false, true),
+            // Reachable denied endpoints do not gain authority from a prefix transport rule.
+            new("/process/{**rest}", ["POST"], null, [], true, true, false),
+        };
+        if (fault == "no-parent") endpoints.RemoveAt(0);
+        if (fault == "anonymous-child") endpoints[1] = endpoints[1] with { Anonymous = true };
+        if (fault == "pattern-child") endpoints[1] = endpoints[1] with { Pattern = "/process/{id}", IsPattern = true };
+        if (fault == "wrong-operation") endpoints[1] = endpoints[1] with { Operation = "wrong" };
+        var receiver = new RouteCatalogReceiverSurface(fault == "missing-fence" ? "missing" : FiniteRouteCatalogReceiver.Version, endpoints);
+        string verb = fault == "wrong-verb" ? "GET" : "POST";
+        var auxiliary = fault == "no-child-inventory" ? Array.Empty<RouteCatalogAuxiliaryOperation>()
+            : new[] { new RouteCatalogAuxiliaryOperation("sample", "process/child", operation, "counter") };
+        void Validate() => RouteCatalogTopologyValidator.ValidateDevelopment(fixture.Observations[0].TopologyDocuments[0], Acl(fixture.Hosts[0].AppId, method, verb),
+            envelope, fixture.Hosts, "sample", auxiliary, receiver);
+        if (refusal is null) Validate();
+        else Should.Throw<RouteCatalogValidationException>(Validate).Diagnostics.Single().Code.ShouldBe(refusal);
+    }
+
+    [Fact]
+    public void UnqualifiedInventoriesAndReadinessGrantsHaveSpecificRefusals()
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var envelope = SchemaThree(fixture.Envelope);
+        string[] selected = fixture.Hosts.Select(host => host.AppId).ToArray();
+        var component = fixture.Observations[0].TopologyDocuments[0];
+        Should.Throw<RouteCatalogValidationException>(() => RouteCatalogTopologyValidator.ValidateDevelopment(component, Acl("worker", "ready", "GET"), envelope,
+            fixture.Hosts, "sample", null, null, [.. selected, selected[0]], []))
+            .Diagnostics.Single().Code.ShouldBe("unqualified-selected-application-inventory");
+        Should.Throw<RouteCatalogValidationException>(() => RouteCatalogTopologyValidator.ValidateDevelopment(component, Acl("worker", "ready", "GET"), envelope,
+            fixture.Hosts, "sample", null, new(FiniteRouteCatalogReceiver.Version, [new("/ready", ["GET"], null, [], false, false, false)]),
+            [.. selected, "worker"], [new("worker", "ready", ["GET"])]))
+            .Diagnostics.Single().Code.ShouldBe("unqualified-readiness-probe-grant");
+    }
+
     private static byte[] Acl(string caller, string method, string verb) => JsonSerializer.SerializeToUtf8Bytes(new
     {
         spec = new { accessControl = new { defaultAction = "deny", trustDomain = "public", policies = new[]

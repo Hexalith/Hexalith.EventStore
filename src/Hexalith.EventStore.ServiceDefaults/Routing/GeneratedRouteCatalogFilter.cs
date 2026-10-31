@@ -40,7 +40,9 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
         try
         {
             ActionExecutedContext executed = await next().ConfigureAwait(false);
-            if (!context.HttpContext.Items.ContainsKey(ValidatedKey) && executed.Exception is null
+            if (context.HttpContext.Items.ContainsKey(EligibilityRefusedKey))
+                executed.Result = new StatusCodeResult(403);
+            else if (!context.HttpContext.Items.ContainsKey(ValidatedKey) && executed.Exception is null
                 && !IsEarlyFailure(executed.Result))
                 executed.Result = new StatusCodeResult(503);
         }
@@ -50,6 +52,7 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
             context.HttpContext.Items.Remove(MetadataKey);
             context.HttpContext.Items.Remove(LoggerKey);
             context.HttpContext.Items.Remove(ValidatedKey);
+            context.HttpContext.Items.Remove(EligibilityRefusedKey);
             context.HttpContext.Items.Remove(RouteCatalogGeneratedAction.ValidatorKey);
         }
     }
@@ -72,7 +75,10 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
             var selected = lease.Snapshot.Resolve(metadata.Kind, tenant, domain, discriminator);
             if (lease.Snapshot.Envelope.SchemaVersion == 3
                 && !Authentication.RouteCatalogSurfacePolicy.Allows(lease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId), context.User))
-                throw new RouteCatalogUnavailableException("The authenticated generated-ingress surface cannot invoke this operation.");
+            {
+                context.Items[EligibilityRefusedKey] = true;
+                return false;
+            }
             RouteContractDeclaration[] compiled = [.. CompiledDeclarations.GetOrAdd(metadata.ContractType.Assembly, static assembly => CompiledRouteCatalogDeclarations.Read([assembly]))
                 .Where(d => d.Kind == metadata.Kind && d.Domain == domain && CommandDiscriminatorCompatibility.Matches(d, discriminator))];
             if (compiled.Length != 1 || RouteCatalogCodec.ComputeDeclarationDigest(compiled[0]) != selected.Target.DeclarationDigest)
@@ -102,6 +108,7 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
     private static readonly object MetadataKey = new();
     private static readonly object LoggerKey = new();
     private static readonly object ValidatedKey = new();
+    private static readonly object EligibilityRefusedKey = new();
 
     private static string Read(Type type, string property) => type.GetProperty(property, BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as string
         ?? throw new RouteCatalogUnavailableException("Generated contract declaration is unavailable.");

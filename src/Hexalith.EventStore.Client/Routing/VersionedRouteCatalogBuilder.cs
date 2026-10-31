@@ -15,9 +15,11 @@ public static class VersionedRouteCatalogBuilder
         if (predecessor is not null && predecessor.Generation >= input.Generation)
             throw new RouteCatalogValidationException([new("$.generation", "non-successor-generation")]);
         foreach (var declaration in input.Declarations) RouteCatalogValidator.ValidateDeclaration(declaration);
-        if (input.Declarations.Select(d => d.RouteId).Distinct(StringComparer.Ordinal).Count() != input.Declarations.Count
-            || input.Operations.Select(o => o.RouteId).Distinct(StringComparer.Ordinal).Count() != input.Operations.Count)
-            throw new RouteCatalogValidationException([new("$.declarations", "duplicate-owner-operation")]);
+        var duplicates = input.Declarations.Select(d => d.RouteId).GroupBy(id => id, StringComparer.Ordinal).Where(group => group.Count() > 1)
+            .Select(group => group.Key).Concat(input.Operations.Select(o => o.RouteId).GroupBy(id => id, StringComparer.Ordinal)
+                .Where(group => group.Count() > 1).Select(group => group.Key)).Distinct(StringComparer.Ordinal).ToArray();
+        if (duplicates.Length > 0)
+            throw new RouteCatalogValidationException(duplicates.Select(id => new RouteCatalogDiagnostic(id, "duplicate-owner-operation")).ToArray());
         var declarations = input.Declarations.ToDictionary(d => d.RouteId, StringComparer.Ordinal);
         var operations = input.Operations.ToDictionary(o => o.RouteId, StringComparer.Ordinal);
         var routes = input.Bindings.Select(binding =>
