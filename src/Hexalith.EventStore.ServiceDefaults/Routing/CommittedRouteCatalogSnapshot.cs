@@ -45,7 +45,7 @@ public sealed class CommittedRouteCatalogSnapshot
         RootDigest = rootDigest;
         Epoch = epoch;
         LocalAppId = localAppId;
-        AuxiliaryOperations = Array.AsReadOnly((auxiliaryOperations ?? []).ToArray());
+        AuxiliaryOperations = Array.AsReadOnly((auxiliaryOperations ?? []).Select(operation => operation with { Http = operation.Http is { } http ? http with { Grants = http.Grants is null ? null : Array.AsReadOnly(http.Grants.ToArray()) } : null }).ToArray());
         ProjectionCapabilities = Array.AsReadOnly((projectionCapabilities ?? []).Select(c => c with
         { ProjectionTypes = Array.AsReadOnly(c.ProjectionTypes.ToArray()) }).ToArray());
     }

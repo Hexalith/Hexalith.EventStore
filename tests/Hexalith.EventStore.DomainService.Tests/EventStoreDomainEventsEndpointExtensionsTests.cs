@@ -4,6 +4,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Subscriptions;
 using Hexalith.EventStore.DomainService.Tests.Fixtures;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -56,6 +57,39 @@ public sealed class EventStoreDomainEventsEndpointExtensionsTests {
         ITopicMetadata topicMetadata = endpoint.Metadata.GetMetadata<ITopicMetadata>().ShouldNotBeNull();
         topicMetadata.PubsubName.ShouldBe("event-pubsub");
         topicMetadata.Name.ShouldBe("widgets.events");
+    }
+
+    [Theory]
+    [InlineData("removed")]
+    [InlineData("component")]
+    [InlineData("topic")]
+    [InlineData("extra")]
+    [InlineData("raw")]
+    [InlineData("dead-letter")]
+    [InlineData("declarative-extra")]
+    public async Task SameActualDelegateCannotHideChangedSubscriptionMetadata(string mutation)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.Configuration["Dapr:DeclarativeSubscriptions"] = (mutation == "declarative-extra").ToString();
+        builder.Services.AddEventStoreDomainEvents(typeof(WidgetCreated).Assembly, options => {
+            options.SubscriptionRoute = "/widgets/events"; options.PubSubName = "event-pubsub"; options.TopicName = "widgets.events";
+        });
+        await using var app = builder.Build();
+        app.MapEventStoreDomainEvents();
+        var endpoint = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints).OfType<RouteEndpoint>().Single();
+        var witness = endpoint.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>().ShouldNotBeNull();
+        witness.Observe(endpoint).TopicName.ShouldBe("widgets.events");
+        var metadata = endpoint.Metadata.Where(item => item is not ITopicMetadata).ToList();
+        if (mutation != "removed") metadata.Add(mutation switch {
+            "component" => new TopicAttribute("foreign-component", "widgets.events") { EnableRawPayload = false },
+            "topic" => new TopicAttribute("event-pubsub", "foreign.events") { EnableRawPayload = false },
+            "raw" => new TopicAttribute("event-pubsub", "widgets.events") { EnableRawPayload = true },
+            "dead-letter" => new TopicAttribute("event-pubsub", "widgets.events") { EnableRawPayload = false, DeadLetterTopic = "foreign.dead-letter" },
+            _ => new TopicAttribute("event-pubsub", "widgets.events") { EnableRawPayload = false },
+        });
+        if (mutation == "extra") metadata.Add(new TopicAttribute("event-pubsub", "widgets.events") { EnableRawPayload = false });
+        var changed = new RouteEndpoint(endpoint.RequestDelegate, endpoint.RoutePattern, endpoint.Order, new EndpointMetadataCollection(metadata), endpoint.DisplayName);
+        Should.Throw<RouteCatalogUnavailableException>(() => witness.Observe(changed));
     }
 
     [Theory]

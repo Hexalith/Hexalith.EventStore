@@ -17,6 +17,13 @@ public static class DevelopmentRouteCatalogCallerExtensions
     {
         ArgumentNullException.ThrowIfNull(services); ArgumentNullException.ThrowIfNull(configuration); ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         if (string.IsNullOrEmpty(configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"])) return services;
+        if (configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Role"] == "aux-client")
+        {
+            if (configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AuthorityRole"] is not null
+                || !services.Any(descriptor => descriptor.ServiceType == typeof(DevelopmentAuxiliaryClientCatalogRegistration)))
+                throw new RouteCatalogUnavailableException("The explicit auxiliary caller requires its installed strict receiver-free profile and cannot select a competing authority role.");
+            return services;
+        }
         if (configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AuthorityRole"] != RouteCatalogAuthorityComponentPolicy.IsolatedRole)
             throw new RouteCatalogUnavailableException("Caller-only enrollment requires a dedicated, independently isolated authority component.");
         string actualAppId = configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AppId"] ?? appId;
@@ -34,7 +41,17 @@ public static class DevelopmentRouteCatalogCallerExtensions
 
     /// <summary>Captures the real caller host using unchanged finite-v1 controls; ordinary UI routing and outbound credential channels stay intact.</summary>
     public static WebApplication UseEventStoreDevelopmentCallerCatalog(this WebApplication app)
-        => FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app, endpoint =>
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        if (!string.IsNullOrEmpty(app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"])
+            && app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Role"] == "aux-client")
+        {
+            if (app.Services.GetService<DevelopmentAuxiliaryClientCatalogRegistration>() is null
+                || app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AuthorityRole"] is not null)
+                throw new RouteCatalogUnavailableException("The explicit auxiliary caller profile is not installed coherently.");
+            return app;
+        }
+        return FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app, endpoint =>
         {
             if (endpoint.Metadata.GetMetadata<RouteCatalogControlEndpointMetadata>() is null) return null;
             string method = endpoint.RoutePattern.RawText?.Trim('/') ?? string.Empty;
@@ -45,4 +62,5 @@ public static class DevelopmentRouteCatalogCallerExtensions
             return operation is not null && endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(data => data.Policy).SequenceEqual([policy], StringComparer.Ordinal)
                 ? operation : null;
         });
+    }
 }

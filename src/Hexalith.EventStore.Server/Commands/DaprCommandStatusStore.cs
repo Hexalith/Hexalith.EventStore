@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Dapr.Client;
 
@@ -37,12 +38,12 @@ public class DaprCommandStatusStore(
             { "ttlInSeconds", opts.TtlSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture) },
         };
 
-        await daprClient.SaveStateAsync(
+        await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.SaveStateAsync(
             opts.StateStoreName,
             key,
             status,
             metadata: metadata,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken), cancellationToken).ConfigureAwait(false);
 
         logger.LogDebug(
             "Command status written: MessageId={MessageId}, TenantId={TenantId}, Status={Status}",

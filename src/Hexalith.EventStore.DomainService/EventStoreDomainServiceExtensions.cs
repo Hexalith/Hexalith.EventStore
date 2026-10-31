@@ -224,7 +224,10 @@ public static class EventStoreDomainServiceExtensions {
         _ = app.MapEventStoreDomainService();
 
         _ = Hexalith.EventStore.ServiceDefaults.Routing.FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app,
-            endpoint => EventStoreDomainServiceRoutes.Operational.SingleOrDefault(route => route.Route == endpoint.RoutePattern.RawText)?.Operation);
+            endpoint => endpoint.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>() is not null
+                ? DomainRouteCatalogSidecarMetadata.Operation
+                : EventStoreDomainServiceRoutes.Operational.SingleOrDefault(route => route.Route == endpoint.RoutePattern.RawText)?.Operation,
+            DomainRouteCatalogSidecarMetadata.ObserveEndpoint);
 
         // Typed-reminder actor routes (AD-20 R6), wired only when AddEventStoreReminders registered the runtime.
         // MapEventStoreReminders skips the Dapr actor handlers when the host already mapped them; the
