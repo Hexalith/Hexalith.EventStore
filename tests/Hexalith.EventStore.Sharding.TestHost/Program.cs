@@ -4,6 +4,7 @@ RunBinding binding = RunBinding.LoadHost(Environment.GetEnvironmentVariable(RunB
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton(binding);
 builder.Services.AddSingleton<RunFence>();
+builder.Services.AddSingleton<AttemptJournal>();
 builder.Services.AddActors(options =>
 {
     options.UseJsonSerialization = true;

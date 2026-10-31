@@ -9,10 +9,12 @@ namespace Hexalith.EventStore.Sharding.TestHost;
 /// <param name="Generation">The explicitly requested positive generation.</param>
 /// <param name="Count">The reservation size.</param>
 /// <param name="SeedCeiling">The internal test seed, allowed only at an admitted zero ceiling.</param>
+/// <param name="OperationId">An optional observation identity; it never deduplicates execution.</param>
 public sealed record ShardRequest(
     string Operation,
     string TenantId,
     string Domain,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)] long Generation,
     int Count = 0,
-    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)] long SeedCeiling = 0);
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)] long SeedCeiling = 0,
+    string? OperationId = null);

@@ -55,8 +55,10 @@ That explicit test proves lifecycle cancellation and teardown at the actual
 operator deadline, including expiry during startup. It supplies no live
 provider-state evidence for writes racing expiry. `ShardActorExpiryTests`
 instead invokes the actual actor with isolated staged/committed state and pauses
-its read, stage and save boundaries; these deterministic checks prove denial and
-unchanged state at those boundaries. Focused local checks require no Docker:
+its read, stage and save boundaries. Entry/read/stage expiry is a known denial;
+once saving starts cancellation is uncertain and propagates. The gated fake's
+save cancellation is known to precede its commit; only that instrumentation proves
+unchanged state there. Focused local checks require no Docker:
 
 ```bash
 dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*FixturePreflightTests' -class '*TransportLifecycleTests' -class '*ShardActorExpiryTests'
@@ -98,13 +100,13 @@ two replacement cycles of both host/sidecar pairs, the final Int64 counter and
 overflow with unchanged complete JSONB state. Batch replies are correlated to
 their submitted counts and an independently fixed total of 316 counters. A
 separate admission is restarted at ceiling zero before its first reservation.
-Four injected startup failures exercise teardown after PostgreSQL, placement,
+Five injected startup failures exercise teardown after named-volume creation, PostgreSQL, placement,
 the first actor host pair, and engine creation with a missing CID file.
 There is no throughput benchmark or representative production trace.
 
 Completion, startup failure and exclusive expiry fence new work, cancel actual
 actor HTTP and command tasks, drain them and the lifecycle lock, stop exact owned
-process trees, remove exact recorded container IDs and anonymous volumes, verify
+process trees, remove exact recorded container IDs, anonymous volumes and the owned named provider volume, verify
 absence, and remove private scratch. Missing CIDs are reconciled only by an exact
 planned name with the unique run ownership label. A separate label query checks
 that no owned container remains. Cleanup aggregates diagnostic failures while
@@ -134,3 +136,149 @@ The separate production-v1/local-mechanics regression is:
 dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
 dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*GlobalPosition*'
 ```
+
+
+## Same-storage provider recovery
+
+Live classes share a nonparallel xUnit collection to avoid races between fixtures
+selecting temporary ports; each fixture still runs two independent hosts/sidecars.
+Sidecar readiness also checks the bound application identity before actor calls.
+
+The focused recovery scenario uses the same PostgreSQL container and a uniquely
+named volume mounted at `/var/lib/postgresql` throughout graceful stop/start and
+abrupt SIGKILL/start. Its planned name, ownership label and explicit removal
+requirement are in the binding before creation. The ownership journal retains
+the actual container, volume/mount and process identities. Recovery compares the
+exact mount and PostgreSQL system identifier. Completion, partial startup failure
+and expiry remove the named volume explicitly and verify no owned volume remains.
+
+```bash
+dotnet build tests/Hexalith.EventStore.Sharding.Tests/Hexalith.EventStore.Sharding.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ShardActorRecoveryTests'
+export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected future UTC second>'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderRecoveryTests'
+```
+
+Observable fault boundaries are the confirmed stopped container, a granted
+exclusive `public.state` lock plus a PostgreSQL `RowExclusiveLock` waiter before
+SIGKILL, and a fully received successful HTTP response discarded before the actor
+proxy receives it. The lock holder is a tracked command bounded by 25 seconds;
+failure to observe either SQL boundary fails the test. Both original host/sidecar
+pairs stay alive during provider recovery; they are then replaced and continuity
+is checked again. A graceful stop requires exit 0, and SIGKILL requires exit 137.
+The image's configured stop signal is SIGINT (PostgreSQL fast shutdown).
+
+Observations distinguish `acknowledged-success`, `known-rejection` and `uncertain`.
+Only explicit rejection replies receive a no-mutation assertion. Exceptions never
+trigger a test retry. An uncertain reservation permits either the prior complete
+record or one complete additional range, and durable inspection determines the
+next distinct allocation. A deliberately lost successful response leaves its full
+17-counter reservation as a gap. Failed saves clear the actor's staged/cache state
+and propagate, including cancellation after saving starts. Deterministic fakes
+exercise both commit-before-failure and failure-before-commit outcomes.
+
+The HTTP transport records sends and rejects a second SDK send. Recovery checks
+assert one send outside the expected exception, plus actual discarded success for
+the lost-response case. The lane loads a
+scoped actor/component retry policy with `maxRetries: 0`, and binds its exact YAML
+hash. This follows Dapr's [retry policy](https://docs.dapr.io/operations/resiliency/policies/retries/retries-overview/)
+and [target configuration](https://docs.dapr.io/operations/resiliency/targets/).
+Dapr's [built-in routing retries](https://docs.dapr.io/operations/resiliency/policies/retries/override-default-retries/)
+and component internals remain runtime-specific; no general exactly-once transport
+guarantee is claimed. A repeated reservation would fail the complete durable
+outcome assertions. The lost-response injection is on the caller transport after
+a successful sidecar reply; it does not emulate every network partition.
+
+The recovery scenario checks eight exact pair variants, zero-ceiling admission,
+near-max Int64 string generation/ceiling persistence, missing-authority denial,
+unused ceilings, uniqueness of all acknowledged counters and subsequent process
+replacement. It is a bounded synthetic development check. It qualifies no
+production capacity, backup/restore, HA, split-brain, physical fencing or full
+production section 7 evidence category. Remaining work is recorded in
+`_bmad-output/implementation-artifacts/spec-4-6-recovery-qualification-follow-up.md`.
+
+## Provider COMMIT and interrupted admission
+
+`ProviderCommitAmbiguityTests` enables an optional loopback PostgreSQL protocol
+proxy. Ordinary synthetic/provider regressions keep their direct connection.
+Before creation, the binding records both proxy/provider ports, its exact source
+and output manifests, plaintext framing requirement (`sslmode=disable`), retained
+attempt-journal directory, execution counters and owned teardown. The proxy never
+logs startup, authentication, credentials or raw protocol payloads.
+
+The installed daprd 1.18.7 pins `components-contrib` v1.18.6. Its PostgreSQL v1
+[`Multi` implementation](https://github.com/dapr/components-contrib/blob/v1.18.6/common/component/postgresql/v1/postgresql.go#L469-L493)
+skips an explicit transaction for one state operation (lines 474–479). Proxy mode
+therefore stages a second test-only `commit-witness` key containing the operation
+ID and exact next authority in the same `SaveStateAsync`. This selects the
+provider's real multi-operation transaction/COMMIT path. Both durable keys are
+inspected before and after every fault and recovery; the witness never supplies
+admission authority. This experiment qualifies only its synthetic two-key path.
+The direct one-key path is unchanged and receives no COMMIT-boundary claim.
+
+For each fault a unique test-only `AFTER INSERT OR UPDATE` trigger matches the
+exact synthetic state key, increments a nontransactional sequence and emits a
+unique PostgreSQL NOTICE. Only the connection receiving that exact NOTICE can
+reach the selected gate. The proxy withholds either the frontend COMMIT before
+forwarding, or the backend `CommandComplete(COMMIT)` before Dapr receives it.
+The test observes the actual boundary, directly inspects the complete durable
+record while the response is withheld, explicitly breaks the connection, drains
+the request and inspects again. It never replays an ambiguous operation.
+
+Eight faults cover reservations and fresh admissions at both boundaries across
+two full same-storage provider-restart and two-host/sidecar-replacement cycles.
+Before-COMMIT absence/previous state is asserted only with observed instrumentation
+proving no forwarded COMMIT or retry. Lost acknowledgements require complete
+committed authority, preserving exact generation and zero admission ceiling.
+Every subsequent distinct allocation follows durable inspection and exceeds its
+inspected/acknowledged ceiling. The test checks 63 acknowledged counters, unused
+durable ranges, eight exact pair variants, retained missing-authority rejection,
+decimal Int64 strings across every cycle and overflow before mutation.
+
+Optional operation IDs observe actual host actor entry, save start and successful
+save completion, failed saves after cache eviction, and actor exit in flushed
+per-host JSONL files retained across replacements. A caller exception alone does
+not establish actor completion: fault accounting waits for the flushed exit.
+The fixture refuses mutating ID reuse; the actor performs no deduplication.
+Every runtime duplicate therefore remains visible. All SDK sends, exact-key
+sequence executions and NOTICE/COMMIT/completion counts are asserted outside
+expected exceptions, before trigger removal and provider restart. This timing
+preserves the evidence even though PostgreSQL sequences need not preserve their
+latest values across a database crash. A runtime that never exposes the exact
+NOTICE fails instead of inferring readiness.
+
+Final accounting reconciles every full submitted mutation, SDK outcome, exact
+actor route and owned host PID with its permitted ordered execution stages. The
+complete connection-attributed COMMIT ledger must match actor save starts,
+successful saves and the explicitly observed fault completions; unexplained
+provider replay, duplicate no-save rejection or journal attribution fails the
+case. Observation/assertion failures still break observed gates, drain and record
+the request, await actor exit and attempt all independent durable/attempt reads
+before owned storage is deleted. Diagnostic timeout evidence remains visible.
+
+```bash
+dotnet build tests/Hexalith.EventStore.Sharding.Tests/Hexalith.EventStore.Sharding.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*PostgresFaultProxyTests' -class '*AttemptJournalTests'
+export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected future UTC second>'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderCommitAmbiguityTests'
+```
+
+Completion, injected startup failure after proxy creation and expiry cancel the
+listener and both directions of every accepted session, observe their tasks and
+independently probe listener absence. Counts and listener/session absence are in
+the retained ownership/cleanup receipts. Startup failures cover both listener
+creation and the existing first-node point with accepted provider sessions.
+Unexpected truncated frames and listener failures fail the run while teardown
+still drains every accepted task. An explicit live proxy expiry case is:
+
+```bash
+export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected UTC second allowing proxy startup>'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderProxyExpiryTests' -explicit only
+```
+
+Focused dependency-free tests cover fragmented/malformed frames, both COMMIT
+gates, simple/extended protocol execution, exact NOTICE selection, explicit
+connection break, cancellation with a held gate, observation counters and
+append-only actor attempts. This lane supplies bounded synthetic development
+evidence; it does not qualify production capacity, backup/restore, HA, physical
+fencing, split-brain or production section 7.

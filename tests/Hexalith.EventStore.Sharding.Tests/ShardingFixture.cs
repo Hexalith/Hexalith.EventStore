@@ -16,7 +16,7 @@ using Hexalith.EventStore.Sharding.TestHost;
 namespace Hexalith.EventStore.Sharding.Tests;
 
 /// <summary>Owns one bounded, disposable, synthetic two-host Dapr/PostgreSQL topology.</summary>
-internal sealed class ShardingFixture : IAsyncDisposable
+internal sealed partial class ShardingFixture : IAsyncDisposable
 {
     private const string PostgresImage = "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636";
     private const string PlacementImage = "ghcr.io/dapr/placement@sha256:6caf20016d115d4a7f133b9206b739a10abd9f558d76683b27be9ab60f759e26";
@@ -71,13 +71,23 @@ internal sealed class ShardingFixture : IAsyncDisposable
     internal int CommandCount => _commands.Count;
 
     /// <summary>Gets the current exact application and sidecar process identities.</summary>
-    internal int[] ProcessIds => _nodes.SelectMany(node => new[] { node.Application?.Id, node.Sidecar?.Id }).OfType<int>().ToArray();
+    internal int[] ProcessIds
+    {
+        get
+        {
+            Process[] processes = _nodes.SelectMany(node => new[] { node.Application, node.Sidecar }).OfType<Process>().ToArray();
+            if (processes.Any(process => process.HasExited))
+                throw new InvalidOperationException("An original owned host or sidecar exited during the observed boundary.");
+            return processes.Select(process => process.Id).ToArray();
+        }
+    }
 
     /// <summary>Prepares a binding before creating any live resources.</summary>
     /// <param name="failAfter">An optional deterministic partial-startup failure point.</param>
     /// <returns>A task completing after independent actor runtimes are ready.</returns>
     internal async Task InitializeAsync(string? failAfter = null, Func<string?>? readExpiry = null,
-        Func<CancellationToken, Task>? beforePreflight = null, Func<Task<string>>? resolveDockerEndpoint = null)
+        Func<CancellationToken, Task>? beforePreflight = null, Func<Task<string>>? resolveDockerEndpoint = null,
+        bool providerCommitProxy = false)
     {
         // Fail before directories, child processes, Docker, or any workload when operator input is absent.
         DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -111,6 +121,8 @@ internal sealed class ShardingFixture : IAsyncDisposable
                 _placementPort = Port();
                 _schedulerPort = Port();
                 _postgresPort = Port();
+                _providerCommitProxy = providerCommitProxy;
+                if (_providerCommitProxy) _proxyPort = Port();
                 foreach (OwnedNode node in _nodes)
                 {
                     node.AppPort = Port();
@@ -123,6 +135,8 @@ internal sealed class ShardingFixture : IAsyncDisposable
 
                 string component = CreateComponent();
                 string discovery = CreateDiscovery();
+                string resiliency = CreateResiliency();
+                File.WriteAllText(Path.Combine(_scratch, "components", "resiliency.yaml"), resiliency);
                 File.WriteAllText(Path.Combine(_scratch, "components", "statestore.yaml"), component);
                 File.WriteAllText(Path.Combine(_scratch, "discovery.yaml"), discovery);
                 var runtime = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -141,10 +155,13 @@ internal sealed class ShardingFixture : IAsyncDisposable
                     runtime[image] = (await CommandAsync("docker", ["image", "inspect", image, "--format", "{{.Id}}"])).Trim();
                 }
 
+                runtime["postgres-stop-signal"] = (await CommandAsync("docker", ["image", "inspect", PostgresImage, "--format", "{{.Config.StopSignal}}"])).Trim();
+                runtime["postgres-image-volumes"] = (await CommandAsync("docker", ["image", "inspect", PostgresImage, "--format", "{{json .Config.Volumes}}"])).Trim();
+
                 var configuration = new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["scope"] = "isolated synthetic local development only; production_evidence_qualified=false",
-                    ["authorization"] = "spec-4-6-isolated-dapr-postgresql-sharding.md; owner jpiquot; conversation 01a18ded-3ceb-7c92-b5f5-dbf1e38a4686",
+                    ["authorization"] = "spec-4-6-isolated-postgresql-recovery.md and spec-4-6-isolated-dapr-postgresql-sharding.md; owner jpiquot; conversation 01a18ded-3ceb-7c92-b5f5-dbf1e38a4686",
                     ["machine"] = Environment.MachineName,
                     ["docker-endpoint"] = _dockerEndpoint,
                     ["app-id"] = _runId,
@@ -155,8 +172,24 @@ internal sealed class ShardingFixture : IAsyncDisposable
                     ["discovery-sha256"] = RunBinding.HashText(discovery),
                     ["source-sha256"] = RunBinding.HashText(JsonSerializer.Serialize(SourceManifest())),
                     ["failure-injection"] = failAfter ?? "none",
+                    ["provider-storage"] = $"owned named volume {ProviderVolume}; mount /var/lib/postgresql; same container and mount across stop/start and SIGKILL/start; label hexalith.sharding.owner={_runId}; explicit verified volume removal",
+                    ["recovery-boundaries"] = "docker stop --time 20 (image SIGINT fast shutdown); docker kill --signal KILL after pg_locks relation waiter; successful HTTP response discarded before caller; inspect durable state; no ambiguous retry",
+                    ["resiliency-sha256"] = RunBinding.HashText(resiliency),
+                    ["reservation-retries"] = "one SDK HTTP send; scoped zero-retry actor and state component policies; no test retry; built-in routing behavior remains runtime-dependent",
                     ["lifecycle"] = "exclusive UTC fence; cancel/drain work; exact process-tree/CID teardown; absence verified",
                 };
+                if (_providerCommitProxy)
+                {
+                    configuration["provider-commit-proxy"] = JsonSerializer.Serialize(new { listener = "127.0.0.1:" + _proxyPort,
+                        provider = "127.0.0.1:" + _postgresPort, encryption = "disabled; PostgreSQL framed protocol only",
+                        boundaries = "exact-key AFTER trigger NOTICE; frontend COMMIT; backend CommandComplete COMMIT",
+                        counts = "all proxy COMMITs; exact-key sequence nextval (read before restart); actor entry/save journals; SDK sends",
+                        teardown = "cancel listener and both session directions; drain; independently verify listener absence" });
+                    configuration["attempt-journal-directory"] = Path.Combine(_artifacts, "attempts");
+                    configuration["provider-commit-witness"] = "test-only commit-witness key encodes operation ID and complete next authority; both keys saved together to force PostgreSQL v1 Multi >1-operation explicit transaction; direct one-key path unqualified";
+                    Directory.CreateDirectory(configuration["attempt-journal-directory"]);
+                    configuration["recovery-boundaries"] = "observed before-COMMIT and withheld-COMMIT-acknowledgement; explicit connection break; complete durable inspection; two same-storage provider/replacement cycles";
+                }
                 var binding = new RunBinding(_runId, Canonical(created), Canonical(_expiry),
                     "411005b4ccb2352249c83330c54967c6a22beba1", "160331d25451928ff3c3dea2300b65cab4f97c3b",
                     "995fcecd16b3421ec9ff666d0884bfb5e436932aa49529c152fb7c439172a1fd",
@@ -168,14 +201,28 @@ internal sealed class ShardingFixture : IAsyncDisposable
                 File.WriteAllText(Path.Combine(_artifacts, "sources.json"), JsonSerializer.Serialize(SourceManifest(), JsonOptions));
                 File.WriteAllText(Path.Combine(_artifacts, "configuration.json"), JsonSerializer.Serialize(new
                 {
-                    component = Redact(component), discovery = Redact(discovery),
+                    component = Redact(component), discovery = Redact(discovery), resiliency,
                     bindingSha256 = RunBinding.HashFile(_bindingPath),
                 }, JsonOptions));
                 EnsureActive();
-                _postgres = await ContainerAsync("postgres", PostgresImage, ["-e", "POSTGRES_PASSWORD=" + _password, "-e", "POSTGRES_DB=sharding", "-p", $"127.0.0.1:{_postgresPort}:5432"], [], failAfter == "missing-cid");
+                _ = await CommandAsync("docker", ["volume", "create", "--label", "hexalith.sharding.owner=" + _runId, ProviderVolume]);
+                WriteOwnershipJournal();
+                InjectFailure(failAfter, "volume");
+                _postgres = await ContainerAsync("postgres", PostgresImage, ["--mount", "type=volume,source=" + ProviderVolume + ",target=/var/lib/postgresql", "-e", "POSTGRES_PASSWORD=" + _password, "-e", "POSTGRES_DB=sharding", "-p", $"127.0.0.1:{_postgresPort}:5432"], [], failAfter == "missing-cid");
                 await WaitPostgresAsync();
+                _providerIdentity = await ProviderIdentityAsync();
+                WriteOwnershipJournal();
+                Record("provider-storage", new { identity = _providerIdentity, volume = ProviderVolume });
                 Record("postgres-runtime", new { version = (await QueryAsync("SELECT version();")).Trim(), image = PostgresImage });
                 InjectFailure(failAfter, "postgres");
+                if (_providerCommitProxy)
+                {
+                    _faultProxy = new(_proxyPort, _postgresPort, _work.Token);
+                    _faultProxy.Start();
+                    WriteOwnershipJournal();
+                    Record("provider-proxy-started", new { listener = "127.0.0.1:" + _proxyPort, provider = "127.0.0.1:" + _postgresPort });
+                    InjectFailure(failAfter, "proxy");
+                }
                 string placement = await ContainerAsync("placement", PlacementImage, ["-p", $"127.0.0.1:{_placementPort}:{_placementPort}"],
                     ["/placement", "--port", _placementPort.ToString(CultureInfo.InvariantCulture), "--listen-address", "0.0.0.0", "--log-level", "info"]);
                 await ObserveControlPlaneVersionAsync("placement", placement, PlacementImage);
@@ -223,12 +270,17 @@ internal sealed class ShardingFixture : IAsyncDisposable
     /// <param name="nodeIndex">The ingress sidecar.</param>
     /// <param name="request">The synthetic operation.</param>
     /// <param name="actorId">An optional deliberately mismatched route.</param>
+    /// <param name="loseResponse">Whether to discard a successful response before returning to the caller.</param>
+    /// <param name="observeTransport">An optional observer of actual SDK sends and discarded success.</param>
     /// <returns>The complete reply.</returns>
-    internal Task<ShardReply> ApplyAsync(int nodeIndex, ShardRequest request, string? actorId = null)
+    internal Task<ShardReply> ApplyAsync(int nodeIndex, ShardRequest request, string? actorId = null, bool loseResponse = false,
+        Action<int, bool>? observeTransport = null)
         => _activities.Start(async () =>
     {
         EnsureActive();
-        using var handler = new RunCancellationHandler(_work.Token);
+        request = BindOperation(request, actorId);
+        using var transport = new SingleAttemptHandler(loseResponse);
+        using var handler = new RunCancellationHandler(_work.Token, transport);
         var proxy = new ActorProxyFactory(new ActorProxyOptions
         {
             HttpEndpoint = "http://127.0.0.1:" + _nodes[nodeIndex].HttpPort,
@@ -236,9 +288,25 @@ internal sealed class ShardingFixture : IAsyncDisposable
             UseJsonSerialization = true,
             RequestTimeout = TimeSpan.FromSeconds(20),
         }, handler).CreateActorProxy<IShardActor>(new ActorId(actorId ?? ShardIdentity.Encode(request.TenantId, request.Domain)), ShardActor.ActorType);
-        ShardReply result = await proxy.ApplyAsync(request);
-        Record("operation", new { nodeIndex, request, result });
-        return result;
+        try
+        {
+            ShardReply result = await proxy.ApplyAsync(request);
+            RecordOperationOutcome(request, result.Accepted ? "acknowledged-success" : "known-rejection", result.Code, transport.SendCount);
+            Record("operation", new { outcome = result.Accepted ? "acknowledged-success" : "known-rejection", nodeIndex, request, result,
+                sends = transport.SendCount });
+            return result;
+        }
+        catch (Exception exception)
+        {
+            RecordOperationOutcome(request, "uncertain", null, transport.SendCount);
+            Record("operation", new { outcome = "uncertain", nodeIndex, request, exception = exception.GetType().Name,
+                message = Redact(exception.Message), sends = transport.SendCount, discardedSuccess = transport.DiscardedSuccess });
+            throw;
+        }
+        finally
+        {
+            observeTransport?.Invoke(transport.SendCount, transport.DiscardedSuccess);
+        }
     });
 
     /// <summary>Reads the exact actor state JSONB row from the owned PostgreSQL provider.</summary>
@@ -359,6 +427,13 @@ internal sealed class ShardingFixture : IAsyncDisposable
     private async Task CleanupAsync(string reason)
     {
         var failures = new List<string>();
+        bool proxyAbsent = _faultProxy is null;
+        if (_faultProxy is not null)
+        {
+            try { await _faultProxy.DisposeAsync(); proxyAbsent = await VerifyProxyAbsentAsync(); }
+            catch (Exception exception) { failures.Add("provider proxy: " + exception.Message); }
+            Record("provider-proxy-drained", ProxyObservation());
+        }
         await DrainActivitiesAsync(failures);
         foreach (Process process in _processes.Concat(_commandProcesses).Reverse().ToArray())
         {
@@ -410,6 +485,10 @@ internal sealed class ShardingFixture : IAsyncDisposable
             catch (Exception exception) { failures.Add("owned-label absence check: " + exception.Message); }
         }
 
+        bool volumesAbsent = _dockerEndpoint.Length == 0;
+        try { if (_dockerEndpoint.Length != 0) volumesAbsent = await RemoveProviderVolumeAsync(); }
+        catch (Exception exception) { failures.Add("provider volume: " + exception.Message); }
+
         foreach ((string name, Oq8BoundedLog log) in _logs)
         {
             TryDiagnostic(() => File.WriteAllText(Path.Combine(_artifacts, name + ".log"), Redact(log.ToString())), failures);
@@ -422,7 +501,7 @@ internal sealed class ShardingFixture : IAsyncDisposable
         }
         catch (Exception exception) { failures.Add("scratch: " + exception.Message); }
 
-        bool absenceVerified = labeledAbsent && _processes.Concat(_commandProcesses).All(process => process.HasExited) && !Directory.Exists(_scratch);
+        bool absenceVerified = proxyAbsent && labeledAbsent && volumesAbsent && _processes.Concat(_commandProcesses).All(process => process.HasExited) && !Directory.Exists(_scratch);
         TryDiagnostic(() => File.WriteAllText(Path.Combine(_artifacts, "commands.json"), JsonSerializer.Serialize(_commands, JsonOptions)), failures);
         lock (_observations)
         {
@@ -437,6 +516,8 @@ internal sealed class ShardingFixture : IAsyncDisposable
             containers = _containers, processes = _processes.Select(process => new { process.Id, absent = process.HasExited }),
             transientCommands = _commandProcesses.Select(process => new { process.Id, absent = process.HasExited }),
             scratchRemoved = !Directory.Exists(_scratch), labeledOwnedContainersAbsent = labeledAbsent,
+            providerVolume = ProviderVolume, ownedVolumesAbsent = volumesAbsent,
+            providerProxy = ProxyObservation(), proxyListenerAndSessionsAbsent = proxyAbsent,
             verified = CleanupVerified, failures = failures.Select(Redact), failureHistory = _cleanupHistory,
             productionEvidenceQualified = false,
         }, JsonOptions)), failures);
@@ -501,6 +582,8 @@ internal sealed class ShardingFixture : IAsyncDisposable
         {
             deadline.Token.ThrowIfCancellationRequested();
             using JsonDocument metadata = JsonDocument.Parse(await _http.GetStringAsync("http://127.0.0.1:" + node.HttpPort + "/v1.0/metadata", deadline.Token));
+            if (!metadata.RootElement.TryGetProperty("id", out JsonElement appId) || appId.GetString() != _runId)
+                throw new InvalidOperationException("The sidecar endpoint does not match this run's bound app identity.");
             if (metadata.RootElement.TryGetProperty("actorRuntime", out JsonElement runtime)
                 && runtime.TryGetProperty("runtimeStatus", out JsonElement status) && status.GetString() == "RUNNING"
                 && runtime.TryGetProperty("hostReady", out JsonElement ready) && ready.ValueKind == JsonValueKind.True)
@@ -532,11 +615,11 @@ internal sealed class ShardingFixture : IAsyncDisposable
         return process;
     }
 
-    private Task<string> CommandAsync(string executable, string[] arguments, bool cleanup = false)
-        => cleanup ? CommandCoreAsync(executable, arguments, cleanup: true)
-            : _activities.Start(() => CommandCoreAsync(executable, arguments, cleanup: false));
+    private Task<string> CommandAsync(string executable, string[] arguments, bool cleanup = false, CancellationToken cancellationToken = default)
+        => cleanup ? CommandCoreAsync(executable, arguments, cleanup: true, cancellationToken)
+            : _activities.Start(() => CommandCoreAsync(executable, arguments, cleanup: false, cancellationToken));
 
-    private async Task<string> CommandCoreAsync(string executable, string[] arguments, bool cleanup)
+    private async Task<string> CommandCoreAsync(string executable, string[] arguments, bool cleanup, CancellationToken cancellationToken)
     {
         if (!cleanup) EnsureActive();
         if (executable == "docker")
@@ -546,7 +629,7 @@ internal sealed class ShardingFixture : IAsyncDisposable
                 throw new InvalidOperationException("Docker commands require a bound local endpoint.");
         }
 
-        using var timeout = cleanup ? new CancellationTokenSource() : CancellationTokenSource.CreateLinkedTokenSource(_work.Token);
+        using var timeout = cleanup ? new CancellationTokenSource() : CancellationTokenSource.CreateLinkedTokenSource(_work.Token, cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(30));
         var process = new Process { StartInfo = CreateStart(executable, arguments) };
         _commands.Add(Redact(executable + " " + string.Join(" ", arguments)));
@@ -605,8 +688,8 @@ internal sealed class ShardingFixture : IAsyncDisposable
         return start;
     }
 
-    private Task<string> QueryAsync(string query)
-        => CommandAsync("docker", ["exec", _postgres, "psql", "-U", "postgres", "-d", "sharding", "-At", "-c", query]);
+    private Task<string> QueryAsync(string query, CancellationToken cancellationToken = default)
+        => CommandAsync("docker", ["exec", _postgres, "psql", "-U", "postgres", "-d", "sharding", "-At", "-c", query], cancellationToken: cancellationToken);
 
     private async Task WaitPostgresAsync()
     {
@@ -677,7 +760,7 @@ internal sealed class ShardingFixture : IAsyncDisposable
           version: v1
           metadata:
           - name: connectionString
-            value: "host=127.0.0.1 port={_postgresPort} user=postgres password={_password} dbname=sharding sslmode=disable connect_timeout=5"
+            value: "host=127.0.0.1 port={(_providerCommitProxy ? _proxyPort : _postgresPort)} user=postgres password={_password} dbname=sharding sslmode=disable connect_timeout=5"
           - name: actorStateStore
             value: "true"
         scopes:
@@ -815,6 +898,8 @@ internal sealed class ShardingFixture : IAsyncDisposable
         {
             runId = _runId, atUtc = Canonical(DateTimeOffset.UtcNow), dockerEndpoint = _dockerEndpoint,
             label = "hexalith.sharding.owner=" + _runId,
+            plannedProviderVolume = ProviderVolume, providerIdentity = _providerIdentity,
+            providerProxy = ProxyObservation(),
             containers = _containerPlans.Select(plan => new { name = plan.Key, id = plan.Value }),
             processes = _processes.Select(process => new { process.Id, startedUtc = process.StartTime.ToUniversalTime(),
                 executable = Path.GetFileName(process.StartInfo.FileName), exited = process.HasExited }),

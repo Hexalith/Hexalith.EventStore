@@ -3,6 +3,7 @@ using Shouldly;
 namespace Hexalith.EventStore.Sharding.Tests;
 
 /// <summary>An explicit short-deadline operator run proves actual expiry during startup.</summary>
+[Collection("ShardingLive")]
 public sealed class ExpiryLifecycleTests
 {
     /// <summary>The real watchdog fences startup and verifies owned-resource teardown.</summary>

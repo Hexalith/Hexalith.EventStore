@@ -52,9 +52,18 @@ public sealed class ShardActorExpiryTests
             ActorId = new ActorId(ShardIdentity.Encode("tenant", "domain")),
         }), fence);
         ActorStateManagerTestHelper.SetStateManager(actor, manager);
-        ShardReply result = await actor.ApplyAsync(new("Reserve", "tenant", "domain", 7, 3));
-        result.Accepted.ShouldBeFalse();
-        result.Code.ShouldBe("expired");
+        if (boundary == "save")
+        {
+            // This fake cancels before committing. A real save-started cancellation
+            // is uncertain, so the actor must propagate it instead of denying mutation.
+            await Should.ThrowAsync<OperationCanceledException>(() => actor.ApplyAsync(new("Reserve", "tenant", "domain", 7, 3)));
+        }
+        else
+        {
+            ShardReply result = await actor.ApplyAsync(new("Reserve", "tenant", "domain", 7, 3));
+            result.Accepted.ShouldBeFalse();
+            result.Code.ShouldBe("expired");
+        }
         gated.ReachedBoundary.ShouldBe(boundary != "entry");
         JsonSerializer.Serialize(gated.Inner.CommittedState).ShouldBe(committed);
         PendingSnapshot(gated.Inner).ShouldBe(pending);

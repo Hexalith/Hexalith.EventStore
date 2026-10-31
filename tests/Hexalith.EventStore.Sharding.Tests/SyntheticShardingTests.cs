@@ -8,6 +8,7 @@ using Shouldly;
 namespace Hexalith.EventStore.Sharding.Tests;
 
 /// <summary>Independent-host synthetic reservations with complete provider end-state checks.</summary>
+[Collection("ShardingLive")]
 public sealed class SyntheticShardingTests
 {
     /// <summary>Proves bounded concurrency, identity isolation, denials, unused ceilings and restart arithmetic.</summary>

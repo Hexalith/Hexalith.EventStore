@@ -3,11 +3,13 @@ using Shouldly;
 namespace Hexalith.EventStore.Sharding.Tests;
 
 /// <summary>Live failure-path teardown, using only exact fixture-owned identities.</summary>
+[Collection("ShardingLive")]
 public sealed class LifecycleTests
 {
     /// <summary>Partial creation still removes and verifies every owned resource.</summary>
     /// <param name="after">The deterministic partial-startup point.</param>
     [Theory]
+    [InlineData("volume")]
     [InlineData("postgres")]
     [InlineData("placement")]
     [InlineData("node")]

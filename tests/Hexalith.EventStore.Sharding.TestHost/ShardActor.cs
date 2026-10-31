@@ -7,7 +7,8 @@ namespace Hexalith.EventStore.Sharding.TestHost;
 /// <summary>Test-only serialized authority for one exact pair and its durable ceiling.</summary>
 /// <param name="host">The synthetic actor host.</param>
 /// <param name="fence">The exclusive run fence.</param>
-public sealed class ShardActor(ActorHost host, RunFence fence) : Actor(host), IShardActor
+/// <param name="attempts">Optional durable execution observations.</param>
+public sealed class ShardActor(ActorHost host, RunFence fence, AttemptJournal? attempts = null) : Actor(host), IShardActor
 {
     /// <summary>The isolated actor type.</summary>
     public const string ActorType = "IsolatedShardActor";
@@ -15,10 +16,31 @@ public sealed class ShardActor(ActorHost host, RunFence fence) : Actor(host), IS
     /// <summary>The single saved admission and ceiling key.</summary>
     public const string StateKey = "reservation";
 
+    /// <summary>The optional test-only second key selecting the provider's explicit transaction path.</summary>
+    public const string CommitWitnessStateKey = "commit-witness";
+
     /// <inheritdoc/>
     public async Task<ShardReply> ApplyAsync(ShardRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        attempts?.Record(request, Id.GetId(), "actor-entry");
+        string outcome = "failed";
+        try
+        {
+            ShardReply reply = await ApplyCoreAsync(request);
+            outcome = reply.Code;
+            return reply;
+        }
+        finally
+        {
+            // A caller timeout is not actor termination. This flushed observation follows
+            // the complete turn body, including failed-save cache eviction.
+            attempts?.Record(request, Id.GetId(), "actor-exit", outcome);
+        }
+    }
+
+    private async Task<ShardReply> ApplyCoreAsync(ShardRequest request)
+    {
         if (fence.IsExpired)
         {
             return new(false, "expired");
@@ -114,19 +136,43 @@ public sealed class ShardActor(ActorHost host, RunFence fence) : Actor(host), IS
         try
         {
             await StateManager.SetStateAsync(StateKey, next, fence.Token);
+            if (attempts?.CommitWitnessEnabled == true)
+            {
+                if (request.OperationId is null) throw new InvalidOperationException("The two-key COMMIT experiment requires an operation identity.");
+                await StateManager.SetStateAsync(CommitWitnessStateKey, new ShardCommitWitness(request.OperationId, next), fence.Token);
+            }
             if (fence.IsExpired)
             {
                 await StateManager.ClearCacheAsync(CancellationToken.None);
                 return new(false, "expired", current);
             }
-
-            await StateManager.SaveStateAsync(fence.Token);
         }
         catch (OperationCanceledException) when (fence.IsExpired)
         {
             // Evict this turn's staged update so runtime turn completion cannot save it.
             await StateManager.ClearCacheAsync(CancellationToken.None);
             return new(false, "expired", current);
+        }
+        catch
+        {
+            await StateManager.ClearCacheAsync(CancellationToken.None);
+            throw;
+        }
+
+        try
+        {
+            attempts?.Record(request, Id.GetId(), "save-start");
+            await StateManager.SaveStateAsync(fence.Token);
+            attempts?.Record(request, Id.GetId(), "save-complete");
+        }
+        catch (Exception exception)
+        {
+            // Once saving starts, cancellation or transport failure is ambiguous:
+            // the provider may have committed. Never report an unchanged-state denial,
+            // and never let a later turn flush or allocate from this pending cache.
+            await StateManager.ClearCacheAsync(CancellationToken.None);
+            attempts?.Record(request, Id.GetId(), "save-failed", exception.GetType().Name);
+            throw;
         }
 
         return new(true, "saved", next, first, count);
