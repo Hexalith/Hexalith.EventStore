@@ -116,6 +116,9 @@ jobs:
       - name: Verify package publication dependency guards
         run: python3 -m unittest discover -s tools/tests -p test_release_package_contract.py
 
+      - name: Verify qualification runner exit preservation
+        run: python3 -m unittest discover -s tools/tests -p test_published_runner_exit.py
+
       - name: Restore Contracts tests
         run: >-
           dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
