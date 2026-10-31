@@ -51,6 +51,17 @@ public sealed class DescriptorFixtureTests
     }
 
     [Fact]
+    public async Task StreamObserverRefusesForeignTenantBeforeOpeningPersistence()
+    {
+        using var handoff = new DescriptorHandoffScope();
+        await using var fixture = new DescriptorTopologyFixture();
+        await fixture.InitializeAsync();
+        var foreign = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity("foreign-tenant", "party", "synthetic-aggregate");
+        InvalidOperationException refused = await Should.ThrowAsync<InvalidOperationException>(() => TestEnvironmentStreamReader.ReadStoredStreamAsync(fixture.Descriptor, "missing-redis", "parties", foreign, TestContext.Current.CancellationToken));
+        refused.Message.ShouldContain("synthetic tenant");
+    }
+
+    [Fact]
     public async Task MissingHandoff_FailsBothFixturesWithoutStartupOrSkip()
     {
         using var handoff = new DescriptorHandoffScope(missing: true);
