@@ -31,6 +31,7 @@ public sealed class DelegatedOwnerQueryClient(DaprClient dapr, IHttpClientFactor
         if (string.IsNullOrWhiteSpace(workload) || string.IsNullOrWhiteSpace(key))
             return QueryResult.Failure(QueryAdapterFailureReason.QueryExecutionFailure);
         TimeSpan? timeout = OperationTimeout();
+        long started = timeout is null ? 0 : clock.GetTimestamp();
         using CancellationTokenSource? deadline = timeout is { } budget ? new(budget, clock) : null;
         using CancellationTokenSource? operation = deadline is null ? null
             : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
@@ -43,7 +44,8 @@ public sealed class DelegatedOwnerQueryClient(DaprClient dapr, IHttpClientFactor
         QueryResult result = await InvokeOwnerAsync(query, request, workload, key, deadline is not null, operationToken).ConfigureAwait(false);
         // All owned request/response content is disposed before this check. A late body or
         // synchronous disposal cannot turn an expired operation into a protected result.
-        if (deadline is not null) operationToken.ThrowIfCancellationRequested();
+        if (timeout is { } elapsedBudget && (operationToken.IsCancellationRequested || clock.GetElapsedTime(started) >= elapsedBudget))
+            throw new OperationCanceledException(operationToken);
         return result;
     }
 
