@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
@@ -37,14 +39,18 @@ internal sealed class ProviderVerificationAuthenticationHandler(
         string tenant = state is "command-auth-tenant" or "query-auth-tenant"
             ? "tenant-contract-case"
             : "tenant-contract-a";
-        var claims = new[]
-        {
+        List<Claim> claims =
+        [
             new Claim("sub", "user-contract-a"),
             new Claim("eventstore:tenant", tenant),
             new Claim("eventstore:domain", "orders"),
             new Claim("eventstore:permission", "command:*"),
             new Claim("eventstore:permission", "query:*"),
-        };
+        ];
+        if (credential.IncludeSurface)
+        {
+            claims.Add(new Claim(RouteCatalogSurfacePolicy.ClaimType, "ui"));
+        }
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
         return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName)));
     }

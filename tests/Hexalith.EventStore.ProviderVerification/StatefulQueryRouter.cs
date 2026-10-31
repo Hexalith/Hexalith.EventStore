@@ -9,6 +9,11 @@ namespace Hexalith.EventStore.ProviderVerification;
 
 internal sealed class StatefulQueryRouter(ProviderStateCoordinator coordinator) : IQueryRouter
 {
+    private int _invocationCount;
+
+    /// <summary>Gets the number of queries admitted to this controlled router.</summary>
+    internal int InvocationCount => Volatile.Read(ref _invocationCount);
+
     private static readonly JsonElement _emptyPayload = JsonSerializer.SerializeToElement(Array.Empty<object>());
     private static readonly JsonElement _rowPayload = JsonSerializer.SerializeToElement(new[]
     {
@@ -20,6 +25,7 @@ internal sealed class StatefulQueryRouter(ProviderStateCoordinator coordinator) 
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _ = Interlocked.Increment(ref _invocationCount);
         QueryRouterResult result = SupportedProviderStates.RequireActive(coordinator) switch
         {
             "query-empty-result" => Success(_emptyPayload, 0),

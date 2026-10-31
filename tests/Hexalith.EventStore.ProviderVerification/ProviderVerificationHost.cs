@@ -18,6 +18,7 @@ using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.ServiceDefaults;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Hexalith.EventStore.SignalRHub;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -43,6 +44,12 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
     }
 
     public Uri BaseAddress { get; }
+
+    /// <summary>Gets controlled-router calls so protocol tests can prove admission refused before routing.</summary>
+    internal int QueryRouterInvocationCount => _application.Services.GetRequiredService<StatefulQueryRouter>().InvocationCount;
+
+    /// <summary>Gets successful catalog acquisitions for admission-boundary assertions.</summary>
+    internal int CatalogAcquisitionCount => _application.Services.GetRequiredService<ProviderVerificationRouteCatalog>().AcquisitionCount;
 
     public static async Task<ProviderVerificationHost> StartAsync(
         ProviderStateCoordinator coordinator,
@@ -241,10 +248,8 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
         services.RemoveAll<ICommandRouter>();
         services.AddSingleton<ICommandRouter, StatefulCommandRouter>();
 
-        // Contract verification substitutes the routers and serves no committed route catalog. Compose the
-        // command handler and query controller through their isolated-protocol seams and omit catalog
-        // eligibility, which would otherwise refuse every submission for lack of a bound catalog host identity.
-        services.Replace(ServiceDescriptor.Singleton<Microsoft.AspNetCore.Mvc.Controllers.IControllerActivator, ProviderVerificationControllerActivator>());
+        // Commands retain the Server's isolated-protocol seam. Queries retain production controller
+        // catalog admission, supplied below with only the two declared synthetic tenant scopes.
         services.RemoveAll<MediatR.IRequestHandler<SubmitCommand, SubmitCommandResult>>();
         services.AddScoped<MediatR.IRequestHandler<SubmitCommand, SubmitCommandResult>>(provider =>
             new Hexalith.EventStore.Server.Pipeline.SubmitCommandHandler(
@@ -269,7 +274,11 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
         services.RemoveAll<IProjectionUpdateOrchestrator>();
         services.AddSingleton<IProjectionUpdateOrchestrator, NoOpProjectionUpdateOrchestrator>();
         services.RemoveAll<IQueryRouter>();
-        services.AddSingleton<IQueryRouter, StatefulQueryRouter>();
+        services.AddSingleton<StatefulQueryRouter>();
+        services.AddSingleton<IQueryRouter>(provider => provider.GetRequiredService<StatefulQueryRouter>());
+        services.RemoveAll<IRouteCatalogAuthority>();
+        services.AddSingleton<ProviderVerificationRouteCatalog>();
+        services.AddSingleton<IRouteCatalogAuthority>(provider => provider.GetRequiredService<ProviderVerificationRouteCatalog>());
         services.RemoveAll<IETagService>();
         services.AddSingleton<IETagService, StatefulETagService>();
         services.AddSingleton<IValidator<SubmitCommand>, StatefulCommandValidator>();

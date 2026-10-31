@@ -7,6 +7,9 @@ namespace Hexalith.EventStore.ProviderVerification;
 /// </summary>
 internal sealed record ProviderVerificationCredential(string AccessToken)
 {
+    /// <summary>Gets whether the fixture identity carries its authenticated UI surface.</summary>
+    public bool IncludeSurface { get; init; } = true;
+
     /// <summary>Creates a cryptographically random credential for one verification run.</summary>
     /// <returns>The generated credential.</returns>
     public static ProviderVerificationCredential Create()

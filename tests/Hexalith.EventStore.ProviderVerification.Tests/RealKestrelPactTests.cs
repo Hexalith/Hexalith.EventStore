@@ -232,6 +232,102 @@ public sealed class RealKestrelPactTests
         (await ProviderVerificationHost.IsPortClosedAsync(address, TimeSpan.FromSeconds(5))).ShouldBeTrue();
     }
 
+    [Theory]
+    [InlineData("query-fresh-data", null, true, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.OK, 1, 1)]
+    [InlineData("query-etag-match", "\"b3JkZXJz.Y2FjaGUtMQ\"", true, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.NotModified, 1, 1)]
+    [InlineData("query-auth-tenant", null, true, "GetOrders", "orders", "tenant-contract-case", HttpStatusCode.OK, 1, 1)]
+    [InlineData("query-fresh-data", null, false, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.Forbidden, 0, 1)]
+    [InlineData("query-fresh-data", null, true, "GetOrders", "undeclared-projection", "tenant-contract-a", HttpStatusCode.ServiceUnavailable, 0, 1)]
+    [InlineData("query-fresh-data", null, true, "UndeclaredQuery", "orders", "tenant-contract-a", HttpStatusCode.Forbidden, 0, 0)]
+    [InlineData("query-fresh-data", null, true, "GetOrders", "orders", "tenant-outside-fixture", HttpStatusCode.Forbidden, 0, 0)]
+    public async Task ProductionPipeline_QueryPreservesCatalogSurfaceTenantAndCacheAdmission(
+        string state,
+        string? validator,
+        bool includeSurface,
+        string queryType,
+        string projectionType,
+        string tenant,
+        HttpStatusCode expectedStatus,
+        int expectedRouterCalls,
+        int expectedCatalogAcquisitions)
+    {
+        ProviderVerificationCredential credential = ProviderVerificationCredential.Create() with { IncludeSurface = includeSurface };
+        var coordinator = new ProviderStateCoordinator(new HashSet<string>([state], StringComparer.Ordinal));
+        var timeline = new ProviderVerificationTimeline();
+        timeline.BeginStartup();
+        ProviderVerificationHost? host = null;
+        Uri? address = null;
+        try
+        {
+            host = await ProviderVerificationHost.StartAsync(coordinator, FindRepositoryRoot(), TimeSpan.FromSeconds(15),
+                TestContext.Current.CancellationToken, timeline, credential: credential);
+            address = host.BaseAddress;
+            coordinator.BeginInteraction(state);
+            (await coordinator.ApplyAsync(state, "setup", TestContext.Current.CancellationToken)).ShouldBe("state.setup.succeeded");
+            using var client = new HttpClient { BaseAddress = address, Timeout = TimeSpan.FromSeconds(15) };
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/queries")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    tenant,
+                    domain = "orders",
+                    aggregateId = "order-1",
+                    queryType,
+                    projectionType,
+                    payload = (object?)null,
+                    entityId = (string?)null,
+                    projectionActorType = (string?)null,
+                }), Encoding.UTF8, "application/json"),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credential.AccessToken);
+            if (validator is not null)
+            {
+                request.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(validator));
+            }
+
+            using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+            response.StatusCode.ShouldBe(expectedStatus);
+            host.CatalogAcquisitionCount.ShouldBe(expectedCatalogAcquisitions);
+            host.QueryRouterInvocationCount.ShouldBe(expectedRouterCalls);
+            if (expectedStatus == HttpStatusCode.OK)
+            {
+                using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+                body.RootElement.GetProperty("payload").GetArrayLength().ShouldBe(1);
+                body.RootElement.GetProperty("success").GetBoolean().ShouldBeTrue();
+                body.RootElement.GetProperty("metadata").GetProperty("paging").GetProperty("totalCount").GetInt64().ShouldBe(1);
+                if (state == "query-fresh-data")
+                {
+                    response.Headers.ETag.ShouldNotBeNull().Tag.ShouldBe("\"" + StatefulETagService.QueryETag + "\"");
+                }
+            }
+            else if (expectedStatus == HttpStatusCode.NotModified)
+            {
+                response.Headers.ETag.ShouldNotBeNull().Tag.ShouldBe(validator);
+                (await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken)).ShouldBeEmpty();
+            }
+
+            (await coordinator.ApplyAsync(state, "teardown", TestContext.Current.CancellationToken)).ShouldBe("state.teardown.succeeded");
+            coordinator.CurrentState.ShouldBeNull();
+        }
+        finally
+        {
+            if (host is not null)
+            {
+                try
+                {
+                    await host.StopAsync(TimeSpan.FromSeconds(5));
+                }
+                finally
+                {
+                    await host.DisposeAsync();
+                }
+            }
+        }
+
+        address.ShouldNotBeNull();
+        (await ProviderVerificationHost.IsPortClosedAsync(address, TimeSpan.FromSeconds(5))).ShouldBeTrue();
+    }
+
     private static string FindRepositoryRoot()
     {
         foreach (string start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
