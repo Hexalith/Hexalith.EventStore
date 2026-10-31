@@ -61,10 +61,22 @@ public sealed class RouteCatalogFixtureToolTests
                 var elapsed = Stopwatch.StartNew();
                 await Should.ThrowAsync<OperationCanceledException>(() => RouteCatalogOwnedProcess.RunAsync(start,
                     mode == "timeout" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(10), cancellation.Token));
-                elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
                 int child = int.Parse(await File.ReadAllTextAsync(pid));
                 string state = "/proc/" + child + "/stat";
-                if (File.Exists(state)) (await File.ReadAllTextAsync(state)).Split(' ')[2].ShouldBe("Z");
+                string? childState = null;
+                do
+                {
+                    try { childState = (await File.ReadAllTextAsync(state)).Split(' ')[2]; }
+                    catch (FileNotFoundException) { childState = null; break; }
+                    catch (DirectoryNotFoundException) { childState = null; break; }
+                    if (childState == "Z") break;
+                    // Killing a process tree requests each child's termination; the parent
+                    // can exit before the kernel finishes scheduling its child's signal.
+                    await Task.Delay(TimeSpan.FromMilliseconds(10));
+                }
+                while (elapsed.Elapsed < TimeSpan.FromSeconds(7));
+                if (childState is not null) childState.ShouldBe("Z");
+                elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
             }
             else (await RouteCatalogOwnedProcess.RunAsync(start, TimeSpan.FromSeconds(1))).ShouldBe("completed");
         }
