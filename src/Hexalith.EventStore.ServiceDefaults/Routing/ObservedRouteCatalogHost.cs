@@ -116,7 +116,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 !actual.ProjectionCapabilities!.Any(installed => installed.AppId == c.AppId && installed.Domain == c.Domain
                     && installed.ContractVersion == c.ContractVersion && installed.Fingerprint == c.Fingerprint
                     && installed.ProjectionTypes.Order(StringComparer.Ordinal).SequenceEqual(c.ProjectionTypes.Order(StringComparer.Ordinal), StringComparer.Ordinal)))
-            || (activation.AuxiliaryOperations ?? []).Where(a => a.AppId == actual.AppId).Any(a => !actual.AuxiliaryOperations!.Contains(a)))
+            || (activation.AuxiliaryOperations ?? []).Where(a => a.AppId == actual.AppId).Any(a => !actual.AuxiliaryOperations!.Any(installed => JsonSerializer.Serialize(installed) == JsonSerializer.Serialize(a))))
             throw new RouteCatalogUnavailableException("The proposed admission, named projection capability or auxiliary operation disagrees with installed local policy.", RouteCatalogRefusalReason.Inventory);
         return identity;
     }

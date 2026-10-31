@@ -133,6 +133,51 @@ public class DevelopmentAuxiliaryClientCatalogTests
         finally { Directory.Delete(directory, recursive: true); }
     }
 
+    [Fact]
+    public async Task UpstreamCallerAddUseReusesOnlyTheExplicitInstalledStrictAuxiliaryProfile()
+    {
+        string directory = CreateInputs();
+        try
+        {
+            var builder = Builder(directory);
+            var startup = new DevelopmentAuxiliaryClientCatalogHostingStartup(); startup.Configure(builder.WebHost);
+            var observer = builder.Services.Single(service => service.ServiceType == typeof(IRouteCatalogHostObserver));
+            int workers = builder.Services.Count(service => service.ServiceType == typeof(IHostedService));
+            startup.Configure(builder.WebHost);
+            builder.Services.AddEventStoreDevelopmentCallerCatalog(builder.Configuration, "sample-blazor-ui");
+            builder.Services.Single(service => service.ServiceType == typeof(IRouteCatalogHostObserver)).ShouldBeSameAs(observer);
+            builder.Services.Count(service => service.ServiceType == typeof(IHostedService)).ShouldBe(workers);
+            await using var app = builder.Build();
+            app.UseEventStoreDevelopmentCallerCatalog().ShouldBeSameAs(app);
+            app.MapGet("/human/{id}", () => "human-only");
+            await app.StartAsync(TestContext.Current.CancellationToken);
+            var actual = await DevelopmentAuxiliaryClientCatalog.CaptureAsync(app.Services, app.Configuration, TestContext.Current.CancellationToken);
+            actual.AppId.ShouldBe("admin-run-one"); actual.Targets.ShouldBeEmpty(); actual.AuxiliaryOperations!.ShouldBeEmpty();
+            actual.ReceiverSurface!.FenceVersion.ShouldBe("eventstore-development-client-only-v1");
+            actual.ReceiverSurface.Endpoints.ShouldContain(endpoint => endpoint.Pattern == "/human/{id}" && !endpoint.Admitted);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExplicitAuxiliaryRoleCannotSuppressCallerQualificationWithoutItsInstalledProfileOrWithCompetingAuthority(bool competing)
+    {
+        string directory = CreateInputs();
+        try
+        {
+            var builder = Builder(directory);
+            if (competing)
+            {
+                new DevelopmentAuxiliaryClientCatalogHostingStartup().Configure(builder.WebHost);
+                builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AuthorityRole"] = RouteCatalogAuthorityComponentPolicy.IsolatedRole;
+            }
+            Should.Throw<RouteCatalogUnavailableException>(() => builder.Services.AddEventStoreDevelopmentCallerCatalog(builder.Configuration, "sample-blazor-ui"));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
     private static WebApplicationBuilder Builder(string directory, string environment = "Development")
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment, Args = [] });

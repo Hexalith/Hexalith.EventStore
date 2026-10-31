@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Contracts.Routing;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -254,8 +255,8 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
             watermarkConflict: "backup-engine-deferred",
             operatorActorId: request.OperatorActorId,
             auditId: null);
-        await _daprClient
-            .SaveStateAsync(_options.StateStoreName, key, result, cancellationToken: ct)
+        await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .SaveStateAsync(_options.StateStoreName, key, result, cancellationToken: ct), ct)
             .ConfigureAwait(false);
         return result;
     }
@@ -321,11 +322,11 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
             throw new InvalidOperationException(auditRejectionReason);
         }
 
-        await _daprClient
-            .SaveStateAsync(_options.StateStoreName, AuditKey(auditId), audit, cancellationToken: ct)
+        await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .SaveStateAsync(_options.StateStoreName, AuditKey(auditId), audit, cancellationToken: ct), ct)
             .ConfigureAwait(false);
-        await _daprClient
-            .SaveStateAsync(_options.StateStoreName, key, updated, cancellationToken: ct)
+        await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .SaveStateAsync(_options.StateStoreName, key, updated, cancellationToken: ct), ct)
             .ConfigureAwait(false);
         return updated;
     }
@@ -384,14 +385,14 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
             throw new InvalidOperationException(auditRejectionReason);
         }
 
-        await _daprClient
-            .SaveStateAsync(_options.StateStoreName, AuditKey(auditId), audit, cancellationToken: ct)
+        await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .SaveStateAsync(_options.StateStoreName, AuditKey(auditId), audit, cancellationToken: ct), ct)
             .ConfigureAwait(false);
-        await _daprClient
-            .SaveStateAsync(_options.StateStoreName, WorkflowIdKey(request.Identity.TenantId, request.Identity.WorkflowId), decision, cancellationToken: ct)
+        await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .SaveStateAsync(_options.StateStoreName, WorkflowIdKey(request.Identity.TenantId, request.Identity.WorkflowId), decision, cancellationToken: ct), ct)
             .ConfigureAwait(false);
-        await _daprClient
-            .SaveStateAsync(_options.StateStoreName, scopeStateKey, decision, cancellationToken: ct)
+        await RouteCatalogRemoteExecution.InvokeAsync(() => _daprClient
+            .SaveStateAsync(_options.StateStoreName, scopeStateKey, decision, cancellationToken: ct), ct)
             .ConfigureAwait(false);
         return decision;
     }

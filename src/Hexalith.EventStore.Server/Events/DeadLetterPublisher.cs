@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using System.Diagnostics;
 
@@ -57,12 +58,12 @@ public partial class DeadLetterPublisher(
                 ["cloudevent.datacontenttype"] = "application/json",
             };
 
-            await daprClient.PublishEventAsync(
+            await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.PublishEventAsync(
                 options.Value.PubSubName,
                 deadLetterTopic,
                 safeMessage,
                 metadata,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken)).ConfigureAwait(false);
 
             // Rule #5: Never log command payload or event payload data (SEC-5).
             // Rule #9: correlationId in every structured log entry.

@@ -216,7 +216,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     private static RouteCatalogActivation Freeze(RouteCatalogActivation candidate) => candidate with
     {
         CanonicalCatalog = candidate.CanonicalCatalog.ToArray(), RequiredHosts = Array.AsReadOnly(candidate.RequiredHosts.ToArray()),
-        AuxiliaryOperations = Array.AsReadOnly((candidate.AuxiliaryOperations ?? []).ToArray()),
+        AuxiliaryOperations = Array.AsReadOnly((candidate.AuxiliaryOperations ?? []).Select(operation => operation with { Http = operation.Http is { } http ? http with { Grants = http.Grants is null ? null : Array.AsReadOnly(http.Grants.ToArray()) } : null }).ToArray()),
         ProjectionCapabilities = Array.AsReadOnly((candidate.ProjectionCapabilities ?? []).Select(c => c with
         { ProjectionTypes = Array.AsReadOnly(c.ProjectionTypes.ToArray()) }).ToArray()),
     };

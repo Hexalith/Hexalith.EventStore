@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
@@ -231,8 +232,8 @@ public sealed partial class DaprSnapshotPolicyRepository(
 
             List<SnapshotPolicy> normalized = NormalizeAndMerge(existing ?? [], repairPolicies);
             List<SnapshotPolicy> updated = Sort(mutate(normalized));
-            bool saved = await daprClient
-                .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct)
+            bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
             if (saved) {
                 return true;

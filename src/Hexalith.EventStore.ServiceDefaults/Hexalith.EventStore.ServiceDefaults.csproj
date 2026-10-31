@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
   </ItemGroup>
 

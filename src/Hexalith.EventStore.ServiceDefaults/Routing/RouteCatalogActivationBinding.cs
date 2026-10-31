@@ -23,8 +23,19 @@ public static class RouteCatalogActivationBinding
             || (activation.PredecessorRootDigest is not null && !Digest(activation.PredecessorRootDigest))
             || (activation.AuxiliaryOperations is { } auxiliary && (auxiliary.Any(a => a is null
                 || !activation.RequiredHosts.Any(h => h.AppId == a.AppId) || string.IsNullOrWhiteSpace(a.Method)
-                || string.IsNullOrWhiteSpace(a.Operation) || string.IsNullOrWhiteSpace(a.Domain))
-                || auxiliary.Distinct().Count() != auxiliary.Count))
+                || string.IsNullOrWhiteSpace(a.Operation) || string.IsNullOrWhiteSpace(a.Domain)
+                || a.NativeActor is { } native && (envelope.SchemaVersion != 3 || a.Http is not null
+                    || native.Kind is not ("config" or "health" or "method" or "reminder" or "timer" or "deactivate")
+                    || !Digest(native.CodeDigest) || !Digest(native.FrameworkDigest) || !Digest(native.InventoryDigest)
+                    || native.Verbs != (native.Kind is "config" or "health" ? "GET" : native.Kind == "deactivate" ? "DELETE" : "PUT"))
+                || a.Http is { } http && (envelope.SchemaVersion != 3 || !Digest(http.CodeDigest) || string.IsNullOrWhiteSpace(http.Owner)
+                    || http.Grants is not { Count: > 0 } grants || grants.Any(grant => string.IsNullOrWhiteSpace(grant.Method)
+                        || string.IsNullOrWhiteSpace(grant.Verbs) || grant.Verbs.Split(' ').Any(verb => !http.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal)))
+                    || http.Verbs.Split(' ') is not { Length: > 0 } verbs
+                    || verbs.Any(verb => verb is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS"))
+                    || !verbs.Order(StringComparer.Ordinal).SequenceEqual(verbs, StringComparer.Ordinal)
+                    || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length))
+                || auxiliary.Select(operation => JsonSerializer.Serialize(operation)).Distinct(StringComparer.Ordinal).Count() != auxiliary.Count))
             || envelope.Routes.Any(r => !activation.RequiredHosts.Any(h => h.AppId == r.AppId))
             || envelope.Idempotency.Any(i => !activation.RequiredHosts.Any(h => h.AppId == i.ConsumerAppId)))
         {
