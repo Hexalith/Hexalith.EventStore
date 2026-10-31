@@ -6,6 +6,7 @@ using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.DomainService;
 
@@ -29,6 +30,20 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                 throw new RouteCatalogUnavailableException("The incoming call does not bind this committed generation.");
             string appId = options.Value.Identity?.AppId ?? throw new RouteCatalogUnavailableException("The receiver has no catalog host identity.");
             string method = context.HttpContext.Request.Path.Value!.TrimStart('/');
+            if (context.HttpContext.GetEndpoint() is Microsoft.AspNetCore.Routing.RouteEndpoint endpoint
+                && endpoint.Metadata.GetMetadata<DomainRouteCatalogAuxiliaryMetadata>() is { } auxiliary)
+            {
+                var owner = auxiliary.Observe(endpoint);
+                object request = context.Arguments.SingleOrDefault(argument => argument?.GetType() == auxiliary.RequestType)
+                    ?? throw new RouteCatalogUnavailableException("The auxiliary request has no typed owner scope.");
+                if (context.HttpContext.Request.Method != "POST" || endpoint.RoutePattern.RawText != "/" + method
+                    || !snapshot.AuxiliaryOperations.Any(operation => operation.AppId == appId && operation.Method == method
+                        && operation.Operation == auxiliary.Route.Operation && operation.Domain == auxiliary.Domain && operation.DomainAuxiliary == owner))
+                    throw new RouteCatalogUnavailableException("The auxiliary endpoint code or scope differs from its committed owner binding.");
+                var scope = auxiliary.Scope(request);
+                ValidateAuxiliaryTenant(snapshot, appId, scope.Domain, scope.Tenant);
+                return lease;
+            }
             if (!EventStoreDomainServiceRoutes.Operational.Any(route => route.Route == "/" + method))
                 throw new RouteCatalogUnavailableException("The receiver method has no canonical operation policy.");
             string operation = EventStoreDomainServiceRoutes.Operational.Single(route => route.Route == "/" + method).Operation;
@@ -80,6 +95,16 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                         RouteCatalogProjectionPolicy.Auxiliary(snapshot, domain, appId, method, operation);
                     break;
                 case ProjectionRequest projection:
+                    if (!context.HttpContext.RequestServices.GetServices<IDomainProjectionHandler>().Any(handler => handler.Domain == projection.Domain)
+                        && !snapshot.Envelope.Routes.Any(target => target.AppId == appId && target.Method == method
+                            && snapshot.Envelope.Declarations.Any(declaration => declaration.RouteId == target.RouteId
+                                && declaration.Kind == "projection" && declaration.Domain == projection.Domain)))
+                    {
+                        RouteCatalogProjectionPolicy.Auxiliary(snapshot, projection.Domain, appId, method, operation);
+                        ValidateAuxiliaryTenant(snapshot, appId, projection.Domain, projection.TenantId);
+                        _ = RouteCatalogProjectionPolicy.Outputs(snapshot, projection.TenantId, projection.Domain, appId, "project/v2");
+                        throw new DomainRouteCatalogMissingLegacyReceiverException();
+                    }
                     _ = RouteCatalogProjectionPolicy.Outputs(snapshot, projection.TenantId, projection.Domain, appId, method);
                     break;
                 default:
@@ -129,3 +154,5 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
             throw new RouteCatalogUnavailableException("The auxiliary request tenant is outside the committed domain scope.");
     }
 }
+
+internal sealed class DomainRouteCatalogMissingLegacyReceiverException : Exception;

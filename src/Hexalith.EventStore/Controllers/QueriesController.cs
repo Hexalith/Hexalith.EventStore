@@ -203,14 +203,25 @@ public partial class QueriesController : ControllerBase {
         var catalogLease = catalogAuthority is null ? null
             : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        bool protectedInternalIdentity = false;
         if (catalogLease is not null)
         {
             var selected = catalogLease.Snapshot.Resolve("query", request.Tenant, request.Domain, request.QueryType);
-            if (catalogLease.Snapshot.Envelope.SchemaVersion == 3
-                && !Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Allows(
-                    catalogLease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId), User))
-                return Forbid();
-            if ((!string.IsNullOrWhiteSpace(request.ProjectionType) && request.ProjectionType != selected.Declaration.ProjectionType)
+            if (catalogLease.Snapshot.Envelope.SchemaVersion == 3)
+            {
+                var operation = catalogLease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId);
+                // The existing exact-scope identity reader protocol has always used this wire.
+                // This candidate is not admitted until the configured authority issues its bound proof below.
+                protectedInternalIdentity = operation.Ingress == "internal"
+                    && Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Surface(User) == "service"
+                    && IdentityOperationCatalog.RequiresAdmission(request.QueryType)
+                    && identityAdmission?.RequiresAdmission(request.Domain, request.QueryType) == true;
+                if (!protectedInternalIdentity && !Hexalith.EventStore.ServiceDefaults.Authentication.RouteCatalogSurfacePolicy.Allows(operation, User))
+                    return Forbid();
+            }
+            bool legacyIdentityHint = protectedInternalIdentity && selected.Declaration.ProjectionType is null
+                && request.ProjectionType == request.Domain && string.IsNullOrWhiteSpace(request.ProjectionActorType);
+            if ((!legacyIdentityHint && !string.IsNullOrWhiteSpace(request.ProjectionType) && request.ProjectionType != selected.Declaration.ProjectionType)
                 || (!string.IsNullOrWhiteSpace(request.ProjectionActorType) && request.ProjectionActorType != selected.Declaration.Execution!.ActorType))
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The selected query target differs from committed authority.");
         }
@@ -240,13 +251,15 @@ public partial class QueriesController : ControllerBase {
             var scope = new IdentityAdmissionScope(request.Tenant, request.Domain, request.AggregateId,
                 request.QueryType, correlationId, correlationId, IdentityAdmissionProof.Digest(payloadBytes));
             identityProof = await identityAdmission.AdmitAsync(User, scope, payloadBytes, cancellationToken).ConfigureAwait(false);
-            if (identityProof is null)
+            if (string.IsNullOrWhiteSpace(identityProof))
             {
                 return StatusCode(StatusCodes.Status403Forbidden);
             }
 
             Response.Headers.CacheControl = "no-store";
         }
+
+        if (protectedInternalIdentity && string.IsNullOrWhiteSpace(identityProof)) return Forbid();
 
         QueryCallerAuthority? callerAuthority;
         try
@@ -267,7 +280,7 @@ public partial class QueriesController : ControllerBase {
             CorrelationId: correlationId,
             UserId: userId,
             EntityId: entityId,
-            ProjectionType: string.IsNullOrWhiteSpace(request.ProjectionType)
+            ProjectionType: protectedInternalIdentity ? null : string.IsNullOrWhiteSpace(request.ProjectionType)
                 ? (catalogAuthority is null ? request.Domain : null)
                 : request.ProjectionType,
             ProjectionActorType: request.ProjectionActorType,

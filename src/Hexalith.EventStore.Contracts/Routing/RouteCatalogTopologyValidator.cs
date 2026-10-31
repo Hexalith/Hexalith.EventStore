@@ -64,7 +64,20 @@ public static class RouteCatalogTopologyValidator
                 methods[method] = target.Operation;
             }
             foreach (var operation in auxiliary ?? [])
-                if (operation.AppId == localAppId) methods[operation.Method] = operation.Operation;
+                if (operation.AppId == localAppId)
+                {
+                    if (operation.DomainAuxiliary is { } owner && (receiver is null
+                        || !receiver.Endpoints.Any(endpoint => endpoint.Pattern == "/" + operation.Method && endpoint.Admitted
+                            && !endpoint.Anonymous && !endpoint.IsPattern && endpoint.Methods.SequenceEqual(["POST"], StringComparer.Ordinal)
+                            && endpoint.Operation == operation.Operation && endpoint.DomainAuxiliary == owner)))
+                        throw Failure("domain-auxiliary-owner-binding-drift");
+                    if (operation.Sidecar is { } subscription && (receiver is null
+                        || !receiver.Endpoints.Any(endpoint => endpoint.Pattern == "/" + operation.Method && endpoint.Admitted
+                            && !endpoint.Anonymous && !endpoint.IsPattern && endpoint.Methods.SequenceEqual(["POST"], StringComparer.Ordinal)
+                            && endpoint.Operation == operation.Operation && endpoint.Sidecar == subscription)))
+                        throw Failure("sidecar-subscription-owner-binding-drift");
+                    methods[operation.Method] = operation.Operation;
+                }
             methods["internal/routing/catalog-generation"] = EventStoreOperationIdentifiers.RouteCatalogRead;
             foreach (string stage in new[] { "prepare", "ready", "commit", "rollback", "reconcile" }) methods["internal/routing/catalog/" + stage] = EventStoreOperationIdentifiers.RouteCatalogActivate;
             if (!acl.TryGetProperty("policies", out JsonElement policies)) return;

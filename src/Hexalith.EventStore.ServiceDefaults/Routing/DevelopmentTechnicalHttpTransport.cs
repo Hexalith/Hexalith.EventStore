@@ -33,6 +33,10 @@ public static class DevelopmentTechnicalHttpTransport
     public static RouteCatalogHttpTransport? Observe(RouteEndpoint endpoint)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
+        if (endpoint.Metadata.GetMetadata<IDevelopmentSdkHttpWitness>() is { } witness
+            && witness.GetType().Assembly.GetName().Name == "Hexalith.EventStore.Operations"
+            && witness.GetType().FullName == "Hexalith.EventStore.Operations.Routing.DevelopmentOperationsHttpWitness")
+            return witness.Observe(endpoint);
         var action = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>();
         if (action is null || !ExecutesAction(endpoint.RequestDelegate, action)
             || action.MethodInfo.DeclaringType != action.ControllerTypeInfo.AsType()

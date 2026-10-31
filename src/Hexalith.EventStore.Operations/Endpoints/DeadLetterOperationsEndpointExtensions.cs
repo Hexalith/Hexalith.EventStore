@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Operations.Security;
+using Hexalith.EventStore.Operations.Routing;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using System.Globalization;
@@ -44,17 +45,20 @@ internal static class DeadLetterOperationsEndpointExtensions
                 PubsubName = options.PubSubName,
                 Name = options.TopicName,
             }).RequireEventStoreChannel();
-        _ = endpoints.MapGet(InternalRoute + "/count", CountAsync)
-            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "count");
-        _ = endpoints.MapGet(InternalRoute, ListAsync)
-            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "list");
-        _ = endpoints.MapPost(InternalRoute + "/retry", RetryAsync)
-            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "retry");
-        _ = endpoints.MapPost(InternalRoute + "/skip", SkipAsync)
-            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "skip");
-        _ = endpoints.MapPost(InternalRoute + "/archive", ArchiveAsync)
-            .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + "archive");
+        MapOperator(InternalRoute + "/count", "GET", (Delegate)CountAsync, "count");
+        MapOperator(InternalRoute, "GET", (Delegate)ListAsync, "list");
+        MapOperator(InternalRoute + "/retry", "POST", (Delegate)RetryAsync, "retry");
+        MapOperator(InternalRoute + "/skip", "POST", (Delegate)SkipAsync, "skip");
+        MapOperator(InternalRoute + "/archive", "POST", (Delegate)ArchiveAsync, "archive");
         return endpoints;
+
+        void MapOperator(string path, string verb, Delegate handler, string operation)
+        {
+            var endpoint = endpoints.MapMethods(path, [verb], handler)
+                .RequireAuthorization(OperationsHttpSecurityExtensions.PolicyPrefix + operation,
+                    EventStoreHttpHostSecurityExtensions.HumanPolicy);
+            endpoint.Finally(builder => builder.Metadata.Add(new DevelopmentOperationsHttpWitness(builder.RequestDelegate, handler.Method, operation)));
+        }
     }
 
     private static Task<IResult> ArchiveAsync(

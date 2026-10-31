@@ -21,12 +21,14 @@ public sealed class FiniteRouteCatalogReceiver
     public const string Version = "eventstore-finite-dapr-receiver-v1";
     /// <summary>Explicit SDK-owned technical HTTP qualification; ordinary finite receivers retain v1 refusal rules.</summary>
     public const string TechnicalVersion = "eventstore-finite-sdk-http-receiver-v2";
-    private readonly Dictionary<(string Path, string Verb), (RouteEndpoint Endpoint, string Operation, string[] Policies, RouteCatalogHttpTransport? Http, RouteCatalogNativeActorTransport? Native)> _allowed = new();
+    private readonly Dictionary<(string Path, string Verb), (RouteEndpoint Endpoint, string Operation, string[] Policies, RouteCatalogHttpTransport? Http, RouteCatalogNativeActorTransport? Native, RouteCatalogDomainAuxiliaryTransport? DomainAuxiliary, RouteCatalogSidecarTransport? Sidecar)> _allowed = new();
     private readonly List<(string Prefix, string[] Verbs, string Method)> _grants = [];
     private bool _technical;
     private IDevelopmentNativeActorReceiver? _native;
     private readonly TaskCompletionSource _captured = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Func<RouteEndpoint, string?>? _operation;
+    private Func<RouteEndpoint, RouteCatalogDomainAuxiliaryTransport?>? _domainAuxiliary;
+    private Func<RouteEndpoint, RouteCatalogSidecarTransport?>? _sidecar;
     private Func<IEnumerable<Endpoint>>? _currentEndpoints;
     private string[] _prefixes = [];
     private RouteCatalogReceiverSurface? _surface;
@@ -35,14 +37,31 @@ public sealed class FiniteRouteCatalogReceiver
     public static WebApplication UseFiniteDevelopmentRouteCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> operation)
         => UseFiniteDevelopmentRouteCatalogReceiver(app, operation, false);
 
+    /// <summary>Retains the same finite receiver while binding explicitly registered domain auxiliary code.</summary>
+    public static WebApplication UseFiniteDevelopmentRouteCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> operation,
+        Func<RouteEndpoint, RouteCatalogDomainAuxiliaryTransport?> domainAuxiliary)
+        => UseFiniteDevelopmentRouteCatalogReceiver(app, operation, false, domainAuxiliary, null);
+
+    /// <summary>Binds existing SDK channel-only subscription callbacks through the same concrete receiver fence.</summary>
+    public static WebApplication UseFiniteDevelopmentRouteCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> operation,
+        Func<RouteEndpoint, RouteCatalogDomainAuxiliaryTransport?> domainAuxiliary, Func<RouteEndpoint, RouteCatalogSidecarTransport?> sidecar)
+        => UseFiniteDevelopmentRouteCatalogReceiver(app, operation, false, domainAuxiliary, sidecar);
+
     /// <summary>Opts a private Development SDK host into code-bound existing administrative HTTP transports.</summary>
     public static WebApplication UseFiniteDevelopmentRouteCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> operation, bool technical)
+        => UseFiniteDevelopmentRouteCatalogReceiver(app, operation, technical, null, null);
+
+    private static WebApplication UseFiniteDevelopmentRouteCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> operation,
+        bool technical, Func<RouteEndpoint, RouteCatalogDomainAuxiliaryTransport?>? domainAuxiliary,
+        Func<RouteEndpoint, RouteCatalogSidecarTransport?>? sidecar)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(operation);
         if (string.IsNullOrEmpty(app.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"])) return app;
         var fence = app.Services.GetRequiredService<FiniteRouteCatalogReceiver>();
         fence._technical = technical;
+        fence._domainAuxiliary = domainAuxiliary;
+        fence._sidecar = sidecar;
         fence._native = technical ? app.Services.GetService<IDevelopmentNativeActorReceiver>() : null;
         if (technical && !app.Environment.IsDevelopment()) throw new RouteCatalogUnavailableException("Technical HTTP qualification is private Development only.");
         // The framework route source materializes new endpoint instances on each read. Share one
@@ -211,6 +230,8 @@ public sealed class FiniteRouteCatalogReceiver
             bool anonymous = route.Metadata.GetMetadata<IAllowAnonymous>() is not null;
             bool isPattern = route.RoutePattern.Parameters.Count > 0 || pattern.Contains('{', StringComparison.Ordinal) || pattern.Contains('*', StringComparison.Ordinal);
             var native = _technical ? _native?.Observe(route) : null;
+            var domainAuxiliary = _domainAuxiliary?.Invoke(route);
+            var sidecar = _sidecar?.Invoke(route);
             if (native?.Kind == "health" && methods.Length == 0) methods = ["GET"];
             string? canonical = native is null ? _operation!(route) : "sdk-native-actor:" + native.Kind;
             var http = _technical ? DevelopmentTechnicalHttpTransport.Observe(route) : null;
@@ -221,10 +242,11 @@ public sealed class FiniteRouteCatalogReceiver
                 && DevelopmentTechnicalHttpTransport.GrantReaches(grant.Method, pattern)));
             if (admitted && enroll)
                 foreach (string verb in methods)
-                    if (!_allowed.TryAdd((pattern.ToLowerInvariant(), verb), (route, canonical!, policies, http, native)))
+                    if (!_allowed.TryAdd((pattern.ToLowerInvariant(), verb), (route, canonical!, policies, http, native, domainAuxiliary, sidecar)))
                         throw new RouteCatalogUnavailableException("The finite receiver has ambiguous concrete operations.");
             if (!enroll) admitted = admitted && methods.All(verb => RefusalBoundary(pattern, verb, route, runtime: false) is null);
-            inventory.Add(new(pattern, methods, canonical, policies, anonymous, isPattern, admitted) { Http = http, NativeActor = native });
+            inventory.Add(new(pattern, methods, canonical, policies, anonymous, isPattern, admitted)
+                { Http = http, NativeActor = native, DomainAuxiliary = domainAuxiliary, Sidecar = sidecar });
         }
         return inventory.OrderBy(e => e.Pattern, StringComparer.Ordinal).ThenBy(e => string.Join(',', e.Methods), StringComparer.Ordinal).ToArray();
     }
@@ -245,6 +267,8 @@ public sealed class FiniteRouteCatalogReceiver
         if (runtime && actual.Http is not null && !_grants.Any(grant => grant.Verbs.Contains(verb, StringComparer.Ordinal)
             && DevelopmentTechnicalHttpTransport.GrantAllows(grant.Method, path))) return "finite-acl-path-ungranted";
         if (actual.Native is not null && _native?.Observe((RouteEndpoint)endpoint!) != actual.Native) return "finite-native-inventory-changed";
+        if (actual.DomainAuxiliary is not null && _domainAuxiliary?.Invoke((RouteEndpoint)endpoint!) != actual.DomainAuxiliary) return "finite-domain-owner-changed";
+        if (actual.Sidecar is not null && _sidecar?.Invoke((RouteEndpoint)endpoint!) != actual.Sidecar) return "finite-subscription-owner-changed";
         if (!ReferenceEquals(actual.Endpoint, endpoint)) return "finite-endpoint-changed";
         if (endpoint!.Metadata.GetMetadata<IAllowAnonymous>() is not null
             || (actual.Native?.Kind == "health" ? verb != "GET" || endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Count is > 0

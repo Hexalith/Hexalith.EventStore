@@ -13,6 +13,12 @@ namespace Hexalith.EventStore.Contracts.Routing;
 public sealed record RouteCatalogReceiverEndpoint(string Pattern, IReadOnlyList<string> Methods, string? Operation,
     IReadOnlyList<string> Policies, bool Anonymous, bool IsPattern, bool Admitted)
 {
+    /// <summary>Gets the actual typed domain owner and scope extraction code, when explicitly enrolled.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RouteCatalogDomainAuxiliaryTransport? DomainAuxiliary { get; init; }
+    /// <summary>Gets an actual SDK subscription callback, without granting workload or public message eligibility.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RouteCatalogSidecarTransport? Sidecar { get; init; }
     /// <summary>Gets independently captured SDK controller/code/verb identity, never message eligibility.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RouteCatalogHttpTransport? Http { get; init; }
