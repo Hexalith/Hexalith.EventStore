@@ -38,7 +38,7 @@ public sealed class DescriptorFixtureTests
         {
             await fixture.InitializeAsync();
             fixture.Gateway.BaseAddress.ShouldBe(new Uri("http://127.0.0.1:18080"));
-            fixture.Environment.GetEndpoint("redis", "parties", "tcp").Scheme.ShouldBe("tcp");
+            fixture.Descriptor.GetEndpoint("redis", "parties", "tcp").Scheme.ShouldBe("tcp");
             Should.Throw<InvalidOperationException>(() => fixture.PersistenceClient);
         }
         else
@@ -46,7 +46,7 @@ public sealed class DescriptorFixtureTests
             TestEnvironmentDescriptorException failure = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () => await fixture.InitializeAsync());
             failure.Rule.ShouldBe("HXT109");
             Should.Throw<InvalidOperationException>(() => fixture.Gateway);
-            Should.Throw<InvalidOperationException>(() => fixture.Environment);
+            Should.Throw<InvalidOperationException>(() => fixture.Descriptor);
         }
     }
 
@@ -68,7 +68,7 @@ public sealed class DescriptorFixtureTests
         await using var fixture = new DescriptorTopologyFixture();
         await fixture.InitializeAsync();
         fixture.Endpoint.ShouldBe(new Uri("http://127.0.0.1:18080"));
-        fixture.Environment.SyntheticTenantId.ShouldBe("sample-synthetic-tenant");
+        fixture.Descriptor.SyntheticTenantId.ShouldBe("sample-synthetic-tenant");
         await fixture.DisposeAsync();
         Should.Throw<ObjectDisposedException>(() => fixture.Endpoint);
         await using var domain = new DescriptorDomainFixture();

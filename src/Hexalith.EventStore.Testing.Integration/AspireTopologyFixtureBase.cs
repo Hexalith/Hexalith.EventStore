@@ -13,7 +13,7 @@ public abstract class AspireTopologyFixtureBase : IAsyncLifetime
     protected abstract IReadOnlyList<TestEnvironmentEndpoint> Resources { get; }
 
     /// <summary>Gets the validated ready environment after initialization.</summary>
-    public TestEnvironmentDescriptor Environment => _environment ?? throw new InvalidOperationException("The fixture has not consumed a valid handoff.");
+    public TestEnvironmentDescriptor Descriptor => _environment ?? throw new InvalidOperationException("The fixture has not consumed a valid handoff.");
 
     /// <summary>Gets the client for an explicitly declared resource.</summary>
     /// <param name="resourceId">The declared resource identity.</param>

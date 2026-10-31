@@ -461,5 +461,5 @@ public static class TestEnvironmentDescriptorReader
     }
 
     private static TestEnvironmentDescriptor Refuse(string rule, string version, string field, string message) =>
-        throw new TestEnvironmentDescriptorException(rule, message);
+        throw new TestEnvironmentDescriptorException(rule, $"{message} Source: {version}; field: {field}.");
 }

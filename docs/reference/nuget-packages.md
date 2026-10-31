@@ -507,6 +507,21 @@ through `Resources`. There is no AppHost type, startup argument, port or prerequ
 `ConfigureDomain`, local host registration, `/process` mapping, captured host errors and
 `SkipIfUnavailable` were removed. `DaprFact` never skips a missing handoff. Optional performance
 opt-in remains separate.
+Also removed: the public `DaprTestPrerequisites` class; the `AspireResource` record and the
+`ExtraAppArgs`, `StartupTimeout`, `AlivenessEndpointPath`, `FixtureLockName`, `PrerequisitesAvailable`
+and `SkipReason` members of the topology fixture; and the `AppId`, `RedisPort`, `DeadLetterTopic`,
+`FixtureLockName`, `LastProcessException`, `LastProcessDiagnostic`, `PrerequisitesAvailable` and
+`SkipReason` members of `DaprDomainServiceTestFixtureBase`. Its static
+`BuildPrerequisiteFailureMessage`, `IsDaprInfrastructureStartupFailure` and `ToSupportSafeDiagnostic`
+helpers remain available on `DaprDiagnostics`. `DaprPerformanceFact` now checks only its explicit
+opt-in and no longer probes local DAPR. The validated descriptor is exposed as the fixture's
+`Descriptor` property, so derived fixtures keep unqualified `Environment.GetEnvironmentVariable` calls.
+Opt an endpoint into Dapr service invocation with `TestEnvironmentEndpoint { DaprInvocation = true }`
+on an authenticated binding whose supplied URI is the canonical `/v1.0/invoke/<app-id>/method/<prefix>/`
+prefix. Its `dapr-api-token` comes only from the runner's private `native-endpoint-credentials.json`
+file next to the descriptor, named by `HEXALITH_TEST_ENDPOINT_CREDENTIALS_PATH`, readable only by its
+owner and bound to the exact run, synthetic tenant, isolation, resource, module, endpoint and URI.
+Requests are confined to that prefix, and target or credential header overrides are refused before sending.
 Use `Client(resourceId, moduleId, endpointName)` when a resource exposes multiple endpoints;
 `Client(resourceId)` remains available only for an unambiguous single declared endpoint.
 Fixture disposal and finite request budgets cover streamed response bodies, including

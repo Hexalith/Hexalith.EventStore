@@ -19,6 +19,32 @@ public sealed class TestEnvironmentDescriptorReaderTests
             .ShouldBe("bf1e46acc773991037daaae20dff1d815faf4af13ab7887d88339609607ff357");
     }
 
+    /// <summary>Uses each Linux architecture's own no-follow flag; 0x20000 is O_LARGEFILE on Arm and PowerPC.</summary>
+    /// <param name="architecture">The process architecture.</param>
+    /// <param name="expected">The architecture's O_NOFOLLOW value.</param>
+    [Theory]
+    [InlineData(System.Runtime.InteropServices.Architecture.X64, 0x20000)]
+    [InlineData(System.Runtime.InteropServices.Architecture.X86, 0x20000)]
+    [InlineData(System.Runtime.InteropServices.Architecture.Arm64, 0x8000)]
+    [InlineData(System.Runtime.InteropServices.Architecture.Arm, 0x8000)]
+    [InlineData(System.Runtime.InteropServices.Architecture.Ppc64le, 0x8000)]
+    public void LinuxNoFollowMatchesArchitecture(System.Runtime.InteropServices.Architecture architecture, int expected) =>
+        TestEnvironmentDescriptorFile.LinuxNoFollow(architecture).ShouldBe(expected);
+
+    /// <summary>Refusals carry the contract source and fixed field location without supplied values.</summary>
+    [Fact]
+    public void RefusalReportsContractSourceAndFieldLocation()
+    {
+        using var file = new DescriptorTestFile();
+        JsonNode root = JsonNode.Parse(File.ReadAllText(file.Path))!;
+        root["schema"] = "secret-value";
+        File.WriteAllText(file.Path, root.ToJsonString());
+        TestEnvironmentDescriptorException failure = Should.Throw<TestEnvironmentDescriptorException>(() => TestEnvironmentDescriptorReader.ReadDescriptor(file.Path));
+        failure.Rule.ShouldBe("HXT101");
+        failure.Message.ShouldContain("Source: " + TestEnvironmentDescriptorReader.DescriptorSchema + "; field: schema.");
+        failure.Message.ShouldNotContain("secret-value");
+    }
+
     /// <summary>Refuses network path namespaces before entering the filesystem.</summary>
     /// <param name="path">The explicitly supplied network path.</param>
     [Theory]
@@ -80,6 +106,50 @@ public sealed class TestEnvironmentDescriptorReaderTests
         listener.Pending().ShouldBeFalse();
     }
 
+    /// <summary>Refuses a non-loopback supplied endpoint before any client can send the runner bearer.</summary>
+    /// <param name="uri">The hosted endpoint spelling.</param>
+    [Theory]
+    [InlineData("http://10.0.0.5:18080")]
+    [InlineData("http://eventstore.example:18080")]
+    public void HostedEndpointRefusesSelectionAndClientCreation(string uri)
+    {
+        using var file = new DescriptorTestFile();
+        JsonNode root = JsonNode.Parse(File.ReadAllText(file.Path))!;
+        root["bindings"]!["environment"]!["resources"]![0]!["endpoints"]![0]!["uri"] = uri;
+        File.WriteAllText(file.Path, root.ToJsonString());
+        using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
+        descriptor.BindCredentials(descriptor.RunId, descriptor.SyntheticTenantId, descriptor.DataIsolationId, "private-bearer");
+        TestEnvironmentDescriptorException selection = Should.Throw<TestEnvironmentDescriptorException>(() => descriptor.GetEndpoint("eventstore", "Hexalith.EventStore", "http"));
+        selection.Rule.ShouldBe("HXT109");
+        selection.Message.ShouldNotContain(new Uri(uri).Host);
+        Should.Throw<TestEnvironmentDescriptorException>(() => descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(1))).Rule.ShouldBe("HXT109");
+    }
+
+    /// <summary>A redirect reaches the caller unchanged; the bearer is never re-sent to its target.</summary>
+    [Fact]
+    public async Task BearerRedirectIsReturnedWithoutFollowing()
+    {
+        using var file = new DescriptorTestFile();
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        using var target = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        target.Start();
+        File.WriteAllText(file.Path, File.ReadAllText(file.Path).Replace("18080", ((IPEndPoint)listener.LocalEndpoint).Port.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
+        using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
+        descriptor.BindCredentials(descriptor.RunId, descriptor.SyntheticTenantId, descriptor.DataIsolationId, "private-bearer");
+        using HttpClient client = descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(10));
+        using var bound = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        bound.CancelAfter(TimeSpan.FromSeconds(10));
+        Task<HttpResponseMessage> pending = client.GetAsync("/", bound.Token);
+        using TcpClient accepted = await listener.AcceptTcpClientAsync(bound.Token);
+        _ = await TestEnvironmentEndpointCredentialTests.ReadHeadersAsync(accepted.GetStream(), bound.Token);
+        string location = $"http://127.0.0.1:{((IPEndPoint)target.LocalEndpoint).Port}/elsewhere";
+        await accepted.GetStream().WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 307 Temporary Redirect\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"), bound.Token);
+        using HttpResponseMessage response = await pending.WaitAsync(TimeSpan.FromSeconds(5), bound.Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.TemporaryRedirect);
+        target.Pending().ShouldBeFalse("No credential-bearing request may follow a redirect.");
+    }
+
     [Fact]
     public void ReadyOwner_ResolvesExactBindingsAndSyntheticTenant()
     {
@@ -115,6 +185,7 @@ public sealed class TestEnvironmentDescriptorReaderTests
     [InlineData("resource-readiness-missing", "HXT108")]
     [InlineData("startup-unavailable", "HXT108")]
     [InlineData("startup-failed", "HXT108")]
+    [InlineData("attached", "HXT108")]
     public void InconsistentHandoff_RefusesAtomicallyWithoutSuppliedValues(string mutation, string rule)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(mutation);
@@ -122,7 +193,7 @@ public sealed class TestEnvironmentDescriptorReaderTests
         JsonNode root = JsonNode.Parse(File.ReadAllText(file.Path))!;
         JsonNode bindings = root["bindings"]!;
         JsonNode env = bindings["environment"]!;
-        if (mutation.StartsWith("hold-", StringComparison.Ordinal))
+        if (mutation.StartsWith("hold-", StringComparison.Ordinal) || mutation == "attached")
         {
             bindings["attachments"]!["holds"]!.AsArray().Add(JsonNode.Parse("""
                 {"originalAttachmentRequestId":"request-1","environmentId":"sample-environment","ownerRunId":"sample-owner-run","attachedRunId":"attached-run","acceptedAt":"2026-10-22T12:00:00Z","requestedHoldSeconds":300,"effectiveHoldSeconds":300,"expiresAt":"2026-10-22T12:05:00Z","end":{"state":"active"}}
@@ -152,6 +223,12 @@ public sealed class TestEnvironmentDescriptorReaderTests
             case "resource-readiness-missing": env["readiness"]!["resources"] = new JsonArray(); break;
             case "startup-unavailable": env["startupTasks"] = JsonNode.Parse("{\"state\":\"not-yet-populated\"}"); break;
             case "startup-failed": env["startupTasks"]!["tasks"]!.AsArray().Add(JsonNode.Parse("{\"taskId\":\"setup\",\"required\":true,\"status\":\"failed\",\"diagnosticIds\":[]}")); break;
+            case "attached":
+                // A schema-valid, consistent attached run with its own hold remains unqualified for fixtures.
+                bindings["run"]!["runId"] = "attached-run";
+                bindings["run"]!["role"] = "attached";
+                bindings["run"]!["attachedRunId"] = "attached-run";
+                break;
         }
 
         File.WriteAllText(file.Path, root.ToJsonString());

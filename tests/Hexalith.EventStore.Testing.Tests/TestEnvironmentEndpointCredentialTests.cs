@@ -276,7 +276,53 @@ public sealed class TestEnvironmentEndpointCredentialTests
         (failure is IOException or ObjectDisposedException or OperationCanceledException).ShouldBeTrue();
     }
 
-    private static async Task<string> ReadHeadersAsync(NetworkStream stream, CancellationToken token)
+    /// <summary>A redirect reaches the caller unchanged; the Dapr credential is never re-sent to its target.</summary>
+    [Fact]
+    public async Task InvocationRedirectIsReturnedWithoutFollowing()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        using var target = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        target.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var files = new EndpointCredentialTestEnvironment($"http://127.0.0.1:{port}/v1.0/invoke/declared-owner/method/");
+        files.Bind();
+        using HttpClient client = files.Environment.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromSeconds(10));
+        using var bound = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        bound.CancelAfter(TimeSpan.FromSeconds(10));
+        Task<HttpResponseMessage> pending = client.GetAsync("tenants", bound.Token);
+        using TcpClient accepted = await listener.AcceptTcpClientAsync(bound.Token);
+        _ = await ReadHeadersAsync(accepted.GetStream(), bound.Token);
+        string location = $"http://127.0.0.1:{((IPEndPoint)target.LocalEndpoint).Port}/v1.0/invoke/declared-owner/method/elsewhere";
+        await accepted.GetStream().WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 307 Temporary Redirect\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"), bound.Token);
+        using HttpResponseMessage response = await pending.WaitAsync(TimeSpan.FromSeconds(5), bound.Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.TemporaryRedirect);
+        target.Pending().ShouldBeFalse("No credential-bearing request may follow a redirect.");
+    }
+
+    /// <summary>Both client factories require a finite positive request bound of at most five minutes.</summary>
+    /// <param name="ticks">The requested timeout in ticks: zero, negative, infinite, and five minutes plus one tick.</param>
+    [Theory]
+    [InlineData(0L)]
+    [InlineData(-1L)]
+    [InlineData(-10_000L)]
+    [InlineData(3_000_000_001L)]
+    public void UnboundedOrNonPositiveTimeoutsRefuseBothClients(long ticks)
+    {
+        using var files = new EndpointCredentialTestEnvironment();
+        files.Bind();
+        TimeSpan timeout = TimeSpan.FromTicks(ticks);
+        Should.Throw<TestEnvironmentDescriptorException>(() => files.Environment.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", timeout)).Rule.ShouldBe("HXT110");
+        Should.Throw<TestEnvironmentDescriptorException>(() => files.Environment.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", timeout)).Rule.ShouldBe("HXT110");
+        files.Environment.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromMinutes(5)).Dispose();
+        files.Environment.CreateDaprInvocationClient("eventstore", "Hexalith.EventStore", "dapr-invocation", TimeSpan.FromMinutes(5)).Dispose();
+    }
+
+    /// <summary>Reads one bounded loopback request head.</summary>
+    /// <param name="stream">The accepted loopback stream.</param>
+    /// <param name="token">The bounded test token.</param>
+    /// <returns>The request line and headers.</returns>
+    internal static async Task<string> ReadHeadersAsync(NetworkStream stream, CancellationToken token)
     {
         byte[] bytes = new byte[16384];
         int used = 0;

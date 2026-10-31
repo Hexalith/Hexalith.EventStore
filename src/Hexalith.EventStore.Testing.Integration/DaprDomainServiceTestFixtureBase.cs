@@ -13,10 +13,10 @@ public abstract class DaprDomainServiceTestFixtureBase : AspireTopologyFixtureBa
     protected override IReadOnlyList<TestEnvironmentEndpoint> Resources => [DomainService, Sidecar];
 
     /// <summary>Gets the supplied Dapr endpoint without inferring a local port.</summary>
-    public string DaprHttpEndpoint => Environment.GetEndpoint(Sidecar.ResourceId, Sidecar.ModuleId, Sidecar.EndpointName).AbsoluteUri.TrimEnd('/');
+    public string DaprHttpEndpoint => Descriptor.GetEndpoint(Sidecar.ResourceId, Sidecar.ModuleId, Sidecar.EndpointName).AbsoluteUri.TrimEnd('/');
 
     /// <summary>Gets the supplied domain-service endpoint.</summary>
-    public string AppEndpoint => Environment.GetEndpoint(DomainService.ResourceId, DomainService.ModuleId, DomainService.EndpointName).AbsoluteUri.TrimEnd('/');
+    public string AppEndpoint => Descriptor.GetEndpoint(DomainService.ResourceId, DomainService.ModuleId, DomainService.EndpointName).AbsoluteUri.TrimEnd('/');
 
     /// <summary>Gets the bounded domain-service client.</summary>
     public HttpClient DomainClient => Client(DomainService.ResourceId, DomainService.ModuleId, DomainService.EndpointName);

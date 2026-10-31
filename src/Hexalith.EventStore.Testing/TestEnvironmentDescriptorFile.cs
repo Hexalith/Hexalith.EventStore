@@ -47,7 +47,7 @@ internal static class TestEnvironmentDescriptorFile
             }
         }
 
-        int flags = OperatingSystem.IsMacOS() ? 0x4 | 0x100 | 0x1000000 : 0x800 | 0x20000 | 0x80000;
+        int flags = OperatingSystem.IsMacOS() ? 0x4 | 0x100 | 0x1000000 : 0x800 | LinuxNoFollow(RuntimeInformation.ProcessArchitecture) | 0x80000;
         int descriptor = Open(path, flags);
         if (descriptor < 0)
         {
@@ -73,6 +73,12 @@ internal static class TestEnvironmentDescriptorFile
             throw;
         }
     }
+
+    /// <summary>Gets the Linux <c>O_NOFOLLOW</c> value, which differs by architecture.</summary>
+    /// <param name="architecture">The current process architecture.</param>
+    /// <returns>The architecture's no-follow open flag; on Arm and PowerPC <c>0x20000</c> is <c>O_LARGEFILE</c>.</returns>
+    internal static int LinuxNoFollow(Architecture architecture) =>
+        architecture is Architecture.Arm or Architecture.Arm64 or Architecture.Armv6 or Architecture.Ppc64le ? 0x8000 : 0x20000;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "SYSLIB1054:Use LibraryImportAttribute instead of DllImportAttribute", Justification = "The safe Windows handle is opened directly without enabling generated unsafe code.")]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
