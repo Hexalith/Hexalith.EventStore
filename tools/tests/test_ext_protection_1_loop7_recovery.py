@@ -33,7 +33,7 @@ class ActualNativeRecoveryEvidenceTests(unittest.TestCase):
             source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
             built = subprocess.run(['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'), '-c', 'Debug',
                 '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT), '-p:OutputPath=' + str(output) + '/',
-                '-p:AppendTargetFrameworkToOutputPath=false', '-p:GeneratePackageOnBuild=false', '-m:1', '-nodeReuse:false'], cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
+                '-p:AppendTargetFrameworkToOutputPath=false', '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-m:1', '-nodeReuse:false'], cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
             if built.returncode: raise AssertionError(built.stdout + built.stderr)
             assembly = output / 'Hexalith.Platform.Protection.Tests.dll'
         executed = subprocess.run(['dotnet', str(assembly), '-class', 'Hexalith.Platform.Protection.Tests.ProtectionQualificationLoop7RecoveryTests', '-noColor'],

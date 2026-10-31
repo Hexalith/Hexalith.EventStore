@@ -32,7 +32,7 @@ class ProducerOriginalTests(unittest.TestCase):
             if not (platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj').is_file():
                 platform = ROOT / 'references/Hexalith.Platform'
             argv = ['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'), '-c', 'Debug',
-                    '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT), '-p:GeneratePackageOnBuild=false', '-m:1', '-nodeReuse:false']
+                    '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT), '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-m:1', '-nodeReuse:false']
             for name in ('HexalithCommonsRoot', 'HexalithTenantsBasePath'):
                 if os.environ.get(name):
                     argv.append('-p:' + name + '=' + os.environ[name])

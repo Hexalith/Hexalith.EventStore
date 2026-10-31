@@ -32,7 +32,7 @@ class SourceSnapshotEmissionTests(unittest.TestCase):
                 platform = ROOT / 'references/Hexalith.Platform'
             argv = ['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'),
                     '-c', 'Debug', '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT),
-                    '-p:GeneratePackageOnBuild=false', '-m:1', '-nodeReuse:false']
+                    '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-m:1', '-nodeReuse:false']
             source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
             built = subprocess.run(argv, cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
             if built.returncode:

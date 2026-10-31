@@ -71,7 +71,7 @@ class ShippedRoleClosureTests(unittest.TestCase):
             project = cls.platform / 'src' / assembly / (assembly + '.csproj')
             output = cls.platform / 'src' / assembly / 'bin/Debug/net10.0'
             if not (output / assembly).is_file():
-                command = [str(cls.host), 'build', str(project), '-c', 'Debug', '-m:1', '-nodeReuse:false', '-p:UseHexalithProjectReferences=true', '-p:GeneratePackageOnBuild=false', '-p:HexalithEventStoreRoot=' + str(ROOT)]
+                command = [str(cls.host), 'build', str(project), '-c', 'Debug', '-m:1', '-nodeReuse:false', '-p:UseHexalithProjectReferences=true', '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-p:HexalithEventStoreRoot=' + str(ROOT)]
                 for name in ('HexalithCommonsRoot', 'HexalithTenantsBasePath'):
                     if os.environ.get(name): command.append('-p:' + name + '=' + os.environ[name])
                 source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
