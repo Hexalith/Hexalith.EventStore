@@ -137,7 +137,6 @@ dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.T
 dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*GlobalPosition*'
 ```
 
-
 ## Same-storage provider recovery
 
 Live classes share a nonparallel xUnit collection to avoid races between fixtures
@@ -162,8 +161,9 @@ dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.Event
 Observable fault boundaries are the confirmed stopped container, a granted
 exclusive `public.state` lock plus a PostgreSQL `RowExclusiveLock` waiter before
 SIGKILL, and a fully received successful HTTP response discarded before the actor
-proxy receives it. The lock holder is a tracked command bounded by 25 seconds;
-failure to observe either SQL boundary fails the test. Both original host/sidecar
+proxy receives it. The tracked lock-holder command runs `pg_sleep(25)` within
+the fixture's 30-second command timeout; the two boundary waits are separately bounded.
+Failure to observe either SQL boundary fails the test. Both original host/sidecar
 pairs stay alive during provider recovery; they are then replaced and continuity
 is checked again. A graceful stop requires exit 0, and SIGKILL requires exit 137.
 The image's configured stop signal is SIGINT (PostgreSQL fast shutdown).
@@ -247,6 +247,11 @@ preserves the evidence even though PostgreSQL sequences need not preserve their
 latest values across a database crash. A runtime that never exposes the exact
 NOTICE fails instead of inferring readiness.
 
+Journal failures fail the experiment independently from persistence. A failed
+start observation prevents saving and evicts staged state; a failed completion
+observation leaves the successful save distinguishable. Failed-save and actor-exit
+reporting retain the original exception and attach secondary journal failures.
+
 Final accounting reconciles every full submitted mutation, SDK outcome, exact
 actor route and owned host PID with its permitted ordered execution stages. The
 complete connection-attributed COMMIT ledger must match actor save starts,
@@ -258,7 +263,7 @@ before owned storage is deleted. Diagnostic timeout evidence remains visible.
 
 ```bash
 dotnet build tests/Hexalith.EventStore.Sharding.Tests/Hexalith.EventStore.Sharding.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*PostgresFaultProxyTests' -class '*AttemptJournalTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*PostgresFaultProxyTests' -class '*PostgresFaultProxyFailureTests' -class '*PostgresFaultProxyIsolationTests' -class '*AttemptJournalTests' -class '*ShardAttemptValidatorTests' -class '*FaultExperimentTests' -class '*FixtureProxyCleanupTests'
 export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected future UTC second>'
 dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderCommitAmbiguityTests'
 ```
@@ -281,4 +286,5 @@ gates, simple/extended protocol execution, exact NOTICE selection, explicit
 connection break, cancellation with a held gate, observation counters and
 append-only actor attempts. This lane supplies bounded synthetic development
 evidence; it does not qualify production capacity, backup/restore, HA, physical
-fencing, split-brain or production section 7.
+fencing, split-brain or production section 7. Remaining qualification work is in
+the [provider ambiguity follow-up](../../_bmad-output/implementation-artifacts/spec-4-6-provider-ambiguity-qualification-follow-up.md).

@@ -130,7 +130,18 @@ public sealed class ProviderCommitAmbiguityTests
 
     private static async Task FaultAsync(ShardingFixture fixture, ShardRequest request, PostgresCommitBoundary boundary, ShardState? expected)
     {
+        ShardState? previous = await fixture.StateAsync(request.TenantId, request.Domain);
         string? previousWitness = await fixture.DurableWitnessAsync(request.TenantId, request.Domain);
+        if (request.Operation == "Admit")
+        {
+            previous.ShouldBeNull();
+            previousWitness.ShouldBeNull();
+        }
+        else
+        {
+            previous.ShouldNotBeNull();
+            await AssertStateAsync(fixture, previous);
+        }
         ProviderFaultInstrumentation instrumentation = await fixture.ArmCommitFaultAsync(request, boundary);
         int sends = 0;
         Task<ShardReply> pending = fixture.ApplyAsync(0, request, observeTransport: (count, _) => sends = count);
@@ -151,13 +162,16 @@ public sealed class ProviderCommitAmbiguityTests
         {
             requestError = await Record.ExceptionAsync(() => pending.WaitAsync(TimeSpan.FromSeconds(25)));
             fixture.RecordFaultRequestOutcome(instrumentation.OperationId, pending.IsCompleted, requestError, sends);
-        }, () => fixture.CompleteCommitFaultAsync(instrumentation), () =>
+        }, () =>
+        {
+            sends.ShouldBe(1); // Independent from request assertions and before instrumentation removal.
+            return Task.CompletedTask;
+        }, () =>
         {
             pending.IsCompleted.ShouldBeTrue();
             requestError.ShouldNotBeNull();
-            sends.ShouldBe(1); // Outside the expected exception; a duplicate guard cannot satisfy it.
             return Task.CompletedTask;
-        }, async () =>
+        }, () => fixture.CompleteCommitFaultAsync(instrumentation), async () =>
         {
             (await fixture.StateAsync(request.TenantId, request.Domain)).ShouldBe(expected);
             if (expected is not null) await AssertStateAsync(fixture, expected);

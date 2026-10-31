@@ -16,14 +16,14 @@ namespace Hexalith.EventStore.Sharding.Tests;
 /// <summary>Invokes the actual actor at expiry boundaries and inspects complete state.</summary>
 public sealed class ShardActorExpiryTests
 {
-    /// <summary>Already-expired and mid-turn requests deny without committed or pending mutations.</summary>
+    /// <summary>Pre-save expiry denies; save-started cancellation propagates uncertainty. The fake proves its own unchanged state.</summary>
     /// <param name="boundary">The entry, read, stage, or save boundary.</param>
     [Theory]
     [InlineData("entry")]
     [InlineData("read")]
     [InlineData("stage")]
     [InlineData("save")]
-    public async Task ActorDeniesAtExpiryWithoutPendingOrCommittedMutationAsync(string boundary)
+    public async Task ActorDeniesBeforeSaveAndPropagatesSaveStartedCancellationAtExpiryAsync(string boundary)
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;
         var binding = new RunBinding("expiry-actor-unit", Canonical(now.AddSeconds(-1)), Canonical(now.AddSeconds(2)),
@@ -67,7 +67,7 @@ public sealed class ShardActorExpiryTests
         gated.ReachedBoundary.ShouldBe(boundary != "entry");
         JsonSerializer.Serialize(gated.Inner.CommittedState).ShouldBe(committed);
         PendingSnapshot(gated.Inner).ShouldBe(pending);
-        // Even an accidental subsequent actor turn save cannot publish a denied reservation.
+        // This fake cancels before commit. A later runtime save cannot publish its evicted reservation.
         await gated.Inner.SaveStateAsync();
         JsonSerializer.Serialize(gated.Inner.CommittedState).ShouldBe(committed);
     }

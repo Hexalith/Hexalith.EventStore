@@ -21,6 +21,12 @@ public class SaveFailureStateManager : DispatchProxy
     /// <summary>Gets or sets whether the next save should fail.</summary>
     public bool FailNextSave { get; set; } = true;
 
+    /// <summary>Gets the exact original exception retained across diagnostic failures.</summary>
+    public IOException SaveFailure { get; } = new("Injected uncertain save outcome.");
+
+    /// <summary>Gets actual save invocations through the actor's state manager.</summary>
+    public int SaveAttempts { get; private set; }
+
     /// <inheritdoc/>
     protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
     {
@@ -31,10 +37,14 @@ public class SaveFailureStateManager : DispatchProxy
             FailNextSave = false;
             return FailStageAsync((Task)targetMethod.Invoke(Inner, args)!);
         }
-        if (targetMethod.Name == "SaveStateAsync" && FailNextSave)
+        if (targetMethod.Name == "SaveStateAsync")
         {
-            FailNextSave = false;
-            return FailSaveAsync((CancellationToken)args![0]!);
+            SaveAttempts++;
+            if (FailNextSave)
+            {
+                FailNextSave = false;
+                return FailSaveAsync((CancellationToken)args![0]!);
+            }
         }
 
         return targetMethod.Invoke(Inner, args);
@@ -49,6 +59,6 @@ public class SaveFailureStateManager : DispatchProxy
     private async Task FailSaveAsync(CancellationToken token)
     {
         if (CommitBeforeFailure) await Inner.SaveStateAsync(token);
-        throw new IOException("Injected uncertain save outcome.");
+        throw SaveFailure;
     }
 }
