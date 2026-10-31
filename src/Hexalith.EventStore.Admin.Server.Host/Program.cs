@@ -9,6 +9,7 @@ using Hexalith.EventStore.Admin.Server.Host.Authentication;
 using Hexalith.EventStore.Admin.Server.Host.Middleware;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.ServiceDefaults;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,7 @@ builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
 builder.Services.AddProblemDetails();
 builder.Services.AddAdminApi(builder.Configuration);
+builder.Services.AddEventStoreDevelopmentAdminCatalog(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAdminAuthContext, HttpContextAdminAuthContext>();
 builder.Services
@@ -68,6 +70,7 @@ if (app.Environment.IsDevelopment()
 app.UseEventStoreHttpHostSecurity();
 app.UseAuthorization();
 app.MapControllers();
+app.UseEventStoreDevelopmentAdminCatalog();
 
 app.Run();
 

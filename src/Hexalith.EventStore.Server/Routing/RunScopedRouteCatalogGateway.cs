@@ -33,7 +33,7 @@ public static class RunScopedRouteCatalogGateway
             foreach (string scheme in new[] { "DaprInternal", RouteCatalogEndpointExtensions.WorkloadScheme })
                 if (policy?.StartsWith(scheme + ":", StringComparison.Ordinal) == true) return policy[(scheme.Length + 1)..];
         if (!policies.Contains(EventStoreHttpHostSecurityExtensions.HumanPolicy, StringComparer.Ordinal)) return null;
-        return path switch
+        return DevelopmentTechnicalHttpTransport.Operation(endpoint) ?? path switch
         {
             "api/v1/commands" => EventStoreOperationIdentifiers.GatewayCommandSubmit,
             "api/v1/queries" => "eventstore:query-read",
@@ -51,6 +51,7 @@ public static class RunScopedRouteCatalogGateway
         if (string.IsNullOrEmpty(section["Directory"])) return services;
         if (services.Any(descriptor => descriptor.ServiceType == typeof(RunScopedRouteCatalogGatewayRegistration))) return services;
         services.AddSingleton<RunScopedRouteCatalogGatewayRegistration>();
+        Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddSingleton<IDevelopmentNativeActorReceiver, DevelopmentNativeActorReceiver>(services);
         string appId = configuration["EventStore:DomainService:AppId"]
             ?? throw new RouteCatalogUnavailableException("The owning Development runner must supply the actual gateway app identity.");
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
@@ -76,7 +77,7 @@ public static class RunScopedRouteCatalogGateway
             var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, appId,
                 declarations, ActorQueryTargets(scope.ServiceProvider, owners, appId),
                 await RouteCatalogAdmissionObservation.CaptureAsync(provider, appId, token).ConfigureAwait(false), [],
-                receiver.Endpoints.Where(e => e.Admitted).Select(e => new RouteCatalogAuxiliaryOperation(appId, e.Pattern.TrimStart('/'), e.Operation!, "gateway")).ToArray(), token).ConfigureAwait(false);
+                DevelopmentTechnicalHttpTransport.Auxiliary(receiver, appId, "gateway"), token).ConfigureAwait(false);
             return actual with { ReceiverSurface = receiver, Operations = CompiledRouteCatalogDeclarations.ReadOperations(owners) };
         }, _ => RouteCatalogCodec.Decode(File.ReadAllBytes(section["CatalogPath"]!), section["RootDigest"]));
     }

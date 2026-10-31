@@ -1177,19 +1177,10 @@ public sealed class ContainerPublishingGovernanceTests
         {
             string invocationMarker = Path.Combine(temporary, "preflight-invoked");
             string argumentsPath = Path.Combine(temporary, "preflight-arguments");
-            string recordingPreflight = Path.Combine(temporary, "record-preflight.sh");
-            File.WriteAllText(
-                recordingPreflight,
-                "#!/usr/bin/env bash\n" +
-                "set -euo pipefail\n" +
-                ": > \"$PREFLIGHT_INVOCATION_MARKER\"\n" +
-                "printf '%s\\n' \"$@\" > \"$PREFLIGHT_ARGUMENTS\"\n");
-            if (!OperatingSystem.IsWindows())
-            {
-                File.SetUnixFileMode(
-                    recordingPreflight,
-                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            }
+            // Execute immutable checked-in bytes; freshly written executable scripts can
+            // transiently fail execve with ETXTBSY on a busy Linux runner.
+            string recordingPreflight = Path.Combine(root, "tests", "Hexalith.EventStore.Contracts.Tests",
+                "Packaging", "Fixtures", "record-publication-preflight.sh");
 
             ProcessStartInfo start = new("bash")
             {
@@ -1275,19 +1266,10 @@ public sealed class ContainerPublishingGovernanceTests
         {
             string invocationMarker = Path.Combine(temporary, "preflight-invoked");
             string argumentsPath = Path.Combine(temporary, "preflight-arguments");
-            string recordingPreflight = Path.Combine(temporary, "record-preflight.sh");
-            File.WriteAllText(
-                recordingPreflight,
-                "#!/usr/bin/env bash\n" +
-                "set -euo pipefail\n" +
-                ": > \"$PREFLIGHT_INVOCATION_MARKER\"\n" +
-                "printf '%s\\n' \"$@\" > \"$PREFLIGHT_ARGUMENTS\"\n");
-            if (!OperatingSystem.IsWindows())
-            {
-                File.SetUnixFileMode(
-                    recordingPreflight,
-                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            }
+            // Execute immutable checked-in bytes; freshly written executable scripts can
+            // transiently fail execve with ETXTBSY on a busy Linux runner.
+            string recordingPreflight = Path.Combine(root, "tests", "Hexalith.EventStore.Contracts.Tests",
+                "Packaging", "Fixtures", "record-publication-preflight.sh");
 
             ProcessStartInfo start = new("bash")
             {

@@ -39,7 +39,10 @@ public sealed class RouteCatalogEligibilityBehavior<TRequest, TResponse>(IHttpCo
                 && context.User.Identity?.IsAuthenticated == true;
             bool verifiedOrigin = request is SubmitCommand c && c.Extensions?.ContainsKey(EventStoreGatewayVerifiedOrigin.ActorExtensionKey) == true
                 || request is SubmitQuery { IsDelegated: true, OriginalActorId: not null, AuthenticatedWorkloadId: not null };
-            if (!(operation.Ingress == "internal" && workload) && !RouteCatalogSurfacePolicy.Allows(operation, context.User, verifiedOrigin))
+            bool verifiedOwnerQuery = operation.Ingress == "public" && operation.Eligibility == "UI-only"
+                && request is SubmitQuery ownerQuery && workload
+                && Hexalith.EventStore.Controllers.QueriesController.HasVerifiedBoundOwnerCatalogAdmission(context, ownerQuery, lease.Snapshot);
+            if (!(operation.Ingress == "internal" && workload) && !verifiedOwnerQuery && !RouteCatalogSurfacePolicy.Allows(operation, context.User, verifiedOrigin))
                 throw new CommandAuthorizationException(tenant, domain, discriminator, "The authenticated surface cannot invoke this operation.");
         }
         return await next().ConfigureAwait(false);

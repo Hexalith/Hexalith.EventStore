@@ -36,6 +36,7 @@ namespace Hexalith.EventStore.Extensions;
 public static class EventStoreServiceCollectionExtensions {
     public static IServiceCollection AddEventStore(this IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
+        Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddSingleton<Hexalith.EventStore.ServiceDefaults.Routing.IDevelopmentDaprCallbackReceiver, Hexalith.EventStore.Routing.DevelopmentDaprCallbackReceiver>(services);
 
         _ = services.AddProblemDetails();
         _ = services.AddExceptionHandler<ValidationExceptionHandler>();

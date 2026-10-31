@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 
 using Dapr.Actors;
@@ -53,11 +54,11 @@ public partial class DaprProjectionChangeNotifier(
             }
 
             var notification = new ProjectionChangedNotification(projectionType, tenantId, entityId) { Provenance = provenance };
-            await daprClient.PublishEventAsync(
+            await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.PublishEventAsync(
                 options.Value.PubSubName,
                 topic,
                 notification,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken), cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -67,7 +68,7 @@ public partial class DaprProjectionChangeNotifier(
             new ActorId(actorId),
             ETagActor.ETagActorTypeName);
 
-        _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+        _ = await RouteCatalogRemoteCall.InvokeAsync(() => proxy.RegenerateAsync(), cancellationToken).ConfigureAwait(false);
 
         // Broadcast to SignalR clients (fail-open — ADR-18.5a)
         try {
@@ -144,11 +145,11 @@ public partial class DaprProjectionChangeNotifier(
                 Provenance = provenance,
             };
 
-            await daprClient.PublishEventAsync(
+            await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.PublishEventAsync(
                 currentOptions.PubSubName,
                 topic,
                 notification,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken), cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -158,7 +159,7 @@ public partial class DaprProjectionChangeNotifier(
             new ActorId(actorId),
             ETagActor.ETagActorTypeName);
 
-        _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+        _ = await RouteCatalogRemoteCall.InvokeAsync(() => proxy.RegenerateAsync(), cancellationToken).ConfigureAwait(false);
 
         // Broadcast to SignalR clients (fail-open — ADR-18.5a)
         try {

@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Dapr;
 using Dapr.Client;
 
@@ -229,13 +230,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 // the active-index BEFORE TrySaveStateAsync for active statuses; on ETag-retry-
                 // exhaustion or CheckpointUnavailable the index entry persisted as a phantom and
                 // HasActiveOperatorRebuildForDomainAsync returned true forever for (tenant, domain).
-                bool saved = await daprClient
+                bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
                         key,
                         checkpoint,
                         etag,
-                        cancellationToken: cancellationToken)
+                        cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
                     string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
@@ -333,13 +334,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     safeFailureReasonCode,
                     toPosition);
 
-                bool saved = await daprClient
+                bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
                         key,
                         checkpoint,
                         etag,
-                        cancellationToken: cancellationToken)
+                        cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
                     string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
@@ -550,13 +551,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 }
 
                 string[] next = [.. keep];
-                bool saved = await daprClient
+                bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
                         indexKey,
                         next,
                         etag,
-                        cancellationToken: cancellationToken)
+                        cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
                     foreach (string orphan in revalidatedOrphans) {
@@ -622,13 +623,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         EnsureAggregateScope(scope);
         ArgumentNullException.ThrowIfNull(etag);
 
-        return await daprClient
+        return await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
             .TryDeleteStateAsync(
                 options.Value.CheckpointStateStoreName,
                 GetStateKey(scope),
                 etag,
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                cancellationToken: cancellationToken)
+                cancellationToken: cancellationToken), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -693,13 +694,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     // fails (ETag mismatch from a concurrent writer that just inserted), the next
                     // attempt re-reads and removes correctly.
                     if (!active && existing is null) {
-                        bool savedAssert = await daprClient
+                        bool savedAssert = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                             .TrySaveStateAsync(
                                 stateStoreName,
                                 indexKey,
                                 Array.Empty<string>(),
                                 etag,
-                                cancellationToken: cancellationToken)
+                                cancellationToken: cancellationToken), cancellationToken)
                             .ConfigureAwait(false);
                         if (savedAssert) {
                             return await UpdateActivePairIndexAsync(scope.Tenant, scope.Domain, shouldExist: false, cancellationToken).ConfigureAwait(false);
@@ -714,13 +715,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     }
 
                     if (active) {
-                        bool savedAssert = await daprClient
+                        bool savedAssert = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                             .TrySaveStateAsync(
                                 stateStoreName,
                                 indexKey,
                                 existing ?? current.ToArray(),
                                 etag,
-                                cancellationToken: cancellationToken)
+                                cancellationToken: cancellationToken), cancellationToken)
                             .ConfigureAwait(false);
                         if (savedAssert) {
                             return await UpdateActivePairIndexAsync(scope.Tenant, scope.Domain, shouldExist: true, cancellationToken).ConfigureAwait(false);
@@ -741,13 +742,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 }
 
                 string[] next = [.. current];
-                bool saved = await daprClient
+                bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
                         indexKey,
                         next,
                         etag,
-                        cancellationToken: cancellationToken)
+                        cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
                     return await UpdateActivePairIndexAsync(scope.Tenant, scope.Domain, shouldExist: active || next.Length > 0, cancellationToken).ConfigureAwait(false);
@@ -799,13 +800,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     return null;
                 }
 
-                bool saved = await daprClient
+                bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
                         ActivePairIndexKey,
                         current.ToArray(),
                         etag,
-                        cancellationToken: cancellationToken)
+                        cancellationToken: cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
                     return null;

@@ -64,7 +64,15 @@ public static class RouteCatalogTopologyValidator
                 methods[method] = target.Operation;
             }
             foreach (var operation in auxiliary ?? [])
-                if (operation.AppId == localAppId) methods[operation.Method] = operation.Operation;
+                if (operation.AppId == localAppId)
+                {
+                    if (operation.Sidecar is { } subscription && (receiver is null
+                        || !receiver.Endpoints.Any(endpoint => endpoint.Pattern == "/" + operation.Method && endpoint.Admitted
+                            && !endpoint.Anonymous && !endpoint.IsPattern && endpoint.Methods.SequenceEqual(["POST"], StringComparer.Ordinal)
+                            && endpoint.Operation == operation.Operation && endpoint.Sidecar == subscription)))
+                        throw Failure("sidecar-subscription-owner-binding-drift");
+                    methods[operation.Method] = operation.Operation;
+                }
             methods["internal/routing/catalog-generation"] = EventStoreOperationIdentifiers.RouteCatalogRead;
             foreach (string stage in new[] { "prepare", "ready", "commit", "rollback", "reconcile" }) methods["internal/routing/catalog/" + stage] = EventStoreOperationIdentifiers.RouteCatalogActivate;
             if (!acl.TryGetProperty("policies", out JsonElement policies)) return;
@@ -112,6 +120,8 @@ public static class RouteCatalogTopologyValidator
                     if (completeInventory && RouteCatalogGeneratedRestPolicy.AdmitsGrant(envelope, receiver, method, verbs)) continue;
                     if (!participant) throw Failure("selected-acl-caller-lacks-catalog-enrollment");
                     if (RouteCatalogGeneratedRestPolicy.AdmitsControlGrant(receiver, method, verbs)) continue;
+                    if (receiver?.FenceVersion == "eventstore-finite-sdk-http-receiver-v2"
+                        && ValidateTechnicalReceiver(receiver, method, verbs, auxiliary ?? [], localAppId, methods)) continue;
                     if (!methods.ContainsKey(canonical) || (canonical != method && (receiver is null
                         || !methods.Keys.Any(child => child.StartsWith(canonical + "/", StringComparison.Ordinal)))))
                         throw Failure("undeclared-acl-operation");
@@ -127,12 +137,74 @@ public static class RouteCatalogTopologyValidator
         }
     }
 
+    private static bool ValidateTechnicalReceiver(RouteCatalogReceiverSurface receiver, string grant, string[] verbs,
+        IReadOnlyList<RouteCatalogAuxiliaryOperation> auxiliary, string localAppId, IReadOnlyDictionary<string, string> legacy)
+    {
+        string prefix;
+        if (grant is "**" or "*") prefix = "";
+        else if (grant.EndsWith("/*", StringComparison.Ordinal) && grant.Count(character => character == '*') == 1) prefix = grant[..^2];
+        else if (!grant.Contains('*', StringComparison.Ordinal)) prefix = grant;
+        else throw Failure("unsupported-technical-acl-pattern");
+        var reachable = receiver.Endpoints.Where(endpoint => endpoint.Http?.Grants?.Any(witness => witness.Method.Trim('/') == grant.Trim('/')) == true || prefix.Length == 0 || endpoint.Pattern.Trim('/').Equals(prefix, StringComparison.OrdinalIgnoreCase)
+            || endpoint.Pattern.Trim('/').StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase)).ToArray();
+        var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.DaprCallback is not null)).ToArray();
+        if (technical.Length == 0) return false;
+        if (verbs.Length == 0 || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length
+            || verbs.Any(verb => !technical.Any(endpoint => endpoint.Methods.Contains(verb, StringComparer.Ordinal))))
+            throw Failure("unqualified-technical-http-verb");
+        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
+        {
+            if (endpoint.DaprCallback is { } callback)
+            {
+                string expected = callback.Kind == "subscribe" ? "GET" : "POST";
+                string path = callback.Kind == "subscribe" ? "dapr/subscribe" : "projections/changed";
+                if (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.Anonymous || endpoint.IsPattern
+                    || !endpoint.Policies.SequenceEqual(["EventStoreSidecarChannel"], StringComparer.Ordinal)
+                    || callback.Kind is not ("subscribe" or "projection-notification") || endpoint.Pattern.Trim('/') != path
+                    || !endpoint.Methods.SequenceEqual([expected], StringComparer.Ordinal) || callback.Verbs != expected
+                    || new[] { callback.CodeDigest, callback.FrameworkDigest, callback.InventoryDigest }.Any(digest => digest is not { Length: 64 } || !digest.All(char.IsAsciiHexDigitLower))
+                    || !auxiliary.Any(operation => operation.AppId == localAppId && operation.Method == path && operation.Operation == endpoint.Operation && operation.DaprCallback == callback))
+                    throw Failure("unbound-sdk-dapr-callback-receiver");
+            }
+            else if (endpoint.NativeActor is { } native)
+            {
+                string expected = native.Kind is "config" or "health" ? "GET" : native.Kind == "deactivate" ? "DELETE" : "PUT";
+                if (endpoint.Anonymous || !endpoint.Policies.SequenceEqual(["EventStoreSidecarChannel"], StringComparer.Ordinal)
+                    || !endpoint.Methods.SequenceEqual([expected], StringComparer.Ordinal) || native.Verbs != expected
+                    || native.Kind is not ("config" or "health" or "method" or "reminder" or "timer" or "deactivate")
+                    || new[] { native.CodeDigest, native.FrameworkDigest, native.InventoryDigest }.Any(digest => digest is not { Length: 64 } || !digest.All(char.IsAsciiHexDigitLower))
+                    || !auxiliary.Any(operation => operation.AppId == localAppId && operation.Method == endpoint.Pattern.Trim('/') && operation.Operation == endpoint.Operation && operation.NativeActor == native))
+                    throw Failure("unbound-native-actor-receiver");
+            }
+            else if (endpoint.Http is { } http)
+            {
+                if (endpoint.Anonymous || endpoint.Policies.Count == 0 || endpoint.Policies.Any(string.IsNullOrWhiteSpace)
+                    || !endpoint.Policies.Contains("EventStoreHuman", StringComparer.Ordinal)
+                    || endpoint.Http.Grants is not { Count: > 0 } witnesses
+                    || !witnesses.Any(witness => witness.Method.Trim('/') == grant.Trim('/') && verbs.Any(verb => witness.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal)))
+                    || endpoint.Methods.Count == 0 || !endpoint.Methods.All(verb => http.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal))
+                    || http.CodeDigest is not { Length: 64 } || !http.CodeDigest.All(character => char.IsAsciiHexDigitLower(character))
+                    || !auxiliary.Any(operation => operation.AppId == localAppId && operation.Method == endpoint.Pattern.Trim('/')
+                        && operation.Operation == endpoint.Operation && operation.Http is { } bound
+                        && bound.Owner == http.Owner && bound.CodeDigest == http.CodeDigest
+                        && witnesses.All(witness => bound.Grants?.Contains(witness) == true)
+                        && endpoint.Methods.All(verb => bound.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal))))
+                    throw Failure("unbound-technical-controller-code-or-policy");
+            }
+            else if (endpoint.Anonymous || endpoint.IsPattern || endpoint.Policies.Count == 0 || endpoint.Methods.Count != 1
+                || !legacy.ContainsKey(endpoint.Pattern.Trim('/'))
+                || endpoint.Methods[0] != (endpoint.Pattern.Trim('/') == "internal/routing/catalog-generation" ? "GET" : "POST"))
+                throw Failure("unqualified-nontechnical-receiver-overlap");
+        }
+        return true;
+    }
+
     private static RouteCatalogValidationException Failure(string code) => new([new("$.activation.topology", code)]);
 
     private static void ValidateFiniteReceiver(RouteCatalogReceiverSurface receiver, string prefix, string verb,
         IReadOnlyDictionary<string, string> operations)
     {
-        if (receiver.FenceVersion != "eventstore-finite-dapr-receiver-v1" || receiver.Endpoints is not { Count: > 0 }
+        if (receiver.FenceVersion is not ("eventstore-finite-dapr-receiver-v1" or "eventstore-finite-sdk-http-receiver-v2") || receiver.Endpoints is not { Count: > 0 }
             || receiver.Endpoints.Any(endpoint => endpoint is null || string.IsNullOrEmpty(endpoint.Pattern)
                 || endpoint.Methods is null || endpoint.Policies is null))
             throw Failure("missing-effective-finite-receiver-fence");
