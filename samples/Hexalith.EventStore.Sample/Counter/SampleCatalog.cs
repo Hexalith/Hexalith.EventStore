@@ -1,5 +1,7 @@
 using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Routing;
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Sample.Counter.Commands;
 using Hexalith.EventStore.Sample.Counter.Projections;
@@ -13,6 +15,11 @@ namespace Hexalith.EventStore.Sample.Counter;
 /// <summary>Offline owner inventory. It does not register adapters, enable admission, or provision secrets.</summary>
 public static class SampleCatalog
 {
+    /// <summary>Gets actual receiver methods; the canonical projection actor query belongs to the gateway.</summary>
+    public static IReadOnlyDictionary<string, string> ReceiverMethods => Routes.ToDictionary(route => route.RouteId,
+        route => route.Execution?.TargetKind == "projection-actor" ? "QueryAsync" : route.Kind == "command" ? "process" : "project",
+        StringComparer.Ordinal);
+
     /// <summary>Gets all actual command policies.</summary>
     public static IReadOnlyList<CommandIntentDeclaration> Commands { get; } = [.. CounterCatalogDeclarations.Commands, GreetingCatalogDeclarations.Command];
 
@@ -24,7 +31,15 @@ public static class SampleCatalog
     /// <summary>Gets the complete Sample route set.</summary>
     public static IReadOnlyList<RouteContractDeclaration> Routes { get; } = [.. Commands.Select(c => c.Route), CounterCatalogDeclarations.Query, Projection];
 
-    /// <summary>Constructs adapters for verification and offline inspection only.</summary>
+    /// <summary>Gets complete schema-three operations for the existing public UI and internal projection routes.</summary>
+    public static IReadOnlyList<RouteOperationContract> Operations => [
+        .. CounterCatalogDeclarations.Operations,
+        RouteOperationSchema.Create(GreetingCatalogDeclarations.Command.Route, typeof(SendGreeting), typeof(SubmitCommandResponse),
+            "public", "UI-only", System.Text.Json.JsonSerializerOptions.Web),
+        RouteOperationSchema.Create(Projection, typeof(ProjectionRequest), typeof(ProjectionResponse),
+            "internal", "UI-only", System.Text.Json.JsonSerializerOptions.Web)];
+
+    /// <summary>Returns the existing target-only owner adapters without activating hosted admission.</summary>
     public static IReadOnlyList<IDeclaredIdempotencyIntentAdapter> CreateAdapters() => [
         Adapter<IncrementCounter>(), Adapter<DecrementCounter>(), Adapter<ResetCounter>(), Adapter<CloseCounter>(), Adapter<SendGreeting>()];
 

@@ -7,13 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hexalith.EventStore.Admin.Server\Hexalith.EventStore.Admin.Server.csproj" />
-    <ProjectReference Include="..\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Hexalith.EventStore.Admin.Server\Hexalith.EventStore.Admin.Server.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
+    <ProjectReference Include="..\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapr.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <!-- Explicit integration-fixture profile; ordinary native builds and publishing keep SDK source edges. -->
+  <ItemGroup Condition="'$(HexalithUsePublishedSdkForHostedTests)' == 'true'">
+    <PackageReference Include="Hexalith.EventStore.Admin.Server" />
+    <PackageReference Include="Hexalith.EventStore.ServiceDefaults" />
   </ItemGroup>
 
 </Project>

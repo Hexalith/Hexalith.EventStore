@@ -35,6 +35,7 @@ public sealed class IdempotencyAdmissionOq8PostgresqlTests(Oq8PostgresqlFixture 
         string governanceAggregate = $"oq8-governance-{Guid.NewGuid():N}";
 
         fixture.HasIndependentProcesses.ShouldBeTrue();
+        fixture.HasPrivateDiscovery.ShouldBeTrue();
         Oq8PostgresqlSnapshot before = await fixture
             .CapturePostgresqlSnapshotAsync("before")
             .ConfigureAwait(true);
@@ -176,6 +177,7 @@ public sealed class IdempotencyAdmissionOq8PostgresqlTests(Oq8PostgresqlFixture 
         preRotationReplay.ShouldBe(rotationResult);
         int authoritySampleAfterExecution = fixture.SampleBoundaryCount;
         await fixture.RotateDigestAuthorityAsync().ConfigureAwait(true);
+        fixture.HasPrivateDiscovery.ShouldBeTrue();
         Oq8CommandObservation rotatedReplay = await fixture
             .SubmitAsync(1, Tenant, rotationAggregate, rotationKey, Payload)
             .ConfigureAwait(true);
@@ -193,6 +195,7 @@ public sealed class IdempotencyAdmissionOq8PostgresqlTests(Oq8PostgresqlFixture 
         fixture.SampleBoundaryCount.ShouldBe(authoritySampleAfterExecution);
 
         await fixture.RetireOldDigestReaderAsync().ConfigureAwait(true);
+        fixture.HasPrivateDiscovery.ShouldBeTrue();
         Oq8CommandObservation retiredReaderReplay = await fixture
             .SubmitAsync(0, Tenant, rotationAggregate, rotationKey, Payload)
             .ConfigureAwait(true);

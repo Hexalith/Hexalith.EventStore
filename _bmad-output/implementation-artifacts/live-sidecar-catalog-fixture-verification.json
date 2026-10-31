@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "status": "focused-verification-complete-awaiting-combined-independent-review",
+  "baselineCommit": "c02afa0fce310ccdb696232f18829df96cba088e",
+  "failedWorkflow": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/41187538252",
+  "failedJob": 124497785317,
+  "workingTreeInputSha256": {
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionLiveSidecarTests.cs": "bea3a974fceeeff08ab7a300a8ecb86b506f94700e9b6d71b367eb647beff987",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionOq8PostgresqlTests.cs": "42aacd9641b719884284b2942809d6401bfeb9058f70285b86ad08dacab09672",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/P1RRemediationPersistenceTests.cs": "ebee15884c6712ce913f0bcd3ba115e056a32508a8f3790181931ecd0087bce6",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs": "f694426faef768af60f9579d1ac3e1b50ccd8b17afc39d08f1ff3535e7a6a5cf",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveAdmissionCatalogBinding.cs": "5fbcdf4ba9ef04d1478d32837262214a5506954a636fcc1cd8e3c6fd6fb802b4",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveAdmissionCatalogRegistration.cs": "e3e5c7b3925172d38803e0112e76f155d98ed209fb06497d66020458e37aa030",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveAdmissionCatalogScope.cs": "799a754194ab9b583a3a614740e3a6f854fbb0ddb65573c806c7027bde2eee34",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveAdmissionCatalogStartupFilter.cs": "c33823b84f84cd2120c5a51dc6290c345fa0449bb9dca1ab8f6e18834480aed8",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveAdmissionRouteCatalog.cs": "5e76e5d38eb7ddf65b4f13b7a1256ea9d1c0b01222ebf1d4b1745083e5b51ba2",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveAdmissionRouteCatalogTests.cs": "295c82183763c7378774705179d83f2e4d9785df0682e274100b0a9beb51058b",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveIncrementCounterIdempotencyIntentAdapter.cs": "ea5a6f68d824bcad72679fdf7ff56d127f3a47aac3d1a6af1721a124b914dc2d",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8BoundaryCounterStartupFilter.cs": "c7c480322e8bf4a4732756f53d83f056ab3996faf32855267b95e2209618b50e",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8BoundaryCounterStartupFilterTests.cs": "1668e40d705add39e6bfcd86c4be67e2d2e68ea6700b99fce34b7fe5f6feb8e2",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8HostingStartup.cs": "117ae56879e4c57fb86dd0eeceb6b3d4edf1b9408da148af322b17278fc198e8",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "29c114a2873d14605559156d6997f610a25d6c8397862aef3095bc052fb74810",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/RouteCatalogDevelopmentSidecar.cs": "1926d5d253a48a707413735e280bde27febb9d0a8bb6576c036f99b62044910d",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/RouteCatalogHostedLiveTests.cs": "d565cd2021123114b6ba61538cfe2ee6a97af726e066845d514e388b9b4ef5ff",
+    "tools/qualify-internal-actor-admission.py": "5f5ca8099485d1d4012a287ca7173e153a99ef97615c08e329a3b160a5d536d5",
+    "tools/tests/test_qualify_internal_actor_admission.py": "30044576c23ea38f5a067a22088642f665aa610a33391afcfe6dc3c0272a360c"
+  },
+  "isolatedBuild": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0,
+    "logSha256": "70946bbafc07c447cdf52b898e9b18d627249738570371d93708d62435de842c",
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=false",
+      "-p:UseNuGetDeps=true",
+      "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+      "-warnaserror"
+    ]
+  },
+  "checks": [
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-class",
+        "*RouteCatalogHostedLiveTests",
+        "-result-xml",
+        "/tmp/es-live-catalog-hosted-3.xml"
+      ],
+      "environment": {},
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 87.226,
+      "xmlSha256": "25648e911294c733fcea8499ad7d89b7488005a8dfda7ff33922ac3cb59762c9"
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-method",
+        "*CurrentFencePersistsEventWhileStaleAndForgedCapabilitiesLeaveInventoryUnchanged",
+        "-method",
+        "*MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica",
+        "-result-xml",
+        "/tmp/es-live-catalog-admission-final.xml"
+      ],
+      "environment": {},
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 12.907,
+      "xmlSha256": "b9f7cb842a08a2b2b63a1f9327a2c6ee380eaf73a8bb370a2b024be4a64af26b"
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-class",
+        "*ActorCallbackAdmissionProcessTests",
+        "-result-xml",
+        "/tmp/es-live-catalog-callback-3.xml"
+      ],
+      "environment": {},
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 38.815,
+      "xmlSha256": "48aa80ea07d2a3516ab9bf897f2f3a5e8d759570d5fc3dcde87f29988853356e"
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-class",
+        "*IdempotencyAdmissionOq8PostgresqlTests",
+        "-result-xml",
+        "/tmp/es-live-catalog-oq8-default-final.xml"
+      ],
+      "environment": {
+        "HEXALITH_OQ8_EVIDENCE_DIRECTORY": "/tmp/es-live-catalog-oq8-default-final-evidence",
+        "HEXALITH_OQ8_DIAGNOSTICS_PATH": "/tmp/es-live-catalog-oq8-default-final-diagnostics.json",
+        "HEXALITH_OQ8_CLEANUP_PATH": "/tmp/es-live-catalog-oq8-default-final-cleanup.json"
+      },
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 25.128,
+      "xmlSha256": "fa3046e1ca501e4a195aa42a3844f6cd6a650f870f289d2301287d1c8edd8958"
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-class",
+        "*LiveAdmissionRouteCatalogTests",
+        "-class",
+        "*Oq8BoundaryCounterStartupFilterTests",
+        "-class",
+        "*Oq8DiscoveryConfigurationTests",
+        "-class",
+        "*Oq8QualificationOverridesTests",
+        "-result-xml",
+        "/tmp/es-live-catalog-unit-final.xml"
+      ],
+      "environment": {},
+      "total": 31,
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 0.498,
+      "xmlSha256": "1574e1b4ee6430f8d7359fd9c3a688200d22b3e2dfa74480e24e6581d175ea32"
+    }
+  ],
+  "python": {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_qualify_internal_actor_admission.py"
+    ],
+    "passed": 9,
+    "failed": 0,
+    "logSha256": "2b13a889ac7cb1682b1acb88b9a4ec76c0a72b30cce127f6688a34972a88300a"
+  },
+  "runtime": {
+    "dotnet": "10.0.14",
+    "dapr": "1.18.7",
+    "postgresImage": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+    "postgresImageIdentity": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+  },
+  "oq8RuntimeArtifacts": {
+    "eventStoreSha256": "1f2d6f0acbc82004c486a14c1377a32f170b9ad24342b82eceefc24d71408227",
+    "sampleSha256": "0af834c4865c0e259dfa899f04fb5013e144c25d1d6bb988e73a2252d145c7a7",
+    "eventStoreRuntimeSetSha256": "118d5fcc89f1a8eb4982e94c92193cad0d0caa84215423d73cccdd5f457a7221",
+    "sampleRuntimeSetSha256": "05534fc5ff334a28814b6f93693792d6c084e066c19f3f9d07557a0e3c31451c",
+    "hostingStartupSha256": "f17f0a2b946bb31c545fe1c4a6b7c85e92c01c48d2c8235f04e7b47f1ab475c2",
+    "additionalDepsSha256": "16cc4bf61b19fea8e061d6fd37008eb1f168159ae46725112584a398ac9974fe"
+  },
+  "oq8ActualAssertions": {
+    "writers_failover": {
+      "concurrentRequests": 12,
+      "canonicalExecutionIdentities": 1,
+      "durableFencePositive": true,
+      "sampleExecutions": 1,
+      "ownerStoppedAtTerminalBoundary": true,
+      "failoverAttempts": 1,
+      "failoverReplayExact": true,
+      "restartedNodeReplayExact": true,
+      "conflictStatus": 409,
+      "crossTargetConflictStatus": 409,
+      "nonExecuteAdditionalWork": 0
+    },
+    "expiry_compaction": {
+      "oneTickBefore": 202,
+      "oneTickBeforeReplayExact": true,
+      "inclusiveBoundary": 409,
+      "oneTickAfter": 409,
+      "terminalBecameMinimalTombstone": true,
+      "equivalentAndDifferentReuseShareOutcome": true,
+      "nonExecuteAdditionalWork": 0
+    },
+    "authority_change": {
+      "rotationReplayExact": true,
+      "canonicalAuthorityCount": 1,
+      "retiredReaderReplayExact": true,
+      "legalHoldState": "LegalHold",
+      "releasedState": "Retaining",
+      "failClosedStatuses": [
+        503,
+        503
+      ],
+      "sampleExecutions": 2,
+      "nonExecuteAdditionalWork": 0,
+      "deterministicSupportOracles": [
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_PendingEquivalent_ReturnsFirstWriterTaskEvidenceWithoutDownstreamWork",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_Conflict_DeniesBeforeAggregateAndAdvisoryStores",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_AdmissionStoreUnavailableFailsClosedBeforeRoute",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_UnverifiableAdmission_ReturnsStableFailClosedOutcome",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_UnknownOutcome_ReconcilesReadOnlyAndFinalizesExactAggregateResult",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_UnknownOutcomeWithoutAuthoritativeResult_RemainsFailClosed",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.Coordinator_UnsafeLegacyInventoryDoesNoLifecycleAdmissionDirectoryOrMigrationWork",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.AdmitAsync_StateStoreUnavailableFailsClosedWithoutReservation",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.AdmitAsync_UnknownSchema_FailsClosedAsCorrupt",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.AdmitAsync_VerificationTagMismatchFailsClosedAsCollision",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyTenantLifecycleActorTests.MigrateLegacyAsync_RestartFromEveryDurablePhaseFinishesPinnedTarget",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyTenantLifecycleActorTests.MigrateLegacyAsync_UnsafeSourceEvidenceNeverPreparesTarget",
+        "Hexalith.EventStore.Server.Tests.Actors.PublicationRecoveryActivationTests.OnActivate_MissingCheckpointPruned_ReleasesTheRecoverableIdempotencyRecord",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_RouteFailure_MarksUnknownOutcomeUnderSameFence",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_WriteAheadFailureAfterFenceMarksUnknownOutcome",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionExpiryTests.ValidateAuthorityAsync_PendingAcceptsOnlyExactExecuteAuthorityWithoutMutation",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionExpiryTests.ValidateAuthorityAsync_UnknownOutcomeAcceptsOnlyExactReconciliationAuthorityWithoutMutation",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_TamperedCapabilityLeavesAdmissionUnchangedBeforeBegin",
+        "Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_ContextThatLostDurableAuthorityPerformsZeroDownstreamWork",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionDirectoryActorTests.AdvanceAsync_PromotionOrder_KeepsSourceCanonicalUntilDirectoryFlip",
+        "Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.Coordinator_OrdinaryActivationResponseLossReprovesExactTargetBeforeAdvance"
+      ]
+    },
+    "capture": {
+      "before": {
+        "stage": "before",
+        "totalRows": 0,
+        "admissionRows": 0,
+        "terminalRows": 0,
+        "tombstoneRows": 0,
+        "minimalTombstoneRows": 0,
+        "directoryRows": 0,
+        "lifecycleRows": 0,
+        "aggregateMetadataRows": 0,
+        "aggregateEventRows": 0,
+        "aggregateSequenceTotal": 0,
+        "protectedSentinelMatches": 0,
+        "schemaSha256": "fd93353245400e7e480fd2de88548e441dded16454bc80015d56fb4e1233f015",
+        "projectionSha256": "6dd7b0611f0e91519b8fe527f17a7984cc80d018d2c859ab1510acad0dcfff20"
+      },
+      "after": {
+        "stage": "after",
+        "totalRows": 92,
+        "admissionRows": 4,
+        "terminalRows": 4,
+        "tombstoneRows": 1,
+        "minimalTombstoneRows": 1,
+        "directoryRows": 5,
+        "lifecycleRows": 2,
+        "aggregateMetadataRows": 4,
+        "aggregateEventRows": 4,
+        "aggregateSequenceTotal": 4,
+        "protectedSentinelMatches": 0,
+        "schemaSha256": "fd93353245400e7e480fd2de88548e441dded16454bc80015d56fb4e1233f015",
+        "projectionSha256": "565451121f9f592abdd34a7ab595a78ca5ea7cb224608a97500a6cc2d921809b"
+      },
+      "protectedSentinelMatches": 0,
+      "committedProjectionContainsIdentifiers": false,
+      "closureClaimed": false
+    }
+  },
+  "defaultDiscovery": {
+    "sixVariableOverrideGroupUsed": false,
+    "privateNamespace": "g6-oq8-4c3873a13d594efc8f2ed6898c4f2f7c",
+    "sidecarObservations": 10,
+    "allObservedPrivateSqlite": true,
+    "observationsSha256": "b7323f9198a63cb65eb538664ccf7d3c4b537f8fb5b576d7920cad27e0b38f34"
+  },
+  "cleanup": {
+    "oq8": {
+      "scratchRemoved": true,
+      "processesStopped": true,
+      "observedSidecarPidsAbsent": true,
+      "postgresAbsent": true,
+      "receiptSha256": "3e9d00dad0be8c4b2460b51426abfc36c4c4d708b042c2a131a1bc77369040a1"
+    },
+    "actorCallbacks": {
+      "checksPassed": 47,
+      "everyCheckPassed": true,
+      "passed": true,
+      "runtimeAbsent": true,
+      "processesAbsent": true,
+      "containersAbsent": true,
+      "receiptSha256": "71bcfdfea8369013c3cf53822da7a8cca5af491202ef4fb18e411d95d9a07d4e",
+      "runtimeInputsSha256": "82c70c6052451500f0bccad9aca4b7c8f47321d1c54ba39eb307dc8b3c77a588"
+    }
+  },
+  "commitlint": {
+    "cli": "21.2.4",
+    "candidateFileSha256": "c5900af6571d9ad3629499723b41efb85200d224d04c3db33dada7622513cf60",
+    "command": [
+      "node_modules/.bin/commitlint",
+      "--edit",
+      "/tmp/es-live-catalog-commit-message.txt",
+      "--verbose"
+    ],
+    "problems": 0,
+    "warnings": 0,
+    "logSha256": "ad34f6f127f2f5fda9e64d425600818b7be7ce2077e73bcac2b5e295a4be682d"
+  },
+  "limits": [
+    "Immutable Testing authority does not qualify production trust or distributed catalog lifecycle; the separate real hosted plain and mTLS cases retain lifecycle validation.",
+    "Parent native Sample and SDK changes are in a separate worktree and require combined review and verification before publication.",
+    "Full 278-case hosted selection is reserved for parent/CI; this report covers the six original failures and narrowly related controls."
+  ]
+}

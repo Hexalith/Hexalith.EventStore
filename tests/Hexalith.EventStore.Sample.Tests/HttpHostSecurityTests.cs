@@ -46,7 +46,7 @@ public sealed class HttpHostSecurityTests
                 ["Authentication:JwtBearer:Authority"] = null, ["Authentication:JwtBearer:Issuer"] = "story514",
                 ["Authentication:JwtBearer:Audience"] = "sample-api", ["Authentication:JwtBearer:SigningKey"] = Key,
             }));
-            builder.ConfigureTestServices(services => { services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>(); services.RemoveAll<IEventStoreGatewayClient>(); services.AddSingleton<IEventStoreGatewayClient>(gateway); });
+            builder.ConfigureTestServices(services => { services.AddSampleApiCommittedCatalog(); services.RemoveAll<IEventStoreGatewayClient>(); services.AddSingleton<IEventStoreGatewayClient>(gateway); });
         });
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/tenant-a/counter/counter-1");

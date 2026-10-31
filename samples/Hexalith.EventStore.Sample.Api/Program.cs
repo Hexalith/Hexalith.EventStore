@@ -2,6 +2,7 @@ using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Sample.Api.Services;
 using Hexalith.EventStore.ServiceDefaults;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
@@ -16,6 +17,8 @@ builder.AddServiceDefaults();
 // applications; the interactive Blazor UI host consumes the platform gateway client instead.
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddEventStoreRouteCatalog(builder.Configuration);
+builder.Services.AddSampleDevelopmentCatalog(builder.Configuration);
 
 // Inbound JWT validation for the generated [Authorize] controllers — external callers present a bearer.
 builder.Services
@@ -68,6 +71,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapDefaultEndpoints();
+Hexalith.EventStore.ServiceDefaults.Routing.FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app, SampleApiCatalog.Operation);
 
 app.Run();
 

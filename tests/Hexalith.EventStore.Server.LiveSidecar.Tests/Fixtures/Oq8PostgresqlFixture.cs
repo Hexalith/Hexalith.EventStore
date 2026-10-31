@@ -66,6 +66,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private readonly List<object> _sidecarNamespaceObservations = [];
     private string _repositoryRoot = string.Empty;
     private string _runtimeDirectory = string.Empty;
+    private string _runtimeNamespace = "g6-oq8-" + Guid.NewGuid().ToString("N");
     private bool _initialized;
     private IPEndPoint? _placementHostEndpoint;
     private IPEndPoint? _schedulerHostEndpoint;
@@ -83,6 +84,12 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         }
     }
 
+    /// <summary>Gets whether every running sidecar uses this run's actual private discovery registry and namespace.</summary>
+    public bool HasPrivateDiscovery => File.Exists(_discoveryRegistryFile) && AllNodes().All(node =>
+        node.Sidecar is { HasExited: false } sidecar
+        && sidecar.StartInfo.Environment["NAMESPACE"] == _runtimeNamespace
+        && sidecar.StartInfo.ArgumentList.Contains(_discoveryConfigurationFile, StringComparer.Ordinal));
+
     /// <summary>Gets the number of actual Sample <c>/process</c> boundary crossings.</summary>
     public int SampleBoundaryCount => ReadCounter(_sampleNode.CounterFile);
 
@@ -92,6 +99,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         try
         {
             _overrides = Oq8QualificationOverrides.Read(Environment.GetEnvironmentVariable);
+            _runtimeNamespace = _overrides.Namespace ?? _runtimeNamespace;
             _repositoryRoot = FindRepositoryRoot();
             RegisterSensitive(_repositoryRoot);
             RegisterSensitiveTestMaterial();
@@ -103,13 +111,10 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             RegisterSensitive(_runtimeDirectory);
             await StartPostgresAsync().ConfigureAwait(false);
             CreateProductionProfileResources();
-            if (_overrides.Namespace is not null)
-            {
-                _discoveryRegistryFile = Path.Combine(_runtimeDirectory, "discovery.sqlite");
-                _discoveryConfigurationFile = Path.Combine(_runtimeDirectory, "discovery.yaml");
-                File.WriteAllText(_discoveryConfigurationFile, Oq8DiscoveryConfiguration.Create(
-                    _discoveryRegistryFile, Environment.GetEnvironmentVariable("EVENTSTORE_TEST_DAPR_HOT_RELOAD")));
-            }
+            _discoveryRegistryFile = Path.Combine(_runtimeDirectory, "discovery.sqlite");
+            _discoveryConfigurationFile = Path.Combine(_runtimeDirectory, "discovery.yaml");
+            File.WriteAllText(_discoveryConfigurationFile, Oq8DiscoveryConfiguration.Create(
+                _discoveryRegistryFile, Environment.GetEnvironmentVariable("EVENTSTORE_TEST_DAPR_HOT_RELOAD")));
             SetClock(new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero));
             PrepareShadowApplications();
             AllocatePortsAndCounters();
@@ -389,14 +394,14 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     /// <summary>Restarts both EventStore processes with a rotated active digest authority.</summary>
     public async Task RotateDigestAuthorityAsync()
     {
-        foreach (Oq8ProcessNode node in _eventStoreNodes)
+        foreach (Oq8ProcessNode node in AllNodes())
         {
             await StopNodeAsync(node).ConfigureAwait(false);
         }
 
         _activeDigestVersion = ActiveVersionTwo;
         _readerDigestVersions = [ActiveVersionOne];
-        foreach (Oq8ProcessNode node in _eventStoreNodes)
+        foreach (Oq8ProcessNode node in AllNodes())
         {
             await StartNodeAsync(node).ConfigureAwait(false);
         }
@@ -405,13 +410,13 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     /// <summary>Restarts both EventStore processes after retiring the old digest reader.</summary>
     public async Task RetireOldDigestReaderAsync()
     {
-        foreach (Oq8ProcessNode node in _eventStoreNodes)
+        foreach (Oq8ProcessNode node in AllNodes())
         {
             await StopNodeAsync(node).ConfigureAwait(false);
         }
 
         _readerDigestVersions = [];
-        foreach (Oq8ProcessNode node in _eventStoreNodes)
+        foreach (Oq8ProcessNode node in AllNodes())
         {
             await StartNodeAsync(node).ConfigureAwait(false);
         }
@@ -823,11 +828,11 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             node = node.Name,
             appId = node.AppId,
             processId = node.Sidecar!.Id,
-            daprNamespace = _overrides.Namespace,
-            nameResolver = _overrides.Namespace is null ? "mdns" : "sqlite",
-            discoveryRegistryIdentitySha256 = _overrides.Namespace is null ? null : HashUtf8(_discoveryRegistryFile),
-            discoveryConfigurationSha256 = _overrides.Namespace is null ? null : HashFile(_discoveryConfigurationFile),
-            privateDiscoveryRegistryObserved = _overrides.Namespace is not null && File.Exists(_discoveryRegistryFile),
+            daprNamespace = _runtimeNamespace,
+            nameResolver = "sqlite",
+            discoveryRegistryIdentitySha256 = HashUtf8(_discoveryRegistryFile),
+            discoveryConfigurationSha256 = HashFile(_discoveryConfigurationFile),
+            privateDiscoveryRegistryObserved = File.Exists(_discoveryRegistryFile),
         });
     }
 
@@ -862,6 +867,10 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         startInfo.Environment["DAPR_GRPC_ENDPOINT"] = $"http://127.0.0.1:{node.DaprGrpcPort}";
         startInfo.Environment["POSTGRES_CONNECTION_STRING"] = _postgresConnectionString;
         startInfo.Environment[Oq8FileTimeProvider.ClockFileEnvironmentVariable] = _clockFile;
+        startInfo.Environment[LiveAdmissionCatalogBinding.EnvironmentVariable] = JsonSerializer.Serialize(
+            new LiveAdmissionCatalogBinding(Path.GetFileName(_runtimeDirectory), node.Name, node.AppId,
+                EventStoreAppId, SampleAppId, ["tenant-oq8", "tenant-oq8-governance"],
+                _activeDigestVersion, _readerDigestVersions));
         startInfo.Environment[Oq8BoundaryCounterStartupFilter.CounterFileEnvironmentVariable] = node.CounterFile;
         startInfo.Environment["Logging__LogLevel__Default"] = "Warning";
         startInfo.Environment["Logging__LogLevel__Microsoft_AspNetCore"] = "Warning";
@@ -955,12 +964,9 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 
         // The sidecar presents this node's app-channel token on every call it makes to its own application.
         startInfo.Environment["APP_API_TOKEN"] = node.AppChannelToken;
-        if (_overrides.Namespace is not null)
-        {
-            startInfo.Environment["NAMESPACE"] = _overrides.Namespace;
-            startInfo.ArgumentList.Add("--config");
-            startInfo.ArgumentList.Add(_discoveryConfigurationFile);
-        }
+        startInfo.Environment["NAMESPACE"] = _runtimeNamespace;
+        startInfo.ArgumentList.Add("--config");
+        startInfo.ArgumentList.Add(_discoveryConfigurationFile);
 
         node.Sidecar = StartCapturedProcess(startInfo, node.SidecarOutput, node.SidecarError);
     }
@@ -1281,16 +1287,17 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private static string CreateBearerToken()
     {
         string header = Base64Url(JsonSerializer.SerializeToUtf8Bytes(new { alg = "HS256", typ = "JWT" }));
-        string payload = Base64Url(JsonSerializer.SerializeToUtf8Bytes(new
+        string payload = Base64Url(JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string, object>
         {
-            sub = "oq8-evidence-runner",
-            iss = AuthenticationIssuer,
-            aud = AuthenticationAudience,
-            exp = new DateTimeOffset(2035, 1, 1, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
-            tenants = new[] { "tenant-oq8" },
-            tenant_id = "tenant-oq8-governance",
-            domains = new[] { "counter" },
-            permissions = new[] { "commands:*" },
+            ["sub"] = "oq8-evidence-runner",
+            ["iss"] = AuthenticationIssuer,
+            ["aud"] = AuthenticationAudience,
+            ["exp"] = new DateTimeOffset(2035, 1, 1, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+            ["tenants"] = new[] { "tenant-oq8" },
+            ["tenant_id"] = "tenant-oq8-governance",
+            ["domains"] = new[] { "counter" },
+            ["permissions"] = new[] { "commands:*" },
+            ["eventstore:surface"] = "ui",
         }));
         string unsigned = $"{header}.{payload}";
         byte[] signature = HMACSHA256.HashData(
@@ -1359,6 +1366,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
                     "deterministic-time",
                     "idempotency-intent-adapter",
                     "boundary-counter",
+                    "immutable-run-bound-catalog",
+                    "request-body-buffering",
                 },
             },
             artifacts = new
@@ -1593,7 +1602,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
                 postgresContainerId = postgresIdentity,
                 runtimeScratchRemoved = !Directory.Exists(_runtimeDirectory),
                 processesStopped = AllNodes().All(static node => node.Application is null && node.Sidecar is null),
-                daprNamespace = _overrides.Namespace,
+                daprNamespace = _runtimeNamespace,
                 sidecarNamespaceObservations = _sidecarNamespaceObservations,
             }));
         }

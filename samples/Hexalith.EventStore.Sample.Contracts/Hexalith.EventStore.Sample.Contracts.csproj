@@ -5,7 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
+  </ItemGroup>
+
+  <!-- Explicit integration-fixture profile; ordinary native builds and publishing keep SDK source edges. -->
+  <ItemGroup Condition="'$(HexalithUsePublishedSdkForHostedTests)' == 'true'">
+    <PackageReference Include="Hexalith.EventStore.Contracts" />
   </ItemGroup>
 
 </Project>

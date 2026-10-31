@@ -13,6 +13,11 @@ public static class CounterCatalogDeclarations
 {
     /// <summary>Gets complete compiled declarations consumed by generated hosts.</summary>
     public static IReadOnlyList<RouteContractDeclaration> Routes => [.. Commands.Select(c => c.Route), Query];
+    /// <summary>Gets actual receiver methods; the canonical projection actor query belongs to the gateway.</summary>
+    public static IReadOnlyDictionary<string, string> ReceiverMethods => Routes.ToDictionary(route => route.RouteId,
+        route => route.Execution?.TargetKind == "projection-actor" ? "QueryAsync" : route.Kind == "command" ? "process" : "project",
+        StringComparer.Ordinal);
+
     /// <summary>Gets all four owner-approved MessageId v1, Mutation/24-hour policies.</summary>
     public static IReadOnlyList<CommandIntentDeclaration> Commands { get; } = [
         Command<IncrementCounter>(), Command<DecrementCounter>(), Command<ResetCounter>(), Command<CloseCounter>()];
@@ -21,6 +26,14 @@ public static class CounterCatalogDeclarations
     public static RouteContractDeclaration Query { get; } = new("counter-status-query", "query", GetCounterStatusQuery.Domain,
         GetCounterStatusQuery.QueryType, GetCounterStatusQuery.ProjectionType, "v1", null, "workload", EventStoreOperationIdentifiers.ProjectionQuery, null, [],
         new(typeof(GetCounterStatusQuery).FullName!, "exact", [GetCounterStatusQuery.QueryType], "projection-actor", "projection", [], ActorType: "ProjectionActor"));
+
+    /// <summary>Gets the existing UI-only Counter operation schemas without granting agent ingress.</summary>
+    public static IReadOnlyList<RouteOperationContract> Operations => Routes.Select(route =>
+        RouteOperationSchema.Create(route,
+            route.Kind == "query" ? typeof(GetCounterStatusQuery)
+                : typeof(CounterCatalogDeclarations).Assembly.GetType(route.Execution!.HandlerType, throwOnError: true)!,
+            route.Kind == "query" ? typeof(CounterStatusPayload) : typeof(SubmitCommandResponse),
+            "public", "UI-only", System.Text.Json.JsonSerializerOptions.Web)).ToArray();
 
     private static CommandIntentDeclaration Command<T>() where T : ICommandContract
     {

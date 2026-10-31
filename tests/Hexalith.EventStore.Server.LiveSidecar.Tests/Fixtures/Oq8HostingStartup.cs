@@ -23,6 +23,14 @@ public sealed class Oq8HostingStartup : IHostingStartup
                 return;
             }
 
+            string catalogJson = Environment.GetEnvironmentVariable(LiveAdmissionCatalogBinding.EnvironmentVariable)
+                ?? throw new InvalidOperationException("The private live-admission worker catalog binding is required.");
+            var catalog = System.Text.Json.JsonSerializer.Deserialize<LiveAdmissionCatalogBinding>(catalogJson)
+                ?? throw new InvalidOperationException("The private live-admission catalog binding is invalid.");
+            if (Environment.GetEnvironmentVariable("DAPR_APP_ID") != catalog.AppId)
+                throw new InvalidOperationException("The private catalog owner differs from the independently configured worker application.");
+            services.AddLiveAdmissionCatalog(catalog);
+
             services.TryAddSingleton<TimeProvider, Oq8FileTimeProvider>();
             services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>());

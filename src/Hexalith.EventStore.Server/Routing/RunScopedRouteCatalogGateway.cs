@@ -1,6 +1,12 @@
 using System.Reflection;
 using System.Runtime.Loader;
 
+using Dapr.Actors.Runtime;
+using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Queries;
+using Microsoft.Extensions.Options;
+
 using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.ServiceDefaults.Routing;
@@ -43,6 +49,9 @@ public static class RunScopedRouteCatalogGateway
         ArgumentNullException.ThrowIfNull(configuration);
         var section = configuration.GetSection("EventStore:RouteCatalog:DevelopmentBootstrap");
         if (string.IsNullOrEmpty(section["Directory"])) return services;
+        string appId = configuration["EventStore:DomainService:AppId"]
+            ?? throw new RouteCatalogUnavailableException("The owning Development runner must supply the actual gateway app identity.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         var owners = Load(section.GetSection("OwnerAssemblies").Get<string[]>() ?? []);
         var adapters = Load(section.GetSection("AdapterAssemblies").Get<string[]>() ?? []);
         if (owners.Length == 0 || adapters.Length == 0) throw new RouteCatalogUnavailableException("Mapped owner schemas and adapter assemblies are required.");
@@ -58,11 +67,41 @@ public static class RunScopedRouteCatalogGateway
             var fence = provider.GetRequiredService<FiniteRouteCatalogReceiver>();
             await fence.WaitForCaptureAsync(token).ConfigureAwait(false);
             var receiver = fence.Observe();
-            var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, "eventstore",
-                CompiledRouteCatalogDeclarations.Read(owners), [], await RouteCatalogAdmissionObservation.CaptureAsync(provider, "eventstore", token).ConfigureAwait(false), [],
-                receiver.Endpoints.Where(e => e.Admitted).Select(e => new RouteCatalogAuxiliaryOperation("eventstore", e.Pattern.TrimStart('/'), e.Operation!, "gateway")).ToArray(), token).ConfigureAwait(false);
+            using var scope = provider.CreateScope();
+            var declarations = CompiledRouteCatalogDeclarations.Read(owners);
+            var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, appId,
+                declarations, ProjectionTargets(scope.ServiceProvider, appId, declarations),
+                await RouteCatalogAdmissionObservation.CaptureAsync(provider, appId, token).ConfigureAwait(false), [],
+                receiver.Endpoints.Where(e => e.Admitted).Select(e => new RouteCatalogAuxiliaryOperation(appId, e.Pattern.TrimStart('/'), e.Operation!, "gateway")).ToArray(), token).ConfigureAwait(false);
             return actual with { ReceiverSurface = receiver, Operations = CompiledRouteCatalogDeclarations.ReadOperations(owners) };
         }, _ => RouteCatalogCodec.Decode(File.ReadAllBytes(section["CatalogPath"]!), section["RootDigest"]));
+    }
+
+    /// <summary>Claims only the real installed canonical projection actor and its production invocation path.</summary>
+    internal static IReadOnlyList<RouteCatalogEntry> ProjectionTargets(IServiceProvider services, string appId,
+        IReadOnlyList<RouteContractDeclaration> declarations)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+        ArgumentNullException.ThrowIfNull(declarations);
+        var actors = declarations.Where(declaration => declaration.Execution?.TargetKind == "projection-actor").ToArray();
+        if (actors.Length == 0) return [];
+        var registered = services.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value.Actors
+            .Where(actor => actor.Type.ActorTypeName == QueryRouter.ProjectionActorTypeName).ToArray();
+        if (registered.Length != 1 || registered[0].Type.ImplementationType != typeof(EventReplayProjectionActor)
+            || !typeof(IDaprProjectionActor).IsAssignableFrom(registered[0].Type.ImplementationType)
+            || services.GetService<IProjectionActorInvoker>() is not DefaultProjectionActorInvoker)
+            throw new RouteCatalogUnavailableException("The actual gateway projection actor or invocation path differs from its compiled declarations.");
+        foreach (var declaration in actors)
+        {
+            RouteCatalogValidator.ValidateDeclaration(declaration);
+            if (declaration.Kind != "query" || declaration.Execution!.ActorType != QueryRouter.ProjectionActorTypeName
+                || declaration.CredentialKind != "workload" || declaration.Operation != EventStoreOperationIdentifiers.ProjectionQuery)
+                throw new RouteCatalogUnavailableException("Only the installed canonical projection query can bind to this gateway.");
+        }
+        return Array.AsReadOnly(actors.Select(declaration => new RouteCatalogEntry(declaration.RouteId, 1,
+            RouteCatalogCodec.ComputeDeclarationDigest(declaration), appId, nameof(IProjectionActor.QueryAsync),
+            declaration.ContractVersion, declaration.CredentialKind, declaration.Operation, false, "*")).ToArray());
     }
 
     private static Assembly[] Load(IEnumerable<string> paths) => paths.Select(path =>

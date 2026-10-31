@@ -64,7 +64,8 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(1) };
         for (int attempt = 0; attempt < 300; attempt++)
         {
-            if (_process.HasExited) throw new InvalidOperationException("Catalog fixture sidecar exited: " + await _stderr.ConfigureAwait(false));
+            if (_process.HasExited) throw new InvalidOperationException("Catalog fixture sidecar exited: "
+                + await _stdout.ConfigureAwait(false) + await _stderr.ConfigureAwait(false));
             try
             {
                 using var response = await client.GetAsync(HttpEndpoint + "/v1.0/healthz/outbound").ConfigureAwait(false);

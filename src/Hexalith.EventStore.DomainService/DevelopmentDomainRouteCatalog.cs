@@ -63,14 +63,23 @@ public static class DevelopmentDomainRouteCatalog
                 throw new RouteCatalogUnavailableException("The compiled commands differ from the actual aggregate or custom processor payload inventory.");
         }
         var actualEndpoints = endpoints.OfType<RouteEndpoint>().ToArray();
-        if (queries.Any(query => !declarations.Any(d => d.Kind == "query" && d.Domain == query.Domain && d.MessageType == query.QueryType))
+        if (queries.Any(query => !declarations.Any(d => d.Kind == "query" && d.Execution?.TargetKind == "domain-service" && d.Domain == query.Domain && d.MessageType == query.QueryType))
             || named.Any(handler => !declarations.Any(d => d.Kind == "projection" && d.Domain == handler.Domain && d.ProjectionType == handler.ProjectionType)))
             throw new RouteCatalogUnavailableException("An actual query or named projection handler lacks an owner declaration.");
         var targets = new List<RouteCatalogEntry>();
         foreach (var declaration in declarations)
         {
+            // Keep the full compiled owner inventory, but let the independently observing
+            // gateway claim its canonical actor query. This host never advertises that target.
+            if (declaration.Kind == "query" && declaration.Execution is { TargetKind: "projection-actor", ActorType: "ProjectionActor" }
+                && declaration.CredentialKind == "workload"
+                && declaration.Operation == Hexalith.EventStore.Contracts.Authorization.EventStoreOperationIdentifiers.ProjectionQuery)
+            {
+                RouteCatalogValidator.ValidateDeclaration(declaration);
+                continue;
+            }
             if (declaration.Execution?.TargetKind != "domain-service")
-                throw new RouteCatalogUnavailableException("This Development enrollment owns domain-service receivers only.");
+                throw new RouteCatalogUnavailableException("This Development enrollment owns domain-service receivers and delegates only the canonical gateway projection query.");
             string method = declaration.Kind switch
             {
                 "command" when discovery.Aggregates.Any(a => a.DomainName == declaration.Domain) => "process",

@@ -27,6 +27,7 @@ public class IdempotencyAdmissionLiveSidecarTests(DaprTestContainerFixture fixtu
     [Fact]
     public async Task MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica()
     {
+        using var catalogScope = new LiveAdmissionCatalogScope("tenant-multi-host");
         const string RawKey = "live-multi-host-idempotency-key";
         fixture.ResetTestState();
         fixture.SetupCounterDomain();

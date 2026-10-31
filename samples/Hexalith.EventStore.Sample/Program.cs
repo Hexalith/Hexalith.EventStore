@@ -12,6 +12,13 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.AddEventStoreDomainService();
 builder.Services.AddCounterEventSerialization();
 builder.Services.AddGreetingEventSerialization();
+#if HEXALITH_SAMPLE_CATALOG
+builder.Services.AddEventStoreDevelopmentDomainCatalog(builder.Configuration, typeof(SampleCatalog).Assembly);
+if (!string.IsNullOrEmpty(builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"]))
+{
+    builder.Services.AddSingleton(new LegacyProjectionCatalogRegistration([SampleCatalog.Projection]));
+}
+#endif
 
 bool malformedProjectionResponse = builder.Configuration
     .GetValue<bool>("EventStore:SampleFaults:MalformedProjectResponse");

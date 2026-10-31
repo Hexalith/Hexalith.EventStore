@@ -12,15 +12,22 @@
          discovers them via referenced-assembly metadata (RestApiMessageParser.ParseReferenced) and emits
          the typed controllers into this external-facing API host. -->
     <ProjectReference Include="..\Hexalith.EventStore.Sample.Contracts\Hexalith.EventStore.Sample.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.RestApi.Generators\Hexalith.EventStore.RestApi.Generators.csproj"
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.RestApi.Generators\Hexalith.EventStore.RestApi.Generators.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <!-- Explicit integration-fixture profile; ordinary native builds and publishing keep SDK source edges. -->
+  <ItemGroup Condition="'$(HexalithUsePublishedSdkForHostedTests)' == 'true'">
+    <PackageReference Include="Hexalith.EventStore.Client" />
+    <PackageReference Include="Hexalith.EventStore.RestApi.Generators" PrivateAssets="all" />
+    <PackageReference Include="Hexalith.EventStore.ServiceDefaults" />
   </ItemGroup>
 
 </Project>

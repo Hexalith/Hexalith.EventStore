@@ -59,7 +59,7 @@ if (!string.IsNullOrEmpty(app.Configuration["EventStore:RouteCatalog:Development
 app.UseCloudEvents();
 
 bool declarativeSubscriptions = app.Configuration.GetValue<bool>("Dapr:DeclarativeSubscriptions");
-app.MapControllers().Add(endpoint => ProjectionNotificationTopicAttribute.Bind(endpoint, app.Services, declarativeSubscriptions));
+app.MapControllers().WithEventStoreProjectionNotifications(app.Services, declarativeSubscriptions);
 app.MapErrorReferences();
 app.MapApiVersionFallback();
 if (!declarativeSubscriptions)

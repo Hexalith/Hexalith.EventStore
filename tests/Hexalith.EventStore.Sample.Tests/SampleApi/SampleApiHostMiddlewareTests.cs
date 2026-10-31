@@ -38,7 +38,7 @@ public sealed class SampleApiHostMiddlewareTests
     {
         await using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
             .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth)
-                .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>()));
+                .ConfigureServices(services => services.AddSampleApiCommittedCatalog()));
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
@@ -86,7 +86,7 @@ public sealed class SampleApiHostMiddlewareTests
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureAppConfiguration(ConfigureSampleAuth)
-                .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>());
+                .ConfigureServices(services => services.AddSampleApiCommittedCatalog());
                 builder.ConfigureTestServices(services =>
                 {
                     services.RemoveAll<IEventStoreGatewayClient>();
@@ -131,7 +131,7 @@ public sealed class SampleApiHostMiddlewareTests
     {
         await using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
             .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth)
-                .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>()));
+                .ConfigureServices(services => services.AddSampleApiCommittedCatalog()));
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
@@ -166,7 +166,7 @@ public sealed class SampleApiHostMiddlewareTests
         ];
         await using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
             .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(ConfigureSampleAuth)
-                .ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>()));
+                .ConfigureServices(services => services.AddSampleApiCommittedCatalog()));
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
@@ -220,7 +220,7 @@ public sealed class SampleApiHostMiddlewareTests
                         ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
                         ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500",
                     }));
-                builder.ConfigureServices(services => services.AddTransient<IStartupFilter, SampleApiCatalogTestStartupFilter>());
+                builder.ConfigureServices(services => services.AddSampleApiCommittedCatalog());
                 builder.ConfigureTestServices(services =>
                 {
                     services.RemoveAll<IEventStoreGatewayClient>();

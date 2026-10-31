@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Dapr;
 using Hexalith.EventStore.Controllers;
+using Hexalith.EventStore.Extensions;
 using Hexalith.EventStore.Server.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -29,7 +30,7 @@ public sealed class ProjectionSubscriptionMetadataTests
         builder.Services.AddOptions<ProjectionChangeNotifierOptions>().Bind(builder.Configuration.GetSection("EventStore:ProjectionChanges"));
         builder.Services.AddControllers().AddApplicationPart(typeof(ProjectionNotificationController).Assembly).AddDapr();
         await using WebApplication app = builder.Build();
-        app.MapControllers().Add(endpoint => ProjectionNotificationTopicAttribute.Bind(endpoint, app.Services, declarative));
+        app.MapControllers().WithEventStoreProjectionNotifications(app.Services, declarative);
         if (!declarative) app.MapSubscribeHandler();
         await app.StartAsync();
         using HttpClient client = app.GetTestClient();

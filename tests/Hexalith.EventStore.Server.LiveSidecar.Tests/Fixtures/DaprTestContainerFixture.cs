@@ -1075,6 +1075,8 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
         // Catalog authority has separate real-host/Dapr/mTLS positive and rejection controls.
         _ = builder.Services.AddSingleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, LegacyProtocolCatalogHttpIsolation>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        builder.Services.AddLiveAdmissionCatalog(new(AppId, "primary", AppId, AppId, AppId,
+            ["tenant-a", "tenant-b", "tenant-multi-host"], "live-v1", []));
         _ = builder.Services.AddTransient<INamedProjectionDispatchCoordinator>(LegacyProtocolCatalogIsolation.Create<NamedProjectionDispatchCoordinator>);
         _ = builder.Services.AddEventStoreFoldedSnapshotQualification<Hexalith.EventStore.Sample.Counter.State.CounterState>(
             "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",
@@ -1249,6 +1251,8 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
         _ = builder.Services.AddSingleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, LegacyProtocolCatalogHttpIsolation>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        builder.Services.AddLiveAdmissionCatalog(new(AppId, "replica", AppId, AppId, AppId,
+            ["tenant-a", "tenant-b", "tenant-multi-host"], "live-v1", []));
         _ = builder.Services.AddTransient<INamedProjectionDispatchCoordinator>(LegacyProtocolCatalogIsolation.Create<NamedProjectionDispatchCoordinator>);
         _ = builder.Services.AddEventStoreFoldedSnapshotQualification<Hexalith.EventStore.Sample.Counter.State.CounterState>(
             "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",

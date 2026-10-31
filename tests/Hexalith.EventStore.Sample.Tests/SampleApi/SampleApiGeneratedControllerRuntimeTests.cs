@@ -430,9 +430,6 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             HttpContext = new DefaultHttpContext(),
         };
 
-        // These action tests isolate response semantics from the separately tested real-host catalog gate.
-        controller.HttpContext.Items[Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.ValidatorKey] =
-            (Func<Type, string, string, bool>)((_, _, tenant) => tenant == "tenant-a");
         return new GeneratedController(controller, gateway);
     }
 
@@ -450,10 +447,9 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
     {
         MethodInfo method = controller.Controller.GetType().GetMethod(methodName)
             ?? throw new MissingMethodException(controller.Controller.GetType().FullName, methodName);
-        var task = (Task<IActionResult>)method.Invoke(
-            controller.Controller,
-            ["tenant-a", counterId, body, TestContext.Current.CancellationToken])!;
-        return await task.ConfigureAwait(false);
+        return await SampleApiGeneratedFilterFixture.ExecuteAsync(controller.Controller, method, () =>
+            (Task<IActionResult>)method.Invoke(controller.Controller,
+                ["tenant-a", counterId, body, TestContext.Current.CancellationToken])!).ConfigureAwait(false);
     }
 
     private static async Task<IActionResult> InvokeQueryAsync(
@@ -462,10 +458,9 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
     {
         MethodInfo method = controller.Controller.GetType().GetMethod("GetCounterStatusQueryQueryAsync")
             ?? throw new MissingMethodException(controller.Controller.GetType().FullName, "GetCounterStatusQueryQueryAsync");
-        var task = (Task<IActionResult>)method.Invoke(
-            controller.Controller,
-            ["tenant-a", "counter-1", ifNoneMatch, TestContext.Current.CancellationToken])!;
-        return await task.ConfigureAwait(false);
+        return await SampleApiGeneratedFilterFixture.ExecuteAsync(controller.Controller, method, () =>
+            (Task<IActionResult>)method.Invoke(controller.Controller,
+                ["tenant-a", "counter-1", ifNoneMatch, TestContext.Current.CancellationToken])!).ConfigureAwait(false);
     }
 
     private static void AssertMetadataHeadersAbsent(IHeaderDictionary headers)

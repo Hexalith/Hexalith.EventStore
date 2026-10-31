@@ -136,6 +136,7 @@ public sealed class P1RRemediationPersistenceTests(DaprTestContainerFixture fixt
     [Fact]
     public async Task CurrentFencePersistsEventWhileStaleAndForgedCapabilitiesLeaveInventoryUnchanged()
     {
+        using var catalogScope = new LiveAdmissionCatalogScope("tenant-a");
         fixture.ResetTestState();
         fixture.SetupCounterDomain();
         var identity = new AggregateIdentity("tenant-a", "counter", $"p1r-fence-{Guid.NewGuid():N}");

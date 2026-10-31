@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "c02afa0fce310ccdb696232f18829df96cba088e",
+  "status": "ready-for-combined-independent-review",
+  "inputSha256": {
+    "samples/Hexalith.EventStore.Sample.Api/Program.cs": "bddac490f0ad374bfe216b5648d1971f7ad749bd7ee7727ad22b9de1074198fa",
+    "tests/Hexalith.EventStore.Sample.Tests/HttpHostSecurityTests.cs": "d78407d5596090b5141a1594ff442823e90677f709b1b0c8e0b42d50b19e70da",
+    "tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiHostMiddlewareTests.cs": "6247659fee52d3f527938b681022ef9df5f4469c4111b427473974ada06536eb",
+    "tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiGeneratedControllerRuntimeTests.cs": "5e7d0ec8094d0efc937c314fb8831f9226a4eb79f591e83419f29eb507fb316b",
+    "tests/Hexalith.EventStore.Sample.Tests/SampleApiCommittedCatalog.cs": "2a2e5c4152ea8d168639a9bc9a35c1c1e31d661bffe41b91e85dc3c50f8ae8b3",
+    "tests/Hexalith.EventStore.Sample.Tests/SampleApiCatalogTestServices.cs": "0a26aec0c511b9bb94fb29a8e0a4efa4726e9da91349e86f4d6a4551066ad9c3",
+    "tests/Hexalith.EventStore.Sample.Tests/SampleApiGeneratedFilterFixture.cs": "7f8f28fb6262e9ea487d6d227ed4a305cc68edd9355ed457e2ab3a478931b20e",
+    "tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiCatalogReadinessTests.cs": "5b951214e50e63cb2082616f3e23f28c2cec14649bfabc02422c137e3a3a3f06"
+  },
+  "deletedFakeCallback": "tests/Hexalith.EventStore.Sample.Tests/SampleApiCatalogTestStartupFilter.cs",
+  "noSampleTestsAssignGeneratedValidatorCallback": true,
+  "build": {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=false",
+      "-p:UseNuGetDeps=true",
+      "-p:Version=3.129.1",
+      "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+      "-warnaserror"
+    ],
+    "warnings": 0,
+    "errors": 0,
+    "logSha256": "dbd6475ca0288f98c5294b5b32a721f86cdbc9aba36b0507560700001ffad6c1"
+  },
+  "tests": {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll",
+      "-class",
+      "*SampleApiHostMiddlewareTests",
+      "-class",
+      "*SampleApiGeneratedControllerRuntimeTests",
+      "-class",
+      "*HttpHostSecurityTests",
+      "-class",
+      "*SampleApiCatalogReadinessTests",
+      "-result-xml",
+      "/tmp/es-sample-api-common-tests-final.xml"
+    ],
+    "passed": 31,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 1.284,
+    "xmlSha256": "6de87c892ab097c7a0f5a2d47fd3374d7a66e1c0e0082114099a715bfcf13ba7"
+  },
+  "actualNativeObservation": {
+    "independentProcess": true,
+    "configuration": "Release",
+    "appId": "sample-api-session-one",
+    "compiledCounterDeclarations": 5,
+    "compiledOperationDigests": 5,
+    "digestsMatchActualCompiledOwners": true,
+    "completeReceiverInventoryObserved": true,
+    "realAuthorityRegistered": true,
+    "activationOrCommitClaimed": false,
+    "ownedProcessReapedBeforePrivateScratchRemoval": true
+  },
+  "limits": [
+    "Read-only immutable schema2 test authority qualifies legacy HTTP authentication/response assertions; it does not grant Production trust.",
+    "Schema3 positives and negatives use the actual GeneratedRouteCatalogFilter and dispatch lease.",
+    "Private native worker observation stops before an activation exists; parent owns complete multi-host live verification."
+  ]
+}

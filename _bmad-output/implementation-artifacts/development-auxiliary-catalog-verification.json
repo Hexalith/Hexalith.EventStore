@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "c02afa0fce310ccdb696232f18829df96cba088e",
+  "status": "awaiting-combined-independent-review",
+  "inputs": {
+    "samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj": "b3603fce44305398b1389dd894118f4cb476b3887d9ad8a1250a176aa2d43b65",
+    "samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj": "8552f6d878bb0b143f5d249521b1e6974194509bf83384c5f95b27438b5cc1fa",
+    "samples/Hexalith.EventStore.Sample.Contracts/Hexalith.EventStore.Sample.Contracts.csproj": "d2d658fcd721d4fb6c7e5e827da50954210a2d46947187a3d710de6e9be817d8",
+    "src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj": "c2963067016b8a2ba087bd2e956f9d42a139e401233360c83730ce2299084db5",
+    "src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj": "4cff48a8ee46d3036a801c2bdf654c7692f112025de7af256fd8cb8b9a9e5cc0",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/DevelopmentAuxiliaryClientCatalog.cs": "2236e5afaa769f16e90e94d2fa73b0415b533749eb19923c1f6e083e144d8319",
+    "src/Hexalith.EventStore.ServiceDefaults/Routing/DevelopmentAuxiliaryClientCatalogHostingStartup.cs": "9cacb4f23f2c2b23a517c88db8de1609d2a107f23fa692aa4a2f9481dc0b9ebe",
+    "tests/Hexalith.EventStore.ServiceDefaults.Tests/DevelopmentAuxiliaryClientCatalogTests.cs": "fe531f2de885b8cb64c8cacef5c85d10f5c30f88e6d1097c78874fafd17dd4e9",
+    "tools/tests/test_hosted_peer_sdk_references.py": "404accc28cca6ea8f0492bcbb71c57ca6107833db256b2d20daa6097cf950103"
+  },
+  "sourceApiBuild": {
+    "version": "3.129.1",
+    "published": false,
+    "warnings": 0,
+    "errors": 0,
+    "logSha256": "12ae0305ba28bce43794f21bf7f800f117c8c5ba421e066ea92280bfc489319f"
+  },
+  "observerTests": {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.ServiceDefaults.Tests/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.Tests.dll",
+      "-class",
+      "*DevelopmentAuxiliaryClientCatalogTests",
+      "-result-xml",
+      "/tmp/es-aux-client-tests-final.xml"
+    ],
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 0.399,
+    "xmlSha256": "d7d6dd359f3be7e98aefcf937fcf803b0a956fcf460074f8eb92e80f476bc569"
+  },
+  "msbuildEvaluation": {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_hosted_peer_sdk_references.py"
+    ],
+    "environment": {
+      "HEXALITH_BUILD_PACKAGE_PROPS": "/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props"
+    },
+    "tests": 1,
+    "projectModesEvaluated": 20,
+    "modes": [
+      "default-native",
+      "explicit-false",
+      "default-publish",
+      "explicit-true"
+    ],
+    "versionOverrideNegativeControl": "9.8.7",
+    "logSha256": "c42827b92789c67f5e5a7b5ea6330b90e558dcf6cfc54070db2c9285a1654f0b"
+  },
+  "publishedPeerBuilds": [
+    {
+      "project": "samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj",
+      "exitCode": 0,
+      "command": [
+        "dotnet",
+        "build",
+        "samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj",
+        "-c",
+        "Release",
+        "--disable-build-servers",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true",
+        "-p:Version=3.129.1",
+        "-p:HexalithUsePublishedSdkForHostedTests=true",
+        "-p:HexalithEventStoreVersion=3.129.0",
+        "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-warnaserror",
+        "-p:EmitCompilerGeneratedFiles=true",
+        "-p:CompilerGeneratedFilesOutputPath=/tmp/es-aux-api-generated"
+      ],
+      "log": "/tmp/es-aux-package-build-0.log",
+      "logSha256": "e5322177a984c76672becc4268de1f5bb9c558b87e96de63fb5f0c2e24457d58"
+    },
+    {
+      "project": "samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj",
+      "exitCode": 0,
+      "command": [
+        "dotnet",
+        "build",
+        "samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj",
+        "-c",
+        "Release",
+        "--disable-build-servers",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true",
+        "-p:Version=3.129.1",
+        "-p:HexalithUsePublishedSdkForHostedTests=true",
+        "-p:HexalithEventStoreVersion=3.129.0",
+        "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-warnaserror"
+      ],
+      "log": "/tmp/es-aux-package-build-1.log",
+      "logSha256": "69041e43a117924ad4ccedfd46d4dc9d9fc61a79e07526b7fe678c5d35461cbd"
+    },
+    {
+      "project": "src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj",
+      "exitCode": 0,
+      "command": [
+        "dotnet",
+        "build",
+        "src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj",
+        "-c",
+        "Release",
+        "--disable-build-servers",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true",
+        "-p:Version=3.129.1",
+        "-p:HexalithUsePublishedSdkForHostedTests=true",
+        "-p:HexalithEventStoreVersion=3.129.0",
+        "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-warnaserror"
+      ],
+      "log": "/tmp/es-aux-package-build-2.log",
+      "logSha256": "86df73a90a2457e1c7a04660031270e18e04d1d53b2a79eb5f6fc6fea304f26e"
+    },
+    {
+      "project": "src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj",
+      "exitCode": 0,
+      "command": [
+        "dotnet",
+        "build",
+        "src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj",
+        "-c",
+        "Release",
+        "--disable-build-servers",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true",
+        "-p:Version=3.129.1",
+        "-p:HexalithUsePublishedSdkForHostedTests=true",
+        "-p:HexalithEventStoreVersion=3.129.0",
+        "-p:Hexalith1BuildPackageProps=/home/administrator/projects/hexalith/parties/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-warnaserror"
+      ],
+      "log": "/tmp/es-aux-package-build-3.log",
+      "logSha256": "0bf8d6f3f5143aac055f19e9a2c4d62fda524dfd4ef75e17656d9b6a36305782"
+    }
+  ],
+  "publishedSdkVersionQualified": "3.129.0",
+  "actualRestoredSdkLibraries": {
+    "samples/Hexalith.EventStore.Sample.Api": {
+      "sdkLibraries": {
+        "Hexalith.EventStore.Client/3.129.0": "package",
+        "Hexalith.EventStore.Contracts/3.129.0": "package",
+        "Hexalith.EventStore.RestApi.Generators/3.129.0": "package",
+        "Hexalith.EventStore.ServiceDefaults/3.129.0": "package"
+      },
+      "assetsSha256": "2fcd8d4197103e6ec222dae8a2ac040fd5de0f6cd52252ec03aaa9e713f81f33"
+    },
+    "samples/Hexalith.EventStore.Sample.Contracts": {
+      "sdkLibraries": {
+        "Hexalith.EventStore.Contracts/3.129.0": "package"
+      },
+      "assetsSha256": "1e9a08ac2c265f852be14c4944a20e57814ef7e32f97f1cc1e87279d7c57f1b7"
+    },
+    "samples/Hexalith.EventStore.Sample.BlazorUI": {
+      "sdkLibraries": {
+        "Hexalith.EventStore.Client/3.129.0": "package",
+        "Hexalith.EventStore.Contracts/3.129.0": "package",
+        "Hexalith.EventStore.ServiceDefaults/3.129.0": "package",
+        "Hexalith.EventStore.SignalR/3.129.0": "package"
+      },
+      "assetsSha256": "0271fd8295457f2e8806b399e3f0571bb377fa3152e4160a029993a6d6cecb94"
+    },
+    "src/Hexalith.EventStore.Admin.Server.Host": {
+      "sdkLibraries": {
+        "Hexalith.EventStore.Admin.Abstractions/3.129.0": "package",
+        "Hexalith.EventStore.Admin.Server/3.129.0": "package",
+        "Hexalith.EventStore.Contracts/3.129.0": "package",
+        "Hexalith.EventStore.ServiceDefaults/3.129.0": "package"
+      },
+      "assetsSha256": "2c3ac3c0f1679d98712e0b5243f4a0a933048a517ec7122fe9c16aafa9064abe"
+    },
+    "src/Hexalith.EventStore.Admin.UI": {
+      "sdkLibraries": {
+        "Hexalith.EventStore.Admin.Abstractions/3.129.0": "package",
+        "Hexalith.EventStore.Client/3.129.0": "package",
+        "Hexalith.EventStore.Contracts/3.129.0": "package",
+        "Hexalith.EventStore.ServiceDefaults/3.129.0": "package",
+        "Hexalith.EventStore.SignalR/3.129.0": "package"
+      },
+      "assetsSha256": "f7038601774ef323f261ea89a0f9a589476251107e4c596df6763a8b40a16a6d"
+    }
+  },
+  "packagedGenerator": {
+    "counterRestControllerGenerated": true,
+    "controllerSha256": "44c8675de2d5c8539470d8dc092c137427e2ac9031effe926323a6ce05f0647f"
+  },
+  "defaultNativeApiBuild": {
+    "warnings": 0,
+    "errors": 0,
+    "sourceSdkAndGeneratorCompiled": true,
+    "logSha256": "95bd850ed72ee2f494350e6bf9f65b213e2060dc4ad31d564d7668de8f9f29e4"
+  },
+  "commitlint": {
+    "version": "21.2.4",
+    "problems": 0,
+    "warnings": 0,
+    "logSha256": "10853ca1ec309c68bd890ecaa32622a2996d06589ecf555916b1227df0d2a364"
+  },
+  "limitations": [
+    "Native Sample and gateway changes are separate parent work; combined review and actual run-scoped multi-host bootstrap still belong to parent.",
+    "The new helper uses existing production authority/lifecycle; no Production trust change.",
+    "Published-peer builds qualify currently public3.129.0 packages; source-only API3.129.1 has not yet been published."
+  ]
+}

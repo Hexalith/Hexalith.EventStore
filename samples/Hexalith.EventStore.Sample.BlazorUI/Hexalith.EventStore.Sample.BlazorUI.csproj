@@ -14,15 +14,22 @@
          The interactive UI host reaches EventStore through the platform gateway client — it hosts no
          generated REST controllers (those live in the external Hexalith.EventStore.Sample.Api host). -->
     <ProjectReference Include="..\Hexalith.EventStore.Sample.Contracts\Hexalith.EventStore.Sample.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.SignalR\Hexalith.EventStore.SignalR.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.SignalR\Hexalith.EventStore.SignalR.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+  </ItemGroup>
+
+  <!-- Explicit integration-fixture profile; ordinary native builds and publishing keep SDK source edges. -->
+  <ItemGroup Condition="'$(HexalithUsePublishedSdkForHostedTests)' == 'true'">
+    <PackageReference Include="Hexalith.EventStore.Client" />
+    <PackageReference Include="Hexalith.EventStore.SignalR" />
+    <PackageReference Include="Hexalith.EventStore.ServiceDefaults" />
   </ItemGroup>
 
 </Project>

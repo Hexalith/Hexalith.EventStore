@@ -21,6 +21,9 @@ public sealed class DevelopmentDomainRouteCatalogTests
 {
     [Theory]
     [InlineData("valid")]
+    [InlineData("gateway-query")]
+    [InlineData("foreign-actor")]
+    [InlineData("actor-shadowed-local-query")]
     [InlineData("undeclared-command")]
     [InlineData("undeclared-query")]
     [InlineData("undeclared-projection")]
@@ -52,15 +55,26 @@ public sealed class DevelopmentDomainRouteCatalogTests
             var handler = Substitute.For<IAsyncDomainProjectionHandler>();
             handler.Domain.Returns("counter"); handler.ProjectionType.Returns("undeclared-projection"); services.AddSingleton(handler);
         }
+        if (fault is "gateway-query" or "foreign-actor" or "actor-shadowed-local-query")
+        {
+            var query = CounterCatalogDeclarations.Query;
+            if (fault == "foreign-actor") query = query with { Execution = query.Execution! with { ActorType = "OtherActor" } };
+            declarations = [.. declarations, query];
+            if (fault == "actor-shadowed-local-query")
+            {
+                var handler = Substitute.For<IDomainQueryHandler>();
+                handler.Domain.Returns(query.Domain); handler.QueryType.Returns(query.MessageType!); services.AddSingleton(handler);
+            }
+        }
         var endpoint = new RouteEndpointBuilder(_ => Task.CompletedTask, RoutePatternFactory.Parse("/process"), 0);
         endpoint.Metadata.Add(new HttpMethodMetadata([fault == "wrong-verb" ? "GET" : "POST"]));
         endpoint.Metadata.Add(new AuthorizeAttribute { Policy = fault == "wrong-policy" ? "wrong-policy" : canonical.Policy });
         if (fault == "anonymous") endpoint.Metadata.Add(new AllowAnonymousAttribute());
         using var provider = services.BuildServiceProvider();
-        if (fault == "valid")
+        if (fault is "valid" or "gateway-query")
         {
             var targets = DevelopmentDomainRouteCatalog.Targets(provider, [endpoint.Build()], declarations);
-            targets.Count.ShouldBe(declarations.Length);
+            targets.Count.ShouldBe(declarations.Count(declaration => declaration.Kind == "command"));
             targets.ShouldAllBe(target => target.AppId == "counter-owner" && target.Method == "process" && target.ContractVersion == "v1");
         }
         else Should.Throw<RouteCatalogUnavailableException>(() => DevelopmentDomainRouteCatalog.Targets(provider, [endpoint.Build()], declarations));

@@ -10,6 +10,7 @@ using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Authentication;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Routing;
 using Hexalith.EventStore.Contracts.Authorization;
@@ -188,6 +189,7 @@ public sealed class RouteCatalogHostedLiveTests
                     ["EventStore:DomainService:AppId"] = names[index], ["EventStore:DomainService:ServiceVersion"] = "v1",
                 });
                 if (index != 1) builder.AddServiceDefaults();
+                builder.Services.AddEventStoreRouteCatalog(builder.Configuration);
                 builder.Services.AddSingleton<IOptions<RouteCatalogHostOptions>>(Options.Create(settings[index]));
                 builder.Services.AddEventStoreRouteCatalogObservation((_, _) => Observe(hostIndex));
                 builder.Services.AddSingleton<IRouteCatalogQuiescenceVerifier>(quiescence);
@@ -195,7 +197,16 @@ public sealed class RouteCatalogHostedLiveTests
                 builder.Services.AddOptions<JwtBearerAuthenticationOptions>().BindConfiguration("Authentication:JwtBearer");
                 builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerAuthenticationOptions>();
                 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
-                builder.Services.AddAuthorization();
+                builder.Services.AddEventStoreHttpHostSecurity();
+                if (index == 0)
+                {
+                    builder.Configuration["Authentication:DaprInternal:Audience"] = names[0];
+                    builder.Configuration["Authentication:DaprInternal:AllowedCallers:0"] = names[0];
+                    builder.Services.AddAuthentication().AddEventStoreWorkloadScheme(
+                        DaprInternalAuthenticationOptions.SchemeName, "Authentication:DaprInternal");
+                    builder.Services.AddEventStoreWorkloadPolicies(DaprInternalAuthenticationOptions.SchemeName,
+                        [EventStoreOperationIdentifiers.GatewayOwnerAuthorityQuery]);
+                }
                 builder.Services.AddHttpContextAccessor();
                 builder.Services.AddProblemDetails();
                 builder.Services.AddExceptionHandler<RouteCatalogUnavailableExceptionHandler>();
@@ -244,7 +255,7 @@ public sealed class RouteCatalogHostedLiveTests
                 app.MapGet("/dapr/config", () => new { entities = Array.Empty<string>() })
                     .RequireAuthorization(EventStoreWorkloadAuthenticationDefaults.SidecarChannelPolicy);
                 if (index == 1) app.UseEventStoreDomainService();
-                else { app.MapControllers(); app.MapDefaultEndpoints(); }
+                else { app.MapControllers(); app.MapDefaultEndpoints(); app.UseEventStoreHttpHostSecurity(); }
                 if (index == 0)
                     app.MapPost("/internal/routing/fixture-held-dispatch", async (IRouteCatalogAuthority authority) =>
                     {

@@ -12,9 +12,13 @@ internal sealed class Oq8BoundaryCounterStartupFilter : IStartupFilter
     /// <summary>Names the environment variable containing the counter file.</summary>
     public const string CounterFileEnvironmentVariable = "HEXALITH_OQ8_BOUNDARY_COUNTER_FILE";
 
-    private readonly string? _counterFile = Environment.GetEnvironmentVariable(CounterFileEnvironmentVariable);
+    private readonly string? _counterFile;
     private readonly object _counterLock = new();
     private long _count;
+
+    public Oq8BoundaryCounterStartupFilter() : this(Environment.GetEnvironmentVariable(CounterFileEnvironmentVariable)) { }
+
+    internal Oq8BoundaryCounterStartupFilter(string? counterFile) => _counterFile = counterFile;
 
     /// <inheritdoc/>
     public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
@@ -25,6 +29,8 @@ internal sealed class Oq8BoundaryCounterStartupFilter : IStartupFilter
         {
             if (!string.IsNullOrWhiteSpace(_counterFile))
             {
+                if (File.Exists(_counterFile))
+                    _count = long.Parse(File.ReadAllText(_counterFile), CultureInfo.InvariantCulture);
                 app.Use(async (context, following) =>
                 {
                     if (IsCountedBoundary(context.Request.Path))

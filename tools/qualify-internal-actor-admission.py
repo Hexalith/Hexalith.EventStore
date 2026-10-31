@@ -202,6 +202,10 @@ class Qualification:
                         "APP_API_TOKEN": secrets.token_hex(32),
                         "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "Hexalith.EventStore.Server.LiveSidecar.Tests",
                         "HEXALITH_OQ8_CLOCK_FILE": str(self.clock),
+                        "HEXALITH_LIVE_ADMISSION_CATALOG": json.dumps({
+                            "RunId": self.run_id, "HostId": label, "AppId": label,
+                            "ConsumerAppId": "eventstore", "SampleAppId": "sample",
+                            "Tenants": [self.tenant], "ActiveGeneration": "local1", "Readers": []}),
                         "HEXALITH_OQ8_BOUNDARY_COUNTER_FILE": str(self.runtime / (label + "-count.txt")),
                         "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
                         "Authentication__JwtBearer__Issuer": "admission-qualification",
@@ -271,7 +275,8 @@ class Qualification:
         header = encode(b'{"alg":"HS256","typ":"JWT"}')
         body = encode(json.dumps({"sub": subject, "iss": "admission-qualification", "aud": "hexalith-eventstore",
                                  "exp": int(time.time()) + 3600, "tenants": [tenant or self.tenant],
-                                 "tenant_id": tenant or self.tenant, "domains": ["counter"], "permissions": ["commands:*"]}).encode())
+                                 "tenant_id": tenant or self.tenant, "domains": ["counter"], "permissions": ["commands:*"],
+                                 "eventstore:surface": "ui"}).encode())
         unsigned = header + "." + body
         return unsigned + "." + encode(hmac.digest(self.signing_key.encode(), unsigned.encode(), "sha256"))
 

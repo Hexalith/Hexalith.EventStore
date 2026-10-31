@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);HEXALITH_SAMPLE_CATALOG</DefineConstants>
     <IsPublishable>true</IsPublishable>
     <EnableContainer>true</EnableContainer>
     <ContainerRepository>sample</ContainerRepository>

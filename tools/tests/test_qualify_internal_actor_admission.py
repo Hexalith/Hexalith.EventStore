@@ -1,4 +1,5 @@
 """Focused failure-injection controls for the owned process qualifier; no shared infrastructure is used."""
+import base64
 import importlib.util
 import json
 import os
@@ -26,6 +27,14 @@ class ActorAdmissionRunnerTests(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.run.runtime, ignore_errors=True)
         self.directory.cleanup()
+
+    def test_fixture_human_token_declares_only_the_ui_surface(self):
+        payload = self.run.token().split(".")[1]
+        claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+        self.assertEqual("ui", claims["eventstore:surface"])
+        self.assertEqual([self.run.tenant], claims["tenants"])
+        self.assertNotIn("eventstore:operation", claims)
+        self.assertNotIn("eventstore:workload", claims)
 
     def test_default_configuration_remains_debug(self):
         self.assertEqual("Debug", self.run.args.configuration)

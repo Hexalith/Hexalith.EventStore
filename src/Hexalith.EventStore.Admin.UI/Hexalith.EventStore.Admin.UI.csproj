@@ -15,10 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hexalith.EventStore.Admin.Abstractions\Hexalith.EventStore.Admin.Abstractions.csproj" />
-    <ProjectReference Include="..\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
-    <ProjectReference Include="..\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\Hexalith.EventStore.SignalR\Hexalith.EventStore.SignalR.csproj" />
+    <ProjectReference Include="..\Hexalith.EventStore.Admin.Abstractions\Hexalith.EventStore.Admin.Abstractions.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
+    <ProjectReference Include="..\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
+    <ProjectReference Include="..\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
+    <ProjectReference Include="..\Hexalith.EventStore.SignalR\Hexalith.EventStore.SignalR.csproj" Condition="'$(HexalithUsePublishedSdkForHostedTests)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +26,14 @@
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <!-- Explicit integration-fixture profile; ordinary native builds and publishing keep SDK source edges. -->
+  <ItemGroup Condition="'$(HexalithUsePublishedSdkForHostedTests)' == 'true'">
+    <PackageReference Include="Hexalith.EventStore.Admin.Abstractions" />
+    <PackageReference Include="Hexalith.EventStore.Client" />
+    <PackageReference Include="Hexalith.EventStore.ServiceDefaults" />
+    <PackageReference Include="Hexalith.EventStore.SignalR" />
   </ItemGroup>
 
 </Project>
