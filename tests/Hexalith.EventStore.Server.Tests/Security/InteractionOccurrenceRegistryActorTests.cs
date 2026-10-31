@@ -303,6 +303,43 @@ public sealed class InteractionOccurrenceRegistryActorTests
         ((InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value).Revision.ShouldBe(newer.Revision);
     }
 
+    /// <summary>R11-BH-3: when post-persist validation fails, the stored snapshot is only the exact independently validated original and is never served without fresh validation.</summary>
+    [Fact]
+    public async Task RecoveredOriginalThatFailsPostPersistValidationStaysExactAndIsNeverServedUnvalidated()
+    {
+        var f = new InteractionOccurrenceFixture();
+        var request = InteractionOccurrenceFixture.Request();
+        await f.Actor.ReserveAsync(request);
+        await f.Actor.RetainSealedAsync(request.Identity, InteractionOccurrenceFixture.Sealed());
+        var stored = (InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value;
+        long olderRevision = stored.Revision;
+        var newer = stored with { Revision = olderRevision + 1, Records = [stored.Records[0] with { RegistryRevision = olderRevision + 1 }] };
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(newer);
+        string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        string olderDigest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(stored)));
+        string scope = InteractionOccurrenceRegistryActor.GetActorId("tenant-a") + "|candidate-interaction-occurrences-v1";
+        f.Authority.ReadCurrentOriginalAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new AnchoredStateTransition(scope, olderRevision, newer.Revision, olderDigest, digest, bytes));
+        f.Head = newer.Revision;
+        f.AnchorDigest = digest;
+        bool persisted() => ((InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value).Revision == newer.Revision;
+        // The independent anchor validates the exact original, then advances concurrently right after the primary store is written.
+        f.Authority.ValidateStateAsync("tenant-a", Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => !persisted() && call.ArgAt<string>(1) == f.Epoch && call.Arg<long>() == f.Head && call.ArgAt<string>(3) == f.AnchorDigest);
+        (await f.Actor.LookupAsync(request.Identity)).Status.ShouldBe(InteractionOccurrenceReservationStatus.Unavailable);
+        persisted().ShouldBeTrue();
+        // What stays stored is byte-identical to the independently committed original, not a locally derived state.
+        JsonSerializer.SerializeToUtf8Bytes((InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value).ShouldBe(bytes);
+        // Still unvalidated: every later read refuses and does not rewrite the store.
+        (await f.Actor.LookupAsync(request.Identity)).Status.ShouldBe(InteractionOccurrenceReservationStatus.Unavailable);
+        JsonSerializer.SerializeToUtf8Bytes((InteractionOccurrenceRegistrySnapshot)f.Backend.CommittedState.Single().Value).ShouldBe(bytes);
+        // Once the independent anchor validates that exact state again, it is served unchanged.
+        f.Authority.ValidateStateAsync("tenant-a", Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<string>(1) == f.Epoch && call.Arg<long>() == f.Head && call.ArgAt<string>(3) == f.AnchorDigest);
+        var lookup = await f.Actor.LookupAsync(request.Identity);
+        lookup.Status.ShouldBe(InteractionOccurrenceReservationStatus.Sealed);
+        lookup.Record!.RegistryRevision.ShouldBe(newer.Revision);
+    }
+
     /// <summary>A recovered snapshot that deserializes to null is unavailable, including the argument-null refusal.</summary>
     [Fact]
     public async Task NullRecoveredSnapshotReturnsUnavailable()

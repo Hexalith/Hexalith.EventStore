@@ -323,7 +323,10 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
                     || issued.GuardStreamId != capability.GuardStreamId || !SameTargets(batch.Targets, captured.Targets)
                     || !state.CompromisedKeyVersions.Contains(capability.CapabilityKeyVersion, StringComparer.Ordinal)
                     || !state.Revocations.Any(value => DeletionConsumptionIdentity.Digest(value) == DeletionConsumptionIdentity.Digest(captured.RevocationReceipt))
-                    || state.Receipts.Any(value => value.Status == "Committed" && (value.Capability == capability || value.SigningRequestId == captured.SigningRequestId))) { return false; }
+                    || state.Receipts.Any(value => value.Status == "Committed" && (value.Capability == capability || value.SigningRequestId == captured.SigningRequestId))
+                    // Same independent nonrollback currentness as the issued branch; the repeated guard reads above cannot supply it.
+                    || !await _revocations.VerifyCurrentBlockedReplacementAsync(captured, state.Revision,
+                        DeletionConsumptionIdentity.Digest(state), cancellationToken).ConfigureAwait(false)) { return false; }
                 return await _journal.VerifyTransitionAsync(Proof("blocked-replacement", capability.TenantId, capability.BatchId,
                     state.Revision, DeletionConsumptionIdentity.Digest(captured)), cancellationToken).ConfigureAwait(false);
             }

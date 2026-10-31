@@ -295,6 +295,48 @@ public sealed class PublishedTrustOwnerStateAuthorityTests
         }
     }
 
+    /// <summary>R11-BH-5: the forwarder passes the enrolled owner's result through unchanged, and a foreign-scope original from that owner is refused by every consumer before any persistence.</summary>
+    [Fact]
+    public async Task ForeignScopeOwnerOriginalsAreRefusedByEveryConsumerBeforePersistence()
+    {
+        var token = TestContext.Current.CancellationToken;
+        PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create();
+        string scope = DeletionConsumptionActor.GetOwnerScope("tenant-a");
+        string foreign = DeletionConsumptionActor.GetOwnerScope("tenant-b");
+        var genesis = new DeletionConsumptionLedger("tenant-a", 0, 0, [], [], []);
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new DeletionConsumptionLedger("tenant-a", 1, 0, [], [], []));
+        string digest = Convert.ToHexString(SHA256.HashData(bytes));
+        string returnedScope = foreign;
+        var owner = Substitute.For<IDeletionConsumptionOwnerStateAuthority>();
+        owner.TenantId.Returns("tenant-a");
+        owner.ScopeId.Returns(scope);
+        owner.AuthorizeOperationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        owner.ValidateStateAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => call.Arg<long>() == 1 && call.ArgAt<string>(1) == digest);
+        owner.ReadCurrentOriginalAsync(scope, Arg.Any<CancellationToken>()).Returns(_ => new AnchoredStateTransition(returnedScope, 0, 1, DeletionConsumptionIdentity.Digest(genesis), digest, bytes.ToArray()));
+        owner.ReadAdmittedOriginalAsync(scope, Arg.Any<CancellationToken>()).Returns(_ => new AnchoredStateTransition(returnedScope, 0, 1, DeletionConsumptionIdentity.Digest(genesis), digest, bytes.ToArray()));
+        var authority = new PublishedTrustDeletionConsumptionAuthority([world.Trust], world.Guard, null, null, [owner]);
+        (await authority.ReadCurrentOriginalAsync(scope, token))!.ScopeId.ShouldBe(foreign);
+        (await authority.ReadAdmittedOriginalAsync(scope, token))!.ScopeId.ShouldBe(foreign);
+
+        // Consumer 1: admitted-original recovery validates the exact scope before deserializing or persisting.
+        int persisted = 0;
+        await Should.ThrowAsync<InvalidOperationException>(() => RecoverableAnchoredState.ReconcileAsync(scope, genesis, null, value => value, _ => Task.FromResult(true),
+            authority, value => { persisted++; return Task.FromResult(value); }, recoverAdmittedOriginal: true));
+        persisted.ShouldBe(0);
+
+        // Consumer 2: the actual consumption actor with a rolled-back primary store never adopts the foreign-scope current original.
+        var backend = new InMemoryStateManager();
+        var actor = DeletionConsumptionFixture.Create(backend, authority);
+        try { (await actor.LookupAsync("tenant-a", "batch-1")).Status.ShouldBe(DeletionConsumptionStatus.Unavailable); }
+        catch (InvalidOperationException) { }
+        backend.CommittedState.ShouldBeEmpty();
+
+        // Control: the same bytes under the exact scope are recovered, so the refusal above is the scope check.
+        returnedScope = scope;
+        _ = await actor.LookupAsync("tenant-a", "batch-1");
+        backend.CommittedState.Values.OfType<DeletionConsumptionLedger>().Single().Revision.ShouldBe(1);
+    }
+
     /// <summary>Current-original reads forward only to the single canonical owner enrolled for that exact scope; foreign tenant, foreign scope, duplicate or absent enrollment returns unknown.</summary>
     [Theory]
     [InlineData("exact")][InlineData("foreign-scope")][InlineData("foreign-tenant")][InlineData("duplicate")][InlineData("absent")]
