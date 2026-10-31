@@ -40,9 +40,12 @@ public static class RouteCatalogTopologyValidator
             using JsonDocument component = JsonDocument.Parse(componentBytes);
             using JsonDocument configuration = JsonDocument.Parse(configurationBytes);
             JsonElement root = component.RootElement;
+            var componentMetadata = root.GetProperty("spec").GetProperty("metadata").EnumerateArray().ToArray();
+            var prefixes = componentMetadata.Where(p => p.GetProperty("name").GetString() == "keyPrefix").ToArray();
+            string? prefix = prefixes.Length == 1 ? prefixes[0].GetProperty("value").GetString() : null;
+            bool namedAuthority = RouteCatalogAuthorityComponentPolicy.IsDedicatedComponent(root);
             if (root.GetProperty("kind").GetString() != "Component" || root.GetProperty("spec").GetProperty("type").GetString() != "state.redis"
-                || root.GetProperty("spec").GetProperty("metadata").EnumerateArray().Count(p => p.GetProperty("name").GetString() == "keyPrefix") != 1
-                || root.GetProperty("spec").GetProperty("metadata").EnumerateArray().Single(p => p.GetProperty("name").GetString() == "keyPrefix").GetProperty("value").GetString() != "none")
+                || prefixes.Length != 1 || prefix != "none" && !namedAuthority)
                 throw Failure("unqualified-shared-authority-component");
             string?[] scopes = [.. root.GetProperty("scopes").EnumerateArray().Select(s => s.GetString())];
             if (scopes.Any(string.IsNullOrWhiteSpace) || scopes.Distinct(StringComparer.Ordinal).Count() != scopes.Length
@@ -104,7 +107,11 @@ public static class RouteCatalogTopologyValidator
                             throw Failure("unqualified-readiness-probe-grant");
                         continue;
                     }
+                    // A generated public human query is ingress, with its own SDK filter and
+                    // captured owner schemas. Its forwarding BFF gains no authority-store scope.
+                    if (completeInventory && RouteCatalogGeneratedRestPolicy.AdmitsGrant(envelope, receiver, method, verbs)) continue;
                     if (!participant) throw Failure("selected-acl-caller-lacks-catalog-enrollment");
+                    if (RouteCatalogGeneratedRestPolicy.AdmitsControlGrant(receiver, method, verbs)) continue;
                     if (!methods.ContainsKey(canonical) || (canonical != method && (receiver is null
                         || !methods.Keys.Any(child => child.StartsWith(canonical + "/", StringComparison.Ordinal)))))
                         throw Failure("undeclared-acl-operation");

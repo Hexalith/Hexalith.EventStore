@@ -1,6 +1,7 @@
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Sample.BlazorUI.Services;
 using Hexalith.EventStore.ServiceDefaults;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Hexalith.EventStore.SignalR;
 
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -20,6 +21,7 @@ builder.Services.AddFluentUIComponents();
 // The UI host consumes EventStore through the platform gateway client; it exposes no REST endpoints
 // of its own, so no inbound authentication scheme is registered.
 builder.Services.AddSampleUiGatewayClient(builder.Configuration);
+builder.Services.AddEventStoreDevelopmentCallerCatalog(builder.Configuration, "sample-blazor-ui");
 
 // EventStore SignalR client — receives real-time "changed" signals
 builder.Services.AddSingleton(sp => new EventStoreSignalRClientOptions {
@@ -63,6 +65,7 @@ if (!app.Environment.IsDevelopment()) {
 }
 
 app.UseHttpsRedirection();
+app.UseEventStoreDevelopmentCallerCatalog();
 app.UseAntiforgery();
 
 app.MapStaticAssets();

@@ -49,9 +49,13 @@ public static class RunScopedRouteCatalogGateway
         ArgumentNullException.ThrowIfNull(configuration);
         var section = configuration.GetSection("EventStore:RouteCatalog:DevelopmentBootstrap");
         if (string.IsNullOrEmpty(section["Directory"])) return services;
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(RunScopedRouteCatalogGatewayRegistration))) return services;
+        services.AddSingleton<RunScopedRouteCatalogGatewayRegistration>();
         string appId = configuration["EventStore:DomainService:AppId"]
             ?? throw new RouteCatalogUnavailableException("The owning Development runner must supply the actual gateway app identity.");
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+        if (section["AppId"] is { } bootstrapAppId && bootstrapAppId != appId)
+            throw new RouteCatalogUnavailableException("The bootstrap and actual gateway app identities differ.");
         var owners = Load(section.GetSection("OwnerAssemblies").Get<string[]>() ?? []);
         var adapters = Load(section.GetSection("AdapterAssemblies").Get<string[]>() ?? []);
         if (owners.Length == 0 || adapters.Length == 0) throw new RouteCatalogUnavailableException("Mapped owner schemas and adapter assemblies are required.");
@@ -70,7 +74,7 @@ public static class RunScopedRouteCatalogGateway
             using var scope = provider.CreateScope();
             var declarations = CompiledRouteCatalogDeclarations.Read(owners);
             var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, appId,
-                declarations, ProjectionTargets(scope.ServiceProvider, appId, declarations),
+                declarations, ActorQueryTargets(scope.ServiceProvider, owners, appId),
                 await RouteCatalogAdmissionObservation.CaptureAsync(provider, appId, token).ConfigureAwait(false), [],
                 receiver.Endpoints.Where(e => e.Admitted).Select(e => new RouteCatalogAuxiliaryOperation(appId, e.Pattern.TrimStart('/'), e.Operation!, "gateway")).ToArray(), token).ConfigureAwait(false);
             return actual with { ReceiverSurface = receiver, Operations = CompiledRouteCatalogDeclarations.ReadOperations(owners) };
@@ -95,13 +99,32 @@ public static class RunScopedRouteCatalogGateway
         foreach (var declaration in actors)
         {
             RouteCatalogValidator.ValidateDeclaration(declaration);
-            if (declaration.Kind != "query" || declaration.Execution!.ActorType != QueryRouter.ProjectionActorTypeName
+            if (!RouteCatalogProjectionActorPolicy.IsQuery(declaration)
                 || declaration.CredentialKind != "workload" || declaration.Operation != EventStoreOperationIdentifiers.ProjectionQuery)
                 throw new RouteCatalogUnavailableException("Only the installed canonical projection query can bind to this gateway.");
         }
         return Array.AsReadOnly(actors.Select(declaration => new RouteCatalogEntry(declaration.RouteId, 1,
             RouteCatalogCodec.ComputeDeclarationDigest(declaration), appId, nameof(IProjectionActor.QueryAsync),
             declaration.ContractVersion, declaration.CredentialKind, declaration.Operation, false, "*")).ToArray());
+    }
+
+    /// <summary>Compares an owned typed query to the actual existing SDK actor registration, independently of a proposal.</summary>
+    internal static IReadOnlyList<RouteCatalogEntry> ActorQueryTargets(IServiceProvider services, IReadOnlyList<Assembly> owners, string actualAppId)
+    {
+        var queries = CompiledRouteCatalogDeclarations.Read(owners).Where(declaration => declaration.Execution?.TargetKind == "projection-actor").ToArray();
+        if (queries.Length == 0) return [];
+        var actual = ProjectionTargets(services, actualAppId, CompiledRouteCatalogDeclarations.Read(owners));
+        var assemblies = owners.SelectMany(owner => owner.GetReferencedAssemblies().Select(Assembly.Load).Prepend(owner)).Distinct().ToArray();
+        foreach (var query in queries)
+        {
+            var payloads = assemblies.Select(assembly => assembly.GetType(query.Execution!.HandlerType)).Where(type => type is not null).Distinct().ToArray();
+            if (!RouteCatalogProjectionActorPolicy.IsQuery(query) || payloads.Length != 1 || !typeof(IQueryContract).IsAssignableFrom(payloads[0])
+                || payloads[0]!.GetProperty("Domain", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as string != query.Domain
+                || payloads[0]!.GetProperty("QueryType", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as string != query.MessageType
+                || payloads[0]!.GetProperty("ProjectionType", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as string != query.ProjectionType)
+                throw new RouteCatalogUnavailableException("The compiled projection query does not match the actual SDK actor contract.");
+        }
+        return actual;
     }
 
     private static Assembly[] Load(IEnumerable<string> paths) => paths.Select(path =>

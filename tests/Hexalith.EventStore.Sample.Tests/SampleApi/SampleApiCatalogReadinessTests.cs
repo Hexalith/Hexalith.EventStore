@@ -131,7 +131,7 @@ public class SampleApiCatalogReadinessTests
             ["ASPNETCORE_URLS"] = "http://127.0.0.1:0", ["DAPR_HTTP_ENDPOINT"] = "http://127.0.0.1:3500",
             ["Authentication__JwtBearer__Issuer"] = "sample-api-catalog", ["Authentication__JwtBearer__Audience"] = "sample-api",
             ["Authentication__JwtBearer__SigningKey"] = Key, ["Authentication__JwtBearer__RequireHttpsMetadata"] = "false",
-            ["EventStore__DomainService__AppId"] = "sample-api-session-one", ["APP_API_TOKEN"] = "sample-api-test-channel",
+            ["EventStore__DomainService__AppId"] = "sample-api-session-one", ["APP_API_TOKEN"] = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)),
             ["EventStore__RouteCatalog__DevelopmentBootstrap__Directory"] = directory,
             ["EventStore__RouteCatalog__DevelopmentBootstrap__HostId"] = "sample-api",
             ["EventStore__RouteCatalog__DevelopmentBootstrap__CoordinatorHostId"] = "eventstore",

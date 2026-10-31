@@ -20,6 +20,13 @@ public static class DevelopmentRouteCatalogInputs
         var section = configuration.GetSection("EventStore:RouteCatalog:DevelopmentBootstrap");
         string host = section["HostId"] ?? throw new InvalidOperationException("The Development host identity is required.");
         var component = await File.ReadAllBytesAsync(section["ComponentPath"] ?? throw new InvalidOperationException("The loaded authority component is required."), token).ConfigureAwait(false);
+        if (section["AuthorityRole"] is { Length: > 0 } requiredRole)
+        {
+            using var loaded = JsonDocument.Parse(component);
+            if (requiredRole != RouteCatalogAuthorityComponentPolicy.IsolatedRole
+                || !RouteCatalogAuthorityComponentPolicy.IsDedicatedComponent(loaded.RootElement, configuration["EventStore:RouteCatalog:StateStore"]))
+                throw new RouteCatalogUnavailableException("The actual loaded component lost its dedicated authority role or isolated keyspace.", RouteCatalogRefusalReason.Topology);
+        }
         var acl = await File.ReadAllBytesAsync(section["AccessControlPath"] ?? throw new InvalidOperationException("The loaded receiver ACL is required."), token).ConfigureAwait(false);
         // These are observations of effective settings, never configuration layers or credential fingerprints.
         // In particular no signing key, bearer token, private/public key bytes or secret-map values are serialized.

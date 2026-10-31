@@ -4,6 +4,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Sample.Counter.Events;
 using Hexalith.EventStore.Sample.Counter.State;
+using Hexalith.EventStore.Sample.Counter.Queries;
 
 namespace Hexalith.EventStore.Sample.Counter.Projections;
 
@@ -35,7 +36,7 @@ public static class CounterProjectionHandler {
 
         return new ProjectionResponse(
             "counter",
-            JsonSerializer.SerializeToElement(new { count = state.Count }))
+            JsonSerializer.SerializeToElement(new CounterStatusPayload(state.Count)))
         {
             NotificationGroupScope = "counter-status",
             NotificationMetadata = new Dictionary<string, string>(StringComparer.Ordinal)

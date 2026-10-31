@@ -7,8 +7,13 @@ public static class DevelopmentIdempotencyBindings
 {
     /// <summary>Joins an explicit owner policy to the approved future Development secret references.</summary>
     public static IdempotencyCatalogEntry Bind(CommandIntentDeclaration declaration, long generation)
+        => Bind(declaration, generation, "eventstore");
+
+    /// <summary>Joins the same owner policy to the actual independently selected Development gateway.</summary>
+    public static IdempotencyCatalogEntry Bind(CommandIntentDeclaration declaration, long generation, string consumerAppId)
     {
         ArgumentNullException.ThrowIfNull(declaration);
+        ArgumentException.ThrowIfNullOrWhiteSpace(consumerAppId);
         RouteCatalogValidator.ValidateDescriptor(declaration.DescriptorSchema);
         IdempotencyDescriptorField? subject = declaration.DescriptorSchema.Fields.SingleOrDefault(field => field.Name == "acting-subject");
         if (declaration.RequiresAuthenticatedSubject ? subject?.Type != "string" : subject is not null)
@@ -23,7 +28,7 @@ public static class DevelopmentIdempotencyBindings
                 _ => throw new ArgumentException("Unsupported explicit retention tier.", nameof(declaration)),
             },
             "development-v1", ["development-v1"], "secretstore", "eventstore-idempotency-ring", "development-v1",
-            [new("development-v1", "development-v1")], "eventstore", string.Empty);
+            [new("development-v1", "development-v1")], consumerAppId, string.Empty);
         return entry with { ContentDigest = RouteCatalogCodec.ComputeIdempotencyEntryDigest(entry) };
     }
 }

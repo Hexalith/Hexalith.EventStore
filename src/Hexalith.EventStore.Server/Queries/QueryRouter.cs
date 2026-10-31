@@ -26,7 +26,7 @@ public partial class QueryRouter : IQueryRouter {
     /// The DAPR actor type name for projection actors. Application developers register
     /// their concrete implementation with this name.
     /// </summary>
-    public const string ProjectionActorTypeName = "ProjectionActor";
+    public const string ProjectionActorTypeName = Hexalith.EventStore.Contracts.Routing.RouteCatalogProjectionActorPolicy.ActorType;
 
     private readonly IProjectionActorInvoker _invoker;
     private readonly IProjectionLifecycleGateway? _lifecycleGateway;

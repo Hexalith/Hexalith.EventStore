@@ -22,7 +22,8 @@ public sealed class RouteCatalogHostOptions
     /// return a separately owned handler and contain no application delegating handlers.</summary>
     public Func<HttpMessageHandler, HttpMessageHandler>? InvocationTransportFactory { get; set; }
 
-    /// <summary>Gets or sets the shared Dapr state component, configured with keyPrefix none.</summary>
+    /// <summary>Gets or sets the shared Dapr authority component. Dedicated authorities use keyPrefix name;
+    /// legacy none components require an independently isolated backend when callers lack business-store access.</summary>
     public string StateStore { get; set; } = "route-catalog";
 
     /// <summary>Gets or sets the shared profile-specific state key.</summary>

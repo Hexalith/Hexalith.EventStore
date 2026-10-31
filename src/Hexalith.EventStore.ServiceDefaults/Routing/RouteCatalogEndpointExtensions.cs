@@ -32,22 +32,22 @@ public static class RouteCatalogEndpointExtensions
         string activationPolicy = EventStoreWorkloadAuthenticationDefaults.OperationPolicy(WorkloadScheme, EventStoreOperationIdentifiers.RouteCatalogActivate);
         app.MapGet("/" + ReadbackMethod, async (IRouteCatalogAuthority authority, CancellationToken token) =>
             await ExecuteAsync(logger, async () => Results.Ok(await authority.ReadbackAsync(token).ConfigureAwait(false))).ConfigureAwait(false))
-            .RequireAuthorization(readPolicy);
+            .WithMetadata(RouteCatalogControlEndpointMetadata.Instance).RequireAuthorization(readPolicy);
         app.MapPost("/internal/routing/catalog/prepare", async (RouteCatalogActivation candidate, IRouteCatalogAuthority authority, CancellationToken token) =>
             await ExecuteAsync(logger, async () => { await authority.PrepareAsync(candidate, token).ConfigureAwait(false); return Results.NoContent(); }).ConfigureAwait(false))
-            .RequireAuthorization(activationPolicy);
+            .WithMetadata(RouteCatalogControlEndpointMetadata.Instance).RequireAuthorization(activationPolicy);
         app.MapPost("/internal/routing/catalog/ready", async (RouteCatalogLifecycleRequest request, IRouteCatalogAuthority authority, CancellationToken token) =>
             await ExecuteAsync(logger, async () => Results.Ok(await authority.ReadyAsync(request.Identity, token).ConfigureAwait(false))).ConfigureAwait(false))
-            .RequireAuthorization(activationPolicy);
+            .WithMetadata(RouteCatalogControlEndpointMetadata.Instance).RequireAuthorization(activationPolicy);
         app.MapPost("/internal/routing/catalog/commit", async (RouteCatalogLifecycleRequest request, IRouteCatalogAuthority authority, CancellationToken token) =>
             await ExecuteAsync(logger, async () => { await authority.CommitAsync(request.Identity, token).ConfigureAwait(false); return Results.NoContent(); }).ConfigureAwait(false))
-            .RequireAuthorization(activationPolicy);
+            .WithMetadata(RouteCatalogControlEndpointMetadata.Instance).RequireAuthorization(activationPolicy);
         app.MapPost("/internal/routing/catalog/rollback", async (RouteCatalogRollbackRequest request, IRouteCatalogAuthority authority, CancellationToken token) =>
             await ExecuteAsync(logger, async () => { await authority.RollbackAsync(request, token).ConfigureAwait(false); return Results.NoContent(); }).ConfigureAwait(false))
-            .RequireAuthorization(activationPolicy);
+            .WithMetadata(RouteCatalogControlEndpointMetadata.Instance).RequireAuthorization(activationPolicy);
         app.MapPost("/internal/routing/catalog/reconcile", async (RouteCatalogQuiescenceRequest request, IRouteCatalogAuthority authority, CancellationToken token) =>
             await ExecuteAsync(logger, async () => { await authority.ReconcileAsync(request, token).ConfigureAwait(false); return Results.NoContent(); }).ConfigureAwait(false))
-            .RequireAuthorization(activationPolicy);
+            .WithMetadata(RouteCatalogControlEndpointMetadata.Instance).RequireAuthorization(activationPolicy);
         return app;
     }
 

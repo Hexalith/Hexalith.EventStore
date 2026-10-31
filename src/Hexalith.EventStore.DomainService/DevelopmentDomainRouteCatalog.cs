@@ -69,11 +69,8 @@ public static class DevelopmentDomainRouteCatalog
         var targets = new List<RouteCatalogEntry>();
         foreach (var declaration in declarations)
         {
-            // Keep the full compiled owner inventory, but let the independently observing
-            // gateway claim its canonical actor query. This host never advertises that target.
-            if (declaration.Kind == "query" && declaration.Execution is { TargetKind: "projection-actor", ActorType: "ProjectionActor" }
-                && declaration.CredentialKind == "workload"
-                && declaration.Operation == Hexalith.EventStore.Contracts.Authorization.EventStoreOperationIdentifiers.ProjectionQuery)
+            // The complete owner inventory retains actor queries; only the independently observed gateway executes them.
+            if (RouteCatalogProjectionActorPolicy.IsQuery(declaration))
             {
                 RouteCatalogValidator.ValidateDeclaration(declaration);
                 continue;

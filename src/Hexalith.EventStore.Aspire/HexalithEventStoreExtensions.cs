@@ -242,6 +242,8 @@ public static class HexalithEventStoreExtensions {
                 "pubsub.redis",
                 new DaprComponentOptions { LocalPath = resolvedPubSubComponentPath });
 
+        stateStore.Resource.Annotations.Add(new EventStoreRedisBackendAnnotation(resolvedStateStoreComponentPath, LocalDaprRedisHost));
+
         _ = eventStore.WithEnvironment("EventStore__CommandStatus__StateStoreName", stateStoreComponentName)
             .WithEnvironment("EventStore__Projections__CheckpointStateStoreName", stateStoreComponentName)
             .WithEnvironment("EventStore__Projections__ReadModelStateStoreName", stateStoreComponentName)
