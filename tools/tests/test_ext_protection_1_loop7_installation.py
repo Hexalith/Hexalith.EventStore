@@ -24,14 +24,14 @@ class PairedCheckoutPreflightTests(unittest.TestCase):
             messages = ('test(protection): seed paired checkout fixture', 'test(protection): advance paired checkout fixture')
             cli = Path(os.environ.get('EXT_PROTECTION_COMMITLINT_CLI', str(ROOT / 'node_modules/@commitlint/cli/cli.js'))).resolve()
             config = Path(os.environ.get('EXT_PROTECTION_COMMITLINT_CONFIG', str(ROOT / 'commitlint.config.mjs'))).resolve()
-            if json.loads((cli.parent / 'package.json').read_bytes())['version'] != '21.1.0' or config.read_bytes() != (ROOT / 'commitlint.config.mjs').read_bytes():
+            if json.loads((cli.parent / 'package.json').read_bytes())['version'] != '21.2.4' or config.read_bytes() != (ROOT / 'commitlint.config.mjs').read_bytes():
                 raise AssertionError('Owning pinned commitlint CLI and exact configuration required')
             message_files = []
             for index, message in enumerate(messages):
                 candidate = Path(temp) / ('message-' + str(index) + '.txt'); candidate.write_text(message + '\n'); message_files.append(candidate)
                 checked = subprocess.run(['node', str(cli), '--config', str(config), '--edit', str(candidate), '--verbose'], capture_output=True, text=True, check=False)
                 self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
-                print(json.dumps({'commitMessage': message, 'sha256': hashlib.sha256(candidate.read_bytes()).hexdigest(), 'commitlintVersion': '21.1.0', 'configurationSha256': hashlib.sha256(config.read_bytes()).hexdigest(), 'exitCode': checked.returncode, 'validation': checked.stdout.strip()}))
+                print(json.dumps({'commitMessage': message, 'sha256': hashlib.sha256(candidate.read_bytes()).hexdigest(), 'commitlintVersion': '21.2.4', 'configurationSha256': hashlib.sha256(config.read_bytes()).hexdigest(), 'exitCode': checked.returncode, 'validation': checked.stdout.strip()}))
             roots, heads = [], []
             for name in ('eventstore', 'platform'):
                 root = Path(temp) / name; root.mkdir(); roots.append(root)
@@ -74,7 +74,8 @@ class ShippedRoleClosureTests(unittest.TestCase):
                 command = [str(cls.host), 'build', str(project), '-c', 'Debug', '-m:1', '-nodeReuse:false', '-p:UseHexalithProjectReferences=true', '-p:GeneratePackageOnBuild=false', '-p:HexalithEventStoreRoot=' + str(ROOT)]
                 for name in ('HexalithCommonsRoot', 'HexalithTenantsBasePath'):
                     if os.environ.get(name): command.append('-p:' + name + '=' + os.environ[name])
-                built = subprocess.run(command, capture_output=True, text=True, timeout=300)
+                source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
+                built = subprocess.run(command, env=source_build_env, capture_output=True, text=True, timeout=300)
                 if built.returncode: raise AssertionError(built.stdout + built.stderr)
             installed = cls.directory / role; shutil.copytree(output, installed)
             key, public = installed / 'private-test.pem', installed / 'public.pem'

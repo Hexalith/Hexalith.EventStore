@@ -34,7 +34,8 @@ class SourceContainmentEvidenceTests(unittest.TestCase):
             argv = ['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'),
                     '-c', 'Debug', '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT),
                     '-p:OutputPath=' + str(output) + '/', '-p:AppendTargetFrameworkToOutputPath=false', '-p:GeneratePackageOnBuild=false', '-m:1', '-nodeReuse:false']
-            built = subprocess.run(argv, cwd=platform, capture_output=True, text=True, timeout=300, check=False)
+            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
+            built = subprocess.run(argv, cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
             if built.returncode:
                 raise AssertionError(built.stdout + built.stderr)
             assembly = output / 'Hexalith.Platform.Protection.Tests.dll'

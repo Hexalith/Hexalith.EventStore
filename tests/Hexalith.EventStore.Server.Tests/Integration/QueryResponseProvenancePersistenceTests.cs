@@ -93,7 +93,7 @@ public sealed class QueryResponseProvenancePersistenceTests(
                     };
                 return QueryResult.FromPayload(
                     JsonSerializer.SerializeToElement(new { model.Value }),
-                    "freshness",
+                    "counter",
                     metadata);
             });
         var queryRouter = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
@@ -116,17 +116,18 @@ public sealed class QueryResponseProvenancePersistenceTests(
             "Bearer",
             TestJwtHelper.GenerateToken(
                 tenants: ["tenant-a"],
-                domains: ["freshness"],
+                domains: ["counter"],
                 permissions: ["query:read"]));
         var client = new EventStoreGatewayClient(
             httpClient,
             Options.Create(new EventStoreGatewayClientOptions()));
+        // The gateway admits only queries declared by the committed Development catalog.
         var request = new SubmitQueryRequest(
             Tenant: "tenant-a",
-            Domain: "freshness",
+            Domain: "counter",
             AggregateId: "index",
-            QueryType: "get-freshness",
-            ProjectionType: "freshness");
+            QueryType: "get-counter-status",
+            ProjectionType: "counter");
 
         using HttpResponseMessage rawResponse = await httpClient.PostAsJsonAsync(
             "/api/v1/queries", request, TestContext.Current.CancellationToken);

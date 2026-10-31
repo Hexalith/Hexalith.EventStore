@@ -2,8 +2,11 @@ using System.Runtime.CompilerServices;
 
 using Hexalith.EventStore.Indexes;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Tests.Routing;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace Hexalith.EventStore.Server.Tests.TestUtilities;
@@ -46,6 +49,20 @@ internal static class WebApplicationFactoryServiceOverrides {
         ValidateFactoryResult(hostedService, probeProvider, probe, "the hosted alias");
 
         _ = services.Remove(hostedService);
+    }
+
+    /// <summary>
+    /// Serves the committed Development route catalog through an activated fixture authority, because every
+    /// gateway command and query submission fails closed without a committed catalog.
+    /// </summary>
+    /// <param name="services">The application service registrations.</param>
+    internal static void UseActivatedDevelopmentRouteCatalog(IServiceCollection services) {
+        ArgumentNullException.ThrowIfNull(services);
+
+        var catalog = new RouteCatalogTestFixture();
+        catalog.ActivateAsync(catalog.Candidate()).GetAwaiter().GetResult();
+        services.RemoveAll<IRouteCatalogAuthority>();
+        _ = services.AddSingleton<IRouteCatalogAuthority>(catalog.Authorities[0]);
     }
 
     private static ServiceDescriptor GetSingleDescriptor(

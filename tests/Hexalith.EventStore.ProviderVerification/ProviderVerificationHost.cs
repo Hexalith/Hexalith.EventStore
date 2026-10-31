@@ -240,6 +240,29 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
 
         services.RemoveAll<ICommandRouter>();
         services.AddSingleton<ICommandRouter, StatefulCommandRouter>();
+
+        // Contract verification substitutes the routers and serves no committed route catalog. Compose the
+        // command handler through the Server's isolated-protocol seam and omit catalog eligibility, which
+        // would otherwise refuse every submission for lack of a bound catalog host identity.
+        services.RemoveAll<MediatR.IRequestHandler<SubmitCommand, SubmitCommandResult>>();
+        services.AddScoped<MediatR.IRequestHandler<SubmitCommand, SubmitCommandResult>>(provider =>
+            new Hexalith.EventStore.Server.Pipeline.SubmitCommandHandler(
+                provider.GetRequiredService<ICommandStatusStore>(),
+                provider.GetRequiredService<ICommandArchiveStore>(),
+                provider.GetRequiredService<ICommandRouter>(),
+                provider.GetService<ICommandActivityTracker>(),
+                provider.GetService<IStreamActivityTracker>(),
+                provider.GetRequiredService<IProjectionUpdateOrchestrator>(),
+                provider.GetRequiredService<ILogger<Hexalith.EventStore.Server.Pipeline.SubmitCommandHandler>>(),
+                provider.GetService<ICommandCorrelationIndex>(),
+                provider.GetService<IProjectionActivationOutbox>(),
+                humanAuthorityConfiguration: provider.GetService<IConfiguration>()));
+        foreach (ServiceDescriptor eligibility in services
+            .Where(static descriptor => descriptor.ImplementationType == typeof(Hexalith.EventStore.Pipeline.RouteCatalogEligibilityBehavior<,>))
+            .ToArray())
+        {
+            _ = services.Remove(eligibility);
+        }
         services.RemoveAll<IProjectionActivationOutbox>();
         services.AddSingleton<IProjectionActivationOutbox, NoOpProjectionActivationOutbox>();
         services.RemoveAll<IProjectionUpdateOrchestrator>();
@@ -314,6 +337,9 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
                     ? Results.Ok()
                     : Results.BadRequest();
             }
-        });
+        })
+            // The verifier's loopback state-control channel is deliberately unauthenticated; without this
+            // classification the shared host's denying fallback policy would refuse every state setup.
+            .AllowAnonymous();
     }
 }

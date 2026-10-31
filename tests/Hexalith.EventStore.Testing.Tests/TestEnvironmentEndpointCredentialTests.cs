@@ -174,7 +174,7 @@ public sealed class TestEnvironmentEndpointCredentialTests
         if (path == "routing-header") request.Headers.Add("dapr-app-id", "other-app");
         if (path == "basic-auth") request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", "b3RoZXI6YXBw");
         if (path == "missing-bearer") client.DefaultRequestHeaders.Authorization = null;
-        if (path == "duplicate-authorization") request.Headers.TryAddWithoutValidation("Authorization", ["Bearer one", "Bearer two"]);
+        if (path == "duplicate-authorization") request.Headers.TryAddWithoutValidation("Authorization", ["Bearer " + Guid.NewGuid().ToString("N"), "Bearer " + Guid.NewGuid().ToString("N")]);
         TestEnvironmentDescriptorException failure = await Should.ThrowAsync<TestEnvironmentDescriptorException>(async () =>
             await client.SendAsync(request, TestContext.Current.CancellationToken));
         failure.Rule.ShouldBe("HXT109");

@@ -739,6 +739,7 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
                 _ = services.AddSingleton(Router);
                 _ = services.AddSingleton(CommandRouter);
                 _ = services.AddSingleton(StatusStore);
+                WebApplicationFactoryServiceOverrides.UseActivatedDevelopmentRouteCatalog(services);
                 // This legacy HTTP authentication suite isolates catalog activation through the existing
                 // friend-only handler seam; the complete authorization/logging/validation pipeline still runs.
                 services.RemoveAll<MediatR.IRequestHandler<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand, Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommandResult>>();

@@ -421,12 +421,12 @@ public sealed class CommitMessagePolicyTests
             .ShouldBe("^22.14.0 || >=24.10.0");
         package.RootElement.GetProperty("scripts").GetProperty("prepare").GetString().ShouldBe("husky");
         package.RootElement.GetProperty("devDependencies").GetProperty("husky").GetString().ShouldBe("^9.1.7");
-        package.RootElement.GetProperty("devDependencies").GetProperty("@commitlint/cli").GetString().ShouldBe("21.1.0");
+        package.RootElement.GetProperty("devDependencies").GetProperty("@commitlint/cli").GetString().ShouldBe("21.2.4");
         package.RootElement
             .GetProperty("devDependencies")
             .GetProperty("@commitlint/config-conventional")
             .GetString()
-            .ShouldBe("21.1.0");
+            .ShouldBe("21.2.4");
 
         JsonElement lockPackages = packageLock.RootElement.GetProperty("packages");
         lockPackages
@@ -437,12 +437,12 @@ public sealed class CommitMessagePolicyTests
             .ShouldBe("^22.14.0 || >=24.10.0");
         lockPackages.GetProperty("").GetProperty("devDependencies").GetProperty("husky").GetString().ShouldBe("^9.1.7");
         lockPackages.GetProperty("node_modules/husky").GetProperty("version").GetString().ShouldBe("9.1.7");
-        lockPackages.GetProperty("node_modules/@commitlint/cli").GetProperty("version").GetString().ShouldBe("21.1.0");
+        lockPackages.GetProperty("node_modules/@commitlint/cli").GetProperty("version").GetString().ShouldBe("21.2.4");
         lockPackages
             .GetProperty("node_modules/@commitlint/config-conventional")
             .GetProperty("version")
             .GetString()
-            .ShouldBe("21.1.0");
+            .ShouldBe("21.2.4");
         lockPackages.GetProperty("node_modules/cosmiconfig").GetProperty("version").GetString().ShouldBe("9.0.2");
     }
 

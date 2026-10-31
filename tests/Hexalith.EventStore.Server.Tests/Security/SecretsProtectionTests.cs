@@ -512,6 +512,15 @@ public sealed partial class SecretsProtectionTests
     }
 
     [Fact]
+    public void EmptyCollectionInitializers_AreStructureNotCredentials()
+    {
+        string name = "_endpoint" + "Credentials";
+        FindViolations("src/fixture.cs", Assignment(name, "[];")).ShouldBeEmpty();
+        FindViolations("src/fixture.cs", Assignment(name, "{};")).ShouldBeEmpty();
+        FindViolations("src/fixture.cs", Assignment(name, "\"" + RandomSecret() + "\";")).ShouldBe(["src/fixture.cs:1"]);
+    }
+
+    [Fact]
     public void PackageVersionExemption_IsLimitedToDependencyObjects()
     {
         string name = "registry-auth-" + "token";
@@ -1361,9 +1370,9 @@ public sealed partial class SecretsProtectionTests
             return false;
         }
 
-        // A JSON object/array opener is structure. An integer on a namespace-qualified name is a
-        // catalog count, including historical test-name keys. Short names keep numeric tokens.
-        if (candidate is "{" or "[")
+        // A JSON object/array opener or an empty collection initializer is structure. An integer on a
+        // namespace-qualified name is a catalog count, including historical test-name keys. Short names keep numeric tokens.
+        if (candidate is "{" or "[" or "{}" or "[]")
         {
             return false;
         }

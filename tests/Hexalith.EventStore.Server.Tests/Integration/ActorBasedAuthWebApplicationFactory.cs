@@ -95,6 +95,7 @@ public class ActorBasedAuthWebApplicationFactory : WebApplicationFactory<EventSt
             _ = services.AddSingleton(projectionActivationOutbox);
 
             _ = services.AddSingleton(MockProxyFactory);
+            WebApplicationFactoryServiceOverrides.UseActivatedDevelopmentRouteCatalog(services);
         });
     }
 }

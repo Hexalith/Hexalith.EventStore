@@ -51,7 +51,8 @@ public sealed class CustomHostActorCallbackRateLimitTests
         app.UseAuthentication();
         app.UseRateLimiter();
         app.UseAuthorization();
-        app.MapActorsHandlers();
+        // Custom hosts must apply the public channel convention; only EventStore's private metadata stays absent.
+        app.MapActorsHandlers().RequireEventStoreChannel();
         await app.StartAsync(TestContext.Current.CancellationToken);
         using HttpClient client = app.GetTestClient();
         client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, ChannelToken);

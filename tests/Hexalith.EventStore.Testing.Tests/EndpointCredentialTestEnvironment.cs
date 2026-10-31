@@ -1,12 +1,14 @@
 namespace Hexalith.EventStore.Testing.Tests;
 
+using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 
 /// <summary>Owns only local contract files and a detached descriptor for credential-bound consumer tests.</summary>
 internal sealed class EndpointCredentialTestEnvironment : IDisposable
 {
-    internal const string ApiToken = "private-dapr-credential-value";
-    internal const string BearerToken = "private-native-bearer";
+    // Generated per process so no usable credential material is committed with the fixture.
+    internal static readonly string ApiToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+    internal static readonly string BearerToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
 
     internal EndpointCredentialTestEnvironment(string uri = "http://127.0.0.1:18080/v1.0/invoke/declared-owner/method/")
     {

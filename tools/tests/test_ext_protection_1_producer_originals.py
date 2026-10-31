@@ -29,12 +29,15 @@ class ProducerOriginalTests(unittest.TestCase):
                 raise ValueError('Exact independently hash-pinned component test assembly required')
         else:
             platform = ROOT.parent / 'platform'
+            if not (platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj').is_file():
+                platform = ROOT / 'references/Hexalith.Platform'
             argv = ['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'), '-c', 'Debug',
                     '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT), '-p:GeneratePackageOnBuild=false', '-m:1', '-nodeReuse:false']
             for name in ('HexalithCommonsRoot', 'HexalithTenantsBasePath'):
                 if os.environ.get(name):
                     argv.append('-p:' + name + '=' + os.environ[name])
-            built = subprocess.run(argv, cwd=platform, capture_output=True, text=True, timeout=300, check=False)
+            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
+            built = subprocess.run(argv, cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
             if built.returncode:
                 raise AssertionError(built.stdout + built.stderr)
             assembly = platform / 'tests/Hexalith.Platform.Protection.Tests/bin/Debug/net10.0/Hexalith.Platform.Protection.Tests.dll'
