@@ -251,7 +251,9 @@ public sealed class RealKestrelPactTests
         int expectedRouterCalls,
         int expectedCatalogAcquisitions)
     {
-        ProviderVerificationCredential credential = ProviderVerificationCredential.Create() with { IncludeSurface = includeSurface };
+        ProviderVerificationCredential CreatePresentedCredential()
+            => ProviderVerificationCredential.Create() with { IncludeSurface = includeSurface };
+        ProviderVerificationCredential credential = CreatePresentedCredential();
         var coordinator = new ProviderStateCoordinator(new HashSet<string>([state], StringComparer.Ordinal));
         var timeline = new ProviderVerificationTimeline();
         timeline.BeginStartup();
