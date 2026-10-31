@@ -64,7 +64,10 @@ internal sealed class TechnicalHttpInvocationFixture : IAsyncDisposable
             }
             using var response = await Receiver.Client.SendAsync(request, token);
             context.Response.StatusCode = (int)response.StatusCode;
-            if (response.Content.Headers.ContentType is { } contentType) context.Response.ContentType = contentType.ToString();
+            // This explicit test bridge carries only the SDK JSON protocol. Its response
+            // must never adopt a content type influenced by the forwarded request.
+            context.Response.ContentType = "application/json";
+            context.Response.Headers.XContentTypeOptions = "nosniff";
             await response.Content.CopyToAsync(context.Response.Body, token);
         });
         await _bridge.StartAsync(token); Address = new Uri(_bridge.Urls.Single());

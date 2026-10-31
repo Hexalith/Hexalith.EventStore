@@ -78,8 +78,6 @@ public sealed class TechnicalHttpRouteCatalogReceiver
             if (!channel && !markedSdkAction) { await next(context).ConfigureAwait(false); return; }
             if (channel && !DaprAppChannelToken.IsAdmitted(DaprAppChannelToken.Verify(context.Request, app.Configuration, app.Environment)))
             { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
-            if (fence._callbacks?.IsAbsentDiscovery(context) == true)
-            { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }
             RouteCatalogNativeActorTransport? native = null; RouteCatalogDaprCallbackTransport? callback = null;
             if (context.GetEndpoint() is RouteEndpoint nativeEndpoint)
             {
@@ -99,7 +97,13 @@ public sealed class TechnicalHttpRouteCatalogReceiver
                 || !fence._captured.TryGetValue(endpoint, out string? captured) || fence.RequestFingerprint(endpoint, out description) != captured
                 || endpoint.Metadata.GetMetadata<IHttpMethodMetadata>() is { } methods && !methods.HttpMethods.Contains(context.Request.Method, StringComparer.Ordinal)
                 || captured.StartsWith("probe:", StringComparison.Ordinal) && !HttpMethods.IsGet(context.Request.Method))
-            { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+            {
+                // An absent declarative discovery route is a closed refusal, never an
+                // alternative that can skip the authentication of an admitted action.
+                context.Response.StatusCode = fence._callbacks?.IsAbsentDiscovery(context) == true
+                    ? StatusCodes.Status404NotFound : StatusCodes.Status403Forbidden;
+                return;
+            }
             if (native is not null || callback is not null)
             {
                 await fence.InvokeNativeAsync(context, next, endpoint, native, callback).ConfigureAwait(false); return;
