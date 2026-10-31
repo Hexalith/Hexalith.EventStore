@@ -11,9 +11,10 @@ internal sealed record ProviderVerificationCredential(string AccessToken)
     public bool IncludeSurface { get; init; } = true;
 
     /// <summary>Creates a cryptographically random credential for one verification run.</summary>
+    /// <param name="includeSurface">Whether the fixture caller carries its authenticated UI surface.</param>
     /// <returns>The generated credential.</returns>
-    public static ProviderVerificationCredential Create()
-        => new(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
+    public static ProviderVerificationCredential Create(bool includeSurface = true)
+        => new(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))) { IncludeSurface = includeSurface };
 
     /// <inheritdoc />
     public override string ToString()
