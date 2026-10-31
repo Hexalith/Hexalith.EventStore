@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Hexalith.EventStore.Sharding.TestHost/Hexalith.EventStore.Sharding.TestHost.csproj" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Compile Include="../Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8OwnedContainerLaunch.cs" Link="Fixtures/Oq8OwnedContainerLaunch.cs" />
+    <Compile Include="../Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8BoundedLog.cs" Link="Fixtures/Oq8BoundedLog.cs" />
+    <Compile Include="../Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs" Link="Fixtures/DockerPublishedPortResolver.cs" />
+    <Compile Include="../../src/Hexalith.EventStore.Testing/Fakes/InMemoryStateManager.cs" Link="Fixtures/InMemoryStateManager.cs" />
+    <Compile Include="../Hexalith.EventStore.Server.Tests/TestUtilities/ActorStateManagerTestHelper.cs" Link="Fixtures/ActorStateManagerTestHelper.cs" />
+  </ItemGroup>
+</Project>
