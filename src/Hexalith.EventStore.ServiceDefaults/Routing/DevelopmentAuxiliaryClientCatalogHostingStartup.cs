@@ -21,6 +21,8 @@ public sealed class DevelopmentAuxiliaryClientCatalogHostingStartup : IHostingSt
             if (role != "aux-client" || !context.HostingEnvironment.IsDevelopment()
                 || string.IsNullOrEmpty(context.Configuration[prefix + "Directory"]))
                 throw new InvalidOperationException("Auxiliary catalog startup requires its explicit private Development aux-client profile.");
+            if (services.Any(descriptor => descriptor.ServiceType == typeof(DevelopmentAuxiliaryClientCatalogRegistration))) return;
+            services.AddSingleton<DevelopmentAuxiliaryClientCatalogRegistration>();
             services.AddEventStoreDevelopmentRouteCatalogBootstrap(context.Configuration,
                 (provider, token) => DevelopmentAuxiliaryClientCatalog.CaptureAsync(provider, context.Configuration, token));
         });

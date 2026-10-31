@@ -40,6 +40,7 @@ public class LiveAdmissionRouteCatalogTests
         var app = new ApplicationBuilder(services);
         new LiveAdmissionCatalogStartupFilter().Configure(builder => builder.Run(async requestContext =>
         {
+            requestContext.Request.Body.CanSeek.ShouldBe(json);
             using var consumed = new MemoryStream();
             int consumedBytes = partial ? 257 : body.Length;
             if (partial)
@@ -51,19 +52,30 @@ public class LiveAdmissionRouteCatalogTests
             else await requestContext.Request.Body.CopyToAsync(consumed);
             consumed.Length.ShouldBe((long)consumedBytes);
             SHA256.HashData(consumed.ToArray()).ShouldBe(SHA256.HashData(body.AsSpan(0, consumedBytes)));
-            long position = requestContext.Request.Body.Position;
+            long position = json ? requestContext.Request.Body.Position : observed.Bytes;
             position.ShouldBe((long)consumedBytes);
             var (authority, _, _, _) = Create(http);
             await using var lease = await authority.AcquireAsync();
             lease.Snapshot.Resolve("command", tenant, "counter", "IncrementCounter").Target.ResolverTenantPattern.ShouldBe(tenant);
-            requestContext.Request.Body.Position.ShouldBe(position);
+            if (json) requestContext.Request.Body.Position.ShouldBe(position);
+            else observed.Bytes.ShouldBe(position);
             using var remaining = new MemoryStream();
             await requestContext.Request.Body.CopyToAsync(remaining);
             remaining.Length.ShouldBe(body.LongLength - consumedBytes);
             SHA256.HashData(remaining.ToArray()).ShouldBe(SHA256.HashData(body.AsSpan(consumedBytes)));
-            requestContext.Request.Body.Position = 0;
             using var replayed = new MemoryStream();
-            await requestContext.Request.Body.CopyToAsync(replayed);
+            if (json)
+            {
+                requestContext.Request.Body.Position = 0;
+                await requestContext.Request.Body.CopyToAsync(replayed);
+            }
+            else
+            {
+                consumed.Position = 0;
+                await consumed.CopyToAsync(replayed);
+                remaining.Position = 0;
+                await remaining.CopyToAsync(replayed);
+            }
             replayed.Length.ShouldBe(body.LongLength);
             SHA256.HashData(replayed.ToArray()).ShouldBe(SHA256.HashData(body));
             observed.Bytes.ShouldBe(body.LongLength);

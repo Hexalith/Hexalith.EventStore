@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -202,8 +203,8 @@ public sealed class AdminStorageCommandController(
             new ActorId(identity.ActorId),
             "AggregateActor");
 
-        ManualSnapshotResult actorResult = await actor
-            .CreateManualSnapshotAsync(request.CorrelationId)
+        ManualSnapshotResult actorResult = await RouteCatalogRemoteCall.InvokeAsync(() => actor
+            .CreateManualSnapshotAsync(request.CorrelationId), ct)
             .ConfigureAwait(false);
 
         string operationId = actorResult.SequenceNumber > 0
@@ -280,8 +281,8 @@ public sealed class AdminStorageCommandController(
                 .ThenBy(j => j.OperationId, StringComparer.Ordinal)
                 .Take(MaxJobsPerIndex)];
 
-            bool saved = await daprClient
-                .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct)
+            bool saved = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient
+                .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct), ct)
                 .ConfigureAwait(false);
             if (saved) {
                 return true;

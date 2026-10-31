@@ -1,3 +1,4 @@
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Dapr.Client;
 
 using Microsoft.Extensions.Logging;
@@ -177,13 +178,13 @@ public sealed class DaprCommandCorrelationIndex(
             ["ttlInSeconds"] = statusOptions.Value.TtlSeconds.ToString(
                 System.Globalization.CultureInfo.InvariantCulture),
         };
-        return daprClient.TrySaveStateAsync(
+        return RouteCatalogRemoteCall.InvokeAsync(() => daprClient.TrySaveStateAsync(
             statusOptions.Value.StateStoreName,
             key,
             record,
             etag ?? string.Empty,
             s_stateOptions,
             metadata,
-            cancellationToken);
+            cancellationToken));
     }
 }

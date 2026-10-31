@@ -63,16 +63,17 @@ public sealed class RouteCatalogFixtureToolTests
                     mode == "timeout" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(10), cancellation.Token));
                 int child = int.Parse(await File.ReadAllTextAsync(pid));
                 string state = "/proc/" + child + "/stat";
-                bool exited = false;
-                string? lastState = null;
+                string? childState = null;
                 do
                 {
-                    lastState = await ReadOwnedChildStateAsync(() => File.ReadAllTextAsync(state));
-                    exited = lastState is null or "Z";
-                    if (!exited && elapsed.Elapsed < TimeSpan.FromSeconds(7)) await Task.Delay(10);
+                    childState = await ReadOwnedChildStateAsync(() => File.ReadAllTextAsync(state));
+                    if (childState is null or "Z") break;
+                    // Killing a process tree requests each child's termination; the parent
+                    // can exit before the kernel finishes scheduling its child's signal.
+                    if (elapsed.Elapsed < TimeSpan.FromSeconds(7)) await Task.Delay(TimeSpan.FromMilliseconds(10));
                 }
-                while (!exited && elapsed.Elapsed < TimeSpan.FromSeconds(7));
-                exited.ShouldBeTrue($"Owned child {child} remained in state {lastState} after cancellation cleanup.");
+                while (elapsed.Elapsed < TimeSpan.FromSeconds(7));
+                if (childState is not null) childState.ShouldBe("Z", $"Owned child {child} remained in state {childState} after cancellation cleanup.");
                 elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(7));
             }
             else (await RouteCatalogOwnedProcess.RunAsync(start, TimeSpan.FromSeconds(1))).ShouldBe("completed");
