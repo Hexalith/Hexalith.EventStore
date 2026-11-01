@@ -10,7 +10,10 @@ public enum CheckpointedProjectionUnavailableReason {
     /// <summary>Optimistic concurrency conflicts exhausted the total attempt budget.</summary>
     ConcurrencyExhausted = 2,
 
-    /// <summary>Authoritative history could not be read.</summary>
+    /// <summary>
+    /// Authoritative history could not be read, returned a truncated page without progress, or has not yet
+    /// reached the requested sequence.
+    /// </summary>
     HistoryUnavailable = 3,
 
     /// <summary>Another worker holds an unexpired recovery lease.</summary>
@@ -24,4 +27,7 @@ public enum CheckpointedProjectionUnavailableReason {
 
     /// <summary>The domain transition could not apply an authoritative event.</summary>
     TransitionFailed = 7,
+
+    /// <summary>The record a pending delivery committed is no longer present, so recovery cannot prove anything.</summary>
+    RecordMissing = 8,
 }

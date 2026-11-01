@@ -4,7 +4,7 @@ namespace Hexalith.EventStore.Client.Projections.Checkpointed;
 /// Tuning for checkpointed projection writes and fenced recovery.
 /// </summary>
 public sealed class CheckpointedProjectionOptions {
-    /// <summary>Gets or sets the identity this process uses for recovery leases.</summary>
+    /// <summary>Gets or sets the worker identity that prefixes every per-invocation recovery lease identity.</summary>
     public string WorkerId { get; set; } = $"{Environment.MachineName}:{Environment.ProcessId}:{Guid.NewGuid():N}";
 
     /// <summary>Gets or sets how long a recovery lease fences other workers.</summary>

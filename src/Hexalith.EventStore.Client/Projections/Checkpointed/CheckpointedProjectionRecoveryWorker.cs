@@ -71,7 +71,10 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
     /// <see cref="CheckpointedProjectionOutcome.Recovered"/> when the record is (or became) healthy, or
     /// <see cref="CheckpointedProjectionOutcome.Corrupt"/> when it is terminally corrupt.
     /// </returns>
-    /// <exception cref="CheckpointedProjectionUnavailableException">Recovery could not complete; retry later.</exception>
+    /// <exception cref="CheckpointedProjectionUnavailableException">
+    /// Recovery could not complete (including when the record is absent, or another invocation holds an unexpired
+    /// lease); retry later.
+    /// </exception>
     public async Task<CheckpointedProjectionResult<TState>> RecoverAsync(
         string storeName,
         string key,
@@ -84,9 +87,13 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
             throw new ArgumentException("The authoritative stream identity is incomplete.", nameof(stream));
         }
 
+        // Every invocation owns a distinct lease identity, so two recoveries in one process never supersede each
+        // other: the later one finds the earlier lease held and stays retryable.
+        string leaseOwner = _options.WorkerId + "/" + Guid.NewGuid().ToString("N");
         (CheckpointedProjectionResult<TState>? settled, CheckpointedProjectionRecord<TState>? leased) = await AcquireLeaseAsync(
             storeName,
             key,
+            leaseOwner,
             cancellationToken).ConfigureAwait(false);
         if (settled is not null) {
             return settled;
@@ -100,7 +107,7 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
             when (exception.Reason is CheckpointedProjectionUnavailableReason.HistoryUnavailable
                 or CheckpointedProjectionUnavailableReason.TransitionFailed) {
             CheckpointedProjectionLog.Unavailable(_logger, storeName, key, exception.Reason);
-            await TryReleaseLeaseAsync(storeName, key, fencingToken, cancellationToken).ConfigureAwait(false);
+            await TryReleaseLeaseAsync(storeName, key, leaseOwner, fencingToken, cancellationToken).ConfigureAwait(false);
             throw;
         }
     }
@@ -139,14 +146,21 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
     private async Task<(CheckpointedProjectionResult<TState>? Settled, CheckpointedProjectionRecord<TState>? Leased)> AcquireLeaseAsync(
         string storeName,
         string key,
+        string leaseOwner,
         CancellationToken cancellationToken) {
         for (int attempt = 1; attempt <= _options.MaxAttempts; attempt++) {
             cancellationToken.ThrowIfCancellationRequested();
             (CheckpointedProjectionRecord<TState>? current, string etag) = await CheckpointedProjectionStorage
                 .LoadAsync<TState>(_store, storeName, key, cancellationToken)
                 .ConfigureAwait(false);
-            if (current is null || current.Health == CheckpointedProjectionHealth.Healthy) {
-                return (Recovered(current ?? new CheckpointedProjectionRecord<TState>()), null);
+            if (current is null) {
+                // The pending delivery committed evidence to this record; its disappearance proves nothing.
+                CheckpointedProjectionLog.Unavailable(_logger, storeName, key, CheckpointedProjectionUnavailableReason.RecordMissing);
+                throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.RecordMissing);
+            }
+
+            if (current.Health == CheckpointedProjectionHealth.Healthy) {
+                return (Recovered(current), null);
             }
 
             if (current.Health == CheckpointedProjectionHealth.Corrupt) {
@@ -159,9 +173,7 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
             }
 
             DateTimeOffset now = _timeProvider.GetUtcNow();
-            if (current.Lease is { } held
-                && held.ExpiresAt > now
-                && !string.Equals(held.WorkerId, _options.WorkerId, StringComparison.Ordinal)) {
+            if (current.Lease is { } held && held.ExpiresAt > now) {
                 CheckpointedProjectionLog.Unavailable(_logger, storeName, key, CheckpointedProjectionUnavailableReason.RecoveryLeaseHeld);
                 throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.RecoveryLeaseHeld);
             }
@@ -169,7 +181,7 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
             long token = current.LastFencingToken + 1;
             long version = current.Version + 1;
             CheckpointedProjectionRecord<TState> leased = current with {
-                Lease = new CheckpointedProjectionLease(_options.WorkerId, token, version, now + _options.LeaseDuration),
+                Lease = new CheckpointedProjectionLease(leaseOwner, token, version, now + _options.LeaseDuration),
                 LastFencingToken = token,
                 Version = version,
             };
@@ -320,7 +332,7 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
         throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.ConcurrencyExhausted);
     }
 
-    private async Task TryReleaseLeaseAsync(string storeName, string key, long fencingToken, CancellationToken cancellationToken) {
+    private async Task TryReleaseLeaseAsync(string storeName, string key, string leaseOwner, long fencingToken, CancellationToken cancellationToken) {
         if (cancellationToken.IsCancellationRequested) {
             return;
         }
@@ -331,7 +343,7 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
                 .ConfigureAwait(false);
             if (current?.Lease is { } held
                 && held.FencingToken == fencingToken
-                && string.Equals(held.WorkerId, _options.WorkerId, StringComparison.Ordinal)) {
+                && string.Equals(held.WorkerId, leaseOwner, StringComparison.Ordinal)) {
                 _ = await CheckpointedProjectionStorage
                     .TrySaveAsync(_store, storeName, key, current with { Lease = null, Version = current.Version + 1 }, etag, cancellationToken)
                     .ConfigureAwait(false);

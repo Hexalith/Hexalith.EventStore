@@ -81,7 +81,7 @@ public sealed class CheckpointedProjectionWriter<TState>
             (CheckpointedProjectionRecord<TState>? loaded, string etag) = await CheckpointedProjectionStorage
                 .LoadAsync<TState>(_store, storeName, key, cancellationToken)
                 .ConfigureAwait(false);
-            CheckpointedProjectionRecord<TState> current = loaded ?? new CheckpointedProjectionRecord<TState>();
+            CheckpointedProjectionRecord<TState> current = loaded ?? CheckpointedProjectionRecord<TState>.CreateEmpty();
 
             if (current.Health == CheckpointedProjectionHealth.Corrupt) {
                 return new CheckpointedProjectionResult<TState>(CheckpointedProjectionOutcome.Corrupt, current);

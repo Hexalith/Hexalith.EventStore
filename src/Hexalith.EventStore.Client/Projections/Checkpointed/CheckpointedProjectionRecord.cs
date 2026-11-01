@@ -11,13 +11,21 @@ public sealed record CheckpointedProjectionRecord<TState>
     public const int CurrentSchemaVersion = 1;
 
     /// <summary>Gets the record schema version.</summary>
-    public int SchemaVersion { get; init; } = CurrentSchemaVersion;
+    /// <remarks>
+    /// Deliberately has no default: a stored record without this field reads as zero and is malformed.
+    /// New records set it through <see cref="CreateEmpty"/>.
+    /// </remarks>
+    public int SchemaVersion { get; init; }
 
     /// <summary>Gets the projected state at <see cref="LastContiguousSequence"/>.</summary>
     public TState? State { get; init; }
 
     /// <summary>Gets the persisted projection health.</summary>
-    public CheckpointedProjectionHealth Health { get; init; } = CheckpointedProjectionHealth.Healthy;
+    /// <remarks>
+    /// Deliberately has no default: a stored record without this field reads as zero and is malformed rather
+    /// than healthy. New records set it through <see cref="CreateEmpty"/>.
+    /// </remarks>
+    public CheckpointedProjectionHealth Health { get; init; }
 
     /// <summary>Gets the highest aggregate sequence applied contiguously from the first event.</summary>
     public long LastContiguousSequence { get; init; }
@@ -48,6 +56,17 @@ public sealed record CheckpointedProjectionRecord<TState>
 
     /// <summary>Gets the aggregate sequence that proved corruption, when it is corrupt.</summary>
     public long? CorruptSequence { get; init; }
+
+    /// <summary>
+    /// Creates the record a stream starts from before its first committed delivery, with an explicit schema
+    /// version and health.
+    /// </summary>
+    /// <returns>A healthy record at checkpoint zero.</returns>
+    public static CheckpointedProjectionRecord<TState> CreateEmpty()
+        => new() {
+            SchemaVersion = CurrentSchemaVersion,
+            Health = CheckpointedProjectionHealth.Healthy,
+        };
 
     /// <summary>Gets a value indicating whether the record is healthy and therefore may authorize.</summary>
     public bool IsHealthy => Health == CheckpointedProjectionHealth.Healthy;

@@ -95,7 +95,7 @@ public sealed class CheckpointedProjectionRecoveryWorkerTests {
         await crash.CancelAsync();
         _ = await Should.ThrowAsync<TaskCanceledException>(() => crashed);
         harness.Gateway.BeforeRead = null;
-        harness.Record.ShouldNotBeNull().Lease.ShouldNotBeNull().WorkerId.ShouldBe("worker-a");
+        harness.Record.ShouldNotBeNull().Lease.ShouldNotBeNull().WorkerId.ShouldStartWith("worker-a/");
 
         CheckpointedProjectionUnavailableException held = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(
             () => RecoverAsync(harness, "worker-b"));

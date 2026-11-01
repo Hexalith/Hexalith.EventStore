@@ -20,6 +20,9 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
 
     public bool Unavailable { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether every page is empty yet claims more events follow.</summary>
+    public bool TruncateWithoutEvents { get; set; }
+
     public int PageSize { get; set; } = 2;
 
     public Func<StreamReadRequest, CancellationToken, Task>? BeforeRead { get; set; }
@@ -75,10 +78,17 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
             throw new EventStoreGatewayException(503, "Synthetic history outage");
         }
 
+        // The authoritative stream is exactly one tenant/domain/aggregate; any other identity is a defect.
+        if (request.Tenant != Tenant || request.Domain != Domain || request.AggregateId != Aggregate) {
+            throw new InvalidOperationException($"Unexpected history stream {request.Tenant}/{request.Domain}/{request.AggregateId}.");
+        }
+
         lock (_gate) {
             long to = request.ToSequence ?? long.MaxValue;
             StreamReadEvent[] inRange = [.. _events.Values.Where(e => e.SequenceNumber > request.FromSequence && e.SequenceNumber <= to)];
-            StreamReadEvent[] page = [.. inRange.Take(request.PageSize > 0 ? Math.Min(request.PageSize, PageSize) : PageSize)];
+            StreamReadEvent[] page = TruncateWithoutEvents
+                ? []
+                : [.. inRange.Take(request.PageSize > 0 ? Math.Min(request.PageSize, PageSize) : PageSize)];
             long latest = _events.Count == 0 ? 0 : _events.Keys.Max();
             return new StreamReadPage(
                 request.Tenant,
@@ -91,7 +101,7 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
                     page.Length == 0 ? null : page[^1].SequenceNumber,
                     latest,
                     page.Length,
-                    inRange.Length > page.Length,
+                    TruncateWithoutEvents || inRange.Length > page.Length,
                     null));
         }
     }
