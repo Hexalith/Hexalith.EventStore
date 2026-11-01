@@ -190,6 +190,8 @@ public static class RouteCatalogTopologyValidator
             }
             else if (endpoint.Http is { } http)
             {
+                // Split MVC actions share one auxiliary operation with the complete method
+                // and witness union. Conflicting peers must fail before verb filtering.
                 var peers = reachable.Where(peer => peer.Admitted && peer.Pattern == endpoint.Pattern).ToArray();
                 string[] groupedVerbs = peers.SelectMany(peer => peer.Methods).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
                 if (peers.Any(peer => peer.Http?.Owner != http.Owner || peer.Http.CodeDigest != http.CodeDigest
@@ -228,8 +230,8 @@ public static class RouteCatalogTopologyValidator
         return true;
     }
 
-    private static bool CanonicalMethods(IReadOnlyList<string> methods)
-        => methods.Count > 0 && methods.Distinct(StringComparer.Ordinal).Count() == methods.Count
+    private static bool CanonicalMethods(IReadOnlyList<string>? methods)
+        => methods is { Count: > 0 } && methods.Distinct(StringComparer.Ordinal).Count() == methods.Count
             && methods.All(method => method is "GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS");
 
     private static bool SameMethods(IReadOnlyList<string> actual, IReadOnlyList<string> bound)

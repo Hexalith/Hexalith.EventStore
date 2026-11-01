@@ -229,7 +229,7 @@ public sealed class TechnicalTopologyVerbIsolationTests
     {
         var fixture = new RouteCatalogTestFixture();
         var grants = new[] { new RouteCatalogHttpGrant("/api/v1/commands", fault == "extra-grant-verb" ? "POST PUT" : "POST") };
-        var statusGrant = new RouteCatalogHttpGrant("/api/v1/commands/status/*", "GET");
+        var statusGrant = new RouteCatalogHttpGrant("/api/v1/commands/status/**", "GET");
         var root = Endpoint("/api/v1/commands", "POST", "Hexalith.EventStore.Controllers.CommandsController", grants[0]);
         var child = Endpoint("/api/v1/commands/status/{messageId}", "GET", "Hexalith.EventStore.Controllers.CommandStatusController", statusGrant);
         var auxiliary = new[] { Auxiliary(root, fixture), Auxiliary(child, fixture) };
@@ -247,6 +247,35 @@ public sealed class TechnicalTopologyVerbIsolationTests
         else Should.Throw<RouteCatalogValidationException>(Check).Diagnostics.Single().Code.ShouldBe(refusal);
     }
 
+
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("human-policy")]
+    [InlineData("owner")]
+    [InlineData("code")]
+    [InlineData("anonymous")]
+    [InlineData("missing-auxiliary")]
+    public void ExcludedWorkloadReceiverRetainsItsExactPolicyAndOwnerBinding(string fault)
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var grant = new RouteCatalogHttpGrant("/api/v1/commands", "POST");
+        var root = Endpoint("/api/v1/commands", "POST", "Hexalith.EventStore.Controllers.CommandsController", grant);
+        var child = Endpoint("/api/v1/commands/status/workload/{tenant}/{messageId}", "GET",
+            "Hexalith.EventStore.Controllers.CommandStatusController",
+            new RouteCatalogHttpGrant("/api/v1/commands/status/**", "GET")) with
+        {
+            Policies = ["DaprInternal:" + EventStoreOperationIdentifiers.GatewayCommandStatus],
+        };
+        var auxiliary = new[] { Auxiliary(root, fixture), Auxiliary(child, fixture) };
+        if (fault == "human-policy") child = child with { Policies = ["EventStoreHuman"] };
+        if (fault == "owner") child = child with { Http = child.Http! with { Owner = "foreign-controller" } };
+        if (fault == "code") child = child with { Http = child.Http! with { CodeDigest = RouteCatalogTestFixture.Hash("changed-code") } };
+        if (fault == "anonymous") child = child with { Anonymous = true };
+        if (fault == "missing-auxiliary") auxiliary = [auxiliary[0]];
+        void Check() => Validate(fixture, [grant], new(FiniteRouteCatalogReceiver.TechnicalVersion, [root, child]), auxiliary);
+        if (fault == "valid") Check();
+        else Should.Throw<RouteCatalogValidationException>(Check).Diagnostics.Single().Code.ShouldBe("unbound-technical-controller-code-or-policy");
+    }
 
     [Fact]
     public void MutatedEndpointMethodsCannotHideContradictoryAuxiliaryEvidence()
@@ -377,5 +406,5 @@ public sealed class TechnicalTopologyVerbIsolationTests
         {
             spec = new { accessControl = new { defaultAction = "deny", trustDomain = "public", policies = new[]
             { new { appId = fixture.Hosts[0].AppId, defaultAction = "deny", operations = grants.Select(grant => new { name = grant.Method, action = "allow", httpVerb = grant.Verbs.Split(' ') }) } } } },
-        }), fixture.Envelope, fixture.Hosts, fixture.Hosts[0].AppId, auxiliary, surface);
+        }), CatalogSchemaThreeFixture.Create(fixture.Envelope), fixture.Hosts, fixture.Hosts[0].AppId, auxiliary, surface);
 }

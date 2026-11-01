@@ -6435,6 +6435,8 @@ status: open
 - **[OPEN] Defer dependency-backed global component argument evaluation** — owner: EventStore Aspire maintainers; next-review-date: 2026-11-15; grouping: sdk-startup; source_spec: `_bmad-output/implementation-artifacts/spec-release-refresh-2026-11-01.md`.
   evidence: Pre-existing medium finding: DevelopmentRouteCatalogComponentObserver.ObserveAsync(BeforeStartEvent) executes the selected CLI argument callbacks to locate toolkit-owned component paths. A customization that reads a dependency-generated file in one of those callbacks can fail before orchestration starts. The observed Sentry defect involved environment evaluation and is repaired separately; global argument discovery is unchanged and requires its own lifecycle design and regression before broader custom callbacks are supported.
 
+## Deferred from: SDK 3.130.2 maintenance review (2026-11-01)
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-sdk-31302-technical-verb-maintenance.md`
   summary: Assess the preexisting technical HTTP witness verb predicate separately.
   evidence: Reviewer reran identical case against0a635,1de,current: allaccept. The witness verbs.Any predicate is unchanged; record preexisting defect without attributing it to this maintenance change.
