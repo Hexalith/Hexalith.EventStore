@@ -25,7 +25,7 @@ public sealed class PolicyLifecycleTests
         policy.Evaluate(Arg.Any<PersonalDataPolicyContext>()).Returns(call => call.Arg<PersonalDataPolicyContext>().JsonPointer == "/count"
             ? PersonalDataPolicyDecision.Protect : PersonalDataPolicyDecision.Abstain);
         var discovery = new PersonalDataDiscovery(new(ordinary ? [policy] : [], []), new(enrolled.Select(type => context.GetTypeInfo(type)!), mappings));
-        discovery.Select(Identity, new NullablePolicyPayload { Count = 7, Values = [1, null, 2], Items = [null, 3], Secret = RandomSecret() },
+        discovery.Select(Identity, new NullablePolicyPayload { Count = 7, Values = [1, null, 2], Items = [null, 3], Secret = RandomSecret(), },
             metadata, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(ordinary ? ["/count", "/secret"] : ["/secret"]);
     }
 
