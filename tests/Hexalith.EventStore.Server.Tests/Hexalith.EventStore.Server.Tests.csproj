@@ -4,8 +4,8 @@
   <ItemGroup>
     <PackageDownload Include="Hexalith.EventStore.ServiceDefaults" Version="[3.129.0]" />
     <PackageDownload Include="Hexalith.EventStore.Contracts" Version="[3.129.0]" />
-    <Content Include="$(NuGetPackageRoot)hexalith.eventstore.servicedefaults/3.129.0/lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll" Link="legacy-sdk-3.129.0/Hexalith.EventStore.ServiceDefaults.dll" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="$(NuGetPackageRoot)hexalith.eventstore.contracts/3.129.0/lib/net10.0/Hexalith.EventStore.Contracts.dll" Link="legacy-sdk-3.129.0/Hexalith.EventStore.Contracts.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))hexalith.eventstore.servicedefaults/3.129.0/lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll" Link="legacy-sdk-3.129.0/Hexalith.EventStore.ServiceDefaults.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))hexalith.eventstore.contracts/3.129.0/lib/net10.0/Hexalith.EventStore.Contracts.dll" Link="legacy-sdk-3.129.0/Hexalith.EventStore.Contracts.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

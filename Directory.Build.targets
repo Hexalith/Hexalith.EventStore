@@ -9,6 +9,18 @@
     </ProjectReference>
   </ItemGroup>
 
+  <!-- The SDK promotes transitive references after evaluation without retaining edge metadata. -->
+  <Target Name="PreserveTenantsEventStoreSourceVersion"
+          AfterTargets="IncludeTransitiveProjectReferences"
+          Condition="'$(HexalithTenantsFromSource)' == 'true' and '$(HexalithSourceMappingHash)' == ''">
+    <ItemGroup>
+      <ProjectReference Update="@(ProjectReference)"
+                        Condition="$([System.String]::Copy('%(ProjectReference.Filename)').StartsWith('Hexalith.Tenants'))">
+        <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
+      </ProjectReference>
+    </ItemGroup>
+  </Target>
+
   <!--
     Container image defaults (.NET SDK container support).
     Opt-in per project with:
