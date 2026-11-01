@@ -1,5 +1,14 @@
 {
-  "branches": ["main"],
+  "branches": [
+    {
+      "name": "release/parties-sdk-3.130.2",
+      "channel": false
+    },
+    {
+      "name": "main",
+      "channel": false
+    }
+  ],
   "tagFormat": "v${version}",
   "plugins": [
     "@semantic-release/commit-analyzer",

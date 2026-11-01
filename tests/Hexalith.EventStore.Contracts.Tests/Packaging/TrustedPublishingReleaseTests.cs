@@ -46,10 +46,12 @@ public sealed class TrustedPublishingReleaseTests
             File.ReadAllText(Path.Combine(root, "tools", "release-packages.json")));
 
         manifest.RootElement.GetProperty("packages").GetArrayLength().ShouldBe(14);
-        workflow.ShouldContain("22a578b576a515d2af214fe81859447fffc97981");
+        workflow.ShouldContain("30ea43a56330a9828ed0bb2e837289231d8630d1");
         workflow.ShouldContain("uses: ./.hexalith/builds-execution/Github/publish-containers");
-        workflow.ShouldContain("source_ci_workflow=\"ci.yml\"");
-        workflow.ShouldContain("for required_workflow in ci.yml commitlint.yml; do");
+        string sourceProof = File.ReadAllText(Path.Combine(root, "scripts", "verify-release-source.sh"));
+        workflow.ShouldContain("bash scripts/verify-release-source.sh");
+        sourceProof.ShouldContain("source_ci_workflow=\"ci.yml\"");
+        sourceProof.ShouldContain("required_workflows=(ci.yml commitlint.yml integration.yml)");
         workflow.ShouldContain("HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'");
         workflow.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'");
         workflow.ShouldNotContain("inputs.release-version");
@@ -57,7 +59,7 @@ public sealed class TrustedPublishingReleaseTests
         workflow.ShouldNotContain("HEXALITH_RELEASE_AUTHORITY_ISSUE_URL:");
         workflow.ShouldNotContain("HEXALITH_RELEASE_AUTHORITY_OWNER:");
         workflow.ShouldNotContain("HEXALITH_RELEASE_CANDIDATE_SHA256:");
-        workflow.IndexOf("Require current main with exact-source push proofs", StringComparison.Ordinal)
+        workflow.IndexOf("Require current approved branch with exact-source push proofs", StringComparison.Ordinal)
             .ShouldBeLessThan(workflow.IndexOf("  release:", StringComparison.Ordinal));
         workflow.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");
         configuration.ShouldContain("scripts/validate-publication-preflight.sh");
