@@ -24,9 +24,15 @@ $ cd Hexalith.EventStore
 $ git submodule update --init references/Hexalith.Builds references/Hexalith.Tenants
 ```
 
-The root Tenants submodule is a local runtime prerequisite. A plain `aspire run` resolves its
-domain-service and external API host projects by path and fails before starting any resources when
-either project is unavailable. It does not initialize submodules automatically.
+The commands above apply to a standalone EventStore clone. When EventStore is itself a workspace
+submodule, initialize dependencies only from the workspace root's `.gitmodules`; never initialize
+submodules nested inside it.
+
+A plain `aspire run` first looks for both Tenants host projects in `references/Hexalith.Tenants`.
+If that checkout is incomplete or absent, it uses the sibling `../Hexalith.Tenants` checkout, such
+as the workspace's root-declared `references/Hexalith.Tenants`. Both hosts must come from the same
+complete checkout; otherwise startup fails before resources start and lists the missing projects.
+It does not initialize submodules automatically.
 
 Start the Aspire AppHost, which launches the CommandAPI, Tenants domain and API services, the sample
 domain service, Redis, and Keycloak:

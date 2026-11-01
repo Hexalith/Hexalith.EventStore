@@ -87,12 +87,15 @@ aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost
 
 **`EnableKeycloak=false`** uses one cryptographically generated, per-run symmetric JWT key (no Keycloak container). The AppHost propagates it to local issuers and validators without logging the value. AppHost changes require restarting the Aspire app.
 
-Plain local `aspire run` always provisions `tenants` and `tenants-api` from the initialized root
-Tenants checkout, even though repository dependencies remain in package mode by default. Runtime
+Plain local `aspire run` provisions `tenants` and `tenants-api` from the first complete Tenants
+checkout: `references/Hexalith.Tenants` first, then the sibling `../Hexalith.Tenants` (the workspace's
+root-declared checkout when EventStore is a sibling submodule). Both hosts must come from the same
+checkout, even though repository dependencies remain in package mode by default. Runtime
 project discovery is deliberately separate from `UseHexalithProjectReferences`: that switch still
 controls build dependencies, while run mode uses resolved project paths only for the local topology.
-If either host project is unavailable, startup fails before resources start and names the root
-submodule initialization command. Publish mode never adds these path-discovered resources.
+If neither checkout contains both host projects, startup fails before resources start and lists
+missing projects. Initialize only dependencies declared in the workspace root's `.gitmodules`;
+never initialize nested submodules. Publish mode never adds these path-discovered resources.
 
 ### Cursor Cloud / VM bootstrap (from CLAUDE.md)
 
