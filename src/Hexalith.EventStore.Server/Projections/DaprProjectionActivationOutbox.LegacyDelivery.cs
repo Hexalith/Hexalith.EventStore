@@ -29,7 +29,7 @@ public sealed partial class DaprProjectionActivationOutbox
             || expiry <= timeProvider.GetUtcNow() || expiry > timeProvider.GetUtcNow() + TimeSpan.FromMinutes(5))) return null;
 
         ProjectionActivationWorkItem? bound = null;
-        await MutateAsync(expected.ActivationId, items =>
+        await MutateAsync(expected.ActivationId, (items, _) =>
         {
             bound = null;
             int index = items.FindIndex(item => SameActivation(item, expected));
@@ -48,7 +48,7 @@ public sealed partial class DaprProjectionActivationOutbox
         ArgumentNullException.ThrowIfNull(expected);
         if (expected.LegacyDelivery is null) return false;
         bool completed = false;
-        await MutateAsync(expected.ActivationId, items =>
+        await MutateAsync(expected.ActivationId, (items, _) =>
         {
             completed = false;
             int index = items.FindIndex(item => SameActivation(item, expected));

@@ -65,7 +65,7 @@ public sealed partial class DaprProjectionActivationOutboxTests
         using ProjectionDeliveryCostScope failed = ProjectionDeliveryCostDiagnostics.BeginScope();
         await Should.ThrowAsync<InvalidOperationException>(() => outbox.EnsureAsync(identity)).ConfigureAwait(true);
         failed.Dispose();
-        ProjectionActivationLedger proposed = new([before.Items.Single() with { Revision = 2 }]);
+        ProjectionActivationLedger proposed = new([before.Items.Single() with { Revision = 2 }]) { LastRevision = 2 };
         long proposedBytes = JsonSerializer.SerializeToUtf8Bytes(proposed, JsonSerializerOptions.Web).Length;
         failed[ProjectionDeliveryCost.ActivationShardReads].ShouldBe(5);
         failed[ProjectionDeliveryCost.ActivationReadBytes].ShouldBe(5 * originalBytes);

@@ -591,6 +591,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
         void Add(string[] arguments, double start, double end, string output = "")
             => Commands.Add(new(new("docker", arguments, root, TimeSpan.FromSeconds(30)), began.AddSeconds(start), began.AddSeconds(end), 0, output, "", Hash(output)));
         Add(["exec", owner + "-redis-1", "redis-cli", "SAVE"], 2, 2.1, "OK\n");
+        Commands[^1] = Commands[^1] with { Command = Commands[^1].Command with { Timeout = QualificationRedisSavePolicy.Budget }, DeadlineStarted = began.AddSeconds(2) };
         Add(["cp", owner + "-redis-1:/data/dump.rdb", path], 2.2, 2.3);
         var target = records.Where(pair => pair.Key.Split('#')[0] == "runtime-profile").Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value))
             .First(profile => profile.GetProperty("redisContainer").GetString() != owner + "-redis-1");

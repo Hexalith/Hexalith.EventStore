@@ -20,6 +20,7 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Hexalith.EventStore.Server.Tests.Actors;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
@@ -39,7 +40,7 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
 {
     internal AggregateIdentity Identity { get; } = new("tenant-a", "counter", "counter-1");
     internal FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
-    internal RecordingDaprClient Backend { get; } = new() { PersistTypedState = true };
+    internal RecordingDaprClient Backend { get; }
     internal FaultInjectingActorStateManager SourceState { get; } = new();
     internal FaultInjectingActorStateManager ModelState { get; } = new();
     internal AggregateActor Source { get; }
@@ -60,6 +61,7 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
     internal bool LoseReleaseResponse { get; set; }
     internal bool FailReadbackAfterPromotionLoss { get; set; } = true;
     internal Func<Task>? AfterStage { get; set; }
+    internal Func<Task>? BeforeFinalizeReplayAsync { get; set; }
     internal Func<Task>? AfterPromotion { get; set; }
     internal Func<Task>? BeforeLease { get; set; }
     internal Func<ProjectionReplayPublicationRequest, CancellationToken, Task>? BeforeReconciliation { get; set; }
@@ -79,8 +81,9 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
     private readonly IDomainServiceResolver _resolver = Substitute.For<IDomainServiceResolver>();
     private bool _inspectionUnavailable;
 
-    internal LegacyReplayProductionHarness(int pageSize = 256, int maxEvents = 10_000)
+    internal LegacyReplayProductionHarness(int pageSize = 256, int maxEvents = 10_000, RecordingDaprClient? backend = null)
     {
+        Backend = backend ?? new() { PersistTypedState = true };
         Logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         ActorLogger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         _options = new() { RebuildPageSize = pageSize, RebuildMaxPrefixEventCount = maxEvents };
@@ -146,6 +149,20 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
         await Outbox.EnsureAsync(Identity).ConfigureAwait(false);
     }
 
+    internal async Task SeedSourceAsync(IReadOnlyList<EventEnvelope> events)
+    {
+        foreach (EventEnvelope item in events)
+        {
+            Events.Add(item);
+            Head = SourceProofCodec.Extend(Head, item);
+            await SourceState.SetStateAsync(Identity.EventStreamKeyPrefix + item.SequenceNumber, item).ConfigureAwait(false);
+        }
+        await SourceState.SetStateAsync(Identity.MetadataKey,
+            new AggregateMetadata(Events.Count, Clock.GetUtcNow(), null) { SourceProof = Head }).ConfigureAwait(false);
+        await SourceState.SaveStateAsync().ConfigureAwait(false);
+        await Outbox.EnsureAsync(Identity).ConfigureAwait(false);
+    }
+
     internal void UseOlderSource(Exception? failure = null)
     {
         IAggregateActor older = Substitute.For<IAggregateActor>();
@@ -197,13 +214,13 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
         Notifications.ClearReceivedCalls();
     }
 
-    private ProjectionUpdateOrchestrator CreateOrchestrator()
+    internal ProjectionUpdateOrchestrator CreateOrchestrator(IRouteCatalogAuthority? authority = null, IProjectionSourceGuardDelivery? sourceGuard = null)
         => new(_actors, _invocation, _clients, _resolver,
             Checkpoints, Options.Create(_options), Logger,
             deliveryCheckpointStore: Checkpoints,
             lifecycleGateway: Lifecycle, namedProjectionDispatchCoordinator: NamedCoordinator,
             projectionActivationOutbox: Outbox, rebuildWriteGateway: this,
-            deliveryStateStore: Rows, deliveryIdempotency: _coordinator, timeProvider: Clock);
+            sourceGuardDelivery: sourceGuard, deliveryStateStore: Rows, deliveryIdempotency: _coordinator, timeProvider: Clock, catalogAuthority: authority);
 
     internal Task DeliverAsync(CancellationToken cancellationToken = default)
         => CreateOrchestrator().DeliverProjectionAsync(Identity, cancellationToken);
@@ -234,8 +251,12 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
         return result;
     }
 
-    public Task<bool> FinalizeReplayAsync(string actorId, ProjectionReplayPublicationRequest request, CancellationToken cancellationToken)
-    { cancellationToken.ThrowIfCancellationRequested(); return Model.FinalizeReplayAsync(request).WaitAsync(cancellationToken); }
+    public async Task<bool> FinalizeReplayAsync(string actorId, ProjectionReplayPublicationRequest request, CancellationToken cancellationToken)
+    {
+        if (BeforeFinalizeReplayAsync is { } before) await before().ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Model.FinalizeReplayAsync(request).WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
     public Task<bool> ReadReplayCompletionAsync(string actorId, ProjectionReplayPublicationRequest request, CancellationToken cancellationToken)
     { cancellationToken.ThrowIfCancellationRequested(); return Model.ReadReplayCompletionAsync(request).WaitAsync(cancellationToken); }
     public async Task<bool> ReconcileBoundReplayCompletionAsync(string actorId, ProjectionReplayPublicationRequest request, CancellationToken cancellationToken)

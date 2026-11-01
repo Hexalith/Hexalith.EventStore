@@ -31,22 +31,22 @@ public sealed partial class DaprProjectionActivationOutbox(
         ProjectionActivationWorkItem workItem = ProjectionActivationWorkItem.Create(identity, timeProvider.GetUtcNow());
         await MutateAsync(
             workItem.ActivationId,
-            items => {
+            (items, revision) => {
                 int index = items.FindIndex(item => string.Equals(item.ActivationId, workItem.ActivationId, StringComparison.Ordinal));
                 if (index >= 0) {
                     ProjectionActivationWorkItem current = items[index];
                     items[index] = current with {
-                        Revision = current.Revision + 1,
+                        Revision = revision,
                         Attempt = 0,
                         NextDueUtc = workItem.NextDueUtc,
                     };
                     return true;
                 }
 
-                items.Add(workItem);
+                items.Add(workItem with { Revision = revision });
                 return true;
             },
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken, advanceRevision: true).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -70,7 +70,7 @@ public sealed partial class DaprProjectionActivationOutbox(
         ArgumentNullException.ThrowIfNull(workItem);
         return MutateAsync(
             workItem.ActivationId,
-            items => items.RemoveAll(item =>
+            (items, _) => items.RemoveAll(item =>
                 string.Equals(item.ActivationId, workItem.ActivationId, StringComparison.Ordinal)
                 && item.Revision == workItem.Revision
                 && item.LegacyDelivery is null) > 0,
@@ -121,7 +121,7 @@ public sealed partial class DaprProjectionActivationOutbox(
         ArgumentNullException.ThrowIfNull(workItem);
         return MutateAsync(
             workItem.ActivationId,
-            items => {
+            (items, _) => {
                 int index = items.FindIndex(item => string.Equals(item.ActivationId, workItem.ActivationId, StringComparison.Ordinal));
                 if (index < 0) {
                     return false;
@@ -143,18 +143,22 @@ public sealed partial class DaprProjectionActivationOutbox(
 
     private async Task MutateAsync(
         string activationId,
-        Func<List<ProjectionActivationWorkItem>, bool> mutation,
-        CancellationToken cancellationToken, int? maxLedgerBytes = null) {
+        Func<List<ProjectionActivationWorkItem>, long, bool> mutation,
+        CancellationToken cancellationToken, int? maxLedgerBytes = null, bool advanceRevision = false) {
         string storeName = projectionOptions.Value.CheckpointStateStoreName;
         string key = GetKey(activationId);
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
             (ProjectionActivationLedger? ledger, string etag) = await ReadLedgerAsync(key, cancellationToken).ConfigureAwait(false);
             List<ProjectionActivationWorkItem> items = [.. ledger?.Items ?? []];
-            if (!mutation(items)) {
+            // Legacy ledgers have no high-water mark. Seed from their live revisions and retain
+            // the counter after removal so recreating an activation cannot admit stale cleanup.
+            long revision = Math.Max(ledger?.LastRevision ?? 0, items.Select(static item => item.Revision).DefaultIfEmpty().Max());
+            if (advanceRevision) revision = checked(revision + 1);
+            if (!mutation(items, revision)) {
                 return;
             }
 
-            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new ProjectionActivationLedger(items), daprClient.JsonSerializerOptions);
+            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new ProjectionActivationLedger(items) { LastRevision = revision }, daprClient.JsonSerializerOptions);
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSerializationBytes, bytes.Length);
             if (maxLedgerBytes is { } limit && bytes.Length > limit)
                 throw new ProjectionDeliveryHistoryValidationException("delivery_proof_limit_exceeded");

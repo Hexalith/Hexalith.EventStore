@@ -10,6 +10,7 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 /// <summary>Drives the production legacy dispatcher and sample handler through its public JSON carrier.</summary>
 internal sealed class LegacyReplayProductionHttpHandler(IServiceProvider services) : HttpMessageHandler
 {
+    internal string? ResponseProjectionTypeOverride { get; set; }
     internal List<long[]> Preparations { get; } = [];
     private Func<Task>? _beforePreparation;
     internal Func<Task>? BeforePreparation { set => _beforePreparation = value; }
@@ -20,6 +21,7 @@ internal sealed class LegacyReplayProductionHttpHandler(IServiceProvider service
         if (Interlocked.Exchange(ref _beforePreparation, null) is { } before) await before().ConfigureAwait(false);
         Preparations.Add([.. input.Events.Select(static item => item.SequenceNumber)]);
         ProjectionResponse? projected = DomainProjectionDispatcher.Project(services, input, cancellationToken);
+        if (projected is not null && ResponseProjectionTypeOverride is { } output) projected = projected with { ProjectionType = output };
         return projected is null ? new(HttpStatusCode.NotFound) : new(HttpStatusCode.OK)
         { Content = JsonContent.Create(projected, options: JsonSerializerOptions.Web) };
     }

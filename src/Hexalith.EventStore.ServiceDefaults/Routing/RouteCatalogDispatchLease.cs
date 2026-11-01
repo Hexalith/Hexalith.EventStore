@@ -8,6 +8,7 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     private bool _closedForExecution;
     private bool _retained;
     private int _remoteCalls;
+    private TaskCompletionSource? _remoteDrain;
 
     /// <summary>Gets this dispatch's immutable authority.</summary>
     public CommittedRouteCatalogSnapshot Snapshot { get; } = snapshot;
@@ -35,8 +36,20 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     {
         lock (_stateGate)
         {
-            foreach (var lease in leases) lease._remoteCalls--;
+            foreach (var lease in leases)
+            {
+                if (--lease._remoteCalls != 0) continue;
+                lease._remoteDrain?.TrySetResult();
+                lease._remoteDrain = null;
+            }
         }
+    }
+
+    /// <summary>Drains actual enrolled calls for an independent hosted owner without clearing ambiguous fences.</summary>
+    internal Task DrainRemoteCallsAsync()
+    {
+        lock (_stateGate) return _remoteCalls == 0 ? Task.CompletedTask
+            : (_remoteDrain ??= new(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
     }
 
     /// <summary>Retains the durable fence when remote completion is ambiguous. It never expires automatically.</summary>

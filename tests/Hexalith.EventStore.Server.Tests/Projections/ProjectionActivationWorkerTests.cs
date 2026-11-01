@@ -12,7 +12,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public sealed class ProjectionActivationWorkerTests
+public sealed partial class ProjectionActivationWorkerTests
 {
     [Theory]
     [InlineData(false)]
