@@ -12,8 +12,19 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
-    private const string ApprovedBuildsReleaseSha = "22a578b576a515d2af214fe81859447fffc97981";
+    private const string ApprovedBuildsReleaseSha = "30ea43a56330a9828ed0bb2e837289231d8630d1";
     private const int ExpectedPackageCount = 14;
+
+    /// <summary>Only the exact maintenance branch and main may participate in semantic version selection.</summary>
+    [Fact]
+    public void SemanticReleaseBranchesKeepExactStableMaintenanceTuple()
+    {
+        using JsonDocument configuration = JsonDocument.Parse(File.ReadAllText(Path.Combine(FindRepositoryRoot(), ".releaserc.json")));
+        JsonElement[] branches = configuration.RootElement.GetProperty("branches").EnumerateArray().ToArray();
+        branches.Select(branch => branch.GetProperty("name").GetString()).ShouldBe(["release/parties-sdk-3.130.2", "main"]);
+        branches.ShouldAllBe(branch => branch.GetProperty("channel").ValueKind == JsonValueKind.False);
+    }
+
     private static readonly TimeSpan PublicationPreflightTimeout = TimeSpan.FromSeconds(10);
 
     /// <summary>
@@ -545,7 +556,7 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldNotContain("domain-release.yml@main");
         workflow.ShouldNotContain("vars.HEXALITH_BUILDS_RELEASE_SHA");
         workflow.ShouldContain("actions: read");
-        releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_BRANCH: main");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_BRANCH: ${{ github.ref_name }}");
         releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}");
         releaseJob.ShouldContain("HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json");
         releaseJob.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'");
@@ -565,12 +576,12 @@ public sealed class ContainerPublishingGovernanceTests
         string dispatchBlock = ExtractYamlBlock(workflow, "  workflow_dispatch:");
         dispatchBlock.ShouldNotContain("inputs:");
         string verifySourceBlock = ExtractYamlBlock(workflow, "  verify-source:");
-        verifySourceBlock.ShouldContain("name: Verify exact live-main source proof");
+        verifySourceBlock.ShouldContain("name: Verify exact current source proof");
         verifySourceBlock.ShouldNotContain("green main", Case.Insensitive);
         workflow.ShouldContain("source-ci-workflow: ${{ steps.select-source-proof.outputs.source-ci-workflow }}");
         string producerStepBlock = ExtractNamedWorkflowStepBlock(
             workflow,
-            "Require current main with exact-source push proofs");
+            "Require current approved branch with exact-source push proofs");
         producerStepBlock
             .Split('\n')
             .Count(line => line.Trim().Equals("id: select-source-proof", StringComparison.Ordinal))
@@ -591,34 +602,20 @@ public sealed class ContainerPublishingGovernanceTests
         Match gitlinkEntry = Regex.Match(gitlink, @"^160000 commit (?<sha>[0-9a-f]{40})\s+references/Hexalith\.Builds$");
         gitlinkEntry.Success.ShouldBeTrue();
 
-        // The pin is chosen deliberately rather than inherited from wherever the development
-        // gitlink drifts. Inequality does not express that: it forbids the correct state that
-        // arises the moment a legitimate bump lands on the release pin. What the rule actually
-        // means is that the pin is reviewed history the gitlink already contains, so assert
-        // ancestor-or-equal instead -- local, network-free, and true after a rotation.
+        // Publication authority is independent of the development gitlink. The
+        // bounded publisher correction must retain all other executed bytes.
         string builds = PackagingRepositoryPaths.ResolveDependency(
             root, "Hexalith.Builds", Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE"));
-        string gitlinkSha = gitlinkEntry.Groups["sha"].Value;
-        string? alternateBuilds = Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE");
-        if (!string.IsNullOrWhiteSpace(alternateBuilds))
+        const string baselinePublisher = "22a578b576a515d2af214fe81859447fffc97981";
+        RunGitExitCode(builds, "cat-file", "-e", $"{ApprovedBuildsReleaseSha}^{{commit}}").ShouldBe(0);
+        RunGitExitCode(builds, "merge-base", "--is-ancestor", baselinePublisher, ApprovedBuildsReleaseSha).ShouldBe(0);
+        RunGitExitCode(builds, "merge-base", "--is-ancestor", baselinePublisher, gitlinkEntry.Groups["sha"].Value).ShouldBe(0);
+        foreach (string file in new[] { "action.yml", "oci_registry_validator.py",
+            "smoke-container-platforms.sh", "smoke_container_platforms.py" })
         {
-            RunGit(builds, "rev-parse", "HEAD").ShouldBe(
-                gitlinkSha,
-                "The explicit Builds checkout must match the EventStore gitlink.");
+            RunGit(builds, "rev-parse", $"{ApprovedBuildsReleaseSha}:Github/publish-containers/{file}")
+                .ShouldBe(RunGit(builds, "rev-parse", $"{baselinePublisher}:Github/publish-containers/{file}"));
         }
-        else
-        {
-            File.Exists(Path.Combine(builds, "Props", "Directory.Packages.props")).ShouldBeTrue(
-                "The Builds gitlink must be initialized or HEXALITH_BUILDS_SOURCE must identify its checkout.");
-        }
-
-        RunGitExitCode(builds, "cat-file", "-e", $"{ApprovedBuildsReleaseSha}^{{commit}}").ShouldBe(
-            0,
-            $"Pinned Builds release SHA {ApprovedBuildsReleaseSha} is unavailable in references/Hexalith.Builds.");
-        RunGitExitCode(builds, "merge-base", "--is-ancestor", ApprovedBuildsReleaseSha, gitlinkSha).ShouldBe(
-            0,
-            $"The release pin {ApprovedBuildsReleaseSha} must be an ancestor of, or equal to, the development "
-            + $"gitlink {gitlinkSha}; the gitlink must never point at history that excludes the reviewed pin.");
 
         MatchCollection timeoutInputs = Regex.Matches(
             releaseJob,
@@ -668,14 +665,18 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldContain("cancel-in-progress: false");
         workflow.ShouldContain("DISPATCH_REF: ${{ github.ref }}");
         workflow.ShouldContain("DISPATCH_SHA: ${{ github.sha }}");
-        workflow.ShouldContain("refs/heads/main");
-        workflow.ShouldContain("git/ref/heads/main");
-        workflow.ShouldContain("source_ci_workflow=\"ci.yml\"");
-        workflow.ShouldContain("for required_workflow in ci.yml commitlint.yml; do");
-        workflow.ShouldContain("actions/workflows/${required_workflow}/runs");
-        workflow.ShouldContain(".head_sha == $sha");
-        workflow.ShouldContain(".event == \"push\"");
-        workflow.ShouldContain(".conclusion == \"success\"");
+        string sourceProof = File.ReadAllText(Path.Combine(root, "scripts", "verify-release-source.sh"));
+        workflow.ShouldContain("bash scripts/verify-release-source.sh");
+        sourceProof.ShouldContain("refs/heads/main");
+        sourceProof.ShouldContain("refs/heads/release/parties-sdk-3.130.2");
+        sourceProof.ShouldContain("git/ref/heads/${source_branch}");
+        sourceProof.ShouldContain("source_ci_workflow=\"ci.yml\"");
+        sourceProof.ShouldContain("required_workflows=(ci.yml commitlint.yml integration.yml)");
+        sourceProof.ShouldContain("actions/workflows/${required_workflow}/runs");
+        sourceProof.ShouldContain(".head_sha == $sha");
+        sourceProof.ShouldContain(".head_branch == $branch");
+        sourceProof.ShouldContain(".event == \"push\"");
+        sourceProof.ShouldContain(".conclusion == \"success\"");
         ExtractYamlBlock(workflow, "  release:").ShouldContain("needs: verify-source");
         workflow.IndexOf("verify-source:", StringComparison.Ordinal).ShouldBeLessThan(
             workflow.IndexOf("  release:", StringComparison.Ordinal));
@@ -696,9 +697,7 @@ public sealed class ContainerPublishingGovernanceTests
 
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
-        string script = ExtractNamedWorkflowRunBlock(
-            workflow,
-            "Require current main with exact-source push proofs");
+        string script = File.ReadAllText(Path.Combine(root, "scripts", "verify-release-source.sh"));
         string dispatchSha = new('a', 40);
         string staleMainSha = new('b', 40);
 

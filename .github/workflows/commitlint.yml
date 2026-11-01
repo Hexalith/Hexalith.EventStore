@@ -3,10 +3,10 @@ name: Commitlint
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, release/parties-sdk-3.130.2]
     types: [opened, synchronize, reopened, edited]
   push:
-    branches: [main]
+    branches: [main, release/parties-sdk-3.130.2]
 
 concurrency:
   group: commitlint-${{ github.ref }}
