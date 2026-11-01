@@ -82,7 +82,7 @@ internal static class HistoricalMatrixMeasurementContract
         string executor = RequireText(capture, "executor", 40);
         string diffHash = RequireText(capture, "diffHash", 64);
         _ = RequireText(capture, "coordinatorHash", 64);
-        if (RequireText(capture, "builds", 40) != "d21e366bc5450ec636ab16a5177a1fea7bf8ee9b"
+        if (RequireText(capture, "builds", 40) != "a319176d3d3b27462583f18236ff85c8705a4998"
             || !capture.TryGetProperty("consumerInputOrigin", out JsonElement origin)
             || origin.GetString() is not { Length: > 0 } path || !Path.IsPathFullyQualified(path))
             throw new InvalidOperationException("The actual executor capture lost its selected Builds or input origin.");
