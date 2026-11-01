@@ -54,12 +54,15 @@ jobs:
       # tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Domain
       # tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Host
       # tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Probe
+      - name: Verify published runner exit propagation
+        run: python3 -m unittest discover -s tools/tests -p 'test_published_compatibility_workflow.py'
       - name: Build the isolated qualification runner
         run: |
           dotnet build tests/Hexalith.EventStore.PublishedCompatibility.Tests/Hexalith.EventStore.PublishedCompatibility.Tests.csproj \
             --configuration Release -m:1 -p:UseHexalithProjectReferences=false \
             -p:UseMicrosoftTestingPlatformRunner=true
       - name: Run isolated published qualification and ownership regressions
+        shell: bash
         run: |
           mkdir -p "$P1R_QUALIFICATION_OUTPUT_ROOT"
           dotnet tests/Hexalith.EventStore.PublishedCompatibility.Tests/bin/Release/net10.0/Hexalith.EventStore.PublishedCompatibility.Tests.dll \
