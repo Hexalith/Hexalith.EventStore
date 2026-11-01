@@ -7,9 +7,10 @@ namespace Hexalith.EventStore.Aspire;
 /// Cross-repo project metadata for the Hexalith.EventStore command-gateway service, resolved from the
 /// consuming repository's <c>Hexalith.EventStore</c> checkout via
 /// <see cref="RepositoryProjectPaths.GetReferencedModuleProjectPath"/>: the repository itself when its root holds
-/// <c>Hexalith.EventStore.slnx</c>, otherwise the direct submodule <c>references/Hexalith.EventStore</c>. Any other
-/// layout fails, naming the dependency and the expected path. <see cref="SuppressBuild"/> stays
-/// <see langword="true"/> so Aspire
+/// <c>Hexalith.EventStore.slnx</c>, otherwise the available direct submodule <c>references/Hexalith.EventStore</c>.
+/// When that project is absent, a consumer under a workspace's <c>references/</c> directory can use the sibling
+/// only if the workspace's <c>.gitmodules</c> declares both repository paths. Other layouts fail, naming the
+/// dependency and expected locations. <see cref="SuppressBuild"/> stays <see langword="true"/> so Aspire
 /// launches the server fast with <c>--no-build</c>; the consuming AppHost forces a fresh Debug compile via a
 /// build-only <c>&lt;ProjectReference&gt;</c> (so <c>aspire run</c> never serves a stale binary), while Release
 /// builds keep the per-repo package graphs isolated.
