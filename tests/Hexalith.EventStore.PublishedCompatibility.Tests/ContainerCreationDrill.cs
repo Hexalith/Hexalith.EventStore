@@ -15,13 +15,13 @@ internal static class ContainerCreationDrill
         string name = runtime.ReserveContainer("creation-lifecycle");
         string marker = Path.Combine(runtime.Root, "provider-created.json");
         using var cancellation = new CancellationTokenSource();
-        Task<CommandObservation> launch = runtime.RunAsync(new("python3", ["-c", LaunchScript, name, runtime.Id, PublishedCluster.RedisImage, marker],
-            runtime.Root, cancel ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(8)), cancellation.Token);
+        OwnedProcess launcher = runtime.Start(new("python3", ["-c", LaunchScript, name, runtime.Id, PublishedCluster.RedisImage, marker],
+            runtime.Root, cancel ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(8)));
         DateTimeOffset markerDeadline = DateTimeOffset.UtcNow.AddSeconds(6);
-        while (!File.Exists(marker) && !launch.IsCompleted && DateTimeOffset.UtcNow < markerDeadline)
+        while (!File.Exists(marker) && !launcher.Process.HasExited && DateTimeOffset.UtcNow < markerDeadline)
             await Task.Delay(25, TestContext.Current.CancellationToken);
         bool created = File.Exists(marker);
-        assertions.Check(created && !launch.IsCompleted, "provider-created-before-launcher-returned-result");
+        assertions.Check(created && !launcher.Process.HasExited, "provider-created-before-launcher-returned-result");
         if (created)
         {
             using JsonDocument proof = JsonDocument.Parse(await File.ReadAllTextAsync(marker));
@@ -39,10 +39,13 @@ internal static class ContainerCreationDrill
             }
             assertions.Check(owned, "actual-provider-container-id-and-label-before-interruption");
         }
-        if (cancel || !created) cancellation.Cancel();
+        if (!created) throw new InvalidOperationException("The bounded provider pre-observation did not complete before interruption.");
+        Task<CommandObservation> launch = runtime.CompleteStartedAsync(launcher, cancellation.Token);
+        if (cancel) cancellation.Cancel();
         bool interrupted = false;
         try { await launch; }
-        catch (TimeoutException) { interrupted = true; }
+        catch (TimeoutException) when (!cancel) { interrupted = true; }
+        catch (OperationCanceledException) when (cancel && cancellation.IsCancellationRequested) { interrupted = true; }
         assertions.Check(interrupted, "actual-container-creation-launcher-interrupted");
         await runtime.CleanupAsync();
         await runtime.CleanupAsync();

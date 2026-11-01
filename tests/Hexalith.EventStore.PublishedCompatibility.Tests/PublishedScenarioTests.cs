@@ -170,7 +170,8 @@ public sealed class PublishedScenarioTests
                         await drill.RunAsync(new("python3", ["-c", "import subprocess,time; subprocess.Popen(['sleep','120'],start_new_session=True); time.sleep(120)"],
                             drill.Root, cancel ? TimeSpan.FromSeconds(20) : TimeSpan.FromMilliseconds(200)), cancellation.Token);
                     }
-                    catch (TimeoutException) { interrupted = true; }
+                    catch (TimeoutException) when (!cancel) { interrupted = true; }
+                    catch (OperationCanceledException) when (cancel && cancellation.IsCancellationRequested) { interrupted = true; }
                     assertions.Check(interrupted, "real-interruption-observed");
                     await ContainerCreationDrill.ExecuteAsync(drill, cancel, assertions);
                     return assertions.Failures.Count == 0 ? "compatible" : "unverified";
@@ -178,8 +179,8 @@ public sealed class PublishedScenarioTests
                 finally
                 {
                     assertions.Record("cleanup-runtime", JsonSerializer.Serialize(new { owner = drill.Id, root = drill.Root }));
-                    await drill.DisposeAsync();
-                    runtime.ImportCompletedRuntime(drill);
+                    try { await drill.DisposeAsync(); }
+                    finally { runtime.ImportCompletedRuntime(drill); }
                 }
             });
         }
@@ -189,6 +190,8 @@ public sealed class PublishedScenarioTests
         DateTimeOffset cleanupStarted = DateTimeOffset.UtcNow;
         await runtime.CleanupAsync();
         await runtime.CleanupAsync();
+        try { await runtime.DisposeAsync(); }
+        catch (InvalidOperationException) when (runtime.CleanupFailures.Count != 0) { /* The existing cleanup assertion records the actual final refusal. */ }
         var cleanup = new MeasuredAssertions();
         cleanup.Check(runtime.CleanupFailures.Count == 0, "all-owned-resources-removed-shared-preserved");
         cleanup.Check(runtime.Commands.All(command => !command.OutputTruncated), "all-command-output-within-retained-bounds");
@@ -208,6 +211,12 @@ public sealed class PublishedScenarioTests
     /// <summary>Writes an honest nonqualifying summary when initial executor capture is unavailable.</summary>
     internal static async Task<string> WriteSummaryAsync(QualificationRuntime runtime, List<ScenarioObservation> observations, string? materializationFailure)
     {
+        try { await runtime.DisposeAsync(); }
+        catch (Exception error)
+        {
+            if (!observations.Any(observation => observation.Scenario == "failure-cleanup" && observation.Execution == "failed"))
+                observations.Add(new("failure-cleanup", "final-disposal", "failed", "unverified", 0, [], error.GetType().FullName));
+        }
         JsonElement? executorInputs = null;
         string? executor = null;
         string? executorDiffHash = null;
@@ -233,7 +242,7 @@ public sealed class PublishedScenarioTests
             unavailable = observations.Count(observation => observation.Execution == "unavailable"),
             incompatible = observations.Count(observation => observation.Compatibility == "incompatible"),
             qualified = executorInputs is not null && observations.All(observation => observation.Passing), p1rUsable = false, rollback = (string?)null,
-            owners = "pending", conformance = "pending", observations,
+            owners = "pending", conformance = "pending", disposed = runtime.Disposed, observations,
             executionCommands = runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray(),
             files = runtime.Files, cleanupPasses = runtime.CleanupPasses, httpExchanges = runtime.HttpExchanges, scenarioInputs = runtime.ScenarioInputs, stateReads = runtime.StateReads, processScans = runtime.ProcessScans, daprLaunches = runtime.DaprLaunches, managedLaunches = runtime.ManagedLaunches };
         string serialized = JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });

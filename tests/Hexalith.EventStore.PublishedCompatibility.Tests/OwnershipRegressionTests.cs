@@ -78,7 +78,7 @@ public sealed class OwnershipRegressionTests
         string name = string.Empty;
         string originalId = string.Empty;
         string replacementId = string.Empty;
-        await using var runtime = new QualificationRuntime(beforeContainerRemoval: async verifiedId =>
+        var runtime = new QualificationRuntime(beforeContainerRemoval: async verifiedId =>
         {
             originalId = verifiedId;
             await replacementOwner.RequireAsync("docker", ["rename", verifiedId, verifiedId + "-renamed"]);
@@ -101,6 +101,7 @@ public sealed class OwnershipRegressionTests
         }
         finally
         {
+            await Should.ThrowAsync<InvalidOperationException>(() => runtime.DisposeAsync().AsTask());
             if (!string.IsNullOrEmpty(originalId))
             {
                 CommandObservation original = await replacementOwner.RunAsync(new("docker", ["inspect", originalId], replacementOwner.Root, TimeSpan.FromSeconds(10)));
@@ -351,8 +352,11 @@ public sealed class OwnershipRegressionTests
         await using var runtime = new QualificationRuntime();
         using var cancel = new CancellationTokenSource();
         if (cancellation) cancel.CancelAfter(TimeSpan.FromMilliseconds(200));
-        await Should.ThrowAsync<TimeoutException>(() => runtime.RunAsync(new("python3", ["-c", "import subprocess,time; subprocess.Popen(['sleep','120'],start_new_session=True); time.sleep(120)"],
-            runtime.Root, cancellation ? TimeSpan.FromSeconds(20) : TimeSpan.FromMilliseconds(200)), cancel.Token));
+        Func<Task> interrupted = () => runtime.RunAsync(new("python3", ["-c", "import subprocess,time; subprocess.Popen(['sleep','120'],start_new_session=True); time.sleep(120)"],
+            runtime.Root, cancellation ? TimeSpan.FromSeconds(20) : TimeSpan.FromMilliseconds(200)), cancel.Token);
+        if (cancellation) await Should.ThrowAsync<OperationCanceledException>(interrupted);
+        else await Should.ThrowAsync<TimeoutException>(interrupted);
+        runtime.Commands.Single().Interruption.ShouldBe(cancellation ? "cancelled" : "timeout");
         await runtime.CleanupAsync();
         await runtime.CleanupAsync();
         runtime.Commands.ShouldHaveSingleItem().ExitCode.ShouldBe(-1);
@@ -397,7 +401,7 @@ public sealed class OwnershipRegressionTests
         await using var sentinelOwner = new QualificationRuntime();
         string sentinel = sentinelOwner.ReserveContainer("sentinel");
         await sentinelOwner.RequireAsync("docker", ["run", "-d", "--name", sentinel, "--label", "p1r.owner=" + sentinelOwner.Id, PublishedCluster.RedisImage]);
-        await using var runtime = new QualificationRuntime();
+        var runtime = new QualificationRuntime();
         await runtime.CaptureSharedContainersAsync();
         string owned = runtime.ReserveContainer("cleanup-after-preservation-failure");
         await runtime.RequireAsync("docker", ["create", "--name", owned, "--label", "p1r.owner=" + runtime.Id, PublishedCluster.RedisImage]);
@@ -406,6 +410,7 @@ public sealed class OwnershipRegressionTests
         runtime.CleanupFailures.ShouldContain(failure => failure.Contains("Shared container identity/state changed", StringComparison.Ordinal));
         CommandObservation inspect = await runtime.RunAsync(new("docker", ["inspect", owned], runtime.Root, TimeSpan.FromSeconds(10)));
         inspect.StandardError.ToLowerInvariant().ShouldContain("no such object:");
+        await Should.ThrowAsync<InvalidOperationException>(() => runtime.DisposeAsync().AsTask());
     }
 
     /// <summary>Malformed, missing and duplicated process results cannot become measured assertions.</summary>

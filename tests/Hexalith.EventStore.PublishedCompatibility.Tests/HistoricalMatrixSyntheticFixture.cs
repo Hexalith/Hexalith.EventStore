@@ -61,6 +61,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
         Summary["executor"] = Capture["executor"]!.DeepClone(); Summary["executorDiffHash"] = Capture["diffHash"]!.DeepClone();
         Summary["executorInputs"] = Capture.DeepClone();
         Summary["qualified"] = false; Summary["p1rUsable"] = false; Summary["rollback"] = null;
+        Summary["disposed"] = true;
         Summary["owners"] = "pending"; Summary["conformance"] = "pending";
         Summary["assertions"] = Observations.Sum(row => row.Assertions);
         Summary["passed"] = Observations.Count(row => row.Execution == "passed");
@@ -109,13 +110,17 @@ internal sealed class HistoricalMatrixSyntheticFixture
                 redisContainer = backend,
                 componentHash = Hash("component"), daprdHash = Hash("daprd"), host, domain,
                 hostAddress = "http://127.0.0.1:" + (31000 + i * 2), domainAddress = "http://127.0.0.1:" + (31001 + i * 2),
+                domainSidecarProcessId = host.Version == ConsumerMaterializer.SelectedVersion ? (int?)(40000 + i) : null,
+                domainSidecarAddress = host.Version == ConsumerMaterializer.SelectedVersion ? "http://127.0.0.1:" + (34000 + i) : null,
                 sidecarProcessId = 30000 + i, hostProcessId = 10000 + i, domainProcessId = 20000 + i,
             });
             string profileId = Hash(scenario + "|" + name + "|" + i)[..32];
             const string inputRoot = "/synthetic/contract-fixture/p1r-11111111111111111111111111111111";
             ScenarioInputs.Add(new(profileId, "p1r-11111111111111111111111111111111", inputRoot, "daprd", inputRoot + "/dapr-1.18.4/daprd", 100, Hash("daprd"), began.AddTicks(-1)));
             ScenarioInputs.Add(new(profileId, "p1r-11111111111111111111111111111111", inputRoot, "component", inputRoot + "/components/state.yaml", 100, Hash("component"), profileAt.AddTicks(-1), new(endpoint, "statestore", "state.redis", "v1", true, "appid")));
-            DaprLaunches.Add(new(profileId, "p1r-11111111111111111111111111111111", inputRoot + "/dapr-1.18.4/daprd", inputRoot + "/components", "p1r-11111111111111111111111111111111", 31000 + i * 2, 33000 + i, 30000 + i, profileAt));
+            DaprLaunches.Add(new(profileId, "p1r-11111111111111111111111111111111", inputRoot + "/dapr-1.18.4/daprd", inputRoot + "/components", "p1r-11111111111111111111111111111111", 31000 + i * 2, 33000 + i, 30000 + i, profileAt, "Host", began, began.AddSeconds(scenario == "natural-reminder" ? 100 : 30)));
+            if (host.Version == ConsumerMaterializer.SelectedVersion)
+                DaprLaunches.Add(new(profileId, "p1r-11111111111111111111111111111111", inputRoot + "/dapr-1.18.4/daprd", inputRoot + "/components", "p1r-11111111111111111111111111111111-domain", 31001 + i * 2, 34000 + i, 40000 + i, profileAt, "Domain", began, began.AddSeconds(scenario == "natural-reminder" ? 100 : 30)));
             ManagedLaunches.Add(new(Hash(profileId + "|Host")[..32], "p1r-11111111111111111111111111111111", inputRoot, "Host", host.Assembly, host.PreparedExecutableHashes!.ToDictionary(pair => pair.Key, pair => pair.Value), 10000 + i, profileId, "http://127.0.0.1:" + (31000 + i * 2), began, began.AddSeconds(scenario == "natural-reminder" ? 100 : 30)));
             ManagedLaunches.Add(new(Hash(profileId + "|Domain")[..32], "p1r-11111111111111111111111111111111", inputRoot, "Domain", domain.Assembly, domain.PreparedExecutableHashes!.ToDictionary(pair => pair.Key, pair => pair.Value), 20000 + i, profileId, "http://127.0.0.1:" + (31001 + i * 2), began, began.AddSeconds(scenario == "natural-reminder" ? 100 : 30)));
             records[Ordinal("loaded-Host", i)] = Identities(host);
@@ -326,7 +331,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
         }
         Observations.Add(new(scenario, name, row.GetProperty("Execution").GetString()!, row.GetProperty("Compatibility").GetString()!,
             row.GetProperty("Assertions").GetInt32(), row.GetProperty("Failures").EnumerateArray().Select(value => value.GetString()!).ToArray(),
-            error, records, began, began.AddSeconds(scenario == "natural-reminder" ? 100 : 30)));
+            error, records, began, name == "matrix-cleanup-twice" ? CleanupPasses.Max(pass => pass.Ended).AddSeconds(1) : began.AddSeconds(scenario == "natural-reminder" ? 100 : 30)));
     }
 
     private static void FixtureInput(Dictionary<string, string> records, string name, DateTimeOffset began)
@@ -386,12 +391,13 @@ internal sealed class HistoricalMatrixSyntheticFixture
         object[] observed = [new { Id = id, Name = "/" + container, Image = imageId,
             Config = new { Image = PublishedCluster.RedisImage, Labels = new Dictionary<string, string> { ["p1r.owner"] = owner } }, State = new { Running = false } }];
         string output = JsonSerializer.Serialize(observed);
-        void Add(string executable, string[] args, double start, double end, int exit, string stdout = "", string stderr = "", TimeSpan? timeout = null)
+        void Add(string executable, string[] args, double start, double end, int exit, string stdout = "", string stderr = "", TimeSpan? timeout = null, string? interruption = null, double? deadline = null)
             => Commands.Add(new(new(executable, args, root, timeout ?? TimeSpan.FromSeconds(15)), began.AddSeconds(start), began.AddSeconds(end), exit,
-                stdout, stderr, Hash(stdout + stderr)));
+                stdout, stderr, Hash(stdout + stderr), DeadlineStarted: deadline is null ? null : began.AddSeconds(deadline.Value), Interruption: interruption));
         Add("python3", ["-c", ContainerCreationDrill.LaunchScript, container, owner, PublishedCluster.RedisImage, root + "/provider-created.json"],
-            1, 10, -1, stderr: "Command input/execution was interrupted or exceeded its deadline.",
-            timeout: TimeSpan.FromSeconds(name.StartsWith("cancellation", StringComparison.Ordinal) ? 30 : 8));
+            1, 12, -1, stderr: "Command input/execution was interrupted or exceeded its deadline.",
+            timeout: TimeSpan.FromSeconds(name.StartsWith("cancellation", StringComparison.Ordinal) ? 30 : 8),
+            interruption: name.StartsWith("cancellation", StringComparison.Ordinal) ? "cancelled" : "timeout", deadline: 4);
         string[] inspect = ["inspect", "--format", QualificationRuntime.ContainerIdentityFormat, container];
         Add("docker", inspect, 2, 3, 0, output);
         Add("docker", ["image", "inspect", "--format", QualificationImageIdentity.Format, PublishedCluster.RedisImage], 3.1, 3.2, 0, image);
@@ -409,7 +415,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
         Inventory(0.1);
         for (int pass = 0; pass < 3; pass++)
         {
-            double at = 10.1 + pass * 5;
+            double at = 12.1 + pass * 5;
             if (pass == 0)
             {
                 Add("docker", inspect, at + 0.1, at + 0.2, 0, output);
@@ -420,7 +426,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
             string scanId = Hash(name + "|cleanup|" + pass)[..32];
             ProcessScans.Add(new(scanId, owner, began.AddSeconds(at + 0.7), began.AddSeconds(at + 0.8), []));
             CleanupPasses.Add(new(owner, root, began.AddSeconds(at), began.AddSeconds(at + 2), began.AddSeconds(0.1), began.AddSeconds(0.5),
-                normalized, normalized, [container], [], 0, 0, scanId));
+                normalized, normalized, [container], [], 0, 0, scanId, pass == 2));
         }
         return observed;
     }
@@ -500,7 +506,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
     private static void HttpSequence(Dictionary<string, string> records, string name, DateTimeOffset began)
     {
         bool cursor = name.EndsWith("-durably-applied-watermark-cursor", StringComparison.Ordinal);
-        string aggregate = "synthetic", token = "synthetic-cursor";
+        string aggregate = "synthetic", token = "[redacted]";
         var operations = new List<(string Path, object Request, object Response)>();
         void Project(long position, long sequence) => operations.Add(("project-model/" + aggregate,
             new { position, sequence }, new { watermark = position, sequence, count = position == 987 ? 1 : 2 }));
@@ -597,7 +603,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
         volumes = Commands.Where(command => command.Command.FileName == "docker" && command.Command.WorkingDirectory == root && command.Command.Arguments.Take(2).SequenceEqual(new[] { "volume", "create" }))
             .Select(command => command.Command.Arguments[^1]).Distinct(StringComparer.Ordinal).ToArray();
         double cleanupSpan = (containers.Length + volumes.Length) * 0.6 + 2;
-        for (int pass = 0; pass < 2; pass++)
+        for (int pass = 0; pass < 3; pass++)
         {
             DateTimeOffset start = began.AddSeconds(pass * (cleanupSpan + 1)); int resource = 0;
             foreach (string name in containers)
@@ -629,7 +635,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
             Inventory(start.AddSeconds(cleanupSpan - 1));
             string scanId = Hash(owner + "|" + start.ToString("O"))[..32];
             ProcessScans.Add(new(scanId, owner, start.AddSeconds(cleanupSpan - 1.5), start.AddSeconds(cleanupSpan - 1.4), []));
-            CleanupPasses.Add(new(owner, root, start, start.AddSeconds(cleanupSpan), baseline, baseline.AddSeconds(1), normalized, normalized, containers, volumes, 0, 0, scanId));
+            CleanupPasses.Add(new(owner, root, start, start.AddSeconds(cleanupSpan), baseline, baseline.AddSeconds(1), normalized, normalized, containers, volumes, 0, 0, scanId, pass == 2));
         }
     }
 

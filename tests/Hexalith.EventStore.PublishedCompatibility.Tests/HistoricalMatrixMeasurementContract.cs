@@ -20,6 +20,8 @@ internal static class HistoricalMatrixMeasurementContract
         IReadOnlyList<QualificationProcessScan>? processScans = null, IReadOnlyList<QualificationDaprLaunch>? daprLaunches = null,
         IReadOnlyList<QualificationManagedLaunch>? managedLaunches = null)
     {
+        if (!summary.TryGetProperty("disposed", out var disposed) || disposed.ValueKind != JsonValueKind.True)
+            throw new InvalidOperationException("The uploaded summary requires the actual final owned disposal outcome.");
         if (observations.Count != _cases.Count || observations.Select(item => (item.Scenario, item.Case)).Distinct().Count() != _cases.Count)
             throw new InvalidOperationException("Historical characterization requires every distinct original case.");
         foreach (var command in commands)

@@ -33,7 +33,18 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         }
     }
     private readonly List<QualificationDaprLaunch> _daprLaunches = [];
-    internal IReadOnlyList<QualificationDaprLaunch> DaprLaunches { get { lock (_gate) return _daprLaunches.ToArray(); } }
+    internal IReadOnlyList<QualificationDaprLaunch> DaprLaunches
+    {
+        get
+        {
+            lock (_gate) return _daprLaunches.Select(launch =>
+            {
+                var owned = launch.Owner == Id ? _processes.SingleOrDefault(process => process.Process.Id == launch.Pid && process.Started == launch.Started) : null;
+                return owned is null ? launch : launch with { Started = owned.Started,
+                    Ended = owned.Process.HasExited ? new DateTimeOffset(owned.Process.ExitTime.ToUniversalTime()) : null };
+            }).ToArray();
+        }
+    }
     internal void RecordDaprLaunch(QualificationDaprLaunch launch) { lock (_gate) _daprLaunches.Add(launch); }
     private readonly List<QualificationStateRead> _stateReads = [];
     private readonly List<QualificationProcessScan> _processScans = [];
@@ -60,6 +71,10 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     private DateTimeOffset? _sharedEnded;
     private bool _cleaning;
     private bool _stopping;
+    private readonly SemaphoreSlim _cleanupGate = new(1, 1);
+    private Task? _disposal;
+    /// <summary>Gets whether the actual final disposal completed, including an observed failure.</summary>
+    internal bool Disposed => _disposal?.IsCompleted == true;
 
     /// <summary>Gets the invocation's unique ownership marker.</summary>
     internal string Id { get; } = "p1r-" + Guid.NewGuid().ToString("N");
@@ -87,7 +102,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(child);
         if (ReferenceEquals(child, this) || Path.GetDirectoryName(child.Root) != Path.GetDirectoryName(Root)
-            || !child._stopping || child._cleaning || child._sharedContainers is null || child.MarkedProcesses().Count != 0)
+            || !child.Disposed || child._cleaning || child._sharedContainers is null || child.MarkedProcesses().Count != 0)
             throw new InvalidOperationException("Only an independently stopped and observed child runtime may supply its actual ledger.");
         lock (_gate)
         {
@@ -97,6 +112,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
             _httpExchanges.AddRange(child.HttpExchanges);
             _importedManagedLaunches.AddRange(child.ManagedLaunches); _daprLaunches.AddRange(child.DaprLaunches); _scenarioInputs.AddRange(child.ScenarioInputs); _stateReads.AddRange(child.StateReads); _processScans.AddRange(child.ProcessScans);
             _cleanupPasses.AddRange(child.CleanupPasses);
+            _cleanupFailures.AddRange(child.CleanupFailures.Select(failure => "Child cleanup: " + failure));
         }
         if (child.CleanupFailures.Count != 0)
             throw new InvalidOperationException("The completed child runtime has actual cleanup failures; its preserved ledger is not passing evidence.");
@@ -200,11 +216,23 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         if (Path.GetFileName(command.FileName) == "docker" && command.Arguments.FirstOrDefault() == "inspect"
             && !command.Arguments.Contains("--format", StringComparer.Ordinal) && !command.Arguments.Contains("-f", StringComparer.Ordinal))
             command = command with { Arguments = ["inspect", "--format", ContainerIdentityFormat, .. command.Arguments.Skip(1)] };
-        DateTimeOffset began = DateTimeOffset.UtcNow;
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,
-            _cleaning ? CancellationToken.None : TestContext.Current.CancellationToken);
-        deadline.CancelAfter(command.Timeout);
-        OwnedProcess owned = Start(command, consumer);
+        DateTimeOffset deadlineStarted = DateTimeOffset.UtcNow;
+        return await CompleteStartedAsync(Start(command, consumer), cancellationToken, deadlineStarted);
+    }
+
+    /// <summary>Completes an already owned command under its unchanged deadline, after bounded pre-interruption observation.</summary>
+    internal async Task<CommandObservation> CompleteStartedAsync(OwnedProcess owned, CancellationToken cancellationToken = default, DateTimeOffset? executionStarted = null)
+    {
+        lock (_gate)
+            if (!_processes.Contains(owned)) throw new InvalidOperationException("Only an actual owned process can begin its execution deadline.");
+        QualificationCommand command = owned.Command;
+        DateTimeOffset began = owned.Started;
+        DateTimeOffset deadlineStarted = executionStarted ?? DateTimeOffset.UtcNow;
+        CancellationToken testToken = _cleaning ? CancellationToken.None : TestContext.Current.CancellationToken;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, testToken);
+        TimeSpan remaining = command.Timeout - (DateTimeOffset.UtcNow - deadlineStarted);
+        if (remaining <= TimeSpan.Zero) deadline.Cancel();
+        else deadline.CancelAfter(remaining);
         try
         {
             if (command.Input is not null)
@@ -221,13 +249,15 @@ internal sealed class QualificationRuntime : IAsyncDisposable
             }
             await owned.Process.WaitForExitAsync(deadline.Token);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException cancelledError)
         {
+            bool cancelled = cancellationToken.IsCancellationRequested || testToken.IsCancellationRequested;
             await StopAsync(owned);
             await StopMarkedAsync(owned.Marker);
             try { await Task.WhenAll(owned.Output, owned.Error).WaitAsync(TimeSpan.FromSeconds(10)); }
             catch (Exception) { /* The failed observation below still binds any completed output. */ }
-            await RecordFailedAsync(command, owned, began, "Command input/execution was interrupted or exceeded its deadline.");
+            await RecordFailedAsync(command, owned, began, "Command input/execution was interrupted or exceeded its deadline.", deadlineStarted, cancelled ? "cancelled" : "timeout");
+            if (cancelled) throw new OperationCanceledException("Owned command cancelled after cleanup.", cancelledError, cancellationToken.IsCancellationRequested ? cancellationToken : testToken);
             throw new TimeoutException($"Command interrupted or exceeded {command.Timeout}: {command.FileName} {string.Join(' ', command.Arguments)}");
         }
         catch (IOException)
@@ -255,17 +285,17 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         string output = Redact(command, await owned.Output);
         string error = Redact(command, await owned.Error);
         var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, owned.Process.ExitCode,
-            output, error, Hash(Encoding.UTF8.GetBytes(output + error)));
+            output, error, Hash(Encoding.UTF8.GetBytes(output + error)), DeadlineStarted: deadlineStarted);
         if (owned.TryRecord()) await SaveObservationAsync(observation);
         return observation;
     }
 
-    private async Task RecordFailedAsync(QualificationCommand command, OwnedProcess owned, DateTimeOffset began, string failure)
+    private async Task RecordFailedAsync(QualificationCommand command, OwnedProcess owned, DateTimeOffset began, string failure, DateTimeOffset? deadlineStarted = null, string? interruption = null)
     {
         if (!owned.TryRecord()) return;
         string output = Redact(command, owned.StandardOutput.Snapshot());
         string error = Redact(command, owned.StandardError.Snapshot()) + "\n" + failure;
-        var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, -1, output, error, Hash(Encoding.UTF8.GetBytes(output + error)), owned.Overflowed);
+        var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, -1, output, error, Hash(Encoding.UTF8.GetBytes(output + error)), owned.Overflowed, deadlineStarted, interruption);
         await SaveObservationAsync(observation);
     }
 
@@ -344,8 +374,14 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     }
 
     /// <summary>Continues all cleanup attempts, verifies absence, and preserves shared identities on every pass.</summary>
-    internal async Task CleanupAsync()
+    internal Task CleanupAsync()
     {
+        lock (_gate) return _disposal ?? CleanupCoreAsync(final: false);
+    }
+
+    private async Task CleanupCoreAsync(bool final)
+    {
+        await _cleanupGate.WaitAsync();
         DateTimeOffset passStarted = DateTimeOffset.UtcNow;
         string? afterInventory = null;
         lock (_gate)
@@ -464,16 +500,26 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         await File.WriteAllTextAsync(Path.Combine(Root, "cleanup.json"), JsonSerializer.Serialize(_cleanupFailures));
         var pass = new QualificationCleanupPass(Id, Root, passStarted, DateTimeOffset.UtcNow, _sharedStarted, _sharedEnded,
             _sharedContainers, afterInventory, _containerNames.Order(StringComparer.Ordinal).ToArray(), _volumeNames.Order(StringComparer.Ordinal).ToArray(),
-            _cleanupFailures.Count, remainingProcesses, processScan.Id);
+            _cleanupFailures.Count, remainingProcesses, processScan.Id, final);
         int number;
         lock (_gate) { _cleanupPasses.Add(pass); number = _cleanupPasses.Count; }
         await File.WriteAllTextAsync(Path.Combine(Root, $"cleanup-pass-{number:D6}.json"), JsonSerializer.Serialize(pass));
         }
-        finally { _cleaning = false; }
+        finally { _cleaning = false; _cleanupGate.Release(); }
     }
 
     /// <inheritdoc/>
-    public async ValueTask DisposeAsync() => await CleanupAsync();
+    public ValueTask DisposeAsync()
+    {
+        lock (_gate) return new(_disposal ??= DisposeCoreAsync());
+    }
+
+    private async Task DisposeCoreAsync()
+    {
+        await CleanupCoreAsync(final: true);
+        if (_cleanupFailures.Count != 0)
+            throw new InvalidOperationException("Final owned disposal failed; preserved cleanup evidence is nonpassing.");
+    }
 
     private async Task SaveObservationAsync(CommandObservation observation)
     {

@@ -21,7 +21,8 @@ public sealed class QualificationFixtureTransportTests
         using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         typeof(PublishedCluster).GetField("_hostPort", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(cluster, ((IPEndPoint)listener.LocalEndpoint).Port);
-        const string actor = "tenant-a:counter:owned", secret = "actual-fixture-private-value-not-retained";
+        const string actor = "tenant-a:counter:owned";
+        string secret = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
         object operations = new[] { new { operation = "upsert", key = actor + ":metadata", value = new
         {
             retainedFloor = 14, metadataVersion = 987, serializationFormat = "protected+json", eventTypeName = "Unknown.Event",

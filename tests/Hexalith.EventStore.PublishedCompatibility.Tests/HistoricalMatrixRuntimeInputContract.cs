@@ -49,11 +49,34 @@ internal static class HistoricalMatrixRuntimeInputContract
                     throw new InvalidOperationException("The prepared daprd input has no actual pinned version execution.");
             }
             var actual = launches.Where(launch => launch.Profile == id).ToArray();
-            if (actual.Length != 1 || actual[0].Owner != owner || actual[0].Pid <= 0 || actual[0].Pid != profile.GetProperty("sidecarProcessId").GetInt32()
-                || actual[0].Executable != Text(profile, "daprdPath") || actual[0].Components != Path.Combine(root, "components")
-                || actual[0].AppId != Text(profile, "appId") || actual[0].HostPort != new Uri(Text(profile, "hostAddress")).Port
-                || Text(profile, "sidecarAddress") != "http://127.0.0.1:" + actual[0].SidecarPort || actual[0].Observed > at)
-                throw new InvalidOperationException("The prepared runtime input differs from its actual primary sidecar launch.");
+            bool selected = Text(profile.GetProperty("host"), "Version") == ConsumerMaterializer.SelectedVersion;
+            string[] roles = selected ? ["Host", "Domain"] : ["Host"];
+            if (actual.Length != roles.Length || actual.Select(launch => launch.Pid).Distinct().Count() != actual.Length)
+                throw new InvalidOperationException("The runtime requires every actual primary and selected Domain sidecar.");
+            foreach (string role in roles)
+            {
+                var matches = actual.Where(launch => launch.Role == role).ToArray();
+                string prefix = role == "Host" ? "sidecar" : "domainSidecar";
+                string address = role == "Host" ? "hostAddress" : "domainAddress";
+                if (matches.Length != 1) throw new InvalidOperationException("An actual sidecar role is missing or duplicated.");
+                var launch = matches[0];
+                if (launch.Owner != owner || launch.Pid <= 0 || launch.Pid != profile.GetProperty(prefix + "ProcessId").GetInt32()
+                    || launch.Executable != Text(profile, "daprdPath") || launch.Components != Path.Combine(root, "components")
+                    || launch.AppId != Text(profile, "appId") + (role == "Domain" ? "-domain" : "")
+                    || launch.HostPort != new Uri(Text(profile, address)).Port
+                    || Text(profile, prefix + "Address") != "http://127.0.0.1:" + launch.SidecarPort
+                    || launch.Started > launch.Observed || launch.Observed > at || launch.Ended is null || launch.Ended < at)
+                    throw new InvalidOperationException("The prepared runtime input differs from its actual " + (role == "Host" ? "primary" : "Domain") + " sidecar launch/lifetime.");
+                var addresses = new[] { Text(profile, "hostAddress"), Text(profile, "domainAddress"), Text(profile, "sidecarAddress") };
+                foreach (var record in records.Where(pair => pair.Key.Split('#')[0] is "http-post" or "fixture-http-post" or "http-get-observation"))
+                {
+                    var operation = JsonSerializer.Deserialize<JsonElement>(record.Value);
+                    DateTimeOffset began = operation.GetProperty("began").GetDateTimeOffset(), ended = operation.GetProperty("ended").GetDateTimeOffset();
+                    if (began >= at && addresses.Any(endpoint => Text(operation, "address").StartsWith(endpoint + "/", StringComparison.Ordinal))
+                        && (began < launch.Started || ended > launch.Ended))
+                        throw new InvalidOperationException("An actual runtime operation exceeds its owning sidecar lifetime.");
+                }
+            }
         }
         var used = new HashSet<string>(StringComparer.Ordinal);
         foreach (var record in records.Where(pair => pair.Key.StartsWith("inventory:", StringComparison.Ordinal)))

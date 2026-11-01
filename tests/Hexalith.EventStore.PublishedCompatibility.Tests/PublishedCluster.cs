@@ -931,7 +931,23 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             "--placement-host-address", "127.0.0.1:" + _placementPort, "--scheduler-host-address", "127.0.0.1:" + _schedulerPort, "--resources-path", components,
             "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1), sidecarEnvironment));
         _writers.Add(actualSidecar);
-        runtime.RecordDaprLaunch(new(_profileId, runtime.Id, daprdInput.Path, components, _appId, _hostPort, _sidecarPort, actualSidecar.Process.Id, DateTimeOffset.UtcNow));
+        runtime.RecordDaprLaunch(new(_profileId, runtime.Id, daprdInput.Path, components, _appId, _hostPort, _sidecarPort, actualSidecar.Process.Id, DateTimeOffset.UtcNow, "Host", actualSidecar.Started, null));
+        await WaitHttpAsync("http://127.0.0.1:" + _sidecarPort + "/v1.0/healthz");
+        OwnedProcess? domainSidecar = null;
+        int? domainSidecarPort = null;
+        if (host.Version == ConsumerMaterializer.SelectedVersion)
+        {
+            domainSidecarPort = Port();
+            domainSidecar = runtime.Start(new(Path.Combine(_binaries, "daprd"), ["--app-id", _appId + "-domain", "--app-port", domainPort.ToString(),
+                "--app-channel-address", "127.0.0.1", "--dapr-http-port", domainSidecarPort.Value.ToString(), "--dapr-grpc-port", Port().ToString(),
+                "--dapr-internal-grpc-port", Port().ToString(), "--metrics-port", Port().ToString(), "--profile-port", Port().ToString(),
+                "--placement-host-address", "127.0.0.1:" + _placementPort, "--scheduler-host-address", "127.0.0.1:" + _schedulerPort,
+                "--resources-path", components,
+                "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1)));
+            _writers.Add(domainSidecar);
+            runtime.RecordDaprLaunch(new(_profileId, runtime.Id, daprdInput.Path, components, _appId + "-domain", domainPort, domainSidecarPort.Value, domainSidecar.Process.Id, DateTimeOffset.UtcNow, "Domain", domainSidecar.Started, null));
+            await WaitHttpAsync("http://127.0.0.1:" + domainSidecarPort + "/v1.0/healthz");
+        }
         PublishedScenarioTests.ActiveAssertions?.Record("runtime-profile", JsonSerializer.Serialize(new
         {
             profileId = _profileId, owner = runtime.Id, root = runtime.Root, observedAt = DateTimeOffset.UtcNow,
@@ -940,20 +956,9 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             daprdPath = daprdInput.Path, componentPath = componentInput.Path,
             hostAddress = "http://127.0.0.1:" + _hostPort, domainAddress = "http://127.0.0.1:" + domainPort,
             sidecarProcessId = actualSidecar.Process.Id, hostProcessId = actualHost.Process.Id, domainProcessId = domainProcess.Process.Id,
+            domainSidecarProcessId = domainSidecar?.Process.Id, domainSidecarAddress = domainSidecarPort is null ? null : "http://127.0.0.1:" + domainSidecarPort,
             componentHash = componentInput.Sha256, daprdHash = daprdInput.Sha256, host, domain,
         }));
-        await WaitHttpAsync("http://127.0.0.1:" + _sidecarPort + "/v1.0/healthz");
-        if (host.Version == ConsumerMaterializer.SelectedVersion)
-        {
-            int domainSidecarPort = Port();
-            _writers.Add(runtime.Start(new(Path.Combine(_binaries, "daprd"), ["--app-id", _appId + "-domain", "--app-port", domainPort.ToString(),
-                "--app-channel-address", "127.0.0.1", "--dapr-http-port", domainSidecarPort.ToString(), "--dapr-grpc-port", Port().ToString(),
-                "--dapr-internal-grpc-port", Port().ToString(), "--metrics-port", Port().ToString(), "--profile-port", Port().ToString(),
-                "--placement-host-address", "127.0.0.1:" + _placementPort, "--scheduler-host-address", "127.0.0.1:" + _schedulerPort,
-                "--resources-path", components,
-                "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1))));
-            await WaitHttpAsync("http://127.0.0.1:" + domainSidecarPort + "/v1.0/healthz");
-        }
         await Task.Delay(TimeSpan.FromSeconds(1), OperationCancellation);
     }
 

@@ -9,14 +9,14 @@ internal static class HistoricalMatrixCleanupSequenceContract
         IReadOnlyList<HistoricalExecutionCommand> commands, IReadOnlyList<QualificationCleanupPass> passes, IReadOnlyList<QualificationProcessScan> processScans)
     {
         if (observation.Scenario != "failure-cleanup") return;
-        int expectedPasses = observation.Case == "matrix-cleanup-twice" ? 2 : 3;
+        const int expectedPasses = 3;
         if (!records.TryGetValue("cleanup-runtime", out string? raw))
             throw new InvalidOperationException("The repeated cleanup case requires its actual runtime identity.");
         var runtime = JsonSerializer.Deserialize<JsonElement>(raw); string owner = Text(runtime, "owner"), root = Text(runtime, "root");
         if (!owner.StartsWith("p1r-", StringComparison.Ordinal) || !Path.IsPathFullyQualified(root) || Path.GetFullPath(root) != root || Path.GetFileName(root) != owner)
             throw new InvalidOperationException("The repeated cleanup lost its exact owned command root.");
         var actual = passes.Where(pass => pass.Owner == owner && pass.Started >= observation.Started && pass.Ended <= observation.Ended).ToArray();
-        if (actual.Length != expectedPasses || actual.Zip(actual.Skip(1)).Any(pair => pair.First.Ended > pair.Second.Started) || actual.Any(pass => pass.Root != root || pass.Failures != 0 || pass.RemainingProcesses != 0
+        if (actual.Length != expectedPasses || !actual[^1].Final || actual.Take(actual.Length - 1).Any(pass => pass.Final) || actual.Zip(actual.Skip(1)).Any(pair => pair.First.Ended > pair.Second.Started) || actual.Any(pass => pass.Root != root || pass.Failures != 0 || pass.RemainingProcesses != 0
             || pass.Ended < pass.Started || pass.BaselineStarted is null || pass.BaselineEnded is null || pass.Baseline is null || pass.After is null)
             || actual.Any(pass => pass.BaselineStarted != actual[0].BaselineStarted || pass.BaselineEnded != actual[0].BaselineEnded
                 || pass.Baseline != actual[0].Baseline || !pass.ContainerNames.SequenceEqual(actual[0].ContainerNames)
@@ -84,7 +84,7 @@ internal static class HistoricalMatrixCleanupSequenceContract
             var observed = JsonSerializer.Deserialize<JsonElement>(Text(inspections[0], "StandardOutput"));
             if (observed.GetArrayLength() != 1 || Text(observed[0], "Id") != id) throw new InvalidOperationException("The shared inspection changed its actual immutable container.");
             var item = observed[0]; var labels = item.GetProperty("Config").GetProperty("Labels");
-            if (labels.TryGetProperty("p1r.owner", out var label) && label.GetString() == owner) continue;
+            if (labels.ValueKind == JsonValueKind.Object && labels.TryGetProperty("p1r.owner", out var label) && label.GetString() == owner) continue;
             inventory.Add($"{id}|{Text(item, "Image")}|{Text(item.GetProperty("State"), "StartedAt")}|{item.GetProperty("State").GetProperty("Running").GetBoolean()}");
         }
         return string.Join('\n', inventory.Order(StringComparer.Ordinal));

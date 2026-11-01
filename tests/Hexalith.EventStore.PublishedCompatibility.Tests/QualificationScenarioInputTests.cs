@@ -12,7 +12,7 @@ public sealed class QualificationScenarioInputTests
     {
         await using var runtime = new QualificationRuntime();
         string path = Path.Combine(runtime.Root, "component.yaml");
-        const string secret = "synthetic-private-backend-secret-never-retained";
+        string secret = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
         byte[] bytes = System.Text.Encoding.UTF8.GetBytes("redisPassword: " + secret);
         await File.WriteAllBytesAsync(path, bytes, TestContext.Current.CancellationToken);
         var captured = await runtime.CaptureScenarioInputAsync(Guid.NewGuid().ToString("N"), "opaque", path);

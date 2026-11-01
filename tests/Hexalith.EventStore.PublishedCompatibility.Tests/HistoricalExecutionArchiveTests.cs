@@ -14,12 +14,12 @@ public sealed class HistoricalExecutionArchiveTests
     public async Task ActualConsumedInputRetainsOnlySafeCoordinatesInSummaryAsync(string operation)
     {
         await using var runtime = new QualificationRuntime();
-        const string secret = "private-stdin-environment-and-cursor-never-retain";
+        string secret = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
         object body = operation switch
         {
-            "metadata" => new { operation, value = JsonSerializer.Serialize(new { currentSequence = 12, retainedFloor = 14, eTag = secret, lastModified = DateTimeOffset.UnixEpoch }), credential = secret },
+            "metadata" => new { operation, value = JsonSerializer.Serialize(new { currentSequence = 12, retainedFloor = 14, eTag = secret, lastModified = DateTimeOffset.UnixEpoch }), credential = "[redacted]" },
             "wire" => new { operation, kind = "query", serializer = "json", value = JsonSerializer.Serialize(new { tenantId = "tenant-a", identityAdmissionProof = secret, cursor = secret }) },
-            _ => (object)new { operation, action = "common", sidecar = "http://127.0.0.1:3500", actor = "tenant-a:counter:owned", credential = secret },
+            _ => (object)new { operation, action = "common", sidecar = "http://127.0.0.1:3500", actor = "tenant-a:counter:owned", credential = "[redacted]" },
         };
         string input = JsonSerializer.Serialize(body);
         await runtime.RequireAsync("python3", ["-c", "import sys; data=sys.stdin.read(); print(len(data))"], timeout: TimeSpan.FromSeconds(10),

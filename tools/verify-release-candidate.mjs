@@ -112,5 +112,5 @@ export async function qualifyCandidate(env = process.env) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try { process.stdout.write(`${JSON.stringify(await qualifyCandidate())}\n`); }
-  catch (error) { process.stderr.write(`[release-candidate] ${error.message}\n`); process.exitCode = 1; }
+  catch (error) { process.stdout.write(`${JSON.stringify({ qualified: false, refused: true, reason: "release-candidate-refused" })}\n`); process.stderr.write(`[release-candidate] ${error.message}\n`); process.exitCode = 1; }
 }

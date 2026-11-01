@@ -347,6 +347,16 @@ process.stdout.write(JSON.stringify(require('js-yaml').load(readFileSync(process
         with self.assertRaisesRegex(AssertionError, "entered production"):
             self.assert_invalid_candidate_cannot_enter_production(workflow)
 
+    def test_actual_refusal_retains_structured_nonqualifying_result_and_stops_production(self):
+        self.candidate("docs: nonrelease candidate")
+        result, sentinel = self.drive_preproduction(self.workflow())
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(sentinel.exists())
+        receipt = self.work / ".hexalith/release-evidence/qualification/preproduction.json"
+        self.assertEqual(json.loads(receipt.read_text()), {
+            "qualified": False, "refused": True, "reason": "release-candidate-refused"})
+        self.assertIn("[release-candidate]", result.stderr)
+
     def test_actual_workflow_retains_structured_native_qualification(self):
         self.candidate()
         workflow = self.workflow()

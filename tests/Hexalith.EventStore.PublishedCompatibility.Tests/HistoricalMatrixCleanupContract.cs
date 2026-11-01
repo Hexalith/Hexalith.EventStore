@@ -33,6 +33,13 @@ internal static class HistoricalMatrixCleanupContract
             && Path.GetFileName(WorkingDirectory(command)) == owner).ToArray();
         if (launches.Length != 1) throw new InvalidOperationException("The provider has no unique exact owned creation program.");
         var launch = launches[0]; string root = WorkingDirectory(launch);
+        bool cancelled = observation.Case.StartsWith("cancellation", StringComparison.Ordinal);
+        if (!launch.TryGetProperty("DeadlineStarted", out var deadline) || deadline.ValueKind != JsonValueKind.String
+            || launch.GetProperty("Started").GetDateTimeOffset() > deadline.GetDateTimeOffset()
+            || deadline.GetDateTimeOffset() > launch.GetProperty("Ended").GetDateTimeOffset()
+            || (!cancelled && launch.GetProperty("Ended").GetDateTimeOffset() < deadline.GetDateTimeOffset().AddSeconds(8))
+            || !launch.TryGetProperty("Interruption", out var interruption) || interruption.GetString() != (cancelled ? "cancelled" : "timeout"))
+            throw new InvalidOperationException("The actual creation interruption lost its separate observation/deadline phase and cause.");
         if (launch.GetProperty("ExitCode").GetInt32() != -1 || launch.GetProperty("OutputTruncated").GetBoolean()
             || TimeSpan.Parse(Text(launch.GetProperty("Command"), "Timeout"), CultureInfo.InvariantCulture) != TimeSpan.FromSeconds(observation.Case.StartsWith("cancellation", StringComparison.Ordinal) ? 30 : 8)
             || !Text(launch, "StandardError").Contains("Command input/execution was interrupted or exceeded its deadline.", StringComparison.Ordinal))
@@ -43,7 +50,7 @@ internal static class HistoricalMatrixCleanupContract
             && command.GetProperty("Started").GetDateTimeOffset() >= launch.GetProperty("Started").GetDateTimeOffset()
             && command.GetProperty("Ended").GetDateTimeOffset() <= launch.GetProperty("Ended").GetDateTimeOffset()
             && JsonElement.DeepEquals(JsonSerializer.Deserialize<JsonElement>(Text(command, "StandardOutput")), containers)).ToArray();
-        if (before.Length != 1) throw new InvalidOperationException("The provider observation has no unique actual pre-interruption inspection.");
+        if (before.Length != 1 || before[0].GetProperty("Ended").GetDateTimeOffset() > deadline.GetDateTimeOffset()) throw new InvalidOperationException("The provider observation has no unique actual pre-interruption inspection.");
         var removals = scoped.Where(command => FileName(command) == "docker" && WorkingDirectory(command) == root
             && Arguments(command).SequenceEqual(new[] { "rm", "-fv", id }) && command.GetProperty("ExitCode").GetInt32() == 0
             && command.GetProperty("Started").GetDateTimeOffset() >= launch.GetProperty("Ended").GetDateTimeOffset()).ToArray();
@@ -54,7 +61,7 @@ internal static class HistoricalMatrixCleanupContract
             && command.GetProperty("Started").GetDateTimeOffset() >= launch.GetProperty("Started").GetDateTimeOffset()
             && command.GetProperty("Ended").GetDateTimeOffset() <= removals[0].GetProperty("Started").GetDateTimeOffset()
             && JsonElement.DeepEquals(JsonSerializer.Deserialize<JsonElement>(Text(command, "StandardOutput")), image)).ToArray();
-        if (images.Length != 1) throw new InvalidOperationException("The provider image binding has no unique actual immutable-reference inspection.");
+        if (images.Length != 1 || images[0].GetProperty("Ended").GetDateTimeOffset() > deadline.GetDateTimeOffset()) throw new InvalidOperationException("The provider image binding has no unique actual immutable-reference inspection.");
         var absent = scoped.Where(command => Inspect(command) && command.GetProperty("ExitCode").GetInt32() != 0
             && command.GetProperty("Started").GetDateTimeOffset() >= removals[0].GetProperty("Ended").GetDateTimeOffset()
             && Text(command, "StandardError").Contains("no such object:", StringComparison.OrdinalIgnoreCase)).ToArray();

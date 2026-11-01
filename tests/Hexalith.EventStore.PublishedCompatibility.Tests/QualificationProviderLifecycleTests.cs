@@ -43,6 +43,7 @@ public sealed class QualificationProviderLifecycleTests
         DateTimeOffset began = DateTimeOffset.UtcNow;
         await runtime.CleanupAsync();
         await runtime.CleanupAsync();
+        await runtime.DisposeAsync();
         runtime.CleanupFailures.ShouldBeEmpty();
         var records = new Dictionary<string, string> { ["cleanup-runtime"] = JsonSerializer.Serialize(new { owner = runtime.Id, root = runtime.Root }) };
         var observation = new ScenarioObservation("failure-cleanup", "matrix-cleanup-twice", "passed", "compatible", 1, [],

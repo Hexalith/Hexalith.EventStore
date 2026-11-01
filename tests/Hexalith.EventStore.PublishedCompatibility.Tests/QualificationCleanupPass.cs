@@ -15,4 +15,4 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <param name="RemainingProcesses">The actual remaining owned process count.</param>
 internal sealed record QualificationCleanupPass(string Owner, string Root, DateTimeOffset Started, DateTimeOffset Ended,
     DateTimeOffset? BaselineStarted, DateTimeOffset? BaselineEnded, string? Baseline, string? After,
-    IReadOnlyList<string> ContainerNames, IReadOnlyList<string> VolumeNames, int Failures, int RemainingProcesses, string? ProcessScanId = null);
+    IReadOnlyList<string> ContainerNames, IReadOnlyList<string> VolumeNames, int Failures, int RemainingProcesses, string? ProcessScanId = null, bool Final = false);
