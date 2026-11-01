@@ -1,6 +1,7 @@
 using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.ServiceDefaults.Diagnostics;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -131,10 +132,15 @@ public sealed class TechnicalHttpRouteCatalogReceiver
             if (captured.StartsWith("technical:", StringComparison.Ordinal) || captured.StartsWith("core:", StringComparison.Ordinal)
                 && !RouteCatalogEndpointExtensions.IsControlMethod(context.Request.Path.Value!.TrimStart('/'), new HttpMethod(context.Request.Method)))
             {
+                DispatchDiagnostics? diagnostics = DispatchDiagnostics.Create<TechnicalHttpRouteCatalogReceiver>(context.RequestServices, context.RequestAborted);
                 RouteCatalogDispatchLease? lease = null;
                 try
                 {
-                    lease = await context.RequestServices.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                    using (var stage = diagnostics?.Start(DispatchStageName.ReceiverAcquire))
+                    {
+                        lease = await context.RequestServices.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                        stage?.Complete();
+                    }
                     var snapshot = lease.Snapshot;
                     if (snapshot.ActivationBindingDigest is null || string.IsNullOrEmpty(snapshot.LocalAppId)
                         || description is not null && !TechnicalHttpCatalogBinding.Contains(snapshot.TechnicalHttpReceivers, snapshot.LocalAppId, description))
@@ -143,7 +149,12 @@ public sealed class TechnicalHttpRouteCatalogReceiver
                         && receiver.Invocations?.Any(invocation => invocation.HttpMethods.Contains(context.Request.Method, StringComparer.Ordinal)
                             && DevelopmentTechnicalHttpTransport.GrantAllows(invocation.Method, context.Request.Path.Value!)) == true))
                     {
-                        await lease.DisposeAsync().ConfigureAwait(false); lease = null;
+                        using (var stage = diagnostics?.Start(DispatchStageName.ReceiverRelease, CancellationToken.None))
+                        {
+                            await lease.DisposeAsync().ConfigureAwait(false);
+                            stage?.Complete();
+                        }
+                        lease = null;
                         context.Response.StatusCode = StatusCodes.Status403Forbidden; return;
                     }
                     // The external UI technical proxy has its existing human/channel ingress. Any
@@ -157,15 +168,30 @@ public sealed class TechnicalHttpRouteCatalogReceiver
                 catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { throw; }
                 catch (RouteCatalogUnavailableException)
                 {
-                    if (lease is not null) await lease.DisposeAsync().ConfigureAwait(false);
+                    if (lease is not null)
+                    {
+                        using var stage = diagnostics?.Start(DispatchStageName.ReceiverRelease, CancellationToken.None);
+                        await lease.DisposeAsync().ConfigureAwait(false);
+                        stage?.Complete();
+                    }
                     context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable; return;
                 }
-                await using var release = lease!.ConfigureAwait(false);
-                using var remote = RouteCatalogRemoteCall.Enter(lease);
-                RouteCatalogRemoteExecution.Current = new RouteCatalogBackgroundBoundary(RouteCatalogRemoteExecution.Current!,
-                    context.RequestServices.GetRequiredService<IRouteCatalogAuthority>(), lease);
-                await next(context).ConfigureAwait(false);
-                return;
+                try
+                {
+                    using var remote = RouteCatalogRemoteCall.Enter(lease);
+                    RouteCatalogRemoteExecution.Current = new RouteCatalogBackgroundBoundary(RouteCatalogRemoteExecution.Current!,
+                        context.RequestServices.GetRequiredService<IRouteCatalogAuthority>(), lease);
+                    using var stage = diagnostics?.Start(DispatchStageName.ReceiverNext);
+                    await next(context).ConfigureAwait(false);
+                    stage?.Complete();
+                    return;
+                }
+                finally
+                {
+                    using var stage = diagnostics?.Start(DispatchStageName.ReceiverRelease, CancellationToken.None);
+                    await lease!.DisposeAsync().ConfigureAwait(false);
+                    stage?.Complete();
+                }
             }
             // Controls retain dedicated workload/preactivation authorization; probes and channel
             // callbacks retain their own existing guards without catalog execution membership.
@@ -261,10 +287,15 @@ public sealed class TechnicalHttpRouteCatalogReceiver
     private async Task InvokeNativeAsync(HttpContext context, RequestDelegate next, RouteEndpoint endpoint,
         RouteCatalogNativeActorTransport? native, RouteCatalogDaprCallbackTransport? callback)
     {
+        DispatchDiagnostics? diagnostics = DispatchDiagnostics.Create<TechnicalHttpRouteCatalogReceiver>(context.RequestServices, context.RequestAborted);
         RouteCatalogDispatchLease? lease = null;
         try
         {
-            lease = await context.RequestServices.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+            using (var stage = diagnostics?.Start(DispatchStageName.NativeAcquire))
+            {
+                lease = await context.RequestServices.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                stage?.Complete();
+            }
             var snapshot = lease.Snapshot;
             if (snapshot.Envelope.SchemaVersion != 3 || snapshot.Envelope.Profile != "Development" || snapshot.ActivationBindingDigest is null
                 || native is not null && !_native!.AllowsSnapshot(context, snapshot)
@@ -275,17 +306,34 @@ public sealed class TechnicalHttpRouteCatalogReceiver
         }
         catch (RouteCatalogUnavailableException)
         {
-            if (lease is not null) await lease.DisposeAsync().ConfigureAwait(false);
+            if (lease is not null)
+            {
+                using var stage = diagnostics?.Start(DispatchStageName.NativeRelease, CancellationToken.None);
+                await lease.DisposeAsync().ConfigureAwait(false);
+                stage?.Complete();
+            }
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable; return;
         }
-        await using var release = lease.ConfigureAwait(false);
-        using var scope = RouteCatalogRemoteCall.Enter(lease);
         try
         {
-            await next(context).ConfigureAwait(false);
-            if (native is not null && context.Response.Headers.ContainsKey("X-Daprerrorresponseheader")) lease.Retain();
+            using var scope = RouteCatalogRemoteCall.Enter(lease);
+            try
+            {
+                using (var stage = diagnostics?.Start(DispatchStageName.NativeCallback))
+                {
+                    await next(context).ConfigureAwait(false);
+                    stage?.Complete();
+                }
+                if (native is not null && context.Response.Headers.ContainsKey("X-Daprerrorresponseheader")) lease.Retain();
+            }
+            catch { lease.Retain(); throw; }
         }
-        catch { lease.Retain(); throw; }
+        finally
+        {
+            using var stage = diagnostics?.Start(DispatchStageName.NativeRelease, CancellationToken.None);
+            await lease.DisposeAsync().ConfigureAwait(false);
+            stage?.Complete();
+        }
     }
 
     private IEnumerable<RouteEndpoint> Current() => (_endpoints?.Invoke() ?? throw new RouteCatalogUnavailableException("The technical receiver endpoint source is unavailable."))
