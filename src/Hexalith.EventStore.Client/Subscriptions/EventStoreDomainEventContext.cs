@@ -32,4 +32,23 @@ public record EventStoreDomainEventContext(
 
     /// <summary>Gets the user identifier that produced the event, when present.</summary>
     public string? UserId { get; init; }
+
+    /// <summary>
+    /// Gets the persisted event type name carried by the raw envelope, when the processor supplied it.
+    /// </summary>
+    /// <remarks>
+    /// Together with <see cref="MessageId"/> and <see cref="PayloadFingerprint"/> this is the delivered event
+    /// identity that checkpointed projections compare against accepted and authoritative history.
+    /// </remarks>
+    public string? EventType { get; init; }
+
+    /// <summary>
+    /// Gets the lowercase hexadecimal SHA-256 fingerprint of the exact raw payload bytes carried by the
+    /// envelope, when the processor supplied it.
+    /// </summary>
+    /// <remarks>
+    /// The fingerprint is computed from the immutable envelope bytes before any upcasting or deserialization,
+    /// with <see cref="EventStorePayloadFingerprint.Compute(ReadOnlySpan{byte})"/>.
+    /// </remarks>
+    public string? PayloadFingerprint { get; init; }
 }

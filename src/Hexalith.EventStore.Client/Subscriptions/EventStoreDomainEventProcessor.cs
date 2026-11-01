@@ -289,6 +289,8 @@ public class EventStoreDomainEventProcessor {
                 GlobalPosition = envelope.GlobalPosition,
                 CausationId = envelope.CausationId,
                 UserId = envelope.UserId,
+                EventType = envelope.EventTypeName,
+                PayloadFingerprint = EventStorePayloadFingerprint.Compute(envelope.Payload),
             };
 
             MethodInfo genericDispatch = s_dispatchMethod.MakeGenericMethod(eventType);

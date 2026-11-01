@@ -293,6 +293,22 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
+    public async Task ProcessAsync_KnownEventWithHandler_SuppliesExactPayloadFingerprintAndEventType() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        byte[] payload = PayloadFor("t1", 42);
+
+        EventStoreDomainEventProcessingResult result = await processor
+            .ProcessAsync(Envelope(s_messageId, "t1", payload));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        EventStoreDomainEventContext context = handler.Handled.ShouldHaveSingleItem().Context;
+        context.EventType.ShouldBe(typeof(TestEvent).FullName);
+        context.PayloadFingerprint.ShouldBe(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(payload)));
+        context.PayloadFingerprint.ShouldBe(EventStorePayloadFingerprint.Compute(payload));
+        context.PayloadFingerprint.ShouldNotBe(EventStorePayloadFingerprint.Compute(PayloadFor("t1", 43)));
+    }
+
+    [Fact]
     public async Task ProcessAsync_LegacyMarkerStore_CompletesExactlyOnceWithoutCallerToken() {
         var handler = new CapturingHandler();
         var markerStore = new LegacyCompletionMarkerStore();
