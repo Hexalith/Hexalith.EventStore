@@ -166,6 +166,7 @@ public sealed class DevelopmentRouteCatalogAspireTests
                     .WithMetadata("redisHost", ReferenceExpression.Create($"{infrastructure.GetEndpoint("tcp").Property(EndpointProperty.HostAndPort)}"))
                     .WithMetadata("redisPassword", password.Resource).WithMetadata("keyPrefix", "none").WithMetadata("actorStateStore", "true");
                 await using var application = builder.Build();
+                await using var readiness = await DevelopmentCatalogModelReadiness.StartAsync(application.Services, TestContext.Current.CancellationToken);
                 var eventing = application.Services.GetRequiredService<IDistributedApplicationEventing>();
                 bool dependenciesStarted = false;
                 int unrelatedCredentialReads = 0;
@@ -187,6 +188,9 @@ public sealed class DevelopmentRouteCatalogAspireTests
                     await subscriber.SubscribeAsync(eventing, builder.ExecutionContext, TestContext.Current.CancellationToken);
                 }
                 await eventing.PublishAsync(new BeforeStartEvent(application.Services, application.Services.GetRequiredService<DistributedApplicationModel>()), TestContext.Current.CancellationToken);
+                var notifications = application.Services.GetRequiredService<ResourceNotificationService>();
+                foreach (var renderedComponent in application.Services.GetRequiredService<DistributedApplicationModel>().Resources.OfType<IDaprComponentResource>())
+                    await notifications.PublishUpdateAsync(renderedComponent, snapshot => snapshot with { State = KnownResourceStates.Running });
                 unrelatedCredentialReads.ShouldBe(0);
                 dependenciesStarted = true;
                 var observedAuthority = application.Services.GetServices<IDistributedApplicationEventingSubscriber>().OfType<DevelopmentRouteCatalogComponentObserver>().Single();

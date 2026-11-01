@@ -37,6 +37,11 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
         var participant = participants.SingleOrDefault(participant => ReferenceEquals(participant, startup.Resource)
             || _executables.TryGetValue(participant, out var executable) && ReferenceEquals(executable, startup.Resource));
         if (participant is null) return;
+        var notifications = startup.Services.GetRequiredService<ResourceNotificationService>();
+        await notifications.WaitForDependenciesAsync(startup.Resource, token).ConfigureAwait(false);
+        var executable = _executables[participant];
+        if (!ReferenceEquals(executable, startup.Resource))
+            await notifications.WaitForDependenciesAsync(executable, token).ConfigureAwait(false);
         await _publication.WaitAsync(token).ConfigureAwait(false);
         try
         {
@@ -45,7 +50,6 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
             var references = metadata.Where(item => item?["secretKeyRef"] is not null)
                 .Select(item => item!["secretKeyRef"]!["name"]!.GetValue<string>()).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
             Dictionary<string, object> environment = new(StringComparer.Ordinal);
-            var executable = _executables[participant];
             foreach (var callback in executable.Annotations.OfType<EnvironmentCallbackAnnotation>())
                 await callback.Callback(new EnvironmentCallbackContext(_execution!, executable, environment, token)).ConfigureAwait(false);
             Dictionary<string, string> bindings = new(StringComparer.Ordinal);

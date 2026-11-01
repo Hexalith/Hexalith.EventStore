@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -11,6 +12,8 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
 
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>Retains actual selected owner coordinates without publishing their private API credentials.</summary>
@@ -18,10 +21,13 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
 {
     private readonly DistributedApplicationExecutionContext _execution;
     private readonly Dictionary<ProjectResource, (string AppId, int Port)> _owners = [];
-    private readonly Dictionary<ProjectResource, string> _credentials = [];
+    private readonly ConcurrentDictionary<ProjectResource, string> _credentials = [];
+    private readonly Dictionary<ProjectResource, SemaphoreSlim> _credentialInitialization = [];
+    private readonly Dictionary<ProjectResource, EnvironmentCallbackAnnotation[]> _credentialCallbacks = [];
     private readonly Dictionary<ProjectResource, ExecutableResource> _executables = [];
     private readonly Dictionary<ProjectResource, Task> _publications = [];
     private readonly List<(ProjectResource Receiver, ProjectResource[] Owners, string Path)> _receivers = [];
+    private ResourceNotificationService? _notifications;
 
     internal DevelopmentRouteCatalogOwnerReadObserver(IDistributedApplicationBuilder builder, IReadOnlyList<DevelopmentRouteCatalogReceiver> receivers,
         IReadOnlyDictionary<ProjectResource, string> apps, string directory)
@@ -42,6 +48,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
                 int port = sidecar.Annotations.OfType<DaprSidecarOptionsAnnotation>().Single().Options.DaprHttpPort
                     ?? throw new InvalidOperationException("The existing native owner read transport requires its actual fixed Dapr HTTP port.");
                 _owners.Add(owner.Resource, (apps[owner.Resource], port));
+                _credentialInitialization.Add(owner.Resource, new SemaphoreSlim(1, 1));
                 string generated = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
                 var parameter = builder.AddParameter(owner.Resource.Name + "-catalog-owner-api-token", () => generated, secret: true);
                 // Preserve an owner's existing private API credential; otherwise give only this
@@ -52,7 +59,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
                 }));
                 owner.WithEnvironment(async context =>
                 {
-                    object credential = await CredentialAsync(sidecar, context.CancellationToken).ConfigureAwait(false);
+                    object credential = await CredentialAsync(owner.Resource, context.CancellationToken).ConfigureAwait(false);
                     if (context.EnvironmentVariables.TryGetValue("DAPR_API_TOKEN", out var existing)
                         && await ValueAsync(existing, context.CancellationToken).ConfigureAwait(false) != await ValueAsync(credential, context.CancellationToken).ConfigureAwait(false))
                         throw new InvalidOperationException("The selected owner's application and sidecar API credentials disagree.");
@@ -68,7 +75,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
                     string prefix = "EventStore__RouteCatalog__DevelopmentActorStateOwners__" + index + "__";
                     context.EnvironmentVariables[prefix + "AppId"] = expected.AppId;
                     context.EnvironmentVariables[prefix + "HttpEndpoint"] = Endpoint(expected.Port);
-                    object credential = await CredentialAsync(Sidecar(owner), context.CancellationToken).ConfigureAwait(false);
+                    object credential = await CredentialAsync(owner, context.CancellationToken).ConfigureAwait(false);
                     if (!_credentials.TryGetValue(owner, out var retained)
                         || retained != await ValueAsync(credential, context.CancellationToken).ConfigureAwait(false))
                         throw new InvalidOperationException("The selected owner's private API credential changed after rendering.");
@@ -97,8 +104,10 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
         return Task.CompletedTask;
     }
 
-    private async Task ObserveAsync(BeforeStartEvent startup, CancellationToken token)
+    private Task ObserveAsync(BeforeStartEvent startup, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
+        _notifications = startup.Services.GetRequiredService<ResourceNotificationService>();
         foreach (var owner in _owners)
         {
             var sidecar = Sidecar(owner.Key);
@@ -108,14 +117,9 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
             if (options.AppId != owner.Value.AppId || options.DaprHttpPort != owner.Value.Port
                 || !executable.Annotations.OfType<EndpointAnnotation>().Any(endpoint => endpoint.Port == owner.Value.Port))
                 throw new InvalidOperationException("The actual rendered owner sidecar identity or HTTP listener changed.");
-            string? expected = await ValueAsync(await CredentialAsync(sidecar, token).ConfigureAwait(false), token).ConfigureAwait(false);
-            var rendered = await EnvironmentAsync(executable, token).ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(expected) || !rendered.TryGetValue("DAPR_API_TOKEN", out var credential)
-                || await ValueAsync(credential, token).ConfigureAwait(false) != expected)
-                throw new InvalidOperationException("The actual rendered owner sidecar lost its private API credential.");
-            if (_credentials.TryGetValue(owner.Key, out var prior) && prior != expected)
-                throw new InvalidOperationException("The selected owner's private API credential changed during rendering.");
-            _credentials[owner.Key] = expected;
+            // Freeze the selected callbacks without evaluating runtime inputs such as Sentry's
+            // generated trust bundle. Later callbacks cannot redefine the selected credential.
+            _credentialCallbacks[owner.Key] = [.. sidecar.Annotations.OfType<EnvironmentCallbackAnnotation>()];
         }
         foreach (var receiver in _receivers)
         {
@@ -142,12 +146,17 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
                     throw new InvalidOperationException("The final Admin native transport differs from its actual selected owner.");
             }));
         }
+        return Task.CompletedTask;
     }
 
     private async Task ObserveTargetAsync(BeforeResourceStartedEvent startup, CancellationToken token)
     {
-        foreach (var owner in _owners.Keys.Where(owner => ReferenceEquals(owner, startup.Resource)
-            || _executables.TryGetValue(owner, out var executable) && ReferenceEquals(executable, startup.Resource)))
+        ProjectResource[] owners = [.. _owners.Keys.Where(owner => ReferenceEquals(owner, startup.Resource)
+            || _executables.TryGetValue(owner, out var executable) && ReferenceEquals(executable, startup.Resource))];
+        var receivers = _receivers.Where(receiver => ReferenceEquals(receiver.Receiver, startup.Resource)).ToArray();
+        if (owners.Length == 0 && receivers.Length == 0) return;
+        await Notifications.WaitForDependenciesAsync(startup.Resource, token).ConfigureAwait(false);
+        foreach (var owner in owners)
         {
             await RequireActualAsync(owner, token).ConfigureAwait(false);
             if (ReferenceEquals(owner, startup.Resource))
@@ -158,7 +167,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
                     throw new InvalidOperationException("The actual owner application API credential changed before execution.");
             }
         }
-        foreach (var receiver in _receivers.Where(receiver => ReferenceEquals(receiver.Receiver, startup.Resource)))
+        foreach (var receiver in receivers)
         {
             foreach (var owner in receiver.Owners) await RequireActualAsync(owner, token).ConfigureAwait(false);
             _ = await EnvironmentAsync(receiver.Receiver, token).ConfigureAwait(false);
@@ -174,7 +183,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
 
     private async Task RequireActualAsync(ProjectResource owner, CancellationToken token)
     {
-        if (!_executables.TryGetValue(owner, out var executable)) throw new InvalidOperationException("The actual owner CLI has not been rendered.");
+        var executable = await SelectedExecutableAsync(owner, token).ConfigureAwait(false);
         var expected = _owners[owner];
         var listener = executable.Annotations.OfType<EndpointAnnotation>().SingleOrDefault(endpoint => endpoint.Name == "http");
         if (listener?.AllocatedEndpoint is not { } allocated || allocated.Port != expected.Port || allocated.UriScheme != "http"
@@ -195,6 +204,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
         if (string.IsNullOrWhiteSpace(target) || await Argument("--app-id", "-a").ConfigureAwait(false) != expected.AppId
             || await Argument("--dapr-http-port", "-H").ConfigureAwait(false) != target)
             throw new InvalidOperationException("The actual evaluated owner CLI identity or HTTP-port arguments changed.");
+        _ = await CredentialAsync(owner, token).ConfigureAwait(false);
         var environment = await EnvironmentAsync(executable, token).ConfigureAwait(false);
         if (!environment.TryGetValue("DAPR_API_TOKEN", out var credential)
             || await ValueAsync(credential, token).ConfigureAwait(false) != _credentials[owner])
@@ -216,20 +226,62 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
         catch (IOException exception) { throw new InvalidOperationException("The owned owner-read receipt already exists or is not a new regular file.", exception); }
     }
 
-    private async Task<object> CredentialAsync(IResource resource, CancellationToken token)
+    private async Task<object> CredentialAsync(ProjectResource owner, CancellationToken token)
     {
-        var environment = await EnvironmentAsync(resource, token).ConfigureAwait(false);
-        return environment.TryGetValue("DAPR_API_TOKEN", out var value) ? value
-            : throw new InvalidOperationException("The actual selected owner has no API credential.");
+        _ = await SelectedExecutableAsync(owner, token).ConfigureAwait(false);
+        string expected = await ExpectedCredentialAsync(owner, token).ConfigureAwait(false);
+        var environment = await EnvironmentAsync(Sidecar(owner), token).ConfigureAwait(false);
+        if (!environment.TryGetValue("DAPR_API_TOKEN", out var value))
+            throw new InvalidOperationException("The actual selected owner has no API credential.");
+        if (await ValueAsync(value, token).ConfigureAwait(false) != expected)
+            throw new InvalidOperationException("The selected owner's private API credential changed after rendering.");
+        return value;
     }
 
-    private async Task<Dictionary<string, object>> EnvironmentAsync(IResource resource, CancellationToken token)
+    private async Task<string> ExpectedCredentialAsync(ProjectResource owner, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
+        if (_credentials.TryGetValue(owner, out var retained)) return retained;
+        var initialization = _credentialInitialization[owner];
+        await initialization.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            if (_credentials.TryGetValue(owner, out retained)) return retained;
+            if (!_credentialCallbacks.TryGetValue(owner, out var callbacks))
+                throw new InvalidOperationException("The selected owner's credential callbacks have not been captured.");
+            var environment = await EnvironmentAsync(Sidecar(owner), token, callbacks).ConfigureAwait(false);
+            string? expected = environment.TryGetValue("DAPR_API_TOKEN", out var credential)
+                ? await ValueAsync(credential, token).ConfigureAwait(false) : null;
+            if (string.IsNullOrWhiteSpace(expected))
+                throw new InvalidOperationException("The actual rendered owner sidecar lost its private API credential.");
+            token.ThrowIfCancellationRequested();
+            retained = _credentials.GetOrAdd(owner, expected);
+            if (retained != expected)
+                throw new InvalidOperationException("The selected owner's private API credential changed during rendering.");
+            return retained;
+        }
+        finally { initialization.Release(); }
+    }
+
+    private async Task<ExecutableResource> SelectedExecutableAsync(ProjectResource owner, CancellationToken token)
+    {
+        if (!_executables.TryGetValue(owner, out var executable)) throw new InvalidOperationException("The actual owner CLI has not been rendered.");
+        await Notifications.WaitForDependenciesAsync(executable, token).ConfigureAwait(false);
+        return executable;
+    }
+
+    private async Task<Dictionary<string, object>> EnvironmentAsync(IResource resource, CancellationToken token,
+        EnvironmentCallbackAnnotation[]? callbacks = null)
+    {
+        await Notifications.WaitForDependenciesAsync(resource, token).ConfigureAwait(false);
         Dictionary<string, object> environment = [];
-        foreach (var callback in resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+        foreach (var callback in callbacks ?? [.. resource.Annotations.OfType<EnvironmentCallbackAnnotation>()])
             await callback.Callback(new EnvironmentCallbackContext(_execution, resource, environment, token)).ConfigureAwait(false);
         return environment;
     }
+
+    private ResourceNotificationService Notifications => _notifications
+        ?? throw new InvalidOperationException("The actual owner model has not been captured.");
 
     private static async ValueTask<string?> ValueAsync(object value, CancellationToken token) => value is IValueProvider provider
         ? await provider.GetValueAsync(token).ConfigureAwait(false) : value.ToString();

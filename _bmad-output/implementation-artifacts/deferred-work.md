@@ -6425,3 +6425,9 @@ status: open
 - **[OPEN]** source_spec: `_bmad-output/implementation-artifacts/spec-release-refresh-2026-11-01.md`; owner: EventStore tooling maintainers; next-review-date: 2026-11-15; grouping: release-tooling.
   summary: Exercise the manifest-installed Admin CLI in routine CI after dotnet tool restore.
   evidence: VersionFlagTests executes the locally built CLI, while .config/dotnet-tools.json selects a separately published tool. The 3.130.1 package passed explicit restore and installed-executable version smoke in this refresh; future manifest updates lack permanent CI installation coverage.
+
+
+## Deferred from: SDK startup repair review (2026-11-01)
+
+- **[OPEN] Make interrupted owner-receipt publication retryable** — owner: EventStore Aspire maintainers; next-review-date: 2026-11-15; grouping: sdk-startup; source_spec: `_bmad-output/implementation-artifacts/spec-release-refresh-2026-11-01.md`.
+  evidence: Pre-existing medium finding: DevelopmentRouteCatalogOwnerReadObserver.PublishAsync opens a CreateNew receipt before its cancellable write, while _publications retains the resulting task. Cancellation during publication can leave an incomplete file and a failed cached task for subsequent attempts in the same run. This refresh changes dependency and credential observation timing; the existing publication writer/cache are unchanged, and dependency-wait cancellation is separately covered.
