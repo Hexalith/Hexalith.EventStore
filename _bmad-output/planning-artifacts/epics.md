@@ -5,6 +5,7 @@ stepsCompleted:
   - step-03-create-stories
   - step-04-final-validation
 inputDocuments:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-21.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -350,7 +351,7 @@ Maintainers can build, test, package, publish, and verify EventStore independent
 Operators can rely on stable event identity, durable idempotency admission, deterministic replay, crash recovery, and evidence-driven append behavior under concurrency and failure.
 **Primary users:** Platform operators, domain authors, and reliability engineers
 **FRs covered:** FR23, FR24, FR27, FR29-FR31
-**Story set:** 4.1–4.17; backlog 4.16 owns G-APPEND through an enforced operating envelope (owner decision: envelope first) and 4.17 owns G-OQ8 governing-design authority (`sprint-change-proposal-2026-10-07.md`).
+**Story set:** 4.1–4.17; backlog 4.16 owns G-APPEND through the owner-approved mandatory atomic conflict-protection contract (2026-11-01; supported Dapr capability and final proof pending) and 4.17 owns G-OQ8 governing-design authority (`sprint-change-proposal-2026-10-07.md`).
 **Cross-cutting coverage:** NFR6-NFR7, NFR16
 **Implementation notes:** Apply the approved OQ8 authority and its strict internal sequence. Global-position sharding and append fencing remain specification/evidence-first; no later story may retroactively make an earlier unsafe outcome executable.
 
@@ -3252,11 +3253,16 @@ So that the AD-26 owner decision and canonical production profile bind exactly w
 
 **Requirements coverage:** Supporting FR32, FR34, NFR6, and NFR17. No primary FR or NFR claim. Owns the durable-broker and DAPR-runtime-pin inputs that AD-26 requires before any `production-promoted` record.
 
-**Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5 (envelope re-proof on a runtime minor-version change), AD-8, AD-9, AD-12, AD-24, AD-31 and AD-34.
+**Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5 (append/conflict-protection re-proof on a runtime minor-version change), AD-8, AD-9, AD-12, AD-24, AD-31 and AD-34.
 
 **Dependencies and ownership:** Story 3.17 accepts inventory rows; gate-closing implementation requires a valid current-subject Story 9.1 record for G-PUBLICATION-AUTH. EventStore owns local Dapr/component qualification; Platform owns the shared composition, disposable self-hosted Kubernetes rehearsal through its existing Story 4.17/shared-runtime work, and the later exact deployment/restore bundle. Builds owns CLI/runtime/control-plane catalog, embedded tool and runner alignment. EventStore's own AppHost/fixture proves repository behavior only; Platform tests consume its runner-owned descriptor. Only authenticated Architecture and Platform deployment AD-26 records explicitly select an eligible broker/runtime. Sealed `.github/workflows/integration.yml` and `.github/workflows/ci.yml` pins change only through a planned Story 4.15 reseal; otherwise use the new non-promoting qualification workflow.
 
 **Acceptance Criteria:**
+
+**Given** the owner-approved Story 4.16 atomic conflict-protection scope
+**When** runtime/component inputs are handed off for protected actor writes
+**Then** the exact SDK/runtime/component capability supports mandatory revision comparison, create-once event identity, whole-batch rollback and authorized-erasure enforcement across applicable raw APIs, or is explicitly unresolved and ineligible for that mode
+**And** the current candidate lock and broker-test results do not establish this missing capability; supported-Dapr delivery is a blocking dependency and selecting a private runtime build needs a separate owner decision. 4.16 retains actor integration/tests; this story retains runtime input qualification.
 
 **Given** a candidate runtime of at least `1.18.3` and its independently compatible CLI
 **When** runtime, CLI, embedded component, placement, scheduler and catalog/tool pins in CI, AppHosts and profile inputs are inventoried
@@ -3281,7 +3287,7 @@ So that the AD-26 owner decision and canonical production profile bind exactly w
 **Given** valid owner AD-26 records explicitly naming a qualified runtime and broker
 **When** accepted selected-component and runtime/profile-input handoff receipts are retained
 **Then** Story 5.7 receives the selected component for production parity and Story 3.19 receives the exact runtime/profile inputs
-**And** later runtime minor changes require broker requalification and Story 4.16 envelope re-proof.
+**And** later runtime minor changes require broker requalification and Story 4.16 append/conflict-protection re-proof.
 
 **Given** any missing qualification, rehearsal, ratification or accepted input binding
 **When** completion/eligibility is evaluated
@@ -4146,36 +4152,41 @@ So that downstream consumers receive an exact, non-overstated durable-admission 
 **Then** the spec, packet, sprint tracking, and epic plan must agree on the same truthful status before `done`
 **And** any unresolved contradiction or later drift keeps Story 4.15 in review without invalidating preserved historical evidence or closing unrelated Epic 4 backlog work.
 
-### Story 4.16: Append Write-Once Conformance Through An Enforced Operating Envelope
+### Story 4.16: Append Write-Once Conformance Through Atomic Conflict Protection
 
 As an operator,
-I want the supported production profile to make a second writer to an event key mechanically impossible,
-So that committed events can never be silently overwritten.
+I want conflicting event writes and stale actor-state batches to be rejected atomically through the owning Dapr actor boundary,
+So that committed events and their coupled state cannot be silently overwritten during raw writes or failover.
 
-**Requirements coverage:** Primary OR4, NFR7 class (c), and SM11; gate G-APPEND. Story 4.5's capture and DW-326 are input evidence only.
+**Requirements coverage:** Primary OR4, NFR7 class (c), and SM11; gate G-APPEND. Story 4.5's capture and DW-326 remain observational inputs only.
 
-**Architecture constraints:** AD-5, AD-26 (once ratified), and the Story 3.17 Dapr boundary qualification.
+**Architecture constraints:** AD-1, AD-5, AD-12, AD-26 (once ratified) and AD-34. AggregateActor remains the sole event-append coordinator and mutations remain IActorStateManager-owned. Revision conditions, create-once events and the full staged batch commit or reject in one qualified Dapr component transaction. No application SQL, provider credentials/private keys, new writer service, proxy, policy engine or general activation-epoch system is introduced.
 
-**Dependencies:** Story 3.17; Story 3.21 (the runtime the envelope is proven on; a later runtime minor-version change requires re-proof); owner ratification of AD-26; a Story 9.1 authorization record for gate G-APPEND. **Path decision (owner, 2026-10-07):** envelope first. If the envelope cannot be mechanically enforced on the AD-26 profile, the story stops and requests a fencing scope change through correct-course; it does not implement fencing on its own authority.
+**Dependencies:** A supported Dapr SDK/runtime/component capability with mandatory semantics is a blocking delivery dependency; the inspected combination does not supply it. Stories 3.17/3.21 qualify the exact operations and versions, including raw-call bypass and existing erasure-authority enforcement. Disposable feasibility may precede ratification. Only a credible mechanism proceeds to the separately owned 5.6/5.7 isolation, reader/default/data migration, guarded initialization and rollback work. Final conformance consumes those deliveries, exact Platform rehearsal, ratified AD-26, 3.18 compatibility and existing AD-12/9.2 assurance. Runtime-minor or bound-input changes require re-proof; no unqualified provider or mixed old/new writer is silently supported.
+
+**Owner decision (2026-11-01):** “approve and accept” accepts the [sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md](sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md) scope, supported-Dapr dependency strategy and the proposed existing-erasure-capability transport/HMAC-verifier custody extension. It renegotiates the prior envelope-only intent while retaining the full no-loss requirement and 5.6/5.7 ownership. Scope acceptance is not delivery, production profile selection, a private-runtime-build decision or authenticated per-role AD-26 ratification. No runtime implementation, key distribution, migration or deployment occurs in this planning application.
+
+**Commit contract:** The owning [Story 4.16 specification](../implementation-artifacts/spec-4-16-append-write-once-conformance-through-enforced-envelope.md) defines the approved contract. Preserve read-bound actor revisions, atomic first initialization, nonregressing stream sequence, create-once event identity even with a current ETag, metadata-only revision checks, the existing atomic event/checkpoint/snapshot/publication/witness batch, and fail-closed unknown-outcome reconciliation. Same-identity raw requests cannot omit protection, relabel events, delete then recreate history, or set TTL to bypass it. Governed erasure remains available through its existing authority, with the accepted custody extension subject to exact capability/trust qualification; do not add another issuer or ledger. Revision CAS does not promise that a winning activation is the newest placement owner; current AD-5 admission remains mandatory.
 
 **Acceptance Criteria:**
 
-**Given** the AD-26 production profile
-**When** the operating envelope is defined
-**Then** it names every mechanism that excludes a second writer to an event key, including component scoping and ACLs, the actor-only write path, and placement-failover behavior
-**And** each mechanism is enforced by configuration or code that a test can falsify.
+All prevention oracles use fresh logical reads through the owning Dapr actor boundary after clearing cache or restarting the reader. Compare exact event identity and content, metadata, snapshot sequence, pipeline, publication/recovery ownership and the existing witness as applicable. A mock, HTTP status or physical Redis/PostgreSQL snapshot alone cannot pass these criteria.
 
-**Given** the `same-key-overwrite-raw-durable-write-lost` scenario from Story 4.5
-**When** it is replayed against the enforced envelope through the production path
-**Then** the second write cannot occur or is rejected, and no committed event is lost
-**And** removing any one envelope mechanism makes the test fail.
+| AC | Given / when | Required result and reuse |
+| --- | --- | --- |
+| AC1 Lawful operations | Protected mode; lawful append, zero-event command, snapshot, publication/recovery and restart | All retain their established behavior and atomic state. Reuse `AggregateActorIntegrationTests` and `Events/SnapshotIntegrationTests` in LiveSidecar.Tests; existing Server.Tests failure/recovery lanes provide focused regressions. |
+| AC2 Existing event | Actor has committed event N; same-identity/token raw transaction attempts replacement, including current/stale/omitted ETags and caller flags | Every replacement fails; original bytes/identity remain. Exercise both exposed actor transports and any generic-state/bulk/transaction alias that can reach the target; if no alias is reachable, prove that denial with a separate lawful generic-state control. Extend the existing append-race test infrastructure. |
+| AC3 Raw-first race | Suspend actor after its source-state read; raw contender attempts the overlapping write; release actor | An unguarded contender is refused, or a correctly guarded first commit is retained and the stale actor batch is rejected. No acknowledged durable event disappears. Reuse `AppendDurabilityRaceControl`, `AppendDurabilityRaceSession` and the existing classifier's synchronization checks. Test both commit orders and a new empty stream. Never overwrite to make the lawful actor win. |
+| AC4 Atomic rollback | Multi-event batch; a later event identity already exists or revision is stale; earlier operations have been attempted | No new event, metadata advance, snapshot/checkpoint, publication entry, receipt or witness from the losing batch persists. Exercise a collision late in the operation order. Reuse the actor fixture plus `AggregateActorInfrastructureFailureTests` patterns; live PostgreSQL end-state is mandatory. |
+| AC5 Failover overlap | Two independent hosts; suspend old writer after its read; placement disconnect/rebalance permits successor commit; resume old writer while its database path remains usable | Old revision cannot commit; successor event and coupled state survive. Repeat reversed ordering: exactly one overlapping batch wins, with no overwrite. Reuse `Oq8PostgresqlFixture` process lifecycle and race gate. Add only the bounded partition/resume control and logical actor read helper it lacks; killing the old process alone does not prove stale-writer rejection. |
+| AC6 Unknown outcome | Commit succeeds but acknowledgement is lost; or cancellation/readback is unavailable | Exact original committed batch is recovered once; ambiguous/unavailable results fail closed. No blind reappend, fabricated conflict success or duplicate publication/effect. Reuse the existing commit-witness/pipeline/publication inspection and infrastructure-failure fixtures, adding a live acknowledgement-loss case. |
+| AC7 Erasure | Valid existing lifecycle request versus invalid/expired/cross-aggregate/replayed authority, raw DELETE, delete+insert and TTL | Governed erasure remains resumable and reads back absent event bodies. Invalid/raw destructive calls fail. A stale pre-erasure append cannot recreate the erased history. Reuse existing trusted-effect lifecycle/erasure tests and the PostgreSQL fixture; the DataContract serialization test alone supplies no enforcement proof. Do not expand this into the full AD-30/GDPR workflow. |
+| AC8 Isolation | Other app principal, alternate component target, same app ID in another namespace/environment | All cannot mutate the actor target beside a lawful control, under delivered 5.6/5.7 bindings. Keep those prerequisites and their OQ8 regression mandatory. |
+| AC9 Upgrade/restore | Existing history without revision state, two initializing writers, old runtime/SDK writer, mixed guard configuration, restore and rollback | Existing event bytes remain; initialization is atomic; unsupported/mixed writers fail readiness or writes. Restore revisions and erasure state consistently. Package-only consumer/read/snapshot behavior passes 3.18; migration/rollback observations stay owned by 5.6/5.7/7.22. |
+| AC10 Falsification | Remove the mandatory check or create-once rule on a disposable candidate; repeat its exact adversary | The corresponding prevention test fails while the intact lawful control passes. Separately removing revision CAS must expose stale metadata-only commits; removing create-once must expose replacement even with a fresh revision. A startup failure proves neither. Reuse existing mutation/fault-injection conventions; no production bypass switch is shipped. |
+| AC11 Final gate | Exact qualified SDK/runtime/component, complete writer inventory, delivered prerequisites and ratified canonical profile | Every applicable prevention/erasure/failover/compatibility test passes on the production path with existing AD-12/9.2 assurance. Unknown capability, unavailable lane or an unguarded writer keeps G-APPEND FAIL/BLOCKED. Runtime-minor or bound-input changes require re-proof. |
 
-**Given** the evidence
-**When** G-APPEND is evaluated
-**Then** the result binds provider, topology, writer inventory, test, and envelope identities
-**And** risk acceptance or deferral cannot substitute for this proof, and approval uses the G-HIGH-RISK Assurance Control at its computed level.
-
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-APPEND owner required by OR4.
+**Current reconciliation (2026-11-01):** Backlog, with approved scope and amended planning only. The coarse API-group policy is rejected; this does not prove every possible envelope impossible. Mandatory Dapr conflict capability, erasure enforcement, prerequisite delivery and final conformance remain undelivered. Keep the existing story key/path and lifecycle values. Historical 4.5 observations and 4.9–4.15 authority boundaries are unchanged; deleted evidence machinery stays deleted.
 
 ### Story 4.17: OQ8 Governing-Design Authority Import
 
@@ -4486,7 +4497,7 @@ So that local sidecars cannot silently use generated, duplicate, unscoped, or di
 
 **Requirements coverage:** Primary ownership of the AppHost-loaded runtime slice of FR32, NFR2, and NFR17.
 
-**Architecture constraints:** AD-9, AD-12, and AD-16. AppHost and DAPR YAML form one topology contract; runtime proof inspects actual annotations/arguments and loaded metadata; app-health targets the explicitly anonymous support-safe probe.
+**Architecture constraints:** AD-5, AD-9, AD-12, AD-16 and AD-26. AppHost and DAPR YAML form one topology contract; runtime proof inspects actual annotations/arguments and loaded metadata; app-health targets the explicitly anonymous support-safe probe. Each actor-hosting app has its own scoped actor-state component and physical target; operational state and cross-app readers never widen actor-store access.
 
 **UX coverage:** The Admin topology and health surfaces label resources from actual sidecar/component evidence. Missing, mismatched, generated-fallback, or unreachable topology renders `Unknown`, degraded, or unavailable with a bounded operator action—not a healthy/current claim based only on intended AppHost configuration.
 
@@ -4498,10 +4509,25 @@ So that local sidecars cannot silently use generated, duplicate, unscoped, or di
 
 **Acceptance Criteria:**
 
+**Given** the approved Story 4.16 mandatory conflict contract and a credible qualified candidate capability
+**When** local module/Platform bindings and SDK/host defaults are migrated
+**Then** guard mode and SDK/runtime/component versions agree with actual loaded sidecars, protected and operational/read-model bindings remain separate, and mixed or legacy unguarded writers fail readiness or protected writes
+**And** reader/default/data migration and guarded initialization remain Story 5.6 local work with Platform composition; capability absence blocks migration rather than widening actor-state grants.
+
 **Given** the EventStore AppHost builds its local distributed application model
-**When** the `statestore`, `pubsub`, access-control configurations, and resiliency resources are resolved
+**When** every app's actor-state and separately scoped operational/read-model components, `pubsub`, access-control configurations and resiliency resources are resolved
 **Then** every intended tracked YAML file is resolved to one explicit canonical path, existence-validated, and passed to the owning Aspire/DAPR resource exactly once
 **And** no same-named generated component, broad resources directory, copied fallback, or ambient working-directory discovery can override or duplicate it.
+
+**Given** the Story 3.17 actor/writer/reader inventory
+**When** module bindings and Platform's rendered local composition are compared
+**Then** every actor-hosting app has exactly one actor-state component scoped to it alone, with a unique physical target and its own principal reference; EventStore keeps `statestore` and other names follow one namespace-unique convention shared with production
+**And** different names or key prefixes pointing at the same writable actor target fail isolation; non-actor state uses separately scoped components.
+
+**Given** existing Admin, command-status, checkpoint, DataProtection and other shared readers plus released SDK/host defaults
+**When** actor-store isolation changes their bindings
+**Then** Story 5.6 owns the reader/binding migration plan and implementation: operational data moves through separately scoped components and actor history is read through its owning actor boundary; dependent code/defaults and source-mode consumers are enumerated and verified
+**And** Story 3.18 classifies public/configuration compatibility and verifies representative package-only consumers; additive bindings are preferred, breaking changes require their compatibility decision, and broad actor-store access is never a fallback.
 
 **Given** each EventStore, Admin Server, Admin UI, domain-service, API, sample UI, and optional test-subscriber sidecar is modeled
 **When** its annotations and effective arguments are inspected
@@ -4535,6 +4561,8 @@ So that local sidecars cannot silently use generated, duplicate, unscoped, or di
 
 **Shared-host reconciliation (2026-10-20):** Story 5.6 owns the module/component contract, while Platform owns the shared model and lifecycle. Compare that contract with Platform's canonical paths, rendered output and actual sidecars; a repository AppHost run remains own-repository evidence only. The approved [course correction](sprint-change-proposal-2026-10-20.md) supplies staged inputs without asserting production parity.
 
+**Isolation delivery (owner, 2026-11-01):** Story 5.6 owns local module bindings, reader/default migration and the handoff to Platform composition; Story 5.7 owns production isolation and migration execution/rollback validation. These are Story 4.16 final-proof prerequisites. Candidate preparation may precede ratification; broader migration waits for a credible exclusion or atomic conflict-protection mechanism and separate execution authority. The 2026-11-01 atomic scope approval does not establish capability delivery or authorize migration execution.
+
 ### Story 5.7: Production DAPR Component And ACL Parity
 
 As a deployment operator,
@@ -4547,13 +4575,18 @@ So that tenant isolation and allowed operations do not change between local proo
 
 **UX coverage:** No new interactive workflow. Admin topology views derive deployed app IDs, component availability, scopes, and health from runtime evidence; missing or mismatched production configuration renders unknown/degraded/unavailable and never exposes connection strings, policy internals that aid attack, or hidden tenant/topic inventories.
 
-**Dependencies:** Story 5.6 establishes the intended AppHost/component model and Story 5.5 establishes protected application endpoints. Story 5.8 will bind both to one automated drift gate. Story 5.14 owns the application-side route policies these ACL deny rules back up. The actor-invocation qualification runs on the Story 3.21 candidate runtime.
+**Dependencies:** Story 5.6 supplies module bindings and reader/default migration; Story 5.5 supplies protected application endpoints. Story 5.8 binds both to the drift gate; Story 5.14 owns application route policies. Disposable render/isolation experiments may run on the identified Story 3.21 candidate before ratification. Final parity and migration proof require accepted 3.17 inventory rows, qualified 3.21 inputs, the exact Platform rehearsal and ratified AD-26 profile; they are prerequisites for final Story 4.16 conformance. Story 7.6 retains OpenBao and secret custody.
 
 **Owner / review boundary:** Winston (Architect) owns the production topology and ACL invariants; Amelia (Developer) reviews deployment YAML and structured validation.
 
 **Current reconciliation:** Story 5.7 remains backlog. Production files are broadly scoped and ACLs default deny, but material parity gaps remain visible: production state-store templates omit the local `keyPrefix: none` posture; the Admin Server production ACL has no policy for the AppHost-modeled `eventstore-admin-ui` caller; production and local caller/resource inventories differ; and example subscription/pub-sub scopes and topic grants are not yet reconciled as one executable topology. OpenBao is absent by design until Story 7.6 and cannot be claimed here. **Scope extension (2026-10-07):** peer ACL deny rules for channel-only routes and actor methods, and qualification of actor-invocation restriction, were added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 3). `/**` grants exist today in `deploy/dapr/accesscontrol.yaml` and four AppHost access-control files.
 
 **Acceptance Criteria:**
+
+**Given** Story 4.16's qualified mandatory SDK/runtime/component contract and existing history without protected revisions
+**When** Platform rehearses guarded initialization, upgrades, migration, restore and rollback
+**Then** initialization is atomic and never treats existing history as empty; old or mixed unguarded writers cannot commit, event bytes/identities remain stable, and revisions/erasure completion state restore consistently with actor state
+**And** rollback limits are explicit, a binary downgrade cannot silently remove protection, and fresh multi-host OQ8 regression plus logical Dapr reader end-state pass before final 4.16 proof. Production target/principal isolation, migration execution and rollback remain 5.7-owned; reader/default work remains with 5.6 and custody with 7.6.
 
 **Given** the approved deployable workload inventory is assembled
 **When** EventStore, Admin Server, Admin UI, domain services, public API adapters, operators/subscribers, and any explicitly development-only resources are classified
@@ -4564,6 +4597,16 @@ So that tenant isolation and allowed operations do not change between local proo
 **When** metadata and scopes are compared with the approved AppHost/runtime contract
 **Then** component name, type/version, `actorStateStore`, key-prefix posture, authorized app IDs, backend-required metadata, and secret-reference ownership agree for each supported provider
 **And** service-invocation-only workloads retain zero actor-state access; each actor-hosting app reaches only its own separately scoped physical actor target under AD-5. Shared operational-state readers use separately scoped components, never broadened actor-store grants; no inline credential or connection secret is committed.
+
+**Given** the app ID, namespace, environment and actor-state component/target inventory
+**When** Platform renders and provisions PostgreSQL isolation
+**Then** each target declares `host`, `port`, `database`, `tableName` and its own `metadataTableName` as plain metadata, with least-privilege credentials through Story 7.6 secret references; no other component names that actor target and its credentials are granted to one app ID in one namespace/environment
+**And** beside a valid writer, another app's principal and the same app ID in another namespace/environment cannot mutate that target; component names and key prefixes alone are insufficient and application code receives no provider credentials.
+
+**Given** the reader/default migration from Story 5.6
+**When** the changed production layout is rehearsed by Platform
+**Then** Story 5.7 proves migration order, logical reader end-state, rollback/restore limits and fresh multi-host OQ8 regression on the changed profile before final Story 4.16 proof
+**And** Story 3.18 covers package-only compatibility, Story 3.19 consumes the complete resolved profile, historical 4.14/4.15 observations remain historical, and no deleted packet/validator machinery is recreated.
 
 **Given** every production pub/sub component and declarative subscription is parsed structurally
 **When** publishing, subscription, component, tenant/topic, route, dead-letter, and authorized-app scopes are compared
@@ -4622,7 +4665,7 @@ So that stale AppHost, YAML, ACL, component, topic, or sidecar assumptions fail 
 
 **Given** the AppHost distributed-application model and every supported production DAPR template set are loaded
 **When** a canonical normalized topology projection is derived from each source
-**Then** workload/resource names, app IDs, receiving sidecars, callers, component paths/types/versions, component references/scopes, key-prefix posture, topics, subscriptions, routes, dead-letter topics, ACL operations, resiliency targets, health paths, and placement/scheduler arguments compare as exact typed mappings
+**Then** workload/resource names, app IDs, receiving sidecars, callers, component paths/types/versions, component references/scopes, physical-target identities, value-free principal references, reader bindings, mandatory conflict-guard mode and qualified SDK/runtime/component versions, guarded-initialization/restore compatibility, key-prefix posture, topics, subscriptions, routes, dead-letter topics, ACL operations, resiliency targets, health paths, and placement/scheduler arguments compare as exact typed mappings
 **And** documented environment-specific differences are represented as explicit bounded exceptions with owner and rationale rather than ignored fields.
 
 **Given** the normalized projections contain a missing, extra, duplicate, conflicting, placeholder, default-open, unbound, or differently cased identity
@@ -5792,6 +5835,11 @@ So that applications remain provider-independent and Kubernetes Secrets are not 
 
 **Acceptance Criteria:**
 
+**Given** the owner-approved Story 4.16 erasure transport/HMAC-verifier custody extension
+**When** existing lifecycle key-ring generations are supplied to the enforcing Dapr verifier through OpenBao/Dapr secrets
+**Then** the changed signing-capable trust set, purpose/partition/inventory/expiry checks, rotation and minimal completion-state retention are explicitly qualified; HMAC material is never described as verification-only
+**And** no new issuer, key system or control service is created, no API token or unsigned progress record grants erasure, and this planning acceptance itself distributes no key or production credential. Existing AD-24/AD-28 dedicated internal-proof and actor-context work is not closed by this lifecycle-capability amendment.
+
 **Given** the production secret inventory is defined
 **When** `deploy/dapr/openbao-secret-contract.yaml` is validated
 **Then** each logical secret records its store-relative name, embedded map keys/value shape, consumer app IDs, dependent component/host, `startup-only` or `runtime-required` lifecycle, matching OpenBao policy path, rotation unit, and runtime generation/cache/overlap bounds without containing a value
@@ -6812,11 +6860,11 @@ So that a restore never re-admits a consumed idempotency key, repeats a global p
 
 **Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5, AD-6, AD-12, and AD-25.
 
-**Dependencies:** Restore design and disposable drills consume Story 3.21's exact candidate runtime/scheduler/placement evidence without waiting for the parent to be done; Story 3.17 and a valid Story 9.1 record still apply. The owner binds the accepted restore-posture digest only in AD-26 ratification or an approved replacement. Story 7.22 completion and Story 3.19 issuance retain their authority/profile gates. Candidate component/render preparation may precede selection, but selected parity and Story 4.16's final envelope proof use the ratified profile. No restore invariant or production gate is removed.
+**Dependencies:** Restore design and disposable drills consume Story 3.21's exact candidate runtime/scheduler/placement evidence without waiting for the parent to be done; Story 3.17 and a valid Story 9.1 record still apply. The owner binds the accepted restore-posture digest only in AD-26 ratification or an approved replacement. Story 7.22 completion and Story 3.19 issuance retain their authority/profile gates. Candidate component/render preparation may precede selection, but selected parity and Story 4.16's final append/conflict-protection proof use the ratified profile. No restore invariant or production gate is removed.
 
 **Acceptance Criteria:**
 
-**Given** the production-profile state: actor state in `statestore`, admission and fence state, the global-position allocator, read models and checkpoints, DAPR scheduler state for reminders and jobs, and placement
+**Given** every per-app actor-state component/physical target and separately scoped operational/read-model target in the production profile, including protected actor revisions and authorized-erasure completion state coupled to event history, admission and fence state, the global-position allocator, read models and checkpoints, DAPR scheduler state for reminders and jobs, and placement
 **When** the restore posture is written
 **Then** it states, for each, the backup method (a platform operation, never application code), the consistency point, and the restore order
 **And** it names the states that may never be restored on their own.
@@ -6825,6 +6873,11 @@ So that a restore never re-admits a consumed idempotency key, repeats a global p
 **When** the restored system serves traffic
 **Then** no consumed idempotency key is re-admitted, no fence is reissued, no `GlobalPosition` repeats, and reminders and jobs are restored or re-registered as declared
 **And** any invariant the posture cannot guarantee is declared as a restore prohibition, and end state is read back through Dapr paths.
+
+**Given** the protected actor revision and authorized-erasure completion state introduced by Story 4.16
+**When** restore, legacy initialization or rollback is rehearsed
+**Then** no old revision is restored beside newer events, no erased history is recreated by a stale writer and no downgraded runtime admits unguarded protected writes
+**And** inconsistent restore combinations are prohibited and final readback uses the owning Dapr actor boundary; 5.6/5.7 retain their migration and rollback ownership.
 
 **Given** the owner's AD-26 record naming the restore posture
 **When** the story binds it

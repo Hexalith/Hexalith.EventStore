@@ -5,7 +5,7 @@ story_key: 3-17-dapr-boundary-inventory-and-enforcement
 epic: '3'
 status: backlog
 created: 2026-10-05
-updated: 2026-10-05
+updated: 2026-11-01
 owner: Platform architecture and packaging maintainer
 supporting_requirements: [FR5, FR8, FR32, FR34, NFR12, NFR17]
 context:
@@ -13,6 +13,8 @@ context:
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-05.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-11-01-append-envelope.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md
   - docs/concepts/dapr-infrastructure-boundary.md
   - docs/architecture/dapr-infrastructure-exceptions.yaml
   - tests/Hexalith.EventStore.Contracts.Tests/Packaging/DependencyModeEvaluationTests.cs
@@ -30,9 +32,11 @@ Dependencies: the approved boundary policy and current architecture/packaging ev
 
 ## Inventory Contract
 
-For each operation retain a stable row ID, owning runtime/tooling project, exact source and configuration paths, evaluated dependency/call-site provenance, classification, required correctness/security/compatibility/operational guarantees, Dapr API/component candidate, exact runtime/client/component profile, qualification commands/results/artifact identities, disposition, owner/owning story, and review/removal trigger. Record raw provider HTTP and credential/configuration integration even if no provider package appears.
+For each operation retain a stable row ID, owning runtime/tooling project, exact source and configuration paths, evaluated dependency/call-site provenance, classification, required correctness/security/compatibility/operational guarantees, Dapr API/component candidate, exact runtime/client/component profile, qualification commands/results/artifact identities, disposition, owner/owning story, and review/removal trigger. Record raw provider HTTP and credential/configuration integration even if no provider package appears. For the 4.16/5.6/5.7 handoff, enumerate every actor-hosting app ID, namespace/environment, component, physical target, value-free principal reference and shared reader/default binding, including lawful erasure and raw interfaces reachable from the hosting app. Identify cross-target aliases and unresolved exclusions without retaining secret values; candidate feasibility is not final AD-26 conformance.
 
 Classifications must distinguish shipped runtime, public client transport, telemetry transport, provisioning/orchestration, explicit-purpose test setup/fault injection/physical diagnostics, approved exact-purpose exceptions, and unresolved cases. A component name or central package-catalog row supplies neither runtime-use evidence nor qualification. A reference under `tests/` or a provider namespace cannot create a global exemption.
+
+**Approved 4.16 qualification handoff (owner, 2026-11-01):** Inventory the mandatory actor-state revision, create-once event identity and whole-batch contract across the exact SDK/runtime/component, actor HTTP/gRPC and reachable generic/bulk/transaction aliases, including missing/current ETags, metadata-only writes, TTL and destructive mutations. Include the existing lifecycle-capability transport/HMAC-verifier trust/custody extension, protected revisions and minimal erasure completion state with restore consistency. The owner accepted this bounded scope with “approve and accept”; no capability is delivered by approval and the inspected profile remains unresolved. 3.21 supplies capable runtime/component inputs; 4.16 retains actor integration/prevention tests, 5.6/5.7 retain migration and 7.6 retains secret custody. No private actor-key application access, provider exception, private runtime build or new evidence machinery is approved.
 
 ## Acceptance Criteria
 

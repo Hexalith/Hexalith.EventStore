@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-31
+# last_updated: 2026-11-01
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -163,6 +163,10 @@ development_status:
   4-13-legacy-admission-migration-and-fail-closed-reconciliation: done
   4-14-oq8-multi-host-production-evidence: done
   4-15-oq8-platform-closure-and-handoff: done
+  # 2026-11-01: bounded reuse/feasibility complete; coarse actor API-group policy rejected.
+  # Owner “approve and accept” (2026-11-01): atomic conflict-protection scope, supported-Dapr dependency and erasure-verifier custody extension accepted.
+  # Scope: ../planning-artifacts/sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md
+  # Final proof waits for qualified capability, 5.6/5.7 isolation/migration and ratified AD-26; lifecycle stays backlog.
   4-16-append-write-once-conformance-through-enforced-envelope: backlog
   4-17-oq8-governing-design-authority-import: backlog
   epic-4-retrospective: optional
