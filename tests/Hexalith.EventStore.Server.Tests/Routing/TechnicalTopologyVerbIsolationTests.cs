@@ -65,7 +65,7 @@ public sealed class TechnicalTopologyVerbIsolationTests
     {
         var fixture = new RouteCatalogTestFixture();
         var grants = new[] { new RouteCatalogHttpGrant("/api/v1/commands", fault == "extra-grant-verb" ? "POST PUT" : "POST") };
-        var statusGrant = new RouteCatalogHttpGrant("/api/v1/commands/status/*", "GET");
+        var statusGrant = new RouteCatalogHttpGrant("/api/v1/commands/status/**", "GET");
         var root = Endpoint("/api/v1/commands", "POST", "Hexalith.EventStore.Controllers.CommandsController", grants[0]);
         var child = Endpoint("/api/v1/commands/status/{messageId}", "GET", "Hexalith.EventStore.Controllers.CommandStatusController", statusGrant);
         var auxiliary = new[] { Auxiliary(root, fixture), Auxiliary(child, fixture) };
