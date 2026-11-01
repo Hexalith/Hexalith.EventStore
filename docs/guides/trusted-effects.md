@@ -25,7 +25,7 @@ audience is `eventstore`, and whose only operation is
 `eventstore:trusted-effect`. Without it the gateway answers `401` and admits
 nothing. See
 [Internal Workload Assertions](security-model.md#internal-workload-assertions).
-Outside Development, missing `APP_API_TOKEN` configuration fails readiness while
+In every environment, missing `APP_API_TOKEN` configuration fails readiness while
 `Authentication:DaprInternal:AllowedCallers` is non-empty. Dapr mTLS,
 deny-by-default ACLs, and restricted direct gateway access remain required as
 defense in depth. The gateway validates the short-lived asymmetric delegation against
