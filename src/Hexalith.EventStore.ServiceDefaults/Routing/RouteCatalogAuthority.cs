@@ -8,6 +8,10 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteCatalogTrustValidator trust,
     IOptions<RouteCatalogHostOptions> options, IRouteCatalogHostObserver? observer = null, IRouteCatalogQuiescenceVerifier? quiescenceVerifier = null) : IRouteCatalogAuthority
 {
+    // Admission is locally queued only until its fence is recorded. Remote dispatch and all
+    // lifecycle/verifier work run outside this gate and retain their independent CAS checks.
+    private readonly SemaphoreSlim _localAdmission = new(1, 1);
+
     /// <inheritdoc/>
     public async Task PrepareAsync(RouteCatalogActivation candidate, CancellationToken cancellationToken = default)
     {
@@ -135,6 +139,13 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     /// <inheritdoc/>
     public async Task<RouteCatalogDispatchLease> AcquireAsync(CancellationToken cancellationToken = default)
     {
+        await _localAdmission.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { return await AcquireCoreAsync(cancellationToken).ConfigureAwait(false); }
+        finally { _localAdmission.Release(); }
+    }
+
+    private async Task<RouteCatalogDispatchLease> AcquireCoreAsync(CancellationToken cancellationToken)
+    {
         RequireLocalIdentity();
         RouteCatalogActivation? captured = null;
         long epoch = 0;
@@ -218,6 +229,10 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             (RouteCatalogActivationState state, string etag) = await store.ReadAsync(cancellationToken).ConfigureAwait(false);
             RouteCatalogActivationState next = await update(state).ConfigureAwait(false);
             if (ReferenceEquals(state, next) || await store.CompareExchangeAsync(next, etag, cancellationToken).ConfigureAwait(false)) return;
+            // Bound conflict scheduling like completed-lease release, desynchronizing competing
+            // writers without locking across an awaited owner verifier. Every retry revalidates fresh
+            // state within the same 32-attempt bound; randomness supplies no identity or authority.
+            if (attempt < 31) await Task.Delay(Random.Shared.Next(1, Math.Min(attempt + 1, 25) + 1), cancellationToken).ConfigureAwait(false);
         }
         throw new RouteCatalogUnavailableException("Concurrent catalog authority updates could not be serialized.");
     }
