@@ -133,7 +133,7 @@ public sealed class DevelopmentAdminTransportReviewTests
         host.Backend.GetActorInstanceStateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new Hexalith.EventStore.Admin.Abstractions.Models.Dapr.DaprActorInstanceState("ProjectionActor", "one", [], 0, DateTimeOffset.UtcNow));
         var observation = System.Text.Json.JsonSerializer.Deserialize<RouteCatalogHostObservation>(await File.ReadAllBytesAsync(Path.Combine(host.DirectoryPath, "admin.observation.json"), TestContext.Current.CancellationToken))!;
         observation.AppId.ShouldBe("admin-test");
-        observation.ReceiverSurface!.FenceVersion.ShouldBe(FiniteRouteCatalogReceiver.TechnicalVersion);
+        observation.ReceiverSurface!.FenceVersion.ShouldBe(RouteCatalogTechnicalHttpPolicy.FenceVersion);
         observation.ReceiverSurface.TechnicalHttp.ShouldNotBeEmpty();
         observation.ReceiverSurface.Endpoints.ShouldContain(endpoint => endpoint.Pattern == "/internal/routing/catalog/prepare" && endpoint.Admitted && endpoint.Http == null);
         using var request = host.Request("/api/v1/admin/dapr/actors/ProjectionActor/state?id=one");

@@ -105,7 +105,18 @@ public sealed class DevelopmentCatalogSuccessorTests
                 state.Epoch.ShouldBe(scenario == "new-cell" ? 0 : 1);
                 state.Leases.Count.ShouldBe(scenario == "retained-lease" ? 1 : 0);
                 Directory.GetFiles(directory, "*.committed.json").ShouldBeEmpty();
-                File.Exists(Path.Combine(directory, "activation.json")).ShouldBeFalse();
+                if (scenario == "retained-lease")
+                {
+                    // Prepare is required before a real owner can reconcile old work. It grants
+                    // no execution: the old fence must still prohibit every Ready/Commit receipt.
+                    var pending = state.Pending.ShouldNotBeNull();
+                    pending.PredecessorRootDigest.ShouldBe(first.RootDigest);
+                    pending.AttemptId.ShouldBe("successor-attempt");
+                    state.Ready.ShouldBeEmpty();
+                    Directory.GetFiles(directory, "*.ready.json").ShouldBeEmpty();
+                    File.Exists(Path.Combine(directory, "activation.json")).ShouldBeTrue();
+                }
+                else File.Exists(Path.Combine(directory, "activation.json")).ShouldBeFalse();
             }
         }
         finally

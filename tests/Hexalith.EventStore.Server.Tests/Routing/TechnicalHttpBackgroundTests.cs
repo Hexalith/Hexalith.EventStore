@@ -21,9 +21,11 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 public sealed class TechnicalHttpBackgroundTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task DetachedConsistencyScanOwnsOnlyItsChildLeaseAndRetainsCaughtAmbiguity(bool loseCompletion)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task DetachedConsistencyScanOwnsOnlyItsChildLeaseAndRetainsCaughtAmbiguity(bool loseCompletion, bool legacyFinite)
     {
         await using var fixture = new TechnicalHttpCatalogFixture();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -48,7 +50,14 @@ public sealed class TechnicalHttpBackgroundTests
         streams.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), 10000, Arg.Any<CancellationToken>())
             .Returns(new PagedResult<StreamSummary>([], 0, null));
         await fixture.StartAsync(TestContext.Current.CancellationToken, services: services => services.AddSingleton(streams), fullInventory: true,
-            inventoryAssembly: "Hexalith.EventStore.Admin.Server");
+            inventoryAssembly: "Hexalith.EventStore.Admin.Server", legacyFinite: legacyFinite,
+            invocations: legacyFinite ? [new("eventstore-admin-server", "/api/v1/admin/consistency", ["GET", "POST"])] : null);
+        if (legacyFinite)
+        {
+            var snapshot = (await fixture.Catalog.Store.ReadAsync(TestContext.Current.CancellationToken)).State;
+            fixture.Client.DefaultRequestHeaders.Add(RouteCatalogInvocationHandler.RootHeader, snapshot.Committed!.RootDigest);
+            fixture.Client.DefaultRequestHeaders.Add(RouteCatalogInvocationHandler.EpochHeader, snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
         fixture.State.AfterSaveTypedState = (_, value) =>
         {
             if (value is not ConsistencyCheckResult result) return;
@@ -144,6 +153,60 @@ public sealed class TechnicalHttpBackgroundTests
         var boundary = new RouteCatalogBackgroundBoundary(Substitute.For<IRouteCatalogRemoteBoundary>(), authority, parent);
         await Should.ThrowAsync<RouteCatalogUnavailableException>(() => boundary.AcquireAsync(TestContext.Current.CancellationToken));
         released.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("exact")]
+    [InlineData("not-selected")]
+    [InlineData("root")]
+    [InlineData("epoch")]
+    [InlineData("local")]
+    [InlineData("coordinates")]
+    [InlineData("missing-coordinates")]
+    [InlineData("parent-closes-during-acquire")]
+    [InlineData("cancelled")]
+    public async Task LegacyDetachedAdmissionStillRequiresTheActualLiveParentAndExactAuthority(string drift)
+    {
+        await using var fixture = new TechnicalHttpCatalogFixture();
+        await fixture.StartAsync(TestContext.Current.CancellationToken, legacyFinite: true,
+            invocations: [new("eventstore-admin-server", "/api/v1/admin/storage/snapshot-policy", ["PUT"])]);
+        await using var parent = await fixture.Catalog.Authorities[0].AcquireAsync(TestContext.Current.CancellationToken);
+        parent.Snapshot.ActivationBindingDigest.ShouldBeNull();
+        var active = (await fixture.Catalog.Store.ReadAsync(TestContext.Current.CancellationToken)).State.Committed!;
+        var activation = drift == "root" ? fixture.Catalog.Candidate(2, active.RootDigest) : active;
+        var child = new CommittedRouteCatalogSnapshot(activation, parent.Snapshot.Epoch + (drift == "epoch" ? 1 : 0),
+            drift == "local" ? "foreign-local-peer" : parent.Snapshot.LocalAppId,
+            drift == "missing-coordinates" ? null : drift == "coordinates"
+                ? fixture.Catalog.Store.Coordinates with { HttpEndpoint = "http://127.0.0.1:3501/" } : fixture.Catalog.Store.Coordinates);
+        int released = 0, executions = 0;
+        var owned = new RouteCatalogDispatchLease(child, () => { released++; return Task.CompletedTask; });
+        var authority = Substitute.For<IRouteCatalogAuthority>();
+        authority.AcquireAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (drift == "parent-closes-during-acquire") await parent.DisposeAsync();
+            return owned;
+        });
+        var boundary = new RouteCatalogBackgroundBoundary(Substitute.For<IRouteCatalogRemoteBoundary>(), authority, parent,
+            allowLegacyFinite: drift != "not-selected");
+        if (drift == "exact")
+        {
+            await using var work = await boundary.AcquireAsync(TestContext.Current.CancellationToken);
+            await parent.DisposeAsync();
+            await work.RunAsync(() => { executions++; return Task.CompletedTask; });
+            executions.ShouldBe(1); released.ShouldBe(1);
+        }
+        else if (drift == "cancelled")
+        {
+            using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+            await Should.ThrowAsync<OperationCanceledException>(() => boundary.AcquireAsync(cancelled.Token));
+            released.ShouldBe(0); executions.ShouldBe(0);
+        }
+        else
+        {
+            await Should.ThrowAsync<RouteCatalogUnavailableException>(() => boundary.AcquireAsync(TestContext.Current.CancellationToken));
+            released.ShouldBe(1); executions.ShouldBe(0);
+        }
     }
 
     private static async Task WaitForLeaseCountAsync(TechnicalHttpCatalogFixture fixture, int count)

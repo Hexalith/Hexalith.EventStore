@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 
 namespace Hexalith.EventStore.ServiceDefaults.Routing;
 
@@ -18,8 +19,8 @@ public sealed class FiniteRouteCatalogReceiver
 {
     /// <summary>The independently captured installed fence implementation.</summary>
     public const string Version = "eventstore-finite-dapr-receiver-v1";
-    /// <summary>Compatibility name for the separate complete composite; explicit SDK-owned technical HTTP qualification also uses this fence version.</summary>
-    public const string TechnicalVersion = RouteCatalogTechnicalHttpPolicy.FenceVersion;
+    /// <summary>Historical finite SDK HTTP/native fence; the explicit complete composite has its own distinct version.</summary>
+    public const string TechnicalVersion = "eventstore-finite-sdk-http-receiver-v2";
     private TechnicalHttpRouteCatalogReceiver? _technicalComposite;
     private readonly Dictionary<(string Path, string Verb), (RouteEndpoint Endpoint, string Operation, string[] Policies, RouteCatalogHttpTransport? Http, RouteCatalogNativeActorTransport? Native, RouteCatalogDomainAuxiliaryTransport? DomainAuxiliary, RouteCatalogSidecarTransport? Sidecar, RouteCatalogDaprCallbackTransport? Callback)> _allowed = new();
     private readonly List<(string Prefix, string[] Verbs, string Method)> _grants = [];
@@ -81,6 +82,7 @@ public sealed class FiniteRouteCatalogReceiver
         fence._callbacks = technical ? app.Services.GetService<IDevelopmentDaprCallbackReceiver>() : null;
         fence._domainAuxiliary = domainAuxiliary;
         fence._sidecar = sidecar;
+        if (technical && !app.Environment.IsDevelopment()) throw new RouteCatalogUnavailableException("Technical HTTP qualification is private Development only.");
         // The framework route source materializes new endpoint instances on each read. Share one
         // cache with the actual routing matcher, rather than comparing independently built inventories.
         app.Use(next =>
@@ -99,6 +101,24 @@ public sealed class FiniteRouteCatalogReceiver
             throw new RouteCatalogUnavailableException("The finite Development receiver requires a configured actual sidecar channel token.");
         app.Use(async (context, next) =>
         {
+            // The real sidecar asks for immutable configuration before ApplicationStarted
+            // captures the full fence. Admit only closed, independently observed SDK handshake
+            // delegates, with their exact method/channel/same-app rules, as the composite does.
+            if (fence._technical && context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
+                && context.GetEndpoint() is RouteEndpoint handshakeEndpoint)
+            {
+                var nativeHandshake = fence._native?.Observe(handshakeEndpoint);
+                var callbackHandshake = fence._callbacks?.Observe(handshakeEndpoint);
+                if (nativeHandshake?.Kind is "config" or "health" || callbackHandshake?.Kind == "subscribe")
+                {
+                    if (!DaprAppChannelToken.IsAdmitted(DaprAppChannelToken.Verify(context.Request, app.Configuration, app.Environment)))
+                    { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
+                    if (nativeHandshake is not null && (nativeHandshake.Verbs != context.Request.Method || !fence._native!.Allows(context))
+                        || callbackHandshake is not null && callbackHandshake.Verbs != context.Request.Method)
+                    { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+                    await next(context).ConfigureAwait(false); return;
+                }
+            }
             // Dapr injects its configured APP_API_TOKEN header on every app-channel delivery. Presence
             // selects stricter transport fencing; existing authorization still validates its actual value.
             if (context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName) && fence._surface is null
@@ -108,6 +128,12 @@ public sealed class FiniteRouteCatalogReceiver
             {
                 if (!DaprAppChannelToken.IsAdmitted(DaprAppChannelToken.Verify(context.Request, app.Configuration, app.Environment)))
                 { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
+                if (context.GetEndpoint() is RouteEndpoint candidate && fence._native?.Observe(candidate) is not null && !fence._native.Allows(context))
+                { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+                // A deliberately absent programmatic subscription endpoint must retain Dapr's
+                // native 404 discovery protocol. It admits no request or callback execution.
+                if (fence._callbacks?.IsAbsentDiscovery(context) == true)
+                { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }
                 bool probe = HttpMethods.IsGet(context.Request.Method)
                     && EventStoreHttpEndpointInventory.IsProbe(context.Request.Path.Value)
                     && context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
@@ -119,6 +145,68 @@ public sealed class FiniteRouteCatalogReceiver
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     return;
                 }
+            }
+            if (fence._technical && context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
+                && context.GetEndpoint() is RouteEndpoint nativeEndpoint && fence._native?.Observe(nativeEndpoint) is { } native)
+            {
+                // Immutable native configuration and health are the sidecar's authenticated
+                // startup handshake; requiring activated state here would deadlock bootstrap.
+                if (native.Kind is "config" or "health") { await next(context).ConfigureAwait(false); return; }
+                RouteCatalogDispatchLease? nativeLease = null;
+                try
+                {
+                    nativeLease = await app.Services.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                    var snapshot = nativeLease.Snapshot;
+                    if (snapshot.Envelope.SchemaVersion != 3 || snapshot.Envelope.Profile != "Development" || !fence._native.AllowsSnapshot(context, snapshot)
+                        || !snapshot.AuxiliaryOperations.Any(operation => operation.AppId == snapshot.LocalAppId
+                            && operation.Method == nativeEndpoint.RoutePattern.RawText!.Trim('/') && operation.NativeActor == native))
+                        throw new RouteCatalogUnavailableException("The actual native actor code and registration inventory is not committed.");
+                }
+                catch (RouteCatalogUnavailableException)
+                {
+                    if (nativeLease is not null) await nativeLease.DisposeAsync().ConfigureAwait(false);
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable; return;
+                }
+                await using (nativeLease.ConfigureAwait(false))
+                using (RouteCatalogRemoteCall.Enter(nativeLease))
+                {
+                    try
+                    {
+                        await next(context).ConfigureAwait(false);
+                        if (context.Response.Headers.ContainsKey("X-Daprerrorresponseheader")) nativeLease.Retain();
+                    }
+                    catch { nativeLease.Retain(); throw; }
+                }
+                return;
+            }
+            if (fence._technical && context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
+                && context.GetEndpoint() is RouteEndpoint callbackEndpoint && fence._callbacks?.Observe(callbackEndpoint) is { } callback)
+            {
+                // Native discovery is an authenticated immutable startup handshake. Pub/sub
+                // notifications have signed publisher/body provenance, not HTTP sender stamps.
+                if (callback.Kind == "subscribe") { await next(context).ConfigureAwait(false); return; }
+                RouteCatalogDispatchLease? callbackLease = null;
+                try
+                {
+                    callbackLease = await app.Services.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                    var snapshot = callbackLease.Snapshot;
+                    if (snapshot.Envelope.SchemaVersion != 3 || snapshot.Envelope.Profile != "Development"
+                        || !snapshot.AuxiliaryOperations.Any(operation => operation.AppId == snapshot.LocalAppId
+                            && operation.Method == callbackEndpoint.RoutePattern.RawText!.Trim('/') && operation.DaprCallback == callback))
+                        throw new RouteCatalogUnavailableException("The actual SDK callback code and subscription inventory is not committed.");
+                }
+                catch (RouteCatalogUnavailableException)
+                {
+                    if (callbackLease is not null) await callbackLease.DisposeAsync().ConfigureAwait(false);
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable; return;
+                }
+                await using (callbackLease.ConfigureAwait(false))
+                using (RouteCatalogRemoteCall.Enter(callbackLease))
+                {
+                    try { await next(context).ConfigureAwait(false); }
+                    catch { callbackLease.Retain(); throw; }
+                }
+                return;
             }
             if (context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
                 && context.GetEndpoint() is RouteEndpoint sidecarEndpoint && fence._sidecar?.Invoke(sidecarEndpoint) is { } observedSidecar)
@@ -146,6 +234,40 @@ public sealed class FiniteRouteCatalogReceiver
                 {
                     try { await next(context).ConfigureAwait(false); }
                     catch { sidecarLease.Retain(); throw; }
+                }
+                return;
+            }
+            if (fence._technical && context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
+                && context.GetEndpoint() is RouteEndpoint endpoint && DevelopmentTechnicalHttpTransport.Observe(endpoint) is { } http)
+            {
+                RouteCatalogDispatchLease? lease = null;
+                try
+                {
+                    lease = await app.Services.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                    string pattern = endpoint.RoutePattern.RawText!.Trim('/');
+                    var snapshot = lease.Snapshot;
+                    if (snapshot.Envelope.SchemaVersion != 3 || snapshot.Envelope.Profile != "Development" || snapshot.LocalAppId is null
+                        || !RouteCatalogPeerBinding.Matches(context.Request.Headers, snapshot)
+                        || !snapshot.AuxiliaryOperations.Any(auxiliary => auxiliary.AppId == snapshot.LocalAppId
+                            && auxiliary.Method == pattern && auxiliary.Http is { } bound && bound.Owner == http.Owner && bound.CodeDigest == http.CodeDigest
+                            && bound.Verbs.Split(' ').Contains(context.Request.Method, StringComparer.Ordinal)
+                            && DevelopmentTechnicalHttpTransport.Matches(auxiliary, context.Request.Path.Value!, context.Request.Method)))
+                        throw new RouteCatalogUnavailableException("The technical receiver does not bind this committed code, verb and generation.");
+                }
+                catch (RouteCatalogUnavailableException)
+                {
+                    if (lease is not null) await lease.DisposeAsync().ConfigureAwait(false);
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                    return;
+                }
+                await using (lease.ConfigureAwait(false))
+                using (RouteCatalogRemoteCall.Enter(lease))
+                {
+                    // Existing Admin consistency work owns a separate child lifetime; it never
+                    // borrows this request after disposal or omits its exact legacy authority.
+                    RouteCatalogRemoteExecution.Current = new RouteCatalogBackgroundBoundary(RouteCatalogRemoteExecution.Current!,
+                        app.Services.GetRequiredService<IRouteCatalogAuthority>(), lease, allowLegacyFinite: true);
+                    await next(context).ConfigureAwait(false);
                 }
                 return;
             }
@@ -233,7 +355,8 @@ public sealed class FiniteRouteCatalogReceiver
         return inventory.OrderBy(e => e.Pattern, StringComparer.Ordinal).ThenBy(e => string.Join(',', e.Methods), StringComparer.Ordinal).ToArray();
     }
 
-    private bool Intersects(string path) => _prefixes.Any(prefix => path.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+    private bool Intersects(string path) => _prefixes.Any(prefix => prefix == "/" && path.StartsWith('/')
+        || path.Equals(prefix, StringComparison.OrdinalIgnoreCase)
         || path.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase));
 
     internal bool Allows(string path, string verb, Endpoint? endpoint) => RefusalBoundary(path, verb, endpoint) is null;
@@ -254,7 +377,9 @@ public sealed class FiniteRouteCatalogReceiver
         if (actual.Callback is not null && _callbacks?.Observe((RouteEndpoint)endpoint!) != actual.Callback) return "finite-callback-inventory-changed";
         if (!ReferenceEquals(actual.Endpoint, endpoint)) return "finite-endpoint-changed";
         if (endpoint!.Metadata.GetMetadata<IAllowAnonymous>() is not null
-            || endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains(verb, StringComparer.Ordinal) != true
+            || (actual.Native?.Kind == "health"
+                ? verb != "GET" || endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Count is > 0
+                : endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains(verb, StringComparer.Ordinal) != true)
             || !endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(a => a.Policy ?? string.Empty).Order(StringComparer.Ordinal)
                 .SequenceEqual(actual.Policies, StringComparer.Ordinal)) return "finite-policy-changed";
         return (actual.Callback is not null ? "sdk-dapr-callback:" + actual.Callback.Kind : actual.Native is null ? _operation!(actual.Endpoint) : "sdk-native-actor:" + actual.Native.Kind) == actual.Operation ? null : "finite-operation-changed";

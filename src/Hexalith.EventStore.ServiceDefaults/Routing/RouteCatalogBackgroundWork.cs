@@ -3,7 +3,7 @@ using Hexalith.EventStore.Contracts.Routing;
 namespace Hexalith.EventStore.ServiceDefaults.Routing;
 
 /// <summary>Replaces inherited request scopes with the separately acquired lifetime of one existing detached workflow.</summary>
-internal sealed class RouteCatalogBackgroundWork(RouteCatalogDispatchLease lease, IRouteCatalogAuthority authority) : IRouteCatalogBackgroundWork
+internal sealed class RouteCatalogBackgroundWork(RouteCatalogDispatchLease lease, IRouteCatalogAuthority authority, bool allowLegacyFinite = false) : IRouteCatalogBackgroundWork
 {
     private readonly object _gate = new();
     private readonly TaskCompletionSource _completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -21,7 +21,7 @@ internal sealed class RouteCatalogBackgroundWork(RouteCatalogDispatchLease lease
         {
             lease.RequireOpenForExecution();
             using var scope = new RouteCatalogRemoteScope(lease, isolated: true);
-            RouteCatalogRemoteExecution.Current = new RouteCatalogBackgroundBoundary(RouteCatalogRemoteExecution.Current!, authority, lease);
+            RouteCatalogRemoteExecution.Current = new RouteCatalogBackgroundBoundary(RouteCatalogRemoteExecution.Current!, authority, lease, allowLegacyFinite);
             await execute().ConfigureAwait(false);
         }
         finally

@@ -9,6 +9,21 @@
     </ProjectReference>
   </ItemGroup>
 
+  <!-- The .NET SDK promotes project references after this file's item evaluation. Keep those
+       selected Tenants source nodes on this producer too; never rewrite another root or an active mapping. -->
+  <Target Name="PreserveEventStoreVersionOnPromotedTenantsSources" AfterTargets="IncludeTransitiveProjectReferences"
+          Condition="'$(HexalithTenantsFromSource)' == 'true' and '$(HexalithTenantsBasePath)' != '' and '$(HexalithEventStoreVersion)' != '' and '$(HexalithSourceMappingHash)' == '' and '$(HexalithSourceMappingMode)' != 'source' and '$(HEXALITH_SOURCE_MAPPING_HASH)' == '' and '$(HEXALITH_SOURCE_MAPPING_PATH)' == ''">
+    <PropertyGroup>
+      <_EventStoreSelectedTenantsSourceRoot>$([MSBuild]::NormalizeDirectory('$(HexalithTenantsBasePath)'))</_EventStoreSelectedTenantsSourceRoot>
+    </PropertyGroup>
+    <ItemGroup>
+      <ProjectReference Update="@(ProjectReference)"
+                        Condition="'%(ProjectReference.Extension)' == '.csproj' and $([System.String]::Copy('%(ProjectReference.FullPath)').StartsWith('$(_EventStoreSelectedTenantsSourceRoot)')) and ('%(ProjectReference.NuGetPackageId)' == 'Hexalith.Tenants' or $([System.String]::Copy('%(ProjectReference.NuGetPackageId)').StartsWith('Hexalith.Tenants.')))">
+        <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
+      </ProjectReference>
+    </ItemGroup>
+  </Target>
+
   <!--
     Container image defaults (.NET SDK container support).
     Opt-in per project with:

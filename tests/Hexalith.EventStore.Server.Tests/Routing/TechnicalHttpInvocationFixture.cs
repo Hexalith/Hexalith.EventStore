@@ -41,7 +41,7 @@ internal sealed class TechnicalHttpInvocationFixture : IAsyncDisposable
     public string? Binding { get; private set; }
     public string? Verb { get; private set; }
 
-    public async Task StartAsync(string scenario, CancellationToken token)
+    public async Task StartAsync(string scenario, CancellationToken token, bool legacyFinite = false)
     {
         var builder = WebApplication.CreateBuilder(); builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
         _bridge = builder.Build();
@@ -76,16 +76,24 @@ internal sealed class TechnicalHttpInvocationFixture : IAsyncDisposable
         await _bridge.StartAsync(token); Address = new Uri(_bridge.Urls.Single());
         var coordinates = new RouteCatalogStateCoordinates("route-catalog", "route-catalog-authority-v1", Address.ToString());
         Receiver = new TechnicalHttpCatalogFixture(coordinates);
-        await Receiver.StartAsync(token, fullInventory: true, inventoryAssembly: "Hexalith.EventStore.Gateway", attempt: scenario == "cross-run" ? "other-run" : null,
-            invocations: [new("eventstore-admin-server", "/**", ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])]);
+        await Receiver.StartAsync(token, fullInventory: !legacyFinite, inventoryAssembly: "Hexalith.EventStore.Gateway", attempt: scenario == "cross-run" ? "other-run" : null,
+            invocations: legacyFinite ? [new("eventstore-admin-server", "/api/v1/admin/storage/snapshot-policy", ["PUT"])]
+                : [new("eventstore-admin-server", "/**", ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])], legacyFinite: legacyFinite);
         Caller = new RouteCatalogTestFixture(coordinates, ["eventstore-admin-server"], compiledSchemaThree: true);
         Caller.UpdateObservation(0, Receiver.Catalog.Observations[0]);
-        Caller.Recapture = actual => actual.HostId == "eventstore" ? actual with { ReceiverSurface = Receiver.App.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>().Observe() } : actual;
-        if (scenario != "inactive") await Caller.ActivateAsync(Caller.Candidate());
+        Caller.Recapture = actual => actual.HostId == "eventstore" ? actual with { ReceiverSurface = legacyFinite ? Receiver.App.Services.GetRequiredService<FiniteRouteCatalogReceiver>().Observe()
+            : Receiver.App.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>().Observe() } : actual;
+        if (scenario != "inactive")
+        {
+            var candidate = Caller.Candidate();
+            if (legacyFinite) candidate = candidate with { AuxiliaryOperations = Receiver.Catalog.Observations[0].AuxiliaryOperations };
+            candidate = candidate with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(candidate) };
+            await Caller.ActivateAsync(candidate);
+        }
         var services = new ServiceCollection(); services.AddLogging();
         services.AddSingleton<IRouteCatalogAuthority>(Caller.Authorities[Array.FindIndex(Caller.Hosts, host => host.AppId == "eventstore-admin-server")]);
         services.AddEventStoreRouteCatalog(new ConfigurationBuilder().Build());
-        services.Configure<RouteCatalogHostOptions>(options => options.RequireTechnicalHttpBinding = true);
+        services.Configure<RouteCatalogHostOptions>(options => options.RequireTechnicalHttpBinding = !legacyFinite);
         services.AddHttpClient(); _caller = services.BuildServiceProvider(); Client = _caller.GetRequiredService<IHttpClientFactory>().CreateClient();
         var endpoint = new UriBuilder(Address);
         if (scenario == "wrong-host") endpoint.Host = "localhost";

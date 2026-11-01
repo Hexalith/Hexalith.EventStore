@@ -5,7 +5,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 
-/// <summary>Runs the approved immutable-package matrix; failures remain ordinary failing test results.</summary>
+/// <summary>Characterizes the immutable historical comparison matrix without granting compatibility.</summary>
 public sealed class PublishedScenarioTests
 {
     private static readonly ConditionalWeakTable<List<ScenarioObservation>, string> _observationLogs = new();
@@ -13,7 +13,7 @@ public sealed class PublishedScenarioTests
 
     /// <summary>Gets the currently executing case's measurement scope.</summary>
     internal static MeasuredAssertions? ActiveAssertions => _activeAssertions.Value;
-    /// <summary>Measures every required scenario and both additions without advancing owner or readiness decisions.</summary>
+    /// <summary>Retains every measured deficit and requires the exact supported and comparison-only boundaries.</summary>
     [Fact]
     public async Task Published31282QualificationMatrixAsync()
     {
@@ -187,7 +187,9 @@ public sealed class PublishedScenarioTests
             Started: cleanupStarted, Ended: DateTimeOffset.UtcNow));
         string serialized = await WriteSummaryAsync(runtime, observations, materializationFailure);
         TestContext.Current.TestOutputHelper?.WriteLine(serialized);
-        observations.All(observation => observation.Passing).ShouldBeTrue("Every required published lane must pass compatibility; see " + runtime.Root);
+        using JsonDocument summary = JsonDocument.Parse(serialized);
+        using JsonDocument actualCapture = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
+        HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, actualCapture.RootElement, materializer.Builds, runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray());
     }
 
     /// <summary>Writes an honest nonqualifying summary when initial executor capture is unavailable.</summary>

@@ -57,14 +57,25 @@ internal sealed class TechnicalHttpCatalogFixture : IAsyncDisposable
     public ITenantCommandService TenantCommands { get; } = Substitute.For<ITenantCommandService>();
 
     public async Task StartAsync(CancellationToken token, Action<IServiceCollection>? services = null, Action<WebApplication>? endpoints = null, bool fullInventory = false, bool activate = true, string? inventoryAssembly = null, string? attempt = null, bool includeBusiness = false,
-        IReadOnlyList<RouteCatalogDeclaredInvocation>? invocations = null)
+        IReadOnlyList<RouteCatalogDeclaredInvocation>? invocations = null, bool legacyFinite = false)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
         invocations ??= [new("technical-ui-proxy", "/api/v1/admin", ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])];
         builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:DeclaredInvocations"] = System.Text.Json.JsonSerializer.Serialize(invocations);
         builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"] = _directory;
-        builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:ReceiverProfile"] = RouteCatalogTechnicalHttpPolicy.FenceVersion;
+        if (!legacyFinite) builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:ReceiverProfile"] = RouteCatalogTechnicalHttpPolicy.FenceVersion;
+        if (legacyFinite)
+        {
+            string acl = Path.Combine(_directory, "legacy-acl.json");
+            await File.WriteAllBytesAsync(acl, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { spec = new { accessControl = new
+            {
+                defaultAction = "deny", trustDomain = "public", policies = invocations.GroupBy(invocation => invocation.CallerAppId).Select(group => new
+                { appId = group.Key, defaultAction = "deny", operations = group.Select(invocation => new { name = invocation.Method, action = "allow", httpVerb = invocation.HttpMethods }).ToArray() }).ToArray(),
+            } } }), token);
+            builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"] = acl;
+            builder.Services.AddSingleton<FiniteRouteCatalogReceiver>();
+        }
         builder.Configuration[DaprAppChannelToken.ConfigurationKey] = _channel;
         builder.Configuration["Authentication:JwtBearer:Issuer"] = "technical-fixture";
         builder.Configuration["Authentication:JwtBearer:Audience"] = "technical-fixture";
@@ -126,16 +137,30 @@ internal sealed class TechnicalHttpCatalogFixture : IAsyncDisposable
             catch (RouteCatalogUnavailableException) { context.Response.StatusCode = 503; }
         });
         App.UseRouting(); App.UseAuthentication();
-        TechnicalHttpRouteCatalogReceiver.UseDevelopmentTechnicalHttpCatalogReceiver(App, RunScopedRouteCatalogGateway.Operation);
+        if (legacyFinite) FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(App, DevelopmentTechnicalHttpTransport.Operation, technical: true);
+        else TechnicalHttpRouteCatalogReceiver.UseDevelopmentTechnicalHttpCatalogReceiver(App, RunScopedRouteCatalogGateway.Operation);
         App.UseEventStoreHttpHostSecurity(); App.UseAuthorization();
         App.MapControllers(); App.MapDefaultEndpoints(); App.MapEventStoreRouteCatalog();
         App.MapGet("/dapr/subscribe", () => Results.Ok(Array.Empty<object>())).RequireEventStoreChannel();
         App.MapPost("/api/v1/admin/unmarked", () => Results.Ok()).RequireAuthorization(EventStoreHttpHostSecurityExtensions.HumanPolicy);
         endpoints?.Invoke(App);
         await App.StartAsync(token).ConfigureAwait(false);
-        await App.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>().WaitForCaptureAsync(token).ConfigureAwait(false);
-        var fence = App.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>();
-        var observed = Catalog.Observations[0] with { ReceiverSurface = fence.Observe() };
+        Func<RouteCatalogReceiverSurface> capture;
+        if (legacyFinite)
+        {
+            var finite = App.Services.GetRequiredService<FiniteRouteCatalogReceiver>();
+            await finite.WaitForCaptureAsync(token).ConfigureAwait(false);
+            capture = finite.Observe;
+        }
+        else
+        {
+            var composite = App.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>();
+            await composite.WaitForCaptureAsync(token).ConfigureAwait(false);
+            capture = composite.Observe;
+        }
+        var surface = capture();
+        var observed = Catalog.Observations[0] with { ReceiverSurface = surface };
+        if (legacyFinite) observed = observed with { AuxiliaryOperations = DevelopmentTechnicalHttpTransport.Auxiliary(surface, observed.AppId, "legacy-sdk") };
         if (invocations is not null)
         {
             byte[] acl = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { spec = new { accessControl = new
@@ -147,8 +172,17 @@ internal sealed class TechnicalHttpCatalogFixture : IAsyncDisposable
                 TopologyDocuments = [observed.TopologyDocuments[0], acl] };
         }
         Catalog.UpdateObservation(0, observed);
-        Catalog.Recapture = actual => actual.HostId == Catalog.Hosts[0].HostId ? actual with { ReceiverSurface = fence.Observe() } : actual;
-        if (activate) await Catalog.ActivateAsync(Catalog.Candidate(attempt: attempt)).ConfigureAwait(false);
+        Catalog.Recapture = actual => actual.HostId != Catalog.Hosts[0].HostId ? actual : actual with
+        {
+            ReceiverSurface = capture(), AuxiliaryOperations = legacyFinite ? DevelopmentTechnicalHttpTransport.Auxiliary(capture(), actual.AppId, "legacy-sdk") : actual.AuxiliaryOperations,
+        };
+        if (activate)
+        {
+            var candidate = Catalog.Candidate(attempt: attempt);
+            if (legacyFinite) candidate = candidate with { AuxiliaryOperations = observed.AuxiliaryOperations };
+            candidate = candidate with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(candidate) };
+            await Catalog.ActivateAsync(candidate).ConfigureAwait(false);
+        }
         Client = new HttpClient(new SocketsHttpHandler { UseProxy = false })
         { BaseAddress = new Uri(App.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single()) };
         Human();

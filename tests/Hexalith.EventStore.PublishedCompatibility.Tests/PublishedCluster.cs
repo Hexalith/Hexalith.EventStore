@@ -752,10 +752,16 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task<JsonElement> GetAsync(string address)
     {
+        DateTimeOffset began = DateTimeOffset.UtcNow;
         using var response = await _http.GetAsync(address, OperationCancellation);
         response.EnsureSuccessStatusCode();
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        PublishedScenarioTests.ActiveAssertions?.Record("http-get:" + address, json.RootElement.GetRawText());
+        string value = json.RootElement.GetRawText();
+        PublishedScenarioTests.ActiveAssertions?.Record("http-get:" + address, value);
+        // Retain bounded transport coordinates and a semantic-body hash without copying any
+        // additional authorization material out of the existing response observation.
+        PublishedScenarioTests.ActiveAssertions?.Record("http-get-observation", JsonSerializer.Serialize(new { address, began,
+            ended = DateTimeOffset.UtcNow, status = (int)response.StatusCode, bodyHash = QualificationRuntime.Hash(Encoding.UTF8.GetBytes(value)) }));
         return json.RootElement.Clone();
     }
 

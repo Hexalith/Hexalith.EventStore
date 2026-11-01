@@ -37,13 +37,16 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 
 /// <summary>Real pinned daprd and native SDK actor callbacks under the private technical Gateway fence.</summary>
-public sealed class NativeActorCatalogLiveTests
+public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
 {
     [Theory]
-    [InlineData("pubsub", false)]
-    [InlineData("in-memory-events", false)]
-    [InlineData("in-memory-events", true)]
-    public async Task NativeQueryRegisteredActorsAndLifecycleKeepActualChannelCatalogAndMethodBoundaries(string component, bool declarative)
+    [InlineData("pubsub", false, false)]
+    [InlineData("in-memory-events", false, false)]
+    [InlineData("in-memory-events", true, false)]
+    [InlineData("pubsub", false, true)]
+    [InlineData("in-memory-events", false, true)]
+    [InlineData("in-memory-events", true, true)]
+    public async Task NativeQueryRegisteredActorsAndLifecycleKeepActualChannelCatalogAndMethodBoundaries(string component, bool declarative, bool legacyFinite)
     {
         string directory = Path.Combine(Path.GetTempPath(), "native-catalog-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -100,6 +103,11 @@ public sealed class NativeActorCatalogLiveTests
             ["EventStore:RouteCatalog:DevelopmentBootstrap:ComponentPath"] = componentPath, ["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"] = aclPath,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:DeclaredInvocations"] = JsonSerializer.Serialize(new[] { new RouteCatalogDeclaredInvocation(appId, "/**", ["GET", "POST", "PUT"]) }),
         });
+        if (legacyFinite)
+        {
+            builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:ReceiverProfile"] = null;
+            builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:BindingVersion"] = null;
+        }
         builder.Services.AddEventStore(); builder.Services.AddEventStoreServer(builder.Configuration); builder.Services.AddEventStoreDomainQueryRouting(); builder.Services.AddEventStoreWorkloadAssertionIssuer(builder.Configuration);
         builder.Services.AddControllers().AddApplicationPart(typeof(Hexalith.EventStore.Controllers.CommandsController).Assembly);
         // In-process hosting has no Aspire-injected process environment. Configure the real
@@ -206,6 +214,12 @@ public sealed class NativeActorCatalogLiveTests
                     using var deniedResponse = await direct.SendAsync(deniedHealth, TestContext.Current.CancellationToken);
                     deniedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
                 }
+                using (var foreign = new HttpRequestMessage(HttpMethod.Get, "/healthz"))
+                {
+                    foreign.Headers.Add("dapr-api-token", appToken); foreign.Headers.Add("dapr-caller-app-id", "foreign-caller");
+                    using var foreignResponse = await direct.SendAsync(foreign, TestContext.Current.CancellationToken);
+                    foreignResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+                }
                 foreach (var method in new[] { HttpMethod.Get, HttpMethod.Post, HttpMethod.Put, HttpMethod.Delete, HttpMethod.Patch, HttpMethod.Head, HttpMethod.Options })
                 {
                     using var health = new HttpRequestMessage(method, "/healthz"); health.Headers.Add("dapr-api-token", appToken);
@@ -250,7 +264,9 @@ public sealed class NativeActorCatalogLiveTests
             var envelope = RouteCatalogCodec.Seal(new RouteCatalogEnvelope(3, 1, "Development", false, observation.Declarations,
                 observation.Targets.Select(target => target with { OperationContractDigest = observation.Operations.Single(operation => operation.RouteId == target.RouteId).Digest }).ToArray(), [], "", "", observation.Operations, []));
             var activation = new RouteCatalogActivation("native-actors", RouteCatalogCodec.Encode(envelope), RouteCatalogCodec.ComputeRootDigest(envelope), null, [identity], "Development-fixture", "", observation.AuxiliaryOperations);
-            activation = activation with { TechnicalHttpReceivers = [new(appId, RouteCatalogTechnicalHttpPolicy.FenceVersion,
+            observer.FenceVersion.ShouldBe(legacyFinite ? FiniteRouteCatalogReceiver.TechnicalVersion : RouteCatalogTechnicalHttpPolicy.FenceVersion);
+            if (legacyFinite) observer.TechnicalHttp.ShouldBeNull();
+            else activation = activation with { TechnicalHttpReceivers = [new(appId, RouteCatalogTechnicalHttpPolicy.FenceVersion,
                 observer.TechnicalHttp ?? throw new InvalidOperationException("The actual Gateway technical inventory is required."))
                 { Invocations = observation.DeclaredInvocations }] };
             activation = activation with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(activation) };
@@ -261,6 +277,34 @@ public sealed class NativeActorCatalogLiveTests
             var activatedHealth = await healthChecks.CheckHealthAsync(TestContext.Current.CancellationToken);
             activatedHealth.Status.ShouldBe(HealthStatus.Healthy, string.Join("; ", activatedHealth.Entries.Select(entry => entry.Key + ":" + entry.Value.Status)));
             await RequireHealthMethodsAsync(HttpStatusCode.OK);
+            // Exercise the actual HTTP/CAS backend under concurrent local dispatch admission.
+            // Every successful acquisition is released even when another contender refuses.
+            using (var contention = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken))
+            {
+                contention.CancelAfter(TimeSpan.FromSeconds(30));
+                Task<RouteCatalogDispatchLease>[] acquiring = Enumerable.Range(0, 64).Select(_ => authority.AcquireAsync(contention.Token)).ToArray();
+                try
+                {
+                    await Task.WhenAll(acquiring);
+                    var admitted = await store.ReadAsync(contention.Token);
+                    admitted.State.Leases.Count.ShouldBe(64);
+                    admitted.State.Leases.Select(lease => lease.LeaseId).Distinct(StringComparer.Ordinal).Count().ShouldBe(64);
+                    admitted.State.Leases.ShouldAllBe(lease => lease.RootDigest == activation.RootDigest && lease.Epoch == 1 && lease.HostId == "native");
+                }
+                finally
+                {
+                    foreach (var completed in acquiring.Where(task => task.IsCompletedSuccessfully))
+                    {
+                        var acquired = await completed;
+                        await acquired.DisposeAsync();
+                    }
+                    var remaining = await store.ReadAsync(TestContext.Current.CancellationToken);
+                    output.WriteLine(JsonSerializer.Serialize(new { stage = "actual-native-cas-contention", attempts = acquiring.Length,
+                        acquired = acquiring.Count(task => task.IsCompletedSuccessfully), refused = acquiring.Count(task => task.IsFaulted),
+                        cancelled = acquiring.Count(task => task.IsCanceled), remainingFences = remaining.State.Leases.Count }));
+                    remaining.State.Leases.ShouldBeEmpty();
+                }
+            }
             var etag = proxyFactory.CreateActorProxy<IETagActor>(new ActorId("counter:tenant-a"), ETagActor.ETagActorTypeName);
             (await etag.GetCurrentETagAsync()).ShouldBeNull();
             string provenance = (await app.Services.GetRequiredService<IWorkloadAssertionIssuer>().IssueAsync(new WorkloadAssertionRequest(appId,

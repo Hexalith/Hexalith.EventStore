@@ -145,9 +145,21 @@ public static class DevelopmentRouteCatalogBootstrap
             await RetryBackendAsync(async () =>
             {
                 var (persisted, _) = await provider.GetRequiredService<IRouteCatalogStateStore>().ReadAsync(token).ConfigureAwait(false);
-                if (persisted.Committed is not { } persistedCommitted || persisted.Epoch != held.Epoch || persisted.Pending is not null || persisted.Leases.Count != 0
+                if (persisted.Committed is not { } persistedCommitted || persisted.Epoch != held.Epoch
                     || RouteCatalogActivationBinding.ComputeDigest(persistedCommitted) != RouteCatalogActivationBinding.ComputeDigest(predecessor))
-                    throw new RouteCatalogUnavailableException("The actual authority is not the exact retained, quiescent predecessor.");
+                    throw new RouteCatalogUnavailableException("The actual authority is not the exact retained predecessor.");
+                // Another physical peer may already have prepared this same successor after our
+                // observation file appeared. Never accept a foreign or replaced pending binding.
+                if (persisted.Pending is { } pending && (pending.AttemptId != attempt
+                    || pending.PredecessorRootDigest != predecessor.RootDigest
+                    || RouteCatalogCodec.Decode(pending.CanonicalCatalog, pending.RootDigest).Generation != checked(priorCatalog.Generation + 1)
+                    || persisted.Attempts.Count(record => record.AttemptId == attempt) != 1
+                    || persisted.Attempts.Single(record => record.AttemptId == attempt).BindingDigest != RouteCatalogActivationBinding.ComputeDigest(pending)))
+                    throw new RouteCatalogUnavailableException("A different or unrecorded successor occupies the retained predecessor.");
+                // Retained old dispatches remain authoritative. Prepare fences new work; Ready
+                // and Commit still refuse until verified per-fence reconciliation proves drain.
+                // Requiring an empty lease list here would prevent the mandatory pending successor
+                // from being prepared and make that proof-driven reconciliation impossible.
             }, token).ConfigureAwait(false);
             predecessorRootDigest ??= predecessor.RootDigest;
         }

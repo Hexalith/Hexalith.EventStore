@@ -164,10 +164,9 @@ public static class RouteCatalogTopologyValidator
         }
         var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.DaprCallback is not null)).ToArray();
         if (technical.Length == 0) return false;
-        if (verbs.Length == 0 || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length
-            || verbs.Any(verb => !technical.Any(endpoint => endpoint.Methods.Contains(verb, StringComparer.Ordinal))))
-            throw Failure("unqualified-technical-http-verb");
-        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted && endpoint.Methods.Any(method => verbs.Contains(method, StringComparer.Ordinal))))
+        // Intrinsic owner evidence remains mandatory even when this ACL grant uses another
+        // verb. Only the current-grant witness check below may depend on that intersection.
+        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
         {
             if (endpoint.DaprCallback is { } callback)
             {
@@ -184,7 +183,7 @@ public static class RouteCatalogTopologyValidator
             else if (endpoint.NativeActor is { } native)
             {
                 string expected = native.Kind is "config" or "health" ? "GET" : native.Kind == "deactivate" ? "DELETE" : "PUT";
-                if (endpoint.Anonymous || !endpoint.Policies.SequenceEqual(["EventStoreSidecarChannel"], StringComparer.Ordinal)
+                if (endpoint.Http is not null || endpoint.Anonymous || !endpoint.Policies.SequenceEqual(["EventStoreSidecarChannel"], StringComparer.Ordinal)
                     || !endpoint.Methods.SequenceEqual([expected], StringComparer.Ordinal) || native.Verbs != expected
                     || native.Kind is not ("config" or "health" or "method" or "reminder" or "timer" or "deactivate")
                     || new[] { native.CodeDigest, native.FrameworkDigest, native.InventoryDigest }.Any(digest => digest is not { Length: 64 } || !digest.All(char.IsAsciiHexDigitLower))
@@ -193,17 +192,25 @@ public static class RouteCatalogTopologyValidator
             }
             else if (endpoint.Http is { } http)
             {
+                var peers = reachable.Where(peer => peer.Admitted && peer.Pattern == endpoint.Pattern).ToArray();
+                string[] groupedVerbs = peers.SelectMany(peer => peer.Methods).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+                if (peers.Any(peer => peer.Http?.Owner != http.Owner || peer.Http.CodeDigest != http.CodeDigest
+                    || peer.Operation != endpoint.Operation))
+                    throw Failure("unbound-technical-controller-code-or-policy");
+                var groupedWitnesses = peers.SelectMany(peer => peer.Http!.Grants ?? []).Distinct()
+                    .OrderBy(witness => witness.Method, StringComparer.Ordinal).ThenBy(witness => witness.Verbs, StringComparer.Ordinal).ToArray();
                 if (endpoint.Anonymous || endpoint.Policies.Count == 0 || endpoint.Policies.Any(string.IsNullOrWhiteSpace)
                     || !RouteCatalogSdkHttpPolicy.Allows(http.Owner, endpoint.Pattern, endpoint.Methods, endpoint.Policies)
                     || endpoint.Http.Grants is not { Count: > 0 } witnesses
-                    || !witnesses.Any(witness => witness.Method.Trim('/') == grant.Trim('/') && verbs.Any(verb => witness.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal)))
                     || endpoint.Methods.Count == 0 || !endpoint.Methods.All(verb => http.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal))
                     || http.CodeDigest is not { Length: 64 } || !http.CodeDigest.All(character => char.IsAsciiHexDigitLower(character))
                     || !auxiliary.Any(operation => operation.AppId == localAppId && operation.Method == endpoint.Pattern.Trim('/')
                         && operation.Operation == endpoint.Operation && operation.Http is { } bound
                         && bound.Owner == http.Owner && bound.CodeDigest == http.CodeDigest
                         && witnesses.All(witness => bound.Grants?.Contains(witness) == true)
-                        && endpoint.Methods.All(verb => bound.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal))))
+                        && bound.Verbs.Split(' ').Order(StringComparer.Ordinal).SequenceEqual(groupedVerbs, StringComparer.Ordinal)
+                        && bound.Grants is not null && bound.Grants.OrderBy(witness => witness.Method, StringComparer.Ordinal)
+                            .ThenBy(witness => witness.Verbs, StringComparer.Ordinal).SequenceEqual(groupedWitnesses)))
                     throw Failure("unbound-technical-controller-code-or-policy");
             }
             else if (endpoint.Anonymous || endpoint.IsPattern || endpoint.Policies.Count == 0 || endpoint.Methods.Count != 1
@@ -211,6 +218,14 @@ public static class RouteCatalogTopologyValidator
                 || endpoint.Methods[0] != (endpoint.Pattern.Trim('/') == "internal/routing/catalog-generation" ? "GET" : "POST"))
                 throw Failure("unqualified-nontechnical-receiver-overlap");
         }
+        if (verbs.Length == 0 || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length
+            || verbs.Any(verb => !technical.Any(endpoint => endpoint.Methods.Contains(verb, StringComparer.Ordinal))))
+            throw Failure("unqualified-technical-http-verb");
+        foreach (var endpoint in technical.Where(endpoint => endpoint.Http is not null
+            && endpoint.Methods.Any(method => verbs.Contains(method, StringComparer.Ordinal))))
+            if (!endpoint.Http!.Grants!.Any(witness => witness.Method.Trim('/') == grant.Trim('/')
+                && verbs.Any(verb => witness.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal))))
+                throw Failure("unbound-technical-controller-code-or-policy");
         return true;
     }
 

@@ -78,12 +78,117 @@ public sealed class TechnicalTopologyVerbIsolationTests
     }
 
     [Fact]
+    public void JointMethodMutationCannotHideIndependentAuxiliaryVerbBinding()
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var grant = new RouteCatalogHttpGrant("/api/v1/commands", "POST");
+        var root = Endpoint("/api/v1/commands", "POST", "Hexalith.EventStore.Controllers.CommandsController", grant);
+        var child = Endpoint("/api/v1/commands/validate", "POST", "Hexalith.EventStore.Controllers.CommandValidationController", grant);
+        var auxiliary = new[] { Auxiliary(root, fixture), Auxiliary(child, fixture) };
+        Validate(fixture, [grant], new(FiniteRouteCatalogReceiver.TechnicalVersion, [root, child]), auxiliary);
+        // Both receiver fields agree with each other, but the independently committed owner
+        // still binds POST. Filtering the mutated GET must not hide that contradiction.
+        child = child with { Methods = ["GET"], Http = child.Http! with { Verbs = "GET" } };
+        Should.Throw<RouteCatalogValidationException>(() => Validate(fixture, [grant],
+            new(FiniteRouteCatalogReceiver.TechnicalVersion, [root, child]), auxiliary));
+    }
+
+    [Fact]
     public void ExplicitMultiVerbTransportRetainsEveryGrantAndOwnerBinding()
     {
         var fixture = new RouteCatalogTestFixture();
         var grant = new RouteCatalogHttpGrant("/api/v1/commands", "GET POST");
         var endpoint = Endpoint("/api/v1/commands", "GET POST", "Hexalith.EventStore.Controllers.CommandsController", grant);
         Validate(fixture, [grant], new(FiniteRouteCatalogReceiver.TechnicalVersion, [endpoint]), [Auxiliary(endpoint, fixture)]);
+    }
+
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("owner")]
+    [InlineData("code")]
+    [InlineData("anonymous")]
+    [InlineData("policy")]
+    [InlineData("operation")]
+    [InlineData("missing-auxiliary")]
+    [InlineData("auxiliary-extra-verb")]
+    public void ExcludedHttpVerbStillRequiresIndependentIntrinsicBindings(string fault)
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var grant = new RouteCatalogHttpGrant("/api/v1/commands", "POST");
+        var root = Endpoint("/api/v1/commands", "POST", "Hexalith.EventStore.Controllers.CommandsController", grant);
+        var child = Endpoint("/api/v1/commands/status/{messageId}", "GET", "Hexalith.EventStore.Controllers.CommandStatusController",
+            new("/api/v1/commands/status/**", "GET"));
+        var auxiliary = new[] { Auxiliary(root, fixture), Auxiliary(child, fixture) };
+        child = fault switch
+        {
+            "owner" => child with { Http = child.Http! with { Owner = "foreign-owner" } },
+            "code" => child with { Http = child.Http! with { CodeDigest = RouteCatalogTestFixture.Hash("foreign-code") } },
+            "anonymous" => child with { Anonymous = true },
+            "policy" => child with { Policies = ["foreign-policy"] },
+            "operation" => child with { Operation = "foreign-operation" },
+            _ => child,
+        };
+        if (fault == "missing-auxiliary") auxiliary = [auxiliary[0]];
+        if (fault == "auxiliary-extra-verb") auxiliary[1] = auxiliary[1] with { Http = auxiliary[1].Http! with { Verbs = "GET POST" } };
+        void Check() => Validate(fixture, [grant], new(FiniteRouteCatalogReceiver.TechnicalVersion, [root, child]), auxiliary);
+        if (fault == "valid") Check();
+        else Should.Throw<RouteCatalogValidationException>(Check).Diagnostics.Single().Code.ShouldBe("unbound-technical-controller-code-or-policy");
+    }
+
+    [Theory]
+    [InlineData("native", "valid")]
+    [InlineData("native", "methods")]
+    [InlineData("native", "descriptor-verbs")]
+    [InlineData("native", "anonymous")]
+    [InlineData("native", "code")]
+    [InlineData("native", "binding")]
+    [InlineData("native", "http-overlap")]
+    [InlineData("callback", "valid")]
+    [InlineData("callback", "methods")]
+    [InlineData("callback", "descriptor-verbs")]
+    [InlineData("callback", "anonymous")]
+    [InlineData("callback", "code")]
+    [InlineData("callback", "binding")]
+    public void ExcludedNativeAndCallbackVerbsStillRequireClosedIntrinsicBindings(string transport, string fault)
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var grant = new RouteCatalogHttpGrant("/**", "POST");
+        var root = Endpoint("/api/v1/commands", "POST", "Hexalith.EventStore.Controllers.CommandsController", grant);
+        string digest = RouteCatalogTestFixture.Hash("actual-sdk-inventory");
+        var child = new RouteCatalogReceiverEndpoint(transport == "native" ? "/healthz" : "/dapr/subscribe", ["GET"],
+            transport == "native" ? "sdk-native-actor:health" : "sdk-dapr-callback:subscribe", ["EventStoreSidecarChannel"], false, false, true)
+        {
+            NativeActor = transport == "native" ? new("health", "GET", digest, digest, digest) : null,
+            DaprCallback = transport == "callback" ? new("subscribe", "GET", digest, digest, digest) : null,
+        };
+        var bound = new RouteCatalogAuxiliaryOperation(fixture.Hosts[0].AppId, child.Pattern.Trim('/'), child.Operation!, "sdk")
+        { NativeActor = child.NativeActor, DaprCallback = child.DaprCallback };
+        if (fault == "methods") child = child with { Methods = transport == "native" ? ["GET", "PUT"] : ["GET", "POST"] };
+        if (fault == "anonymous") child = child with { Anonymous = true };
+        if (fault == "http-overlap") child = child with { Http = new("foreign-owner", "GET", digest) { Grants = [new("/**", "GET")] } };
+        if (fault is "descriptor-verbs" or "code")
+            child = transport == "native"
+                ? child with { NativeActor = child.NativeActor! with { Verbs = fault == "descriptor-verbs" ? "PUT" : "GET", CodeDigest = fault == "code" ? "malformed" : digest } }
+                : child with { DaprCallback = child.DaprCallback! with { Verbs = fault == "descriptor-verbs" ? "POST" : "GET", CodeDigest = fault == "code" ? "malformed" : digest } };
+        if (fault == "binding") bound = bound with { Operation = "foreign-operation" };
+        void Check() => Validate(fixture, [grant], new(FiniteRouteCatalogReceiver.TechnicalVersion, [root, child]), [Auxiliary(root, fixture), bound]);
+        if (fault == "valid") Check();
+        else Should.Throw<RouteCatalogValidationException>(Check).Diagnostics.Single().Code.ShouldBe(transport == "native" ? "unbound-native-actor-receiver" : "unbound-sdk-dapr-callback-receiver");
+    }
+
+    [Fact]
+    public void SplitSamePatternHttpActionsRetainTheExactGroupedVerbAndWitnessUnion()
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var grant = new RouteCatalogHttpGrant("/api/v1/admin", "DELETE PUT");
+        var put = Endpoint("/api/v1/admin/settings", "PUT", "actual-sdk-controller", new(grant.Method, "PUT"));
+        var delete = Endpoint(put.Pattern, "DELETE", put.Http!.Owner, new(grant.Method, "DELETE"));
+        var surface = new RouteCatalogReceiverSurface(FiniteRouteCatalogReceiver.TechnicalVersion, [put, delete]);
+        var auxiliary = DevelopmentTechnicalHttpTransport.Auxiliary(surface, fixture.Hosts[0].AppId, "sdk");
+        auxiliary.Single().Http!.Verbs.ShouldBe("DELETE PUT");
+        Validate(fixture, [grant], surface, auxiliary);
+        Should.Throw<RouteCatalogValidationException>(() => Validate(fixture, [grant], surface,
+            [auxiliary.Single() with { Http = auxiliary.Single().Http! with { Verbs = "DELETE GET PUT" } }]));
     }
 
     private static RouteCatalogReceiverEndpoint Endpoint(string path, string verbs, string owner, RouteCatalogHttpGrant grant)

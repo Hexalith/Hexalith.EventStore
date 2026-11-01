@@ -160,6 +160,10 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         if (!lease.Snapshot.Envelope.Routes.Any(r => r.AppId == appId && r.Method == method)
             && !lease.Snapshot.AuxiliaryOperations.Any(auxiliary => auxiliary.NativeActor is null && auxiliary.DaprCallback is null && auxiliary.Sidecar is null && auxiliary.Http is null
                 && auxiliary.AppId == appId && auxiliary.Method == method)
+            && !(lease.Snapshot.TechnicalHttpReceivers.All(receiver => receiver.AppId != appId)
+                && lease.Snapshot.AuxiliaryOperations.Any(auxiliary => auxiliary.NativeActor is null && auxiliary.DaprCallback is null && auxiliary.Sidecar is null
+                    && auxiliary.AppId == appId && auxiliary.Http is not null
+                    && DevelopmentTechnicalHttpTransport.Matches(auxiliary, rawMethod, request.Method.Method)))
             && !TechnicalHttpCatalogBinding.Matches(lease.Snapshot.TechnicalHttpReceivers, appId, method, request.Method.Method, lease.Snapshot.LocalAppId))
             throw new RouteCatalogUnavailableException("The Dapr invocation target is outside the committed catalog and auxiliary inventory.");
         request.Headers.Remove(RootHeader);
