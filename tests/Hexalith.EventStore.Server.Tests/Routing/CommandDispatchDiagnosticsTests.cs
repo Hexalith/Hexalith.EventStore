@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -611,7 +612,7 @@ public sealed class CommandDispatchDiagnosticsTests
     }
 
     private static SubmitCommand Command() => new("private-message", "tenant-a", "counter", "private-aggregate", "increment-counter",
-        "private-body"u8.ToArray(), "private-correlation", "private-user", new() { ["private-key"] = "private-value" });
+        "private-body"u8.ToArray(), "private-correlation", "private-user", new() { ["private-key"] = string.Concat("private-", Convert.ToHexString(RandomNumberGenerator.GetBytes(16))) });
 
     internal static void AssertOpen(DispatchDiagnosticLog log, string stage)
         => log.Records.Where(record => Equals(record["Stage"], stage)).Select(record => record["Status"]).ShouldBe(["Started"]);
