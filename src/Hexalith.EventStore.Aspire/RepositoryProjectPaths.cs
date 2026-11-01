@@ -1,9 +1,11 @@
+using System.Text.RegularExpressions;
+
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>
 /// Resolves on-disk paths to project files within a Hexalith mono-repo working tree, where the platform
 /// modules (<c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>, …) are either the current repository or checked
-/// out as direct Git submodules under the consuming repository's <c>references</c> folder.
+/// out as direct Git submodules or declared siblings under a workspace's <c>references/</c> directory.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,8 +27,7 @@ public static class RepositoryProjectPaths {
     /// </summary>
     /// <param name="path">Path segments, relative to the repository root, ending in the target file.</param>
     /// <returns>The combined path rooted at the repository root.</returns>
-    public static string GetProjectPath(params string[] path)
-    {
+    public static string GetProjectPath(params string[] path) {
         ValidateRelativePathSegments(path);
 
         string repositoryRoot = GetRepositoryRoot();
@@ -44,11 +45,11 @@ public static class RepositoryProjectPaths {
     /// Resolves the on-disk path to a project file inside a Hexalith platform module the consuming repository
     /// depends on (e.g. <c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>), with the same rule as the workspace
     /// source mapping. When <c>&lt;root&gt;/&lt;module&gt;.slnx</c> exists, the dependency is the consuming repository
-    /// itself and the project resolves under <c>&lt;root&gt;</c>. Otherwise it resolves under the direct submodule
-    /// <c>&lt;root&gt;/references/&lt;module&gt;</c>. No sibling, ancestor or root-level checkout is ever used.
-    /// This keeps the launched project path (resolved here at runtime) identical to the build-time
-    /// <c>&lt;ProjectReference&gt;</c> the AppHost uses to force a Debug build of the same project — so the AppHost
-    /// never compiles one csproj and launches another.
+    /// itself and the project resolves under <c>&lt;root&gt;</c>. Otherwise it prefers the direct submodule
+    /// <c>&lt;root&gt;/references/&lt;module&gt;</c>. When that project is absent and the consumer is under a
+    /// workspace's <c>references/</c> directory, it can use a sibling only when the workspace's
+    /// <c>.gitmodules</c> declares both repository paths. Unrelated siblings, ancestors and root-level
+    /// checkouts are never used.
     /// </summary>
     /// <param name="moduleDirectory">The dependency module's directory name (e.g. <c>Hexalith.EventStore</c>).</param>
     /// <param name="moduleRelativePath">Path segments inside the module, ending in the target project file.</param>
@@ -69,12 +70,10 @@ public static class RepositoryProjectPaths {
     /// <exception cref="InvalidOperationException">
     /// The project file does not exist at the mapped location. The message names the dependency and the expected path.
     /// </exception>
-    internal static string ResolveReferencedModuleProjectPath(string root, string moduleDirectory, params string[] moduleRelativePath)
-    {
+    internal static string ResolveReferencedModuleProjectPath(string root, string moduleDirectory, params string[] moduleRelativePath) {
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleDirectory);
-        if (moduleRelativePath is null || moduleRelativePath.Length == 0)
-        {
+        if (moduleRelativePath is null || moduleRelativePath.Length == 0) {
             throw new ArgumentException("At least one module-relative path segment is required.", nameof(moduleRelativePath));
         }
 
@@ -85,11 +84,78 @@ public static class RepositoryProjectPaths {
             ? Path.GetFullPath(Path.Combine(fullRoot, relative))
             : Path.GetFullPath(Path.Combine(fullRoot, "references", moduleDirectory, relative));
 
-        return File.Exists(expected)
-            ? expected
-            : throw new InvalidOperationException(isCurrentRepository
-                ? $"Dependency '{moduleDirectory}' is the repository at '{fullRoot}', but its project '{expected}' does not exist."
-                : $"Dependency '{moduleDirectory}' must be checked out as the direct submodule 'references/{moduleDirectory}' of '{fullRoot}', but its project '{expected}' does not exist. Sibling, ancestor and root-level checkouts are not used. Initialize the submodule with 'git submodule update --init -- references/{moduleDirectory}'.");
+        if (File.Exists(expected)) {
+            return expected;
+        }
+
+        if (isCurrentRepository) {
+            throw new InvalidOperationException(
+                $"Dependency '{moduleDirectory}' is the repository at '{fullRoot}', but its project '{expected}' does not exist.");
+        }
+
+        string? sibling = GetDeclaredSiblingProjectPath(fullRoot, moduleDirectory, relative);
+        if (sibling is not null && File.Exists(sibling)) {
+            return sibling;
+        }
+
+        string siblingExpectation = sibling is null
+            ? "A sibling is eligible only when the consumer and dependency are declared under the same workspace's 'references/' directory in its '.gitmodules'."
+            : $"The declared workspace sibling project '{sibling}' also does not exist.";
+        throw new InvalidOperationException(
+            $"Dependency '{moduleDirectory}' has no project at the direct-reference location '{expected}'. {siblingExpectation}");
+    }
+
+    /// <summary>
+    /// Gets the sibling project location only when the immediate workspace declares both repository paths.
+    /// </summary>
+    /// <param name="root">The absolute consuming repository root.</param>
+    /// <param name="moduleDirectory">The dependency module's directory name.</param>
+    /// <param name="relative">The project path relative to the dependency module.</param>
+    /// <returns>The declared sibling project path, or <see langword="null"/> when the layout is not declared.</returns>
+    private static string? GetDeclaredSiblingProjectPath(string root, string moduleDirectory, string relative) {
+        DirectoryInfo consumer = new(root);
+        DirectoryInfo? references = consumer.Parent;
+        if (references?.Name != "references" || references.Parent is not DirectoryInfo workspace) {
+            return null;
+        }
+
+        string gitmodules = Path.Combine(workspace.FullName, ".gitmodules");
+        if (!File.Exists(gitmodules)) {
+            return null;
+        }
+
+        Dictionary<string, string> declaredPaths = new(StringComparer.Ordinal);
+        string? submodule = null;
+        foreach (string line in File.ReadLines(gitmodules)) {
+            string entry = line.Trim();
+            if (entry.StartsWith('[')) {
+                Match section = Regex.Match(
+                    entry,
+                    """^\[submodule\s+"(?<name>(?:[^"\\]|\\.)+)"\]\s*(?:[#;].*)?$""",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                    TimeSpan.FromSeconds(1));
+                submodule = section.Success ? section.Groups["name"].Value : null;
+                continue;
+            }
+
+            if (submodule is null) {
+                continue;
+            }
+
+            Match path = Regex.Match(
+                entry,
+                """^path\s*=\s*(?:"(?<path>[^"]*)"|(?<path>[^#;"]*?))\s*(?:[#;].*)?$""",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromSeconds(1));
+            if (path.Success) {
+                declaredPaths[submodule] = path.Groups["path"].Value;
+            }
+        }
+
+        return declaredPaths.Values.Contains("references/" + consumer.Name, StringComparer.Ordinal)
+            && declaredPaths.Values.Contains("references/" + moduleDirectory, StringComparer.Ordinal)
+            ? Path.GetFullPath(Path.Combine(references.FullName, moduleDirectory, relative))
+            : null;
     }
 
     /// <summary>
@@ -97,8 +163,7 @@ public static class RepositoryProjectPaths {
     /// <c>&lt;repo-root&gt;/src/&lt;Module&gt;.AppHost/bin/&lt;config&gt;/&lt;tfm&gt;/</c> layout.
     /// </summary>
     /// <returns>The absolute path to the repository root.</returns>
-    public static string GetRepositoryRoot()
-    {
+    public static string GetRepositoryRoot() {
         string repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
         return Directory.Exists(Path.Combine(repositoryRoot, "src"))
             ? repositoryRoot
@@ -106,31 +171,25 @@ public static class RepositoryProjectPaths {
                 $"Cannot resolve a Hexalith repository root from '{AppContext.BaseDirectory}'. Expected a 'src' directory at '{repositoryRoot}'.");
     }
 
-    private static void ValidateRelativePathSegments(string[] path)
-    {
+    private static void ValidateRelativePathSegments(string[] path) {
         ArgumentNullException.ThrowIfNull(path);
-        if (path.Length == 0)
-        {
+        if (path.Length == 0) {
             throw new ArgumentException("At least one project path segment is required.", nameof(path));
         }
 
-        foreach (string segment in path)
-        {
-            if (string.IsNullOrWhiteSpace(segment))
-            {
+        foreach (string segment in path) {
+            if (string.IsNullOrWhiteSpace(segment)) {
                 throw new ArgumentException("Project path segments cannot be null, empty, or whitespace.", nameof(path));
             }
 
-            if (Path.IsPathRooted(segment))
-            {
+            if (Path.IsPathRooted(segment)) {
                 throw new ArgumentException("Project path segments must be relative.", nameof(path));
             }
 
             string normalizedSegment = segment.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
             if (normalizedSegment
                 .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
-                .Any(static part => part == ".."))
-            {
+                .Any(static part => part == "..")) {
                 throw new ArgumentException("Project path segments cannot contain parent-directory traversal.", nameof(path));
             }
         }
