@@ -112,7 +112,7 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                             && snapshot.Envelope.Declarations.Any(declaration => declaration.RouteId == target.RouteId
                                 && declaration.Kind == "projection" && declaration.Domain == projection.Domain)))
                     {
-                        if (method == "project" && !HasLocalOwner(snapshot, appId, projection.Domain))
+                        if (snapshot.Envelope.SchemaVersion == 3 && method == "project" && !HasLocalOwner(snapshot, appId, projection.Domain))
                             throw new DomainRouteCatalogMissingLegacyReceiverException();
                         RouteCatalogProjectionPolicy.Auxiliary(snapshot, projection.Domain, appId, method, operation);
                         ValidateAuxiliaryTenant(snapshot, appId, projection.Domain, projection.TenantId);

@@ -250,6 +250,21 @@ public sealed class TerminalRefusalHttpTests
         await fixture.AssertNoEffectsAsync(0);
     }
 
+    [Theory]
+    [InlineData(false, 503)]
+    [InlineData(true, 404)]
+    public async Task UnknownLocalLegacyProjectionRetainsSchemaTwoPolicyAndSchemaThreeTerminalRefusal(bool schemaThree, int status)
+    {
+        await using var fixture = new TerminalRefusalHttpFixture(schemaThree: schemaThree);
+        await fixture.StartAsync();
+        RouteCatalogCodec.Decode(fixture.Activation.CanonicalCatalog).SchemaVersion.ShouldBe(schemaThree ? 3 : 2);
+        fixture.Cohort.Workload(fixture.Client, "domain-service:project");
+        using var request = fixture.Request(new ProjectionRequest("tenant-a", "not-declared", "aggregate", []), "project");
+        using var response = await fixture.Client.SendAsync(request, TestContext.Current.CancellationToken);
+        ((int)response.StatusCode).ShouldBe(status);
+        await fixture.AssertNoEffectsAsync(0);
+    }
+
     [Fact]
     public void RegistrationIsFiniteExactAndRejectsDuplicateRules()
     {
