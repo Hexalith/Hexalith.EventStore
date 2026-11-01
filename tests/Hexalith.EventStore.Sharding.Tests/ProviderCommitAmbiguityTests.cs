@@ -37,6 +37,9 @@ public sealed class ProviderCommitAmbiguityTests
     {
         await using var fixture = new ShardingFixture();
         await fixture.InitializeAsync(providerCommitProxy: true);
+        RunBinding? binding = JsonSerializer.Deserialize<RunBinding>(await File.ReadAllTextAsync(Path.Combine(fixture.Artifacts, "binding.json")));
+        binding.ShouldNotBeNull();
+        binding.Configuration["authorization"].ShouldBe(ShardingFixture.AuthorizationFor(providerCommitProxy: true));
         var acknowledged = new HashSet<string>(StringComparer.Ordinal);
         var states = new List<ShardState>();
         var absent = new List<(string Tenant, string Domain, long Generation)>();

@@ -2,7 +2,7 @@
 title: 'Story 4.6: Isolated PostgreSQL Restart and Failure Recovery'
 type: 'feature'
 created: '2026-10-31'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 parent_story_key: '4-6-global-position-sharding-spec-renegotiation'
@@ -67,8 +67,8 @@ context:
 
 Code review 2026-10-31 (`bmad-code-review 4.6`, full mode, four layers). The combined uncommitted lane diff covering this phase and `spec-4-6-provider-commit-ambiguity.md` was reviewed together; that spec holds the full triage (49 findings: 1 decision, 10 patches, 31 rejected). Entries owned by this phase:
 
-- [ ] [Review][Patch] `ShardActorExpiryTests` name and summary still say requests "deny" at every boundary, but the `save` case now expects propagated cancellation (uncertain), not a denial; rename/re-document the case [tests/Hexalith.EventStore.Sharding.Tests/ShardActorExpiryTests.cs:19]
-- [ ] [Review][Patch] README adds two consecutive blank lines before "## Same-storage provider recovery" (markdownlint MD012 under the repo's `default: true` config) [tests/Hexalith.EventStore.Sharding.Tests/README.md:139]
+- [x] [Review][Patch] `ShardActorExpiryTests` name and summary still say requests "deny" at every boundary, but the `save` case now expects propagated cancellation (uncertain), not a denial; rename/re-document the case [tests/Hexalith.EventStore.Sharding.Tests/ShardActorExpiryTests.cs:19]
+- [x] [Review][Patch] README adds two consecutive blank lines before "## Same-storage provider recovery" (markdownlint MD012 under the repo's `default: true` config) [tests/Hexalith.EventStore.Sharding.Tests/README.md:139]
 
 Rejected (this phase's code):
 
@@ -287,3 +287,14 @@ HA or production section 7 gate. The watchdog remains in-process; external
 termination of the test process or machine can prevent cleanup, and retained
 ownership journals support exact manual recovery. No such external interruption
 occurred in this phase.
+
+### Review corrections verified — 2026-10-31
+
+The accepted patches above are closed by [the provider-lane correction record](spec-4-6-provider-review-corrections.md). The user approved that bounded scope in this session. Corrective source was recorded by concurrent Git work as `7ead2f24547c0669b86686340c58c83d883157be`; this follow-up did not stage, commit, merge, push or release. Earlier run records and frozen intent remain preserved.
+
+Fresh validation passed 97 deterministic cases, 10 live provider/recovery/synthetic/startup cases, both explicit expiry cases and 34 global-position cases (143 distinct selections, zero failed/skipped/not-run). Both Debug builds had zero warnings/errors; README lint and whitespace checks passed. The correction record supplies exact commands, actual expiries, artifact hashes, versions and the disclosed initial test-setup failure. The independent audit verified all 12 owned environments removed: 26 containers, 44 host/sidecar processes, 1,491 transient commands, 12 named volumes and 12 private runtime directories; proxy listeners and sessions are absent. All bound source/output hashes remain unchanged. Raw logs and receipts remain ignored local artifacts; no CI run is claimed.
+
+Only these development-phase review fixes are closed. The original Story 4.6 and sprint state, approved subject, production allocator/contracts and remaining qualification gaps retain their independent status.
+
+
+The subsequent independent correction review yielded two regression-test patches, both applied and verified. The final reviewed assembly passed the same 143 distinct selections with no failures/skips/not-run. Fresh reviewed bindings and expiry commands, final artifact hashes and complete triage are in the correction record. Across initial and final runs, the independent audit confirms all 24 environments removed (52 containers, 88 host/sidecar processes, 3,000 commands, 24 named volumes and 24 private runtime directories). Only the bounded development phase is done; parent Story 4.6 remains awaiting operator evidence.

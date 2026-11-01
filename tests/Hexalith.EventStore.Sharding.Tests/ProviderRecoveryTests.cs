@@ -17,6 +17,9 @@ public sealed class ProviderRecoveryTests
     {
         await using var fixture = new ShardingFixture();
         await fixture.InitializeAsync();
+        RunBinding? binding = JsonSerializer.Deserialize<RunBinding>(await File.ReadAllTextAsync(Path.Combine(fixture.Artifacts, "binding.json")));
+        binding.ShouldNotBeNull();
+        binding.Configuration["authorization"].ShouldBe(ShardingFixture.AuthorizationFor(providerCommitProxy: false));
         int[] initialProcesses = fixture.ProcessIds;
         initialProcesses.Length.ShouldBe(4);
         initialProcesses.Distinct().Count().ShouldBe(4);

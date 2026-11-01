@@ -12,7 +12,8 @@ namespace Hexalith.EventStore.Sharding.Tests;
 /// <param name="observeCompletion">Counts every backend COMMIT completion.</param>
 /// <param name="observeForwarded">Records the complete forwarded COMMIT frame.</param>
 internal sealed class PostgresProxySession(TcpClient client, int providerPort, Func<PostgresCommitFault?> armed,
-    Func<string?, long> observeCommit, Action<long> observeForwarded, Action<long, bool> observeCompletion)
+    Func<string?, long> observeCommit, Action<long> observeForwarded, Action<long, bool> observeCompletion,
+    PostgresOneKeySession? oneKey = null)
 {
     private readonly TcpClient _provider = new();
     private readonly ConcurrentDictionary<string, bool> _statements = new(StringComparer.Ordinal);
@@ -91,7 +92,8 @@ internal sealed class PostgresProxySession(TcpClient client, int providerPort, F
     {
         while (await PostgresFrame.ReadAsync(source, startup: false, token) is { } frame)
         {
-            bool commit = IsCommit(frame);
+            long? write = oneKey is null ? null : await oneKey.FrontendAsync(frame, token);
+            bool commit = oneKey is null && IsCommit(frame);
             PostgresCommitFault? fault = Volatile.Read(ref _matched);
             long commitId = 0;
             if (commit)
@@ -103,6 +105,7 @@ internal sealed class PostgresProxySession(TcpClient client, int providerPort, F
             }
 
             await frame.WriteAsync(target, token);
+            if (write.HasValue) oneKey!.Forwarded(write.Value);
             if (commit)
             {
                 observeForwarded(commitId);
@@ -123,7 +126,7 @@ internal sealed class PostgresProxySession(TcpClient client, int providerPort, F
             }
 
             PostgresCommitFault? fault = Volatile.Read(ref _matched);
-            if (frame.Type == (byte)'C' && frame.Field() == "COMMIT")
+            if (oneKey is null && frame.Type == (byte)'C' && frame.Field() == "COMMIT")
             {
                 if (!_pendingCommits.TryDequeue(out long commitId)) throw new InvalidDataException("Unexplained PostgreSQL COMMIT completion.");
                 observeCompletion(commitId, fault?.Boundary == PostgresCommitBoundary.CommitAcknowledgement && fault.Gates == 0);
@@ -136,7 +139,8 @@ internal sealed class PostgresProxySession(TcpClient client, int providerPort, F
                 Volatile.Write(ref _matched, null);
                 _portals.Clear();
             }
-            await frame.WriteAsync(target, token);
+            if (oneKey is null) await frame.WriteAsync(target, token);
+            else await oneKey.BackendAsync(frame, target, token);
         }
     }
 

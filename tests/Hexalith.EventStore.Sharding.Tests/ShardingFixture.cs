@@ -87,7 +87,7 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
     /// <returns>A task completing after independent actor runtimes are ready.</returns>
     internal async Task InitializeAsync(string? failAfter = null, Func<string?>? readExpiry = null,
         Func<CancellationToken, Task>? beforePreflight = null, Func<Task<string>>? resolveDockerEndpoint = null,
-        bool providerCommitProxy = false)
+        bool providerCommitProxy = false, bool providerOneKey = false)
     {
         // Fail before directories, child processes, Docker, or any workload when operator input is absent.
         DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -121,7 +121,8 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
                 _placementPort = Port();
                 _schedulerPort = Port();
                 _postgresPort = Port();
-                _providerCommitProxy = providerCommitProxy;
+                _providerOneKey = providerOneKey;
+                _providerCommitProxy = providerCommitProxy || providerOneKey;
                 if (_providerCommitProxy) _proxyPort = Port();
                 foreach (OwnedNode node in _nodes)
                 {
@@ -161,7 +162,7 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
                 var configuration = new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["scope"] = "isolated synthetic local development only; production_evidence_qualified=false",
-                    ["authorization"] = AuthorizationFor(_providerCommitProxy),
+                    ["authorization"] = AuthorizationFor(_providerCommitProxy, _providerOneKey),
                     ["machine"] = Environment.MachineName,
                     ["docker-endpoint"] = _dockerEndpoint,
                     ["app-id"] = _runId,
@@ -187,8 +188,20 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
                         teardown = "cancel listener and both session directions; drain; independently verify listener absence" });
                     configuration["attempt-journal-directory"] = Path.Combine(_artifacts, "attempts");
                     configuration["provider-commit-witness"] = "test-only commit-witness key encodes operation ID and complete next authority; both keys saved together to force PostgreSQL v1 Multi >1-operation explicit transaction; direct one-key path unqualified";
+                    if (_providerOneKey)
+                    {
+                        configuration["provider-one-key"] = "ordinary single-key actor SaveStateAsync; witness disabled; strict Parse/Bind/Execute selection; all writes attributed; schema SQL hashes retained only during owned initial/replacement host startup; workload SQL revalidated at Execute";
+                        configuration.Remove("provider-commit-witness");
+                        configuration["provider-commit-proxy"] = JsonSerializer.Serialize(new { listener = "127.0.0.1:" + _proxyPort,
+                            provider = "127.0.0.1:" + _postgresPort, encryption = "disabled; strict framed extended protocol",
+                            boundaries = "exact key before Execute; exact write NOTICE + successful one-row CommandComplete withheld through ReadyForQuery(I)",
+                            counts = "all ordinary write executions with full key/value, statement/portal/session; zero explicit COMMIT; exact sequence before restart; actor stages; one SDK send",
+                            teardown = "cancel and drain listener/both session directions; independently probe listener absence" });
+                    }
                     Directory.CreateDirectory(configuration["attempt-journal-directory"]);
-                    configuration["recovery-boundaries"] = "observed before-COMMIT and withheld-COMMIT-acknowledgement; explicit connection break; complete durable inspection; two same-storage provider/replacement cycles";
+                    configuration["recovery-boundaries"] = _providerOneKey
+                        ? "exact before-Execute and successful implicit idle commit with response withheld; full provider-row snapshots; graceful then SIGKILL same-storage recovery and two host replacements"
+                        : "observed before-COMMIT and withheld-COMMIT-acknowledgement; explicit connection break; complete durable inspection; two same-storage provider/replacement cycles";
                 }
                 var binding = new RunBinding(_runId, Canonical(created), Canonical(_expiry),
                     "411005b4ccb2352249c83330c54967c6a22beba1", "160331d25451928ff3c3dea2300b65cab4f97c3b",
@@ -217,7 +230,7 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
                 InjectFailure(failAfter, "postgres");
                 if (_providerCommitProxy)
                 {
-                    _faultProxy = new(_proxyPort, _postgresPort, _work.Token);
+                    _faultProxy = new(_proxyPort, _postgresPort, _work.Token, _providerOneKey, workloadInitiallyActive: !_providerOneKey);
                     _faultProxy.Start();
                     WriteOwnershipJournal();
                     Record("provider-proxy-started", new { listener = "127.0.0.1:" + _proxyPort, provider = "127.0.0.1:" + _postgresPort });
@@ -237,6 +250,7 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
                     if (index == 0) InjectFailure(failAfter, "node");
                 }
 
+                if (_providerOneKey) _faultProxy!.SetWorkloadActive(true);
                 Record("ready", new { processIds = ProcessIds, bindingSha256 = RunBinding.HashFile(_bindingPath), createdUtc = Canonical(created) });
             }
             finally
@@ -340,8 +354,10 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
         try
         {
             EnsureActive();
+            if (_providerOneKey) _faultProxy!.SetWorkloadActive(false);
             foreach (OwnedNode node in _nodes) await StopNodeAsync(node);
             for (int index = 0; index < _nodes.Length; index++) await StartNodeAsync(index);
+            if (_providerOneKey) _faultProxy!.SetWorkloadActive(true);
             Record("restart", new { processIds = ProcessIds });
             return ProcessIds;
         }
@@ -963,8 +979,9 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
     private static string Canonical(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
 
     /// <summary>Retains direct-provider authority and binds the additional authorizing proxy phases when enabled.</summary>
-    internal static string AuthorizationFor(bool providerCommitProxy)
-        => (providerCommitProxy ? "spec-4-6-provider-commit-ambiguity.md and spec-4-6-provider-review-corrections.md; " : string.Empty)
+    internal static string AuthorizationFor(bool providerCommitProxy, bool providerOneKey = false)
+        => (providerOneKey ? "spec-4-6-one-key-provider-boundaries.md; " : string.Empty)
+            + (providerCommitProxy ? "spec-4-6-provider-commit-ambiguity.md and spec-4-6-provider-review-corrections.md; " : string.Empty)
             + "spec-4-6-isolated-postgresql-recovery.md and spec-4-6-isolated-dapr-postgresql-sharding.md; owner jpiquot; conversation 01a18ded-3ceb-7c92-b5f5-dbf1e38a4686";
 
     private static string FindRoot()

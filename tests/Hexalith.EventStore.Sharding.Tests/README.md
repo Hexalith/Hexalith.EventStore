@@ -288,3 +288,65 @@ append-only actor attempts. This lane supplies bounded synthetic development
 evidence; it does not qualify production capacity, backup/restore, HA, physical
 fencing, split-brain or production section 7. Remaining qualification work is in
 the [provider ambiguity follow-up](../../_bmad-output/implementation-artifacts/spec-4-6-provider-ambiguity-qualification-follow-up.md).
+
+## Ordinary one-key provider boundaries
+
+`ProviderOneKeyTests` binds a separate `provider-one-key` profile. It retains the
+actor's existing ordinary single-key `SaveStateAsync`; the proxy no longer implies
+that a companion witness must be staged. The two-key COMMIT class remains a
+separate regression.
+
+The one-key profile selects only the pinned PostgreSQL v1 component's exact
+no-TTL INSERT/upsert or etag UPDATE SQL and the complete `$1` key from supported
+Parse/Bind/Execute frames. Text and binary JSONB/bool/etag formats are decoded
+strictly. Named statements survive idle; portals expire at idle and honor Close.
+Unknown workload SQL, simple-query writes, explicit transactions, partial or
+multiple write executions, malformed parameters and unexplained completions fail.
+The exact pgx `-- ping` empty query and pinned ordinary Get queries are supported.
+
+The pre-execution gate holds the complete Execute frame before forwarding it;
+its independent exact-key trigger sequence must remain zero. The post-commit gate
+requires the exact trigger NOTICE, a successful one-row CommandComplete, and
+ReadyForQuery with idle status. It buffers CommandComplete and all following
+response frames through that idle observation. Neither CommandComplete nor Sync
+alone establishes readiness. Explicit break or cancellation drains both relay
+directions; cancellation cannot manufacture a boundary.
+
+Component schema initialization is scoped to initial startup and replacement-host
+startup. The binding declares that allowance, and the proxy retains connection,
+stage, UTC and normalized SQL hashes for those windows. After both hosts are
+ready, the workload allowlist applies again, including to execution of previously
+prepared statements. The measured one-key save ledger permits zero explicit
+COMMITs. Initialization metadata transactions do not represent actor saves.
+
+Every ordinary or faulted write records its complete key/value, statement, portal,
+connection, forwarding, command completion and idle commit. Final accounting
+matches every registered mutation and one SDK send with one ordered actor turn
+and its exact full provider transition. Extra executions and retries fail; faulted
+operations are never replayed. Whole-table snapshots retain complete provider
+rows, including `xmin`, binary/TTL flags, timestamps and row identity. The live
+scenario rejects unexpected keys or witnesses, checks exact four-field state and
+Int64 decimal strings, and compares complete snapshots through graceful then
+SIGKILL recovery and two replacements of both host/sidecar pairs. Admission and
+reservation faults at both boundaries run in each cycle. Subsequent distinct
+allocations skip committed abandoned ranges; denials and final overflow preserve
+complete rows.
+
+```bash
+dotnet build tests/Hexalith.EventStore.Sharding.TestHost/Hexalith.EventStore.Sharding.TestHost.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
+dotnet build tests/Hexalith.EventStore.Sharding.Tests/Hexalith.EventStore.Sharding.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*OneKeyProtocolTests' -class '*OneKeyAttemptValidatorTests' -class '*OneKeyAttemptJournalTests'
+export EVENTSTORE_SHARDING_EXPIRES_UTC='<authorized future exclusive UTC second within one hour>'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderOneKeyTests'
+```
+
+Implementation verification on 2026-11-01 built the isolated projects in Debug
+with zero warnings/errors and passed 146 focused cases (49 new one-key cases and
+97 existing dependency-free regressions). The initial build failed CA1822 for a
+helper lacking instance access; marking it static resolved the failure. Raw
+commands/results are retained under ignored
+`artifacts/sharding/one-key-phase-20261101/implementation-*.log`. Independent
+review, live execution and independent cleanup audit belong to the coordinator's
+phase verification record; the implementation agent ran no live infrastructure.
+This remains synthetic local development evidence, with no production
+qualification, capacity, HA, backup/restore, physical fencing or split-brain claim.

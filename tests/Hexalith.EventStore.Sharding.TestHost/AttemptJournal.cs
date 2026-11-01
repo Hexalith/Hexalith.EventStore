@@ -11,7 +11,8 @@ public sealed class AttemptJournal(RunBinding binding, Action<string>? beforeApp
     private readonly object _sync = new();
 
     /// <summary>Gets whether the binding explicitly selects a two-key provider COMMIT experiment.</summary>
-    public bool CommitWitnessEnabled => binding.Configuration.ContainsKey("provider-commit-proxy");
+    public bool CommitWitnessEnabled => binding.Configuration.ContainsKey("provider-commit-proxy")
+        && !binding.Configuration.ContainsKey("provider-one-key");
 
     /// <summary>Records every execution, including repeated observation identities.</summary>
     /// <param name="request">The actual request.</param>

@@ -15,6 +15,11 @@ internal sealed class PostgresFaultProxy : IAsyncDisposable
     private readonly List<Exception> _failures = [];
     private readonly Dictionary<long, PostgresCommitObservation> _ledger = [];
     private PostgresCommitFault? _fault;
+    private PostgresOneKeyFault? _oneKeyFault;
+    private readonly Dictionary<long, PostgresWriteObservation> _writes = [];
+    private readonly bool _oneKey;
+    private volatile bool _workloadActive;
+    private readonly List<object> _initialization = [];
     private Task? _accept;
     private int _accepted;
     private int _drained;
@@ -23,10 +28,12 @@ internal sealed class PostgresFaultProxy : IAsyncDisposable
     private volatile bool _providerRestarting;
 
     /// <summary>Configures ports before the listener is started.</summary>
-    internal PostgresFaultProxy(int port, int providerPort, CancellationToken token)
+    internal PostgresFaultProxy(int port, int providerPort, CancellationToken token, bool oneKey = false, bool workloadInitiallyActive = true)
     {
         _listener = new(IPAddress.Loopback, port);
         _providerPort = providerPort;
+        _oneKey = oneKey;
+        _workloadActive = workloadInitiallyActive;
         _stop = CancellationTokenSource.CreateLinkedTokenSource(token);
     }
 
@@ -58,6 +65,41 @@ internal sealed class PostgresFaultProxy : IAsyncDisposable
     internal PostgresCommitObservation[] CommitLedger
     {
         get { lock (_ledger) return _ledger.Values.OrderBy(entry => entry.Id).ToArray(); }
+    }
+
+    /// <summary>Gets every ordinary write, including unselected writes and provider-only retries.</summary>
+    internal PostgresWriteObservation[] WriteLedger
+    {
+        get { lock (_writes) return _writes.Values.OrderBy(entry => entry.Id).ToArray(); }
+    }
+
+    /// <summary>Gets hashed SQL observations from explicitly scoped component initialization windows.</summary>
+    internal object[] InitializationLedger { get { lock (_initialization) return _initialization.ToArray(); } }
+
+    /// <summary>Opens or closes the bound schema-initialization allowance around owned host startup.</summary>
+    internal void SetWorkloadActive(bool active)
+    {
+        lock (_initialization) _initialization.Add(new { phase = active ? "workload" : "initialization", atUtc = DateTimeOffset.UtcNow });
+        _workloadActive = active;
+    }
+
+    /// <summary>Arms a strict ordinary one-key fault.</summary>
+    internal PostgresOneKeyFault ArmOneKey(string key, string marker, PostgresOneKeyBoundary boundary)
+    {
+        if (!_oneKey) throw new InvalidOperationException("One-key protocol accounting is not enabled.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(marker);
+        var fault = new PostgresOneKeyFault(key, marker, boundary);
+        if (Interlocked.CompareExchange(ref _oneKeyFault, fault, null) is not null)
+            throw new InvalidOperationException("A one-key provider fault is already armed.");
+        return fault;
+    }
+
+    /// <summary>Disarms after complete settled attempt inspection.</summary>
+    internal void DisarmOneKey(PostgresOneKeyFault fault)
+    {
+        if (Interlocked.CompareExchange(ref _oneKeyFault, null, fault) != fault)
+            throw new InvalidOperationException("The one-key fault is not armed.");
     }
 
     /// <summary>Marks the exact owned provider lifecycle's expected connection losses.</summary>
@@ -139,7 +181,10 @@ internal sealed class PostgresFaultProxy : IAsyncDisposable
                 TcpClient client = await _listener.AcceptTcpClientAsync(_stop.Token);
                 int id = Interlocked.Increment(ref _accepted);
                 var session = new PostgresProxySession(client, _providerPort, () => Volatile.Read(ref _fault),
-                    marker => ObserveCommit(id, marker), ObserveForwarded, ObserveCompletion);
+                    marker => ObserveCommit(id, marker), ObserveForwarded, ObserveCompletion,
+                    _oneKey ? new PostgresOneKeySession(() => Volatile.Read(ref _oneKeyFault),
+                        (statement, portal, key, value, marker) => ObserveWrite(id, statement, portal, key, value, marker), UpdateWrite, () => _workloadActive,
+                        (stage, sql) => ObserveInitialization(id, stage, sql)) : null);
                 if (_providerRestarting) session.ExpectProviderDisconnect();
                 _connections[id] = session;
                 Task task = ObserveSessionAsync(id, session);
@@ -162,6 +207,39 @@ internal sealed class PostgresFaultProxy : IAsyncDisposable
             session.Break();
             _connections.TryRemove(id, out _);
             Interlocked.Increment(ref _drained);
+        }
+    }
+
+    private void ObserveInitialization(int connectionId, string stage, string sql)
+    {
+        lock (_initialization) _initialization.Add(new { connectionId, stage,
+            sqlSha256 = TestHost.RunBinding.HashText(sql), atUtc = DateTimeOffset.UtcNow });
+    }
+
+    private long ObserveWrite(int connectionId, string statement, string portal, string key, string value, string? marker)
+    {
+        lock (_writes)
+        {
+            long id = _writes.Count + 1;
+            _writes.Add(id, new(id, connectionId, statement, portal, key, value, marker));
+            return id;
+        }
+    }
+
+    private void UpdateWrite(long id, string stage)
+    {
+        lock (_writes)
+        {
+            PostgresWriteObservation entry = _writes[id];
+            _writes[id] = stage switch
+            {
+                "forwarded" => entry with { Forwarded = true },
+                "command" when !entry.CommandCompleted => entry with { CommandCompleted = true },
+                "idle" when entry.CommandCompleted && !entry.IdleCommitted => entry with { IdleCommitted = true },
+                "withheld" when entry.IdleCommitted => entry with { AcknowledgementWithheld = true },
+                "failed" => entry with { Failed = true },
+                _ => throw new InvalidDataException("Illegal or duplicate one-key execution observation: " + stage),
+            };
         }
     }
 

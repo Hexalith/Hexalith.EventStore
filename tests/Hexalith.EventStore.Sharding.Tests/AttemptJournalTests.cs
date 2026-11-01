@@ -98,9 +98,27 @@ public sealed class AttemptJournalTests
             AttemptObservation[] entries = File.Exists(retained) ? File.ReadAllLines(retained)
                 .Select(line => JsonSerializer.Deserialize<AttemptObservation>(line)!).ToArray() : [];
             entries.Select(entry => entry.Stage).ShouldBe(expectedStages);
-            var registered = new RegisteredShardOperation(request, ShardIdentity.Encode("tenant", "domain"),
-                "acknowledged-success", "saved", 1);
-            Should.Throw<InvalidDataException>(() => ShardAttemptValidator.Validate([registered], entries, [Environment.ProcessId], []));
+            string actorId = ShardIdentity.Encode("tenant", "domain");
+            var registered = saveFails
+                ? new RegisteredShardOperation(request, actorId, "uncertain", Sends: 1, FaultMarker: "journal-fault",
+                    FaultBoundary: committed ? PostgresCommitBoundary.CommitAcknowledgement : PostgresCommitBoundary.BeforeCommit,
+                    FaultVerified: true)
+                : new RegisteredShardOperation(request, actorId, "acknowledged-success", "saved", 1);
+            AttemptObservation Observation(string observedStage, string? detail = null)
+                => new(request.OperationId!, observedStage, Environment.ProcessId, now, actorId, request, detail);
+            AttemptObservation[] complete =
+            [
+                Observation("actor-entry"), Observation("save-start"),
+                Observation(saveFails ? "save-failed" : "save-complete", saveFails ? nameof(IOException) : null),
+                Observation("actor-exit", saveFails ? "failed" : "saved"),
+            ];
+            PostgresCommitObservation[] ledger = [new(1, 1, saveFails ? "journal-fault" : null,
+                Forwarded: !saveFails || committed, Completed: !saveFails || committed,
+                AcknowledgementWithheld: saveFails && committed)];
+            ShardAttemptValidator.Validate([registered], complete, [Environment.ProcessId], ledger);
+            InvalidDataException stageFailure = Should.Throw<InvalidDataException>(
+                () => ShardAttemptValidator.Validate([registered], entries, [Environment.ProcessId], ledger));
+            stageFailure.Message.ShouldBe("Illegal, missing or duplicate execution stages: " + request.OperationId);
 
             ShardState durable = committed ? previous with { Ceiling = 12 } : previous;
             ShardCommitWitness witness = committed ? new(request.OperationId!, durable) : previousWitness;

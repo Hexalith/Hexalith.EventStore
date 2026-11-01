@@ -37,7 +37,7 @@ internal sealed partial class ShardingFixture
     /// <summary>Assigns observations and rejects fixture-level reuse without hiding runtime duplicates.</summary>
     internal ShardRequest BindOperation(ShardRequest request, string? actorId = null)
     {
-        if (_providerCommitProxy && request.OperationId is null) request = request with { OperationId = Guid.NewGuid().ToString("N") };
+        if (_providerCommitProxy && request.OperationId is null && (!_providerOneKey || request.Operation != "Inspect")) request = request with { OperationId = Guid.NewGuid().ToString("N") };
         if (request.OperationId is { } id && request.Operation != "Inspect")
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -47,6 +47,8 @@ internal sealed partial class ShardingFixture
                 if (!_mutatingOperations.TryAdd(id, new(request, actorId ?? ShardIdentity.Encode(request.TenantId, request.Domain),
                     FaultMarker: fault?.Fault.Marker, FaultBoundary: fault?.Fault.Boundary)))
                     throw new InvalidOperationException("A mutating operation identity must never be replayed: " + id);
+                if (_oneKeyFaults.TryGetValue(id, out ProviderOneKeyInstrumentation? oneKey))
+                    _mutatingOperations[id] = _mutatingOperations[id] with { FaultMarker = oneKey.Fault.Marker, OneKeyBoundary = oneKey.Fault.Boundary };
             }
         }
 
@@ -225,7 +227,7 @@ internal sealed partial class ShardingFixture
         accepted = _faultProxy?.AcceptedConnections ?? 0, drained = _faultProxy?.DrainedConnections ?? 0,
         active = _faultProxy?.ActiveConnections ?? 0, commits = _faultProxy?.Commits ?? 0,
         completedCommits = _faultProxy?.CommitCompletions ?? 0, stopped = _faultProxy?.Stopped ?? false,
-        ledger = _faultProxy?.CommitLedger,
+        ledger = _faultProxy?.CommitLedger, writes = _faultProxy?.WriteLedger, ordinaryOneKey = _providerOneKey, initialization = _faultProxy?.InitializationLedger,
     };
 
     private async Task<bool> VerifyProxyAbsentAsync()
