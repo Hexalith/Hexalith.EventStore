@@ -19,28 +19,34 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
             PayloadProtectionStateValue<ScopeIndexHeadV1>? head = await PayloadOperationBudget.ReadAsync<ScopeIndexHeadV1>(store, PayloadProtectionStateKeys.IndexHead(scope), cancellationToken).ConfigureAwait(false);
             if (head is null)
             {
-                if (await PayloadOperationBudget.ReadAsync<ScopeIndexPageV1>(store, PayloadProtectionStateKeys.IndexPage(scope, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
+                if (await PayloadOperationBudget.ReadAsync<ScopeIndexPageV1>(store, PayloadProtectionStateKeys.IndexPage(scope, 0), cancellationToken).ConfigureAwait(false) is not null)
+                {
+                    if (await PayloadOperationBudget.ReadAsync<ScopeIndexHeadV1>(store, PayloadProtectionStateKeys.IndexHead(scope), cancellationToken).ConfigureAwait(false) is not null) { continue; }
+                    throw Mismatch();
+                }
                 return new(scope, null, []);
             }
             PayloadOperationBudget.RequireReadCapacity(((long)head.Value.PageCount + 1) * PayloadProtectionStateCodec.MaximumBytes, (long)head.Value.PageCount + 1);
             var pages = new List<PayloadProtectionStateValue<ScopeIndexPageV1>>();
             var pairs = new HashSet<(string Key, uint Version)>();
             uint count = 0;
+            bool consistent = true;
             for (uint page = 0; page < head.Value.PageCount; page++)
             {
                 CheckBudget(started, cancellationToken);
                 PayloadProtectionStateValue<ScopeIndexPageV1> value = await RequiredAsync<ScopeIndexPageV1>(PayloadProtectionStateKeys.IndexPage(scope, page), cancellationToken).ConfigureAwait(false);
-                if (value.Value.ScopeDigest != scope || value.Value.Page != page || value.Value.Generation != head.Value.Generation) { throw Mismatch(); }
+                if (value.Value.ScopeDigest != scope || value.Value.Page != page) { throw Mismatch(); }
+                if (value.Value.Generation != head.Value.Generation) { consistent = false; break; }
                 foreach (ScopeIndexEntryV1 entry in value.Value.Entries)
                 {
                     count = checked(count + 1);
-                    if (!pairs.Add((entry.KeyRef, entry.DekVersion))) { throw Mismatch(); }
+                    if (!pairs.Add((entry.KeyRef, entry.DekVersion))) { consistent = false; }
                 }
                 pages.Add(value);
             }
             PayloadProtectionStateValue<ScopeIndexHeadV1> confirmed = await RequiredAsync<ScopeIndexHeadV1>(PayloadProtectionStateKeys.IndexHead(scope), cancellationToken).ConfigureAwait(false);
             if (head.ETag != confirmed.ETag || head.Value.Generation != confirmed.Value.Generation) { continue; }
-            if (head.Value.ScopeDigest != scope || head.Value.EntryCount != count) { throw Mismatch(); }
+            if (!consistent || head.Value.ScopeDigest != scope || head.Value.EntryCount != count) { throw Mismatch(); }
             CheckBudget(started, cancellationToken);
             return new(scope, confirmed, pages.AsReadOnly());
         }
@@ -58,29 +64,35 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
             PayloadProtectionStateValue<KekInventoryHeadV1>? head = await PayloadOperationBudget.ReadAsync<KekInventoryHeadV1>(store, PayloadProtectionStateKeys.KekHead(backendDigest, providerDigest), cancellationToken).ConfigureAwait(false);
             if (head is null)
             {
-                if (await PayloadOperationBudget.ReadAsync<KekInventoryPageV1>(store, PayloadProtectionStateKeys.KekPage(backendDigest, providerDigest, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
+                if (await PayloadOperationBudget.ReadAsync<KekInventoryPageV1>(store, PayloadProtectionStateKeys.KekPage(backendDigest, providerDigest, 0), cancellationToken).ConfigureAwait(false) is not null)
+                {
+                    if (await PayloadOperationBudget.ReadAsync<KekInventoryHeadV1>(store, PayloadProtectionStateKeys.KekHead(backendDigest, providerDigest), cancellationToken).ConfigureAwait(false) is not null) { continue; }
+                    throw Mismatch();
+                }
                 return new(backendDigest, providerDigest, null, []);
             }
             PayloadOperationBudget.RequireReadCapacity(((long)head.Value.PageCount + 1) * PayloadProtectionStateCodec.MaximumBytes, (long)head.Value.PageCount + 1);
             var pages = new List<PayloadProtectionStateValue<KekInventoryPageV1>>();
             var pairs = new HashSet<(string Scope, string Key, uint Version)>();
             ulong count = 0;
+            bool consistent = true;
             for (uint page = 0; page < head.Value.PageCount; page++)
             {
                 CheckBudget(started, cancellationToken);
                 PayloadProtectionStateValue<KekInventoryPageV1> value = await RequiredAsync<KekInventoryPageV1>(PayloadProtectionStateKeys.KekPage(backendDigest, providerDigest, page), cancellationToken).ConfigureAwait(false);
                 if (value.Value.BackendIdDigest != backendDigest || value.Value.ProviderVersionDigest != providerDigest
-                    || value.Value.Page != page || value.Value.Generation != head.Value.Generation) { throw Mismatch(); }
+                    || value.Value.Page != page) { throw Mismatch(); }
+                if (value.Value.Generation != head.Value.Generation) { consistent = false; break; }
                 foreach (KekInventoryEntryV1 entry in value.Value.Entries)
                 {
                     count = checked(count + 1);
-                    if (!pairs.Add((entry.ScopeDigest, entry.KeyRef, entry.DekVersion))) { throw Mismatch(); }
+                    if (!pairs.Add((entry.ScopeDigest, entry.KeyRef, entry.DekVersion))) { consistent = false; }
                 }
                 pages.Add(value);
             }
             PayloadProtectionStateValue<KekInventoryHeadV1> confirmed = await RequiredAsync<KekInventoryHeadV1>(PayloadProtectionStateKeys.KekHead(backendDigest, providerDigest), cancellationToken).ConfigureAwait(false);
             if (head.ETag != confirmed.ETag || head.Value.Generation != confirmed.Value.Generation) { continue; }
-            if (head.Value.BackendIdDigest != backendDigest || head.Value.ProviderVersionDigest != providerDigest || head.Value.EntryCount != count) { throw Mismatch(); }
+            if (!consistent || head.Value.BackendIdDigest != backendDigest || head.Value.ProviderVersionDigest != providerDigest || head.Value.EntryCount != count) { throw Mismatch(); }
             CheckBudget(started, cancellationToken);
             return new(backendDigest, providerDigest, confirmed, pages.AsReadOnly());
         }

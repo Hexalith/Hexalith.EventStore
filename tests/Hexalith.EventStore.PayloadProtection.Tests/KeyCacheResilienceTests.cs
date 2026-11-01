@@ -9,6 +9,73 @@ public sealed class KeyCacheResilienceTests
     private static PayloadKeyCacheKey Key(string scope = "a", uint version = 1) => new(new string(scope[0], 64), "01J00000000000000000000000", version, 1, "fixture-provider-version");
 
     [Fact]
+    public async Task IdleAbsoluteExpiryClearsTheOwnedArrayWithoutAnotherCacheAccess()
+    {
+        var cleared = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var observer = new RecordingBufferObserver(kind => { if (kind == SensitiveBufferKind.DataEncryptionKey) { cleared.TrySetResult(); } });
+        byte[] owned = Enumerable.Repeat((byte)0x76, 32).ToArray();
+        await using var cache = new PayloadKeyCache(ttl: TimeSpan.FromMilliseconds(50), timeProvider: TimeProvider.System, observer: observer);
+        using (var copy = await cache.GetAsync(Key(), _ => ValueTask.FromResult(PayloadKeyResolution.Success(owned)))) { copy.Reason.ShouldBeNull(); }
+        await cleared.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        owned.ShouldAllBe(value => value == 0);
+        observer.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+    }
+
+    [Theory]
+    [InlineData(UnreadableProtectedDataReason.ProviderDenied, false)]
+    [InlineData(UnreadableProtectedDataReason.ProviderDenied, true)]
+    [InlineData(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted, false)]
+    [InlineData(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted, true)]
+    public async Task TypedSnapshotCoreAndRouterPreserveReturnedAndThrownDenialWithoutState(UnreadableProtectedDataReason reason, bool thrown)
+    {
+        var snapshot = CompatibilityTestData.ProtectSnapshot();
+        ValueTask<PayloadKeyResolution> Resolve(string _, uint __, CancellationToken ___) => thrown
+            ? ValueTask.FromException<PayloadKeyResolution>(new PayloadProtectionStateException(reason))
+            : ValueTask.FromResult(PayloadKeyResolution.Failure(reason));
+        var result = await new PayloadProtectionCore().TryUnprotectSnapshotAsync(snapshot, TestFixture.SnapshotContext(), Resolve);
+        result.UnreadableReason.ShouldBe(reason); result.PayloadBytes.ShouldBeNull();
+        var router = new PayloadCompatibilityRouter(Resolve, snapshotTypes: CompatibilityTestData.Registry());
+        var routed = await router.ReadSnapshotAsync(CompatibilityTestData.Snapshot(snapshot, CompatibilityTestData.V2Metadata()));
+        routed.UnreadableReason.ShouldBe(reason); routed.State.ShouldBeNull(); routed.Metadata.ShouldBeNull();
+        routed.IsReadable.ShouldBeFalse(); routed.AllowsCorruptLegacyDeletion.ShouldBeFalse();
+        CompatibilityTestData.ShouldNotLeak(routed);
+    }
+
+    [Fact]
+    public async Task BreakersShareEquivalentIdentitiesAndIsolateEitherChangedIdentityComponent()
+    {
+        var clock = new LifecycleTestClock();
+        var executor = new PayloadBackendExecutor(clock);
+        var original = new IdentityTestBackend("first-backend", new('a', 64));
+        var equivalent = new IdentityTestBackend("first-backend", new('a', 64));
+        var otherBackend = new IdentityTestBackend("other-backend", new('a', 64));
+        var otherEndpoint = new IdentityTestBackend("first-backend", new('b', 64));
+        int failedCalls = 0; int successCalls = 0;
+        ValueTask<PayloadBackendResult> Fail(CancellationToken _) { failedCalls++; return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Unavailable)); }
+        var outputs = new List<byte[]>();
+        ValueTask<PayloadBackendResult> Succeed(CancellationToken _)
+        {
+            successCalls++;
+            byte[] owned = Enumerable.Repeat((byte)0x53, 32).ToArray(); outputs.Add(owned);
+            return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, owned));
+        }
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            using var failed = await executor.ExecuteAsync(attempt % 2 == 0 ? original : equivalent, Fail, allowRetry: false);
+            failed.Failure.ShouldBe(PayloadBackendFailure.Unavailable);
+        }
+        using (var blocked = await executor.ExecuteAsync(equivalent, Succeed, allowRetry: false)) { blocked.Failure.ShouldBe(PayloadBackendFailure.Unavailable); }
+        failedCalls.ShouldBe(5); successCalls.ShouldBe(0);
+        foreach (var backend in new[] { otherBackend, otherEndpoint })
+        {
+            using var success = await executor.ExecuteAsync(backend, Succeed, allowRetry: false);
+            success.Failure.ShouldBe(PayloadBackendFailure.None);
+            byte[] bytes = success.TakeBytes(); bytes.ShouldAllBe(value => value == 0x53); CryptographicOperations.ZeroMemory(bytes);
+        }
+        successCalls.ShouldBe(2); failedCalls.ShouldBe(5); outputs.ShouldAllBe(bytes => bytes.All(value => value == 0));
+    }
+
+    [Fact]
     public async Task V076_GlobalShutdownDoesNotWaitForACancellationIgnoringLoaderAndClearsItsLateArray()
     {
         var cache = new PayloadKeyCache();

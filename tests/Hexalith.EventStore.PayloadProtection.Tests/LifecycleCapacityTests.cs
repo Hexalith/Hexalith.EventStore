@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Contracts.Security;
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10 and 15; amendment sections 1-4.
 namespace Hexalith.EventStore.PayloadProtection.Tests;
 
@@ -135,8 +136,10 @@ public sealed class LifecycleCapacityTests
         var catalogs = new PayloadProtectionCatalogs(new MemoryPayloadProtectionStateStore());
         var membersSnapshot = new MemberCatalogSnapshot(new(membersHead, "1", PayloadProtectionStateCodec.Encode(membersHead)), memberPages);
         var workSnapshot = new WorkCatalogSnapshot(new(workHead, "1", PayloadProtectionStateCodec.Encode(workHead)), workPages);
-        Should.Throw<PayloadProtectionStateException>(() => catalogs.AppendMember(membersSnapshot, 2, 65537.ToString("D26")));
-        Should.Throw<PayloadProtectionStateException>(() => catalogs.AddWork(workSnapshot, new(65537.ToString("D26"), scope)));
+        PayloadProtectionStateException memberCapacity = Should.Throw<PayloadProtectionStateException>(() => catalogs.AppendMember(membersSnapshot, 2, 65537.ToString("D26")));
+        memberCapacity.Reason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable); memberCapacity.IsAdmissionLimit.ShouldBeTrue();
+        PayloadProtectionStateException workCapacity = Should.Throw<PayloadProtectionStateException>(() => catalogs.AddWork(workSnapshot, new(65537.ToString("D26"), scope)));
+        workCapacity.Reason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable); workCapacity.IsAdmissionLimit.ShouldBeTrue();
         memberPages.Sum(p => p.Value.Entries.Length).ShouldBe(65536); workPages.Sum(p => p.Value.Entries.Length).ShouldBe(65536);
         membersSnapshot.Head.Value.Revision.ShouldBe(1ul); workSnapshot.Head.Value.Revision.ShouldBe(1ul);
         // Permanent Cleared tombstones add catalog bytes, without one acknowledgement read per incarnation.
@@ -148,7 +151,8 @@ public sealed class LifecycleCapacityTests
             return new PayloadProtectionStateValue<MemberPageV1>(value, page.ETag, PayloadProtectionStateCodec.Encode(value));
         }).ToArray();
         var uncleared = new MemberCatalogSnapshot(new(unclearedHead, "1", PayloadProtectionStateCodec.Encode(unclearedHead)), unclearedPages);
-        Should.Throw<PayloadProtectionStateException>(() => PayloadProtectionOperationalLimits.RequireClearingCapacity(uncleared, "01J00000000000000000000999", append: false));
+        PayloadProtectionStateException clearingCapacity = Should.Throw<PayloadProtectionStateException>(() => PayloadProtectionOperationalLimits.RequireClearingCapacity(uncleared, "01J00000000000000000000999", append: false));
+        clearingCapacity.Reason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable); clearingCapacity.IsAdmissionLimit.ShouldBeTrue();
     }
 
     [Fact]

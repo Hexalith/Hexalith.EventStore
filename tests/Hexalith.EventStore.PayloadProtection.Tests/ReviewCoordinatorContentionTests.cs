@@ -7,6 +7,41 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 public sealed class ReviewCoordinatorContentionTests
 {
     [Fact]
+    public async Task RepeatedReadLeaseConflictsStopAfterExactlySixtyFourCommitsWithoutPersistingALease()
+    {
+        var f = await ReservationTestFixture.CreateAsync();
+        const string operation = "01J00000000000000000009999";
+        int attempts = 0;
+        f.Store.Committing = mutations =>
+        {
+            if (!mutations.Any(mutation => mutation.Key == PayloadProtectionStateKeys.Lease(f.Scope, operation))) { return; }
+            attempts++;
+            f.Store.NextCommitResult = PayloadStateCommitResult.Conflict;
+        };
+        var lifecycle = (await f.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(f.Scope)))!;
+        var failure = await Should.ThrowAsync<PayloadProtectionStateException>(() =>
+            f.Leases.AcquireReadAsync(f.Identity, "", 0, operation, lifecycle).AsTask());
+        failure.Reason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable);
+        attempts.ShouldBe(64);
+        (await f.Store.ReadAsync<ReadLeaseV1>(PayloadProtectionStateKeys.Lease(f.Scope, operation))).ShouldBeNull();
+        f.Backend.WrapCalls.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task CasBackoffStopsAtTheEnclosingDeadlineAndPropagatesCallerCancellation()
+    {
+        using (var phase = new PayloadOperationBudget(TimeProvider.System, default, TimeSpan.FromMilliseconds(1)))
+        {
+            (await Should.ThrowAsync<PayloadProtectionStateException>(() => PayloadStateCasRetry.PauseAsync(0, default).AsTask()))
+                .Reason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable);
+        }
+        using var caller = new CancellationTokenSource();
+        using var enclosing = new PayloadOperationBudget(TimeProvider.System, caller.Token);
+        caller.Cancel();
+        await Should.ThrowAsync<OperationCanceledException>(() => PayloadStateCasRetry.PauseAsync(0, caller.Token).AsTask());
+    }
+
+    [Fact]
     public async Task DelayedOriginalCompletionCommitIsReconciledWhenTheNextAttemptConflicts()
     {
         var f = await ReservationTestFixture.CreateAsync();

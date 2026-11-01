@@ -173,10 +173,12 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
                                 if (child is null) { throw new PayloadProtectionFormatException(); }
                                 // A later getter cannot substitute runtime metadata for the serializer's declared shape.
                                 // Whole-property selection above needs no descendant CLR provenance.
-                                if (child.GetType() != correlated.PropertyType || correlated.PropertyType == typeof(object)
-                                    || types.Resolve(correlated.PropertyType).PolymorphismOptions is not null)
+                                Type declared = Nullable.GetUnderlyingType(correlated.PropertyType) ?? correlated.PropertyType;
+                                if (child.GetType() != declared || declared == typeof(object))
                                 { RequireCanonicalAuthority(); continue; }
-                                Walk(child, types.Resolve(correlated.PropertyType), property.Value, path, registration);
+                                JsonTypeInfo declaredMetadata = ResolveDeclaredMetadata(correlated.PropertyType);
+                                if (declaredMetadata.PolymorphismOptions is not null) { RequireCanonicalAuthority(); continue; }
+                                Walk(child, declaredMetadata, property.Value, path, registration);
                             }
                         }
                     }
@@ -200,8 +202,13 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
                                     Type? element = metadata.Type.IsArray ? metadata.Type.GetElementType() : metadata.Type.IsGenericType && metadata.Type.GetGenericTypeDefinition() == typeof(List<>)
                                         ? metadata.Type.GenericTypeArguments[0] : null;
                                     string path = pointer + "/" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                                    if (element is null || element != child.GetType() || element == typeof(object)) { RequireCanonicalAuthority(); }
-                                    else { Walk(child, types.Resolve(element), item, path, registration); }
+                                    if (element is null || (Nullable.GetUnderlyingType(element) ?? element) != child.GetType() || element == typeof(object)) { RequireCanonicalAuthority(); }
+                                    else
+                                    {
+                                        JsonTypeInfo elementMetadata = ResolveDeclaredMetadata(element);
+                                        if (elementMetadata.PolymorphismOptions is not null) { RequireCanonicalAuthority(); }
+                                        else { Walk(child, elementMetadata, item, path, registration); }
+                                    }
                                 }
 
                                 index++;
@@ -229,6 +236,15 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
                         ancestors.Remove(owner);
                     }
                 }
+            }
+
+            JsonTypeInfo ResolveDeclaredMetadata(Type declared)
+            {
+                JsonTypeInfo metadata = types.Resolve(declared);
+                Type? underlying = Nullable.GetUnderlyingType(declared);
+                // Only the built-in nullable wrapper can be unwrapped; custom conversion still needs canonical authority.
+                return underlying is not null && metadata.Converter.GetType().Assembly == typeof(JsonSerializer).Assembly
+                    ? types.Resolve(underlying) : metadata;
             }
 
             void RequireCanonicalAuthority()

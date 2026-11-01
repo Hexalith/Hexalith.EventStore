@@ -5,9 +5,13 @@ namespace Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests;
 /// <summary>Ephemeral test-only KEKs keep plaintext DEKs out of persisted PF-02 state; this is not custody evidence.</summary>
 internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, IDisposable
 {
+    private readonly object _gate = new();
     private readonly Dictionary<string, byte[]> _keys;
+    private readonly List<byte[]> _outputs = [];
+    private bool _disposed;
     /// <summary>Gets or sets a deliberately incorrect provider selection for negative tests only.</summary>
-    internal string? WrapVersionOverride { get; set; }
+    internal string? WrapVersionOverride { get { lock (_gate) { return _wrapVersionOverride; } } set { lock (_gate) { _wrapVersionOverride = value; } } }
+    private string? _wrapVersionOverride;
     /// <summary>Creates independent test key identities, preserving environment-wide inventory ownership.</summary>
     internal LifecycleQualificationBackend(string qualifier)
     {
@@ -21,15 +25,19 @@ internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, 
     internal string NewVersion { get; }
     private readonly Dictionary<string, (string Provider, byte[] Wrapped)> _outcomes = new(StringComparer.Ordinal);
     /// <summary>Gets the fixture-owned output arrays, inspected for zeroing after each operation.</summary>
-    internal List<byte[]> Outputs { get; } = [];
+    internal IReadOnlyList<byte[]> Outputs { get { lock (_gate) { return _outputs.ToArray(); } } }
     /// <summary>Gets or sets the current explicitly selected test KEK.</summary>
-    internal string CurrentVersion { get; set; }
+    internal string CurrentVersion { get { lock (_gate) { return _currentVersion; } } set { lock (_gate) { _currentVersion = value; } } }
+    private string _currentVersion = "";
     /// <summary>Gets or sets an unobserved successful wrap response.</summary>
-    internal bool AmbiguousNextWrap { get; set; }
+    internal bool AmbiguousNextWrap { get { lock (_gate) { return _ambiguousNextWrap; } } set { lock (_gate) { _ambiguousNextWrap = value; } } }
+    private bool _ambiguousNextWrap;
     /// <summary>Gets or sets an injected provider-verification boundary, including a cancellation-ignoring response.</summary>
-    internal Func<string, CancellationToken, ValueTask>? Unwrapping { get; set; }
+    internal Func<string, CancellationToken, ValueTask>? Unwrapping { get { lock (_gate) { return _unwrapping; } } set { lock (_gate) { _unwrapping = value; } } }
+    private Func<string, CancellationToken, ValueTask>? _unwrapping;
     /// <summary>Gets the wrap count, proving recovery never blindly repeats the mutation.</summary>
-    internal int WrapCount { get; private set; }
+    internal int WrapCount { get { lock (_gate) { return _wrapCount; } } }
+    private int _wrapCount;
     /// <inheritdoc/>
     internal override string BackendId => "pf02-fixture";
     /// <inheritdoc/>
@@ -42,16 +50,16 @@ internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, 
     /// <inheritdoc/>
     internal override ValueTask<PayloadBackendResult> WrapExactAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> dek, CancellationToken cancellationToken)
     {
-        lock (_outcomes)
+        lock (_gate)
         {
-            cancellationToken.ThrowIfCancellationRequested(); WrapCount++;
+            cancellationToken.ThrowIfCancellationRequested(); ObjectDisposedException.ThrowIf(_disposed, this); _wrapCount++;
             providerKeyVersionId = WrapVersionOverride ?? providerKeyVersionId;
             if (_outcomes.Count >= 1024) { throw new InvalidOperationException("Test backend capacity exceeded."); }
             byte[] wrapped = new byte[60]; RandomNumberGenerator.Fill(wrapped.AsSpan(0, 12));
             using (var aes = new AesGcm(_keys[providerKeyVersionId], 16)) { aes.Encrypt(wrapped.AsSpan(0, 12), dek.Span, wrapped.AsSpan(28), wrapped.AsSpan(12, 16)); }
             _outcomes.Add(operationId, (providerKeyVersionId, wrapped.ToArray()));
             if (AmbiguousNextWrap) { AmbiguousNextWrap = false; CryptographicOperations.ZeroMemory(wrapped); return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Ambiguous)); }
-            Outputs.Add(wrapped);
+            _outputs.Add(wrapped);
             return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, wrapped, providerKeyVersionId));
         }
     }
@@ -63,11 +71,16 @@ internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, 
         byte[] ownedWrapped = wrappedDek.ToArray();
         try
         {
-            if (Unwrapping is not null) { await Unwrapping(operationId, cancellationToken); }
-            using var aes = new AesGcm(_keys[providerKeyVersionId], 16);
-            aes.Decrypt(ownedWrapped.AsSpan(0, 12), ownedWrapped.AsSpan(28), ownedWrapped.AsSpan(12, 16), dek);
-            Outputs.Add(dek);
-            return new PayloadBackendResult(PayloadBackendFailure.None, dek, providerKeyVersionId);
+            Func<string, CancellationToken, ValueTask>? unwrapping = Unwrapping;
+            if (unwrapping is not null) { await unwrapping(operationId, cancellationToken); }
+            lock (_gate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                using var aes = new AesGcm(_keys[providerKeyVersionId], 16);
+                aes.Decrypt(ownedWrapped.AsSpan(0, 12), ownedWrapped.AsSpan(28), ownedWrapped.AsSpan(12, 16), dek);
+                _outputs.Add(dek);
+                return new PayloadBackendResult(PayloadBackendFailure.None, dek, providerKeyVersionId);
+            }
         }
         catch { CryptographicOperations.ZeroMemory(dek); throw; }
         finally { CryptographicOperations.ZeroMemory(ownedWrapped); }
@@ -76,14 +89,22 @@ internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, 
     internal override ValueTask<PayloadBackendResult> ReconcileAsync(string operationId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!_outcomes.TryGetValue(operationId, out var outcome)) { return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Missing)); }
-        byte[] output = outcome.Wrapped.ToArray(); Outputs.Add(output);
-        return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, output, outcome.Provider));
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!_outcomes.TryGetValue(operationId, out var outcome)) { return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Missing)); }
+            byte[] output = outcome.Wrapped.ToArray(); _outputs.Add(output);
+            return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, output, outcome.Provider));
+        }
     }
     /// <summary>Clears every owned fixture KEK and retained opaque reconciliation result.</summary>
     public void Dispose()
     {
-        foreach (byte[] key in _keys.Values) { CryptographicOperations.ZeroMemory(key); }
-        foreach (var result in _outcomes.Values) { CryptographicOperations.ZeroMemory(result.Wrapped); }
+        lock (_gate)
+        {
+            _disposed = true;
+            foreach (byte[] key in _keys.Values) { CryptographicOperations.ZeroMemory(key); }
+            foreach (var result in _outcomes.Values) { CryptographicOperations.ZeroMemory(result.Wrapped); }
+        }
     }
 }

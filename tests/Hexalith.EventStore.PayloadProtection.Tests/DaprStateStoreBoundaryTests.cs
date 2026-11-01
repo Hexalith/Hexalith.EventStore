@@ -1,5 +1,7 @@
 using System.Text;
+using Dapr;
 using Dapr.Client;
+using Grpc.Core;
 using Hexalith.EventStore.Contracts.Security;
 using NSubstitute;
 
@@ -8,6 +10,87 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 /// <summary>Checks local rejection at the state primitive; real component semantics are tested by the live project.</summary>
 public sealed class DaprStateStoreBoundaryTests
 {
+    [Theory]
+    [InlineData(StatusCode.Internal, false, "Unknown")]
+    [InlineData(StatusCode.Internal, true, "Unknown")]
+    [InlineData(StatusCode.Aborted, false, "Conflict")]
+    [InlineData(StatusCode.Aborted, true, "Conflict")]
+    [InlineData(StatusCode.AlreadyExists, false, "Conflict")]
+    [InlineData(StatusCode.AlreadyExists, true, "Conflict")]
+    [InlineData(StatusCode.PermissionDenied, false, "Denied")]
+    [InlineData(StatusCode.PermissionDenied, true, "Denied")]
+    [InlineData(StatusCode.Unauthenticated, false, "Denied")]
+    [InlineData(StatusCode.Unauthenticated, true, "Denied")]
+    public async Task BareAndWrappedGrpcCommitFailuresRetainTheirExactOutcomeWithoutRetry(StatusCode status, bool wrapped, string expected)
+    {
+        using var client = Substitute.For<DaprClient>();
+        var store = new DaprPayloadProtectionStateStore(client);
+        store.ConfirmQualification();
+        var rpc = new RpcException(new(status, "private-transport-canary"));
+        Exception failure = wrapped ? new DaprException("private-wrapper-canary", rpc) : rpc;
+        client.ExecuteStateTransactionAsync(Arg.Any<string>(), Arg.Any<IReadOnlyList<StateTransactionRequest>>(),
+            Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>()).Returns(_ => Task.FromException(failure));
+        var value = new WorkHeadV1(new('a', 64), 0, 0, 0, "2026-10-23T00:00:00.0000000Z");
+        (await store.CommitAsync([PayloadProtectionStateMutation.Put(value)])).ToString().ShouldBe(expected);
+        await client.Received(1).ExecuteStateTransactionAsync("statestore", Arg.Any<IReadOnlyList<StateTransactionRequest>>(),
+            Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(StatusCode.PermissionDenied, false)]
+    [InlineData(StatusCode.PermissionDenied, true)]
+    [InlineData(StatusCode.Unauthenticated, false)]
+    [InlineData(StatusCode.Unauthenticated, true)]
+    public async Task BareAndWrappedGrpcReadDenialsAreTypedAndNeverRetried(StatusCode status, bool wrapped)
+    {
+        using var client = Substitute.For<DaprClient>();
+        var store = new DaprPayloadProtectionStateStore(client);
+        store.ConfirmQualification();
+        var rpc = new RpcException(new(status, "private-transport-canary"));
+        Exception transportFailure = wrapped ? new DaprException("private-wrapper-canary", rpc) : rpc;
+        client.GetByteStateAndETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConsistencyMode?>(),
+            Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<(ReadOnlyMemory<byte>, string)>(transportFailure));
+        var failure = await Should.ThrowAsync<PayloadProtectionStateException>(() => store.ReadAsync<WorkHeadV1>(PayloadProtectionStateKeys.WorkHead(new('a', 64))).AsTask());
+        failure.Reason.ShouldBe(UnreadableProtectedDataReason.ProviderDenied);
+        failure.InnerException.ShouldBeNull();
+        failure.ToString().ShouldNotContain("private-");
+        await client.Received(1).GetByteStateAndETagAsync("statestore", Arg.Any<string>(), ConsistencyMode.Strong,
+            Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EnclosingReadDeadlineCancelsTheTransportInsteadOfAbandoningItsRetries()
+    {
+        using var client = Substitute.For<DaprClient>();
+        var store = new DaprPayloadProtectionStateStore(client);
+        store.ConfirmQualification();
+        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken observed = default;
+        async Task<(ReadOnlyMemory<byte>, string)> ReadAsync(CancellationToken token)
+        {
+            observed = token;
+            try { await Task.Delay(Timeout.Infinite, token); }
+            finally { stopped.TrySetResult(); }
+            return (default, "");
+        }
+        client.GetByteStateAndETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConsistencyMode?>(),
+            Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync(call.ArgAt<CancellationToken>(4)));
+        using var phase = new PayloadOperationBudget(TimeProvider.System, cleanup.Token, TimeSpan.FromMilliseconds(50));
+        try
+        {
+            (await Should.ThrowAsync<PayloadProtectionStateException>(() => PayloadOperationBudget.ReadAsync<WorkHeadV1>(store,
+                PayloadProtectionStateKeys.WorkHead(new('a', 64)), cleanup.Token).AsTask())).Reason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable);
+            await stopped.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            observed.IsCancellationRequested.ShouldBeTrue();
+            await client.Received(1).GetByteStateAndETagAsync("statestore", Arg.Any<string>(), ConsistencyMode.Strong,
+                Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>());
+        }
+        finally { cleanup.Cancel(); }
+    }
+
     [Fact]
     public async Task UnqualifiedStoreAndRawMalformedMutationFailBeforeStateCalls()
     {

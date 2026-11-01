@@ -9,6 +9,43 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 public sealed class ReviewDeadlineTests
 {
     [Fact]
+    public async Task BlockingCancellationCallbackCannotBypassDrainDeadlineOrResumedClearingProof()
+    {
+        var operations = new PayloadLocalOperations();
+        var identity = new AggregateIdentity("tenant-a", "parties", "callback");
+        string scope = PayloadProtectionStateKeys.ScopeDigest(identity);
+        using var release = new ManualResetEventSlim();
+        using var deadline = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var callbackDone = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lateCleared = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var operation = operations.Begin(identity);
+        operation.RetainUntil(lateCleared.Task);
+        int callbacks = 0;
+        using var registration = operation.Token.Register(() =>
+        {
+            Interlocked.Increment(ref callbacks); entered.TrySetResult();
+            release.Wait(); callbackDone.TrySetResult();
+        });
+        try
+        {
+            Task initial = operations.DrainScopeAsync(scope, deadline.Token).AsTask();
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            deadline.Cancel();
+            await Should.ThrowAsync<OperationCanceledException>(() => initial.WaitAsync(TimeSpan.FromSeconds(2)));
+            operation.Dispose(); operation.Cleared.IsCompleted.ShouldBeFalse();
+            Task resumed = operations.DrainScopeAsync(scope).AsTask();
+            resumed.IsCompleted.ShouldBeFalse(); callbacks.ShouldBe(1);
+            release.Set(); await callbackDone.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            resumed.IsCompleted.ShouldBeFalse(); operation.Cleared.IsCompleted.ShouldBeFalse();
+            lateCleared.SetResult();
+            await resumed.WaitAsync(TimeSpan.FromSeconds(2));
+            operation.Cleared.IsCompletedSuccessfully.ShouldBeTrue(); callbacks.ShouldBe(1);
+        }
+        finally { release.Set(); lateCleared.TrySetResult(); }
+    }
+
+    [Fact]
     public async Task IgnoredErasureCancellationCannotHoldAdmissionOrLocalClearing()
     {
         var provider = Substitute.For<IErasureStateProvider>(); provider.ContractVersion.Returns(1);

@@ -795,6 +795,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             CheckFailureCancellation(cancellationToken, ref diagnosticResult);
             diagnosticResult = exception.Reason switch
             {
+                UnreadableProtectedDataReason.ProviderUnavailable => PayloadProtectionDiagnosticResult.Unavailable,
                 UnreadableProtectedDataReason.ProviderDenied => PayloadProtectionDiagnosticResult.Denied,
                 UnreadableProtectedDataReason.KeyInvalidatedOrDeleted => PayloadProtectionDiagnosticResult.Invalidated,
                 UnreadableProtectedDataReason.MissingKey => PayloadProtectionDiagnosticResult.MissingKey,
@@ -1043,6 +1044,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             CheckFailureCancellation(cancellationToken, ref diagnosticResult);
             diagnosticResult = exception.Reason switch
             {
+                UnreadableProtectedDataReason.ProviderUnavailable => PayloadProtectionDiagnosticResult.Unavailable,
                 UnreadableProtectedDataReason.ProviderDenied => PayloadProtectionDiagnosticResult.Denied,
                 UnreadableProtectedDataReason.KeyInvalidatedOrDeleted => PayloadProtectionDiagnosticResult.Invalidated,
                 UnreadableProtectedDataReason.MissingKey => PayloadProtectionDiagnosticResult.MissingKey,

@@ -98,7 +98,8 @@ internal sealed class PayloadProtectionCatalogs(IPayloadProtectionStateStore sto
     internal IReadOnlyList<PayloadProtectionStateMutation> AppendMember(MemberCatalogSnapshot current, ulong generation, string instance)
     {
         MemberHeadV1 head = current.Head.Value;
-        if (head.EntryCount >= 65536 || current.Pages.SelectMany(p => p.Value.Entries).Any(e => e.InstanceId == instance)) { throw Mismatch(); }
+        if (current.Pages.SelectMany(p => p.Value.Entries).Any(e => e.InstanceId == instance)) { throw Mismatch(); }
+        if (head.EntryCount >= 65536) { throw Capacity(); }
         uint ordinal = checked(head.EntryCount + 1);
         uint page = (ordinal - 1) / 256;
         PayloadProtectionStateValue<MemberPageV1>? previous = page < current.Pages.Count ? current.Pages[(int)page] : null;
@@ -128,10 +129,10 @@ internal sealed class PayloadProtectionCatalogs(IPayloadProtectionStateStore sto
             if (existing != entry) { throw Mismatch(); }
             return [PayloadProtectionStateMutation.Compare(current.Head)];
         }
-        if (head.EntryCount >= 65536) { throw Mismatch(); }
+        if (head.EntryCount >= 65536) { throw Capacity(); }
         PayloadProtectionStateValue<WorkPageV1>? page = current.Pages.FirstOrDefault(p => p.Value.Entries.Length < 256);
         uint number = page?.Value.Page ?? head.PageCount;
-        if (number >= 256) { throw Mismatch(); }
+        if (number >= 256) { throw Capacity(); }
         WorkEntryV1[] entries = [.. page?.Value.Entries ?? [], entry];
         Array.Sort(entries, (a, b) => StringComparer.Ordinal.Compare(a.OperationId, b.OperationId));
         return [PayloadProtectionStateMutation.Put(head with { Revision = checked(head.Revision + 1), EntryCount = checked(head.EntryCount + 1),
@@ -157,5 +158,6 @@ internal sealed class PayloadProtectionCatalogs(IPayloadProtectionStateStore sto
     private async ValueTask<PayloadProtectionStateValue<T>> RequiredAsync<T>(string key, CancellationToken cancellationToken) where T : class
         => await PayloadOperationBudget.ReadAsync<T>(store, key, cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
     private string Now() => PayloadProtectionStateCodec.Timestamp(_clock.GetUtcNow());
+    private static PayloadProtectionStateException Capacity() => new(UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true);
     private static PayloadProtectionStateException Mismatch() => new(UnreadableProtectedDataReason.ConsistencyMismatch);
 }

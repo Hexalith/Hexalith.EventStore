@@ -43,6 +43,8 @@ internal sealed class PayloadSerializationBuffer(ISensitiveBufferObserver? obser
     public void Dispose() { Clear(); _buffer = []; _written = 0; }
     private void Clear()
     {
-        CryptographicOperations.ZeroMemory(_buffer); observer?.BufferCleared(SensitiveBufferKind.InputSnapshot, _buffer);
+        CryptographicOperations.ZeroMemory(_buffer);
+        try { observer?.BufferCleared(SensitiveBufferKind.InputSnapshot, _buffer); }
+        catch { /* An observer cannot interrupt ownership transfer or clearing. */ }
     }
 }

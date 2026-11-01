@@ -11,6 +11,24 @@ public sealed class PolicyLifecycleTests
 {
     private static readonly AggregateIdentity Identity = new("tenant-a", "parties", "party-01");
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullableScalarsAndCollectionElementsPreserveSensitiveSiblingSelection(bool ordinary)
+    {
+        var context = PolicyLifecycleJsonContext.Default;
+        JsonTypeInfo metadata = context.GetTypeInfo(typeof(NullablePolicyPayload))!;
+        Type[] enrolled = [typeof(NullablePolicyPayload), typeof(int?), typeof(int), typeof(int?[]), typeof(List<int?>), typeof(string)];
+        var mappings = metadata.Properties.Select(property => new PayloadPropertyRegistration(typeof(NullablePolicyPayload), property,
+            typeof(NullablePolicyPayload).GetProperties().Single(clr => string.Equals(clr.Name, property.Name, StringComparison.OrdinalIgnoreCase))));
+        IPersonalDataPolicy policy = Policy("nullable-sibling", -1);
+        policy.Evaluate(Arg.Any<PersonalDataPolicyContext>()).Returns(call => call.Arg<PersonalDataPolicyContext>().JsonPointer == "/count"
+            ? PersonalDataPolicyDecision.Protect : PersonalDataPolicyDecision.Abstain);
+        var discovery = new PersonalDataDiscovery(new(ordinary ? [policy] : [], []), new(enrolled.Select(type => context.GetTypeInfo(type)!), mappings));
+        discovery.Select(Identity, new NullablePolicyPayload { Count = 7, Values = [1, null, 2], Items = [null, 3], Secret = RandomSecret() },
+            metadata, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(ordinary ? ["/count", "/secret"] : ["/secret"]);
+    }
+
     [Fact]
     public void V031_V040_AttributesUseSerializedNamesAndSkipNulls()
     {

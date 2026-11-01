@@ -9,6 +9,7 @@ internal sealed class PayloadLocalOperations
 {
     private readonly object _gate = new();
     private readonly Dictionary<PayloadLocalOperation, (string Root, string Scope)> _active = [];
+    private readonly HashSet<string> _knownScopes = new(StringComparer.Ordinal);
     private readonly HashSet<string> _blockedScopes = new(StringComparer.Ordinal);
     private readonly HashSet<string> _blockedRoots = new(StringComparer.Ordinal);
 
@@ -21,7 +22,7 @@ internal sealed class PayloadLocalOperations
         lock (_gate)
         {
             AssertAllowed(root, scope);
-            if (_active.Count >= 65536) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }
+            if (_active.Count >= PayloadProtectionOperationalLimits.ScopeMetadata) { throw Capacity(); }
             var operation = new PayloadLocalOperation(cancellationToken, Released);
             _active.Add(operation, (root, scope));
             return operation;
@@ -44,17 +45,29 @@ internal sealed class PayloadLocalOperations
         PayloadLocalOperation[] operations;
         lock (_gate)
         {
-            if (root is not null) { _blockedRoots.Add(PayloadProtectionStateKeys.Sha(root)); }
-            if (scope is not null) { _blockedScopes.Add(PayloadProtectionStateKeys.Sha(scope)); }
+            if (root is not null)
+            {
+                _ = PayloadProtectionStateKeys.Sha(root);
+                if (_blockedRoots.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_blockedRoots.Contains(root)) { throw Capacity(); }
+                _blockedRoots.Add(root);
+            }
+            if (scope is not null) { AdmitScope(PayloadProtectionStateKeys.Sha(scope)); _blockedScopes.Add(scope); }
             operations = _active.Where(p => root is not null ? p.Value.Root == root : p.Value.Scope == scope).Select(p => p.Key).ToArray();
         }
-        foreach (PayloadLocalOperation operation in operations) { operation.Cancel(); }
-        await Task.WhenAll(operations.Select(o => o.Cleared)).WaitAsync(cancellationToken).ConfigureAwait(false);
+        Task[] cancellations = operations.Select(operation => operation.CancelAsync()).ToArray();
+        await Task.WhenAll(cancellations.Concat(operations.Select(operation => operation.Cleared))).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
     private void AssertAllowed(string root, string scope)
     {
         if (_blockedRoots.Contains(root) || _blockedScopes.Contains(scope)) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted); }
+        AdmitScope(scope);
     }
+    private void AdmitScope(string scope)
+    {
+        if (_knownScopes.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_knownScopes.Contains(scope)) { throw Capacity(); }
+        _knownScopes.Add(scope);
+    }
+    private static PayloadProtectionStateException Capacity() => new(UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true);
     private void Released(PayloadLocalOperation operation)
     {
         lock (_gate) { _active.Remove(operation); }
