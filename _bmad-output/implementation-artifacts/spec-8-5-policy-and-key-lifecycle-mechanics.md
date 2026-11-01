@@ -2,7 +2,7 @@
 title: 'Story 8.5: Policy And Key-Lifecycle Mechanics'
 type: 'feature'
 created: '2026-10-23'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '6a0b6441f6d78a3007678a1d0ec336e9cb8ff961'
@@ -533,3 +533,5 @@ Rejected (pass 7):
 - BH12 — `low`: one constant now couples the active-operation cap to the scope cap, and the 65k-iteration tests still fit the 6.6 s suite; making it injectable adds parameters.
 - BH13 — `low`, cosmetic: duplicated `AdmitScope`/`Capacity` helpers, which the decision above reshapes.
 - BH14 (test placement) — `low`, cosmetic.
+
+Pass-7 disposition (2026-11-01): the owner resolved the P6-B3 decision with option (1) and left all nine patches as action items. This spec and sprint tracking return to `in-progress`; the earlier `done`/`review` closure notes above are historical. Applying the patches must rebuild both test projects and rerun the full unit suite, the live suite and the invariant-mode case.
