@@ -19,8 +19,8 @@ class PublishedCompatibilityWorkflowTests(unittest.TestCase):
         workflow = (root / ".github/workflows/commitlint.yml").read_text()
         triggers = workflow.split("concurrency:", 1)[0]
         self.assertNotIn("workflow_dispatch:", triggers)
-        self.assertIn("pull_request:\n    branches: [main]", triggers)
-        self.assertIn("push:\n    branches: [main]", triggers)
+        self.assertIn("pull_request:\n    branches: [main, release/parties-sdk-3.130.2]", triggers)
+        self.assertIn("push:\n    branches: [main, release/parties-sdk-3.130.2]", triggers)
         self.assertIn("types: [opened, synchronize, reopened, edited]", triggers)
 
     def run_pipeline(self, exit_code, remove_shell=False):

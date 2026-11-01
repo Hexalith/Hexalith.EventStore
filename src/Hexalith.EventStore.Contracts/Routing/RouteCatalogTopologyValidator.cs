@@ -155,11 +155,9 @@ public static class RouteCatalogTopologyValidator
         // disappear from qualification merely by claiming an unrelated verb.
         foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
         {
-            if (endpoint.Methods is not { Count: > 0 } methods || methods.Distinct(StringComparer.Ordinal).Count() != methods.Count
-                || methods.Any(method => method is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS")))
+            if (!CanonicalMethods(endpoint.Methods))
                 throw Failure("unqualified-technical-receiver-methods");
-            if (endpoint.Http is { } http && !methods.Order(StringComparer.Ordinal)
-                .SequenceEqual(http.Verbs.Split(' ').Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            if (endpoint.Http is { } http && !SameMethods(endpoint.Methods, http.Verbs.Split(' ')))
                 throw Failure("technical-receiver-method-evidence-drift");
         }
         var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.DaprCallback is not null)).ToArray();
@@ -208,7 +206,7 @@ public static class RouteCatalogTopologyValidator
                         && operation.Operation == endpoint.Operation && operation.Http is { } bound
                         && bound.Owner == http.Owner && bound.CodeDigest == http.CodeDigest
                         && witnesses.All(witness => bound.Grants?.Contains(witness) == true)
-                        && bound.Verbs.Split(' ').Order(StringComparer.Ordinal).SequenceEqual(groupedVerbs, StringComparer.Ordinal)
+                        && SameMethods(groupedVerbs, bound.Verbs.Split(' '))
                         && bound.Grants is not null && bound.Grants.OrderBy(witness => witness.Method, StringComparer.Ordinal)
                             .ThenBy(witness => witness.Verbs, StringComparer.Ordinal).SequenceEqual(groupedWitnesses)))
                     throw Failure("unbound-technical-controller-code-or-policy");
@@ -218,7 +216,7 @@ public static class RouteCatalogTopologyValidator
                 || endpoint.Methods[0] != (endpoint.Pattern.Trim('/') == "internal/routing/catalog-generation" ? "GET" : "POST"))
                 throw Failure("unqualified-nontechnical-receiver-overlap");
         }
-        if (verbs.Length == 0 || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length
+        if (!CanonicalMethods(verbs)
             || verbs.Any(verb => !technical.Any(endpoint => endpoint.Methods.Contains(verb, StringComparer.Ordinal))))
             throw Failure("unqualified-technical-http-verb");
         foreach (var endpoint in technical.Where(endpoint => endpoint.Http is not null
@@ -228,6 +226,13 @@ public static class RouteCatalogTopologyValidator
                 throw Failure("unbound-technical-controller-code-or-policy");
         return true;
     }
+
+    private static bool CanonicalMethods(IReadOnlyList<string> methods)
+        => methods.Count > 0 && methods.Distinct(StringComparer.Ordinal).Count() == methods.Count
+            && methods.All(method => method is "GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS");
+
+    private static bool SameMethods(IReadOnlyList<string> actual, IReadOnlyList<string> bound)
+        => CanonicalMethods(bound) && actual.Order(StringComparer.Ordinal).SequenceEqual(bound.Order(StringComparer.Ordinal), StringComparer.Ordinal);
 
     private static RouteCatalogValidationException Failure(string code) => new([new("$.activation.topology", code)]);
 

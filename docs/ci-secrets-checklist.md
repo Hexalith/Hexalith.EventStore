@@ -59,13 +59,30 @@ The protected EventStore publish job obtains a temporary NuGet key from
 - The two Zot organization credentials are mapped only to the EventStore-owned
   protected publish job; `secrets: inherit` is forbidden. The preflight job
   has no secret mapping, and GitHub does not start the publish job until the
-  required `production` reviewer approves a current-green-`main` request.
-- The `production` environment permits only `main` and has administrator bypass
+  required `production` reviewer approves a current exact-source request.
+- The `production` environment permits exactly `main` and
+  `release/parties-sdk-3.130.2` and has administrator bypass
   disabled.
 - The release workflow checks out Builds actions at the immutable approved
-  commit `22a578b576a515d2af214fe81859447fffc97981`. This publication pin
+  commit `30ea43a56330a9828ed0bb2e837289231d8630d1`. This publication pin
   is deliberately independent of the development Builds gitlink. No
   issue-comment authority variable is used.
+
+The exact maintenance branch requires successful current push CI, commitlint,
+and full Integration before production or OIDC authority. A read-only job with
+complete history additionally qualifies the actual native-analyzer patch
+`3.130.2` from verified reachable published `v3.130.1`; wrong bases, no release,
+minor/major and unsupported configuration refuse before the protected job.
+Native effective configuration and branch ranges must also agree; an existing
+candidate tag anywhere in fetched history refuses. Qualification JSON retains
+the configuration digest and native identities through the existing artifact
+uploads and grants no authority. The canonical publisher freezes and rechecks
+all three exact-branch workflow proofs at verify, publish and container phases.
+Main retains its two source proofs. Retire the exact maintenance deployment
+permission after this release; no future branch/version authority is granted. Keep the designated production reviewer and administrator bypass
+disabled. Maintenance permits only `3.130.2`; no stored NuGet key, reservation,
+issue authority or historic proof can substitute for these checks. The nuget.org
+policy remains bound to this same `release.yml` and `production` identity.
 
 ### `deploy-staging.yml`
 
@@ -90,7 +107,8 @@ To get CI green on a fork that wants to publish:
 
 1. **Mandatory** — none. Public PR CI works with only the auto-provisioned `GITHUB_TOKEN`.
 2. **For releases** — create a `production` environment, require the designated
-   release reviewer, and restrict deployments to `main`. Configure the nuget.org
+   release reviewer, and restrict deployments to exactly `main` and
+   `release/parties-sdk-3.130.2`. Configure the nuget.org
    trusted publishing policy as described below, and set
    `NUGET_TRUSTED_PUBLISHING_USER` as a repository variable. Store
    `HEXALITH_ZOT_USERNAME` and `HEXALITH_ZOT_API_KEY` as repository secrets

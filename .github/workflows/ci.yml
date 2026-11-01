@@ -3,9 +3,9 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, release/parties-sdk-3.130.2]
   pull_request:
-    branches: [main]
+    branches: [main, release/parties-sdk-3.130.2]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -167,12 +167,13 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up supported Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
 
       - name: Install locked npm dependencies
@@ -185,8 +186,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: 22a578b576a515d2af214fe81859447fffc97981
-          fetch-depth: 1
+          ref: 30ea43a56330a9828ed0bb2e837289231d8630d1
+          fetch-depth: 0
           path: .hexalith/builds-publication-tests
           submodules: false
           persist-credentials: false
@@ -195,6 +196,12 @@ jobs:
         env:
           HEXALITH_BUILDS_SOURCE: ${{ github.workspace }}/.hexalith/builds-publication-tests
         run: python3 -m unittest discover -s tools/tests -p 'test_release_publication_authority.py'
+
+      - name: Verify finite current-source proofs before production and OIDC
+        run: python3 -m unittest discover -s tools/tests -p 'test_release_source_branch.py'
+
+      - name: Verify native maintenance candidate qualification
+        run: python3 -m unittest discover -s tools/tests -p 'test_release_candidate.py'
 
   tenants-source-mode:
     name: ci / tenants-source-mode
