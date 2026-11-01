@@ -14,8 +14,8 @@
           AfterTargets="IncludeTransitiveProjectReferences"
           Condition="'$(HexalithTenantsFromSource)' == 'true' and '$(HexalithSourceMappingHash)' == ''">
     <ItemGroup>
-      <ProjectReference Update="@(ProjectReference)"
-                        Condition="$([System.String]::Copy('%(ProjectReference.Filename)').StartsWith('Hexalith.Tenants'))">
+      <ProjectReference Condition="$([System.String]::Copy('%(ProjectReference.Filename)').StartsWith('Hexalith.Tenants'))
+                                   and $([System.String]::Copy('%(ProjectReference.FullPath)').StartsWith('$([MSBuild]::NormalizeDirectory('$(HexalithTenantsBasePath)'))'))">
         <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
       </ProjectReference>
     </ItemGroup>

@@ -74,6 +74,74 @@ public sealed class DependencyModeEvaluationTests
             expectProjectReference);
     }
 
+    /// <summary>
+    /// Propagates the root source version only to promoted references in the selected Tenants checkout.
+    /// </summary>
+    /// <param name="useVerifiedMapping">Whether the workspace mapping owns source version propagation.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PromotedTenantsReferencesPreserveSelectedSourceVersion(bool useVerifiedMapping)
+    {
+        string fixture = Path.Combine(
+            Path.GetTempPath(),
+            "hexalith-eventstore-promoted-references",
+            Guid.NewGuid().ToString("N"));
+        string selectedCheckout = Path.Combine(fixture, "selected");
+        string selectedProject = Path.Combine(selectedCheckout, "Hexalith.Tenants.Contracts", "Hexalith.Tenants.Contracts.csproj");
+        string outsideProject = Path.Combine(fixture, "selected-other", "Hexalith.Tenants.Contracts", "Hexalith.Tenants.Contracts.csproj");
+        string selectedOutput = Path.Combine(fixture, "selected-version.txt");
+        string outsideOutput = Path.Combine(fixture, "outside-version.txt");
+
+        try
+        {
+            WriteVersionRecordingProject(selectedProject, selectedOutput, "1.2.3");
+            WriteVersionRecordingProject(outsideProject, outsideOutput, "4.5.6");
+            string fixtureProject = Path.Combine(fixture, "PromotedReferences.proj");
+            new XDocument(new XElement("Project",
+                new XElement("PropertyGroup",
+                    new XElement("HexalithTenantsFromSource", "true"),
+                    new XElement("HexalithTenantsBasePath", selectedCheckout),
+                    new XElement("HexalithEventStoreVersion", "3.130.2"),
+                    new XElement("HexalithSourceMappingHash", useVerifiedMapping ? new string('a', 64) : string.Empty)),
+                new XElement("Import", new XAttribute("Project", Path.Combine(FindRepositoryRoot(), "Directory.Build.targets"))),
+                new XElement("Target", new XAttribute("Name", "IncludeTransitiveProjectReferences"),
+                    new XElement("ItemGroup", new[] { selectedProject, outsideProject }.Select(project =>
+                        new XElement("ProjectReference", new XAttribute("Include", Path.GetRelativePath(fixture, project)),
+                            new XElement("AdditionalProperties", "FixtureEdgeMarker=retained"))))),
+                new XElement("Target", new XAttribute("Name", "RecordPromotedVersions"),
+                    new XAttribute("DependsOnTargets", "IncludeTransitiveProjectReferences"),
+                    new XElement("MSBuild", new XAttribute("Projects", "@(ProjectReference)"),
+                        new XAttribute("Targets", "RecordVersion"),
+                        new XAttribute("Properties", "%(ProjectReference.AdditionalProperties)")))))
+                .Save(fixtureProject);
+
+            RunMsBuild(fixture, [fixtureProject, "-nologo", "-target:RecordPromotedVersions", "-verbosity:quiet"]);
+
+            File.ReadAllLines(selectedOutput).ShouldBe(new[] { useVerifiedMapping ? "1.2.3" : "3.130.2", "retained" });
+            File.ReadAllLines(outsideOutput).ShouldBe(new[] { "4.5.6", "retained" });
+        }
+        finally
+        {
+            if (Directory.Exists(fixture))
+            {
+                Directory.Delete(fixture, recursive: true);
+            }
+        }
+    }
+
+    private static void WriteVersionRecordingProject(string project, string output, string version)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(project).ShouldNotBeNull());
+        new XDocument(new XElement("Project",
+            new XElement("PropertyGroup", new XElement("HexalithEventStoreVersion", version)),
+            new XElement("Target", new XAttribute("Name", "RecordVersion"),
+                new XElement("WriteLinesToFile", new XAttribute("File", output),
+                    new XAttribute("Lines", "$(HexalithEventStoreVersion);$(FixtureEdgeMarker)"),
+                    new XAttribute("Overwrite", "true")))))
+            .Save(project);
+    }
+
     private static void AssertExternalDependencySelectsExactlyOneEdge(
         string projectPath,
         string sourceRootProperty,
@@ -185,6 +253,31 @@ public sealed class DependencyModeEvaluationTests
         string? legacyNuGetDependencies)
     {
         string root = FindRepositoryRoot();
+        List<string> arguments =
+        [
+            projectPath,
+            "-nologo",
+            $"-getProperty:UseHexalithProjectReferences,UseNuGetDeps,{sourceSelectionProperty}",
+            "-getItem:ProjectReference,PackageReference",
+            $"-p:Configuration={configuration}",
+            $"-p:{sourceRootProperty}={sourceRoot}",
+        ];
+
+        if (explicitProjectReferences is not null)
+        {
+            arguments.Add($"-p:UseHexalithProjectReferences={explicitProjectReferences}");
+        }
+
+        if (legacyNuGetDependencies is not null)
+        {
+            arguments.Add($"-p:UseNuGetDeps={legacyNuGetDependencies}");
+        }
+
+        return JsonDocument.Parse(RunMsBuild(root, arguments));
+    }
+
+    private static string RunMsBuild(string workingDirectory, IEnumerable<string> arguments)
+    {
         using Process process = new()
         {
             StartInfo = new ProcessStartInfo
@@ -193,28 +286,14 @@ public sealed class DependencyModeEvaluationTests
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
-                WorkingDirectory = root,
+                WorkingDirectory = workingDirectory,
             },
         };
 
         process.StartInfo.ArgumentList.Add("msbuild");
-        process.StartInfo.ArgumentList.Add(projectPath);
-        process.StartInfo.ArgumentList.Add("-nologo");
-        process.StartInfo.ArgumentList.Add(
-            $"-getProperty:UseHexalithProjectReferences,UseNuGetDeps,{sourceSelectionProperty}");
-        process.StartInfo.ArgumentList.Add("-getItem:ProjectReference,PackageReference");
-        process.StartInfo.ArgumentList.Add($"-p:Configuration={configuration}");
-        process.StartInfo.ArgumentList.Add($"-p:{sourceRootProperty}={sourceRoot}");
-
-        if (explicitProjectReferences is not null)
+        foreach (string argument in arguments)
         {
-            process.StartInfo.ArgumentList.Add(
-                $"-p:UseHexalithProjectReferences={explicitProjectReferences}");
-        }
-
-        if (legacyNuGetDependencies is not null)
-        {
-            process.StartInfo.ArgumentList.Add($"-p:UseNuGetDeps={legacyNuGetDependencies}");
+            process.StartInfo.ArgumentList.Add(argument);
         }
 
         process.Start().ShouldBeTrue("Could not start dotnet msbuild for dependency-mode evaluation.");
@@ -230,9 +309,9 @@ public sealed class DependencyModeEvaluationTests
 
         string output = outputTask.GetAwaiter().GetResult();
         string error = errorTask.GetAwaiter().GetResult();
-        process.ExitCode.ShouldBe(0, $"Dependency-mode evaluation failed: {error}");
+        process.ExitCode.ShouldBe(0, $"Dependency-mode MSBuild failed: {output}{Environment.NewLine}{error}");
 
-        return JsonDocument.Parse(output);
+        return output;
     }
 
     private static IEnumerable<string> ItemIdentities(JsonElement items, string itemName)
