@@ -1,10 +1,10 @@
 name: Release
 
 # Publication is an explicit operator action with no dispatch inputs.
-# Semantic Release selects the version from main history. The unprotected
-# preflight proves the dispatch selected the current main tip and that exact
-# source already has successful push runs of ci.yml and commitlint.yml before
-# the protected production job starts.
+# Semantic Release selects the version from approved branch history. The
+# unprotected preflight proves the live exact source has successful push CI and
+# commitlint, plus full Integration for the exact 3.130.2 maintenance branch,
+# before the protected production job starts.
 on:
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   verify-source:
-    name: Verify exact live-main source proof
+    name: Verify exact current source proof
     runs-on: ubuntu-latest
     outputs:
       source-ci-workflow: ${{ steps.select-source-proof.outputs.source-ci-workflow }}
@@ -25,7 +25,12 @@ jobs:
       actions: read
       contents: read
     steps:
-      - name: Require current main with exact-source push proofs
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+      - name: Require current approved branch with exact-source push proofs
         id: select-source-proof
         shell: bash
         env:
@@ -33,51 +38,34 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           DISPATCH_REF: ${{ github.ref }}
           DISPATCH_SHA: ${{ github.sha }}
+        run: bash scripts/verify-release-source.sh
+      - name: Set up pinned native analyzer runtime
+        if: ${{ github.ref == 'refs/heads/release/parties-sdk-3.130.2' }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Install locked analyzer without lifecycle hooks
+        if: ${{ github.ref == 'refs/heads/release/parties-sdk-3.130.2' }}
+        run: npm ci --ignore-scripts
+      - name: Qualify native maintenance candidate before production
+        if: ${{ github.ref == 'refs/heads/release/parties-sdk-3.130.2' }}
+        env:
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_REF: ${{ github.ref }}
+          DISPATCH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          source_ci_workflow="ci.yml"
-
-          if [ "$DISPATCH_REF" != "refs/heads/main" ]; then
-            echo "Release must be dispatched from refs/heads/main." >&2
-            exit 1
-          fi
-          if [[ ! "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "The dispatch source must be an exact lowercase commit SHA." >&2
-            exit 1
-          fi
-
-          live_main_sha="$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
-          if [[ ! "$live_main_sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "The live main SHA could not be resolved safely." >&2
-            exit 1
-          fi
-          if [ "$DISPATCH_SHA" != "$live_main_sha" ]; then
-            echo "The dispatched source is no longer the live main tip." >&2
-            exit 1
-          fi
-
-          for required_workflow in ci.yml commitlint.yml; do
-            source_runs="$(gh api --method GET \
-              "repos/${REPOSITORY}/actions/workflows/${required_workflow}/runs" \
-              -f branch=main \
-              -f event=push \
-              -f head_sha="$DISPATCH_SHA" \
-              -f status=success \
-              -f per_page=100)"
-            if ! printf '%s\n' "$source_runs" | jq -e --arg sha "$DISPATCH_SHA" '
-              [.workflow_runs[] | select(
-                .head_sha == $sha and
-                .head_branch == "main" and
-                .event == "push" and
-                .status == "completed" and
-                .conclusion == "success"
-              )] | length > 0
-            ' >/dev/null; then
-              echo "No successful push ${required_workflow} run exists for the exact current main SHA." >&2
-              exit 1
-            fi
-          done
-          printf 'source-ci-workflow=%s\n' "$source_ci_workflow" >> "$GITHUB_OUTPUT"
+          mkdir -p .hexalith/release-evidence/qualification
+          node tools/verify-release-candidate.mjs | tee .hexalith/release-evidence/qualification/preproduction.json
+      - name: Retain structured release qualification
+        if: ${{ always() && github.ref == 'refs/heads/release/parties-sdk-3.130.2' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-qualification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .hexalith/release-evidence/qualification/**
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
 
   release:
     name: Publish EventStore packages and container
@@ -101,14 +89,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: 22a578b576a515d2af214fe81859447fffc97981
+          ref: 30ea43a56330a9828ed0bb2e837289231d8630d1
           path: .hexalith/builds-execution
           persist-credentials: false
       - name: Validate approved Builds execution identity
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C .hexalith/builds-execution rev-parse HEAD)" = "22a578b576a515d2af214fe81859447fffc97981"
+          test "$(git -C .hexalith/builds-execution rev-parse HEAD)" = "30ea43a56330a9828ed0bb2e837289231d8630d1"
       - name: Initialize root-declared submodules
         uses: ./.hexalith/builds-execution/Github/initialize-build
       - name: Initialize .NET
@@ -146,7 +134,7 @@ jobs:
         with:
           container-projects: |
             src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
-          builds-execution-sha: 22a578b576a515d2af214fe81859447fffc97981
+          builds-execution-sha: 30ea43a56330a9828ed0bb2e837289231d8630d1
       - name: Resolve release publication freeze
         id: publish-gate
         shell: bash
@@ -169,23 +157,15 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           DISPATCH_SHA: ${{ github.sha }}
           SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}
+          DISPATCH_REF: ${{ github.ref }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
-          test "$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')" = "$DISPATCH_SHA"
-          for required_workflow in ci.yml commitlint.yml; do
-            source_runs="$(gh api --method GET \
-              "repos/${REPOSITORY}/actions/workflows/${required_workflow}/runs" \
-              -f branch=main -f event=push -f head_sha="$DISPATCH_SHA" \
-              -f status=success -f per_page=100)"
-            printf '%s\n' "$source_runs" | jq -e --arg sha "$DISPATCH_SHA" '
-              [.workflow_runs[] | select(
-                .head_sha == $sha and .head_branch == "main" and
-                .event == "push" and .status == "completed" and
-                .conclusion == "success"
-              )] | length > 0
-            ' >/dev/null
-          done
+          bash scripts/verify-release-source.sh
+          if [ "$DISPATCH_REF" = "refs/heads/release/parties-sdk-3.130.2" ]; then
+            mkdir -p .hexalith/release-evidence/qualification
+            node tools/verify-release-candidate.mjs | tee .hexalith/release-evidence/qualification/pre-oidc.json
+          fi
       - name: Validate trusted publishing account
         if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
         shell: bash
@@ -212,9 +192,9 @@ jobs:
           HEXALITH_ZOT_REGISTRY: ${{ vars.HEXALITH_ZOT_REGISTRY || 'registry.hexalith.com' }}
           HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
           HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}
-          HEXALITH_BUILDS_EXECUTION_SHA: 22a578b576a515d2af214fe81859447fffc97981
+          HEXALITH_BUILDS_EXECUTION_SHA: 30ea43a56330a9828ed0bb2e837289231d8630d1
           HEXALITH_RELEASE_ENVIRONMENT: production
-          HEXALITH_RELEASE_SOURCE_BRANCH: main
+          HEXALITH_RELEASE_SOURCE_BRANCH: ${{ github.ref_name }}
           HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}
           HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json
           HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'
