@@ -14,7 +14,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
     internal JsonObject Capture { get; } = new()
     {
         ["executor"] = new string('1', 40), ["diffHash"] = new string('2', 64), ["coordinatorHash"] = new string('3', 64),
-        ["builds"] = "a319176d3d3b27462583f18236ff85c8705a4998", ["consumerInputOrigin"] = "/synthetic/contract-fixture/consumer-inputs",
+        ["builds"] = "2aad5b269a263d3f6bf6f615dd520368dc5c1d0c", ["consumerInputOrigin"] = "/synthetic/contract-fixture/consumer-inputs",
         ["templateHashes"] = new JsonObject { ["Probe/Program.cs"] = new string('4', 64) }, ["untrackedHashes"] = new JsonObject(),
     };
     /// <summary>Gets saved synthetic results independently mutable from the in-memory observations.</summary>
