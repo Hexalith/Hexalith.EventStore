@@ -1041,7 +1041,16 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task FixtureAsync(string actor, object operations)
     {
-        using HttpResponseMessage response = await _http.PostAsJsonAsync("http://127.0.0.1:" + _hostPort + "/fixture/" + Uri.EscapeDataString(actor), operations, OperationCancellation);
+        string address = "http://127.0.0.1:" + _hostPort + "/fixture/" + Uri.EscapeDataString(actor);
+        DateTimeOffset began = DateTimeOffset.UtcNow;
+        byte[] input = JsonSerializer.SerializeToUtf8Bytes(operations, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        using var message = new HttpRequestMessage(HttpMethod.Post, address) { Content = new ByteArrayContent(input) };
+        message.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
+        using HttpResponseMessage response = await _http.SendAsync(message, OperationCancellation);
+        byte[] output = await response.Content.ReadAsByteArrayAsync(OperationCancellation);
+        PublishedScenarioTests.ActiveAssertions?.Record("fixture-http-post", JsonSerializer.Serialize(new { address, began, ended = DateTimeOffset.UtcNow,
+            status = (int)response.StatusCode, requestHash = QualificationRuntime.Hash(input), responseHash = QualificationRuntime.Hash(output),
+            request = HistoricalHttpOperationCapture.Request(operations), response = HistoricalHttpOperationCapture.Response(Encoding.UTF8.GetString(output)) }));
         response.EnsureSuccessStatusCode();
     }
 

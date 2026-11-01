@@ -264,6 +264,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
         }
         if (scenario.Contains("upgrade-restore", StringComparison.Ordinal)) ProviderBackup(records, scenario, name, began);
         if (name == "matrix-cleanup-twice") MatrixCleanup(records, began);
+        if (scenario == "invalid-evidence") FixtureInput(records, name, began);
         int readOrdinal = 0;
         foreach (string key in records.Keys.Where(key => key.StartsWith("inventory:", StringComparison.Ordinal)).ToArray())
         {
@@ -283,7 +284,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
             }
             inventory["readIds"] = ids; records[key] = inventory.ToJsonString();
         }
-        foreach (string key in records.Keys.Where(key => key.Split('#')[0] == "http-post").ToArray())
+        foreach (string key in records.Keys.Where(key => key.Split('#')[0] is "http-post" or "fixture-http-post").ToArray())
         {
             var post = JsonNode.Parse(records[key])!.AsObject();
             if (!post.ContainsKey("request"))
@@ -326,6 +327,25 @@ internal sealed class HistoricalMatrixSyntheticFixture
         Observations.Add(new(scenario, name, row.GetProperty("Execution").GetString()!, row.GetProperty("Compatibility").GetString()!,
             row.GetProperty("Assertions").GetInt32(), row.GetProperty("Failures").EnumerateArray().Select(value => value.GetString()!).ToArray(),
             error, records, began, began.AddSeconds(scenario == "natural-reminder" ? 100 : 30)));
+    }
+
+    private static void FixtureInput(Dictionary<string, string> records, string name, DateTimeOffset began)
+    {
+        string actor = records.Where(record => record.Key.StartsWith("inventory:", StringComparison.Ordinal))
+            .Select(record => JsonSerializer.Deserialize<JsonElement>(record.Value).GetProperty("fixture").GetString()!).First();
+        bool floor = name.Contains("-floor-", StringComparison.Ordinal) || name.Contains("-head12-floor", StringComparison.Ordinal);
+        var value = new JsonObject { ["currentSequence"] = 12, ["retainedFloor"] = 1, ["metadataVersion"] = 1,
+            ["serializationFormat"] = "json", ["eventTypeName"] = "CounterIncremented", ["payload"] = Convert.ToBase64String("{}"u8.ToArray()) };
+        if (floor) value["retainedFloor"] = name.Contains("floor-14", StringComparison.Ordinal) || name.EndsWith("floor14", StringComparison.Ordinal) ? 14 : 0;
+        if (name.Contains("-version-987-", StringComparison.Ordinal)) value["metadataVersion"] = 987;
+        if (name.Contains("-protected-mismatch-", StringComparison.Ordinal)) value["serializationFormat"] = "protected+json";
+        if (name.Contains("-unknown-type-", StringComparison.Ordinal)) value["eventTypeName"] = "Unknown.Event";
+        if (name.Contains("-unreadable-", StringComparison.Ordinal)) value["payload"] = Convert.ToBase64String("invalid-json"u8.ToArray());
+        var input = new[] { new { operation = "upsert", key = actor + (floor ? ":metadata" : ":events:2"), value } };
+        string host = JsonSerializer.Deserialize<JsonElement>(records["runtime-profile"]).GetProperty("hostAddress").GetString()!;
+        records["fixture-http-post"] = JsonSerializer.Serialize(new { address = host + "/fixture/" + Uri.EscapeDataString(actor),
+            began = began.AddSeconds(10), ended = began.AddSeconds(10.5), status = 200, requestHash = Hash(JsonSerializer.Serialize(input)),
+            responseHash = Hash(""), request = HistoricalHttpOperationCapture.Request(input), response = (JsonElement?)null });
     }
 
     private void SecurityCapture(Dictionary<string, string> records, string raw, DateTimeOffset began, string name)

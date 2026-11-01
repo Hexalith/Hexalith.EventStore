@@ -19,7 +19,7 @@ internal static class HistoricalMatrixTransportContract
                 if (actual.Length != 1 || !used.Add(actual[0])) throw new InvalidOperationException("The GET record lacks its independent actual transport receipt.");
                 continue;
             }
-            if (record.Key.Split('#')[0] != "http-post") continue;
+            if (record.Key.Split('#')[0] is not ("http-post" or "fixture-http-post")) continue;
             var post = JsonSerializer.Deserialize<JsonElement>(record.Value);
             var matches = exchanges.Where(item => item.Method == "POST" && item.Address == post.GetProperty("address").GetString()
                 && item.Started >= post.GetProperty("began").GetDateTimeOffset() && item.Ended <= post.GetProperty("ended").GetDateTimeOffset()

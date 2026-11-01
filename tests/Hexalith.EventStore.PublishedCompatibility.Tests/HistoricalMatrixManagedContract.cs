@@ -22,7 +22,7 @@ internal static class HistoricalMatrixManagedContract
                 throw new InvalidOperationException("The runtime profile differs from its actual managed consumer launch.");
             RequireOutputs(actual[0], build);
         }
-        var operations = records.Where(record => record.Key.Split('#')[0] is "http-post" or "http-get-observation")
+        var operations = records.Where(record => record.Key.Split('#')[0] is "http-post" or "fixture-http-post" or "http-get-observation")
             .Select(record => JsonSerializer.Deserialize<JsonElement>(record.Value)).Select(value => (Address: Text(value, "address"),
                 Began: value.GetProperty("began").GetDateTimeOffset(), Ended: value.GetProperty("ended").GetDateTimeOffset())).ToList();
         var ids = records.Where(record => record.Key.StartsWith("inventory:", StringComparison.Ordinal))

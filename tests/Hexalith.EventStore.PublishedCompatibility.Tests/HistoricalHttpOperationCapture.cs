@@ -9,6 +9,14 @@ internal static class HistoricalHttpOperationCapture
     internal static JsonElement Request(object request)
     {
         var input = JsonSerializer.SerializeToElement(request);
+        if (input.ValueKind == JsonValueKind.Array)
+        {
+            if (input.GetArrayLength() > 32) return JsonSerializer.SerializeToElement(new { unsupported = true });
+            var operations = input.EnumerateArray().Select(HistoricalFixtureOperation.Capture).ToArray();
+            return operations.Any(operation => operation is null)
+                ? JsonSerializer.SerializeToElement(new { unsupported = true })
+                : JsonSerializer.SerializeToElement(new { fixture = operations });
+        }
         if (input.ValueKind != JsonValueKind.Object) return JsonSerializer.SerializeToElement(new { unsupported = true });
         return JsonSerializer.SerializeToElement(new
         {

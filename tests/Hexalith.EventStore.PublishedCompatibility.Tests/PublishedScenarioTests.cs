@@ -200,7 +200,9 @@ public sealed class PublishedScenarioTests
         using JsonDocument summary = JsonDocument.Parse(serialized);
         using JsonDocument actualCapture = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
         HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, actualCapture.RootElement, materializer.Builds,
-            runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray(), runtime.Files, runtime.CleanupPasses, runtime.HttpExchanges, runtime.ScenarioInputs, runtime.StateReads, runtime.ProcessScans, runtime.DaprLaunches, runtime.ManagedLaunches);
+            summary.RootElement.GetProperty("executionCommands").Deserialize<HistoricalExecutionCommand[]>()
+                ?? throw new InvalidOperationException("The uploaded summary lost its actual safe command coordinates."),
+            runtime.Files, runtime.CleanupPasses, runtime.HttpExchanges, runtime.ScenarioInputs, runtime.StateReads, runtime.ProcessScans, runtime.DaprLaunches, runtime.ManagedLaunches);
     }
 
     /// <summary>Writes an honest nonqualifying summary when initial executor capture is unavailable.</summary>
@@ -231,7 +233,9 @@ public sealed class PublishedScenarioTests
             unavailable = observations.Count(observation => observation.Execution == "unavailable"),
             incompatible = observations.Count(observation => observation.Compatibility == "incompatible"),
             qualified = executorInputs is not null && observations.All(observation => observation.Passing), p1rUsable = false, rollback = (string?)null,
-            owners = "pending", conformance = "pending", observations, files = runtime.Files, cleanupPasses = runtime.CleanupPasses, httpExchanges = runtime.HttpExchanges, scenarioInputs = runtime.ScenarioInputs, stateReads = runtime.StateReads, processScans = runtime.ProcessScans, daprLaunches = runtime.DaprLaunches, managedLaunches = runtime.ManagedLaunches };
+            owners = "pending", conformance = "pending", observations,
+            executionCommands = runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray(),
+            files = runtime.Files, cleanupPasses = runtime.CleanupPasses, httpExchanges = runtime.HttpExchanges, scenarioInputs = runtime.ScenarioInputs, stateReads = runtime.StateReads, processScans = runtime.ProcessScans, daprLaunches = runtime.DaprLaunches, managedLaunches = runtime.ManagedLaunches };
         string serialized = JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(Path.Combine(runtime.Root, "summary.json"), serialized);
         return serialized;

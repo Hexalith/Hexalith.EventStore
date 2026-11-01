@@ -128,8 +128,6 @@ public sealed class FiniteRouteCatalogReceiver
             {
                 if (!DaprAppChannelToken.IsAdmitted(DaprAppChannelToken.Verify(context.Request, app.Configuration, app.Environment)))
                 { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
-                if (context.GetEndpoint() is RouteEndpoint candidate && fence._native?.Observe(candidate) is not null && !fence._native.Allows(context))
-                { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
                 // A deliberately absent programmatic subscription endpoint must retain Dapr's
                 // native 404 discovery protocol. It admits no request or callback execution.
                 if (fence._callbacks?.IsAbsentDiscovery(context) == true)
@@ -149,6 +147,10 @@ public sealed class FiniteRouteCatalogReceiver
             if (fence._technical && context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
                 && context.GetEndpoint() is RouteEndpoint nativeEndpoint && fence._native?.Observe(nativeEndpoint) is { } native)
             {
+                // Native admission retains the same caller and registered-method check even
+                // when an unrelated HTTP grant does not intersect the native request path.
+                if (!fence._native.Allows(context))
+                { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
                 // Immutable native configuration and health are the sidecar's authenticated
                 // startup handshake; requiring activated state here would deadlock bootstrap.
                 if (native.Kind is "config" or "health") { await next(context).ConfigureAwait(false); return; }
