@@ -14,18 +14,46 @@ internal static class HistoricalMatrixMeasurementContract
 
     /// <summary>Requires every original case, unchanged failure accounting and a nonqualifying receipt.</summary>
     internal static void Validate(IReadOnlyList<ScenarioObservation> observations, JsonElement summary,
-        JsonElement actualCapture, IReadOnlyList<ConsumerBuild> builds, IReadOnlyList<HistoricalExecutionCommand> commands)
+        JsonElement actualCapture, IReadOnlyList<ConsumerBuild> builds, IReadOnlyList<HistoricalExecutionCommand> commands,
+        IReadOnlyList<QualificationFileFingerprint>? files = null, IReadOnlyList<QualificationCleanupPass>? cleanupPasses = null, IReadOnlyList<QualificationHttpExchange>? httpExchanges = null,
+        IReadOnlyList<QualificationScenarioInput>? scenarioInputs = null, IReadOnlyList<QualificationStateRead>? stateReads = null,
+        IReadOnlyList<QualificationProcessScan>? processScans = null, IReadOnlyList<QualificationDaprLaunch>? daprLaunches = null,
+        IReadOnlyList<QualificationManagedLaunch>? managedLaunches = null)
     {
         if (observations.Count != _cases.Count || observations.Select(item => (item.Scenario, item.Case)).Distinct().Count() != _cases.Count)
             throw new InvalidOperationException("Historical characterization requires every distinct original case.");
+        foreach (var command in commands)
+        {
+            string output = command.Record.GetProperty("StandardOutput").GetString()!, error = command.Record.GetProperty("StandardError").GetString()!;
+            if (QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(output + error)) != command.Record.GetProperty("OutputHash").GetString())
+                throw new InvalidOperationException("The captured command output does not match its independently recorded output hash.");
+        }
+        var transportIndex = new HistoricalTransportIndex(httpExchanges ?? []);
         foreach (ScenarioObservation observation in observations)
         {
             ValidateObservation(observation);
+            HistoricalMatrixTransportContract.Validate(observation, httpExchanges ?? []);
+            HistoricalMatrixRuntimeInputContract.Validate(observation, commands, scenarioInputs ?? [], stateReads ?? [], daprLaunches ?? [], transportIndex);
             HistoricalMatrixEvidenceContract.Validate(observation, builds, commands);
+            HistoricalMatrixManagedContract.Validate(observation, builds, commands, managedLaunches ?? [], httpExchanges ?? [], stateReads ?? []);
+            HistoricalMatrixWireContract.Validate(observation, commands);
+            HistoricalMatrixBackupContract.Validate(observation, observation.Measurements ?? new Dictionary<string, string>(), commands, files ?? []);
+            HistoricalMatrixCleanupSequenceContract.Validate(observation, observation.Measurements ?? new Dictionary<string, string>(), commands, cleanupPasses ?? [], processScans ?? []);
             if (observation.Error is not null) ValidateXmlFailure(observation, builds, commands);
         }
         ValidateReceiptClaims(summary);
         ValidateCapture(summary, actualCapture);
+        if (!summary.TryGetProperty("files", out var savedFiles) || !JsonElement.DeepEquals(savedFiles, JsonSerializer.SerializeToElement(files ?? [])))
+            throw new InvalidOperationException("The saved sensitive-file fingerprints differ from actual independent observations.");
+        if (!summary.TryGetProperty("cleanupPasses", out var savedPasses) || !JsonElement.DeepEquals(savedPasses, JsonSerializer.SerializeToElement(cleanupPasses ?? [])))
+            throw new InvalidOperationException("The saved cleanup passes differ from actual independent observations.");
+        if (!summary.TryGetProperty("httpExchanges", out var savedHttp) || !JsonElement.DeepEquals(savedHttp, JsonSerializer.SerializeToElement(httpExchanges ?? [])))
+            throw new InvalidOperationException("The saved HTTP byte observations differ from the actual transport capture.");
+        foreach (var (field, actual) in new[] { ("scenarioInputs", JsonSerializer.SerializeToElement(scenarioInputs ?? [])),
+            ("stateReads", JsonSerializer.SerializeToElement(stateReads ?? [])), ("processScans", JsonSerializer.SerializeToElement(processScans ?? [])),
+            ("daprLaunches", JsonSerializer.SerializeToElement(daprLaunches ?? [])), ("managedLaunches", JsonSerializer.SerializeToElement(managedLaunches ?? [])) })
+            if (!summary.TryGetProperty(field, out var retained) || !JsonElement.DeepEquals(retained, actual))
+                throw new InvalidOperationException("The saved " + field + " differ from actual independent observations.");
         if (!summary.TryGetProperty("observations", out JsonElement saved)
             || !JsonElement.DeepEquals(saved, JsonSerializer.SerializeToElement(observations)))
             throw new InvalidOperationException("The saved observations differ from the complete validated measurements.");

@@ -15,6 +15,23 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 
 public sealed class TechnicalTopologyVerbIsolationTests
 {
+    /// <summary>Every endpoint verb reached by the current grant needs its own witness, while genuine witness unions remain valid.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CurrentGrantWitnessMustCoverEveryAdmittedEndpointVerb(bool complete)
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var current = new RouteCatalogHttpGrant("/api/items", "GET POST");
+        var get = new RouteCatalogHttpGrant("/api/items", "GET");
+        var post = new RouteCatalogHttpGrant("/api/items", "POST");
+        var endpoint = Endpoint("/api/items", "GET POST", "SdkController", get);
+        endpoint = endpoint with { Http = endpoint.Http! with { Grants = complete ? [get, post] : [get] } };
+        void Check() => Validate(fixture, [current], new(FiniteRouteCatalogReceiver.TechnicalVersion, [endpoint]), [Auxiliary(endpoint, fixture)]);
+        if (complete) Check();
+        else Should.Throw<RouteCatalogValidationException>(Check).Diagnostics.Single().Code.ShouldBe("unbound-technical-controller-code-or-policy");
+    }
+
     [Fact]
     public async Task ActualPostCommandGrantDoesNotRequireItsWitnessOnGetStatusActions()
     {
@@ -245,14 +262,26 @@ public sealed class TechnicalTopologyVerbIsolationTests
     }
 
 
+    /// <summary>Dapr's scalar root wildcard cannot stand in for a recursive permission over deeper actual endpoints.</summary>
+    [Fact]
+    public void ScalarRootGrantDoesNotAcquireRecursiveTechnicalAuthority()
+    {
+        var fixture = new RouteCatalogTestFixture();
+        var grant = new RouteCatalogHttpGrant("*", "POST");
+        var endpoint = Endpoint("/api/v1/commands", "POST", "Hexalith.EventStore.Controllers.CommandsController", grant);
+        Should.Throw<RouteCatalogValidationException>(() => Validate(fixture, [grant],
+            new(FiniteRouteCatalogReceiver.TechnicalVersion, [endpoint]), [Auxiliary(endpoint, fixture)]))
+            .Diagnostics.Single().Code.ShouldBe("undeclared-acl-operation");
+    }
+
     [Fact]
     public void SeparateMvcActionsRetainTheCompleteAggregatedAuxiliaryMethodSet()
     {
         var fixture = new RouteCatalogTestFixture();
-        var grant = new RouteCatalogHttpGrant("*", "POST");
+        var grant = new RouteCatalogHttpGrant("/**", "POST");
         var post = Endpoint("/api/v1/admin/tenants", "POST", "Hexalith.EventStore.Controllers.AdminTenantsController", grant);
         var get = Endpoint("/api/v1/admin/tenants", "GET", "Hexalith.EventStore.Controllers.AdminTenantsController",
-            new RouteCatalogHttpGrant("*", "GET"));
+            new RouteCatalogHttpGrant("/**", "GET"));
         var surface = new RouteCatalogReceiverSurface(FiniteRouteCatalogReceiver.TechnicalVersion, [post, get]);
         var auxiliary = DevelopmentTechnicalHttpTransport.Auxiliary(surface, fixture.Hosts[0].AppId, "sdk");
         auxiliary.Single().Http!.Verbs.ShouldBe("GET POST");
@@ -299,7 +328,7 @@ public sealed class TechnicalTopologyVerbIsolationTests
     public void ExcludedNativeAndCallbackReceiversRetainEveryIntrinsicGuard(string kind, string fault)
     {
         var fixture = new RouteCatalogTestFixture();
-        var grant = new RouteCatalogHttpGrant("*", "POST");
+        var grant = new RouteCatalogHttpGrant("/**", "POST");
         var root = Endpoint("/api/v1/commands", "POST", "Hexalith.EventStore.Controllers.CommandsController", grant);
         string digest = RouteCatalogTestFixture.Hash("compiled-code");
         var child = new RouteCatalogReceiverEndpoint(kind == "native" ? "/actors/config" : "/dapr/subscribe",

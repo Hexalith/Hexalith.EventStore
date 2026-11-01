@@ -3,7 +3,7 @@
   <!-- Local source graphs must use one EventStore assembly identity across the root and Tenants
        edges. Tenants keeps its own published package pin; this metadata applies only to source refs.
        A verified workspace mapping already reconciles that graph and owns its reserved version inputs. -->
-  <ItemGroup Condition="'$(HexalithTenantsFromSource)' == 'true' and '$(HexalithSourceMappingHash)' == ''">
+  <ItemGroup Condition="'$(HexalithTenantsFromSource)' == 'true' and '$(HexalithTenantsBasePath)' != '' and '$(HexalithEventStoreVersion)' != '' and '$(HexalithSourceMappingHash)' == '' and '$(HexalithSourceMappingMode)' != 'source' and '$(HEXALITH_SOURCE_MAPPING_HASH)' == '' and '$(HEXALITH_SOURCE_MAPPING_PATH)' == ''">
     <ProjectReference Update="$(HexalithTenantsBasePath)/Hexalith.Tenants*/Hexalith.Tenants*.csproj">
       <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
     </ProjectReference>

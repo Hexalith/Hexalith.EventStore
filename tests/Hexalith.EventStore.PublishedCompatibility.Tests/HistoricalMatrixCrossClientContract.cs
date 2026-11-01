@@ -27,6 +27,11 @@ internal static class HistoricalMatrixCrossClientContract
                 && command.Record.GetProperty("ExitCode").GetInt32() == 0).ToArray();
             if (captures.Length != 1 || !JsonElement.DeepEquals(data, PublishedScenarioTests.ParseProbeOutput(captures[0].Record.GetProperty("StandardOutput").GetString()!)))
                 throw new InvalidOperationException("The cross-client measurement has no unique actual matching client/result.");
+            var profile = records.Where(pair => pair.Key.Split('#')[0] == "runtime-profile").Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value)).First();
+            string actor = JsonSerializer.Deserialize<JsonElement>(records.First(pair => pair.Key.StartsWith("inventory:", StringComparison.Ordinal)).Value).GetProperty("fixture").GetString()!;
+            if (captures[0].CrossClient is not { } destination || destination.Actor != actor
+                || destination.Sidecar != profile.GetProperty("sidecarAddress").GetString())
+                throw new InvalidOperationException("The actual cross-client destination differs from its owned Host sidecar/actor.");
             bool ok = data.GetProperty("ok").GetBoolean(), supported = data.GetProperty("supported").GetBoolean();
             if (action == "common")
             {

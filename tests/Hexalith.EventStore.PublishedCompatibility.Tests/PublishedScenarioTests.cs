@@ -154,24 +154,33 @@ public sealed class PublishedScenarioTests
         {
             await ObserveAsync(observations, "failure-cleanup", cancel ? "cancellation-and-startup-failure" : "timeout-and-detached-descendant", async assertions =>
             {
-                await using var drill = new QualificationRuntime();
-                await drill.CaptureSharedContainersAsync();
-                bool startupRefused = false;
-                try { drill.Start(new("/missing-p1r-executable", [], drill.Root, TimeSpan.FromSeconds(1))); }
-                catch (System.ComponentModel.Win32Exception) { startupRefused = true; }
-                assertions.Check(startupRefused, "real-startup-failure-observed");
-                using var cancellation = new CancellationTokenSource();
-                if (cancel) cancellation.CancelAfter(200);
-                bool interrupted = false;
+                var drill = new QualificationRuntime();
                 try
                 {
-                    await drill.RunAsync(new("python3", ["-c", "import subprocess,time; subprocess.Popen(['sleep','120'],start_new_session=True); time.sleep(120)"],
-                        drill.Root, cancel ? TimeSpan.FromSeconds(20) : TimeSpan.FromMilliseconds(200)), cancellation.Token);
+                    await drill.CaptureSharedContainersAsync();
+                    bool startupRefused = false;
+                    try { drill.Start(new("/missing-p1r-executable", [], drill.Root, TimeSpan.FromSeconds(1))); }
+                    catch (System.ComponentModel.Win32Exception) { startupRefused = true; }
+                    assertions.Check(startupRefused, "real-startup-failure-observed");
+                    using var cancellation = new CancellationTokenSource();
+                    if (cancel) cancellation.CancelAfter(200);
+                    bool interrupted = false;
+                    try
+                    {
+                        await drill.RunAsync(new("python3", ["-c", "import subprocess,time; subprocess.Popen(['sleep','120'],start_new_session=True); time.sleep(120)"],
+                            drill.Root, cancel ? TimeSpan.FromSeconds(20) : TimeSpan.FromMilliseconds(200)), cancellation.Token);
+                    }
+                    catch (TimeoutException) { interrupted = true; }
+                    assertions.Check(interrupted, "real-interruption-observed");
+                    await ContainerCreationDrill.ExecuteAsync(drill, cancel, assertions);
+                    return assertions.Failures.Count == 0 ? "compatible" : "unverified";
                 }
-                catch (TimeoutException) { interrupted = true; }
-                assertions.Check(interrupted, "real-interruption-observed");
-                await ContainerCreationDrill.ExecuteAsync(drill, cancel, assertions);
-                return assertions.Failures.Count == 0 ? "compatible" : "unverified";
+                finally
+                {
+                    assertions.Record("cleanup-runtime", JsonSerializer.Serialize(new { owner = drill.Id, root = drill.Root }));
+                    await drill.DisposeAsync();
+                    runtime.ImportCompletedRuntime(drill);
+                }
             });
         }
         foreach (string scenario in RequiredScenarios)
@@ -184,12 +193,14 @@ public sealed class PublishedScenarioTests
         cleanup.Check(runtime.CleanupFailures.Count == 0, "all-owned-resources-removed-shared-preserved");
         cleanup.Check(runtime.Commands.All(command => !command.OutputTruncated), "all-command-output-within-retained-bounds");
         observations.Add(new("failure-cleanup", "matrix-cleanup-twice", cleanup.Failures.Count == 0 ? "passed" : "failed", "compatible", cleanup.Count, cleanup.Failures,
+            Measurements: new Dictionary<string, string> { ["cleanup-runtime"] = JsonSerializer.Serialize(new { owner = runtime.Id, root = runtime.Root }) },
             Started: cleanupStarted, Ended: DateTimeOffset.UtcNow));
         string serialized = await WriteSummaryAsync(runtime, observations, materializationFailure);
         TestContext.Current.TestOutputHelper?.WriteLine(serialized);
         using JsonDocument summary = JsonDocument.Parse(serialized);
         using JsonDocument actualCapture = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
-        HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, actualCapture.RootElement, materializer.Builds, runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray());
+        HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, actualCapture.RootElement, materializer.Builds,
+            runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray(), runtime.Files, runtime.CleanupPasses, runtime.HttpExchanges, runtime.ScenarioInputs, runtime.StateReads, runtime.ProcessScans, runtime.DaprLaunches, runtime.ManagedLaunches);
     }
 
     /// <summary>Writes an honest nonqualifying summary when initial executor capture is unavailable.</summary>
@@ -220,7 +231,7 @@ public sealed class PublishedScenarioTests
             unavailable = observations.Count(observation => observation.Execution == "unavailable"),
             incompatible = observations.Count(observation => observation.Compatibility == "incompatible"),
             qualified = executorInputs is not null && observations.All(observation => observation.Passing), p1rUsable = false, rollback = (string?)null,
-            owners = "pending", conformance = "pending", observations };
+            owners = "pending", conformance = "pending", observations, files = runtime.Files, cleanupPasses = runtime.CleanupPasses, httpExchanges = runtime.HttpExchanges, scenarioInputs = runtime.ScenarioInputs, stateReads = runtime.StateReads, processScans = runtime.ProcessScans, daprLaunches = runtime.DaprLaunches, managedLaunches = runtime.ManagedLaunches };
         string serialized = JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(Path.Combine(runtime.Root, "summary.json"), serialized);
         return serialized;
@@ -264,7 +275,7 @@ public sealed class PublishedScenarioTests
     {
         string[] arguments = build.Role == "Probe" ? [build.Assembly] : [build.Assembly, "--identity"];
         string raw = await runtime.RequireAsync("dotnet", arguments, Path.GetDirectoryName(build.Project),
-            TimeSpan.FromSeconds(30), input: JsonSerializer.Serialize(request));
+            TimeSpan.FromSeconds(30), input: JsonSerializer.Serialize(request), consumer: build);
         CommandObservation command = runtime.Commands[^1];
         ActiveAssertions?.Record("probe-command", JsonSerializer.Serialize(new { command.Command, command.Started, command.Ended, command.ExitCode, command.OutputHash }));
         ActiveAssertions?.Record("consumer-build", JsonSerializer.Serialize(build));
@@ -298,7 +309,10 @@ public sealed class PublishedScenarioTests
                 : build.ResolvedVersions?.GetValueOrDefault(identity.GetProperty("name").GetString()!)
                     ?? throw new InvalidOperationException("Tagged source assembly version was not independently resolved.");
             assertions.Check(identity.GetProperty("informationalVersion").GetString()!.Split('+')[0] == expectedVersion, "loaded-version");
-            assertions.Check(identity.GetProperty("sha256").GetString() == QualificationRuntime.Hash(File.ReadAllBytes(path)), "loaded-sha256");
+            assertions.Check(identity.GetProperty("sha256").GetString() == QualificationRuntime.Hash(File.ReadAllBytes(path))
+                && (build.Source is null || build.PreparedAssemblyHashes is not null
+                    && build.PreparedAssemblyHashes.TryGetValue(identity.GetProperty("name").GetString()!, out string? prepared)
+                    && identity.GetProperty("sha256").GetString() == prepared), "loaded-sha256");
             if (build.Source is null)
             {
                 string package = identity.GetProperty("name").GetString()!.ToLowerInvariant();

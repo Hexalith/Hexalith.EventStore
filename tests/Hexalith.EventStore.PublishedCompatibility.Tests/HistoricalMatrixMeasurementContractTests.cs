@@ -509,7 +509,7 @@ public sealed class HistoricalMatrixMeasurementContractTests
         int index = fixture.Observations.FindIndex(row => row.Case == "3.70.1-package-Probe-to-3.128.2-package-Probe-xml" && row.Scenario == "projection-wire");
         ScenarioObservation observation = fixture.Observations[index];
         int commandIndex = fixture.Commands.FindIndex(command => command.ExitCode == 134 && command.Started >= observation.Started && command.Ended <= observation.Ended);
-        if (mutation == "error-executable") fixture.Observations[index] = observation with { Error = observation.Error!.Replace("/synthetic/contract-fixture/3.70.1-package-Probe/bin/Release/net10.0/Probe.dll", "/unrelated/Foreign.dll", StringComparison.Ordinal) };
+        if (mutation == "error-executable") fixture.Observations[index] = observation with { Error = observation.Error!.Replace(fixture.Commands[commandIndex].Command.Arguments[0], "/unrelated/Foreign.dll", StringComparison.Ordinal) };
         else if (mutation == "missing-command") fixture.Commands.RemoveAt(commandIndex);
         else
         {

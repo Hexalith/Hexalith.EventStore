@@ -163,6 +163,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
           bash scripts/verify-release-source.sh
           if [ "$DISPATCH_REF" = "refs/heads/release/parties-sdk-3.130.2" ]; then
+            # Read fresh remote branch/tag facts before any credential boundary.
+            # Tags have no force refspec: changed published identities must refuse.
+            git fetch --no-recurse-submodules --no-tags origin "+refs/heads/main:refs/remotes/origin/main" "+${DISPATCH_REF}:refs/remotes/origin/${DISPATCH_REF#refs/heads/}" "refs/tags/*:refs/tags/*"
+            test "$(git rev-parse "refs/remotes/origin/${DISPATCH_REF#refs/heads/}")" = "$DISPATCH_SHA"
             mkdir -p .hexalith/release-evidence/qualification
             node tools/verify-release-candidate.mjs | tee .hexalith/release-evidence/qualification/pre-oidc.json
           fi

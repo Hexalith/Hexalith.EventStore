@@ -221,8 +221,9 @@ public static class RouteCatalogTopologyValidator
             throw Failure("unqualified-technical-http-verb");
         foreach (var endpoint in technical.Where(endpoint => endpoint.Http is not null
             && endpoint.Methods.Any(method => verbs.Contains(method, StringComparer.Ordinal))))
-            if (!endpoint.Http!.Grants!.Any(witness => witness.Method.Trim('/') == grant.Trim('/')
-                && verbs.Any(verb => witness.Verbs.Split(' ').Contains(verb, StringComparer.Ordinal))))
+            if (!endpoint.Methods.Where(method => verbs.Contains(method, StringComparer.Ordinal)).All(method =>
+                endpoint.Http!.Grants!.Any(witness => witness.Method.Trim('/') == grant.Trim('/')
+                    && witness.Verbs.Split(' ').Contains(method, StringComparer.Ordinal))))
                 throw Failure("unbound-technical-controller-code-or-policy");
         return true;
     }

@@ -46,7 +46,22 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
     [InlineData("pubsub", false, true)]
     [InlineData("in-memory-events", false, true)]
     [InlineData("in-memory-events", true, true)]
-    public async Task NativeQueryRegisteredActorsAndLifecycleKeepActualChannelCatalogAndMethodBoundaries(string component, bool declarative, bool legacyFinite)
+    public Task NativeQueryRegisteredActorsAndLifecycleKeepActualChannelCatalogAndMethodBoundaries(string component, bool declarative, bool legacyFinite)
+        => RunNativeBoundariesAsync(component, declarative, legacyFinite, null);
+
+    /// <summary>Actual legacy native requests retain ambiguity fences across real successor admission.</summary>
+    [Theory]
+    [InlineData("dapr-error-header")]
+    [InlineData("escaping-pipeline")]
+    public Task LegacyNativeAmbiguityRetainsItsExactFenceAndRefusesSuccessor(string failure)
+        => RunNativeBoundariesAsync("in-memory-events", false, true, failure);
+
+    /// <summary>The real callback's caught loss retains its fence after independently verified durable ETag regeneration.</summary>
+    [Fact]
+    public Task LegacyCallbackCaughtETagLossRetainsItsExactFenceAndRefusesSuccessor()
+        => RunNativeBoundariesAsync("in-memory-events", false, true, "legacy-callback");
+
+    private async Task RunNativeBoundariesAsync(string component, bool declarative, bool legacyFinite, string? ambiguityFailure)
     {
         string directory = Path.Combine(Path.GetTempPath(), "native-catalog-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -116,7 +131,8 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
         builder.Services.RemoveAll<DaprClient>();
         builder.Services.AddSingleton(new DaprClientBuilder().UseHttpEndpoint(sidecar.HttpEndpoint).UseGrpcEndpoint(sidecar.GrpcEndpoint).UseGrpcChannelOptions(new Grpc.Net.Client.GrpcChannelOptions { HttpHandler = rpcObserver }).Build());
         builder.Services.Configure<ActorRuntimeOptions>(options => options.HttpEndpoint = sidecar.HttpEndpoint);
-        var proxyFactory = new ActorProxyFactory(new ActorProxyOptions { HttpEndpoint = sidecar.HttpEndpoint });
+        using var responseLoss = new NativeETagResponseLossHandler(sidecar.HttpEndpoint);
+        var proxyFactory = new ActorProxyFactory(new ActorProxyOptions { HttpEndpoint = sidecar.HttpEndpoint }, responseLoss);
         builder.Services.AddSingleton<IActorProxyFactory>(proxyFactory);
         builder.Services.AddSingleton<FiniteRouteCatalogReceiver>();
         builder.Services.AddSingleton<IDevelopmentNativeActorReceiver, DevelopmentNativeActorReceiver>();
@@ -159,6 +175,13 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
         if (!declarative) app.MapSubscribeHandler().RequireEventStoreChannel();
         app.MapActorsHandlers().WithMetadata(EventStoreActorCallbackEndpointMetadata.Instance).RequireEventStoreChannel();
         FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app, RunScopedRouteCatalogGateway.Operation, technical: true);
+        bool pipelineFailureArmed = false;
+        app.Use(async (context, next) =>
+        {
+            if (pipelineFailureArmed && context.Request.Path == "/actors/ProjectionActor/native-ambiguous/method/QueryAsync")
+                throw new InvalidOperationException("The bounded native fixture failed inside its actual admitted pipeline.");
+            await next(context);
+        });
         try
         {
             // Outbound sidecar readiness is independent of the app channel. Establish it
@@ -396,6 +419,61 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
             using var deactivate = new HttpRequestMessage(HttpMethod.Delete, $"/actors/ProjectionActor/{actorId}"); deactivate.Headers.Add("dapr-api-token", appToken);
             using var deactivated = await direct.SendAsync(deactivate, TestContext.Current.CancellationToken); deactivated.StatusCode.ShouldBe(HttpStatusCode.OK);
             (await store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
+            if (ambiguityFailure is not null)
+            {
+                legacyFinite.ShouldBeTrue();
+                if (ambiguityFailure == "legacy-callback")
+                {
+                    string beforeTag = (await etag.GetCurrentETagAsync()).ShouldNotBeNull();
+                    responseLoss.Arm();
+                    using var callback = new HttpRequestMessage(HttpMethod.Post, "/projections/changed")
+                        { Content = JsonContent.Create(new ProjectionChangedNotification("counter", "tenant-a") { Provenance = provenance }) };
+                    callback.Headers.Add("dapr-api-token", appToken);
+                    using var callbackResult = await direct.SendAsync(callback, TestContext.Current.CancellationToken);
+                    callbackResult.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+                    responseLoss.CompletedResponses.ShouldBe(1);
+                    string completedTag = (await etag.GetCurrentETagAsync()).ShouldNotBeNull();
+                    completedTag.ShouldNotBe(beforeTag);
+                    using var unloadTag = new HttpRequestMessage(HttpMethod.Delete, "/actors/ETagActor/counter:tenant-a");
+                    unloadTag.Headers.Add("dapr-api-token", appToken);
+                    using var unloaded = await direct.SendAsync(unloadTag, TestContext.Current.CancellationToken);
+                    unloaded.StatusCode.ShouldBe(HttpStatusCode.OK);
+                    (await etag.GetCurrentETagAsync()).ShouldBe(completedTag, "The lost actual response followed a committed ETag change surviving actor reactivation.");
+                }
+                else
+                {
+                    pipelineFailureArmed = ambiguityFailure == "escaping-pipeline";
+                    using var ambiguous = new HttpRequestMessage(HttpMethod.Put, "/actors/ProjectionActor/native-ambiguous/method/QueryAsync");
+                    ambiguous.Headers.Add("dapr-api-token", appToken);
+                    if (ambiguityFailure == "dapr-error-header") ambiguous.Headers.Add("X-DaprRequestHeader", "invalid-actual-remoting-header");
+                    ambiguous.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+                    using var failed = await direct.SendAsync(ambiguous, TestContext.Current.CancellationToken);
+                    failed.StatusCode.ShouldBe(ambiguityFailure == "dapr-error-header" ? HttpStatusCode.OK : HttpStatusCode.InternalServerError);
+                    failed.Headers.Contains("X-DaprErrorResponseHeader").ShouldBe(ambiguityFailure == "dapr-error-header");
+                }
+                var retained = await store.ReadAsync(TestContext.Current.CancellationToken);
+                var fence = retained.State.Leases.ShouldHaveSingleItem();
+                fence.HostId.ShouldBe("native"); fence.RootDigest.ShouldBe(activation.RootDigest); fence.Epoch.ShouldBe(1);
+                retained.State.Committed!.RootDigest.ShouldBe(activation.RootDigest); retained.State.Epoch.ShouldBe(1);
+                var nextEnvelope = RouteCatalogCodec.Seal(envelope with { Generation = 2, Routes = envelope.Routes.Select(route => route with { Generation = 2 }).ToArray() });
+                var successor = activation with { AttemptId = "native-ambiguous-successor", CanonicalCatalog = RouteCatalogCodec.Encode(nextEnvelope),
+                    RootDigest = RouteCatalogCodec.ComputeRootDigest(nextEnvelope), PredecessorRootDigest = activation.RootDigest, TrustProof = "" };
+                successor = successor with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(successor) };
+                await authority.PrepareAsync(successor, TestContext.Current.CancellationToken);
+                await Should.ThrowAsync<RouteCatalogUnavailableException>(() => authority.ReadyAsync(successor.AttemptId, TestContext.Current.CancellationToken));
+                await Should.ThrowAsync<RouteCatalogUnavailableException>(() => authority.CommitAsync(successor.AttemptId, TestContext.Current.CancellationToken));
+                await Should.ThrowAsync<RouteCatalogUnavailableException>(() => authority.AcquireAsync(TestContext.Current.CancellationToken));
+                await Should.ThrowAsync<RouteCatalogUnavailableException>(() => authority.ReconcileAsync(
+                    new RouteCatalogQuiescenceRequest(fence.LeaseId, fence.RootDigest, fence.Epoch, "unverified-fixture-proof"), TestContext.Current.CancellationToken));
+                var refused = await store.ReadAsync(TestContext.Current.CancellationToken);
+                refused.State.Leases.ShouldHaveSingleItem().ShouldBe(fence);
+                refused.State.Pending!.RootDigest.ShouldBe(successor.RootDigest);
+                refused.State.Committed!.RootDigest.ShouldBe(activation.RootDigest);
+                refused.State.Epoch.ShouldBe(1); refused.State.Ready.ShouldBeEmpty();
+                output.WriteLine(JsonSerializer.Serialize(new { stage = "actual-legacy-native-ambiguity", ambiguityFailure,
+                    retainedFences = refused.State.Leases.Count, committedEpoch = refused.State.Epoch,
+                    pendingGeneration = nextEnvelope.Generation, ready = refused.State.Ready.Count }));
+            }
         }
         finally { await sidecar.StopAsync(); await app.StopAsync(CancellationToken.None); Directory.Delete(directory, recursive: true); }
     }

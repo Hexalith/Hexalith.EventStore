@@ -232,6 +232,9 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
         var resolvedVersions = resolved.RootElement.GetProperty("libraries").EnumerateObject()
             .Where(library => library.Name.StartsWith("Hexalith.EventStore.", StringComparison.Ordinal))
             .ToDictionary(library => library.Name.Split('/')[0], library => library.Name.Split('/')[1], StringComparer.Ordinal);
+        var preparedAssemblyHashes = source is null ? null : Packages.Concat(role == "Host" && version == SelectedVersion ? ["Gateway"] : [])
+            .Select(name => "Hexalith.EventStore." + name).ToDictionary(name => name,
+                name => QualificationRuntime.Hash(File.ReadAllBytes(Path.Combine(root, "bin", configuration, "net10.0", name + ".dll"))), StringComparer.Ordinal);
         return new(role, version, configuration, project, Path.Combine(root, "bin", configuration, "net10.0", role + ".dll"), cache,
             QualificationRuntime.Hash(await File.ReadAllBytesAsync(assets)),
             QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(root, "packages.lock.json"))),
@@ -239,7 +242,8 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
             source is null ? Coordinates.Single(coordinate => coordinate.Version == version).ArchiveSources : null,
             resolvedVersions, QualificationRuntime.Hash(await File.ReadAllBytesAsync(project)),
             source is null ? Coordinates.Single(coordinate => coordinate.Version == version).AssemblyHashes : null,
-            QualificationRuntime.Hash(sdkPolicy), selectedSdk, sdkOrigin);
+            QualificationRuntime.Hash(sdkPolicy), selectedSdk, sdkOrigin, preparedAssemblyHashes,
+            ConsumerBuild.ReadExecutableHashes(role, Path.Combine(root, "bin", configuration, "net10.0", role + ".dll")));
     }
 
     /// <summary>Refuses an SDK outside the copied repository's explicit latest-patch policy.</summary>

@@ -10,6 +10,11 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <param name="Command">The command retained for private diagnostic redaction.</param>
 internal sealed record OwnedProcess(Process Process, BoundedProcessOutput StandardOutput, BoundedProcessOutput StandardError, string Marker, QualificationCommand Command)
 {
+    internal ConsumerBuild? Consumer { get; init; }
+    internal IReadOnlyDictionary<string, string>? ExecutableHashes { get; init; }
+    internal string? Profile { get; init; }
+    internal string? Address { get; init; }
+    internal DateTimeOffset Started { get; init; }
     private int _recorded;
     /// <summary>Gets the active bounded standard-output drain.</summary>
     internal Task<string> Output => StandardOutput.Completion;

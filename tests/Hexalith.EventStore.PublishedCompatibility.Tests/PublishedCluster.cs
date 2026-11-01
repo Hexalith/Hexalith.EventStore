@@ -15,10 +15,11 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 {
     /// <summary>Binds the original Redis image by its immutable digest.</summary>
     internal const string RedisImage = "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf";
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(45) };
+    private readonly HttpClient _http = new(new QualificationHttpTransportObserver(runtime)) { Timeout = TimeSpan.FromSeconds(45) };
     private readonly List<OwnedProcess> _writers = [];
     private readonly HashSet<int> _allocatedPorts = [];
     private string _redis = string.Empty;
+    private string _redisVolume = string.Empty;
     private string _binaries = string.Empty;
     private int _redisPort;
     private int _placementPort;
@@ -28,6 +29,9 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
     private int _sidecarPort;
     private string _appId = string.Empty;
     private int _databaseNumber;
+    private string _securityInventoryPath = string.Empty;
+    private int _securityHostPid;
+    private string _profileId = string.Empty;
     private string _querySigningKeyPath = string.Empty;
     private string _queryVerificationKey = string.Empty;
     private CancellationToken _operationCancellation;
@@ -280,7 +284,9 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                     await InvalidHistoryAsync(actor, invalid);
                     var before = await InventoryAsync(actor, 3);
                     await StartWriterAsync(host, domain);
-                    JsonElement reader = await GetAsync("http://127.0.0.1:" + _hostPort + "/reader/" + Uri.EscapeDataString(actor));
+                    string readerAddress = "http://127.0.0.1:" + _hostPort + "/reader/" + Uri.EscapeDataString(actor);
+                    assertions.Record("actual-reader-target", JsonSerializer.Serialize(new { actor, address = readerAddress, hostProcessId = _securityHostPid }));
+                    JsonElement reader = await GetAsync(readerAddress);
                     assertions.Record("actual-versioned-reader-result", reader.GetRawText());
                     bool ownsFloor = host.Version == ConsumerMaterializer.SelectedVersion && invalid.StartsWith("floor-", StringComparison.Ordinal);
                     bool ownsVersion = host.Version == ConsumerMaterializer.SelectedVersion && invalid == "version-987";
@@ -534,6 +540,8 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             assertions.Check(false, "capability-operation-completed-without-unrelated-fault");
             return "unverified";
         }
+        string capture = await runtime.RequireAsync("python3", ["-c", HistoricalSecurityCapture.ReadScript, _securityInventoryPath, runtime.Id, _securityHostPid.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        assertions.Record("capability-security-capture", JsonSerializer.Serialize(new { owner = runtime.Id, path = _securityInventoryPath, pid = _securityHostPid, snapshots = JsonSerializer.Deserialize<JsonElement>(capture) }));
         foreach ((string field, string code, string stage, string message) in new[]
         {
             ("stale", "stale-execution-authority", "execution-authority", "The idempotency execution authority is no longer current."),
@@ -594,7 +602,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         });
         var before = await InventoryAsync(actor, 2);
         await StartWriterAsync(host, domain);
-        JsonElement result = await ExecuteAsync(actor, true);
+        JsonElement result = await PostAsync("http://127.0.0.1:" + _hostPort + "/execute/" + Uri.EscapeDataString(actor), new { append = true });
         assertions.Record("production-manifest-command-result", result.GetRawText());
         assertions.Check(!IsOk(result), "production-required-logical-hop-refused-without-bound-callable");
         assertions.Check(result.TryGetProperty("error", out JsonElement error) && !string.IsNullOrWhiteSpace(error.GetString()), "typed-production-evolution-refusal");
@@ -741,10 +749,15 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
     private async Task<JsonElement> PostAsync(string address, object request)
     {
         DateTimeOffset began = DateTimeOffset.UtcNow;
-        using var response = await _http.PostAsJsonAsync(address, request, OperationCancellation);
-        string body = await response.Content.ReadAsStringAsync();
+        byte[] input = JsonSerializer.SerializeToUtf8Bytes(request, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        using var message = new HttpRequestMessage(HttpMethod.Post, address) { Content = new ByteArrayContent(input) };
+        message.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
+        using var response = await _http.SendAsync(message, OperationCancellation);
+        byte[] output = await response.Content.ReadAsByteArrayAsync(OperationCancellation);
+        string body = Encoding.UTF8.GetString(output);
         PublishedScenarioTests.ActiveAssertions?.Record("http-post", JsonSerializer.Serialize(new { address, began, ended = DateTimeOffset.UtcNow,
-            status = (int)response.StatusCode, requestHash = QualificationRuntime.Hash(JsonSerializer.SerializeToUtf8Bytes(request)), responseHash = QualificationRuntime.Hash(Encoding.UTF8.GetBytes(body)) }));
+            status = (int)response.StatusCode, requestHash = QualificationRuntime.Hash(input), responseHash = QualificationRuntime.Hash(output),
+            request = HistoricalHttpOperationCapture.Request(request), response = HistoricalHttpOperationCapture.Response(body) }));
         response.EnsureSuccessStatusCode();
         using JsonDocument json = JsonDocument.Parse(body);
         return json.RootElement.Clone();
@@ -796,10 +809,11 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 await StopWritersAsync();
                 string dump = Path.Combine(runtime.Root, "backup-" + Guid.NewGuid().ToString("N") + ".rdb");
                 runtime.RegisterSensitivePath(dump);
-                await runtime.RequireAsync("docker", ["exec", _redis, "redis-cli", "SAVE"]);
+                await runtime.RequireRedisSaveAsync(_redis);
                 await runtime.RequireAsync("docker", ["cp", _redis + ":/data/dump.rdb", dump]);
                 string hash = QualificationRuntime.Hash(await File.ReadAllBytesAsync(dump));
-                assertions.Record("provider-backup", JsonSerializer.Serialize(new { sourceContainer = _redis, hash, bytes = new FileInfo(dump).Length }));
+                await runtime.ObserveProviderDumpAsync(dump, "provider-backup-copied", OperationCancellation);
+                assertions.Record("provider-backup", JsonSerializer.Serialize(new { sourceContainer = _redis, hash, bytes = new FileInfo(dump).Length, path = dump }));
                 assertions.Check(new FileInfo(dump).Length > 0 && hash.Length == 64, "actual-provider-backup-hash");
                 if (containment)
                 {
@@ -811,6 +825,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 }
                 await FreshDatabaseAsync(dump);
                 File.Delete(dump);
+                await runtime.ObserveProviderDumpAsync(dump, "provider-backup-destroyed", OperationCancellation);
                 assertions.Check(!File.Exists(dump), "dump-destroyed-after-restore");
                 await StartWriterAsync(targetHost, targetDomain);
                 assertions.Check(Equal(before, await InventoryAsync(actor, 12)), "fresh-database-restored-inventory");
@@ -868,6 +883,10 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         _domainPort = domainPort;
         int grpc = Port();
         string appApiToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        _securityInventoryPath = Path.Combine(runtime.Root, "security-inventory-" + Guid.NewGuid().ToString("N") + ".jsonl");
+        var captureOptions = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
+        if (!OperatingSystem.IsWindows()) captureOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        await using (var capture = new FileStream(_securityInventoryPath, captureOptions)) { }
         string components = Path.Combine(runtime.Root, "components");
         Directory.CreateDirectory(components);
         await File.WriteAllTextAsync(Path.Combine(components, "state.yaml"), $"apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n  - name: redisHost\n    value: 127.0.0.1:{_redisPort}\n  - name: actorStateStore\n    value: \"true\"\n  - name: keyPrefix\n    value: appid\n");
@@ -879,17 +898,17 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             ["DAPR_HTTP_PORT"] = _sidecarPort.ToString(), ["DAPR_GRPC_PORT"] = grpc.ToString(),
             ["ASPNETCORE_ENVIRONMENT"] = "Testing", ["APP_API_TOKEN"] = appApiToken,
             ["P1R_QUERY_SIGNING_KEY_PATH"] = _querySigningKeyPath,
+            ["P1R_SECURITY_INVENTORY_PATH"] = _securityInventoryPath,
         };
-        PublishedScenarioTests.ActiveAssertions?.Record("runtime-profile", JsonSerializer.Serialize(new
-        {
-            appId = _appId, runtime = "1.18.4", redisImage = RedisImage, redisContainer = _redis,
-            componentHash = QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(components, "state.yaml"))),
-            daprdHash = QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(_binaries, "daprd"))), host, domain,
-        }));
-        _writers.Add(runtime.Start(new("dotnet", [domain.Assembly, "--urls", "http://127.0.0.1:" + domainPort], Path.GetDirectoryName(domain.Project)!, TimeSpan.FromMinutes(1),
+        _profileId = Guid.NewGuid().ToString("N");
+        var daprdInput = await runtime.CaptureScenarioInputAsync(_profileId, "daprd", Path.Combine(_binaries, "daprd"));
+        var componentInput = await runtime.CaptureScenarioInputAsync(_profileId, "component", Path.Combine(components, "state.yaml"));
+        var domainProcess = runtime.Start(new("dotnet", [domain.Assembly, "--urls", "http://127.0.0.1:" + domainPort], Path.GetDirectoryName(domain.Project)!, TimeSpan.FromMinutes(1),
             new Dictionary<string, string> { ["P1R_QUERY_VERIFICATION_KEY"] = _queryVerificationKey,
-                ["DAPR_HTTP_PORT"] = _sidecarPort.ToString(), ["DAPR_GRPC_PORT"] = grpc.ToString() })));
-        _writers.Add(runtime.Start(new("dotnet", [host.Assembly], Path.GetDirectoryName(host.Project)!, TimeSpan.FromMinutes(1), environment)));
+                ["DAPR_HTTP_PORT"] = _sidecarPort.ToString(), ["DAPR_GRPC_PORT"] = grpc.ToString() }), domain, _profileId);
+        _writers.Add(domainProcess);
+        var actualHost = runtime.Start(new("dotnet", [host.Assembly], Path.GetDirectoryName(host.Project)!, TimeSpan.FromMinutes(1), environment), host, _profileId);
+        _securityHostPid = actualHost.Process.Id; _writers.Add(actualHost);
         await WaitHttpAsync("http://127.0.0.1:" + domainPort + "/identity");
         await WaitHttpAsync("http://127.0.0.1:" + _hostPort + "/identity");
         foreach ((ConsumerBuild build, int port) in new[] { (host, _hostPort), (domain, domainPort) })
@@ -906,11 +925,23 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         {
             ["APP_API_TOKEN"] = appApiToken,
         };
-        _writers.Add(runtime.Start(new(Path.Combine(_binaries, "daprd"), ["--app-id", _appId, "--app-port", _hostPort.ToString(),
+        var actualSidecar = runtime.Start(new(Path.Combine(_binaries, "daprd"), ["--app-id", _appId, "--app-port", _hostPort.ToString(),
             "--app-channel-address", "127.0.0.1", "--dapr-http-port", _sidecarPort.ToString(), "--dapr-grpc-port", grpc.ToString(),
             "--dapr-internal-grpc-port", Port().ToString(), "--metrics-port", Port().ToString(), "--profile-port", Port().ToString(),
             "--placement-host-address", "127.0.0.1:" + _placementPort, "--scheduler-host-address", "127.0.0.1:" + _schedulerPort, "--resources-path", components,
-            "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1), sidecarEnvironment)));
+            "--log-level", "warn"], runtime.Root, TimeSpan.FromMinutes(1), sidecarEnvironment));
+        _writers.Add(actualSidecar);
+        runtime.RecordDaprLaunch(new(_profileId, runtime.Id, daprdInput.Path, components, _appId, _hostPort, _sidecarPort, actualSidecar.Process.Id, DateTimeOffset.UtcNow));
+        PublishedScenarioTests.ActiveAssertions?.Record("runtime-profile", JsonSerializer.Serialize(new
+        {
+            profileId = _profileId, owner = runtime.Id, root = runtime.Root, observedAt = DateTimeOffset.UtcNow,
+            appId = _appId, runtime = "1.18.4", redisImage = RedisImage, redisContainer = _redis, redisVolume = _redisVolume,
+            sidecarAddress = "http://127.0.0.1:" + _sidecarPort, redisAddress = "127.0.0.1:" + _redisPort,
+            daprdPath = daprdInput.Path, componentPath = componentInput.Path,
+            hostAddress = "http://127.0.0.1:" + _hostPort, domainAddress = "http://127.0.0.1:" + domainPort,
+            sidecarProcessId = actualSidecar.Process.Id, hostProcessId = actualHost.Process.Id, domainProcessId = domainProcess.Process.Id,
+            componentHash = componentInput.Sha256, daprdHash = daprdInput.Sha256, host, domain,
+        }));
         await WaitHttpAsync("http://127.0.0.1:" + _sidecarPort + "/v1.0/healthz");
         if (host.Version == ConsumerMaterializer.SelectedVersion)
         {
@@ -931,11 +962,16 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         _redis = runtime.ReserveContainer("redis-" + ++_databaseNumber);
         _redisPort = Port();
         string volume = runtime.ReserveVolume("redis-data-" + _databaseNumber);
+        _redisVolume = volume;
         await runtime.RequireAsync("docker", ["volume", "create", "--label", "p1r.owner=" + runtime.Id, volume]);
         await runtime.RequireAsync("docker", ["create", "--name", _redis, "--label", "p1r.owner=" + runtime.Id,
             "--mount", "type=volume,source=" + volume + ",destination=/data",
             "-p", "127.0.0.1:" + _redisPort + ":6379", RedisImage, "redis-server", "--appendonly", "no"]);
-        if (dump is not null) await runtime.RequireAsync("docker", ["cp", dump, _redis + ":/data/dump.rdb"]);
+        if (dump is not null)
+        {
+            await runtime.ObserveProviderDumpAsync(dump, "provider-backup-before-restore", OperationCancellation);
+            await runtime.RequireAsync("docker", ["cp", dump, _redis + ":/data/dump.rdb"]);
+        }
         await runtime.RequireAsync("docker", ["start", _redis]);
         DateTimeOffset until = DateTimeOffset.UtcNow.AddSeconds(30);
         while (true)
@@ -1009,23 +1045,32 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         response.EnsureSuccessStatusCode();
     }
 
-    private async Task<string?> ReadAsync(string actor, string key)
+    private async Task<string?> ReadAsync(string actor, string key, List<string>? inventoryReads = null)
     {
-        using HttpResponseMessage response = await _http.GetAsync("http://127.0.0.1:" + _hostPort + "/read/" + Uri.EscapeDataString(actor) + "/" + Uri.EscapeDataString(key), OperationCancellation);
+        string address = "http://127.0.0.1:" + _hostPort + "/read/" + Uri.EscapeDataString(actor) + "/" + Uri.EscapeDataString(key);
+        DateTimeOffset began = DateTimeOffset.UtcNow;
+        using HttpResponseMessage response = await _http.GetAsync(address, OperationCancellation);
+        byte[] bytes = await response.Content.ReadAsByteArrayAsync(OperationCancellation);
+        string? value = response.StatusCode == HttpStatusCode.NotFound ? null : Encoding.UTF8.GetString(bytes);
+        var read = new QualificationStateRead(Guid.NewGuid().ToString("N"), _profileId, runtime.Id, _appId, _redis,
+            actor, key, address, _securityHostPid, began, DateTimeOffset.UtcNow, (int)response.StatusCode, bytes.LongLength,
+            QualificationRuntime.Hash(bytes), value is null ? null : QualificationRuntime.Hash(Encoding.UTF8.GetBytes(value)));
+        runtime.RecordStateRead(read); inventoryReads?.Add(read.Id);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        return value;
     }
 
     private async Task<Dictionary<string, string?>> InventoryAsync(string actor, int head)
     {
         var result = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var readIds = new List<string>();
         foreach (string key in new[] { actor + ":metadata", actor + ":snapshot" }.Concat(Enumerable.Range(1, head).Select(sequence => actor + ":events:" + sequence)))
         {
-            string? raw = await ReadAsync(actor, key);
+            string? raw = await ReadAsync(actor, key, readIds);
             result.Add(key, raw is null ? null : QualificationRuntime.Hash(Encoding.UTF8.GetBytes(raw)));
         }
-        PublishedScenarioTests.ActiveAssertions?.Record("inventory:" + actor, JsonSerializer.Serialize(new { fixture = actor, appId = _appId, database = _redis, hashes = result }));
+        PublishedScenarioTests.ActiveAssertions?.Record("inventory:" + actor, JsonSerializer.Serialize(new { fixture = actor, appId = _appId, database = _redis, profileId = _profileId, readIds, hashes = result }));
         return result;
     }
 

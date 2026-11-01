@@ -17,10 +17,26 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <param name="SdkPolicyHash">The exact global.json policy copied into the isolated build root.</param>
 /// <param name="SelectedSdk">The SDK selected by dotnet in that root before restore and build.</param>
 /// <param name="SdkPolicyOrigin">The owning repository or tagged-source policy path.</param>
+/// <param name="PreparedAssemblyHashes">The selected source DLL bytes independently read immediately after preparation, before consumer execution.</param>
 internal sealed record ConsumerBuild(string Role, string Version, string Configuration, string Project,
     string Assembly, string Cache, string AssetsHash, string LockHash, string? Source,
     IReadOnlyDictionary<string, string>? ArchiveSources = null,
     IReadOnlyDictionary<string, string>? ResolvedVersions = null,
     string? ProjectHash = null,
     IReadOnlyDictionary<string, string>? VerifiedAssemblyHashes = null,
-    string? SdkPolicyHash = null, string? SelectedSdk = null, string? SdkPolicyOrigin = null);
+    string? SdkPolicyHash = null, string? SelectedSdk = null, string? SdkPolicyOrigin = null,
+    IReadOnlyDictionary<string, string>? PreparedAssemblyHashes = null, IReadOnlyDictionary<string, string>? PreparedExecutableHashes = null)
+{
+    internal static IReadOnlyDictionary<string, string> ReadExecutableHashes(string role, string assembly)
+        => new[] { role + ".dll", role + ".deps.json", role + ".runtimeconfig.json" }.ToDictionary(name => name,
+            name => QualificationRuntime.Hash(File.ReadAllBytes(Path.Combine(Path.GetDirectoryName(assembly)!, name))), StringComparer.Ordinal);
+
+    internal IReadOnlyDictionary<string, string> VerifyExecutableHashes()
+    {
+        var actual = ReadExecutableHashes(Role, Assembly);
+        if (PreparedExecutableHashes is null || PreparedExecutableHashes.Count != actual.Count
+            || actual.Any(pair => !PreparedExecutableHashes.TryGetValue(pair.Key, out var expected) || pair.Value != expected))
+            throw new InvalidOperationException("The generated consumer executable differs from its independently prepared output identity.");
+        return actual;
+    }
+}

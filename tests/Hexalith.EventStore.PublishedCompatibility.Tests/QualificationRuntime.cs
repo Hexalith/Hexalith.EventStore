@@ -19,9 +19,45 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     private readonly HashSet<string> _containerNames = new(StringComparer.Ordinal);
     private readonly HashSet<string> _volumeNames = new(StringComparer.Ordinal);
     private readonly List<CommandObservation> _commands = [];
+    private readonly List<QualificationFileFingerprint> _files = [];
+    private readonly List<QualificationHttpExchange> _httpExchanges = [];
+    private readonly List<QualificationScenarioInput> _scenarioInputs = [];
+    private readonly List<QualificationManagedLaunch> _importedManagedLaunches = [];
+    internal IReadOnlyList<QualificationManagedLaunch> ManagedLaunches
+    {
+        get
+        {
+            lock (_gate) return _importedManagedLaunches.Concat(_processes.Where(owned => owned.Consumer is not null).Select(owned => new QualificationManagedLaunch(
+                owned.Marker, Id, Root, owned.Consumer!.Role, owned.Consumer.Assembly, owned.ExecutableHashes!, owned.Process.Id,
+                owned.Profile, owned.Address, owned.Started, owned.Process.HasExited ? new DateTimeOffset(owned.Process.ExitTime.ToUniversalTime()) : null))).ToArray();
+        }
+    }
+    private readonly List<QualificationDaprLaunch> _daprLaunches = [];
+    internal IReadOnlyList<QualificationDaprLaunch> DaprLaunches { get { lock (_gate) return _daprLaunches.ToArray(); } }
+    internal void RecordDaprLaunch(QualificationDaprLaunch launch) { lock (_gate) _daprLaunches.Add(launch); }
+    private readonly List<QualificationStateRead> _stateReads = [];
+    private readonly List<QualificationProcessScan> _processScans = [];
+    internal IReadOnlyList<QualificationScenarioInput> ScenarioInputs { get { lock (_gate) return _scenarioInputs.ToArray(); } }
+    internal IReadOnlyList<QualificationStateRead> StateReads { get { lock (_gate) return _stateReads.ToArray(); } }
+    internal IReadOnlyList<QualificationProcessScan> ProcessScans { get { lock (_gate) return _processScans.ToArray(); } }
+    internal void RecordStateRead(QualificationStateRead read) { lock (_gate) _stateReads.Add(read); }
+    internal async Task<QualificationScenarioInput> CaptureScenarioInputAsync(string profile, string kind, string path)
+    {
+        if (!Path.GetFullPath(path).StartsWith(Root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            throw new InvalidOperationException("A prepared runtime input must belong to its actual owner.");
+        byte[] bytes = await File.ReadAllBytesAsync(path);
+        var input = new QualificationScenarioInput(profile, Id, Root, kind, path, bytes.LongLength, Hash(bytes), DateTimeOffset.UtcNow,
+            kind == "component" ? QualificationComponentBinding.Capture(Encoding.UTF8.GetString(bytes)) : null);
+        lock (_gate) _scenarioInputs.Add(input);
+        return input;
+    }
+    private readonly HashSet<string> _importedOwners = new(StringComparer.Ordinal);
+    private readonly List<QualificationCleanupPass> _cleanupPasses = [];
     private readonly List<string> _cleanupFailures = [];
     private readonly HashSet<string> _sensitivePaths = new(StringComparer.Ordinal);
     private string? _sharedContainers;
+    private DateTimeOffset? _sharedStarted;
+    private DateTimeOffset? _sharedEnded;
     private bool _cleaning;
     private bool _stopping;
 
@@ -33,6 +69,38 @@ internal sealed class QualificationRuntime : IAsyncDisposable
 
     /// <summary>Gets measured command observations.</summary>
     internal IReadOnlyList<CommandObservation> Commands { get { lock (_gate) return _commands.ToArray(); } }
+
+    /// <summary>Gets independently observed POST byte and safe semantic commitments.</summary>
+    internal IReadOnlyList<QualificationHttpExchange> HttpExchanges { get { lock (_gate) return _httpExchanges.ToArray(); } }
+
+    /// <summary>Retains actual transport observations independently of scenario assertion records.</summary>
+    internal void RecordHttpExchange(QualificationHttpExchange exchange) { lock (_gate) _httpExchanges.Add(exchange); }
+
+    /// <summary>Gets independent safe observations of actual private provider-dump bytes and destruction.</summary>
+    internal IReadOnlyList<QualificationFileFingerprint> Files { get { lock (_gate) return _files.ToArray(); } }
+
+    /// <summary>Gets actual independent cleanup passes for this runtime and its completed child owners.</summary>
+    internal IReadOnlyList<QualificationCleanupPass> CleanupPasses { get { lock (_gate) return _cleanupPasses.ToArray(); } }
+
+    /// <summary>Retains an actual completed child owner's observations after its independent disposal, without reconstructing evidence.</summary>
+    internal void ImportCompletedRuntime(QualificationRuntime child)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+        if (ReferenceEquals(child, this) || Path.GetDirectoryName(child.Root) != Path.GetDirectoryName(Root)
+            || !child._stopping || child._cleaning || child._sharedContainers is null || child.MarkedProcesses().Count != 0)
+            throw new InvalidOperationException("Only an independently stopped and observed child runtime may supply its actual ledger.");
+        lock (_gate)
+        {
+            if (!_importedOwners.Add(child.Id)) throw new InvalidOperationException("A child observation ledger cannot be imported twice.");
+            _commands.AddRange(child.Commands);
+            _files.AddRange(child.Files);
+            _httpExchanges.AddRange(child.HttpExchanges);
+            _importedManagedLaunches.AddRange(child.ManagedLaunches); _daprLaunches.AddRange(child.DaprLaunches); _scenarioInputs.AddRange(child.ScenarioInputs); _stateReads.AddRange(child.StateReads); _processScans.AddRange(child.ProcessScans);
+            _cleanupPasses.AddRange(child.CleanupPasses);
+        }
+        if (child.CleanupFailures.Count != 0)
+            throw new InvalidOperationException("The completed child runtime has actual cleanup failures; its preserved ledger is not passing evidence.");
+    }
 
     /// <summary>Gets every cleanup failure, including failures from earlier cleanup passes.</summary>
     internal IReadOnlyList<string> CleanupFailures => _cleanupFailures;
@@ -56,15 +124,29 @@ internal sealed class QualificationRuntime : IAsyncDisposable
 
     /// <summary>Records shared container IDs, image IDs, start times and running state before owned launches.</summary>
     internal async Task CaptureSharedContainersAsync()
-        => _sharedContainers = await ContainerInventoryAsync(excludeOwned: true);
+    {
+        _sharedStarted = DateTimeOffset.UtcNow;
+        _sharedContainers = await ContainerInventoryAsync(excludeOwned: true);
+        _sharedEnded = DateTimeOffset.UtcNow;
+    }
 
     /// <summary>Starts an operation and immediately records ownership before any cancellable await.</summary>
-    internal OwnedProcess Start(QualificationCommand command)
+    internal OwnedProcess Start(QualificationCommand command, ConsumerBuild? consumer = null, string? profile = null)
     {
         lock (_gate)
         {
             if (_stopping && !IsCleanupCommand(command)) throw new ObjectDisposedException(nameof(QualificationRuntime), "Owned launches are closed once cleanup starts.");
             if (!_cleaning) TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+            var outputs = consumer?.VerifyExecutableHashes();
+            if (consumer is not null && (command.FileName != "dotnet" || command.Arguments.FirstOrDefault() != consumer.Assembly))
+                throw new InvalidOperationException("A generated consumer must execute its exact prepared assembly.");
+            string? address = null;
+            if (consumer is not null)
+            {
+                int urls = Array.IndexOf(command.Arguments, "--urls");
+                if (urls >= 0) address = command.Arguments[urls + 1];
+                else if (command.Environment is not null && command.Environment.TryGetValue("ASPNETCORE_URLS", out var configured)) address = configured;
+            }
             var start = new ProcessStartInfo(command.FileName)
             {
                 WorkingDirectory = command.WorkingDirectory,
@@ -95,7 +177,8 @@ internal sealed class QualificationRuntime : IAsyncDisposable
                 process.Dispose();
                 throw;
             }
-            var owned = new OwnedProcess(process, new(process.StandardOutput), new(process.StandardError), marker, command);
+            var owned = new OwnedProcess(process, new(process.StandardOutput), new(process.StandardError), marker, command)
+                { Consumer = consumer, ExecutableHashes = outputs, Profile = profile, Address = address, Started = attempted };
             _processes.Add(owned);
             owned.OverflowCleanup = ObserveOverflowAsync(command, owned, attempted);
             File.WriteAllText(Path.Combine(Root, $"process-{process.Id}-start.json"), JsonSerializer.Serialize(new { command, started = DateTimeOffset.UtcNow, process.Id, marker }));
@@ -103,8 +186,16 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         }
     }
 
+    /// <summary>Requires the actual owned Redis SAVE acknowledgement before any dump can be copied.</summary>
+    internal async Task RequireRedisSaveAsync(string container)
+    {
+        if (!_containerNames.Contains(container)) throw new InvalidOperationException("Redis SAVE requires this invocation's reserved provider.");
+        string result = await RequireAsync("docker", ["exec", container, "redis-cli", "SAVE"]);
+        if (result.Trim() != "OK") throw new InvalidOperationException("The owned Redis did not acknowledge its actual SAVE.");
+    }
+
     /// <summary>Runs an operation with an independent finite deadline and retains failed command observations.</summary>
-    internal async Task<CommandObservation> RunAsync(QualificationCommand command, CancellationToken cancellationToken = default)
+    internal async Task<CommandObservation> RunAsync(QualificationCommand command, CancellationToken cancellationToken = default, ConsumerBuild? consumer = null)
     {
         if (Path.GetFileName(command.FileName) == "docker" && command.Arguments.FirstOrDefault() == "inspect"
             && !command.Arguments.Contains("--format", StringComparer.Ordinal) && !command.Arguments.Contains("-f", StringComparer.Ordinal))
@@ -113,7 +204,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,
             _cleaning ? CancellationToken.None : TestContext.Current.CancellationToken);
         deadline.CancelAfter(command.Timeout);
-        OwnedProcess owned = Start(command);
+        OwnedProcess owned = Start(command, consumer);
         try
         {
             if (command.Input is not null)
@@ -180,10 +271,10 @@ internal sealed class QualificationRuntime : IAsyncDisposable
 
     /// <summary>Runs a command that must succeed, preserving exact nonzero diagnostics on failure.</summary>
     internal async Task<string> RequireAsync(string executable, string[] arguments, string? workingDirectory = null,
-        TimeSpan? timeout = null, IReadOnlyDictionary<string, string>? environment = null, string? input = null)
+        TimeSpan? timeout = null, IReadOnlyDictionary<string, string>? environment = null, string? input = null, ConsumerBuild? consumer = null)
     {
         CommandObservation result = await RunAsync(new(executable, arguments, workingDirectory ?? Root,
-            timeout ?? TimeSpan.FromMinutes(3), environment, input));
+            timeout ?? TimeSpan.FromMinutes(3), environment, input), consumer: consumer);
         if (result.ExitCode != 0)
             throw new InvalidOperationException($"Exit {result.ExitCode}: {executable} {string.Join(' ', arguments)}\n{result.StandardOutput}\n{result.StandardError}");
         return result.StandardOutput;
@@ -199,6 +290,41 @@ internal sealed class QualificationRuntime : IAsyncDisposable
 
     /// <summary>Registers a dump or credential for destruction on every cleanup path.</summary>
     internal void RegisterSensitivePath(string path) => _sensitivePaths.Add(path);
+
+    /// <summary>Observes one real registered provider dump at a finite lifecycle boundary without retaining its contents.</summary>
+    internal async Task<QualificationFileFingerprint> ObserveProviderDumpAsync(string path, string purpose, CancellationToken cancellationToken = default)
+    {
+        path = Path.GetFullPath(path);
+        string name = Path.GetFileName(path);
+        if (purpose is not ("provider-backup-copied" or "provider-backup-before-restore" or "provider-backup-destroyed")
+            || Path.GetDirectoryName(path) != Root || !_sensitivePaths.Contains(path)
+            || name.Length != 43 || !name.StartsWith("backup-", StringComparison.Ordinal) || !name.EndsWith(".rdb", StringComparison.Ordinal)
+            || !Guid.TryParseExact(name[7..^4], "N", out _)
+            || (File.GetAttributes(Root) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidOperationException("Only this runtime's registered private provider dump may be observed.");
+        DateTimeOffset began = DateTimeOffset.UtcNow;
+        bool exists = true; long length = 0; string? digest = null;
+        try
+        {
+            if ((File.GetAttributes(path) & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0)
+                throw new IOException("The provider dump must be its actual regular file.");
+            DateTime modified = File.GetLastWriteTimeUtc(path);
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65_536, useAsync: true);
+            length = stream.Length;
+            digest = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false));
+            if (stream.Length != length || new FileInfo(path).Length != length || File.GetLastWriteTimeUtc(path) != modified)
+                throw new IOException("The actual provider dump changed during its independent observation.");
+        }
+        catch (FileNotFoundException) when (purpose == "provider-backup-destroyed") { exists = false; }
+        catch (DirectoryNotFoundException) when (purpose == "provider-backup-destroyed") { exists = false; }
+        if (exists == (purpose == "provider-backup-destroyed") || exists && length <= 0)
+            throw new InvalidOperationException("The actual provider dump did not match its lifecycle boundary.");
+        var observed = new QualificationFileFingerprint(Id, path, purpose, exists, length, digest, began, DateTimeOffset.UtcNow);
+        int number;
+        lock (_gate) { _files.Add(observed); number = _files.Count; }
+        await File.WriteAllTextAsync(Path.Combine(Root, $"file-fingerprint-{number:D6}.json"), JsonSerializer.Serialize(observed), cancellationToken).ConfigureAwait(false);
+        return observed;
+    }
 
     /// <summary>Records a volume identity before the potentially interrupted create request.</summary>
     internal string ReserveVolume(string suffix)
@@ -220,6 +346,8 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     /// <summary>Continues all cleanup attempts, verifies absence, and preserves shared identities on every pass.</summary>
     internal async Task CleanupAsync()
     {
+        DateTimeOffset passStarted = DateTimeOffset.UtcNow;
+        string? afterInventory = null;
         lock (_gate)
         {
             _stopping = true;
@@ -311,21 +439,35 @@ internal sealed class QualificationRuntime : IAsyncDisposable
             {
                 if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
                 else if (File.Exists(path)) File.Delete(path);
-                if (File.Exists(path) || Directory.Exists(path)) throw new IOException("Sensitive path remains.");
+                try { _ = File.GetAttributes(path); throw new IOException("Sensitive path remains."); }
+                catch (FileNotFoundException) { }
+                catch (DirectoryNotFoundException) { }
             }
             catch (Exception error) { _cleanupFailures.Add("Sensitive scratch destruction: " + error.Message); }
         }
-        if (MarkedProcesses().Count != 0) _cleanupFailures.Add("Owned descendant processes remain.");
+        DateTimeOffset scanStarted = DateTimeOffset.UtcNow;
+        var pids = MarkedProcesses().Order().ToArray();
+        var processScan = new QualificationProcessScan(Guid.NewGuid().ToString("N"), Id, scanStarted, DateTimeOffset.UtcNow, pids);
+        lock (_gate) _processScans.Add(processScan);
+        int remainingProcesses = pids.Length;
+        if (remainingProcesses != 0) _cleanupFailures.Add("Owned descendant processes remain.");
         if (_sharedContainers is not null)
         {
             try
             {
-                if (await ContainerInventoryAsync(excludeOwned: true) != _sharedContainers)
+                afterInventory = await ContainerInventoryAsync(excludeOwned: true);
+                if (afterInventory != _sharedContainers)
                     _cleanupFailures.Add("Shared container identity/state changed.");
             }
             catch (Exception error) { _cleanupFailures.Add("Shared container preservation: " + error.Message); }
         }
         await File.WriteAllTextAsync(Path.Combine(Root, "cleanup.json"), JsonSerializer.Serialize(_cleanupFailures));
+        var pass = new QualificationCleanupPass(Id, Root, passStarted, DateTimeOffset.UtcNow, _sharedStarted, _sharedEnded,
+            _sharedContainers, afterInventory, _containerNames.Order(StringComparer.Ordinal).ToArray(), _volumeNames.Order(StringComparer.Ordinal).ToArray(),
+            _cleanupFailures.Count, remainingProcesses, processScan.Id);
+        int number;
+        lock (_gate) { _cleanupPasses.Add(pass); number = _cleanupPasses.Count; }
+        await File.WriteAllTextAsync(Path.Combine(Root, $"cleanup-pass-{number:D6}.json"), JsonSerializer.Serialize(pass));
         }
         finally { _cleaning = false; }
     }

@@ -23,7 +23,70 @@ internal static class HistoricalMatrixSafetyContract
         {
             using var document = JsonDocument.Parse(raw);
             JsonElement data = document.RootElement;
-            if (key.Split('#')[0] == "actual-writer-admission-result")
+            string kind = key.Split('#')[0];
+            if (kind == "actual-versioned-reader-result")
+            {
+                bool selected = observation.Case.StartsWith("3.128.2-", StringComparison.Ordinal);
+                bool invalidFloor = observation.Case.Contains("-floor-0-", StringComparison.Ordinal)
+                    || observation.Case.Contains("-floor-14-", StringComparison.Ordinal);
+                bool invalidVersion = observation.Case.Contains("-version-987-", StringComparison.Ordinal);
+                bool refuses = selected && (invalidFloor || invalidVersion);
+                if (data.GetProperty("ok").GetBoolean() == refuses
+                    || refuses && (Text(data, "error") != "System.InvalidOperationException"
+                        || Text(data, "message") != (invalidFloor ? "SourceHeadChanged: actor metadata has an invalid retained floor."
+                            : "RollbackReaderCapabilityHold: a typed reader cannot consume unsupported event metadata."))
+                    || !refuses && (data.GetProperty("sequence").GetInt64() != 2 || data.GetProperty("count").GetInt32() != 2))
+                    throw new InvalidOperationException("The actual reader lost its case-specific refusal or characterized raw-reader behavior.");
+            }
+            else if (kind == "production-manifest-command-result")
+            {
+                var refusal = JsonSerializer.Deserialize<JsonElement>(records["production-manifest-refusal"]);
+                string actor = Text(refusal.GetProperty("cause"), "actor");
+                var profile = records.Where(pair => pair.Key.Split('#')[0] == "runtime-profile").Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value)).Last();
+                string expectedAddress = Text(profile, "hostAddress") + "/execute/" + Uri.EscapeDataString(actor);
+                var transports = records.Where(pair => pair.Key.Split('#')[0] == "http-post").Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value))
+                    .Where(post => Text(post, "address") == expectedAddress && post.GetProperty("status").GetInt32() == 200
+                        && Text(post, "responseHash") == QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(data.GetRawText()))).ToArray();
+                if (transports.Length != 1 || transports[0].GetProperty("request").GetProperty("append").ValueKind != JsonValueKind.True
+                    || data.GetProperty("ok").GetBoolean() || Text(data, "error") != "CommandProcessingRefusal"
+                    || Text(data, "message") != "Protected data diagnostic details were redacted. ReasonCode=logical-event-read-rejected; Stage=Processing."
+                    || data.GetProperty("count").GetInt32() != -1 || data.GetProperty("sequence").GetInt64() != 1
+                    || data.GetProperty("metadata").GetProperty("currentSequence").GetInt64() != 1
+                    || !refusal.GetProperty("observed").GetBoolean()
+                    || Text(refusal.GetProperty("cause"), "code") != "missing-allow-listed-callable"
+                    || Text(refusal.GetProperty("cause"), "stage") != "production-logical-event-upcast-binding")
+                    throw new InvalidOperationException("The actual manifest command lost its precise missing-callable refusal before mutation.");
+            }
+            else if (kind == "production-handler-discovery")
+            {
+                if (!data.GetProperty("declared").EnumerateArray().Select(item => item.GetString()).SequenceEqual(["get-counter"])
+                    || !JsonElement.DeepEquals(data.GetProperty("declared"), data.GetProperty("persisted"))
+                    || !data.GetProperty("supported").GetBoolean() || data.GetProperty("unknown").GetBoolean()
+                    || Text(data, "registry") != "Hexalith.EventStore.Queries.DaprDomainQueryHandlerRegistry")
+                    throw new InvalidOperationException("The actual production registry lost its exact persisted declared-handler inventory.");
+            }
+            else if (kind.StartsWith("production-handler-", StringComparison.Ordinal))
+            {
+                bool valid = kind == "production-handler-valid";
+                if (Text(data, "router") != "Hexalith.EventStore.Queries.HandlerAwareQueryRouter"
+                    || Text(data, "invoker") != "Hexalith.EventStore.Queries.DaprDomainQueryInvoker"
+                    || data.GetProperty("success").GetBoolean() != valid
+                    || !valid && Text(data, "errorMessage") != "protected-admission-refused")
+                    throw new InvalidOperationException("The production query handler lost its exact router, invoker or protected admission outcome.");
+                if (valid)
+                {
+                    var payload = data.GetProperty("payload");
+                    foreach (var (field, expected) in new[] { ("originalActorId", "actor"), ("authenticatedWorkloadId", "workload"),
+                        ("delegationId", "delegation"), ("tenantId", "tenant-a"), ("correlationId", "corr") })
+                        if (Text(payload, field) != expected) throw new InvalidOperationException("The production handler changed a bound principal coordinate.");
+                    if (!payload.GetProperty("isDelegated").GetBoolean() || payload.GetProperty("scopes")[0].GetString() != "counter.read"
+                        || payload.GetProperty("audience")[0].GetString() != "eventstore"
+                        || string.IsNullOrWhiteSpace(Text(payload, "identityAdmissionProof"))
+                        || payload.GetProperty("value").GetProperty("watermark").GetInt64() != 987)
+                        throw new InvalidOperationException("The production handler lost its actual proof, authority or durable query result.");
+                }
+            }
+            else if (kind == "actual-writer-admission-result")
             {
                 bool selected = observation.Case.StartsWith("3.128.2-", StringComparison.Ordinal);
                 if (data.GetProperty("refused").GetBoolean() != selected

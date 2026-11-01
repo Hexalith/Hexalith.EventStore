@@ -24,6 +24,7 @@ internal static class HistoricalMatrixEvidenceContract
         HistoricalMatrixHttpContract.Validate(observation, records);
         HistoricalMatrixCrossClientContract.Validate(observation, records, builds, commands);
         HistoricalMatrixCleanupContract.Validate(observation, records, commands);
+        HistoricalMatrixSecurityContract.Validate(observation, records, commands);
         var distinctExecutions = new HashSet<(DateTimeOffset, DateTimeOffset, string)>() ;
         foreach ((string kind, int minimum) in expected.Records)
             if (records.Keys.Count(key => Kind(key) == kind) < minimum)
@@ -97,6 +98,10 @@ internal static class HistoricalMatrixEvidenceContract
                             && Text(actual, "OutputHash") == Text(data, "OutputHash") && Text(invoked, "InputHash") == Text(command, "InputHash");
                     }) != 1)
                     throw new InvalidOperationException("The probe observation has no unique actual matching completed operation.");
+                var captured = commands.Single(capture => capture.Record.GetProperty("Started").GetDateTimeOffset() == started
+                    && capture.Record.GetProperty("Ended").GetDateTimeOffset() == ended
+                    && capture.Record.GetProperty("Command").GetProperty("Arguments")[0].GetString() == build.Assembly);
+                HistoricalMatrixProbeContract.Validate(observation, records, build, captured);
             }
             else if (kind == "inventory")
             {
@@ -156,7 +161,9 @@ internal static class HistoricalMatrixEvidenceContract
                 string actor = Text(cause, "actor");
                 if (!data.GetProperty("observed").GetBoolean() || Text(cause, "code") != "missing-allow-listed-callable"
                     || Text(cause, "stage") != "production-logical-event-upcast-binding"
-                    || !Text(cause, "declaringType").StartsWith("Hexalith.EventStore.Client.Events.EventUpcastChainExecutor", StringComparison.Ordinal)
+                    || Text(cause, "declaringType") != "Hexalith.EventStore.Client.Events.EventUpcastChainExecutor"
+                    || Text(cause, "method") != "GetBinding"
+                    || Text(cause, "message") != "CapabilityMismatch: an admitted edge lacks an allow-listed callable."
                     || !records.Keys.Any(name => name.Split('#')[0] == "inventory:" + actor))
                     throw new InvalidOperationException("The manifest refusal lost its actual cause or persisted actor.");
             }
@@ -209,7 +216,9 @@ internal static class HistoricalMatrixEvidenceContract
             if (Text(identity, "configuration") != build.Configuration || Text(identity, "informationalVersion").Split('+')[0] != version
                 || Text(identity, "path") != Path.Combine(Path.GetDirectoryName(build.Assembly)!, name + ".dll")
                 || build.Source is null && (Text(identity, "sha256") != build.VerifiedAssemblyHashes![name]
-                    || Text(identity, "informationalVersion").Split('+').ElementAtOrDefault(1) != build.ArchiveSources![name]))
+                    || Text(identity, "informationalVersion").Split('+').ElementAtOrDefault(1) != build.ArchiveSources![name])
+                || build.Source is not null && (build.PreparedAssemblyHashes is null
+                    || !build.PreparedAssemblyHashes.TryGetValue(name, out string? prepared) || Text(identity, "sha256") != prepared))
                 throw new InvalidOperationException("Loaded assembly proof lost its actual source, bytes or consumer coordinates.");
         }
     }

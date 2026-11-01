@@ -1,5 +1,6 @@
 """Native analyzer over owned real Git ancestry; these fixtures are not live proof."""
 import json
+import hashlib
 import os
 import subprocess
 import tempfile
@@ -53,6 +54,11 @@ class ReleaseCandidateTests(unittest.TestCase):
         return head
 
     def invoke(self, success=False):
+        def evidence():
+            path = self.work / ".hexalith"
+            return None if not path.exists() else sorted((str(file.relative_to(path)), hashlib.sha256(file.read_bytes()).hexdigest())
+                for file in path.rglob("*") if file.is_file())
+        before = evidence()
         result = subprocess.run(["node", str(ROOT / "tools/verify-release-candidate.mjs")],
                                 cwd=self.work, env=self.env, capture_output=True, text=True)
         if success:
@@ -60,7 +66,7 @@ class ReleaseCandidateTests(unittest.TestCase):
         else:
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse((self.work / "nupkgs").exists())
-        self.assertFalse((self.work / ".hexalith").exists())
+        self.assertEqual(evidence(), before, "The pure qualifier changed existing qualification evidence.")
         return result
 
     def test_real_patch_candidate_uses_native_analyzer_and_core(self):
@@ -134,7 +140,134 @@ class ReleaseCandidateTests(unittest.TestCase):
         (self.work / "alternate-release.json").write_text(json.dumps(alternate))
         self.git("add", ".config/config.json", "alternate-release.json")
         self.candidate()
-        self.assertIn("Native effective release configuration differs", self.invoke().stderr)
+        self.assertIn("metadata configuration before native discovery", self.invoke().stderr)
+
+    def test_all_native_metadata_channels_refuse_before_executable_discovery(self):
+        for place in ("package.json", "package.yaml", ".config/config.json", ".config/config.yaml", ".config/config.yml",
+                      ".config/config.js", ".config/config.ts", ".config/config.cjs", ".config/config.mjs"):
+            with self.subTest(place=place):
+                self.setUp()
+                marker = self.work / "metadata-executed"
+                executable = self.work / "nested-release.cjs"
+                executable.write_text("require('node:fs').writeFileSync(" + json.dumps(str(marker)) + ", 'executed'); module.exports={};")
+                target = self.work / place
+                target.parent.mkdir(parents=True, exist_ok=True)
+                redirect = {"searchPlaces": ["nested-release.cjs"], "mergeSearchPlaces": False}
+                if place == "package.json":
+                    package = json.loads(target.read_text()); package["cosmiconfig"] = redirect
+                    target.write_text(json.dumps(package))
+                elif place.endswith((".js", ".cjs", ".ts", ".mjs")):
+                    target.write_text(executable.read_text())
+                else:
+                    target.write_text(json.dumps({"cosmiconfig": redirect}))
+                self.git("add", place, "nested-release.cjs")
+                self.candidate()
+                self.assertIn("metadata configuration before native discovery", self.invoke().stderr)
+                self.assertFalse(marker.exists(), "Configuration code ran before the read-only guard refused it.")
+
+    def drive_pre_oidc(self, workflow):
+        # Execute the ACTUAL production revalidation shell, using real local Git
+        # and native qualification plus the separate read-only hosted-CI fixture.
+        from release_publication_fixture import gh_main  # verifies fixture availability, never calls GitHub
+        if "origin" not in self.git("remote").splitlines():
+            remote = self.work / "remote.git"
+            subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
+            self.git("remote", "add", "origin", str(remote))
+            self.git("push", "-q", "origin", "refs/heads/" + BRANCH, "refs/heads/main", "refs/tags/v3.130.1")
+        marker = self.work / "oidc-entered"
+        marker.unlink(missing_ok=True)
+        gh = self.work / "gh"
+        gh.write_text("#!/usr/bin/env python3\nfrom release_publication_fixture import gh_main\ngh_main()\n")
+        gh.chmod(0o755)
+        environment = self.env.copy()
+        environment["PATH"] = str(self.work) + os.pathsep + os.environ["PATH"]
+        environment["PYTHONPATH"] = str(ROOT / "tools/tests")
+        state_path = self.work / "hosted-source.json"
+        run = {"head_sha": self.env["DISPATCH_SHA"], "head_branch": BRANCH, "event": "push", "status": "completed", "conclusion": "success"}
+        state_path.write_text(json.dumps({"refs": {BRANCH: self.env["DISPATCH_SHA"], "main": self.git("rev-parse", "refs/heads/main")},
+                                          "requests": [], "runs": {name: [run.copy()] for name in ("ci.yml", "commitlint.yml", "integration.yml")}}))
+        environment["PUBLICATION_FIXTURE_STATE"] = str(state_path)
+        environment["GITHUB_OUTPUT"] = str(self.work / "hosted-output")
+        contexts = {"github.repository": self.env["REPOSITORY"], "github.ref": self.env["DISPATCH_REF"],
+                    "github.sha": self.env["DISPATCH_SHA"], "github.token": "fixture-read-only", "needs.verify-source.outputs.source-ci-workflow": "ci.yml"}
+        step = next(step for step in workflow["jobs"]["release"]["steps"]
+                    if step.get("name") == "Revalidate current source before Semantic Release")
+        self.assertEqual(step["if"], "${{ steps.publish-gate.outputs.publish-enabled == 'true' }}")
+        for key, value in step.get("env", {}).items():
+            expression = value.removeprefix("${{ ").removesuffix(" }}")
+            environment[key] = contexts[expression]
+        command = step["run"].replace("bash scripts/verify-release-source.sh", "bash " + str(ROOT / "scripts/verify-release-source.sh"))
+        command = command.replace("node tools/verify-release-candidate.mjs", "node " + str(ROOT / "tools/verify-release-candidate.mjs"))
+        result = subprocess.run(["bash", "-c", command], cwd=self.work, env=environment, capture_output=True, text=True)
+        if result.returncode == 0:
+            marker.write_text("OIDC would be reached only after the actual production source/qualification step passes")
+        return result, marker
+
+    def test_actual_pre_oidc_revalidates_after_a_sibling_tag_invalidates_preproduction(self):
+        self.candidate()
+        workflow = self.workflow()
+        preproduction, entered = self.drive_preproduction(workflow)
+        self.assertEqual(preproduction.returncode, 0, preproduction.stderr)
+        self.assertTrue(entered.exists())
+        positive, oidc = self.drive_pre_oidc(workflow)
+        self.assertEqual(positive.returncode, 0, positive.stderr)
+        self.assertTrue(oidc.exists())
+        self.assertEqual(json.loads((self.work / ".hexalith/release-evidence/qualification/pre-oidc.json").read_text())["version"], "3.130.2")
+        self.sibling_tag()
+        rejected, oidc = self.drive_pre_oidc(workflow)
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertFalse(oidc.exists())
+        step = next(step for step in workflow["jobs"]["release"]["steps"] if step.get("name") == "Revalidate current source before Semantic Release")
+        before = step["run"]
+        step["run"] = before.replace('"$DISPATCH_REF" = "refs/heads/' + BRANCH + '"', '"$DISPATCH_REF" = "refs/heads/other"')
+        self.assertNotEqual(step["run"], before)
+        bypass, oidc = self.drive_pre_oidc(workflow)
+        self.assertEqual(bypass.returncode, 0, bypass.stderr)
+        self.assertTrue(oidc.exists(), "The counterfactual must reproduce the missing renewed qualification.")
+
+    def test_remote_only_tag_after_preproduction_is_refreshed_before_oidc(self):
+        self.candidate()
+        workflow = self.workflow()
+        preproduction, entered = self.drive_preproduction(workflow)
+        self.assertEqual(preproduction.returncode, 0, preproduction.stderr)
+        self.assertTrue(entered.exists())
+        positive, oidc = self.drive_pre_oidc(workflow)
+        self.assertEqual(positive.returncode, 0, positive.stderr)
+        sibling = self.git("commit-tree", self.git("write-tree"), "-p", BASE, input="fix: remote sibling release\n")
+        self.git("push", "-q", "origin", sibling + ":refs/heads/main", sibling + ":refs/tags/v3.130.2")
+        self.assertEqual(subprocess.run(["git", "show-ref", "--verify", "--quiet", "refs/tags/v3.130.2"], cwd=self.work).returncode, 1)
+        self.invoke(True)  # Establish the actual stale local-ref counterexample.
+        refused, oidc = self.drive_pre_oidc(workflow)
+        self.assertNotEqual(refused.returncode, 0, refused.stdout + refused.stderr)
+        self.assertFalse(oidc.exists())
+        self.assertEqual(self.git("rev-parse", "refs/tags/v3.130.2"), sibling)
+
+    def test_remote_maintenance_advance_is_refreshed_before_oidc(self):
+        self.candidate()
+        workflow = self.workflow()
+        positive, oidc = self.drive_pre_oidc(workflow)
+        self.assertEqual(positive.returncode, 0, positive.stderr)
+        self.assertTrue(oidc.exists())
+        advanced = self.git("commit-tree", self.git("write-tree"), "-p", self.env["DISPATCH_SHA"], input="fix: remote maintenance advance\n")
+        self.git("push", "-q", "origin", advanced + ":refs/heads/" + BRANCH)
+        rejected, oidc = self.drive_pre_oidc(workflow)
+        self.assertNotEqual(rejected.returncode, 0, rejected.stdout + rejected.stderr)
+        self.assertFalse(oidc.exists())
+        self.assertEqual(self.git("rev-parse", "refs/remotes/origin/" + BRANCH), advanced)
+
+    def test_redirecting_configuration_never_executes_on_either_actual_workflow_path(self):
+        (self.work / ".config").mkdir()
+        (self.work / ".config/config.json").write_text(json.dumps({"cosmiconfig": {"searchPlaces": ["nested-release.cjs"], "mergeSearchPlaces": False}}))
+        (self.work / "nested-release.cjs").write_text("require('node:fs').writeFileSync('configuration-executed','bad');module.exports={};")
+        self.git("add", ".config/config.json", "nested-release.cjs")
+        self.candidate()
+        workflow = self.workflow()
+        result, production = self.drive_preproduction(workflow)
+        self.assertNotEqual(result.returncode, 0); self.assertFalse(production.exists())
+        result, oidc = self.drive_pre_oidc(workflow)
+        self.assertNotEqual(result.returncode, 0); self.assertFalse(oidc.exists())
+        self.assertFalse((self.work / "configuration-executed").exists())
+        self.assertFalse((self.work / "nupkgs").exists())
 
     def sibling_tag(self, unrelated=False):
         message = "fix: advance sibling release\n"

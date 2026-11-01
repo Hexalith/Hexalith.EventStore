@@ -27,12 +27,15 @@ internal static class ContainerCreationDrill
             using JsonDocument proof = JsonDocument.Parse(await File.ReadAllTextAsync(marker));
             CommandObservation inspected = await runtime.RunAsync(new("docker", ["inspect", name], runtime.Root, TimeSpan.FromSeconds(5)));
             assertions.Record("provider-created-before-interruption", inspected.StandardOutput);
+            string image = await runtime.RequireAsync("docker", ["image", "inspect", "--format", QualificationImageIdentity.Format, PublishedCluster.RedisImage], timeout: TimeSpan.FromSeconds(5));
+            assertions.Record("provider-local-image", image);
             bool owned = false;
             if (inspected.ExitCode == 0)
             {
                 using JsonDocument container = JsonDocument.Parse(inspected.StandardOutput);
                 owned = container.RootElement[0].GetProperty("Id").GetString() == proof.RootElement.GetProperty("containerId").GetString()
-                    && container.RootElement[0].GetProperty("Config").GetProperty("Labels").GetProperty("p1r.owner").GetString() == runtime.Id;
+                    && container.RootElement[0].GetProperty("Config").GetProperty("Labels").GetProperty("p1r.owner").GetString() == runtime.Id
+                    && container.RootElement[0].GetProperty("Image").GetString() == QualificationImageIdentity.RequireApprovedEngineId(JsonSerializer.Deserialize<JsonElement>(image));
             }
             assertions.Check(owned, "actual-provider-container-id-and-label-before-interruption");
         }

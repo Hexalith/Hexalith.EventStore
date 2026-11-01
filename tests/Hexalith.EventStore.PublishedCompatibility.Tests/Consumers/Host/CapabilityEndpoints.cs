@@ -78,14 +78,18 @@ public static class CapabilityEndpoints
     private static async Task<JsonElement> DeniedAsync(string actorId, int head, string expectedCode, string expectedStage,
         string expectedMessage, Func<Task> operation, IServiceProvider services, string? authorityId = null)
     {
+        DateTimeOffset beforeBegan = DateTimeOffset.UtcNow;
         Dictionary<string, string?> before = await ReadCommittedAsync(actorId, head);
+        SecurityInventoryCapture.Record(expectedCode, "before", beforeBegan, before);
         int deadLettersBefore = services.GetRequiredService<BoundedDeadLetterPublisher>().Count;
         var observer = services.GetRequiredService<ExecutionAuthorityRefusalObserver>();
         long checkpoint = observer.Checkpoint;
         Exception? failure = null;
         try { await operation(); }
         catch (Exception error) { failure = error; }
+        DateTimeOffset afterBegan = DateTimeOffset.UtcNow;
         Dictionary<string, string?> after = await ReadCommittedAsync(actorId, head);
+        SecurityInventoryCapture.Record(expectedCode, "after", afterBegan, after);
         Exception? cause = failure is ActorMethodInvocationException { InnerException: ActorInvokeException remote } ? remote : failure;
         string? actualType = cause is ActorInvokeException invocation ? invocation.ActualExceptionType : cause?.GetType().FullName;
         string? actualMessage = cause?.Message;

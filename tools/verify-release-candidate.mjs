@@ -3,7 +3,7 @@
 // native analyzer and core Git/version helpers; never run release lifecycle hooks.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -40,6 +40,17 @@ export async function qualifyCandidate(env = process.env) {
     '.releaserc.ts', '.releaserc.cts', '.releaserc.mts', 'release.config.js', 'release.config.cjs', 'release.config.mjs', 'release.config.ts', 'release.config.cts', 'release.config.mts'];
   if (packageConfig.release !== undefined || alternateConfigs.some((path) => existsSync(path)))
     fail('Unsupported competing release configuration.');
+  // Pinned cosmiconfig9 first discovers its own metadata before resolving release
+  // search options. Reject that entire unsupported redirect/loader channel BEFORE
+  // constructing the native explorer: even a later origin refusal is too late.
+  const metaPlaces = ['package.yaml', '.config/config.json', '.config/config.yaml', '.config/config.yml',
+    '.config/config.js', '.config/config.ts', '.config/config.cjs', '.config/config.mjs'];
+  const present = (path) => {
+    try { lstatSync(path); return true; }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+  };
+  if (packageConfig.cosmiconfig !== undefined || metaPlaces.some(present))
+    fail('Unsupported cosmiconfig metadata configuration before native discovery.');
   const config = JSON.parse(configBytes);
   if (JSON.stringify(config.branches) !== JSON.stringify(expectedBranches) || config.tagFormat !== 'v${version}')
     fail('Unsupported release branch or tag configuration.');

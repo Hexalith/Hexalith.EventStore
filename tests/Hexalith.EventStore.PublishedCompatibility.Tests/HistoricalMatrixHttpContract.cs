@@ -51,6 +51,17 @@ internal static class HistoricalMatrixHttpContract
                         throw new InvalidOperationException("The identity HTTP body differs from the independently loaded consumer.");
                     break;
                 case "reader":
+                    string actor = Uri.UnescapeDataString(get.Uri.AbsolutePath["/reader/".Length..]);
+                    var profiles = records.Where(pair => pair.Key.Split('#')[0] == "runtime-profile")
+                        .Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value)).Where(profile => profile.GetProperty("hostAddress").GetString() == get.Uri.GetLeftPart(UriPartial.Authority)).ToArray();
+                    var readerTarget = JsonSerializer.Deserialize<JsonElement>(records["actual-reader-target"]);
+                    string firstActor = records.Where(pair => pair.Key.StartsWith("inventory:", StringComparison.Ordinal)).Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value).GetProperty("fixture").GetString()!).First();
+                    if (readerTarget.GetProperty("actor").GetString() != actor || actor != firstActor || readerTarget.GetProperty("address").GetString() != get.Uri.AbsoluteUri
+                        || get.Uri.Query.Length != 0 || get.Uri.Fragment.Length != 0 || profiles.Length != 1 || profiles[0].GetProperty("hostProcessId").GetInt32() <= 0
+                        || profiles[0].GetProperty("hostProcessId").GetInt32() != readerTarget.GetProperty("hostProcessId").GetInt32()
+                        || !records.Keys.Any(key => key.Split('#')[0] == "inventory:" + actor)
+                        || !gets.Any(item => item.Uri.AbsolutePath == "/identity" && item.Uri.GetLeftPart(UriPartial.Authority) == get.Uri.GetLeftPart(UriPartial.Authority)))
+                        throw new InvalidOperationException("The reader left its actual independently loaded host or exact persisted actor.");
                     if (!records.Where(pair => pair.Key.Split('#')[0] == "actual-versioned-reader-result")
                         .Any(pair => JsonElement.DeepEquals(JsonSerializer.Deserialize<JsonElement>(pair.Value), data)))
                         throw new InvalidOperationException("The actual reader HTTP body differs from its measured logical operation.");
@@ -67,6 +78,9 @@ internal static class HistoricalMatrixHttpContract
                         throw new InvalidOperationException("The persisted status HTTP body lost its exact tri-state or characterized legacy absence.");
                     break;
                 case "stats":
+                    if (!records.Where(pair => pair.Key.Split('#')[0] == "runtime-profile").Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value))
+                        .Any(profile => get.Uri.AbsoluteUri == profile.GetProperty("domainAddress").GetString() + "/stats"))
+                        throw new InvalidOperationException("The handler statistics left the actual domainAddress /stats endpoint.");
                     foreach (var key in new[] { "applyCalls", "handleCalls", "queryReads", "queryRequests" })
                         if (data.GetProperty(key).GetInt32() < 0) throw new InvalidOperationException("The actual handler statistics were erased.");
                     if (observation.Case.EndsWith("-registered-manifest-production-hop", StringComparison.Ordinal)
@@ -105,6 +119,7 @@ internal static class HistoricalMatrixHttpContract
             if (post.GetProperty("status").GetInt32() != 200 || post.GetProperty("began").GetDateTimeOffset() < observation.Started
                 || post.GetProperty("ended").GetDateTimeOffset() > observation.Ended)
                 throw new InvalidOperationException("The actual successful HTTP mutation lost its successful status or case-contained interval.");
+        HistoricalMatrixHttpSequenceContract.Validate(observation, records);
     }
 
     private static string Head(Uri uri) => uri.AbsolutePath.Trim('/').Split('/')[0];

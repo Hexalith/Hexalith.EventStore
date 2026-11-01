@@ -15,10 +15,14 @@ internal static class HistoricalMatrixCleanupContract
         if (containers.ValueKind != JsonValueKind.Array || containers.GetArrayLength() != 1)
             throw new InvalidOperationException("The interruption proof requires its one actual reserved provider.");
         var container = containers[0];
+        if (!records.TryGetValue("provider-local-image", out string? imageRaw))
+            throw new InvalidOperationException("The owned provider requires an actual local image observation; older captures do not supply it.");
+        var image = JsonSerializer.Deserialize<JsonElement>(imageRaw);
+        string imageId = QualificationImageIdentity.RequireApprovedEngineId(image);
         string owner = Text(container.GetProperty("Config").GetProperty("Labels"), "p1r.owner"), name = owner + "-creation-lifecycle";
         string id = Text(container, "Id");
         if (!owner.StartsWith("p1r-", StringComparison.Ordinal) || !Guid.TryParseExact(owner[4..], "N", out _)
-            || Text(container, "Name") != "/" + name || Text(container, "Image") != PublishedCluster.RedisImage.Split('@')[1]
+            || Text(container, "Name") != "/" + name || Text(container, "Image") != imageId
             || Text(container.GetProperty("Config"), "Image") != PublishedCluster.RedisImage || container.GetProperty("State").GetProperty("Running").GetBoolean())
             throw new InvalidOperationException("The observed created provider lost exact owner/name/image/state coordinates.");
         var scoped = commands.Select(command => command.Record).Where(command =>
@@ -44,6 +48,13 @@ internal static class HistoricalMatrixCleanupContract
             && Arguments(command).SequenceEqual(new[] { "rm", "-fv", id }) && command.GetProperty("ExitCode").GetInt32() == 0
             && command.GetProperty("Started").GetDateTimeOffset() >= launch.GetProperty("Ended").GetDateTimeOffset()).ToArray();
         if (removals.Length != 1) throw new InvalidOperationException("Only the exact inspected immutable provider ID may be removed after interruption.");
+        var images = scoped.Where(command => FileName(command) == "docker" && WorkingDirectory(command) == root
+            && Arguments(command).SequenceEqual(new[] { "image", "inspect", "--format", QualificationImageIdentity.Format, PublishedCluster.RedisImage })
+            && command.GetProperty("ExitCode").GetInt32() == 0 && !command.GetProperty("OutputTruncated").GetBoolean()
+            && command.GetProperty("Started").GetDateTimeOffset() >= launch.GetProperty("Started").GetDateTimeOffset()
+            && command.GetProperty("Ended").GetDateTimeOffset() <= removals[0].GetProperty("Started").GetDateTimeOffset()
+            && JsonElement.DeepEquals(JsonSerializer.Deserialize<JsonElement>(Text(command, "StandardOutput")), image)).ToArray();
+        if (images.Length != 1) throw new InvalidOperationException("The provider image binding has no unique actual immutable-reference inspection.");
         var absent = scoped.Where(command => Inspect(command) && command.GetProperty("ExitCode").GetInt32() != 0
             && command.GetProperty("Started").GetDateTimeOffset() >= removals[0].GetProperty("Ended").GetDateTimeOffset()
             && Text(command, "StandardError").Contains("no such object:", StringComparison.OrdinalIgnoreCase)).ToArray();
