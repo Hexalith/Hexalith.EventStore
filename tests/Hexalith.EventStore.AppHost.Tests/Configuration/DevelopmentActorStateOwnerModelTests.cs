@@ -221,52 +221,71 @@ public sealed class DevelopmentActorStateOwnerModelTests
                 foreach (var callback in gateway.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
                     await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, gateway.Resource, environment, token));
             }
-            Task[] Start(CancellationToken token) => resources.Select(resource => eventing.PublishAsync(
-                new BeforeResourceStartedEvent(resource, application.Services), EventDispatchBehavior.BlockingConcurrent, token)).Append(ReadOwnerEnvironment(token)).ToArray();
-            async Task RequireWaiting()
+            List<Task> startedOperations = [];
+            Task[] Start(CancellationToken token)
             {
-                await Task.WhenAll(resources.Where(resource => !cliOnlyDependency || resource is ExecutableResource).Select(resource => notifications.WaitForResourceAsync(resource.Name,
-                    KnownResourceStates.Waiting, TestContext.Current.CancellationToken))).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+                int offset = startedOperations.Count;
+                foreach (var resource in resources)
+                    startedOperations.Add(eventing.PublishAsync(new BeforeResourceStartedEvent(resource, application.Services), EventDispatchBehavior.BlockingConcurrent, token));
+                startedOperations.Add(ReadOwnerEnvironment(token));
+                return startedOperations.Skip(offset).ToArray();
+            }
+            async Task RequireWaiting(CancellationToken token)
+            {
+                Task[] waiting = resources.Where(resource => !cliOnlyDependency || resource is ExecutableResource).Select(resource => notifications.WaitForResourceAsync(resource.Name,
+                    KnownResourceStates.Waiting, token)).ToArray();
+                startedOperations.AddRange(waiting);
+                await Task.WhenAll(waiting).WaitAsync(TimeSpan.FromSeconds(5), token);
                 Volatile.Read(ref trustReads).ShouldBe(0, $"Argument callback reads: {Volatile.Read(ref argumentReads)}");
                 Volatile.Read(ref argumentReads).ShouldBe(0);
                 File.Exists(receiptPath).ShouldBeFalse();
             }
             using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-            Task[] starts = Start(cancellation.Token);
-            await RequireWaiting();
-            starts.ShouldAllBe(start => !start.IsCompleted);
-            if (cancelFirstStart)
+            using var retryCancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            try
+            {
+                Task[] starts = Start(cancellation.Token);
+                await RequireWaiting(cancellation.Token);
+                starts.ShouldAllBe(start => !start.IsCompleted);
+                if (cancelFirstStart)
+                {
+                    await cancellation.CancelAsync();
+                    foreach (Task start in starts)
+                        await Should.ThrowAsync<OperationCanceledException>(() => start);
+                    Volatile.Read(ref trustReads).ShouldBe(0);
+                    File.Exists(receiptPath).ShouldBeFalse();
+                    starts = Start(retryCancellation.Token);
+                    await RequireWaiting(retryCancellation.Token);
+                    starts.ShouldAllBe(start => !start.IsCompleted);
+                }
+                await File.WriteAllTextAsync(trustPath, trustMaterial, TestContext.Current.CancellationToken);
+                await notifications.PublishUpdateAsync(credentialSource.Resource, snapshot => snapshot with { State = KnownResourceStates.Running });
+                await Task.WhenAll(starts).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+                Volatile.Read(ref trustReads).ShouldBeGreaterThan(0);
+                Volatile.Read(ref argumentReads).ShouldBeGreaterThan(0);
+                Dictionary<string, object> environment = [];
+                foreach (var callback in admin.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+                    await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, admin.Resource, environment, TestContext.Current.CancellationToken));
+                object credential = environment["EventStore__RouteCatalog__DevelopmentActorStateOwners__0__ApiToken"];
+                string? token = credential is IValueProvider provider ? await provider.GetValueAsync(TestContext.Current.CancellationToken) : credential.ToString();
+                token.ShouldNotBeNullOrWhiteSpace();
+                string receipt = await File.ReadAllTextAsync(receiptPath, TestContext.Current.CancellationToken);
+                receipt.ShouldNotContain(token);
+                receipt.ShouldNotContain(trustMaterial);
+                receipt.ShouldNotContain("ApiToken\"");
+                JsonSerializer.Deserialize<DevelopmentActorStateOwnerObservation[]>(receipt).ShouldBe([new("gateway-owned", "http://localhost:48123/", true)]);
+                foreach (string name in new[] { "authority.backend.json", "authority.dependencies.json", "authority.component.json" })
+                {
+                    string componentReceipt = await File.ReadAllTextAsync(Path.Combine(catalog.Directory, name), TestContext.Current.CancellationToken);
+                    componentReceipt.ShouldNotContain(token);
+                    componentReceipt.ShouldNotContain(trustMaterial);
+                }
+            }
+            finally
             {
                 await cancellation.CancelAsync();
-                foreach (Task start in starts)
-                    await Should.ThrowAsync<OperationCanceledException>(() => start);
-                Volatile.Read(ref trustReads).ShouldBe(0);
-                File.Exists(receiptPath).ShouldBeFalse();
-                starts = Start(TestContext.Current.CancellationToken);
-                await RequireWaiting();
-                starts.ShouldAllBe(start => !start.IsCompleted);
-            }
-            await File.WriteAllTextAsync(trustPath, trustMaterial, TestContext.Current.CancellationToken);
-            await notifications.PublishUpdateAsync(credentialSource.Resource, snapshot => snapshot with { State = KnownResourceStates.Running });
-            await Task.WhenAll(starts).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-            Volatile.Read(ref trustReads).ShouldBeGreaterThan(0);
-            Volatile.Read(ref argumentReads).ShouldBeGreaterThan(0);
-            Dictionary<string, object> environment = [];
-            foreach (var callback in admin.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
-                await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, admin.Resource, environment, TestContext.Current.CancellationToken));
-            object credential = environment["EventStore__RouteCatalog__DevelopmentActorStateOwners__0__ApiToken"];
-            string? token = credential is IValueProvider provider ? await provider.GetValueAsync(TestContext.Current.CancellationToken) : credential.ToString();
-            token.ShouldNotBeNullOrWhiteSpace();
-            string receipt = await File.ReadAllTextAsync(receiptPath, TestContext.Current.CancellationToken);
-            receipt.ShouldNotContain(token);
-            receipt.ShouldNotContain(trustMaterial);
-            receipt.ShouldNotContain("ApiToken\"");
-            JsonSerializer.Deserialize<DevelopmentActorStateOwnerObservation[]>(receipt).ShouldBe([new("gateway-owned", "http://localhost:48123/", true)]);
-            foreach (string name in new[] { "authority.backend.json", "authority.dependencies.json", "authority.component.json" })
-            {
-                string componentReceipt = await File.ReadAllTextAsync(Path.Combine(catalog.Directory, name), TestContext.Current.CancellationToken);
-                componentReceipt.ShouldNotContain(token);
-                componentReceipt.ShouldNotContain(trustMaterial);
+                await retryCancellation.CancelAsync();
+                await Task.WhenAll(startedOperations).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing | ConfigureAwaitOptions.ContinueOnCapturedContext);
             }
         }
         finally { Directory.Delete(input, recursive: true); }

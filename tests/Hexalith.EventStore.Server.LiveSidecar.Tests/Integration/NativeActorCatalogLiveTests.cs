@@ -4,6 +4,7 @@ using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Projections;
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Dapr.Actors;
@@ -29,6 +30,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Shouldly;
 
@@ -78,7 +80,7 @@ public sealed class NativeActorCatalogLiveTests
         }
         await using var sidecar = new RouteCatalogDevelopmentSidecar(appId, resources, aclPath, appToken);
         sidecar.ConfigureNativeActorNamespace(appId);
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development", Args = [] });
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development", ContentRootPath = directory, Args = [] });
         builder.WebHost.UseUrls($"http://127.0.0.1:{sidecar.AppPort}");
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -151,9 +153,10 @@ public sealed class NativeActorCatalogLiveTests
         FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app, RunScopedRouteCatalogGateway.Operation, technical: true);
         try
         {
-            await app.StartAsync(TestContext.Current.CancellationToken); await sidecar.StartAsync();
-            // The native API's configuration-sync hosted service can create this real gRPC
-            // channel before daprd starts. Observe gRPC readiness after outbound HTTP readiness;
+            // Outbound sidecar readiness is independent of the app channel. Establish it
+            // before hosted-service startup writes and before any writer starts.
+            await sidecar.StartAsync();
+            // Observe gRPC readiness after outbound HTTP readiness;
             // only transient read-only connection startup is retried, never actor/catalog work.
             var client = app.Services.GetRequiredService<DaprClient>();
             using var grpcReady = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -172,15 +175,51 @@ public sealed class NativeActorCatalogLiveTests
                 catch (Dapr.DaprException exception) when (exception.InnerException is Grpc.Core.RpcException { StatusCode: Grpc.Core.StatusCode.Unavailable })
                 { await Task.Delay(100, grpcReady.Token); }
             }
+            // Establish the real persisted v2 marker in this empty, owned Redis before
+            // starting any app writer or retry worker. No old writer cohort exists here.
+            var deliveryStore = app.Services.GetRequiredService<IProjectionDeliveryStateStore>();
+            (await deliveryStore.ReadWriterProtocolAsync(TestContext.Current.CancellationToken)).ShouldBeNull();
+            var healthChecks = app.Services.GetRequiredService<HealthCheckService>();
+            var beforeCutoverHealth = await healthChecks.CheckHealthAsync(TestContext.Current.CancellationToken);
+            beforeCutoverHealth.Entries["projection-delivery-writer-protocol"].Status.ShouldBe(HealthStatus.Unhealthy);
+            string sourceCommit = typeof(ProjectionDeliveryCutover).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+                .InformationalVersion.Split('+', 2).ElementAtOrDefault(1)
+                ?? throw new InvalidOperationException("The native fixture requires the deployed writer's source revision.");
+            sourceCommit.Length.ShouldBe(40);
+            sourceCommit.ShouldAllBe(character => char.IsAsciiHexDigitLower(character));
+            var cutover = await app.Services.GetRequiredService<IProjectionDeliveryCutover>().ActivateAsync(
+                new ProjectionDeliveryCutoverRequest(sourceCommit, "fresh-empty-owned-redis:" + appId,
+                    WritersQuiesced: true, RetryWorkersQuiesced: true, DowngradeProhibitedAcknowledged: true), TestContext.Current.CancellationToken);
+            cutover.ShouldBe(ProjectionDeliveryCutoverStatus.Activated);
+            var writerProtocol = (await deliveryStore.ReadWriterProtocolAsync(TestContext.Current.CancellationToken)).ShouldNotBeNull();
+            writerProtocol.IsCurrent.ShouldBeTrue(); writerProtocol.CutoverCommit.ShouldBe(sourceCommit);
+            await app.StartAsync(TestContext.Current.CancellationToken);
             using var direct = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{sidecar.AppPort}") };
-            // The real native health mapper has no method metadata. Its preactivation
-            // protocol admits GET only, before any committed catalog or native effects.
-            foreach (var method in new[] { HttpMethod.Get, HttpMethod.Post, HttpMethod.Put, HttpMethod.Delete, HttpMethod.Patch, HttpMethod.Head, HttpMethod.Options })
+            // The native health mapper admits only GET, and evaluates the actual registered
+            // readiness checks. Writer activation alone cannot make an uncommitted catalog ready.
+            async Task RequireHealthMethodsAsync(HttpStatusCode expectedGetStatus)
             {
-                using var health = new HttpRequestMessage(method, "/healthz"); health.Headers.Add("dapr-api-token", appToken);
-                using var healthResponse = await direct.SendAsync(health, TestContext.Current.CancellationToken);
-                healthResponse.StatusCode.ShouldBe(method == HttpMethod.Get ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
+                foreach (string? credential in new string?[] { null, "forged" })
+                {
+                    using var deniedHealth = new HttpRequestMessage(HttpMethod.Get, "/healthz");
+                    if (credential is not null) deniedHealth.Headers.Add("dapr-api-token", credential);
+                    using var deniedResponse = await direct.SendAsync(deniedHealth, TestContext.Current.CancellationToken);
+                    deniedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+                }
+                foreach (var method in new[] { HttpMethod.Get, HttpMethod.Post, HttpMethod.Put, HttpMethod.Delete, HttpMethod.Patch, HttpMethod.Head, HttpMethod.Options })
+                {
+                    using var health = new HttpRequestMessage(method, "/healthz"); health.Headers.Add("dapr-api-token", appToken);
+                    using var healthResponse = await direct.SendAsync(health, TestContext.Current.CancellationToken);
+                    healthResponse.StatusCode.ShouldBe(method == HttpMethod.Get ? expectedGetStatus : HttpStatusCode.Forbidden);
+                    if (method == HttpMethod.Get)
+                        (await healthResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+                            .ShouldBe(expectedGetStatus == HttpStatusCode.OK ? "Healthy" : "Unhealthy");
+                }
             }
+            var unactivatedHealth = await healthChecks.CheckHealthAsync(TestContext.Current.CancellationToken);
+            unactivatedHealth.Entries["route-catalog"].Status.ShouldBe(HealthStatus.Unhealthy);
+            unactivatedHealth.Entries["projection-delivery-writer-protocol"].Status.ShouldBe(HealthStatus.Healthy);
+            await RequireHealthMethodsAsync(HttpStatusCode.ServiceUnavailable);
             var beforeActivation = await store.ReadAsync(TestContext.Current.CancellationToken);
             beforeActivation.State.Committed.ShouldBeNull(); beforeActivation.State.Leases.ShouldBeEmpty();
             using (var discovery = new HttpRequestMessage(HttpMethod.Get, "/dapr/subscribe"))
@@ -212,12 +251,16 @@ public sealed class NativeActorCatalogLiveTests
                 observation.Targets.Select(target => target with { OperationContractDigest = observation.Operations.Single(operation => operation.RouteId == target.RouteId).Digest }).ToArray(), [], "", "", observation.Operations, []));
             var activation = new RouteCatalogActivation("native-actors", RouteCatalogCodec.Encode(envelope), RouteCatalogCodec.ComputeRootDigest(envelope), null, [identity], "Development-fixture", "", observation.AuxiliaryOperations);
             activation = activation with { TechnicalHttpReceivers = [new(appId, RouteCatalogTechnicalHttpPolicy.FenceVersion,
-                observer.TechnicalHttp ?? throw new InvalidOperationException("The actual Gateway technical inventory is required."))] };
+                observer.TechnicalHttp ?? throw new InvalidOperationException("The actual Gateway technical inventory is required."))
+                { Invocations = observation.DeclaredInvocations }] };
             activation = activation with { TrustProof = RouteCatalogActivationBinding.ComputeDigest(activation) };
             RouteCatalogTopologyValidator.ValidateDevelopment(observation.TopologyDocuments[0], observation.TopologyDocuments[1], envelope, [identity], appId,
                 observation.AuxiliaryOperations, observation.ReceiverSurface, observation.SelectedAppIds, observation.DeclaredInvocations);
             var authority = app.Services.GetRequiredService<IRouteCatalogAuthority>();
             await authority.PrepareAsync(activation); await authority.ReadyAsync(activation.AttemptId); await authority.CommitAsync(activation.AttemptId);
+            var activatedHealth = await healthChecks.CheckHealthAsync(TestContext.Current.CancellationToken);
+            activatedHealth.Status.ShouldBe(HealthStatus.Healthy, string.Join("; ", activatedHealth.Entries.Select(entry => entry.Key + ":" + entry.Value.Status)));
+            await RequireHealthMethodsAsync(HttpStatusCode.OK);
             var etag = proxyFactory.CreateActorProxy<IETagActor>(new ActorId("counter:tenant-a"), ETagActor.ETagActorTypeName);
             (await etag.GetCurrentETagAsync()).ShouldBeNull();
             string provenance = (await app.Services.GetRequiredService<IWorkloadAssertionIssuer>().IssueAsync(new WorkloadAssertionRequest(appId,
