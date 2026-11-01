@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ServiceDefaults.Routing;
