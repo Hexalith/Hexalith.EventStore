@@ -20,6 +20,7 @@ internal static class HistoricalMatrixEvidenceContract
         var records = observation.Measurements ?? new Dictionary<string, string>();
         HistoricalMatrixScenarioContract.ValidateProfiles(observation, records);
         HistoricalMatrixSafetyContract.Validate(observation, records);
+        HistoricalMatrixOperationResultContract.Validate(observation, records);
         HistoricalMatrixFixtureInputContract.Validate(observation, records);
         HistoricalMatrixInventoryContract.Validate(observation, records);
         HistoricalMatrixHttpContract.Validate(observation, records);

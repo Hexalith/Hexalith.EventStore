@@ -50,13 +50,13 @@ internal static class HistoricalMatrixWireContract
                     "false" => observed.ValueKind == JsonValueKind.False,
                     "true" => observed.ValueKind == JsonValueKind.True,
                     "zero" => observed.ValueKind == JsonValueKind.Number && observed.GetDecimal() == 0,
-                    "empty" => observed.ValueKind == JsonValueKind.String && observed.GetString() == "",
+                    "empty" => HistoricalSafeJson.EmptyString(observed),
                     "empty-array" => observed.ValueKind == JsonValueKind.Array && observed.GetArrayLength() == 0,
                     _ => false,
                 };
                 if (!matches) throw new InvalidOperationException("The wire result changed its actual preserved field or characterized historical deficit.");
             }
-            previousWire = result.GetProperty("wire").GetString();
+            previousWire = HistoricalSafeJson.Utf8Hash(result.GetProperty("wire"));
         }
         if (observation.Error is not null)
         {
@@ -71,7 +71,7 @@ internal static class HistoricalMatrixWireContract
     {
         if (command.Wire is null || (previous is null
             ? command.Wire.Fields is null || !JsonElement.DeepEquals(JsonSerializer.SerializeToElement(command.Wire.Fields), JsonSerializer.SerializeToElement(fields))
-            : command.Wire.ValueSha256 != QualificationRuntime.Hash(Encoding.UTF8.GetBytes(previous))))
+            : command.Wire.ValueSha256 != previous))
             throw new InvalidOperationException("A wire hop did not consume its real signed-query/projection source or previous actual output.");
     }
 }

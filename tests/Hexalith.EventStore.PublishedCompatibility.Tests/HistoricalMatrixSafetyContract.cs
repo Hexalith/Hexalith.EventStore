@@ -81,7 +81,7 @@ internal static class HistoricalMatrixSafetyContract
                         if (Text(payload, field) != expected) throw new InvalidOperationException("The production handler changed a bound principal coordinate.");
                     if (!payload.GetProperty("isDelegated").GetBoolean() || payload.GetProperty("scopes")[0].GetString() != "counter.read"
                         || payload.GetProperty("audience")[0].GetString() != "eventstore"
-                        || string.IsNullOrWhiteSpace(Text(payload, "identityAdmissionProof"))
+                        || !HistoricalSafeJson.NonemptyString(payload.GetProperty("identityAdmissionProof"))
                         || payload.GetProperty("value").GetProperty("watermark").GetInt64() != 987)
                         throw new InvalidOperationException("The production handler lost its actual proof, authority or durable query result.");
                 }

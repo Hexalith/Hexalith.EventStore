@@ -24,6 +24,7 @@ internal sealed record HistoricalWireInput(string ValueSha256, IReadOnlyDictiona
 
     internal static string HashValue(JsonElement value)
     {
+        if (HistoricalSafeJson.IsCommitment(value)) return value.GetProperty("sha256").GetString()!;
         using var bytes = new MemoryStream();
         using (var writer = new Utf8JsonWriter(bytes)) Write(writer, value);
         return QualificationRuntime.Hash(bytes.ToArray());

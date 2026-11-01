@@ -20,6 +20,9 @@ internal static class HistoricalMatrixMeasurementContract
         IReadOnlyList<QualificationProcessScan>? processScans = null, IReadOnlyList<QualificationDaprLaunch>? daprLaunches = null,
         IReadOnlyList<QualificationManagedLaunch>? managedLaunches = null)
     {
+        if (!summary.TryGetProperty("executionCommands", out var retainedCommands)
+            || !JsonElement.DeepEquals(retainedCommands, JsonSerializer.SerializeToElement(commands)))
+            throw new InvalidOperationException("The saved executionCommands ledger differs from independently captured actual runtime commands.");
         if (!summary.TryGetProperty("disposed", out var disposed) || disposed.ValueKind != JsonValueKind.True)
             throw new InvalidOperationException("The uploaded summary requires the actual final owned disposal outcome.");
         if (observations.Count != _cases.Count || observations.Select(item => (item.Scenario, item.Case)).Distinct().Count() != _cases.Count)
@@ -27,8 +30,11 @@ internal static class HistoricalMatrixMeasurementContract
         foreach (var command in commands)
         {
             string output = command.Record.GetProperty("StandardOutput").GetString()!, error = command.Record.GetProperty("StandardError").GetString()!;
-            if (QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(output + error)) != command.Record.GetProperty("OutputHash").GetString())
-                throw new InvalidOperationException("The captured command output does not match its independently recorded output hash.");
+            if (QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(output + error)) != command.Record.GetProperty("SafeOutputHash").GetString())
+                throw new InvalidOperationException("The captured safe command output does not match its independently recorded output hash.");
+            if (!command.Record.GetProperty("OutputProjected").GetBoolean()
+                && command.Record.GetProperty("OutputHash").GetString() != command.Record.GetProperty("SafeOutputHash").GetString())
+                throw new InvalidOperationException("The original unprojected command output differs from its captured original-byte hash.");
         }
         var transportIndex = new HistoricalTransportIndex(httpExchanges ?? []);
         foreach (ScenarioObservation observation in observations)

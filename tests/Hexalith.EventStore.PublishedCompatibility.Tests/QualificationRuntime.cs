@@ -67,6 +67,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     private readonly List<string> _cleanupFailures = [];
     private readonly HashSet<string> _sensitivePaths = new(StringComparer.Ordinal);
     private string? _sharedContainers;
+    private Task? _sharedCapture;
     private DateTimeOffset? _sharedStarted;
     private DateTimeOffset? _sharedEnded;
     private bool _cleaning;
@@ -139,7 +140,12 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     internal static string Hash(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 
     /// <summary>Records shared container IDs, image IDs, start times and running state before owned launches.</summary>
-    internal async Task CaptureSharedContainersAsync()
+    internal Task CaptureSharedContainersAsync()
+    {
+        lock (_gate) return _sharedCapture ??= CaptureSharedContainersCoreAsync();
+    }
+
+    private async Task CaptureSharedContainersCoreAsync()
     {
         _sharedStarted = DateTimeOffset.UtcNow;
         _sharedContainers = await ContainerInventoryAsync(excludeOwned: true);
@@ -282,10 +288,11 @@ internal sealed class QualificationRuntime : IAsyncDisposable
             await owned.OverflowCleanup;
             throw new InvalidOperationException("Command output exceeded its bounded capture limit.");
         }
-        string output = Redact(command, await owned.Output);
-        string error = Redact(command, await owned.Error);
+        string originalOutput = await owned.Output, originalError = await owned.Error;
+        string output = Redact(command, originalOutput);
+        string error = Redact(command, originalError);
         var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, owned.Process.ExitCode,
-            output, error, Hash(Encoding.UTF8.GetBytes(output + error)), DeadlineStarted: deadlineStarted);
+            output, error, Hash(Encoding.UTF8.GetBytes(originalOutput + originalError)), DeadlineStarted: deadlineStarted, OriginalBytesRedacted: output != originalOutput || error != originalError);
         if (owned.TryRecord()) await SaveObservationAsync(observation);
         return observation;
     }
@@ -293,9 +300,10 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     private async Task RecordFailedAsync(QualificationCommand command, OwnedProcess owned, DateTimeOffset began, string failure, DateTimeOffset? deadlineStarted = null, string? interruption = null)
     {
         if (!owned.TryRecord()) return;
-        string output = Redact(command, owned.StandardOutput.Snapshot());
-        string error = Redact(command, owned.StandardError.Snapshot()) + "\n" + failure;
-        var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, -1, output, error, Hash(Encoding.UTF8.GetBytes(output + error)), owned.Overflowed, deadlineStarted, interruption);
+        string originalOutput = owned.StandardOutput.Snapshot(), originalError = owned.StandardError.Snapshot() + "\n" + failure;
+        string output = Redact(command, originalOutput);
+        string error = Redact(command, originalError);
+        var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, -1, output, error, Hash(Encoding.UTF8.GetBytes(originalOutput + originalError)), owned.Overflowed, deadlineStarted, interruption, output != originalOutput || error != originalError);
         await SaveObservationAsync(observation);
     }
 
@@ -306,7 +314,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         CommandObservation result = await RunAsync(new(executable, arguments, workingDirectory ?? Root,
             timeout ?? TimeSpan.FromMinutes(3), environment, input), consumer: consumer);
         if (result.ExitCode != 0)
-            throw new InvalidOperationException($"Exit {result.ExitCode}: {executable} {string.Join(' ', arguments)}\n{result.StandardOutput}\n{result.StandardError}");
+            throw new InvalidOperationException($"Exit {result.ExitCode}: {executable} {string.Join(' ', arguments)}\n{QualificationCommandObservationConverter.Capture(result).StandardOutput}\n{QualificationCommandObservationConverter.Capture(result).StandardError}");
         return result.StandardOutput;
     }
 
@@ -422,7 +430,7 @@ internal sealed class QualificationRuntime : IAsyncDisposable
             {
                 await Task.WhenAll(process.Output, process.Error).WaitAsync(TimeSpan.FromSeconds(5));
                 await File.WriteAllTextAsync(Path.Combine(Root, $"process-{process.Process.Id}.log"),
-                    Redact(process.Command, await process.Output + "\n" + await process.Error));
+                    HistoricalSafeJson.Text(Redact(process.Command, await process.Output)) + "\n" + HistoricalSafeJson.Error(process.Command, Redact(process.Command, await process.Error)));
             }
             catch (Exception error) { _cleanupFailures.Add("Bounded output drain: " + error.Message); }
         }

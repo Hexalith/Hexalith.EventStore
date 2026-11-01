@@ -52,6 +52,7 @@ public sealed class HistoricalDomainSidecarTests
                 fixture.Commands[index] = command with { StandardOutput = stdout, OutputHash = QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(stdout + command.StandardError)) };
             }
         }
+        fixture.RewriteSummary();
         fixture.Validate();
     }
 }

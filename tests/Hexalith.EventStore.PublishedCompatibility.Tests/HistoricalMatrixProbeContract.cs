@@ -38,7 +38,7 @@ internal static class HistoricalMatrixProbeContract
             if (!actual.EnumerateObject().Select(field => field.Name).Order(StringComparer.Ordinal).SequenceEqual(expected.EnumerateObject().Select(field => field.Name).Order(StringComparer.Ordinal))
                 || expected.EnumerateObject().Where(field => field.Name != "identityAdmissionProof").Any(field => HistoricalWireInput.HashValue(field.Value) != HistoricalWireInput.HashValue(actual.GetProperty(field.Name))))
                 throw new InvalidOperationException("The real signed-query result changed its exact actual bound scope or principal fields.");
-            if (string.IsNullOrWhiteSpace(result.GetProperty("value").GetProperty("identityAdmissionProof").GetString()))
+            if (!HistoricalSafeJson.NonemptyString(result.GetProperty("value").GetProperty("identityAdmissionProof")))
                 throw new InvalidOperationException("The real signed-query producer lost its actual nonempty proof.");
         }
         else if (command.Operation == "cursor")
@@ -55,7 +55,7 @@ internal static class HistoricalMatrixProbeContract
         }
         else if (command.Operation is "wire" or "make-wire")
         {
-            if (string.IsNullOrWhiteSpace(result.GetProperty("wire").GetString())
+            if (!HistoricalSafeJson.NonemptyString(result.GetProperty("wire"))
                 || result.GetProperty("value").ValueKind != JsonValueKind.Object)
                 throw new InvalidOperationException("The measured wire command lost its actual serialized and parsed payload.");
         }

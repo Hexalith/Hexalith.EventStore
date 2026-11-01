@@ -17,10 +17,15 @@ public sealed class PublishedScenarioTests
     [Fact]
     public async Task Published31282QualificationMatrixAsync()
     {
-        await using var runtime = new QualificationRuntime();
+        var runtime = new QualificationRuntime();
+        var observations = new List<ScenarioObservation>();
+        await RunFinalizedAsync(runtime, observations, () => ExecuteMatrixAsync(runtime, observations));
+    }
+
+    private static async Task ExecuteMatrixAsync(QualificationRuntime runtime, List<ScenarioObservation> observations)
+    {
         string repository = FindRepository();
         var materializer = new ConsumerMaterializer(runtime, repository);
-        var observations = new List<ScenarioObservation>();
         RegisterObservationLog(observations, Path.Combine(runtime.Root, "scenarios.ndjson"));
         string? materializationFailure = null;
         try { await materializer.MaterializeAsync(); }
@@ -198,18 +203,50 @@ public sealed class PublishedScenarioTests
         observations.Add(new("failure-cleanup", "matrix-cleanup-twice", cleanup.Failures.Count == 0 ? "passed" : "failed", "compatible", cleanup.Count, cleanup.Failures,
             Measurements: new Dictionary<string, string> { ["cleanup-runtime"] = JsonSerializer.Serialize(new { owner = runtime.Id, root = runtime.Root }) },
             Started: cleanupStarted, Ended: DateTimeOffset.UtcNow));
+        HistoricalExecutionCommand[] actualCommands = runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray();
         string serialized = await WriteSummaryAsync(runtime, observations, materializationFailure);
         TestContext.Current.TestOutputHelper?.WriteLine(serialized);
         using JsonDocument summary = JsonDocument.Parse(serialized);
         using JsonDocument actualCapture = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
         HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, actualCapture.RootElement, materializer.Builds,
-            summary.RootElement.GetProperty("executionCommands").Deserialize<HistoricalExecutionCommand[]>()
-                ?? throw new InvalidOperationException("The uploaded summary lost its actual safe command coordinates."),
+            actualCommands,
             runtime.Files, runtime.CleanupPasses, runtime.HttpExchanges, runtime.ScenarioInputs, runtime.StateReads, runtime.ProcessScans, runtime.DaprLaunches, runtime.ManagedLaunches);
     }
 
+    /// <summary>Finalizes the actual outer matrix on success, exceptions and cancellation without replacing its primary failure.</summary>
+    internal static async Task RunFinalizedAsync(QualificationRuntime runtime, List<ScenarioObservation> observations, Func<Task> operation)
+    {
+        Exception? primary = null;
+        try { await operation(); }
+        catch (Exception error) { primary = error; throw; }
+        finally
+        {
+            try
+            {
+                await WriteSummaryAsync(runtime, observations, primary?.GetType().FullName, incomplete: primary is not null);
+            }
+            catch (Exception finalization)
+            {
+                if (primary is null) throw;
+                primary.Data["qualification-finalization-failure"] = finalization.GetType().FullName;
+                // A failed cleanup/output device is not silently successful, and the primary exception is preserved.
+                try
+                {
+                    await File.WriteAllTextAsync(Path.Combine(runtime.Root, "finalization-refused.json"), JsonSerializer.Serialize(new
+                    {
+                        qualified = false, p1rUsable = false, incomplete = true, primary = primary.GetType().FullName,
+                        finalization = finalization.GetType().FullName, disposed = runtime.Disposed,
+                        executionCommands = runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray(),
+                        cleanupPasses = runtime.CleanupPasses, httpExchanges = runtime.HttpExchanges,
+                    }));
+                }
+                catch (Exception receiptFailure) { primary.Data["qualification-receipt-failure"] = receiptFailure.GetType().FullName; }
+            }
+        }
+    }
+
     /// <summary>Writes an honest nonqualifying summary when initial executor capture is unavailable.</summary>
-    internal static async Task<string> WriteSummaryAsync(QualificationRuntime runtime, List<ScenarioObservation> observations, string? materializationFailure)
+    internal static async Task<string> WriteSummaryAsync(QualificationRuntime runtime, List<ScenarioObservation> observations, string? materializationFailure, bool incomplete = false)
     {
         try { await runtime.DisposeAsync(); }
         catch (Exception error)
@@ -234,6 +271,7 @@ public sealed class PublishedScenarioTests
             observations.Add(new("provenance", "executor-input-capture", "unavailable", "unverified", 0, [],
                 materializationFailure ?? error.ToString()));
         }
+        bool incompleteMatrix = incomplete || observations.Count != 239;
         var summary = new { selected = ConsumerMaterializer.SelectedVersion, source = ConsumerMaterializer.SelectedSource,
             builds = ConsumerMaterializer.SelectedBuilds, executor, executorDiffHash, executorInputs,
             assertions = observations.Sum(observation => observation.Assertions),
@@ -241,7 +279,7 @@ public sealed class PublishedScenarioTests
             failed = observations.Count(observation => observation.Execution == "failed"),
             unavailable = observations.Count(observation => observation.Execution == "unavailable"),
             incompatible = observations.Count(observation => observation.Compatibility == "incompatible"),
-            qualified = executorInputs is not null && observations.All(observation => observation.Passing), p1rUsable = false, rollback = (string?)null,
+            incomplete = incompleteMatrix, executionInterrupted = incomplete, qualified = !incompleteMatrix && executorInputs is not null && observations.All(observation => observation.Passing), p1rUsable = false, rollback = (string?)null,
             owners = "pending", conformance = "pending", disposed = runtime.Disposed, observations,
             executionCommands = runtime.Commands.Select(HistoricalExecutionCommand.Capture).ToArray(),
             files = runtime.Files, cleanupPasses = runtime.CleanupPasses, httpExchanges = runtime.HttpExchanges, scenarioInputs = runtime.ScenarioInputs, stateReads = runtime.StateReads, processScans = runtime.ProcessScans, daprLaunches = runtime.DaprLaunches, managedLaunches = runtime.ManagedLaunches };

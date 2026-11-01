@@ -35,6 +35,7 @@ internal static class HistoricalHttpOperationCapture
             if (value.ValueKind != JsonValueKind.Object) return null;
             return JsonSerializer.SerializeToElement(new
             {
+                result = HistoricalHttpResultCapture.Capture(value),
                 declaration = value.TryGetProperty("declared", out _) ? JsonSerializer.SerializeToElement(new
                 {
                     declared = Names(value, "declared"), persisted = Names(value, "persisted"),

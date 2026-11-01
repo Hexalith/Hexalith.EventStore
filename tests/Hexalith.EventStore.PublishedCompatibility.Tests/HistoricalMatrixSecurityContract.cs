@@ -20,7 +20,11 @@ internal static class HistoricalMatrixSecurityContract
             || !Path.GetFileName(path).StartsWith("security-inventory-", StringComparison.Ordinal)
             || !Guid.TryParseExact(Path.GetFileNameWithoutExtension(path)["security-inventory-".Length..], "N", out _))
             throw new InvalidOperationException("The protected state capture lost its exact actual process/owner path.");
-        var profile = records.Where(pair => pair.Key.Split('#')[0] == "runtime-profile").Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value)).Last();
+        var matchingProfiles = records.Where(pair => pair.Key.Split('#')[0] == "runtime-profile")
+            .Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value))
+            .Where(profile => Text(profile, "profileId") == Text(capture, "profileId") && profile.GetProperty("hostProcessId").GetInt32() == pid).ToArray();
+        if (matchingProfiles.Length != 1) throw new InvalidOperationException("The protected state PID/owner/root differs from the actual runtime Host PID/owner/root; no unique contemporaneous Host profile exists.");
+        var profile = matchingProfiles[0];
         if (pid != profile.GetProperty("hostProcessId").GetInt32() || owner != Text(profile, "owner") || root != Text(profile, "root"))
             throw new InvalidOperationException("The protected state PID/owner/root differs from the actual runtime Host PID/owner/root.");
         var snapshots = capture.GetProperty("snapshots");

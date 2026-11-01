@@ -102,8 +102,8 @@ internal static class HistoricalMatrixHttpSequenceContract
             if (input.GetProperty("mode").GetString() != modes[i] || input.GetProperty("serializer").GetString() != "json"
                 || input.GetProperty("route").GetString() != "declared-handler"
                 || response.GetProperty("success").GetBoolean() != (i == 0)
-                || posts[i + 2].GetProperty("responseHash").GetString() != QualificationRuntime.Hash(Encoding.UTF8.GetBytes(raw))
-                || i == 0 && response.GetProperty("payloadHash").GetString() != QualificationRuntime.Hash(Encoding.UTF8.GetBytes(body.GetProperty("payload").GetRawText())))
+                || posts[i + 2].GetProperty("responseHash").GetString() != HistoricalRecordCommitment.Hash(records, "production-handler-" + modes[i])
+                || !JsonElement.DeepEquals(response.GetProperty("result"), body))
                 throw new InvalidOperationException("The production handler result is not bound to its actual successful HTTP operation.");
         }
         var stats = records.Where(pair => pair.Key.StartsWith("http-get:", StringComparison.Ordinal)

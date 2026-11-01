@@ -69,6 +69,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
         Summary["unavailable"] = Observations.Count(row => row.Execution == "unavailable");
         Summary["incompatible"] = Observations.Count(row => row.Compatibility == "incompatible");
         Summary["observations"] = JsonSerializer.SerializeToNode(Observations);
+        Summary["executionCommands"] = JsonSerializer.SerializeToNode(Commands.Select(HistoricalExecutionCommand.Capture).ToArray());
         Summary["files"] = JsonSerializer.SerializeToNode(Files);
         Summary["cleanupPasses"] = JsonSerializer.SerializeToNode(CleanupPasses);
         Summary["httpExchanges"] = JsonSerializer.SerializeToNode(HttpExchanges);
@@ -289,6 +290,12 @@ internal sealed class HistoricalMatrixSyntheticFixture
             }
             inventory["readIds"] = ids; records[key] = inventory.ToJsonString();
         }
+        AddSafeOperationResults(records, scenario, began);
+        foreach (string key in records.Keys.ToArray())
+        {
+            string raw = records[key], safe = HistoricalSafeJson.Text(raw); records[key] = safe;
+            if (raw != safe) records["record-byte-commitment:" + key] = JsonSerializer.Serialize(new { sha256 = Hash(raw) });
+        }
         foreach (string key in records.Keys.Where(key => key.Split('#')[0] is "http-post" or "fixture-http-post").ToArray())
         {
             var post = JsonNode.Parse(records[key])!.AsObject();
@@ -334,6 +341,35 @@ internal sealed class HistoricalMatrixSyntheticFixture
             error, records, began, name == "matrix-cleanup-twice" ? CleanupPasses.Max(pass => pass.Ended).AddSeconds(1) : began.AddSeconds(scenario == "natural-reminder" ? 100 : 30)));
     }
 
+    private static void AddSafeOperationResults(Dictionary<string, string> records, string scenario, DateTimeOffset began)
+    {
+        var profiles = records.Where(pair => pair.Key.Split('#')[0] == "runtime-profile").Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value)).ToArray();
+        if (profiles.Length == 0) return;
+        var inventories = records.Where(pair => pair.Key.StartsWith("inventory:", StringComparison.Ordinal)).Select(pair => JsonSerializer.Deserialize<JsonElement>(pair.Value)).ToArray();
+        string actor = inventories.Length == 0 ? "tenant-a:counter:synthetic" : inventories[0].GetProperty("fixture").GetString()!;
+        void Post(string address, object request, string body, double at, bool replace = false)
+        {
+            string key = "http-post";
+            if (!replace) { int i = 1; while (records.ContainsKey(key)) key = "http-post#" + ++i; }
+            records[key] = JsonSerializer.Serialize(new { address, began = began.AddSeconds(at), ended = began.AddSeconds(at + 1), status = 200,
+                requestHash = QualificationRuntime.Hash(JsonSerializer.SerializeToUtf8Bytes(request, new JsonSerializerOptions(JsonSerializerDefaults.Web))), responseHash = Hash(body),
+                request = HistoricalHttpOperationCapture.Request(request), response = HistoricalHttpOperationCapture.Response(body) });
+        }
+        if (records.TryGetValue("actual-writer-admission-result", out var writer))
+            Post(profiles[^1].GetProperty("hostAddress").GetString() + "/writer-admission/" + Uri.EscapeDataString(actor), new { }, writer, 15, replace: true);
+        if (records.TryGetValue("capability-security-observations", out var security))
+            Post(profiles[0].GetProperty("hostAddress").GetString() + "/capabilities/" + actor.Split(':')[2], new { }, security, 5, replace: true);
+        if (scenario is "full-replay" or "snapshot-tail" or "retained-covered" or "retained-uncovered" or "missing-event" or "checkout")
+        {
+            var profile = profiles[^1]; string address = profile.GetProperty("hostAddress").GetString() + "/execute/" + Uri.EscapeDataString(actor);
+            bool ok = scenario is not ("retained-uncovered" or "missing-event");
+            var result = JsonSerializer.SerializeToElement(new { ok, count = ok ? 12 : -1, sequence = ok ? 12 : 1 }); string body = result.GetRawText();
+            Post(address, new { append = false }, body, 21);
+            records["actual-execute-result"] = JsonSerializer.Serialize(new { profileId = profile.GetProperty("profileId").GetString(), actor, address,
+                append = false, hostPid = profile.GetProperty("hostProcessId").GetInt32(), result, responseHash = Hash(body) });
+        }
+    }
+
     private static void FixtureInput(Dictionary<string, string> records, string name, DateTimeOffset began)
     {
         string actor = records.Where(record => record.Key.StartsWith("inventory:", StringComparison.Ordinal))
@@ -364,7 +400,9 @@ internal sealed class HistoricalMatrixSyntheticFixture
         intermediate["tenant-a:counter:synthetic:events:2"] = final["tenant-a:counter:synthetic:events:2"]!.DeepClone();
         string owner = "p1r-11111111111111111111111111111111", root = "/synthetic/contract-fixture/" + owner;
         string path = root + "/security-inventory-" + Hash("capture:" + name)[..32] + ".jsonl";
-        int pid = JsonSerializer.Deserialize<JsonElement>(records.Last(pair => pair.Key.Split('#')[0] == "runtime-profile").Value).GetProperty("hostProcessId").GetInt32();
+        var captureProfile = JsonSerializer.Deserialize<JsonElement>(records.First(pair => pair.Key.Split('#')[0] == "runtime-profile").Value);
+        int pid = captureProfile.GetProperty("hostProcessId").GetInt32();
+        string profileId = captureProfile.GetProperty("profileId").GetString()!;
         var snapshots = new List<object>();
         string[] fields = ["stale", "forged", "completedStale", "unauthorized", "forgedEffect"];
         for (int i = 0; i < fields.Length; i++)
@@ -376,7 +414,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
             snapshots.Add(new { owner, pid, code = data[fields[i]]!["code"]!.GetValue<string>(), phase, began = at, ended = at.AddMilliseconds(25), hashes = state.DeepClone() });
         }
         records["capability-security-observations"] = data.ToJsonString();
-        records["capability-security-capture"] = JsonSerializer.Serialize(new { owner, path, pid, snapshots });
+        records["capability-security-capture"] = JsonSerializer.Serialize(new { owner, path, pid, profileId, snapshots });
         string output = JsonSerializer.Serialize(snapshots);
         Commands.Add(new(new("python3", ["-c", HistoricalSecurityCapture.ReadScript, path, owner, pid.ToString(System.Globalization.CultureInfo.InvariantCulture)], root, TimeSpan.FromSeconds(30)),
             began.AddSeconds(12), began.AddSeconds(13), 0, output, "", Hash(output)));

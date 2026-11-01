@@ -326,6 +326,9 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         await FloorBoundaryCasesAsync(observations, malformedOnly: true);
     }
 
+    /// <summary>Exercises the existing actual malformed-writer path with the independently selected consumers.</summary>
+    internal Task ExecuteSelectedWriterBoundariesAsync(List<ScenarioObservation> observations) => FloorBoundaryCasesAsync(observations, malformedOnly: true);
+
     private async Task FloorBoundaryCasesAsync(List<ScenarioObservation> observations, bool malformedOnly = false)
     {
         foreach (ConsumerBuild host in builds.Where(build => build.Role == "Host" && (!malformedOnly || build.Version == ConsumerMaterializer.SelectedVersion)))
@@ -541,7 +544,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
             return "unverified";
         }
         string capture = await runtime.RequireAsync("python3", ["-c", HistoricalSecurityCapture.ReadScript, _securityInventoryPath, runtime.Id, _securityHostPid.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
-        assertions.Record("capability-security-capture", JsonSerializer.Serialize(new { owner = runtime.Id, path = _securityInventoryPath, pid = _securityHostPid, snapshots = JsonSerializer.Deserialize<JsonElement>(capture) }));
+        assertions.Record("capability-security-capture", JsonSerializer.Serialize(new { owner = runtime.Id, path = _securityInventoryPath, pid = _securityHostPid, profileId = _profileId, snapshots = JsonSerializer.Deserialize<JsonElement>(capture) }));
         foreach ((string field, string code, string stage, string message) in new[]
         {
             ("stale", "stale-execution-authority", "execution-authority", "The idempotency execution authority is no longer current."),
@@ -746,6 +749,8 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         });
     }
 
+    private string? _lastPostResponseHash;
+
     private async Task<JsonElement> PostAsync(string address, object request)
     {
         DateTimeOffset began = DateTimeOffset.UtcNow;
@@ -755,6 +760,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         using var response = await _http.SendAsync(message, OperationCancellation);
         byte[] output = await response.Content.ReadAsByteArrayAsync(OperationCancellation);
         string body = Encoding.UTF8.GetString(output);
+        _lastPostResponseHash = QualificationRuntime.Hash(output);
         PublishedScenarioTests.ActiveAssertions?.Record("http-post", JsonSerializer.Serialize(new { address, began, ended = DateTimeOffset.UtcNow,
             status = (int)response.StatusCode, requestHash = QualificationRuntime.Hash(input), responseHash = QualificationRuntime.Hash(output),
             request = HistoricalHttpOperationCapture.Request(request), response = HistoricalHttpOperationCapture.Response(body) }));
@@ -1038,10 +1044,14 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
 
     private async Task<JsonElement> ExecuteAsync(string actor, bool append)
     {
-        using HttpResponseMessage response = await _http.PostAsJsonAsync("http://127.0.0.1:" + _hostPort + "/execute/" + Uri.EscapeDataString(actor), new { append }, OperationCancellation);
-        response.EnsureSuccessStatusCode();
-        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        return json.RootElement.Clone();
+        string address = "http://127.0.0.1:" + _hostPort + "/execute/" + Uri.EscapeDataString(actor);
+        JsonElement result = await PostAsync(address, new { append });
+        PublishedScenarioTests.ActiveAssertions?.Record("actual-execute-result", JsonSerializer.Serialize(new
+        {
+            profileId = _profileId, actor, address, append, hostPid = _securityHostPid,
+            result = HistoricalSafeJson.Capture(result), responseHash = _lastPostResponseHash,
+        }));
+        return result;
     }
 
     private async Task FixtureAsync(string actor, object operations)

@@ -18,7 +18,10 @@ internal sealed class MeasuredAssertions
         string candidate = key;
         int suffix = 1;
         while (Measurements.ContainsKey(candidate)) candidate = key + "#" + ++suffix;
-        Measurements.Add(candidate, value);
+        string safe = HistoricalSafeJson.Text(value);
+        Measurements.Add(candidate, safe);
+        if (safe != value) Measurements.Add("record-byte-commitment:" + candidate, System.Text.Json.JsonSerializer.Serialize(new
+            { sha256 = QualificationRuntime.Hash(System.Text.Encoding.UTF8.GetBytes(value)) }));
     }
 
     /// <summary>Evaluates one named invariant.</summary>
