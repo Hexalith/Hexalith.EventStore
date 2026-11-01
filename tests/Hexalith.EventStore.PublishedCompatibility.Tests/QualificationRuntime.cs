@@ -300,9 +300,9 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     private async Task RecordFailedAsync(QualificationCommand command, OwnedProcess owned, DateTimeOffset began, string failure, DateTimeOffset? deadlineStarted = null, string? interruption = null)
     {
         if (!owned.TryRecord()) return;
-        string originalOutput = owned.StandardOutput.Snapshot(), originalError = owned.StandardError.Snapshot() + "\n" + failure;
+        string originalOutput = owned.StandardOutput.Snapshot(), originalError = owned.StandardError.Snapshot();
         string output = Redact(command, originalOutput);
-        string error = Redact(command, originalError);
+        string error = Redact(command, originalError) + "\n" + failure;
         var observation = new CommandObservation(command, began, DateTimeOffset.UtcNow, -1, output, error, Hash(Encoding.UTF8.GetBytes(originalOutput + originalError)), owned.Overflowed, deadlineStarted, interruption, output != originalOutput || error != originalError);
         await SaveObservationAsync(observation);
     }

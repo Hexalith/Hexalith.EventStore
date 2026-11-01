@@ -8,6 +8,19 @@ namespace Hexalith.EventStore.PublishedCompatibility.Tests;
 /// <summary>Real child output remains usable in memory while every persisted path retains only safe commitments.</summary>
 public sealed class QualificationSafeOutputTests
 {
+    [Fact]
+    public async Task InterruptedOriginalByteHashExcludesTheRecorderDiagnostic()
+    {
+        await using var runtime = new QualificationRuntime();
+        await Should.ThrowAsync<TimeoutException>(() => runtime.RunAsync(new("python3", ["-c", "import time; print('observed-before-timeout',flush=True); time.sleep(120)"], runtime.Root, TimeSpan.FromMilliseconds(200))));
+        var actual = runtime.Commands.Single();
+        actual.OutputHash.ShouldBe(QualificationRuntime.Hash(Encoding.UTF8.GetBytes(actual.StandardOutput)));
+        actual.StandardError.Contains("input/execution", StringComparison.Ordinal).ShouldBeTrue();
+        var safe = HistoricalExecutionCommand.Capture(actual).Record;
+        safe.GetProperty("OutputProjected").GetBoolean().ShouldBeTrue();
+        safe.GetProperty("OutputHash").GetString().ShouldNotBe(safe.GetProperty("SafeOutputHash").GetString());
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
