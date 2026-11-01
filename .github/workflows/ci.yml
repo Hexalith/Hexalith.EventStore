@@ -63,8 +63,8 @@ jobs:
     uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main
     with:
       solution: Hexalith.EventStore.slnx
-      # Keep the established legacy suites active. The staged platform-package
-      # profile requires the v2 caller migration and a qualified Platform producer.
+      # Package integration profiles and registry credentials belong to domain-ci-v2.
+      # Keep the existing blocking AppHost integration until that migration is qualified.
       build-timeout-minutes: 180
       test-platform: microsoft-testing-platform
       run-consumer-validation: true

@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests;
 public sealed class PayloadProtectionCapabilityTests(PayloadProtectionDaprFixture fixture) : IClassFixture<PayloadProtectionDaprFixture>
 {
     [Fact]
-    public async Task RealPostgresqlV2ProvesCreateOnlyCasAtomicRollbackAndTtl()
+    public async Task RealPostgresqlV2ProvesCreateOnlyCasConditionalDeleteAtomicRollbackAndTtl()
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         (await new PayloadProtectionCapabilityProbe(fixture.Store).ProbeAsync(deadline.Token)).ShouldBe("state.postgresql:v2");

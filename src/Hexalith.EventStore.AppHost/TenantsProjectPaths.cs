@@ -11,51 +11,45 @@ internal sealed record TenantsProjectPaths(
     string DomainServiceProjectPath,
     string ApiProjectPath)
 {
-    /// <summary>The root submodule initialization command named by startup diagnostics.</summary>
-    internal const string SubmoduleInitializationCommand =
-        "git submodule update --init references/Hexalith.Tenants";
-
     /// <summary>Resolves both Tenants host paths and fails before either resource is registered.</summary>
     /// <returns>The validated Tenants host project paths.</returns>
     internal static TenantsProjectPaths Resolve()
-    {
-        var paths = new TenantsProjectPaths(
-            RepositoryProjectPaths.GetProjectPath(
-                "references",
-                "Hexalith.Tenants",
-                "src",
-                "Hexalith.Tenants",
-                "Hexalith.Tenants.csproj"),
-            RepositoryProjectPaths.GetProjectPath(
-                "references",
-                "Hexalith.Tenants",
-                "src",
-                "Hexalith.Tenants.Api",
-                "Hexalith.Tenants.Api.csproj"));
+        => Resolve(RepositoryProjectPaths.GetRepositoryRoot());
 
-        paths.Validate();
-        return paths;
-    }
-
-    /// <summary>Validates that both resolved Tenants host projects exist.</summary>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when either host project is unavailable and the root Tenants submodule must be initialized.
-    /// </exception>
-    internal void Validate()
+    /// <summary>Prefers complete repository-local hosts, then the sibling Tenants checkout.</summary>
+    /// <param name="repositoryRoot">The EventStore repository root.</param>
+    /// <returns>The validated host paths from one checkout.</returns>
+    internal static TenantsProjectPaths Resolve(string repositoryRoot)
     {
-        string[] missingProjects =
+        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryRoot);
+
+        string root = Path.GetFullPath(repositoryRoot);
+        TenantsProjectPaths[] candidates =
         [
-            .. new[] { DomainServiceProjectPath, ApiProjectPath }
-                .Where(static path => !File.Exists(path)),
+            FromCheckout(Path.Combine(root, "references", "Hexalith.Tenants")),
+            FromCheckout(Path.GetFullPath(Path.Combine(root, "..", "Hexalith.Tenants"))),
         ];
-        if (missingProjects.Length == 0)
+
+        foreach (TenantsProjectPaths candidate in candidates)
         {
-            return;
+            if (File.Exists(candidate.DomainServiceProjectPath) && File.Exists(candidate.ApiProjectPath))
+            {
+                return candidate;
+            }
         }
 
         throw new InvalidOperationException(
-            "Plain local Aspire run requires both Hexalith.Tenants host projects before any resources can start. "
-            + $"Initialize the root Tenants submodule with '{SubmoduleInitializationCommand}'. "
-            + $"Missing project(s): {string.Join(", ", missingProjects.Select(static path => $"'{path}'"))}");
+            "Plain local Aspire run requires both Hexalith.Tenants host projects from the same checkout before any resources can start. "
+            + "Use the workspace root-declared Tenants checkout. Never initialize nested submodules. "
+            + $"Missing project(s): {string.Join(", ", candidates.SelectMany(static paths => new[] { paths.DomainServiceProjectPath, paths.ApiProjectPath })
+                .Where(static path => !File.Exists(path)).Select(static path => $"'{path}'"))}");
     }
+
+    /// <summary>Builds both host paths within a single Tenants checkout.</summary>
+    /// <param name="checkoutRoot">The Tenants checkout root.</param>
+    /// <returns>The host project paths.</returns>
+    private static TenantsProjectPaths FromCheckout(string checkoutRoot)
+        => new(
+            Path.Combine(checkoutRoot, "src", "Hexalith.Tenants", "Hexalith.Tenants.csproj"),
+            Path.Combine(checkoutRoot, "src", "Hexalith.Tenants.Api", "Hexalith.Tenants.Api.csproj"));
 }

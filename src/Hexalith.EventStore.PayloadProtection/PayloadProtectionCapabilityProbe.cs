@@ -3,7 +3,7 @@ using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.PayloadProtection;
 
-/// <summary>Proves create-only, stale/unchanged-value CAS, atomic rollback and TTL through the actual Dapr primitive.</summary>
+/// <summary>Proves create-only, stale/unchanged-value CAS, conditional delete, atomic rollback and TTL through the actual Dapr primitive.</summary>
 /// <remarks>This startup probe is necessary capability evidence; full fault/concurrency PF-02 qualification remains a separate gate.</remarks>
 internal sealed class PayloadProtectionCapabilityProbe(DaprPayloadProtectionStateStore store)
 {
@@ -21,6 +21,8 @@ internal sealed class PayloadProtectionCapabilityProbe(DaprPayloadProtectionStat
         string key = PayloadProtectionStateCodec.KeyFor(value);
         string otherKey = PayloadProtectionStateCodec.KeyFor(other);
         string ttlKey = PayloadProtectionStateKeys.MemberHead(root);
+        var deleteCompanion = new WorkHeadV1(PayloadProtectionStateKeys.Digest(probe + "-delete"), 0, 0, 0, timestamp);
+        string deleteCompanionKey = PayloadProtectionStateCodec.KeyFor(deleteCompanion);
         try
         {
             Require(await store.CommitQualifiedAsync([PayloadProtectionStateMutation.Put(value)], cancellationToken).ConfigureAwait(false) == PayloadStateCommitResult.Committed);
@@ -41,6 +43,15 @@ internal sealed class PayloadProtectionCapabilityProbe(DaprPayloadProtectionStat
             Require((await ReadAsync(key, cancellationToken).ConfigureAwait(false)).Value.Revision == 3);
             Require((await ReadAsync(otherKey, cancellationToken).ConfigureAwait(false)).Value.Revision == 0);
 
+            PayloadProtectionStateValue<WorkHeadV1> beforeDelete = await ReadAsync(key, cancellationToken).ConfigureAwait(false);
+            // A stale conditional delete must roll back the entire transaction, including its companion insertion.
+            _ = await store.CommitQualifiedAsync([PayloadProtectionStateMutation.Put(deleteCompanion), new(key, null, initial.ETag)], cancellationToken).ConfigureAwait(false);
+            Require(await store.ReadQualifiedAsync<WorkHeadV1>(deleteCompanionKey, cancellationToken).ConfigureAwait(false) is null);
+            PayloadProtectionStateValue<WorkHeadV1> afterRejectedDelete = await ReadAsync(key, cancellationToken).ConfigureAwait(false);
+            Require(afterRejectedDelete.ETag == beforeDelete.ETag && afterRejectedDelete.Bytes.Span.SequenceEqual(beforeDelete.Bytes.Span));
+            Require(await store.CommitQualifiedAsync([new(key, null, beforeDelete.ETag)], cancellationToken).ConfigureAwait(false) == PayloadStateCommitResult.Committed);
+            Require(await store.ReadQualifiedAsync<WorkHeadV1>(key, cancellationToken).ConfigureAwait(false) is null);
+
             // A short-lived isolated probe uses the same transaction metadata path as actual 45/60-second leases.
             byte[] ttlValue = PayloadProtectionStateCodec.Encode(new MemberHeadV1(root, 0, 0, 0, timestamp));
             Require(await store.CommitQualifiedAsync([new(ttlKey, ttlValue, null, 1)], cancellationToken).ConfigureAwait(false) == PayloadStateCommitResult.Committed);
@@ -57,6 +68,7 @@ internal sealed class PayloadProtectionCapabilityProbe(DaprPayloadProtectionStat
             using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await CleanupAsync<WorkHeadV1>(key, cleanup.Token).ConfigureAwait(false);
             await CleanupAsync<WorkHeadV1>(otherKey, cleanup.Token).ConfigureAwait(false);
+            await CleanupAsync<WorkHeadV1>(deleteCompanionKey, cleanup.Token).ConfigureAwait(false);
             await CleanupAsync<MemberHeadV1>(ttlKey, cleanup.Token).ConfigureAwait(false);
         }
     }

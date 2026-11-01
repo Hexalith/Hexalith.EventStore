@@ -1,5 +1,6 @@
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 10.2; amendment sections 1-2 and 5-6; approved review correction section 8.
 using System.Buffers.Binary;
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -13,6 +14,9 @@ internal static class PayloadProtectionStateCodec
 {
     /// <summary>Gets the maximum UTF-8 size of one durable value.</summary>
     internal const int MaximumBytes = 65_536;
+    private static readonly FrozenDictionary<Type, FrozenDictionary<string, string>> FieldProfiles = PayloadProtectionStateSchema.Fields
+        .ToFrozenDictionary(schema => schema.Key, schema => schema.Value.Split(' ')
+            .Select(field => field.Split(':', 2)).ToFrozenDictionary(field => field[0], field => field[1], StringComparer.Ordinal));
     private const string TimestampFormat = "yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'";
     private static readonly HashSet<string> ErasureReasons = new(StringComparer.Ordinal)
     {
@@ -127,12 +131,11 @@ internal static class PayloadProtectionStateCodec
 
     private static void ValidateObject(JsonElement value, Type type, bool root)
     {
-        if (value.ValueKind != JsonValueKind.Object || !PayloadProtectionStateSchema.Fields.TryGetValue(type, out string? shape))
+        if (value.ValueKind != JsonValueKind.Object || !FieldProfiles.TryGetValue(type, out FrozenDictionary<string, string>? fields))
         {
             throw new PayloadProtectionFormatException();
         }
 
-        Dictionary<string, string> fields = shape.Split(' ').Select(f => f.Split(':', 2)).ToDictionary(p => p[0], p => p[1], StringComparer.Ordinal);
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonProperty property in value.EnumerateObject())
         {

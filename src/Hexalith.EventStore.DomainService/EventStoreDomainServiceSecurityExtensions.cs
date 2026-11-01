@@ -1,4 +1,5 @@
 using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -42,6 +44,20 @@ public static class EventStoreDomainServiceSecurityExtensions
 
     /// <summary>Gets the default workload allowed to call domain-service routes.</summary>
     public const string DefaultCaller = "eventstore";
+
+    /// <summary>Registers the complete receiver security and catalog boundary for a host with custom domain callbacks.</summary>
+    /// <param name="services">The host services.</param>
+    /// <param name="configuration">The host configuration containing its catalog authority and identity.</param>
+    /// <returns>The service collection, preserving existing processor and handler registrations.</returns>
+    public static IServiceCollection AddEventStoreDomainServiceSecurity(this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+        services.AddEventStoreRouteCatalog(configuration);
+        services.TryAddScoped<DomainRouteCatalogFilter>();
+        services.TryAddScoped<IDomainRouteCatalogGuard, DomainRouteCatalogGuard>();
+        return services.AddEventStoreDomainServiceSecurity();
+    }
 
     /// <summary>
     /// Adds the domain-service trust boundary. Called by <c>AddEventStoreDomainService</c>; idempotent.

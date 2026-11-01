@@ -9,6 +9,59 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 [Collection(DiagnosticsCollection.Name)]
 public sealed class LifecycleDiagnosticsTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EveryMechanicsMetricRestoresAmbientActivityAfterListenerMutation(bool throws)
+    {
+        using var parent = new Activity("parent").Start();
+        using var replacement = new Activity("listener-replacement").Start();
+        Activity.Current = parent;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        { if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name) { current.EnableMeasurementEvents(instrument); } };
+        int callbacks = 0;
+        listener.SetMeasurementEventCallback<long>((_, _, _, _) =>
+        {
+            callbacks++; Activity.Current = replacement;
+            if (throws) { throw new InvalidOperationException("untrusted-observer"); }
+        });
+        listener.Start();
+        Action[] records = [() => PayloadProtectionDiagnostics.ProviderFailure("fixture", PayloadBackendFailure.Unavailable),
+            () => PayloadProtectionDiagnostics.CacheAccess(true), () => PayloadProtectionDiagnostics.CacheAccess(false),
+            () => PayloadProtectionDiagnostics.CacheEntry(true), () => PayloadProtectionDiagnostics.LifecycleTransition()];
+        foreach (Action record in records) { record(); Activity.Current.ShouldBeSameAs(parent); }
+        callbacks.ShouldBe(5);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task LateEventAndSnapshotAuthorityFailuresEmitUnavailableWithoutPlaintext(bool snapshot, bool release)
+    {
+        var protectedSnapshot = TestFixture.ProtectSnapshot();
+        byte[] protectedEvent = TestFixture.WrapperPayloadBytes();
+        var results = new List<string?>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        { if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name && instrument.Name == "eventstore.payload_protection.operations") { current.EnableMeasurementEvents(instrument); } };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) => results.Add(tags.ToArray().Single(tag => tag.Key == "result").Value as string));
+        listener.Start();
+        var observer = new RecordingBufferObserver();
+        ValueTask FailAsync() => ValueTask.FromException(new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable));
+        ValueTask<PayloadKeyResolution> Resolve(string _, uint __, CancellationToken ___) => ValueTask.FromResult(PayloadKeyResolution.Success(TestFixture.Dek(),
+            authenticated: release ? null : _ => FailAsync(), releasedAsync: release ? FailAsync : null));
+        var core = new PayloadProtectionCore(observer);
+        var result = snapshot ? await core.TryUnprotectSnapshotAsync(protectedSnapshot, TestFixture.SnapshotContext(), Resolve)
+            : await core.TryUnprotectEventAsync(protectedEvent, TestFixture.Context(), Resolve);
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable);
+        result.PayloadBytes.ShouldBeNull(); results.ShouldBe(["unavailable"]);
+        observer.Observed.ShouldContain(SensitiveBufferKind.DecryptedPlaintext);
+        observer.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+    }
+
     [Fact]
     public async Task BackendAndCacheDiagnosticsExcludeKeyAndProviderCanaries()
     {

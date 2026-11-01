@@ -89,24 +89,52 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        _client?.Dispose();
-        if (_sidecar is not null)
-        {
-            if (!_sidecar.HasExited) { _sidecar.Kill(entireProcessTree: true); }
-            await _sidecar.WaitForExitAsync().ConfigureAwait(false);
-            if (_stdout is not null) { _ = await _stdout.ConfigureAwait(false); }
-            if (_stderr is not null) { _ = await _stderr.ConfigureAwait(false); }
-            _sidecar.Dispose();
-            _sidecar = null;
-        }
+        await CleanupAsync([
+            () => { _client?.Dispose(); _client = null; return ValueTask.CompletedTask; },
+            async () =>
+            {
+                Process? sidecar = _sidecar;
+                if (sidecar is null) { return; }
+                try
+                {
+                    await CleanupAsync([
+                        async () =>
+                        {
+                            if (!sidecar.HasExited) { sidecar.Kill(entireProcessTree: true); }
+                            await sidecar.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+                        },
+                        async () => { if (_stdout is not null) { _ = await _stdout.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false); } },
+                        async () => { if (_stderr is not null) { _ = await _stderr.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false); } },
+                    ]).ConfigureAwait(false);
+                }
+                finally { sidecar.Dispose(); _sidecar = null; }
+            },
+            async () =>
+            {
+                if (_containerStarted)
+                {
+                    await RunAsync("docker", ["rm", "--force", _identity]).ConfigureAwait(false);
+                    _containerStarted = false;
+                }
+            },
+            () =>
+            {
+                if (_directory is not null && Directory.Exists(_directory)) { Directory.Delete(_directory, recursive: true); }
+                return ValueTask.CompletedTask;
+            },
+        ]).ConfigureAwait(false);
+    }
 
-        if (_containerStarted)
+    /// <summary>Attempts every independent owned cleanup before reporting a bounded failure without private exception details.</summary>
+    internal static async ValueTask CleanupAsync(IReadOnlyList<Func<ValueTask>> cleanups)
+    {
+        bool failed = false;
+        foreach (Func<ValueTask> cleanup in cleanups)
         {
-            await RunAsync("docker", ["rm", "--force", _identity]).ConfigureAwait(false);
-            _containerStarted = false;
+            try { await cleanup().ConfigureAwait(false); }
+            catch { failed = true; }
         }
-
-        if (_directory is not null && Directory.Exists(_directory)) { Directory.Delete(_directory, recursive: true); }
+        if (failed) { throw new InvalidOperationException("An isolated PF-02 resource cleanup failed."); }
     }
 
     private async Task WaitPostgresAsync()

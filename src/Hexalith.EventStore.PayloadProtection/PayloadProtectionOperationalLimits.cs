@@ -6,6 +6,8 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>Conservative supported limits for the qualified default four-MiB gRPC transport; larger structural schemas grant no transport admission.</summary>
 internal static class PayloadProtectionOperationalLimits
 {
+    /// <summary>Maximum lifetime scope or permanent root-block identities retained by one engine registry.</summary>
+    internal const int ScopeMetadata = 65_536;
     /// <summary>Maximum charged transaction bytes, including a conservative per-operation protobuf/metadata allowance.</summary>
     internal const int TransactionBytes = 2 * 1024 * 1024;
     /// <summary>Maximum operations in one qualified transaction.</summary>
@@ -42,6 +44,6 @@ internal static class PayloadProtectionOperationalLimits
         if (append) { bytes += 1024; reads += 2; _ = PayloadProtectionStateKeys.Capability(members.Head.Value.TenantDomainDigest, 0, newInstance); }
         // Reserve room for the lifecycle, claim, drain, fence and one indexed-key work phase.
         if (bytes + 1024 * 1024 > ReadBytes || reads + 512 > ReadOperations)
-        { throw new PayloadProtectionStateException(Hexalith.EventStore.Contracts.Security.UnreadableProtectedDataReason.ProviderUnavailable); }
+        { throw new PayloadProtectionStateException(Hexalith.EventStore.Contracts.Security.UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true); }
     }
 }

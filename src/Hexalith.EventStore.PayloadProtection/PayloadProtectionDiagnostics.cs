@@ -128,6 +128,7 @@ internal static class PayloadProtectionDiagnostics
     /// <summary>Records a typed backend failure using only the validated registered backend ID and closed reason.</summary>
     internal static void ProviderFailure(string backendId, PayloadBackendFailure failure)
     {
+        Activity? ambient = Activity.Current;
         try
         {
             PersonalDataPolicyRegistry.ValidateId(backendId);
@@ -138,11 +139,13 @@ internal static class PayloadProtectionDiagnostics
             _providerFailures?.Add(1, tags);
         }
         catch { /* Diagnostic observers cannot affect backend authority. */ }
+        finally { RestoreActivity(ambient); }
     }
 
     /// <summary>Records one cache access without a scope, key, provider version or size.</summary>
     internal static void CacheAccess(bool hit)
     {
+        Activity? ambient = Activity.Current;
         try
         {
             InitializeDiagnostics();
@@ -151,20 +154,25 @@ internal static class PayloadProtectionDiagnostics
             if (hit) { _cacheHits?.Add(1, tags); } else { _cacheMisses?.Add(1, tags); }
         }
         catch { /* Diagnostic observers cannot change cache ownership. */ }
+        finally { RestoreActivity(ambient); }
     }
 
     /// <summary>Records only a single entry's insertion/removal.</summary>
     internal static void CacheEntry(bool added)
     {
+        Activity? ambient = Activity.Current;
         try { InitializeDiagnostics(); _cacheEntries?.Add(added ? 1 : -1); }
         catch { /* Diagnostic observers cannot change clearing. */ }
+        finally { RestoreActivity(ambient); }
     }
 
     /// <summary>Counts a confirmed lifecycle transition without scope or epoch labels.</summary>
     internal static void LifecycleTransition()
     {
+        Activity? ambient = Activity.Current;
         try { InitializeDiagnostics(); _lifecycleTransitions?.Add(1); }
         catch { /* Diagnostic observers cannot change a persisted transition. */ }
+        finally { RestoreActivity(ambient); }
     }
 
     private static void InitializeDiagnostics()

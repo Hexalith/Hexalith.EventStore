@@ -18,18 +18,14 @@ using YamlDotNet.RepresentationModel;
 public class TenantsApiLaunchSettingsTests
 {
     /// <summary>
-    /// Verifies the ratified Tenants source revision exposes a usable Development launch profile
-    /// for the API project consumed by the source-mode AppHost graph.
+    /// Verifies the complete Tenants checkout selected for the local runtime topology exposes
+    /// a usable Development launch profile for its API project.
     /// </summary>
     [Fact]
     public void TenantsApiLaunchProfileProvidesDevelopmentHttpAndHttpsEndpoints()
     {
         string path = Path.Combine(
-            RepositoryProjectPaths.GetRepositoryRoot(),
-            "references",
-            "Hexalith.Tenants",
-            "src",
-            "Hexalith.Tenants.Api",
+            Path.GetDirectoryName(TenantsProjectPaths.Resolve().ApiProjectPath)!,
             "Properties",
             "launchSettings.json");
 
@@ -247,54 +243,6 @@ public class TenantsApiLaunchSettingsTests
                 Environment.SetEnvironmentVariable(name, value);
             }
         }
-    }
-
-    [Theory]
-    [InlineData("domain-service")]
-    [InlineData("api")]
-    public void TenantsProjectPaths_WhenEitherHostIsMissing_FailsWithRootSubmoduleDiagnostic(string missingHost)
-    {
-        TenantsProjectPaths resolvedPaths = TenantsProjectPaths.Resolve();
-        string missingPath = Path.Combine(
-            RepositoryProjectPaths.GetRepositoryRoot(),
-            ".missing-tenants-host",
-            missingHost,
-            "missing.csproj");
-        TenantsProjectPaths paths = string.Equals(missingHost, "domain-service", StringComparison.Ordinal)
-            ? resolvedPaths with { DomainServiceProjectPath = missingPath }
-            : resolvedPaths with { ApiProjectPath = missingPath };
-
-        InvalidOperationException exception = Should.Throw<InvalidOperationException>(paths.Validate);
-
-        exception.Message.ShouldContain(TenantsProjectPaths.SubmoduleInitializationCommand);
-        exception.Message.ShouldContain(missingPath);
-        exception.Message.ShouldNotContain(
-            string.Equals(missingHost, "domain-service", StringComparison.Ordinal)
-                ? resolvedPaths.ApiProjectPath
-                : resolvedPaths.DomainServiceProjectPath);
-    }
-
-    [Fact]
-    public void TenantsProjectPaths_ResolveUsesRootDeclaredSubmodule()
-    {
-        string repositoryRoot = RepositoryProjectPaths.GetRepositoryRoot();
-
-        TenantsProjectPaths paths = TenantsProjectPaths.Resolve();
-
-        paths.DomainServiceProjectPath.ShouldBe(Path.Combine(
-            repositoryRoot,
-            "references",
-            "Hexalith.Tenants",
-            "src",
-            "Hexalith.Tenants",
-            "Hexalith.Tenants.csproj"));
-        paths.ApiProjectPath.ShouldBe(Path.Combine(
-            repositoryRoot,
-            "references",
-            "Hexalith.Tenants",
-            "src",
-            "Hexalith.Tenants.Api",
-            "Hexalith.Tenants.Api.csproj"));
     }
 
     [Fact]

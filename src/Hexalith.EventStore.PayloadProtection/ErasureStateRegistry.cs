@@ -48,6 +48,8 @@ internal sealed class ErasureStateRegistry
             throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ConsistencyMismatch);
         }
 
+        string scope = PayloadProtectionStateKeys.ScopeDigest(identity);
+        lock (_gate) { RequireCapacity(scope); }
         PayloadErasureStateResult result;
         try
         {
@@ -76,9 +78,9 @@ internal sealed class ErasureStateRegistry
         if (result.State == PayloadErasureState.Unavailable) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }
         if (result.State == PayloadErasureState.Denied) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderDenied); }
         if (result.State == PayloadErasureState.Unknown) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ConsistencyMismatch); }
-        string scope = PayloadProtectionStateKeys.ScopeDigest(identity);
         lock (_gate)
         {
+            RequireCapacity(scope);
             if (_observations.TryGetValue(scope, out PayloadErasureStateResult? previous)
                 && (result.LifecycleEpoch < previous.LifecycleEpoch
                     || (result.State == previous.State) != (result.LifecycleEpoch == previous.LifecycleEpoch)
@@ -91,5 +93,10 @@ internal sealed class ErasureStateRegistry
         }
 
         return result;
+    }
+    private void RequireCapacity(string scope)
+    {
+        if (_observations.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_observations.ContainsKey(scope))
+        { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true); }
     }
 }

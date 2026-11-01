@@ -35,10 +35,10 @@ internal sealed class PayloadOperationBudget : IDisposable
         string key, CancellationToken token = default) where T : class
     {
         RequireCurrent();
-        Task<PayloadProtectionStateValue<T>?> pending = store.ReadAsync<T>(key, token).AsTask();
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, Current.Value?.Token ?? token);
+        Task<PayloadProtectionStateValue<T>?> pending = store.ReadAsync<T>(key, linked.Token).AsTask();
         try
         {
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, Current.Value?.Token ?? token);
             PayloadProtectionStateValue<T>? value = await pending.WaitAsync(linked.Token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested(); RequireCurrent();
             return value;

@@ -18,7 +18,7 @@
     </PropertyGroup>
     <ItemGroup>
       <ProjectReference Update="@(ProjectReference)"
-                        Condition="'%(ProjectReference.Extension)' == '.csproj' and $([System.String]::Copy('%(ProjectReference.FullPath)').StartsWith('$(_EventStoreSelectedTenantsSourceRoot)')) and ('%(ProjectReference.NuGetPackageId)' == 'Hexalith.Tenants' or $([System.String]::Copy('%(ProjectReference.NuGetPackageId)').StartsWith('Hexalith.Tenants.')))">
+                        Condition="'%(ProjectReference.Extension)' == '.csproj' and $([System.String]::Copy('%(ProjectReference.FullPath)').StartsWith('$(_EventStoreSelectedTenantsSourceRoot)')) and ('%(ProjectReference.NuGetPackageId)' == 'Hexalith.Tenants' or $([System.String]::Copy('%(ProjectReference.NuGetPackageId)').StartsWith('Hexalith.Tenants.')) or ('%(ProjectReference.NuGetPackageId)' == '' and ('%(ProjectReference.Filename)' == 'Hexalith.Tenants' or $([System.String]::Copy('%(ProjectReference.Filename)').StartsWith('Hexalith.Tenants.')))))">
         <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
       </ProjectReference>
     </ItemGroup>

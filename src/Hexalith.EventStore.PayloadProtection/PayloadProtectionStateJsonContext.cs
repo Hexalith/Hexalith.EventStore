@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.PayloadProtection;
 
+/// <summary>Explicitly enrolls every durable state root and nested record for reflection-free JSON serialization.</summary>
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(WrappedDekV1))]
 [JsonSerializable(typeof(ScopeIndexHeadV1))]
@@ -28,5 +29,4 @@ namespace Hexalith.EventStore.PayloadProtection;
 [JsonSerializable(typeof(InvalidationDrainV1))]
 [JsonSerializable(typeof(CacheClearAckV1))]
 [JsonSerializable(typeof(PayloadProtectionAuditRecord))]
-/// <summary>Explicitly enrolls every durable state root and nested record for reflection-free JSON serialization.</summary>
 internal partial class PayloadProtectionStateJsonContext : JsonSerializerContext;

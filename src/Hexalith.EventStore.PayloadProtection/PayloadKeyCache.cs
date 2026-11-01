@@ -11,6 +11,7 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
     private readonly Dictionary<PayloadKeyCacheKey, PayloadKeyCacheEntry> _entries = [];
     private readonly Dictionary<PayloadKeyCacheKey, TaskCompletionSource<UnreadableProtectedDataReason?>> _flights = [];
     private readonly Dictionary<string, int> _active = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _knownScopes = new(StringComparer.Ordinal);
     private readonly HashSet<string> _blocked = new(StringComparer.Ordinal);
     private readonly HashSet<string> _blockedRoots = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _scopeRoots = new(StringComparer.Ordinal);
@@ -20,6 +21,7 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
     private readonly TimeSpan _ttl;
     private readonly TimeProvider _clock;
     private readonly ISensitiveBufferObserver? _observer;
+    private readonly ITimer _expiryTimer;
     private ulong _ordinal;
     private bool _disposed;
 
@@ -32,6 +34,8 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
         _clock = timeProvider ?? TimeProvider.System;
         _observer = observer;
         if (capacity is < 1 or > 4096 || _ttl <= TimeSpan.Zero || _ttl > TimeSpan.FromMinutes(5)) { throw new PayloadProtectionFormatException(); }
+        _expiryTimer = _clock.CreateTimer(static state => ((PayloadKeyCache)state!).ExpireOnTimer(), this,
+            Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
 
     /// <summary>Returns an operation-owned copy after the caller's strong erasure/lifecycle check and lease admission.</summary>
@@ -53,6 +57,7 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
                 if (_scopeRoots.TryGetValue(key.ScopeDigest, out string? registeredRoot) && registeredRoot != rootDigest) { throw new PayloadProtectionFormatException(); }
             }
             if (_blocked.Contains(key.ScopeDigest)) { return PayloadKeyResolution.Failure(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted); }
+            AdmitScope(key.ScopeDigest);
             Expire();
             if (_entries.TryGetValue(key, out PayloadKeyCacheEntry? entry)) { PayloadProtectionDiagnostics.CacheAccess(true); return Copy(key.ScopeDigest, entry); }
             PayloadProtectionDiagnostics.CacheAccess(false);
@@ -84,7 +89,9 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
         string[] scopes;
         lock (_gate)
         {
-            _blockedRoots.Add(PayloadProtectionStateKeys.Sha(root));
+            _ = PayloadProtectionStateKeys.Sha(root);
+            if (_blockedRoots.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_blockedRoots.Contains(root)) { throw Capacity(); }
+            _blockedRoots.Add(root);
             scopes = _scopeRoots.Where(p => p.Value == root).Select(p => p.Key).ToArray();
         }
         foreach (string scope in scopes) { await ClearScopeAsync(scope, cancellationToken).ConfigureAwait(false); }
@@ -96,8 +103,10 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
         Task wait;
         lock (_gate)
         {
-            _blocked.Add(PayloadProtectionStateKeys.Sha(scope));
+            AdmitScope(PayloadProtectionStateKeys.Sha(scope));
+            _blocked.Add(scope);
             foreach (PayloadKeyCacheKey key in _entries.Keys.Where(k => k.ScopeDigest == scope).ToArray()) { Remove(key); }
+            ScheduleExpiry();
             wait = Drained(scope) ? Task.CompletedTask : NewDrainWaiter();
         }
         while (true)
@@ -129,6 +138,7 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
             foreach (PayloadKeyCacheKey key in _entries.Keys.ToArray()) { Remove(key); }
             wait = _flights.Count == 0 && _active.Count == 0 ? Task.CompletedTask : NewDrainWaiter();
         }
+        await _expiryTimer.DisposeAsync().ConfigureAwait(false);
         await _shutdown.CancelAsync().ConfigureAwait(false);
         while (true)
         {
@@ -163,6 +173,7 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
                     Expire();
                     if (_entries.Count >= _capacity) { Remove(_entries.MinBy(p => p.Value.Ordinal).Key); }
                     _entries.Add(key, new(bytes, _clock.GetTimestamp(), checked(++_ordinal)));
+                    ScheduleExpiry();
                     PayloadProtectionDiagnostics.CacheEntry(true);
                     bytes = null;
                 }
@@ -208,7 +219,28 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
     private void Expire()
     {
         foreach (PayloadKeyCacheKey key in _entries.Where(p => _clock.GetElapsedTime(p.Value.CreatedAt) >= _ttl).Select(p => p.Key).ToArray()) { Remove(key); }
+        ScheduleExpiry();
     }
+    private void ExpireOnTimer()
+    {
+        lock (_gate)
+        {
+            if (!_disposed) { Expire(); }
+        }
+    }
+    private void ScheduleExpiry()
+    {
+        if (_disposed) { return; }
+        if (_entries.Count == 0) { _expiryTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan); return; }
+        TimeSpan due = _ttl - _entries.Values.Max(entry => _clock.GetElapsedTime(entry.CreatedAt));
+        _expiryTimer.Change(due < TimeSpan.Zero ? TimeSpan.Zero : due, Timeout.InfiniteTimeSpan);
+    }
+    private void AdmitScope(string scope)
+    {
+        if (_knownScopes.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_knownScopes.Contains(scope)) { throw Capacity(); }
+        _knownScopes.Add(scope);
+    }
+    private static PayloadProtectionStateException Capacity() => new(UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true);
     private void Remove(PayloadKeyCacheKey key)
     {
         if (_entries.Remove(key, out PayloadKeyCacheEntry? entry)) { Clear(entry.Bytes); PayloadProtectionDiagnostics.CacheEntry(false); PruneRoot(key.ScopeDigest); }

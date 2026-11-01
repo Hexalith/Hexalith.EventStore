@@ -8,6 +8,8 @@ internal sealed class PayloadLocalOperation(CancellationToken cancellationToken,
 {
     private readonly CancellationTokenSource _cancel = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
     private readonly TaskCompletionSource _cleared = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly object _gate = new();
+    private Task? _cancellation;
     private int _references = 1;
     private int _disposed;
 
@@ -24,17 +26,31 @@ internal sealed class PayloadLocalOperation(CancellationToken cancellationToken,
             throw new PayloadProtectionStateException(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
         }
     }
-    /// <summary>Requests cancellation; a failed callback cannot establish clearing evidence.</summary>
-    internal void Cancel()
+    /// <summary>Starts one asynchronous cancellation and retains callback completion as part of clearing evidence.</summary>
+    internal Task CancelAsync()
     {
-        try { _cancel.Cancel(); }
-        catch (AggregateException) { /* Wait for actual disposal even when a cancellation observer fails. */ }
-        catch (ObjectDisposedException) { /* An operation that finished after the drain snapshot already cleared. */ }
+        lock (_gate)
+        {
+            if (_cancellation is not null) { return _cancellation; }
+            if (_references == 0) { return Task.CompletedTask; }
+            _references++;
+            return _cancellation = CancelCoreAsync();
+        }
+    }
+    private async Task CancelCoreAsync()
+    {
+        try { await _cancel.CancelAsync().ConfigureAwait(false); }
+        catch (AggregateException) { /* Callbacks have finished; actual foreground/result clearing is still required. */ }
+        finally { Release(); }
     }
     /// <summary>Extends clearing evidence through a background result's final disposal.</summary>
     internal void RetainUntil(Task clearing)
     {
-        Interlocked.Increment(ref _references);
+        lock (_gate)
+        {
+            if (_references == 0) { throw new ObjectDisposedException(nameof(PayloadLocalOperation)); }
+            _references++;
+        }
         _ = ReleaseAfterAsync(clearing);
     }
     /// <summary>Signals that the foreground owner has cleared its buffers.</summary>
@@ -50,9 +66,12 @@ internal sealed class PayloadLocalOperation(CancellationToken cancellationToken,
     }
     private void Release()
     {
-        if (Interlocked.Decrement(ref _references) != 0) { return; }
-        released(this);
-        _cancel.Dispose();
-        _cleared.TrySetResult();
+        lock (_gate)
+        {
+            if (--_references != 0) { return; }
+            released(this);
+            _cancel.Dispose();
+            _cleared.TrySetResult();
+        }
     }
 }
