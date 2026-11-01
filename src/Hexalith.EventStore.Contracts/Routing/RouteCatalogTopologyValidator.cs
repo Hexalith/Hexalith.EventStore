@@ -155,11 +155,8 @@ public static class RouteCatalogTopologyValidator
         // disappear from qualification merely by claiming an unrelated verb.
         foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
         {
-            if (endpoint.Methods is not { Count: > 0 } methods || methods.Distinct(StringComparer.Ordinal).Count() != methods.Count
-                || methods.Any(method => method is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS")))
-                throw Failure("unqualified-technical-receiver-methods");
-            if (endpoint.Http is { } http && !methods.Order(StringComparer.Ordinal)
-                .SequenceEqual(http.Verbs.Split(' ').Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            if (!CanonicalMethods(endpoint.Methods)) throw Failure("unqualified-technical-receiver-methods");
+            if (endpoint.Http is { } http && !SameMethods(endpoint.Methods, http.Verbs.Split(' ')))
                 throw Failure("technical-receiver-method-evidence-drift");
         }
         var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.DaprCallback is not null)).ToArray();
@@ -168,7 +165,6 @@ public static class RouteCatalogTopologyValidator
         // exclude it. Captured metadata never becomes trustworthy through filtering.
         foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
         {
-            if (!CanonicalMethods(endpoint.Methods)) throw Failure("unqualified-technical-receiver-methods");
             if (endpoint.DaprCallback is { } callback)
             {
                 string expected = callback.Kind == "subscribe" ? "GET" : "POST";
@@ -193,8 +189,6 @@ public static class RouteCatalogTopologyValidator
             }
             else if (endpoint.Http is { } http)
             {
-                if (!SameMethods(endpoint.Methods, http.Verbs.Split(' ')))
-                    throw Failure("technical-receiver-method-evidence-drift");
                 // The producer binds one auxiliary operation for split MVC actions
                 // at the same exact path. Compare its entire captured method set;
                 // a missing sibling must never disappear through subset matching.
@@ -228,8 +222,8 @@ public static class RouteCatalogTopologyValidator
         return true;
     }
 
-    private static bool CanonicalMethods(IReadOnlyList<string> methods)
-        => methods.Count > 0 && methods.Distinct(StringComparer.Ordinal).Count() == methods.Count
+    private static bool CanonicalMethods(IReadOnlyList<string>? methods)
+        => methods is { Count: > 0 } && methods.Distinct(StringComparer.Ordinal).Count() == methods.Count
             && methods.All(method => method is "GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS");
 
     private static bool SameMethods(IReadOnlyList<string> actual, IReadOnlyList<string> bound)
