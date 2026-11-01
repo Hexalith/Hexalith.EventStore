@@ -300,34 +300,79 @@ process.stdout.write(JSON.stringify(require('js-yaml').load(readFileSync(process
         return json.loads(subprocess.check_output(["node", "--input-type=module", "-e", script,
             str(ROOT / "package.json"), str(ROOT / ".github/workflows/release.yml")], text=True))
 
-    def drive_preproduction(self, workflow):
+    def drive_preproduction(self, workflow, missing_proofs=()):
+        # Execute the actual source-proof shell against the established read-only
+        # hosted fixture, then the actual locked native candidate qualifier.
+        from release_publication_fixture import gh_main  # verifies fixture availability, never calls GitHub
         sentinel = self.work / "production-entered"
         sentinel.unlink(missing_ok=True)
+        gh = self.work / "gh"
+        gh.write_text("#!/usr/bin/env python3\nfrom release_publication_fixture import gh_main\ngh_main()\n")
+        gh.chmod(0o755)
+        environment = self.env.copy()
+        environment["PATH"] = str(self.work) + os.pathsep + os.environ["PATH"]
+        environment["PYTHONPATH"] = str(ROOT / "tools/tests")
+        state_path = self.work / "hosted-source.json"
+        run = {"head_sha": self.env["DISPATCH_SHA"], "head_branch": BRANCH, "event": "push", "status": "completed", "conclusion": "success"}
+        state_path.write_text(json.dumps({"refs": {BRANCH: self.env["DISPATCH_SHA"], "main": self.git("rev-parse", "refs/heads/main")},
+                                          "requests": [], "runs": {name: [] if name in missing_proofs else [run.copy()]
+                                              for name in ("ci.yml", "commitlint.yml", "integration.yml")}}))
+        environment["PUBLICATION_FIXTURE_STATE"] = str(state_path)
+        environment["GITHUB_OUTPUT"] = str(self.work / "hosted-output")
         contexts = {"github.repository": self.env["REPOSITORY"], "github.ref": self.env["DISPATCH_REF"],
-                    "github.sha": self.env["DISPATCH_SHA"]}
+                    "github.sha": self.env["DISPATCH_SHA"], "github.token": "fixture-read-only"}
         result = None
         for step in workflow["jobs"]["verify-source"]["steps"]:
             command = step.get("run", "")
-            if "node tools/verify-release-candidate.mjs" not in command:
-                continue  # Checkout, runtime install, and source proofs have separate fixture boundaries.
+            if step.get("id") != "select-source-proof" and "node tools/verify-release-candidate.mjs" not in command:
+                continue  # Checkout and runtime installation have separate fixture boundaries.
             condition = step.get("if", "${{ true }}")
-            prefix, suffix = "${{ github.ref == '", "' }}"
-            if not condition.startswith(prefix) or not condition.endswith(suffix):
-                raise AssertionError("Unsupported qualifier condition: " + condition)
-            if contexts["github.ref"] != condition[len(prefix):-len(suffix)]:
-                continue
-            environment = self.env.copy()
+            if condition != "${{ true }}":
+                prefix, suffix = "${{ github.ref == '", "' }}"
+                if not condition.startswith(prefix) or not condition.endswith(suffix):
+                    raise AssertionError("Unsupported preproduction condition: " + condition)
+                if contexts["github.ref"] != condition[len(prefix):-len(suffix)]:
+                    continue
+            step_environment = environment.copy()
             for key, value in step.get("env", {}).items():
                 expression = value.removeprefix("${{ ").removesuffix(" }}")
-                environment[key] = contexts[expression]
+                step_environment[key] = contexts[expression]
+            command = command.replace("bash scripts/verify-release-source.sh", "bash " + str(ROOT / "scripts/verify-release-source.sh"))
             command = command.replace("node tools/verify-release-candidate.mjs", "node " + str(ROOT / "tools/verify-release-candidate.mjs"))
-            result = subprocess.run(["bash", "-c", command], cwd=self.work, env=environment, capture_output=True, text=True)
+            result = subprocess.run(["bash", "-c", command], cwd=self.work, env=step_environment, capture_output=True, text=True)
             if result.returncode != 0:
                 return result, sentinel
         # Stand-in for entering the dependent protected production job, before
         # credentials or publication. It runs only when preproduction succeeds.
         subprocess.run(["bash", "-c", "touch production-entered"], cwd=self.work, check=True)
         return result, sentinel
+
+    def test_actual_preproduction_requires_each_exact_hosted_source_proof(self):
+        self.candidate()
+        for missing in ("ci.yml", "commitlint.yml", "integration.yml"):
+            with self.subTest(missing=missing):
+                result, sentinel = self.drive_preproduction(self.workflow(), missing_proofs=(missing,))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(sentinel.exists())
+                self.assertIn("No successful push " + missing + " run exists", result.stderr)
+                self.assertFalse((self.work / ".hexalith/release-evidence/qualification/preproduction.json").exists())
+                requests = json.loads((self.work / "hosted-source.json").read_text())["requests"]
+                self.assertTrue(any("/actions/workflows/" + missing + "/runs" in request["url"] for request in requests))
+
+    def test_source_proof_main_only_mutation_is_detected_before_production(self):
+        self.candidate()
+        missing = ("ci.yml", "commitlint.yml", "integration.yml")
+        workflow = self.workflow()
+        result, sentinel = self.drive_preproduction(workflow, missing_proofs=missing)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(sentinel.exists())
+        source_proof = next(step for step in workflow["jobs"]["verify-source"]["steps"] if step.get("id") == "select-source-proof")
+        self.assertNotIn("if", source_proof)
+        source_proof["if"] = "${{ github.ref == 'refs/heads/main' }}"
+        result, sentinel = self.drive_preproduction(workflow, missing_proofs=missing)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(sentinel.exists(), "The counterfactual must reproduce the missing hosted-proof gate.")
+        self.assertEqual(json.loads((self.work / "hosted-source.json").read_text())["requests"], [])
 
     def assert_invalid_candidate_cannot_enter_production(self, workflow):
         result, sentinel = self.drive_preproduction(workflow)

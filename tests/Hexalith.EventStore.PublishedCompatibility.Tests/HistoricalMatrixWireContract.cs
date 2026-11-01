@@ -46,7 +46,7 @@ internal static class HistoricalMatrixWireContract
                 bool matches = field.Value.GetString() switch
                 {
                     "source" => HistoricalWireInput.HashValue(observed) == sourceFields[field.Name],
-                    "null" => observed.ValueKind == JsonValueKind.Null,
+                    "null" => HistoricalSafeJson.IsNull(observed),
                     "false" => observed.ValueKind == JsonValueKind.False,
                     "true" => observed.ValueKind == JsonValueKind.True,
                     "zero" => observed.ValueKind == JsonValueKind.Number && observed.GetDecimal() == 0,

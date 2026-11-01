@@ -14,8 +14,8 @@ internal static class HistoricalSafeJson
             if (IsCommitment(value)) return value.Clone();
             var result = new JsonObject();
             foreach (var field in value.EnumerateObject())
-                result[field.Name] = JsonSerializer.SerializeToNode(Sensitive(field.Name) && field.Value.ValueKind == JsonValueKind.String
-                    ? Commit(field.Value) : Capture(field.Value));
+                result[field.Name] = JsonSerializer.SerializeToNode(Sensitive(field.Name)
+                    ? IsCommitment(field.Value) ? field.Value.Clone() : Commit(field.Value) : Capture(field.Value));
             return JsonSerializer.SerializeToElement(result);
         }
         if (value.ValueKind == JsonValueKind.Array)
@@ -23,8 +23,24 @@ internal static class HistoricalSafeJson
         return value.Clone();
     }
 
-    internal static bool IsCommitment(JsonElement value) => value.ValueKind == JsonValueKind.Object
-        && value.TryGetProperty("p1rSafeCommitment", out var marker) && marker.ValueKind == JsonValueKind.True;
+    internal static bool IsCommitment(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.Object) return false;
+        string[] fields = ["kind", "length", "p1rSafeCommitment", "sha256", "utf8Sha256"];
+        return value.EnumerateObject().Select(field => field.Name).Order(StringComparer.Ordinal).SequenceEqual(fields)
+            && value.GetProperty("p1rSafeCommitment").ValueKind == JsonValueKind.True
+            && value.GetProperty("kind").ValueKind == JsonValueKind.String
+            && value.GetProperty("kind").GetString() is "String" or "Object" or "Array" or "Number" or "True" or "False" or "Null"
+            && value.GetProperty("length").ValueKind == JsonValueKind.Number
+            && value.GetProperty("length").TryGetInt32(out int length) && length >= 0
+            && Digest(value.GetProperty("sha256")) && Digest(value.GetProperty("utf8Sha256"));
+    }
+
+    internal static bool IsNull(JsonElement value) => value.ValueKind == JsonValueKind.Null
+        || IsCommitment(value) && value.GetProperty("kind").GetString() == "Null";
+
+    private static bool Digest(JsonElement value) => value.ValueKind == JsonValueKind.String
+        && value.GetString() is { Length: 64 } text && text.All(char.IsAsciiHexDigitLower);
 
     internal static bool NonemptyString(JsonElement value) => value.ValueKind == JsonValueKind.String
         ? !string.IsNullOrWhiteSpace(value.GetString())
@@ -84,9 +100,20 @@ internal static class HistoricalSafeJson
         || name.Equals("token", StringComparison.OrdinalIgnoreCase) || name.Equals("proof", StringComparison.OrdinalIgnoreCase)
         || name.Equals("signature", StringComparison.OrdinalIgnoreCase) || name.EndsWith("Proof", StringComparison.OrdinalIgnoreCase);
 
-    private static JsonElement Commit(JsonElement value) => JsonSerializer.SerializeToElement(new
+    private static JsonElement Commit(JsonElement value)
     {
-        p1rSafeCommitment = true, kind = value.ValueKind.ToString(), length = value.GetString()!.Length,
-        sha256 = HistoricalWireInput.HashValue(value), utf8Sha256 = QualificationRuntime.Hash(Encoding.UTF8.GetBytes(value.GetString()!)),
-    });
+        string original = value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText();
+        int length = value.ValueKind switch
+        {
+            JsonValueKind.String => original.Length,
+            JsonValueKind.Array => value.GetArrayLength(),
+            JsonValueKind.Object => value.EnumerateObject().Count(),
+            _ => Encoding.UTF8.GetByteCount(original),
+        };
+        return JsonSerializer.SerializeToElement(new
+        {
+            p1rSafeCommitment = true, kind = value.ValueKind.ToString(), length,
+            sha256 = HistoricalWireInput.HashValue(value), utf8Sha256 = QualificationRuntime.Hash(Encoding.UTF8.GetBytes(original)),
+        });
+    }
 }

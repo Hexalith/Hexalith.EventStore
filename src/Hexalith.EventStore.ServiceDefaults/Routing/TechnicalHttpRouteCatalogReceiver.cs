@@ -41,6 +41,16 @@ public sealed class TechnicalHttpRouteCatalogReceiver
     public static WebApplication UseDevelopmentTechnicalHttpCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> core)
         => UseDevelopmentTechnicalHttpCatalogReceiver(app, core, null);
 
+    /// <summary>Refuses observer substitution before either supported technical receiver can enroll its startup handshake.</summary>
+    internal static void RequireClosedSdkObservers(IDevelopmentNativeActorReceiver? native, IDevelopmentDaprCallbackReceiver? callbacks)
+    {
+        if (native is not null && (native.GetType().FullName != "Hexalith.EventStore.Server.Routing.DevelopmentNativeActorReceiver"
+                || native.GetType().Assembly.GetName().Name != "Hexalith.EventStore.Server")
+            || callbacks is not null && (callbacks.GetType().FullName != "Hexalith.EventStore.Routing.DevelopmentDaprCallbackReceiver"
+                || callbacks.GetType().Assembly.GetName().Name != "Hexalith.EventStore.Gateway"))
+            throw new RouteCatalogUnavailableException("The installed native observers must be the actual closed SDK implementations.", RouteCatalogRefusalReason.Inventory);
+    }
+
     internal static WebApplication UseDevelopmentTechnicalHttpCatalogReceiver(WebApplication app, Func<RouteEndpoint, string?> core, TechnicalHttpRouteCatalogReceiver? instance)
     {
         ArgumentNullException.ThrowIfNull(app); ArgumentNullException.ThrowIfNull(core);
@@ -52,11 +62,7 @@ public sealed class TechnicalHttpRouteCatalogReceiver
         fence._services = app.Services; fence._core = core;
         fence._native = app.Services.GetService<IDevelopmentNativeActorReceiver>();
         fence._callbacks = app.Services.GetService<IDevelopmentDaprCallbackReceiver>();
-        if (fence._native is not null && (fence._native.GetType().FullName != "Hexalith.EventStore.Server.Routing.DevelopmentNativeActorReceiver"
-                || fence._native.GetType().Assembly.GetName().Name != "Hexalith.EventStore.Server")
-            || fence._callbacks is not null && (fence._callbacks.GetType().FullName != "Hexalith.EventStore.Routing.DevelopmentDaprCallbackReceiver"
-                || fence._callbacks.GetType().Assembly.GetName().Name != "Hexalith.EventStore.Gateway"))
-            throw new RouteCatalogUnavailableException("The installed native observers must be the actual closed SDK implementations.", RouteCatalogRefusalReason.Inventory);
+        RequireClosedSdkObservers(fence._native, fence._callbacks);
         app.Use(next =>
         {
             ICollection<EndpointDataSource> sources = ((IEndpointRouteBuilder)app).DataSources;

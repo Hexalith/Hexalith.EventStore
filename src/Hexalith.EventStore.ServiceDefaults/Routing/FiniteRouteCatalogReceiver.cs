@@ -83,6 +83,7 @@ public sealed class FiniteRouteCatalogReceiver
         fence._domainAuxiliary = domainAuxiliary;
         fence._sidecar = sidecar;
         if (technical && !app.Environment.IsDevelopment()) throw new RouteCatalogUnavailableException("Technical HTTP qualification is private Development only.");
+        if (technical) TechnicalHttpRouteCatalogReceiver.RequireClosedSdkObservers(fence._native, fence._callbacks);
         // The framework route source materializes new endpoint instances on each read. Share one
         // cache with the actual routing matcher, rather than comparing independently built inventories.
         app.Use(next =>

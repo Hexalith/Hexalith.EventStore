@@ -29,7 +29,7 @@ public sealed class QualificationSafeOutputTests
         var runtime = new QualificationRuntime();
         string material = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         string input = JsonSerializer.Serialize(new { operation = "wire", value = material });
-        const string program = "import sys,json; x=json.load(sys.stdin); v=x['value']; print('P1R_RESULT '+json.dumps({'value':{'identityAdmissionProof':v},'wire':v,'cursor':v,'signingKey':'[redacted]'})); sys.stderr.write(v if sys.argv[1]=='fail' else ''); sys.exit(1 if sys.argv[1]=='fail' else 0)";
+        const string program = "import sys,json; x=json.load(sys.stdin); v=x['value']; print('P1R_RESULT '+json.dumps({'value':{'identityAdmissionProof':v},'wire':v,'cursor':v,'proof':{'payload':v},'signature':[v],'signingKey':'[redacted]'})); sys.stderr.write(v if sys.argv[1]=='fail' else ''); sys.exit(1 if sys.argv[1]=='fail' else 0)";
         try
         {
             if (fail)
@@ -56,6 +56,10 @@ public sealed class QualificationSafeOutputTests
             JsonElement.DeepEquals(captured.Record, roundtrip.Record).ShouldBeTrue();
             var value = PublishedScenarioTests.ParseProbeOutput(safeOutput);
             HistoricalSafeJson.NonemptyString(value.GetProperty("value").GetProperty("identityAdmissionProof")).ShouldBeTrue();
+            value.GetProperty("proof").GetProperty("kind").GetString().ShouldBe("Object");
+            value.GetProperty("signature").GetProperty("kind").GetString().ShouldBe("Array");
+            HistoricalSafeJson.NonemptyString(value.GetProperty("proof")).ShouldBeFalse();
+            HistoricalSafeJson.NonemptyString(value.GetProperty("signature")).ShouldBeFalse();
         }
         finally { await runtime.DisposeAsync(); }
     }
