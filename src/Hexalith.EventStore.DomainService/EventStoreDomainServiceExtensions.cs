@@ -693,15 +693,12 @@ public static class EventStoreDomainServiceExtensions {
         _ = builder.AddServiceDefaults();
 
         // Domain hosts receive catalog-fenced dispatch, so they opt in to the route catalog explicitly.
-        _ = Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogServiceCollectionExtensions.AddEventStoreRouteCatalog(builder.Services, builder.Configuration);
-        builder.Services.TryAddScoped<DomainRouteCatalogFilter>();
-        builder.Services.TryAddScoped<IDomainRouteCatalogGuard, DomainRouteCatalogGuard>();
+        _ = builder.Services.AddEventStoreDomainServiceSecurity(builder.Configuration);
 
         // Internal trust boundary (FR28): app-channel token + trusted-issuer workload assertion on every
         // operational route, sidecar-channel token on sidecar-originated deliveries, and an authenticated
         // fallback for every other endpoint. Only /health, /alive, and /ready stay anonymous.
         _ = builder.Services.AddHttpContextAccessor();
-        _ = builder.Services.AddEventStoreDomainServiceSecurity();
 
         // Domain services use DAPR-backed SDK facilities such as persisted read models. Keep this canonical
         // registration idempotent so a host-supplied client remains authoritative.
