@@ -18,6 +18,7 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Hexalith.EventStore.ServiceDefaults.Authentication;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -26,6 +27,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 using NSubstitute;
 
@@ -500,26 +503,27 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
     /// </summary>
     /// <param name="scenario">The denial scenario.</param>
     /// <param name="expectedStatus">The expected bounded status.</param>
+    /// <param name="expectedReason">The bounded reason recorded in the denial telemetry.</param>
     [Theory]
     [Trait("Category", "Integration")]
     [Trait("Tier", "2")]
-    [InlineData("absent-provenance", HttpStatusCode.Forbidden)]
-    [InlineData("missing-channel-token", HttpStatusCode.Unauthorized)]
-    [InlineData("wrong-channel-token", HttpStatusCode.Unauthorized)]
-    [InlineData("duplicate-channel-token", HttpStatusCode.Unauthorized)]
-    [InlineData("forged-signature", HttpStatusCode.Forbidden)]
-    [InlineData("expired", HttpStatusCode.Forbidden)]
-    [InlineData("unauthorized-publisher", HttpStatusCode.Forbidden)]
-    [InlineData("wrong-operation", HttpStatusCode.Forbidden)]
-    [InlineData("wrong-audience", HttpStatusCode.Forbidden)]
-    [InlineData("topic-mismatch", HttpStatusCode.Forbidden)]
-    [InlineData("tenant-mismatch", HttpStatusCode.Forbidden)]
-    [InlineData("projection-mismatch", HttpStatusCode.Forbidden)]
-    [InlineData("unbound-provenance", HttpStatusCode.Forbidden)]
-    [InlineData("missing-tenant-binding", HttpStatusCode.Forbidden)]
-    [InlineData("missing-projection-binding", HttpStatusCode.Forbidden)]
-    [InlineData("missing-topic-binding", HttpStatusCode.Forbidden)]
-    public async Task CrossProcessPath_UnprovenCallback_LeavesFreshnessUnchanged(string scenario, HttpStatusCode expectedStatus) {
+    [InlineData("absent-provenance", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.AssertionMissing)]
+    [InlineData("missing-channel-token", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.ChannelTokenMissing)]
+    [InlineData("wrong-channel-token", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.ChannelTokenInvalid)]
+    [InlineData("duplicate-channel-token", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.ChannelTokenDuplicate)]
+    [InlineData("forged-signature", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.SignatureInvalid)]
+    [InlineData("expired", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.AssertionExpired)]
+    [InlineData("unauthorized-publisher", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.CallerNotAllowed)]
+    [InlineData("wrong-operation", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.OperationNotGranted)]
+    [InlineData("wrong-audience", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.AudienceInvalid)]
+    [InlineData("topic-mismatch", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.BindingMismatch)]
+    [InlineData("tenant-mismatch", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.BindingMismatch)]
+    [InlineData("projection-mismatch", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.BindingMismatch)]
+    [InlineData("unbound-provenance", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.BindingMissing)]
+    [InlineData("missing-tenant-binding", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.BindingMissing)]
+    [InlineData("missing-projection-binding", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.BindingMissing)]
+    [InlineData("missing-topic-binding", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.BindingMissing)]
+    public async Task CrossProcessPath_UnprovenCallback_LeavesFreshnessUnchanged(string scenario, HttpStatusCode expectedStatus, string expectedReason) {
         // Arrange
         string initialETag = await _factory.FakeETagActor.RegenerateAsync();
         int baseline = _factory.FakeETagActor.RegenerateCount;
@@ -568,6 +572,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         using var request = new HttpRequestMessage(HttpMethod.Post, "/projections/changed") {
             Content = JsonContent.Create(notification with { Provenance = provenance }),
         };
+        request.Headers.Add(CorrelationHeaderName, CorrelationId);
         switch (scenario) {
             case "missing-channel-token":
                 using (HttpClient bare = _factory.CreateClient()) {
@@ -576,6 +581,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
                 }
 
                 await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+                AssertSingleBoundedDenial(scenario, expectedReason, provenance);
                 return;
             case "wrong-channel-token":
                 using (HttpClient wrong = _factory.CreateClient()) {
@@ -585,6 +591,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
                 }
 
                 await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+                AssertSingleBoundedDenial(scenario, expectedReason, provenance);
                 return;
             case "duplicate-channel-token":
                 using (HttpClient duplicate = _factory.CreateClient()) {
@@ -594,6 +601,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
                 }
 
                 await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+                AssertSingleBoundedDenial(scenario, expectedReason, provenance);
                 return;
         }
 
@@ -609,6 +617,44 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         }
 
         await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+        AssertSingleBoundedDenial(scenario, expectedReason, provenance);
+    }
+
+    /// <summary>
+    /// Story 5.5: when the provenance verifier cannot reach its signing metadata, the callback is refused with a
+    /// retryable <c>503</c> and the <c>verifier-unavailable</c> reason before any actor call, freshness change, or
+    /// broadcast.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    public async Task CrossProcessPath_ProvenanceVerifierUnavailable_Returns503WithoutFreshnessChange() {
+        // Arrange
+        string initialETag = await _factory.FakeETagActor.RegenerateAsync();
+        int baseline = _factory.FakeETagActor.RegenerateCount;
+        JwtBearerOptions bearer = _factory.Services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
+            .Get(Hexalith.EventStore.Authentication.DaprInternalAuthenticationOptions.SchemeName);
+        IConfigurationManager<OpenIdConnectConfiguration>? original = bearer.ConfigurationManager;
+        bearer.ConfigurationManager = new UnavailableConfigurationManager();
+        string provenance = ValidProvenance("order-list", "acme");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/projections/changed") {
+            Content = JsonContent.Create(new ProjectionChangedNotification("order-list", "acme") { Provenance = provenance }),
+        };
+        request.Headers.Add(CorrelationHeaderName, CorrelationId);
+
+        try {
+            // Act
+            HttpResponseMessage response = await _client.SendAsync(request).ConfigureAwait(true);
+
+            // Assert
+            response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            (await response.Content.ReadAsStringAsync().ConfigureAwait(true)).ShouldNotContain(provenance, Case.Sensitive);
+            await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+            AssertSingleBoundedDenial("verifier-unavailable", WorkloadAuthenticationReasons.VerifierUnavailable, provenance);
+        }
+        finally {
+            bearer.ConfigurationManager = original;
+        }
     }
 
     /// <summary>
@@ -690,11 +736,35 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
     private const string ProvenanceAudience = "eventstore";
 
+    private const string CorrelationHeaderName = "X-Correlation-ID";
+
+    private const string CorrelationId = "story-5-5-etag-callback";
+
     private async Task AssertFreshnessUnchangedAsync(string initialETag, int baseline) {
         _factory.FakeETagActor.RegenerateCount.ShouldBe(baseline);
         (await _factory.FakeETagActor.GetCurrentETagAsync().ConfigureAwait(true)).ShouldBe(initialETag);
         _factory.MockProxyFactory.ReceivedCalls().ShouldBeEmpty();
         _factory.Broadcaster.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    private void AssertSingleBoundedDenial(string scenario, string expectedReason, string? provenance) {
+        string denial = _factory.Logs.Messages
+            .Where(static message => message.Contains("InternalAuthenticationDenied", StringComparison.Ordinal))
+            .ShouldHaveSingleItem(scenario);
+        denial.ShouldContain($"Reason={expectedReason}", Case.Sensitive, scenario);
+        denial.ShouldContain($"CorrelationId={CorrelationId}", Case.Sensitive, scenario);
+        _factory.Logs.Messages.ShouldAllBe(message => !message.Contains(ChannelToken, StringComparison.Ordinal), scenario);
+        if (provenance is not null) {
+            _factory.Logs.Messages.ShouldAllBe(message => !message.Contains(provenance, StringComparison.Ordinal), scenario);
+        }
+    }
+
+    private sealed class UnavailableConfigurationManager : IConfigurationManager<OpenIdConnectConfiguration> {
+        public Task<OpenIdConnectConfiguration> GetConfigurationAsync(CancellationToken cancel)
+            => throw new InvalidOperationException("IDX20803: Unable to obtain configuration.");
+
+        public void RequestRefresh() {
+        }
     }
 
     private static ProjectionChangedNotification Signed(ProjectionChangedNotification notification)
@@ -727,16 +797,19 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         public FakeETagActor FakeETagActor { get; } = new();
         public IActorProxyFactory MockProxyFactory { get; } = Substitute.For<IActorProxyFactory>();
         public IProjectionChangedBroadcaster Broadcaster { get; } = Substitute.For<IProjectionChangedBroadcaster>();
+        public CapturingLoggerProvider Logs { get; } = new();
 
         public void ResetActors() {
             FakeETagActor.Reset();
             Broadcaster.ClearReceivedCalls();
             MockProxyFactory.ClearReceivedCalls();
+            Logs.Clear();
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
             _ = builder.UseEnvironment("Development");
+            _ = builder.ConfigureLogging(logging => logging.AddProvider(Logs));
             _ = builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
                 new Dictionary<string, string?> {
                     [DaprAppChannelToken.ConfigurationKey] = ChannelToken,

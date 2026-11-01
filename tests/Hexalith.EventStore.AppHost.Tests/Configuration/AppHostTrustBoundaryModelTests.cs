@@ -317,6 +317,7 @@ public sealed class AppHostTrustBoundaryModelTests
         IResourceBuilder<ProjectResource> works = builder.AddProject<EventStoreProjectMetadata>("works");
         IResourceBuilder<ParameterResource> secret = builder.AddParameter("works-workload-client-secret", secret: true);
         IResourceBuilder<ParameterResource> plain = builder.AddParameter("works-workload-plain");
+        IResourceBuilder<ParameterResource> clientId = builder.AddParameter("works-workload-client-id");
 
         _ = eventStore
             .WithEventStoreTrustedEffectSubmitter("works")
@@ -335,6 +336,7 @@ public sealed class AppHostTrustBoundaryModelTests
         worksEnvironment[HexalithEventStoreTrustedEffectExtensions.WorkloadClientIdVariable].ShouldBe("works");
         worksEnvironment[HexalithEventStoreTrustedEffectExtensions.WorkloadClientSecretVariable].ShouldBeSameAs(secret.Resource);
         _ = Should.Throw<ArgumentException>(() => works.WithEventStoreWorkloadClientCredentials("works", plain));
+        _ = Should.Throw<ArgumentException>(() => works.WithEventStoreWorkloadClientCredentials(clientId, plain));
     }
 
     private static async Task AssertAppChannelTokenSharedWithSidecarOnlyAsync(IDistributedApplicationTestingBuilder builder, string name)

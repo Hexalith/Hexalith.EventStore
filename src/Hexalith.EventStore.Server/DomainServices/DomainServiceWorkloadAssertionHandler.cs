@@ -83,6 +83,7 @@ public sealed partial class DomainServiceWorkloadAssertionHandler(IServiceProvid
             {
                 LogAssertionUnavailable(
                     serviceProvider.GetService<ILogger<DomainServiceWorkloadAssertionHandler>>() ?? NullLogger<DomainServiceWorkloadAssertionHandler>.Instance,
+                    appId!,
                     route!.Operation);
             }
             else
@@ -110,6 +111,6 @@ public sealed partial class DomainServiceWorkloadAssertionHandler(IServiceProvid
     [LoggerMessage(
         EventId = 5541,
         Level = LogLevel.Warning,
-        Message = "Domain-service invocation sent without a workload assertion; the receiver will deny it. Operation={Operation}")]
-    private static partial void LogAssertionUnavailable(ILogger logger, string operation);
+        Message = "Domain-service invocation sent without a workload assertion; the receiver will deny it. Audience={Audience}, Operation={Operation}")]
+    private static partial void LogAssertionUnavailable(ILogger logger, string audience, string operation);
 }

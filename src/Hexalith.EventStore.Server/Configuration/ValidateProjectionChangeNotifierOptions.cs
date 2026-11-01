@@ -35,7 +35,7 @@ public sealed class ValidateProjectionChangeNotifierOptions(IWorkloadAssertionIs
         if (options.Transport == ProjectionChangeTransport.PubSub && provenanceIssuer?.CanBindResources != true)
         {
             return ValidateOptionsResult.Fail(
-                "Projection change pub/sub transport requires a provenance issuer that binds each notification to its tenant, projection type, and topic. An OIDC authority cannot bind them; use Transport=Direct.");
+                "Projection change pub/sub transport requires a provenance issuer that binds each notification to its tenant, projection type, and topic. No registered issuer can bind them here (none is registered, its JWT contract is not admitted in this environment, or its authority profile does not enable resource-binding requests); use Transport=Direct.");
         }
 
         if (options.MaxDetailMetadataEntries is < 1 or > ProjectionChangedMetadataLimits.MaximumEntries)

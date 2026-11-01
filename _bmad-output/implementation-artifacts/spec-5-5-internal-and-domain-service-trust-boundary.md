@@ -2,7 +2,7 @@
 title: 'Story 5.5: Internal And Domain-Service Trust Boundary'
 type: 'feature'
 created: '2026-09-22'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '253980f9eb63cc5a7d96be7c8676197e78f39d67'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -89,6 +89,242 @@ context:
 - Given a domain service submits a trusted effect with its own valid assertion, when it is received, then only that workload is admitted for `eventstore:trusted-effect`; without the assertion, 401 and no admission.
 - Given authority mode, when EventStore invokes domain service X for operation O, then the attached assertion names audience X and grants O, and no broader token is sent.
 - Given either AppHost mode, when Tenants bootstraps the configured global administrator, then a delegated human credential succeeds and that administrator's authority verifies from the read model.
+
+### Review Findings
+
+Post-build code review, 2026-11-01. The review covers the implementation commits only: EventStore `c4d5455a3`, excluding bookkeeping files, and Tenants `81144734`. It runs in four chunks. Every finding was checked against HEAD `2ad9bfba0`; findings already fixed by later commits are rejected. File:line anchors point at HEAD.
+
+#### Group A — shared ServiceDefaults credential layer (issuer, evaluator, channel token, JwtBearer events, telemetry) and issuer/authority tests
+
+- [ ] [Review][Patch] Authority-mode metadata outage is misreported as a 401 `signature-invalid` instead of a 503 `verifier-unavailable` [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadJwtBearerEvents.cs:24]
+  - `ConfigurationManager<OpenIdConnectConfiguration>` derives from `BaseConfigurationManager`, so JwtBearer hands it to Wilson. Wilson 8.23 logs IDX10261 ("Proceeding with token validation") and validates with no signing keys. The result is a `SecurityTokenSignatureKeyNotFoundException`, which `ClassifyFailure` maps to `signature-invalid`.
+  - `WorkloadAssertionValidator` prefetches the configuration and returns `VerifierUnavailable`, so the two paths disagree.
+  - The fix: prefetch `context.Options.ConfigurationManager` in `MessageReceived` and fail with `VerifierUnavailable` when that throws.
+  - The 503 test passes only because its fixture is low-fidelity. `UnavailableConfigurationManager` (`tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs:1024`) implements only `IConfigurationManager<>` and so takes JwtBearer's fallback branch. Make it a `BaseConfigurationManager`.
+- [ ] [Review][Patch] Trusted-effect submitters start healthy in authority mode without workload client credentials, then every submission fails with 401 at runtime [src/Hexalith.EventStore.DomainService/EventStoreTrustedEffectSubmissionExtensions.cs:35]
+  - This is the same failure class P-5 fixed for EventStore.
+  - Fix: call `RequireEventStoreWorkloadIssuerClientCredentials()` from `AddEventStoreTrustedEffectWorkloadAssertion`.
+- [ ] [Review][Patch] Two `AuthorityContract_FailsClosed` cases, `missing-secret` and `insecure-endpoint`, pass by construction [tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs:395]
+  - The baseline endpoint returns the opaque `authority-token`, which `GetTokenScopeFailure` always rejects.
+  - So deleting the `HasClientCredentials` guard or the HTTPS endpoint guard leaves the test green.
+  - Fix: use `ScopedWorkloadTokenEndpoint` as the baseline and assert `Calls == 0` for both cases.
+- [ ] [Review][Patch] The evaluator's future-`iat` guard (`assertion-not-yet-valid`) has no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:47]
+  - Without the guard, a future `iat` slips past the `exp - iat` lifetime bound.
+  - Add a row with `nbf <= now` and `iat = now+1h` to `DomainServiceTrustBoundaryTests.InvalidCredential_IsDeniedBeforeDomainWork` and to the `DaprInternalAuthenticationHandlerTests` denial theory.
+- [ ] [Review][Patch] The receiver's `MaximumLifetimeSeconds` cap (1–900) and the `verifier-unconfigured` denial have no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs:60]
+  - Test that 3600 fails startup in Production.
+  - Test that in Development, 3600 makes a valid assertion get 401 `verifier-unconfigured`.
+- [ ] [Review][Patch] Correlation-ID bounding in denial logs is never tested with a bad header [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationTelemetry.cs:73]
+  - Send an oversized `X-Correlation-ID`, or one containing `,`/`=`. Assert that the trace id is logged instead.
+- [ ] [Review][Patch] The symmetric issuer's lifetime clamp has no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs:176]
+  - The existing assertion passes with the default 120 s.
+  - Make it a theory over `LifetimeSeconds` 3600 → 300 and 0 → 1.
+- [ ] [Review][Patch] The blank-scope-prefix startup rule has no test row [src/Hexalith.EventStore.ServiceDefaults/Authentication/ValidateWorkloadAssertionIssuerOptions.cs:36]
+  - Add `authority-blank-audience-prefix` and `authority-blank-operation-prefix` rows, each expected to fail.
+- [ ] [Review][Patch] Several fail-closed evaluator branches have no test: `caller-ambiguous`, `binding-ambiguous`, `operation-missing` and `algorithm-invalid` [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:65]
+  - Add rows to the existing denial theory.
+- [ ] [Review][Patch] The rebuilt workload principal still carries the legacy `dapr_caller_app_id` claim [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:111]
+  - Nothing in `src` or Tenants reads it, and KEEP 1 says the principal holds nothing else.
+  - Remove the claim and the `LegacyCallerClaimType` constant.
+- [ ] [Review][Patch] A configured `APP_API_TOKEN` with leading or trailing whitespace never matches [src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprAppChannelToken.cs:70]
+  - Kestrel trims optional whitespace from header values, but the expected value is compared untrimmed.
+  - Compare against the trimmed configured value.
+- [ ] [Review][Patch] `EventStoreHost_InAuthorityModeWithoutWorkloadClient_FailsStartup` depends on the environment [tests/Hexalith.EventStore.Server.Tests/Authentication/ProductionAuthorityAuthenticationTests.cs:67]
+  - It uses `Remove` instead of a `null` override, so an ambient `Authentication__WorkloadIssuer__*` value leaks through.
+  - It also accepts any `Exception`.
+  - Override with `null` and assert an `OptionsValidationException` in the exception chain.
+- [ ] [Review][Patch] `ScopedWorkloadTokenEndpoint` hides unknown-operation scopes [tests/Hexalith.EventStore.Server.Tests/TestUtilities/ScopedWorkloadTokenEndpoint.cs:148]
+  - `KnownOperations.Single(...)` throws inside the handler, and the issuer swallows that as `token-endpoint-unavailable`, so a test expecting `null` passes for the wrong reason.
+  - Return 400 for an unknown scope.
+- [ ] [Review][Patch] The principal remark says workload principals "never carry tenant … claims", but signed `eventstore:bound-tenant` bindings are copied onto them [src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs:15]
+  - Reword the remark: no tenant grants (`eventstore:tenant`); only signed resource bindings.
+- [ ] [Review][Patch] The `MaximumAssertionLength` doc says "UTF-8 characters", but the code compares UTF-16 `string.Length` and uses the value as `MaximumTokenSizeInBytes` [src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs:78]
+
+**Rejected (Group A):**
+
+- AA-3, `azp` not checked by the authority issuer: low. A mismatch fails closed at the receiver (`caller-not-allowed` or `caller-conflict`), and the fix adds a guard.
+- AA-4 / EC-7, the client-credentials requirement can be inert: low. Its only caller (`Server/Configuration/ServiceCollectionExtensions.cs:137-145`) registers the contract first, and the one-line fix could override an explicit configuration binding.
+- AA-5, raw request path in denial logs: low. Kestrel caps the request line, ASP.NET request logging records paths anyway, and a single actor id is not a tenant inventory.
+- AA-6, `TryAddSingleton(TimeProvider.System)`: false. This is the standard library idiom; a host override with `AddSingleton`/`Replace` still wins, and the OQ8 frozen-clock host overrides it.
+- AA-7, every 403 is labelled `operation-not-granted`: low and cosmetic. The fix needs new reason codes.
+- AA-8, the gateway tests check only status codes: false. Zero-effect and telemetry proofs live in `DaprInternalAuthenticationHandlerTests` and `DomainServiceTrustBoundaryTests`.
+- BH-1 / EC-4, the issuer does not check authority-token lifetime, `iat`, `azp` or `iss`: low. The lifetime constraint is documented (P-16), receivers fail closed with `assertion-stale`, and the fix adds a guard.
+- BH-2 / EC-1, an `ArgumentException` from metadata/JWKS escapes `IssueAsync`: carried rejection (EC-7, R2-EC-2). The failure propagates as an invocation failure, which is retried.
+- BH-3 / EC-2, a single `_gate` with no backoff: carried rejection (R2-BH-7). The claim that the cache is never invalidated on reload is false at HEAD, because the cache key hashes the issuer configuration.
+- BH-4 / EC-3 / EC-5, the issuer does not validate whitespace operations or blank bindings: false. Callers pass only constants. In symmetric mode the key holder can mint anything anyway. In authority mode such a request is rejected as `token-operation-mismatch`. A blank binding fails closed as `binding-ambiguous`.
+- BH-5, `jti` is never checked: carried rejection (BH-4, EC-23, R2-BH-3).
+- BH-6, the sidecar channel cannot tell peer invocation from delivery: already deferred as D-2, now owned by Stories 5.7 and 5.14.
+- BH-7, Development without `APP_API_TOKEN` is anonymous: false at HEAD. `69ea5ce32` requires the channel token in every environment.
+- BH-9 / EC-6, symmetric-mode issuer options are not validated: low. This is Development only, logged as 5511 `workload-unconfigured`, and the fix adds validation rules.
+- BH-10, no shared receiver startup validation: low. `EventStoreDomainServiceSecurityStartupValidator` covers domain services, Story 5.14's host validator exists at HEAD, and the fix would add a new component.
+- BH-11 / EC-8 / EC-9 / EC-11, registration helpers ignore conflicting calls: low or false. No in-repo caller registers conflicting schemes, and a missing sidecar scheme fails loudly.
+- BH-12, denial logs can be flooded and correlation IDs forged: low. Correlation values are limited to `[A-Za-z0-9-]{1,128}`, and flooding is a generic rate-limit concern.
+- BH-13, no denial metric: not required by the spec.
+- BH-14, wrong reason labels and missing `WWW-Authenticate`: false. The `_` arm handles only `Valid`, the channel handler never returns `NoResult`, and no internal caller consumes `WWW-Authenticate`.
+- BH-15 remainder (concurrency, the 64 KiB cap, issuer `token-expired`, RS256 wrong audience, clock independence): low. These need new test harnesses, and clock independence is covered by the OQ8 live gate.
+- BH-16 partial, unlocked list getters: low. No read runs concurrently with a write.
+- BH-18, a user token can pass as a workload assertion: carried. P-16 documents service-account-only workload clients.
+- EC-10, null or blank operation names: false. That fails loudly, and callers pass only constants.
+- EC-12, `Authentication:Schemes:<scheme>` ordering: low. It fails closed (`verifier-unconfigured`) and needs undocumented configuration.
+- EC-13, bearer options are stale after a configuration reload: low. This is standard ASP.NET Core JwtBearer behavior.
+- EC-15, `iat` beyond year 9999: carried rejection (R1 EC-14). It needs a trusted signature.
+- EC-16, pub/sub redelivery past the assertion lifetime: carried rejection (BH-3, R2-BH-4). The default transport is now `Direct`.
+
+#### Group B — DomainService SDK (route catalog, inventory, startup validator, administrator assertions, trusted-effect handler), Client, Testing.Integration, and their tests
+
+- [x] [Review][Defer] The Tier-3 projection-fault probe has been unauthenticated since this story [tests/Hexalith.EventStore.IntegrationTests/ContractTests/ProjectionMalformedResponseE2ETests.cs:35] — deferred: owner decision 2026-11-01, folded into the existing Aspire-in-CI follow-up. Tier-3 is not gated in CI. Recorded in `deferred-work.md`.
+  - `ProjectionMalformedResponseE2ETests` sends `POST /project` straight to `sample` with no `dapr-api-token` and no workload assertion. It now gets 401 and fails at its first assertion whenever Tier-3 runs.
+  - The R1/R2 triage logs never recorded this failure.
+- [ ] [Review][Patch] Domains with no administrator verifier log Warning 5521 `SecurityEvent=WireAdminAssertionRemoved` on every legitimate global-admin request [src/Hexalith.EventStore.DomainService/DomainServiceAdministratorAssertions.cs:111]
+  - The gateway adds `actor:globalAdmin` / `IsGlobalAdmin` for every human global administrator, whatever the target domain (`CommandsController.cs:263`, `QueriesController.cs:332`).
+  - Only Tenants registers a verifier, so Sample, Parties and other domains raise a false security event on every request, which buries real forgery signals.
+  - Fix: log at Warning only when a registered verifier refuses; with no verifier, strip the flag at Debug.
+- [ ] [Review][Patch] The sample fails startup whenever `EventStore:SampleFaults:MalformedProjectResponse=true` [samples/Hexalith.EventStore.Sample/Program.cs:44]
+  - `GET /faults/project-hit-count` has no explicit policy. Its comment relies on a fallback policy that no longer exists: at HEAD the inventory requires an explicit policy on every non-probe endpoint.
+  - That flag is exactly what `AspireProjectionFaultTestFixture` sets.
+  - Fix: add `.RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload)`, as the comment intends.
+- [ ] [Review][Patch] The inventory classifies sidecar routes before checking the catalog [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceEndpointInventory.cs:55]
+  - A canonical route that also carries `ITopicMetadata` passes with only the sidecar-channel policy, and any mesh peer can satisfy that policy (D-2).
+  - Fix: run the catalog check first.
+- [ ] [Review][Patch] A stale `InternalsVisibleTo Include="Hexalith.EventStore.Testing.Integration"` remains [src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj:25]
+  - Since `06c967cf9`, the harness uses no DomainService internals. Remove the grant.
+- [ ] [Review][Patch] Development credential warning 5531 logs only `{FailureCount}` [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityStartupValidator.cs:85]
+  - Log the failure messages instead. They are secret-free; the non-Development exception text already includes them.
+- [ ] [Review][Patch] `SubmitterClient_WithoutIssuableAssertion_SendsNoCredential` cannot detect a credential leak [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustedEffectAssertionHandlerTests.cs]
+  - It sends no forwarded `Authorization` and no caller-supplied assertion, so a handler that forwarded either on the issuer-unavailable path would still pass.
+  - Add both headers, as the happy-path test does, and assert that the 5542 warning is logged.
+- [ ] [Review][Patch] Only the channel-token branch of the startup validator is tested [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityStartupValidator.cs:59]
+  - Add a theory next to `ProductionWithoutChannelToken_FailsStartup` with three cases:
+    - Production with an invalid `Authentication:JwtBearer` throws and names the section.
+    - Production with `Authentication:Workload:MaximumLifetimeSeconds=0` throws.
+    - Development without `APP_API_TOKEN` starts, logs 5531, and protected routes still return 401.
+- [ ] [Review][Patch] A verifier timeout that maps to the bounded 503 has no test [src/Hexalith.EventStore.DomainService/DomainServiceAdministratorAssertions.cs:123]
+  - Add a variant to the P-4 test where the verifier throws `TaskCanceledException` while the request token is not cancelled. Expect 503 with `administrator-verifier-unavailable`, the correlation id, and no domain work.
+- [ ] [Review][Patch] Sidecar-channel admission is only checked as "not 401" [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs:548]
+  - A 403 on every sidecar delivery would still pass. No tokened `GET /dapr/subscribe` is sent, and no real-pipeline request reaches SDK actor routes.
+  - Fix:
+    - Assert `ShouldNotBeOneOf(Unauthorized, Forbidden)`.
+    - Add a tokened discovery request that expects 200.
+    - Add a tokened and an untokened `/dapr/config` request.
+- [ ] [Review][Patch] The 5521 forged-admin log line is never asserted [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs:175]
+  - Pass `CapturingLoggerProvider` into `WireAdministratorFlag_IsHonoredOnlyAfterCurrentVerification` and `QueryAdministratorHint_IsClearedUnlessVerified`.
+  - Assert one line for `deny` and none for `allow`. Set the `none` expectation according to the 5521 log-level patch above.
+- Note for the Group A legacy-claim patch: `WorkloadPrincipal_IsRebuiltMinimal` asserts that `LegacyCallerClaimType` is present, so that test must change along with the code.
+
+**Rejected (Group B):**
+
+- BH-1 / AA-7 / EC-10, the public `RebuildAsync` throws an `internal` exception: low. At HEAD nothing outside the assembly calls it, and making the exception public would be an API decision for a consumer that does not exist. The stale IVT grant is handled as a patch above.
+- EC-11, version drift between the Testing.Integration and DomainService packages: false at HEAD. Testing.Integration uses no DomainService internals.
+- BH-4 / EC-12, registering the public endpoint source disables security: false. No host registers it, and if the policies were missing the request would fail loudly with a 500.
+- BH-7, the trusted-effect handler's casing, constructor checks and docs: low or false. The route is a constant. A path mismatch fails closed with a 401 at the gateway, and constructor misuse fails loudly.
+- BH-8, the 503 is not passed on as retryable through the gateway query invoker: low. That is gateway mapping, and the fix is more than a direct correction.
+- BH-9 remainder: low or false. The gateway strips non-canonical `actor:globalAdmin` values and re-adds only `true`. Case-variant duplicate keys are still gated by the verifier. A regression on the non-admin path would be loud.
+- BH-11, no `BREAKING CHANGE` marker: not actionable. The commit is published, and the upgrade docs already call this a breaking step.
+- AA-1, operational routes are proven only by status codes: low. The authorization middleware short-circuits before the endpoint runs, `/process` carries the zero-work spy, and the allowed-path status is not a boundary property.
+- AA-3, the inventory counts the fallback as protection: false at HEAD (`8348bc491`).
+- AA-4 / EC-2 / EC-14, the catalog check applies only to POST: false at HEAD (`19bc28a29`). The no-capture part of EC-14 is a carried rejection (R2-EC-10).
+- AA-6, the public `ProcessAsync` / `ExecuteAsync` skip the rebuild: low. No production caller bypasses the endpoints, query dispatch rebuilds through `ExecuteWithAdministratorVerificationAsync`, and changing public dispatch semantics is ambiguous.
+- AA-8, 5521 logs raw `Domain` / `MessageType` / `CorrelationId`: low. The caller is an authenticated EventStore workload, and the gateway validates those fields.
+- AA-9, the shipped harness enforces no credentials: false at HEAD. Descriptor-driven fixtures replaced the harness (`06c967cf9`).
+- EC-1, no captured route builder means no inventory: carried rejection (R2-EC-10).
+- EC-4, an explicit policy that admits anonymous: carried rejection (R2-BH-8).
+- EC-5, binding and job callbacks are not classified as sidecar routes: carried rejection (R2-EC-9).
+- EC-6, peer service invocation through the sidecar: carried as D-2.
+- EC-7 / EC-15, Development `NotRequired` admits anyone: false at HEAD (`69ea5ce32`).
+- EC-8, daprd actor `/healthz` probe: carried rejection (R1 EC-15, false).
+- EC-9, resolving a verifier throws: low. That is a loud misconfiguration failure.
+- EC-13, the trusted-effect extension used without domain-service security: carried rejection (R2-EC-14).
+
+#### Group C — gateway host, Server, Contracts (projection provenance, notification controller, outbound assertion handler, invokers, wire flags), and their tests
+
+HEAD moved to `7776e64fd` during this group because of concurrent maintenance commits. None of them touches a Story 5.5 file, so the anchors still hold.
+
+Applied 2026-11-01. Release build with 0 warnings. Server.Tests classes `ETagActorIntegrationTests`, `ProjectionChangeNotifierOptionsTests`, `DomainServiceWorkloadAssertionHandlerTests` and `DaprProjectionChangeNotifierTests`: 94/94 passed. A mutation check (503 mapped to 403; configured allow-list ignored) made the new verifier-unavailable and allow-list tests fail as expected. The full Server.Tests suite was not run.
+
+- [x] [Review][Patch] A configured `AllowedPublishers` list is never tested [src/Hexalith.EventStore.Server/Configuration/ProjectionChangeNotifierOptions.cs:69]
+  - Every ETag scenario uses the empty-list default, so a regression that ignores the configured list, or drops the trim and blank filter, stays green.
+  - Add a theory covering a configured list, a padded list, and a blank-only list (which fails closed). Optionally add a `sample`-publisher scenario in which an `eventstore`-signed provenance gets 403.
+- [x] [Review][Patch] The rule rejecting an empty `ProvenanceAudience` has no test [src/Hexalith.EventStore.Server/Configuration/ValidateProjectionChangeNotifierOptions.cs:54]
+  - Add `""` and `"   "` rows that are expected to fail.
+- [x] [Review][Patch] Callback denials never assert their telemetry, and the controller's 503 `verifier-unavailable` branch is untested [src/Hexalith.EventStore/Controllers/ProjectionNotificationController.cs:66]
+  - The ETag denial theory checks the status code, that the body is not echoed, and that freshness is unchanged, but not the `RecordDenial` reason or correlation line.
+  - Changing 503 to 403 would leave every test green.
+- [x] [Review][Patch] The `Provenance` doc comment says binding happens only "when the issuer can bind resource claims" [src/Hexalith.EventStore.Contracts/Projections/ProjectionChangedNotification.cs:24]
+  - That contradicts the 2026-10-07 owner decision that all three bindings are mandatory and unbound provenance is denied.
+- [x] [Review][Patch] The pub/sub startup refusal always blames "an OIDC authority" [src/Hexalith.EventStore.Server/Configuration/ValidateProjectionChangeNotifierOptions.cs:38]
+  - It also fires when no issuer is registered and for symmetric signing in Production. Reword it to cover every case.
+- [x] [Review][Patch] Warning 5541 ("sent without a workload assertion") logs the operation but not the target app id [src/Hexalith.EventStore.Server/DomainServices/DomainServiceWorkloadAssertionHandler.cs:84]
+  - During an issuer outage that makes the failing service hard to identify. Add the audience (app id) to the message.
+
+**Rejected (Group C):**
+
+- VG-O-1 / BH-11, invoke methods missing from the catalog get no assertion and no warning: carried rejection (VG-O2, R2-VG-O2).
+- VG-O-2 / BH-6 / EC-7, the `eventstore` identity, `ProvenanceAudience`, `DaprInternal` audience and `AllowedPublishers` are never cross-checked: carried rejection (BH-13, R2-BH-5). This fails closed, and only on non-production pub/sub.
+- AA-1, a body with two `"provenance"` keys keeps the last one: low. The admitted request is exactly what that valid provenance authorizes and grants nothing beyond it. The fix needs a global JSON option or custom body parsing.
+- AA-4 / BH-13 / BH-14, gateway "no authority" tests pass by construction, and the principal docs drift: low.
+  - The minimal principal is proven on the shared evaluator (`WorkloadPrincipal_IsRebuiltMinimal`).
+  - Bearer forwarding is structurally impossible, since the query invoker has no `HttpContext` access.
+  - The drift in the claim docs is covered by the Group A legacy-claim and `bound-tenant` remark patches.
+- BH-1, permanent denials are redelivered by Dapr: carried rejection (BH-3, R2-BH-4; DROP semantics).
+- BH-2 / EC-4, provenance expires before redelivery: carried rejection (BH-3, R2-BH-4, Group A EC-16).
+- BH-3 / EC-5, `GroupScope`, `Metadata` and `EntityId` are unsigned, and there is no replay cache: carried rejection (BH-4, R2-BH-3).
+- BH-4, the topic binding is recomputed from the body: carried rejection (R2-EC-17).
+- BH-5 remainder, the subscription stays registered under Direct, and mixed-version messages arrive at cutover: low. This is transient during a rolling upgrade, and the DROP-semantics rejection carries.
+- BH-7 / EC-6, a blank-only `AllowedPublishers` list returns 403: carried rejection (BH-13; fails closed). The missing test is covered by the first patch above.
+- BH-8 / EC-1, the outbound handler matches only the path shape and ignores the host: low. No EventStore client sends a Dapr invoke path to a non-sidecar host, and replaying the assertion would also need the receiver's channel token.
+- BH-9 / EC-2, namespaced app ids: carried rejection (EC-5, R2-EC-5).
+- BH-10 remainder, no issuer health check or metric: low. That would add a component, and the P-5 startup check covers missing configuration.
+- BH-12 / EC-3, the notifier returns normally when provenance is null: low. Pub/sub is symmetric-only, non-production and validated at startup. A runtime null is logged as 5551, and throwing would change the auto-notify contract.
+- BH-15, `TrustedEffectPolicy` duplicates the policy-name format: false. `ProductionAuthorityAuthenticationTests` posts a valid assertion to `/api/v1/trusted-effects` and expects 400; a mismatched name would return 500 and fail that test.
+- BH-16, leftovers of the deleted handler (`AuthenticationSchemeOptions` base class, test file name): low and cosmetic. Both option types bind the same section.
+- EC-8, readiness is healthy while non-Development pub/sub deliveries get 401: carried rejection (R2-BH-12).
+- EC-9, an assertion plus a human bearer passes plain `[Authorize]` as the human: false. The human is authorized by their own valid bearer, the assertion grants nothing on human routes, and workload-policy routes deny the conflict.
+
+#### Group D — AppHost, Aspire, realm, Tier-3/OQ8 harness, docs, and the Tenants commit `81144734`
+
+Tenants findings were checked against Tenants HEAD `6bc2134d`.
+
+Applied 2026-11-01: the four doc corrections in `security-model.md`, `configuration-reference.md`, `trusted-effects.md` and `upgrade-path.md`, plus the AppHost test. AppHost.Tests `AppHostTrustBoundaryModelTests`: 5/5 passed after a Release build with 0 warnings. A mutation check (secret guard disabled at `HexalithEventStoreTrustedEffectExtensions.cs:90`) made the new assertion fail as expected.
+
+- [x] [Review][Patch] The docs say "every service invocation" carries or needs a workload assertion [docs/guides/security-model.md:348]
+  - Also stated in `docs/guides/upgrade-path.md:52`.
+  - Delegated-human invocations correctly send a bearer only: Admin.Server, the Admin UI, `sample-api`, `tenants-api` and the Tenants bootstrap. An operator who follows the text and adds assertions to those clients gets `credential-conflict` 401s.
+  - Reword to "every internal workload call".
+- [x] [Review][Patch] The Development app-channel-token text has been stale since `69ea5ce32` [docs/guides/security-model.md:342]
+  - That commit made the token required in every environment: an unconfigured token now denies, and readiness ignores the environment.
+  - The docs still say "the header may be absent only when no token is configured" and "required outside `Development`". Same wording in `configuration-reference.md:702`, `trusted-effects.md:28` and `upgrade-path.md:51`.
+  - Domain-service startup still fails only outside Development, so keep that sentence.
+- [x] [Review][Patch] The docs contradict themselves on assertion lifetime [docs/guides/security-model.md:348]
+  - Line 348 says "at most 300 seconds". Line 363 says "default 300, configurable up to 900".
+  - State the configurable receiver cap once, and say that lowering it below the issuer's 120 s or Keycloak's 300 s denies every assertion.
+- [x] [Review][Patch] The minimal-principal paragraph says "never tenant … claims" [docs/guides/security-model.md:350]
+  - Signed `eventstore:bound-tenant` bindings are copied onto the principal. Reword it together with the Group A `EventStoreWorkloadAuthenticationDefaults.cs:15` remark patch.
+- [x] [Review][Patch] The secret check on the parameter-id overload of `WithEventStoreWorkloadClientCredentials` has no test [src/Hexalith.EventStore.Aspire/HexalithEventStoreTrustedEffectExtensions.cs:92]
+  - Only the string-id overload's throw is asserted. Add `Should.Throw<ArgumentException>` for a non-secret parameter with the parameter-id overload.
+- [x] [Review][Defer] Publish mode and the deploy runbook give domain services no `APP_API_TOKEN` and no workload-client wiring [src/Hexalith.EventStore.AppHost/Program.cs:421] — deferred to Stories 5.6–5.8 (backlog). This spec forbids claiming topology parity. Recorded in `deferred-work.md`.
+- [x] [Review][Defer] The deployment and troubleshooting guides do not cover the domain-service channel token and JWT contract, the EventStore workload client, or the new 5501/5511/5541/5551/2005/2006 events [docs/guides/troubleshooting.md] — deferred to Story 5.9 (backlog). Recorded in `deferred-work.md`.
+- [x] [Review][Defer] The Keycloak workload-token exchange against the shipped realm has never been tested [src/Hexalith.EventStore.AppHost/KeycloakRealms/hexalith-realm.json] — deferred: needs the Aspire/Keycloak CI lane. Recorded in `deferred-work.md`.
+- [x] [Review][Defer] The Tenants Development bootstrap token has never been sent through the real gateway; it is checked only against test-written validation parameters [references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Bootstrap/TenantBootstrapHostedServiceTests.cs] — deferred with the live Keycloak item to the Aspire-in-CI follow-up. Recorded in `deferred-work.md`.
+- [x] [Review][Defer] The Tenants bootstrap and host-route security tests run in no blocking CI lane, beyond the classes D-3 names [references/Hexalith.Tenants/tests] — deferred: widens D-3 (same blocker). Recorded in `deferred-work.md`.
+
+**Rejected (Group D):**
+
+- BH-4 / VG-2, the Tenants AppHost did not adopt the workload client or channel tokens: false at Tenants HEAD. `Program.cs` now wires `WithEventStoreWorkloadClientCredentials`.
+- BH-7, the server did not bind the bootstrap target to the acting user: false at Tenants HEAD (`bd81ec6e`).
+- BH-5 / EC-4, the realm hard-codes audience scopes for `sample` and `tenants` only: low. This is the local development realm, the runtime 5511 event names the missing scope, and generating scopes is more than a direct correction.
+- BH-6 / EC-5 / EC-6, trusted-effect submitter provisioning is half automated: low. The local topology has no submitter, the index-based allow-list entries come only from this API, and the fix would add realm generation.
+- BH-8 / EC-7, ROPC and the hard-coded Keycloak token path: carried as D-5. The missing HTTPS check is fixed at Tenants HEAD.
+- BH-9, one failed token request skips the bootstrap until restart: low. At Tenants HEAD this is deliberate and documented ("a restart makes one new attempt").
+- BH-10 / EC-9 / AA-7, the readiness probe uses `/alive`: carried rejection (R2-BH-12). P-2 sanctions an anonymous probe.
+- BH-11 / AA-6, Tenants has no 403 test for a wrong-operation `/project` call or the subscribe channel: low. The startup inventory already refuses a host override that lacks its catalog or sidecar policy.
+- BH-12 / EC-10, the "No visible tenants" guard was inverted: carried as D-4 and P-18.
+- BH-13 / AA-4: merged into the lifetime patch above.
+- BH-14, the upgrade checklist's ordering and length: low and editorial. The stale "Outside `Development`" wording is covered by the channel-token patch.
+- BH-15, EventStore still sends a call it knows will be denied: low. It fails closed, and this is the established design (R1 BH-12).
+- BH-16, no breaking-change marker, and the `TenantBootstrapHostedService` constructor changed: not actionable, because the commits are published.
+- EC-2, calling `WithGeneratedEventStoreAppChannelToken` twice: carried rejection (R1 EC-16).
+- EC-8, the Tenants Development bootstrap token's audience: low. It is Development only, the AppHost gives both hosts `HexalithEventStoreSecurityOptions.DefaultAudience` (`Program.cs:595`), and a mismatch fails visibly as a bootstrap failure.
+- EC-11, a submitter client without the opt-in assertion handler goes undetected: low. This is a documented upgrade step, and detecting it would require inspecting HttpClient registrations.
 
 ## Implementation Notes
 

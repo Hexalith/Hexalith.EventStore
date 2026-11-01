@@ -21,9 +21,9 @@ public record ProjectionChangedNotification(
     IReadOnlyDictionary<string, string>? Metadata = null) {
     /// <summary>
     /// Gets the signed publisher provenance: a short-lived workload assertion from the trusted JWT issuer that
-    /// names the publishing workload and grants the projection-notify operation. When the issuer can bind
-    /// resource claims, the assertion is also bound to this notification's tenant, projection type, and topic.
-    /// The receiver performs no ETag regeneration or broadcast unless the provenance validates and matches.
+    /// names the publishing workload, grants the projection-notify operation, and is bound to this notification's
+    /// tenant, projection type, and topic. All three bindings are mandatory: the receiver denies unbound or partially
+    /// bound provenance and performs no ETag regeneration or broadcast unless the provenance validates and matches.
     /// </summary>
     /// <remarks>The value is an opaque credential: it is never logged, echoed, or displayed.</remarks>
     public string? Provenance { get; init; }
