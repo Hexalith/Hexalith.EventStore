@@ -150,13 +150,21 @@ public static class RouteCatalogTopologyValidator
         if (RouteCatalogDaprGrant.Prefix(grant, technical: true) is null) throw Failure("unsupported-technical-acl-pattern");
         var reachable = receiver.Endpoints.Where(endpoint => RouteCatalogDaprGrant.Intersects(grant, endpoint.Pattern)
             || RouteCatalogDaprGrant.Describes(grant, endpoint.Pattern)).ToArray();
+        // Path prefixes alone do not grant another HTTP verb. Validate the independently
+        // captured metadata before filtering, so malformed or contradictory evidence cannot
+        // disappear from qualification merely by claiming an unrelated verb.
+        foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
+        {
+            if (!CanonicalMethods(endpoint.Methods)) throw Failure("unqualified-technical-receiver-methods");
+            if (endpoint.Http is { } http && !SameMethods(endpoint.Methods, http.Verbs.Split(' ')))
+                throw Failure("technical-receiver-method-evidence-drift");
+        }
         var technical = reachable.Where(endpoint => endpoint.Admitted && (endpoint.Http is not null || endpoint.NativeActor is not null || endpoint.DaprCallback is not null)).ToArray();
         if (technical.Length == 0) return false;
         // Validate every path-reachable admitted receiver before a grant's verbs can
         // exclude it. Captured metadata never becomes trustworthy through filtering.
         foreach (var endpoint in reachable.Where(endpoint => endpoint.Admitted))
         {
-            if (!CanonicalMethods(endpoint.Methods)) throw Failure("unqualified-technical-receiver-methods");
             if (endpoint.DaprCallback is { } callback)
             {
                 string expected = callback.Kind == "subscribe" ? "GET" : "POST";
@@ -181,8 +189,6 @@ public static class RouteCatalogTopologyValidator
             }
             else if (endpoint.Http is { } http)
             {
-                if (!SameMethods(endpoint.Methods, http.Verbs.Split(' ')))
-                    throw Failure("technical-receiver-method-evidence-drift");
                 // The producer binds one auxiliary operation for split MVC actions
                 // at the same exact path. Compare its entire captured method set;
                 // a missing sibling must never disappear through subset matching.
@@ -216,8 +222,8 @@ public static class RouteCatalogTopologyValidator
         return true;
     }
 
-    private static bool CanonicalMethods(IReadOnlyList<string> methods)
-        => methods.Count > 0 && methods.Distinct(StringComparer.Ordinal).Count() == methods.Count
+    private static bool CanonicalMethods(IReadOnlyList<string>? methods)
+        => methods is { Count: > 0 } && methods.Distinct(StringComparer.Ordinal).Count() == methods.Count
             && methods.All(method => method is "GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS");
 
     private static bool SameMethods(IReadOnlyList<string> actual, IReadOnlyList<string> bound)

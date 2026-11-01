@@ -2,7 +2,7 @@
 title: 'Publish the bounded technical-verb maintenance fix'
 type: 'bugfix'
 created: '2026-11-01'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 baseline_commit: '0a635322ac79b2a0aab0701ba4b604355ae3e0ba'
 review_loop_iteration: 1
@@ -164,8 +164,8 @@ Focused real-controller tests and safety negatives; unchanged actual Root observ
 ## Delivery Gates After Review
 
 - [x] Joint three-layer review and bounded patch closure; exact canonical publisher30ea remotely qualified in run41267580527 (138 tests and full commit range lint).
-- [ ] Normal SDK lint/hooks and protected maintenance PR/merge; exact branch CI and full Integration.
-- [ ] Protected production release and fourteen official ID/version/source archive checks.
+- [x] Normal SDK lint/hooks and protected PR381 squash28e; exact push CI41273407948, commitlint41273407872 and full Integration41273407606 all green.
+- [x] Protected Release41277013578 succeeds including OCI; all14 official132 archives verify ID/version/source28e and SDK repository URL.
 
 Given successful protected release, when official archives download, then all fourteen IDs/version/source match the actual maintenance source. These delivery gates remain pending and are not local verification claims.
 
@@ -331,3 +331,35 @@ No production authority code, acquisition budget, retry, backoff, deadline,
 workflow or assertion gate changed. All prior source/claim packets are
 preserved; only this test fixture and this spec differ from ad921. The exact
 new PR head still requires fresh normal CI and full Integration.
+
+
+## Completion
+
+Published [SDK v3.130.2](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.130.2)
+from exact protected maintenance source
+`28e3f260bbaf4619d1a99d656fba04c0c532387b`. Normal configured production
+approval followed successful real native patch/version/configuration
+qualification and exact-source push CI, commitlint and full Integration.
+[Release41277013578](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/41277013578)
+finishes green, including both container platforms and publication checks.
+
+Actual retained reports prove14905 core passes with49 unchanged declared
+skips,108 published-compatibility passes without skips,304 live passes with
+four unchanged worker skips, metadata1/1 and all three real native actor
+catalog cases passing. The239 historical observations retain26240 assertions,
+74 execution failures,49 incompatible and41 unverified results, ten errors,
+qualified=false and P1R=false. Historical characterization is not compatibility
+qualification. Loop1-B2 and Loop1-B7 remain separately deferred as recorded.
+
+All fourteen actual nuget.org archives download HTTP200 and independently
+verify embedded package ID, version3.130.2, RepositoryCommit28e and the SDK
+repository URL. Archive hashes are retained in
+`/tmp/eventstore-31302-nuget-publication.json` (SHA256
+`8e07e4b6be063dd23b60483e3dd920078dd78c1bcfc3b70e8341a0751a2ae312`).
+Actual public consumer alias and complete Root persisted/runtime qualification
+remain downstream gates owned by the Parties release task. No broader
+Works/HA/resume/Ops scope is qualified here.
+
+This completion record is documentation only on an owned branch. The published
+tag/source remains immutable; original selected producer checkouts are not
+changed by this bookkeeping and no additional qualification cycle is required.
