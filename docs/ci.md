@@ -120,7 +120,7 @@ action uses the CLI pin for `dapr/setup-dapr` and the runtime pin for
 `dapr init --runtime-version`; older callers that omit `runtime-version` retain
 the legacy behavior by falling back to `version`. Neither pin is the Dapr NuGet
 `PackageVersion` (owned separately in `references/Hexalith.Builds/Props/Directory.Packages.props`,
-currently `1.18.5`).
+currently `1.19.0`).
 
 The Integration Tests checkout uses explicit `fetch-depth: 1` because its test
 steps need only the checked-out commit. A step that reads Git history must also

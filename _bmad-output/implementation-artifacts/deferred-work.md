@@ -6419,3 +6419,9 @@ status: open
   summary: Let a successor build read fence/deployment/capability records written under a previous effective authority digest (medium).
   evidence: Review pass 5 AA2. `PayloadProtectionStateCodec.ValidateSemantics` rejects any `FenceV1`/`DeploymentGenerationV1` `approvedSpecDigest`, and any `CapabilityLeaseV1` `specDigest`, different from the compiled `AuthorityDigest` (`:271,275,279`), as corruption. The first build with an amended authority therefore cannot decode the predecessor records to close the old generation, open a successor (§13.1) or observe the irreversible watermark (§13.3), and the coordinators' explicit digest checks never fire. Nothing breaks while only one authority exists. A fix decodes the sha format only and keeps strict digest comparison in every admission path.
   reason: Owner decision 2026-10-31: generation succession across authority amendments belongs to Story 8.7 rollout/host wiring.
+
+## Deferred from: release refresh (2026-11-01)
+
+- **[OPEN]** source_spec: `_bmad-output/implementation-artifacts/spec-release-refresh-2026-11-01.md`; owner: EventStore tooling maintainers; next-review-date: 2026-11-15; grouping: release-tooling.
+  summary: Exercise the manifest-installed Admin CLI in routine CI after dotnet tool restore.
+  evidence: VersionFlagTests executes the locally built CLI, while .config/dotnet-tools.json selects a separately published tool. The 3.130.1 package passed explicit restore and installed-executable version smoke in this refresh; future manifest updates lack permanent CI installation coverage.
