@@ -57,6 +57,31 @@ public sealed class ReleasePackageManifestTests
     private static readonly XNamespace NuspecNamespace =
         "http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd";
 
+    /// <summary>Every normal gate retains main and the one exact maintenance branch without branch globs.</summary>
+    [Theory]
+    [InlineData("ci", true)]
+    [InlineData("commitlint", true)]
+    [InlineData("integration", true)]
+    [InlineData("codeql", true)]
+    [InlineData("dependency-review", false)]
+    [InlineData("advisory-tests", true)]
+    [InlineData("payload-protection", true)]
+    [InlineData("payload-protection-lifecycle", true)]
+    public void Normal_gate_triggers_include_only_main_and_exact_maintenance(string name, bool push)
+    {
+        using var reader = new StringReader(File.ReadAllText(Path.Combine(FindRepositoryRoot(), ".github", "workflows", name + ".yml")));
+        var yaml = new YamlStream();
+        yaml.Load(reader);
+        var document = (YamlMappingNode)yaml.Documents.Single().RootNode;
+        var triggers = (YamlMappingNode)document.Children[new YamlScalarNode("on")];
+        foreach (string eventName in push ? new[] { "push", "pull_request" } : new[] { "pull_request" })
+        {
+            var trigger = (YamlMappingNode)triggers.Children[new YamlScalarNode(eventName)];
+            var branches = (YamlSequenceNode)trigger.Children[new YamlScalarNode("branches")];
+            branches.Children.Select(branch => ((YamlScalarNode)branch).Value).ShouldBe(["main", "release/parties-sdk-3.130.2"]);
+        }
+    }
+
     [Fact]
     public void Release_manifest_includes_rest_api_generator_package()
     {
@@ -850,7 +875,7 @@ public sealed class ReleasePackageManifestTests
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         string releaseJob = ExtractTopLevelWorkflowJobBlock(workflow, "release");
 
-        const string ApprovedBuildsSha = "22a578b576a515d2af214fe81859447fffc97981";
+        const string ApprovedBuildsSha = "30ea43a56330a9828ed0bb2e837289231d8630d1";
         releaseJob.ShouldContain($"ref: {ApprovedBuildsSha}");
         releaseJob.ShouldContain($"builds-execution-sha: {ApprovedBuildsSha}");
         releaseJob.ShouldContain("needs: verify-source");
@@ -858,7 +883,7 @@ public sealed class ReleasePackageManifestTests
         releaseJob.ShouldContain("actions: read");
         releaseJob.ShouldContain("environment: production");
         releaseJob.ShouldContain("id-token: write");
-        releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_BRANCH: main");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_BRANCH: ${{ github.ref_name }}");
         releaseJob.ShouldContain(
             "HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}");
         releaseJob.ShouldContain("HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json");
@@ -928,8 +953,8 @@ public sealed class ReleasePackageManifestTests
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"))
             .Replace("\r\n", "\n", StringComparison.Ordinal);
-        const string push = "  push:\n    branches: [main]\n";
-        const string pullRequest = "  pull_request:\n    branches: [main]\n";
+        const string push = "  push:\n    branches: [main, release/parties-sdk-3.130.2]\n";
+        const string pullRequest = "  pull_request:\n    branches: [main, release/parties-sdk-3.130.2]\n";
         string mutated = mutation switch
         {
             "remove-push" => workflow.Replace(push, string.Empty, StringComparison.Ordinal),
@@ -954,7 +979,7 @@ public sealed class ReleasePackageManifestTests
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"))
             .Replace("\r\n", "\n", StringComparison.Ordinal);
-        string trigger = $"  {eventName}:\n    branches: [main]\n";
+        string trigger = $"  {eventName}:\n    branches: [main, release/parties-sdk-3.130.2]\n";
         string mutated = workflow.Replace(trigger, trigger + $"    {key}: [ignored/**]\n", StringComparison.Ordinal);
         mutated.ShouldNotBe(workflow);
         _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertPayloadProtectionWorkflow(mutated));
@@ -1005,7 +1030,7 @@ public sealed class ReleasePackageManifestTests
             trigger.Children.TryGetValue(new YamlScalarNode("branches"), out YamlNode? branchNode).ShouldBeTrue();
             YamlSequenceNode branches = branchNode.ShouldBeOfType<YamlSequenceNode>();
             branches.Children.Select(static branch => branch.ShouldBeOfType<YamlScalarNode>().Value)
-                .ShouldBe(["main"]);
+                .ShouldBe(["main", "release/parties-sdk-3.130.2"]);
         }
 
         YamlMappingNode jobs = document.Children[new YamlScalarNode("jobs")]
@@ -2165,7 +2190,7 @@ public sealed class ReleasePackageManifestTests
         lines.ShouldContain("          persist-credentials: false");
         setupNodeActions.Length.ShouldBe(1);
         setupNodeActions[0].Groups["sha"].Value.ShouldBe(SetupNodeActionSha);
-        lines.ShouldContain("          node-version: '22'");
+        lines.ShouldContain("          node-version: '24'");
         lines.ShouldContain("          cache: npm");
         trimmedLines.ShouldContain("run: npm ci");
         trimmedLines.ShouldContain($"run: node {SemanticReleaseFixture}");
@@ -2238,7 +2263,7 @@ public sealed class ReleasePackageManifestTests
                 "      - name: Set up supported Node",
                 $"        uses: actions/setup-node@{SetupNodeActionSha} # v7.0.0",
                 "        with:",
-                "          node-version: '22'",
+                "          node-version: '24'",
                 "          cache: npm",
                 "      - name: Install locked npm dependencies",
                 "        run: npm ci",

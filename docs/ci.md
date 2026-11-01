@@ -8,14 +8,59 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
-| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Runs the required shared `domain-ci.yml@main` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
-| **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main`, manual dispatch | Visible non-release-blocking browser and governance suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
-| **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
-| **Payload Protection Lifecycle** | `.github/workflows/payload-protection-lifecycle.yml` | `push`, `pull_request` to `main`, manual dispatch | Isolated Dapr 1.18.7/PostgreSQL v2 capability, catalog, lease, drain, recovery, rotation, generation and restore tests. Requires at least twenty-six executed tests with zero skips, including cumulative transport limits, writer capacity, conditional restore decisions and authority races. Local qualification and its limits are recorded in the Story 8.5 spec; a CI run is separate evidence. |
-| **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Shared CodeQL workflow using `@main`, with the module configuration excluding archived `_bmad-output` source copies. |
-| **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
-| **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
-| **Release** | `.github/workflows/release.yml` | manual dispatch from the current green `main` tip | Exact-source preflight followed by an EventStore-owned job in the protected `production` environment. The job exchanges GitHub OIDC through `NuGet/login`, runs semantic-release, and uses immutable `Hexalith.Builds` actions for the approved EventStore container. |
+| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` and `release/parties-sdk-3.130.2` | Runs the required shared `domain-ci.yml@main` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
+| **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Visible non-release-blocking browser and governance suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
+| **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
+| **Payload Protection Lifecycle** | `.github/workflows/payload-protection-lifecycle.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Isolated Dapr 1.18.7/PostgreSQL v2 capability, catalog, lease, drain, recovery, rotation, generation and restore tests. Requires at least twenty-six executed tests with zero skips, including cumulative transport limits, writer capacity, conditional restore decisions and authority races. Local qualification and its limits are recorded in the Story 8.5 spec; a CI run is separate evidence. |
+| **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, weekly schedule | Shared CodeQL workflow using `@main`, with the module configuration excluding archived `_bmad-output` source copies. |
+| **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` and `release/parties-sdk-3.130.2` | Thin caller to the shared dependency-review gate using `@main`. |
+| **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` and `release/parties-sdk-3.130.2` | Thin caller to the shared Conventional Commits gate using `@main`. |
+| **Release** | `.github/workflows/release.yml` | manual dispatch from the current green `main` or exact maintenance tip | Exact-source preflight followed by an EventStore-owned job in the protected `production` environment. The job exchanges GitHub OIDC through `NuGet/login`, runs semantic-release, and uses immutable `Hexalith.Builds` actions for the approved EventStore container. |
+
+The only maintenance release branch is `release/parties-sdk-3.130.2`. Its
+protected publication is limited to repository `Hexalith/Hexalith.EventStore`,
+version `3.130.2`, source proof `ci.yml`, and environment `production`; arbitrary
+refs, versions, reservations, and historical receipts cannot authorize it.
+`scripts/verify-release-source.sh` requires current exact-source successful push
+runs of CI and commitlint, plus full `integration.yml` on maintenance. It runs
+before the protected job and again immediately before the OIDC exchange. The
+maintenance wrapper repeats all three proofs at both verify and publish.
+The corrected canonical publisher freezes all three exact-branch workflow
+receipts and revalidates them again at the container boundary before its first
+write. Its focused blocking workflow lints the complete new commit range.
+Main retains its existing CI and commitlint requirements.
+
+The read-only preproduction job fetches complete history and runs
+`tools/verify-release-candidate.mjs` using the lockfile-pinned native commit
+analyzer and semantic-release core helpers. The real reachable `v3.130.1` must
+resolve to published source `1de42b706f52af0da6513f0b7663002606d17156`;
+only an actual patch candidate of `3.130.2` may enter production. Native
+cosmiconfig resolution must match the committed configuration. Pure native
+branch normalization uses already-fetched configured-branch tag inventories;
+the candidate must satisfy its accepted type/range and have no globally
+existing candidate tag, including on unrelated history. No release, minor,
+major, configuration drift, wrong base or wrong source refuses before
+production/OIDC. No fetch, note update or user-ref mutation runs in this gate.
+The same qualification repeats before OIDC. Structured JSON retains its
+source/base/type/version, effective configuration digest and pinned native
+identities under `.hexalith/release-evidence/qualification`; the preproduction
+job uploads its receipt and the production evidence upload retains revalidation.
+These records are evidence and grant no publication authority.
+
+This finite regular release ref is intentionally ordered before `main`, with
+`channel: false` on both. It has a one-release lifecycle: after `3.130.2`, remove
+its publication/deployment authorization and retire the branch through the
+normal reviewed process. It conveys no authority for another release branch
+or version. Do not merge future feature histories into it or use it as a
+reusable maintenance template. Main keeps its existing release behavior.
+
+Protect the exact maintenance branch with the normal required checks and PR
+review policy. Add only this exact branch to the production deployment policy;
+retain the designated reviewer and disabled administrator bypass. The existing
+`release.yml`/production trusted publishing identity and fourteen-package
+inventory remain authoritative. After publication, independently download all
+fourteen official archives and verify embedded ID, version and source commit.
+The normal main workflow jobs and branch protection remain required.
 
 ## Shared CI/CD Boundary
 
@@ -37,7 +82,7 @@ EventStore keeps only module-specific wiring here:
 - Manifest-backed package validation scripts under `scripts/`.
 - The separate live-sidecar workflow while shared CI has no advisory filtered
   project lane.
-- The semantic-release GitHub lifecycle fixture and its blocking Node 22 CI
+- The semantic-release GitHub lifecycle fixture and its blocking Node 24 CI
   dependency lane.
 - The approved release container mapping:
   `src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore`.
@@ -72,7 +117,7 @@ place for run output.
 | Lane | Projects | Workflow behavior |
 |------|----------|-------------------|
 | Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci.yml@main` job through `unit-test-projects`. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
-| Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs`, `tools/tests/test_release_publication_authority.py` | Blocking EventStore-owned CI job. It provisions Node 22, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. It also runs the publication-authority regressions against the exact approved Builds publication engine. |
+| Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs`, `tools/tests/test_release_publication_authority.py` | Blocking EventStore-owned CI job. It provisions Node 24, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. It also runs the publication-authority regressions against the exact approved Builds publication engine. |
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`, plus `scripts/check-committed-files.sh`, `tools/tests/test_check_committed_files.py` and `tools/tests/test_dapr_broker_qualification.py` | Dedicated `Integration Tests` workflow after `dapr init`; its required `live-sidecar` job first runs the committed-file guard and the two Python suites. This lane is visible but not part of the semantic-release gate. It is not a `dotnet test` of `Server.Tests`. |
 | Payload-protection lifecycle | `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests` | Dedicated `Payload Protection Lifecycle` workflow; isolated processes and digest-pinned PostgreSQL v2 state, persisted assertions and zero skips. The existing `Payload Protection` core workflow runs independently. |
 | Advisory browser/governance suites | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
@@ -229,22 +274,28 @@ never accepted as package dependency evidence, anywhere in the nuspec.
 
 Release is an intentional operator action. Ordinary pushes and pull requests
 run CI but never start Release. The dispatch has no inputs. Semantic Release selects the version
-from `main` commit history. Run it with `gh workflow run release.yml --ref main`.
+from the approved branch's commit history. Main uses
+`gh workflow run release.yml --ref main`; the bounded maintenance operation uses
+`gh workflow run release.yml --ref release/parties-sdk-3.130.2`.
 The approved immutable Builds actions execution pin is
-`22a578b576a515d2af214fe81859447fffc97981`, matching `.github/workflows/release.yml`
+`30ea43a56330a9828ed0bb2e837289231d8630d1`, matching `.github/workflows/release.yml`
 and `docs/ci-secrets-checklist.md`. Before requesting environment approval, the
 manual workflow fails closed unless all of these are true:
 
-- the dispatch ref is exactly `refs/heads/main`;
-- the dispatch SHA still equals the live `main` ref returned by GitHub;
+- the dispatch ref is exactly `refs/heads/main` or
+  `refs/heads/release/parties-sdk-3.130.2`;
+- the dispatch SHA still equals the live selected branch ref returned by GitHub;
 - the exact SHA has a completed, successful push run of `ci.yml` and
-  `commitlint.yml`.
+  `commitlint.yml`, plus `integration.yml` for maintenance;
+- maintenance's read-only native analyzer qualification proves actual patch
+  `3.130.2` from the verified reachable published `v3.130.1` base.
 
 The release concurrency group is `release-production` with cancellation
 disabled, so a later request cannot silently replace an approved publication.
 Only after source verification does the EventStore-owned publish job enter the
 `production` environment. That environment requires reviewer `jpiquot`, permits
-deployments from `main` only, and disables administrator bypass. The job has
+deployments from exactly `main` and `release/parties-sdk-3.130.2`, and disables
+administrator bypass. The job has
 `id-token: write` so `NuGet/login` can exchange its protected EventStore
 `release.yml` identity for a temporary NuGet key. The nuget.org package owner
 must activate a policy for repository `Hexalith/Hexalith.EventStore`, workflow
@@ -301,7 +352,7 @@ source-mode lane are all blocking. Required build, validation, package,
 container, smoke, and GitHub publication failures remain blocking.
 
 The EventStore job checks out Builds at the reviewed 40-character commit
-`22a578b576a515d2af214fe81859447fffc97981`, verifies that checkout's HEAD,
+`30ea43a56330a9828ed0bb2e837289231d8630d1`, verifies that checkout's HEAD,
 and invokes its actions locally. The container action verifies its own action
 and helper bytes against the same commit before semantic-release can run. This
 immutable release-tool pin is
@@ -316,8 +367,8 @@ The shared Builds publisher still implements a separate corrective gate: a
 dispatch-reserved stable version plus a one-use GitHub issue-comment authority.
 EventStore does not use that gate. The exact Semantic Release version must be
 absent at all package and container destinations before publication, and source
-proof, frozen identity, and version-floor checks still run. No projected version
-such as `3.96.0` is ever embedded as release policy.
+proof, frozen identity, and version-floor checks still run. Main retains semantic version selection; the maintenance source additionally
+requires exactly `3.130.2`, and every other non-main branch/version tuple refuses.
 
 The `publishCmd` calls the helper installed by the pinned shared
 `publish-containers` action only after the applicable preflight gates and NuGet
@@ -445,8 +496,10 @@ Hexalith repository through its origin remote. Unrelated sibling clones and path
 that cause Git to discover an ancestor repository are rejected.
 
 `HEXALITH_BUILDS_SOURCE` can explicitly select a verified Builds checkout. The
-release-caller guard additionally requires an explicit checkout's HEAD to equal
-the EventStore Builds gitlink. The Builds object store must contain the exact
+release-caller guard verifies publication authority separately from the EventStore
+Builds development gitlink. The bounded publisher correction must descend from
+the previous approved publisher and preserve all other executed container helper
+bytes. The Builds object store must contain the exact
 historical commits used by the release and tool-hash assertions, including the
 reviewed release pin; checkout layout does not relax commit, ancestry, or tool-byte
 checks.

@@ -33,8 +33,11 @@ class LocalGitHubAndDestinations:
         method = request.get_method()
         state["requests"].append({"method": method, "url": request.full_url})
         status = 200
-        if endpoint.endswith("/git/ref/heads/main"):
-            document = {"object": {"sha": state["live_sha"]}}
+        if "/git/ref/heads/" in endpoint:
+            branch = urllib.parse.unquote(endpoint.split("/git/ref/heads/", 1)[1])
+            if branch not in state["refs"]:
+                raise urllib.error.HTTPError(request.full_url, 404, "unknown fixture ref", {}, None)
+            document = {"object": {"sha": state["refs"][branch]}}
         elif "/actions/workflows/" in endpoint:
             workflow = endpoint.split("/workflows/")[1].split("/")[0]
             document = {"workflow_runs": state["runs"].get(workflow, [])}
@@ -74,3 +77,21 @@ class LocalGitHubAndDestinations:
 def install():
     """Replace transport only; identity, authority, destination and consumption logic are real."""
     urllib.request.build_opener = lambda *handlers: LocalGitHubAndDestinations()
+
+
+def gh_main():
+    """Expose the same local read-only GitHub state to the source-proof shell."""
+    import sys
+    path = Path(os.environ["PUBLICATION_FIXTURE_STATE"])
+    state = json.loads(path.read_text())
+    endpoint = next(argument for argument in sys.argv[1:] if argument.startswith("repos/"))
+    state["requests"].append({"method": "GET", "url": endpoint})
+    path.write_text(json.dumps(state))
+    if "/git/ref/heads/" in endpoint:
+        branch = urllib.parse.unquote(endpoint.split("/git/ref/heads/", 1)[1])
+        if branch not in state["refs"]:
+            raise SystemExit("Unknown fixture ref: " + branch)
+        print(state["refs"][branch])
+    else:
+        workflow = endpoint.split("/workflows/")[1].split("/")[0]
+        print(json.dumps({"workflow_runs": state["runs"].get(workflow, [])}))
