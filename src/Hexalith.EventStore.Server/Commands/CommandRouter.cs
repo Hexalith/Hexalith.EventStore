@@ -8,6 +8,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.ServiceDefaults.Routing;
+using Hexalith.EventStore.ServiceDefaults.Diagnostics;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -69,39 +70,59 @@ public partial class CommandRouter : ICommandRouter {
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
-        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
-        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
-        if (catalogLease is not null) _ = catalogLease.Snapshot.Resolve("command", command.Tenant, command.Domain, command.CommandType);
-
-        var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
-        string actorId = identity.ActorId;
-        string causationId = command.MessageId;
-
-        Log.CommandRouting(logger, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
-
-        var envelope = command.ToCommandEnvelope();
-        string? coordinationActorId = GetCoordinationActorId(envelope);
-
-        try {
-            if (coordinationActorId is not null) {
-                ICoordinatedCommandActor coordinator = actorProxyFactory.CreateActorProxy<ICoordinatedCommandActor>(
-                    new ActorId(coordinationActorId), CoordinatedCommandActor.ActorTypeName);
-                return command.HumanAuthorityReceipt is null
-                    ? await RouteCatalogRemoteCall.InvokeAsync(() => coordinator.ProcessCommandAsync(envelope)).ConfigureAwait(false)
-                    : await RouteCatalogRemoteCall.InvokeAsync(() => coordinator.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(envelope, command.HumanAuthorityReceipt))).ConfigureAwait(false);
-            }
-
-            IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
-                new ActorId(actorId),
-                actorOptions.Value.AggregateActorTypeName);
-
-            return command.HumanAuthorityReceipt is null
-                ? await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ProcessCommandAsync(envelope)).ConfigureAwait(false)
-                : await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(envelope, command.HumanAuthorityReceipt))).ConfigureAwait(false);
+        DispatchDiagnostics? diagnostics = DispatchDiagnostics.Create(logger, cancellationToken);
+        RouteCatalogDispatchLease? catalogLease;
+        using (var stage = diagnostics?.Start(DispatchStageName.RouterAcquire))
+        {
+            catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            stage?.Complete();
         }
-        catch (Exception ex) {
-            Log.ActorInvocationFailed(logger, ex, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
-            throw;
+        var catalogRelease = new RouteCatalogLeaseReleaser(catalogLease);
+        try
+        {
+            if (catalogLease is not null) _ = catalogLease.Snapshot.Resolve("command", command.Tenant, command.Domain, command.CommandType);
+
+            var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
+            string actorId = identity.ActorId;
+            string causationId = command.MessageId;
+
+            Log.CommandRouting(logger, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
+
+            var envelope = command.ToCommandEnvelope();
+            string? coordinationActorId = GetCoordinationActorId(envelope);
+
+            try {
+                using var stage = diagnostics?.Start(DispatchStageName.ActorRpc, CancellationToken.None);
+                if (coordinationActorId is not null) {
+                    ICoordinatedCommandActor coordinator = actorProxyFactory.CreateActorProxy<ICoordinatedCommandActor>(
+                        new ActorId(coordinationActorId), CoordinatedCommandActor.ActorTypeName);
+                    CommandProcessingResult result = command.HumanAuthorityReceipt is null
+                        ? await RouteCatalogRemoteCall.InvokeAsync(() => coordinator.ProcessCommandAsync(envelope)).ConfigureAwait(false)
+                        : await RouteCatalogRemoteCall.InvokeAsync(() => coordinator.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(envelope, command.HumanAuthorityReceipt))).ConfigureAwait(false);
+                    stage?.Complete();
+                    return result;
+                }
+
+                IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                    new ActorId(actorId),
+                    actorOptions.Value.AggregateActorTypeName);
+
+                CommandProcessingResult processingResult = command.HumanAuthorityReceipt is null
+                    ? await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ProcessCommandAsync(envelope)).ConfigureAwait(false)
+                    : await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(envelope, command.HumanAuthorityReceipt))).ConfigureAwait(false);
+                stage?.Complete();
+                return processingResult;
+            }
+            catch (Exception ex) {
+                Log.ActorInvocationFailed(logger, ex, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
+                throw;
+            }
+        }
+        finally
+        {
+            using var stage = diagnostics?.Start(DispatchStageName.RouterRelease, CancellationToken.None);
+            await catalogRelease.DisposeAsync().ConfigureAwait(false);
+            stage?.Complete();
         }
     }
 
@@ -114,60 +135,77 @@ public partial class CommandRouter : ICommandRouter {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(executionContext);
         cancellationToken.ThrowIfCancellationRequested();
-        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
-        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
-        if (catalogLease is not null) _ = catalogLease.Snapshot.Resolve("command", command.Tenant, command.Domain, command.CommandType);
-        if (executionContext.FencingToken <= 0
-            || !string.Equals(executionContext.MessageId, command.MessageId, StringComparison.Ordinal)
-            || !string.Equals(executionContext.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
-            || !string.Equals(executionContext.Tenant, command.Tenant, StringComparison.Ordinal)
-            || !string.Equals(executionContext.Domain, command.Domain, StringComparison.Ordinal)
-            || !string.Equals(executionContext.AggregateId, command.AggregateId, StringComparison.Ordinal)
-            || !string.Equals(executionContext.CommandType, command.CommandType, StringComparison.Ordinal))
+        DispatchDiagnostics? diagnostics = DispatchDiagnostics.Create(logger, cancellationToken);
+        RouteCatalogDispatchLease? catalogLease;
+        using (var stage = diagnostics?.Start(DispatchStageName.RouterAcquire))
         {
-            throw new InvalidOperationException("The idempotency execution fence is missing, stale, or invalid.");
+            catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            stage?.Complete();
         }
-
-        var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
-        string actorId = identity.ActorId;
-        Log.CommandRouting(
-            logger,
-            command.CorrelationId,
-            command.MessageId,
-            command.Tenant,
-            command.Domain,
-            command.AggregateId,
-            command.CommandType,
-            actorId);
-        var request = new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext, command.HumanAuthorityReceipt);
-        string? coordinationActorId = GetCoordinationActorId(request.Command);
+        var catalogRelease = new RouteCatalogLeaseReleaser(catalogLease);
         try
         {
-            if (coordinationActorId is not null)
+            if (catalogLease is not null) _ = catalogLease.Snapshot.Resolve("command", command.Tenant, command.Domain, command.CommandType);
+            if (executionContext.FencingToken <= 0
+                || !string.Equals(executionContext.MessageId, command.MessageId, StringComparison.Ordinal)
+                || !string.Equals(executionContext.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
+                || !string.Equals(executionContext.Tenant, command.Tenant, StringComparison.Ordinal)
+                || !string.Equals(executionContext.Domain, command.Domain, StringComparison.Ordinal)
+                || !string.Equals(executionContext.AggregateId, command.AggregateId, StringComparison.Ordinal)
+                || !string.Equals(executionContext.CommandType, command.CommandType, StringComparison.Ordinal))
             {
-                ICoordinatedCommandActor coordinator = actorProxyFactory.CreateActorProxy<ICoordinatedCommandActor>(
-                    new ActorId(coordinationActorId), CoordinatedCommandActor.ActorTypeName);
-                return await RouteCatalogRemoteCall.InvokeAsync(() => coordinator.ProcessFencedCommandAsync(request)).ConfigureAwait(false);
+                throw new InvalidOperationException("The idempotency execution fence is missing, stale, or invalid.");
             }
 
-            IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
-                new ActorId(actorId),
-                actorOptions.Value.AggregateActorTypeName);
-            return await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ProcessFencedCommandAsync(request)).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            Log.ActorInvocationFailed(
+            var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
+            string actorId = identity.ActorId;
+            Log.CommandRouting(
                 logger,
-                ex,
-                command.CorrelationId,
-                command.MessageId,
+                "protected",
+                "protected",
                 command.Tenant,
                 command.Domain,
                 command.AggregateId,
                 command.CommandType,
                 actorId);
-            throw;
+            var request = new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext, command.HumanAuthorityReceipt);
+            string? coordinationActorId = GetCoordinationActorId(request.Command);
+            try
+            {
+                using var rpcStage = diagnostics?.Start(DispatchStageName.FencedActorRpc, CancellationToken.None);
+                if (coordinationActorId is not null)
+                {
+                    ICoordinatedCommandActor coordinator = actorProxyFactory.CreateActorProxy<ICoordinatedCommandActor>(
+                        new ActorId(coordinationActorId), CoordinatedCommandActor.ActorTypeName);
+                    CommandProcessingResult result = await RouteCatalogRemoteCall.InvokeAsync(() => coordinator.ProcessFencedCommandAsync(request)).ConfigureAwait(false);
+                    rpcStage?.Complete();
+                    return result;
+                }
+
+                IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                    new ActorId(actorId),
+                    actorOptions.Value.AggregateActorTypeName);
+                CommandProcessingResult processingResult = await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ProcessFencedCommandAsync(request)).ConfigureAwait(false);
+                rpcStage?.Complete();
+                return processingResult;
+            }
+            catch (Exception)
+            {
+                Log.ProtectedActorInvocationFailed(
+                    logger,
+                    command.Tenant,
+                    command.Domain,
+                    command.AggregateId,
+                    command.CommandType,
+                    actorId);
+                throw;
+            }
+        }
+        finally
+        {
+            using var stage = diagnostics?.Start(DispatchStageName.RouterRelease, CancellationToken.None);
+            await catalogRelease.DisposeAsync().ConfigureAwait(false);
+            stage?.Complete();
         }
     }
 
@@ -180,26 +218,44 @@ public partial class CommandRouter : ICommandRouter {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(executionContext);
         cancellationToken.ThrowIfCancellationRequested();
-        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
-        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
-        if (catalogLease is not null) _ = catalogLease.Snapshot.Resolve("command", command.Tenant, command.Domain, command.CommandType);
-        if (executionContext.FencingToken <= 0
-            || !string.Equals(executionContext.MessageId, command.MessageId, StringComparison.Ordinal)
-            || !string.Equals(executionContext.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
-            || !string.Equals(executionContext.Tenant, command.Tenant, StringComparison.Ordinal)
-            || !string.Equals(executionContext.Domain, command.Domain, StringComparison.Ordinal)
-            || !string.Equals(executionContext.AggregateId, command.AggregateId, StringComparison.Ordinal)
-            || !string.Equals(executionContext.CommandType, command.CommandType, StringComparison.Ordinal))
+        DispatchDiagnostics? diagnostics = DispatchDiagnostics.Create(logger, cancellationToken);
+        RouteCatalogDispatchLease? catalogLease;
+        using (var stage = diagnostics?.Start(DispatchStageName.RouterAcquire))
         {
-            throw new InvalidOperationException("The idempotency execution fence is missing, stale, or invalid.");
+            catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            stage?.Complete();
         }
+        var catalogRelease = new RouteCatalogLeaseReleaser(catalogLease);
+        try
+        {
+            if (catalogLease is not null) _ = catalogLease.Snapshot.Resolve("command", command.Tenant, command.Domain, command.CommandType);
+            if (executionContext.FencingToken <= 0
+                || !string.Equals(executionContext.MessageId, command.MessageId, StringComparison.Ordinal)
+                || !string.Equals(executionContext.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
+                || !string.Equals(executionContext.Tenant, command.Tenant, StringComparison.Ordinal)
+                || !string.Equals(executionContext.Domain, command.Domain, StringComparison.Ordinal)
+                || !string.Equals(executionContext.AggregateId, command.AggregateId, StringComparison.Ordinal)
+                || !string.Equals(executionContext.CommandType, command.CommandType, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The idempotency execution fence is missing, stale, or invalid.");
+            }
 
-        var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
-        IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
-            new ActorId(identity.ActorId),
-            actorOptions.Value.AggregateActorTypeName);
-        var request = new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext);
-        return await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ReconcileFencedCommandAsync(request)).ConfigureAwait(false);
+            var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
+            IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId),
+                actorOptions.Value.AggregateActorTypeName);
+            var request = new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext);
+            using var rpcStage = diagnostics?.Start(DispatchStageName.ReconciliationRpc, CancellationToken.None);
+            IdempotencyCheckResult result = await RouteCatalogRemoteCall.InvokeAsync(() => proxy.ReconcileFencedCommandAsync(request)).ConfigureAwait(false);
+            rpcStage?.Complete();
+            return result;
+        }
+        finally
+        {
+            using var stage = diagnostics?.Start(DispatchStageName.RouterRelease, CancellationToken.None);
+            await catalogRelease.DisposeAsync().ConfigureAwait(false);
+            stage?.Complete();
+        }
     }
 
     private string? GetCoordinationActorId(CommandEnvelope command)
@@ -220,6 +276,18 @@ public partial class CommandRouter : ICommandRouter {
     }
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 1102,
+            Level = LogLevel.Error,
+            Message = "Protected actor invocation failed: CorrelationId=protected, CausationId=protected, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, ActorId={ActorId}, Stage=ActorInvocationFailed")]
+        public static partial void ProtectedActorInvocationFailed(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            string actorId);
+
         [LoggerMessage(
             EventId = 1100,
             Level = LogLevel.Debug,
