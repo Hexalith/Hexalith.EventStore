@@ -123,7 +123,6 @@ place for run output.
 | Advisory browser/governance suites | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
 | Runner-owned platform package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | Deferred CI activation pending the approved compatible v2 workflow/tool and registry prerequisites; declared as platform-source/platform-package in the module manifest. Existing legacy integration coverage remains enabled. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
-| Platform package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | Deferred until a qualified Platform release tag and matching Builds catalog enable the receipt-capable `domain-ci-v2` package profile. The existing blocking AppHost integration remains active. |
 | Isolated synthetic sharding | `tests/Hexalith.EventStore.Sharding.Tests` | Deferred CI automation; the operator opt-in Debug lane and its owned `Sharding.TestHost` fixture are documented in `tests/Hexalith.EventStore.Sharding.Tests/README.md`. Synthetic observations do not qualify a production provider profile or release gate. |
 
 The qualified lifecycle profile keeps Dapr's default 4 MiB gRPC request limit.
