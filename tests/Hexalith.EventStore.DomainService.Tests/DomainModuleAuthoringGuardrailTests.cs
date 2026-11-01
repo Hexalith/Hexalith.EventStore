@@ -418,10 +418,10 @@ public sealed class DomainModuleAuthoringGuardrailTests
         // Umbrella workspaces may supply their already initialized root-declared module.
         // Never initialize a nested submodule merely to run a source-boundary fixture.
         string tenantsDomainRoot = Environment.GetEnvironmentVariable("HEXALITH_TENANTS_DOMAIN_ROOT")
-            ?? Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
+            ?? Path.Combine(ResolveTenantsSourceRoot(root), "Hexalith.Tenants");
         string csproj = Path.Combine(tenantsDomainRoot, "Hexalith.Tenants.csproj");
         File.Exists(csproj).ShouldBeTrue(
-            $"Expected the root-declared Tenants submodule project at {csproj}; boundary verification must not pass without its subject.");
+            $"Expected the Tenants project at {csproj} (own references/Hexalith.Tenants submodule, else the sibling checkout); boundary verification must not pass without its subject.");
 
         List<string> dependencies = [];
         dependencies.AddRange(await ReadEvaluatedDependencyValuesAsync(csproj, useProjectReferences: true));
@@ -545,7 +545,7 @@ public sealed class DomainModuleAuthoringGuardrailTests
     public void DomainModuleRoots_UsesInitializedTenantsDomainServiceRoot()
     {
         string root = FindRepositoryRoot();
-        string tenantsDomainRoot = Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
+        string tenantsDomainRoot = Path.Combine(ResolveTenantsSourceRoot(root), "Hexalith.Tenants");
         if (!Directory.Exists(tenantsDomainRoot))
         {
             return;
@@ -598,7 +598,7 @@ public sealed class DomainModuleAuthoringGuardrailTests
 
         yield return ("Sample", Path.Combine(root, "samples", "Hexalith.EventStore.Sample"));
 
-        string tenants = Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
+        string tenants = Path.Combine(ResolveTenantsSourceRoot(root), "Hexalith.Tenants");
         if (Directory.Exists(tenants))
         {
             yield return ("Tenants", tenants);
@@ -621,7 +621,7 @@ public sealed class DomainModuleAuthoringGuardrailTests
         [
             Path.Combine(root, "samples", "Hexalith.EventStore.Sample.BlazorUI"),
             Path.Combine(root, "src", "Hexalith.EventStore.Admin.UI"),
-            Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants.UI"),
+            Path.Combine(ResolveTenantsSourceRoot(root), "Hexalith.Tenants.UI"),
         ];
 
         foreach (string path in roots.Where(Directory.Exists))
@@ -1469,6 +1469,20 @@ public sealed class DomainModuleAuthoringGuardrailTests
 
     private static string SampleDomainProgramPath()
         => Path.Combine(FindRepositoryRoot(), "samples", "Hexalith.EventStore.Sample", "Program.cs");
+
+    // Prefer the repository's own Tenants submodule; when it is not initialized, fall back to the sibling checkout
+    // (<parent>/Hexalith.Tenants), matching the Directory.Build.props source-path resolution. Never initializes a submodule.
+    private static string ResolveTenantsSourceRoot(string root)
+    {
+        string nested = Path.Combine(root, "references", "Hexalith.Tenants", "src");
+        if (Directory.Exists(Path.Combine(nested, "Hexalith.Tenants")))
+        {
+            return nested;
+        }
+
+        string sibling = Path.GetFullPath(Path.Combine(root, "..", "Hexalith.Tenants", "src"));
+        return Directory.Exists(Path.Combine(sibling, "Hexalith.Tenants")) ? sibling : nested;
+    }
 
     private static string FindRepositoryRoot()
     {
