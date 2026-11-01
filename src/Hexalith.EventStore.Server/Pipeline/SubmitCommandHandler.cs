@@ -22,6 +22,7 @@ namespace Hexalith.EventStore.Server.Pipeline;
 /// Story 3.1: Routes command to aggregate actor via CommandRouter.
 /// </summary>
 public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+    private ProjectionActivationWorkerCapability? projectionActivationWorker { get; }
     private ICommandStatusStore statusStore { get; }
     private ICommandArchiveStore archiveStore { get; }
     private ICommandRouter commandRouter { get; }
@@ -67,8 +68,10 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
         IProjectionActivationOutbox? projectionActivationOutbox = null,
         IIdempotencyAdmissionCoordinator? idempotencyAdmissionCoordinator = null,
         IConfiguration? humanAuthorityConfiguration = null,
-        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null,
+        ProjectionActivationWorkerCapability? projectionActivationWorker = null)
     {
+        this.projectionActivationWorker = projectionActivationWorker;
         this.statusStore = statusStore;
         this.archiveStore = archiveStore;
         this.commandRouter = commandRouter;
@@ -317,11 +320,16 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                 {
                     CommandProcessingResult reconciledResult = reconciliation.Result
                         ?? throw new InvalidOperationException("Authoritative reconciliation returned no command result.");
+                    if (await RestoreAcceptedActivationAsync(executionRequest, reconciledResult, diagnostics, reconciliation: true).ConfigureAwait(false))
+                        cancellationToken.ThrowIfCancellationRequested();
                     using var reconciledFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
                     await idempotencyAdmissionCoordinator
                         .ValidateExecutionAsync(admissionSession, executionRequest, cancellationToken)
                         .ConfigureAwait(false);
                     reconciledFenceStage?.Complete();
+                    if (reconciledResult.Accepted && reconciledResult.EventCount > 0
+                        && (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox) != true))
+                        await TriggerProjectionUpdateAsync(executionRequest, diagnostics).ConfigureAwait(false);
                     using var reconciledCompletionStage = diagnostics?.Start(DispatchStageName.AdmissionCompletion);
                     await idempotencyAdmissionCoordinator
                         .CompleteAsync(admissionSession, reconciledResult, cancellationToken)
@@ -403,6 +411,8 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                         cancellationToken).ConfigureAwait(false);
                     routingStage?.Complete();
                 }
+                if (await RestoreAcceptedActivationAsync(executionRequest, processingResult, diagnostics).ConfigureAwait(false))
+                    cancellationToken.ThrowIfCancellationRequested();
             }
             catch (Exception) when (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
             {
@@ -612,7 +622,10 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                     executionRequest,
                     cancellationToken).ConfigureAwait(false);
                 projectionFenceStage?.Complete();
-                await TriggerProjectionUpdateAsync(executionRequest, diagnostics).ConfigureAwait(false);
+                if (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox) != true)
+                {
+                    await TriggerProjectionUpdateAsync(executionRequest, diagnostics).ConfigureAwait(false);
+                }
             }
 
             // Read final status once for both activity trackers (advisory, rule #12)
@@ -769,6 +782,24 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
         int statusCode,
         string detail)
         => new(correlationId, code, category, retryable, clientAction, statusCode, detail);
+
+    private async Task<bool> RestoreAcceptedActivationAsync(SubmitCommand request, CommandProcessingResult result,
+        DispatchDiagnostics? diagnostics, bool reconciliation = false)
+    {
+        if (!result.Accepted || result.EventCount <= 0 || projectionActivationOutbox is null
+            || !reconciliation && projectionActivationWorker?.Enabled != true)
+            return false;
+
+        // An old-head worker may already have removed the write-ahead activation. Commit
+        // recovery is independently owned, like existing projection finalization; caller
+        // cancellation still applies to the response after this bounded durable restoration.
+        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var stage = diagnostics?.Start(DispatchStageName.ProjectionActivation, cleanup.Token);
+        await projectionActivationOutbox.EnsureAsync(
+            new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId), cleanup.Token).ConfigureAwait(false);
+        stage?.Complete();
+        return true;
+    }
 
     private async Task TriggerProjectionUpdateAsync(SubmitCommand request, DispatchDiagnostics? diagnostics) {
         try {

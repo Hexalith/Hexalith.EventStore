@@ -9,6 +9,10 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Server.Pipeline.Commands;
+
+using MediatR;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
@@ -155,6 +159,24 @@ public static class EventStoreServerServiceCollectionExtensions {
         _ = services.AddHostedService<FoldedSnapshotQualificationHostedService>();
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchestrator>();
+        // Keep the published handler constructor unchanged. Runtime composition supplies the
+        // private ownership seam explicitly, without adding a competing public DI constructor.
+        services.TryAddTransient<SubmitCommandHandler>(provider => new SubmitCommandHandler(
+            provider.GetRequiredService<ICommandStatusStore>(), provider.GetRequiredService<ICommandArchiveStore>(),
+            provider.GetRequiredService<ICommandRouter>(), provider.GetService<ICommandActivityTracker>(),
+            provider.GetService<IStreamActivityTracker>(), provider.GetRequiredService<IProjectionUpdateOrchestrator>(),
+            provider.GetRequiredService<ILogger<SubmitCommandHandler>>(), provider.GetService<ICommandCorrelationIndex>(),
+            provider.GetService<IProjectionActivationOutbox>(), provider.GetService<IIdempotencyAdmissionCoordinator>(),
+            provider.GetService<IConfiguration>(), provider.GetRequiredService<Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority>(),
+            provider.GetService<ProjectionActivationWorkerCapability>()));
+        // MediatR's assembly scan may precede server registration. Replace only that
+        // known default descriptor; consumer concrete and request-handler overrides win.
+        foreach (ServiceDescriptor descriptor in services.Where(static descriptor =>
+            descriptor.ServiceType == typeof(IRequestHandler<SubmitCommand, SubmitCommandResult>)
+                && descriptor.ImplementationType == typeof(SubmitCommandHandler)
+                && descriptor.Lifetime == ServiceLifetime.Transient).ToArray())
+            services.Remove(descriptor);
+        services.TryAddTransient<IRequestHandler<SubmitCommand, SubmitCommandResult>>(provider => provider.GetRequiredService<SubmitCommandHandler>());
         services.TryAddTransient<IProjectionPollerDeliveryGateway, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IProjectionRebuildOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<INamedProjectionDispatchCoordinator, NamedProjectionDispatchCoordinator>();
@@ -270,10 +292,15 @@ public static class EventStoreServerServiceCollectionExtensions {
                 serviceProvider.GetService<DaprClient>() is null
                     ? NoOpHostedService.Instance
                     : ActivatorUtilities.CreateInstance<ProjectionDeliveryRetryWorker>(serviceProvider));
+            _ = services.AddSingleton<ProjectionActivationWorkerCapability>(serviceProvider =>
+                serviceProvider.GetService<DaprClient>() is null || serviceProvider.GetService<IProjectionActivationOutbox>() is not { } outbox
+                    ? null!
+                    : new ProjectionActivationWorkerCapability(
+                        ActivatorUtilities.CreateInstance<ProjectionActivationWorker>(serviceProvider), outbox,
+                        configuration.GetValue("EventStore:Projections:WorkerBackedResponsesEnabled", false)));
             _ = services.AddSingleton<IHostedService>(serviceProvider =>
-                serviceProvider.GetService<DaprClient>() is null
-                    ? NoOpHostedService.Instance
-                    : ActivatorUtilities.CreateInstance<ProjectionActivationWorker>(serviceProvider));
+                (IHostedService?)serviceProvider.GetService<ProjectionActivationWorkerCapability>()?.Worker
+                    ?? NoOpHostedService.Instance);
             // P-DEC1-8P/P4-9P: register cleanup only when DaprClient is available. Non-DAPR test
             // hosts use the same no-op pattern as the projection poller so they do not emit recurring
             // sweep failures from DAPR-backed stores.

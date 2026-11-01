@@ -24,7 +24,7 @@ internal partial class ProjectionUpdateOrchestrator
     internal async Task<bool> DeliverCompatibleReplayAsync(AggregateIdentity identity, DomainServiceRegistration registration,
         ProjectionActivationWorkItem? sampledWork, IProjectionReplayPublicationGateway publication,
         IProjectionRebuildInspectionGateway inspection, IProjectionLegacyDeliveryOutbox outbox, CancellationToken cancellationToken,
-        CommittedProjectionMethodPlan? methodPlan = null)
+        CommittedProjectionMethodPlan? methodPlan = null, CommittedRouteCatalogSnapshot? snapshot = null)
     {
         if (methodPlan is { Legacy: false }
             || methodPlan is not null && (registration.AppId != methodPlan.Registration.AppId || registration.Version != methodPlan.Registration.Version
@@ -146,7 +146,7 @@ internal partial class ProjectionUpdateOrchestrator
                     return true;
                 }
                 if (!response.IsSuccessStatusCode) return true;
-                ProjectionResponse? prepared = await ReadProjectResponseAsync(response, intent.AppId, identity, cancellationToken).ConfigureAwait(false);
+                ProjectionResponse? prepared = await ReadProjectResponseAsync(response, intent.AppId, identity, cancellationToken, snapshot).ConfigureAwait(false);
                 if (prepared is null || string.IsNullOrWhiteSpace(prepared.ProjectionType)
                     || prepared.State.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
                     || prepared.State.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(prepared.State.GetString())) return true;

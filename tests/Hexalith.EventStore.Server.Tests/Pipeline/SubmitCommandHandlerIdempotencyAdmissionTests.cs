@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
@@ -9,6 +10,8 @@ using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
 
 using NSubstitute;
 
@@ -18,6 +21,61 @@ namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 public class SubmitCommandHandlerIdempotencyAdmissionTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_PostCommitActivationFailurePreservesFailureAndMarksProtectedOutcomeUnknown(bool canceled)
+    {
+        using var cancellation = new CancellationTokenSource();
+        Exception original = canceled ? new OperationCanceledException(cancellation.Token) : new InvalidOperationException("re-arm unavailable");
+        IProjectionActivationOutbox outbox = Substitute.For<IProjectionActivationOutbox>();
+        int writes = 0;
+        outbox.EnsureAsync(Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (++writes == 1) return Task.CompletedTask;
+            if (canceled) cancellation.Cancel();
+            return Task.FromException(original);
+        });
+        using var worker = new ProjectionActivationWorker(outbox, new NoOpProjectionUpdateOrchestrator(),
+            Options.Create(new ProjectionDispatchOptions { RetryWorkerInterval = TimeSpan.FromHours(1) }), TimeProvider.System);
+        await worker.StartAsync(CancellationToken.None);
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute, projectionActivationOutbox: outbox,
+            projectionActivationWorker: new ProjectionActivationWorkerCapability(worker, outbox, true));
+        context.Router.RouteFencedCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<IdempotencyExecutionContext>(), cancellation.Token)
+            .Returns(new CommandProcessingResult(true, EventCount: 1));
+
+        Exception? observed = null;
+        try { await context.Handler.Handle(context.Command, cancellation.Token); }
+        catch (Exception exception) { observed = exception; }
+
+        observed.ShouldBeSameAs(original);
+        writes.ShouldBe(2);
+        await context.Coordinator.Received(1).MarkRecoveryAsync(Arg.Any<IdempotencyAdmissionSession>(),
+            IdempotencyAdmissionState.UnknownProviderOutcome, CancellationToken.None);
+        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+        await context.Router.DidNotReceiveWithAnyArgs().RouteCommandAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_WorkerBackedProtectedReplayDoesNotActivateOrRoute()
+    {
+        IProjectionActivationOutbox outbox = Substitute.For<IProjectionActivationOutbox>();
+        using var worker = new ProjectionActivationWorker(outbox, new NoOpProjectionUpdateOrchestrator(),
+            Options.Create(new ProjectionDispatchOptions { RetryWorkerInterval = TimeSpan.FromHours(1) }), TimeProvider.System);
+        await worker.StartAsync(CancellationToken.None);
+        var replay = new CommandProcessingResult(true, EventCount: 1, ResultPayload: "original-result");
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Replay, replay,
+            projectionActivationOutbox: outbox, projectionActivationWorker: new ProjectionActivationWorkerCapability(worker, outbox, true));
+
+        SubmitCommandResult returned = await context.Handler.Handle(context.Command, default);
+
+        returned.ResultPayload.ShouldBe(replay.ResultPayload);
+        returned.MessageId.ShouldBe(context.Command.MessageId);
+        await outbox.DidNotReceiveWithAnyArgs().EnsureAsync(default!, default);
+        await context.Router.DidNotReceiveWithAnyArgs().RouteFencedCommandAsync(default!, default!, default);
+        await context.Router.DidNotReceiveWithAnyArgs().RouteCommandAsync(default!, default);
+    }
+
     [Fact]
     public async Task Handle_Conflict_DeniesBeforeAggregateAndAdvisoryStores()
     {
@@ -671,7 +729,8 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         IProjectionActivationOutbox? projectionActivationOutbox = null,
         IdempotencyExecutionContext? executionContext = null,
         string? executionMessageId = null,
-        string? executionCorrelationId = null)
+        string? executionCorrelationId = null,
+        ProjectionActivationWorkerCapability? projectionActivationWorker = null)
     {
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();
@@ -739,7 +798,8 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
                 logger: logger ?? NullLogger<SubmitCommandHandler>.Instance,
                 correlationIndex: null,
                 projectionActivationOutbox: projectionActivationOutbox,
-                idempotencyAdmissionCoordinator: coordinator);
+                idempotencyAdmissionCoordinator: coordinator,
+                projectionActivationWorker: projectionActivationWorker);
         return new TestContext(handler, statusStore, archiveStore, router, coordinator, command);
     }
 

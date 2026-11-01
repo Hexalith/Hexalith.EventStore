@@ -141,8 +141,13 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
     public async Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
+        await UpdateProjectionCoreAsync(identity, catalogLease?.Snapshot, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task UpdateProjectionCoreAsync(AggregateIdentity identity, CommittedRouteCatalogSnapshot? snapshot, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(identity);
-        if (catalogLease is not null) _ = ResolveCommittedProjection(catalogLease.Snapshot, identity);
+        if (snapshot is not null) _ = ResolveCommittedProjection(snapshot, identity);
 
         int refreshIntervalMs = projectionOptions.Value.GetRefreshIntervalMs(identity.Domain);
         if (refreshIntervalMs > 0) {
@@ -157,15 +162,37 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
             return;
         }
 
-        await DeliverProjectionAsync(identity, cancellationToken).ConfigureAwait(false);
+        await DeliverProjectionCoreAsync(identity, snapshot, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
+        await DeliverProjectionCoreAsync(identity, catalogLease?.Snapshot, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Delivers a complete committed method plan within the worker's independent captured lease.</summary>
+    internal async Task<ProjectionSourceGuardDeliveryResult?> DeliverActivationAsync(AggregateIdentity identity,
+        CommittedRouteCatalogSnapshot? snapshot, CancellationToken cancellationToken)
+    {
+        CommittedProjectionMethodPlan? plan = snapshot is null ? null : ResolveCommittedProjectionPlan(snapshot, identity);
+        if (plan is { Legacy: true } || sourceGuardDelivery is null)
+        {
+            // The existing orchestrator owns all named AND legacy outputs, including their
+            // durable intent/refusal and conditional cleanup. A named-only proof cannot clear it.
+            await UpdateProjectionCoreAsync(identity, snapshot, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+        ProjectionSourceGuardDeliveryResult guarded = await sourceGuardDelivery.TryDeliverAsync(identity, cancellationToken).ConfigureAwait(false);
+        if (!guarded.Owned) await UpdateProjectionCoreAsync(identity, snapshot, cancellationToken).ConfigureAwait(false);
+        return guarded;
+    }
+
+    private async Task DeliverProjectionCoreAsync(AggregateIdentity identity, CommittedRouteCatalogSnapshot? snapshot, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(identity);
-        CommittedProjectionMethodPlan? methodPlan = catalogLease is null ? null : ResolveCommittedProjectionPlan(catalogLease.Snapshot, identity);
+        CommittedProjectionMethodPlan? methodPlan = snapshot is null ? null : ResolveCommittedProjectionPlan(snapshot, identity);
         if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, methodPlan.LegacyOutputs, cancellationToken).ConfigureAwait(false);
         bool sourceGuardHandledNamed = false;
         if (sourceGuardDelivery is not null && methodPlan is not { Named: false })
@@ -174,6 +201,9 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
             if (guarded.Owned)
             {
                 if (methodPlan is not { Legacy: true } || !guarded.AlreadyCurrent && !guarded.CompletionProven) return;
+                using var namedCleanup = guarded.CreateCleanupBudget(timeProvider ?? TimeProvider.System);
+                if (!guarded.FinalizedCleanupProven && (guarded.FinalizationStartedTimestamp is not null
+                    || !await sourceGuardDelivery.ReclaimCompletedReplayAsync(identity, namedCleanup.Token).ConfigureAwait(false))) return;
                 sourceGuardHandledNamed = true;
             }
         }
@@ -247,7 +277,7 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                 namedActivationDurable = false;
                 if (await DeliverCompatibleReplayAsync(identity, registration, activationWorkItem,
                     publication, inspection, legacyOutbox, cancellationToken,
-                    sourceGuardHandledNamed ? methodPlan! with { NamedOutputs = [] } : methodPlan).ConfigureAwait(false)) return;
+                    sourceGuardHandledNamed ? methodPlan! with { NamedOutputs = [] } : methodPlan, snapshot).ConfigureAwait(false)) return;
                 releasedCompatibility = true;
             }
 
@@ -384,14 +414,14 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                     responseHandle,
                     registration.AppId,
                     identity,
-                    cancellationToken)
+                    cancellationToken, snapshot)
                 .ConfigureAwait(false);
             if (response is null) {
                 return;
             }
 
-            if (catalogLease is not null && !Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogProjectionPolicy.Outputs(
-                catalogLease.Snapshot, identity.TenantId, identity.Domain, registration.AppId, "project").Contains(response.ProjectionType, StringComparer.Ordinal))
+            if (snapshot is not null && !Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogProjectionPolicy.Outputs(
+                snapshot, identity.TenantId, identity.Domain, registration.AppId, "project").Contains(response.ProjectionType, StringComparer.Ordinal))
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The legacy projection returned an undeclared output.");
 
             if (string.IsNullOrWhiteSpace(response.ProjectionType)) {
@@ -1208,7 +1238,7 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                     responseHandle,
                     registration.AppId,
                     identity,
-                    cancellationToken)
+                    cancellationToken, catalogLease?.Snapshot)
                 .ConfigureAwait(false);
             if (response is null) {
                 await FailRebuildAsync(
@@ -2332,9 +2362,11 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
         HttpResponseMessage httpResponse,
         string appId,
         AggregateIdentity identity,
-        CancellationToken cancellationToken) {
-        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        CancellationToken cancellationToken, CommittedRouteCatalogSnapshot? capturedSnapshot = null) {
+        var catalogLease = capturedSnapshot is not null || catalogAuthority is null ? null
+            : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
+        CommittedRouteCatalogSnapshot? snapshot = capturedSnapshot ?? catalogLease?.Snapshot;
         string contentType = GetContentTypeForLog(httpResponse.Content);
         string httpStatus = ((int)httpResponse.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (!IsJsonContent(httpResponse.Content)) {
@@ -2374,8 +2406,8 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
             ProjectionResponse? result = await httpResponse.Content
                 .ReadFromJsonAsync<ProjectionResponse>(cancellationToken)
                 .ConfigureAwait(false);
-            if (catalogLease is not null && result is not null
-                && !Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogProjectionPolicy.Outputs(catalogLease.Snapshot,
+            if (snapshot is not null && result is not null
+                && !Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogProjectionPolicy.Outputs(snapshot,
                     identity.TenantId, identity.Domain, appId, "project").Contains(result.ProjectionType, StringComparer.Ordinal))
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("A legacy projection response names an undeclared output.");
             return result;

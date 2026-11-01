@@ -83,6 +83,13 @@ Inside the AggregateActor pipeline, the actor first validates the signed fence a
 
 The result propagates back through the CommandRouter, SubmitCommandHandler, MediatR Pipeline, and Command API, which responds to the client with HTTP 202 Accepted, a `messageId` and a `Location` header for status tracking. The response also carries `correlationId` for tracing.
 
+`EventStore:Projections:WorkerBackedResponsesEnabled` explicitly opts a qualified deployment into returning accepted event-bearing commands without awaiting full projection replay. It defaults to `false`. Enable it only for a fresh store with a qualified cohort of current writers; the switch itself proves no writer inventory. The existing Tenants owned same-source catalog profile enables it for that fresh cohort. Mixed old/current writers and rollback after adoption remain unqualified: old writers can discard the additive activation revision counter, and the existing delivery-writer v2 marker does not prove support for this counter.
+
+Deferral requires the exact durable outbox and its actual running hosted activation worker. A missing, unstarted, stopped or disabled worker, missing Dapr or outbox, or absent opt-in retains awaited request-path replay and its catalog lease. Write-ahead activation remains mandatory before actor routing. After a real accepted event-bearing result, bounded independent cleanup restores activation before acknowledgement, even if the caller canceled; caller cancellation still applies to the response. Unknown-outcome reconciliation restores the same durable work before admission completion. A failed required restoration never acknowledges the command.
+
+The worker owns bounded concurrent attempts and drains them at shutdown. Each attempt acquires its own complete catalog lease through all committed named and legacy outputs and conditional cleanup. A held aggregate occupies its slot while other slots and later scans continue. Conditional activation cleanup compares its sampled revision; a durable shard revision high-water mark survives removal and recreation to fence stale cleanup. Closed scan, delivery and defer failure/recovery logs expose acknowledged-path delivery problems without payload or exception-message logging.
+
+
 </details>
 
 ## Phase 1: REST API Entry Point

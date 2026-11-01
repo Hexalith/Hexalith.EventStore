@@ -1,4 +1,9 @@
 using System.Net;
+using MediatR;
+using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.ServiceDefaults.Routing;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Dapr.Actors.Runtime;
 using Dapr.Client;
@@ -26,6 +31,64 @@ public class EventStoreServerServiceCollectionExtensionsTests {
     private static readonly string _strongDigestKey = Convert.ToBase64String(Enumerable.Repeat((byte)0x2A, 32).ToArray());
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DefaultSubmitAliasUsesOwningFactoryInBothAssemblyScanOrders(bool scanBeforeServer)
+    {
+        using ServiceProvider provider = BuildSubmitAliasProvider(scanBeforeServer);
+        provider.GetRequiredService<IRequestHandler<SubmitCommand, SubmitCommandResult>>().ShouldBeOfType<SubmitCommandHandler>();
+        ServiceDescriptor descriptor = provider.GetRequiredService<IReadOnlyList<ServiceDescriptor>>()
+            .Single(item => item.ServiceType == typeof(IRequestHandler<SubmitCommand, SubmitCommandResult>));
+        descriptor.ImplementationFactory.ShouldNotBeNull();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SubmitCompositionPreservesCustomConcreteAndInterfaceRegistrations(bool scanBeforeServer, bool customConcrete)
+    {
+        var concrete = new SubmitCommandHandler(Substitute.For<ICommandStatusStore>(), Substitute.For<ICommandArchiveStore>(),
+            Substitute.For<ICommandRouter>(), NullLogger<SubmitCommandHandler>.Instance);
+        var alias = Substitute.For<IRequestHandler<SubmitCommand, SubmitCommandResult>>();
+        using ServiceProvider provider = BuildSubmitAliasProvider(scanBeforeServer, customConcrete ? concrete : null, customConcrete ? null : alias);
+        if (customConcrete)
+        {
+            provider.GetRequiredService<SubmitCommandHandler>().ShouldBeSameAs(concrete);
+            provider.GetRequiredService<IRequestHandler<SubmitCommand, SubmitCommandResult>>().ShouldBeSameAs(concrete);
+        }
+        else provider.GetRequiredService<IRequestHandler<SubmitCommand, SubmitCommandResult>>().ShouldBeSameAs(alias);
+    }
+
+    private static ServiceProvider BuildSubmitAliasProvider(bool scanBeforeServer, SubmitCommandHandler? concrete = null,
+        IRequestHandler<SubmitCommand, SubmitCommandResult>? alias = null)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        IConfiguration configuration = new ConfigurationBuilder().Build();
+        services.AddSingleton(configuration);
+        if (concrete is not null) services.AddSingleton(concrete);
+        if (alias is not null) services.AddSingleton(alias);
+        if (scanBeforeServer) services.AddMediatR(settings => settings.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>());
+        services.AddEventStoreServer(configuration);
+        if (!scanBeforeServer) services.AddMediatR(settings => settings.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>());
+        services.AddSingleton(Substitute.For<ICommandStatusStore>());
+        services.AddSingleton(Substitute.For<ICommandArchiveStore>());
+        services.AddSingleton(Substitute.For<ICommandRouter>());
+        services.AddSingleton(Substitute.For<IProjectionUpdateOrchestrator>());
+        services.AddSingleton(Substitute.For<IRouteCatalogAuthority>());
+        services.AddSingleton(Substitute.For<IProjectionActivationOutbox>());
+        services.AddSingleton(Substitute.For<IIdempotencyAdmissionCoordinator>());
+        services.AddSingleton(Substitute.For<ICommandActivityTracker>());
+        services.AddSingleton(Substitute.For<IStreamActivityTracker>());
+        services.AddSingleton(Substitute.For<ICommandCorrelationIndex>());
+        ServiceDescriptor[] descriptors = [.. services];
+        services.AddSingleton<IReadOnlyList<ServiceDescriptor>>(descriptors);
+        return services.BuildServiceProvider();
+    }
+
+    [Theory]
     [InlineData(null, true)]
     [InlineData("true", true)]
     [InlineData("false", false)]
@@ -41,6 +104,15 @@ public class EventStoreServerServiceCollectionExtensionsTests {
         hosted.ShouldContain(service => service is ProjectionDiscoveryHostedService);
         hosted.Any(service => service is ProjectionDeliveryRetryWorker).ShouldBe(expected);
         hosted.Any(service => service is ProjectionActivationWorker).ShouldBe(expected);
+        ProjectionActivationWorkerCapability? capability = provider.GetService<ProjectionActivationWorkerCapability>();
+        if (expected) {
+            capability.ShouldNotBeNull().Worker.ShouldBeSameAs(hosted.Single(service => service is ProjectionActivationWorker));
+            capability.Enabled.ShouldBeFalse();
+            capability.CanDefer(provider.GetRequiredService<IProjectionActivationOutbox>()).ShouldBeFalse();
+        }
+        else {
+            capability.ShouldBeNull();
+        }
         hosted.Any(service => service is ActiveRebuildIndexCleanupService).ShouldBe(expected);
         hosted.Any(service => service is ProjectionPollerService).ShouldBe(expected);
     }
@@ -52,6 +124,8 @@ public class EventStoreServerServiceCollectionExtensionsTests {
         IHostedService[] hostedServices = [.. provider.GetServices<IHostedService>()];
 
         hostedServices.ShouldNotContain(service => service is ActiveRebuildIndexCleanupService);
+        hostedServices.ShouldNotContain(service => service is ProjectionActivationWorker);
+        provider.GetService<ProjectionActivationWorkerCapability>().ShouldBeNull();
     }
 
     [Fact]

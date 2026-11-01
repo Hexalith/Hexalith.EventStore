@@ -212,17 +212,20 @@ internal sealed class QualificationRuntime : IAsyncDisposable
     internal async Task RequireRedisSaveAsync(string container)
     {
         if (!_containerNames.Contains(container)) throw new InvalidOperationException("Redis SAVE requires this invocation's reserved provider.");
-        string result = await RequireAsync("docker", ["exec", container, "redis-cli", "SAVE"]);
-        if (result.Trim() != "OK") throw new InvalidOperationException("The owned Redis did not acknowledge its actual SAVE.");
+        DateTimeOffset began = DateTimeOffset.UtcNow;
+        await QualificationRedisSavePolicy.RequireAcknowledgementAsync(token => RunAsync(
+            new("docker", ["exec", container, "redis-cli", "SAVE"], Root, QualificationRedisSavePolicy.Budget),
+            token, executionStarted: began), TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Runs an operation with an independent finite deadline and retains failed command observations.</summary>
-    internal async Task<CommandObservation> RunAsync(QualificationCommand command, CancellationToken cancellationToken = default, ConsumerBuild? consumer = null)
+    /// <summary>Runs an operation under a finite deadline, optionally sharing its original start, and retains failed command observations.</summary>
+    internal async Task<CommandObservation> RunAsync(QualificationCommand command, CancellationToken cancellationToken = default,
+        ConsumerBuild? consumer = null, DateTimeOffset? executionStarted = null)
     {
         if (Path.GetFileName(command.FileName) == "docker" && command.Arguments.FirstOrDefault() == "inspect"
             && !command.Arguments.Contains("--format", StringComparer.Ordinal) && !command.Arguments.Contains("-f", StringComparer.Ordinal))
             command = command with { Arguments = ["inspect", "--format", ContainerIdentityFormat, .. command.Arguments.Skip(1)] };
-        DateTimeOffset deadlineStarted = DateTimeOffset.UtcNow;
+        DateTimeOffset deadlineStarted = executionStarted ?? DateTimeOffset.UtcNow;
         return await CompleteStartedAsync(Start(command, consumer), cancellationToken, deadlineStarted);
     }
 
