@@ -346,9 +346,22 @@ public static partial class RouteCatalogValidator
         {
             IdempotencyDescriptorField field = descriptor.Fields[index];
             string fieldPath = $"{path}.fields[{index}]";
-            Name(field.Name, fieldPath + ".name");
-            Require(names.Add(field.Name), fieldPath + ".name", "duplicate-descriptor-field");
+            if (field.Source == "payload" || field.Source == "semantic-option")
+                Require(field.Name is { Length: > 0 and <= 128 }
+                    && field.Name.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-'),
+                    fieldPath + ".name", "missing-or-invalid-name");
+            else
+                Name(field.Name, fieldPath + ".name");
+            Require(names.Add((field.Source ?? (field.Name == "target" ? "target" : "payload")) + ":" + field.Name), fieldPath + ".name", "duplicate-descriptor-field");
             Require(field.Type is "string" or "int64" or "boolean" or "string-list", fieldPath + ".type", "unsupported-descriptor-type");
+            Require(field.Source is null or "payload" or "target" or "semantic-option" or "delegated-task-scope" or "credential-scope",
+                fieldPath + ".source", "unsupported-descriptor-source");
+            Require(field.Source is null or "payload" || field.Type == "string", fieldPath + ".type", "invalid-descriptor-source-type");
+            Require(field.Source is not ("target" or "semantic-option") || !field.Nullable,
+                fieldPath + ".nullable", "invalid-descriptor-source-nullability");
+            Require(field.Source != "target" || field.Name == "target", fieldPath + ".name", "invalid-descriptor-target");
+            Require(field.Source is not ("delegated-task-scope" or "credential-scope") || field.Name == field.Source,
+                fieldPath + ".name", "invalid-descriptor-scope");
         }
     }
 

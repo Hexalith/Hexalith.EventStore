@@ -17,6 +17,19 @@ namespace Hexalith.EventStore.DomainService;
 /// <summary>Explicit Development enrollment of the compiled owner contracts and actual installed domain receivers.</summary>
 public static class DevelopmentDomainRouteCatalog
 {
+    /// <summary>Enrolls the actual canonical callback receivers for a bespoke domain host through the same SDK-owned observation and fence.</summary>
+    public static Microsoft.AspNetCore.Builder.WebApplication UseEventStoreDevelopmentDomainCatalog(
+        this Microsoft.AspNetCore.Builder.WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        return FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app,
+            endpoint => endpoint.Metadata.GetMetadata<DomainRouteCatalogAuxiliaryMetadata>() is { } auxiliary
+                ? auxiliary.Route.Operation : endpoint.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>() is not null
+                    ? DomainRouteCatalogSidecarMetadata.Operation
+                    : EventStoreDomainServiceRoutes.Operational.SingleOrDefault(route => route.Route == endpoint.RoutePattern.RawText)?.Operation,
+            DomainRouteCatalogAuxiliaryMetadata.ObserveEndpoint, DomainRouteCatalogSidecarMetadata.ObserveEndpoint);
+    }
+
     /// <summary>Enables run-private catalog preparation only when the owning runner supplies bootstrap configuration.</summary>
     public static IServiceCollection AddEventStoreDevelopmentDomainCatalog(this IServiceCollection services,
         IConfiguration configuration, params Assembly[] contractOwners)
@@ -38,6 +51,9 @@ public static class DevelopmentDomainRouteCatalog
             Assembly[] implementations = [.. contractOwners, typeof(DevelopmentDomainRouteCatalog).Assembly,
                 .. contractOwners.SelectMany(owner => owner.GetReferencedAssemblies()).Select(Assembly.Load),
                 .. discovery.Projections.Select(projection => projection.Type.Assembly),
+                .. declarations.Where(declaration => declaration.Kind == "command").Select(declaration => declaration.Domain).Distinct(StringComparer.Ordinal)
+                    .Select(domain => local.GetRequiredKeyedService<IDomainProcessor>(domain)).OfType<IDomainCommandPayloadInventory>()
+                    .SelectMany(inventory => inventory.CommandPayloadTypes).Select(type => type.Assembly),
                 .. discovery.Aggregates.SelectMany(aggregate => local.GetRequiredKeyedService<IDomainProcessor>(aggregate.DomainName)
                     is IDomainCommandPayloadInventory inventory ? inventory.CommandPayloadTypes : Array.Empty<Type>()).Select(type => type.Assembly),
                 .. discovery.Aggregates.Select(aggregate => aggregate.Type.Assembly),
@@ -66,15 +82,19 @@ public static class DevelopmentDomainRouteCatalog
         var legacy = services.GetServices<LegacyProjectionCatalogRegistration>().SelectMany(r => r.Declarations).ToArray();
         var identity = services.GetRequiredService<IOptions<DomainProjectionIdentityOptions>>().Value;
         identity.Validate();
-        foreach (var aggregate in discovery.Aggregates)
+        var commandDomains = declarations.Where(declaration => declaration.Kind == "command").Select(declaration => declaration.Domain)
+            .Concat(discovery.Aggregates.Select(aggregate => aggregate.DomainName)).Distinct(StringComparer.Ordinal).ToArray();
+        foreach (string domain in commandDomains)
         {
-            var processor = services.GetRequiredKeyedService<IDomainProcessor>(aggregate.DomainName);
+            var processor = services.GetKeyedService<IDomainProcessor>(domain)
+                ?? throw new RouteCatalogUnavailableException("The compiled commands have no installed domain processor.");
+            var aggregate = discovery.Aggregates.SingleOrDefault(candidate => candidate.DomainName == domain);
             var payloads = processor is IDomainCommandPayloadInventory inventory ? inventory.CommandPayloadTypes
-                : aggregate.Type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                : aggregate?.Type.GetMethods(BindingFlags.Public | BindingFlags.Static)
                     .Where(method => method.Name == "Handle" && method.GetParameters().Length > 0)
-                    .Select(method => method.GetParameters()[0].ParameterType).Distinct().ToArray();
+                    .Select(method => method.GetParameters()[0].ParameterType).Distinct().ToArray() ?? [];
             if (payloads.Count == 0 || !payloads.Select(type => type.FullName).Order(StringComparer.Ordinal).SequenceEqual(
-                declarations.Where(d => d.Kind == "command" && d.Domain == aggregate.DomainName)
+                declarations.Where(d => d.Kind == "command" && d.Domain == domain)
                     .Select(d => d.Execution!.HandlerType).Order(StringComparer.Ordinal), StringComparer.Ordinal))
                 throw new RouteCatalogUnavailableException("The compiled commands differ from the actual aggregate or custom processor payload inventory.");
         }
@@ -95,7 +115,7 @@ public static class DevelopmentDomainRouteCatalog
                 throw new RouteCatalogUnavailableException("This Development enrollment owns domain-service receivers and delegates only the canonical gateway projection query.");
             string method = declaration.Kind switch
             {
-                "command" when discovery.Aggregates.Any(a => a.DomainName == declaration.Domain) => "process",
+                "command" when commandDomains.Contains(declaration.Domain, StringComparer.Ordinal) => "process",
                 "query" when queries.Count(q => q.Domain == declaration.Domain && q.QueryType == declaration.MessageType) == 1 => "query",
                 "projection" when named.Any(h => h.Domain == declaration.Domain && h.ProjectionType == declaration.ProjectionType
                     && h.GetType().FullName == declaration.Execution.HandlerType) => "project/v2",

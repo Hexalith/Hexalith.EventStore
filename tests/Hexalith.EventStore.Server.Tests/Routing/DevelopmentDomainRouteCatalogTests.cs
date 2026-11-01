@@ -21,6 +21,9 @@ public sealed class DevelopmentDomainRouteCatalogTests
 {
     [Theory]
     [InlineData("valid")]
+    [InlineData("custom-without-aggregate")]
+    [InlineData("custom-missing-processor")]
+    [InlineData("custom-missing-payload")]
     [InlineData("gateway-query")]
     [InlineData("foreign-actor")]
     [InlineData("actor-shadowed-local-query")]
@@ -40,8 +43,10 @@ public sealed class DevelopmentDomainRouteCatalogTests
         var processor = Substitute.For<IDomainProcessor, IDomainCommandPayloadInventory>();
         ((IDomainCommandPayloadInventory)processor).CommandPayloadTypes.Returns(declarations.Select(d => AppDomain.CurrentDomain.GetAssemblies().Select(assembly => assembly.GetType(d.Execution!.HandlerType!)).First(type => type is not null)!).ToArray());
         var services = new ServiceCollection();
-        services.AddSingleton(new DiscoveryResult([new(typeof(CounterAggregate), "counter", typeof(object), DomainKind.Aggregate)], []));
-        services.AddKeyedSingleton<IDomainProcessor>("counter", processor);
+        services.AddSingleton(new DiscoveryResult(fault is "custom-without-aggregate" or "custom-missing-processor" or "custom-missing-payload"
+            ? [] : [new(typeof(CounterAggregate), "counter", typeof(object), DomainKind.Aggregate)], []));
+        if (fault == "custom-missing-payload") ((IDomainCommandPayloadInventory)processor).CommandPayloadTypes.Returns(Array.Empty<Type>());
+        if (fault != "custom-missing-processor") services.AddKeyedSingleton<IDomainProcessor>("counter", processor);
         services.AddSingleton<IOptions<DomainProjectionIdentityOptions>>(Options.Create(new DomainProjectionIdentityOptions { AppId = "counter-owner", ServiceVersion = "v1" }));
         if (fault == "undeclared-command") declarations = declarations.Skip(1).ToArray();
         if (fault == "wrong-operation") declarations = declarations.Select(d => d with { Operation = "wrong-operation" }).ToArray();
@@ -71,7 +76,7 @@ public sealed class DevelopmentDomainRouteCatalogTests
         endpoint.Metadata.Add(new AuthorizeAttribute { Policy = fault == "wrong-policy" ? "wrong-policy" : canonical.Policy });
         if (fault == "anonymous") endpoint.Metadata.Add(new AllowAnonymousAttribute());
         using var provider = services.BuildServiceProvider();
-        if (fault is "valid" or "gateway-query")
+        if (fault is "valid" or "gateway-query" or "custom-without-aggregate")
         {
             var targets = DevelopmentDomainRouteCatalog.Targets(provider, [endpoint.Build()], declarations);
             targets.Count.ShouldBe(declarations.Count(declaration => declaration.Kind == "command"));
