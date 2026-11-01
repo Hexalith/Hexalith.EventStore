@@ -53,12 +53,18 @@ is_semver_without_numeric_padding "$version" ||
   fail "A semantic release version without build metadata or leading-zero numeric identifiers is required."
 [[ "$phase" =~ ^(verify|publish)$ ]] ||
   fail "Publication phase must be verify or publish."
-[[ "$builds_execution_sha" = "22a578b576a515d2af214fe81859447fffc97981" ]] ||
+[[ "$builds_execution_sha" = "30ea43a56330a9828ed0bb2e837289231d8630d1" ]] ||
   fail "HEXALITH_BUILDS_EXECUTION_SHA must be the approved publisher commit."
 [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] ||
   fail "GITHUB_SHA must identify the exact workflow source commit."
-[[ "$source_branch" = "main" ]] ||
-  fail "HEXALITH_RELEASE_SOURCE_BRANCH must be exactly main."
+case "$source_branch" in
+  main) ;;
+  release/parties-sdk-3.130.2)
+    [[ "$version" = "3.130.2" && "${GITHUB_REPOSITORY:-}" = "Hexalith/Hexalith.EventStore" ]] ||
+      fail "The maintenance source is approved only for EventStore 3.130.2."
+    ;;
+  *) fail "HEXALITH_RELEASE_SOURCE_BRANCH must be main or the exact approved maintenance branch." ;;
+esac
 [[ "$source_ci_workflow" = "ci.yml" ]] ||
   fail "HEXALITH_RELEASE_SOURCE_CI_WORKFLOW must be exactly ci.yml."
 [[ "$package_manifest" = "tools/release-packages.json" ]] ||
@@ -81,6 +87,14 @@ is_semver_without_numeric_padding "$version" ||
   fail "HEXALITH_RELEASE_REQUIRE_AUTHORITY must be exactly false. Semantic Release selects the version."
 [[ -z "$reserved_version" && -z "$authority_issue_url" && -z "$authority_owner" ]] ||
   fail "Reservation and authority values must be empty. Semantic Release selects the version."
+
+# Recheck every maintenance proof at both verify and publish, including changes
+# after the production job's pre-token check. Canonical preflight also rebinds
+# current source and the exact finite repository/branch/workflow/version tuple.
+if [[ "$source_branch" != "main" ]]; then
+  [[ "${GITHUB_REF:-}" = "refs/heads/$source_branch" ]] || fail "The maintenance workflow ref must match the approved source branch."
+  GH_TOKEN="${GITHUB_TOKEN:-}" bash scripts/verify-release-source.sh
+fi
 
 preflight_arguments=(
   --repository "Hexalith/Hexalith.EventStore"

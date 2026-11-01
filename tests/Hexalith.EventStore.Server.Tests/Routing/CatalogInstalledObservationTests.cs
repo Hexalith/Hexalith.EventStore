@@ -139,14 +139,63 @@ public sealed class CatalogInstalledObservationTests
         var lease = await authority.AcquireAsync(); contended.ConflictsRemaining = 64;
         await lease.DisposeAsync(); contended.ConflictsObserved.ShouldBe(64);
         (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
-        await Task.WhenAll(Enumerable.Range(0, 12).Select(async _ =>
+        long firstDispatch = (await fixture.Store.ReadAsync(default)).State.LastLease;
+        for (int cohort = 0; cohort < 4; cohort++)
         {
-            for (int iteration = 0; iteration < 4; iteration++)
+            var acquireStart = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var acquisitions = Enumerable.Range(0, 12).Select(_ => Task.Run(async () =>
             {
-                await using var dispatch = await authority.AcquireAsync();
-                await Task.Yield();
-            }
-        }));
+                await acquireStart.Task;
+                return await authority.AcquireAsync();
+            })).ToArray();
+            acquireStart.SetResult();
+            var dispatches = await Task.WhenAll(acquisitions);
+            // Hold the complete cohort's actual durable fences before releasing any.
+            var held = (await fixture.Store.ReadAsync(default)).State;
+            held.Leases.Count.ShouldBe(12);
+            held.Leases.Select(fence => fence.LeaseId).Distinct().Count().ShouldBe(12);
+            held.LastLease.ShouldBe(firstDispatch + (cohort + 1) * 12);
+            var releaseStart = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var drains = dispatches.Select(dispatch => Task.Run(async () =>
+            {
+                await releaseStart.Task;
+                await dispatch.DisposeAsync();
+            })).ToArray();
+            releaseStart.SetResult();
+            await Task.WhenAll(drains);
+            (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
+        }
+        (await fixture.Store.ReadAsync(default)).State.LastLease.ShouldBe(firstDispatch + 48);
+        (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
+        (await authority.ReadbackAsync()).Serving.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AcquisitionRefusesAfter32ConflictsWithoutLeakingAndLaterSucceeds()
+    {
+        var fixture = new RouteCatalogTestFixture(); await fixture.ActivateAsync(fixture.Candidate());
+        var contended = new CatalogContendedStateStore(fixture.Store) { ConflictsRemaining = 32 };
+        var options = Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development", DevelopmentFixture = true });
+        var environment = Substitute.For<IHostEnvironment>(); environment.EnvironmentName.Returns("Development");
+        var authority = new RouteCatalogAuthority(contended, new DevelopmentRouteCatalogTrustValidator(options, environment), options,
+            new ObservedRouteCatalogHost(_ => Task.FromResult(fixture.Observations[0])));
+        var before = await fixture.Store.ReadAsync(default);
+        var refusal = await Should.ThrowAsync<RouteCatalogUnavailableException>(() => authority.AcquireAsync());
+        refusal.Message.ShouldBe("Concurrent catalog authority updates could not be serialized.");
+        contended.ConflictsObserved.ShouldBe(32);
+        contended.ConflictsRemaining.ShouldBe(0);
+        var refused = await fixture.Store.ReadAsync(default);
+        refused.ETag.ShouldBe(before.ETag);
+        refused.State.Leases.ShouldBeEmpty();
+        refused.State.LastLease.ShouldBe(before.State.LastLease);
+        refused.State.Committed!.RootDigest.ShouldBe(before.State.Committed!.RootDigest);
+        (await authority.ReadbackAsync()).Serving.ShouldBeTrue();
+        var lease = await authority.AcquireAsync();
+        var admitted = (await fixture.Store.ReadAsync(default)).State;
+        admitted.Leases.ShouldHaveSingleItem();
+        admitted.LastLease.ShouldBe(before.State.LastLease + 1);
+        lease.Snapshot.RootDigest.ShouldBe(before.State.Committed.RootDigest);
+        await lease.DisposeAsync();
         (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
         (await authority.ReadbackAsync()).Serving.ShouldBeTrue();
     }
