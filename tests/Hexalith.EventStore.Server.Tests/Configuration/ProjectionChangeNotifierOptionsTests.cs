@@ -188,4 +188,42 @@ public class ProjectionChangeNotifierOptionsTests {
         result.Failed.ShouldBeTrue();
         result.FailureMessage.ShouldContain("MaxDetailMetadataBytes");
     }
+
+    /// <summary>Story 5.5: pub/sub provenance needs an audience, so a blank one fails startup instead of every notify call.</summary>
+    /// <param name="audience">The blank provenance audience.</param>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Validation_BlankProvenanceAudience_Fails(string audience) {
+        var options = new ProjectionChangeNotifierOptions {
+            ProvenanceAudience = audience,
+        };
+
+        ValidateOptionsResult result = _validator.Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("ProvenanceAudience");
+    }
+
+    public static TheoryData<string[], string[]> AllowedPublisherCases => new() {
+        { [], [ProjectionChangeNotifierOptions.DefaultProvenanceAudience] },
+        { ["sample", " reactor "], ["sample", "reactor"] },
+        { [" ", ""], [] },
+    };
+
+    /// <summary>
+    /// Story 5.5: a configured publisher allow-list replaces the EventStore default, trimmed and without blank entries.
+    /// A blank-only list admits nobody, so the receiver fails closed instead of falling back to the default.
+    /// </summary>
+    /// <param name="configured">The configured allow-list.</param>
+    /// <param name="expected">The effective allow-list.</param>
+    [Theory]
+    [MemberData(nameof(AllowedPublisherCases))]
+    public void GetEffectiveAllowedPublishers_ReplacesTheDefaultWithTheTrimmedConfiguredList(string[] configured, string[] expected) {
+        var options = new ProjectionChangeNotifierOptions {
+            AllowedPublishers = [.. configured],
+        };
+
+        options.GetEffectiveAllowedPublishers().ShouldBe(expected);
+    }
 }
