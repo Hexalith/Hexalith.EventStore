@@ -51,6 +51,7 @@ review_loop_iteration: 1
 
 - `src/Hexalith.EventStore.Contracts/Routing/RouteCatalogTopologyValidator.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Routing/TechnicalTopologyVerbIsolationTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Routing/CatalogInstalledObservationTests.cs` (bounded CI fixture correction only)
 - `.github/workflows/{ci,commitlint,integration,codeql,dependency-review,advisory-tests,payload-protection,payload-protection-lifecycle,release}.yml`
 - `.releaserc.json`
 - `scripts/{verify-release-source,validate-publication-preflight}.sh`
@@ -287,3 +288,46 @@ The frozen intent remains byte-identical to the reviewed packet.
 
 Exact protected SDK branch CI/Integration, production release and fourteen
 official archive checks remain required before reporting publication.
+
+
+### Concrete PR381 CI repair: preserve release progress, not acquisition fairness
+
+The exact ad921 core job124735831183 failed one Server test (6695 passed,
+25 skipped): QuiescentOwnLeaseReleaseMakesProgressPast32ConflictsAndConcurrentDispatchDrains
+exhausted the unchanged production acquisition budget at RouteCatalogAuthority
+line209. The same single test independently reproduces this locally before
+any edit; `/tmp/es31302-core-contention-failed-subset-before.log` retains red
+evidence. The first64-conflict own-release assertion already passed.
+
+The original Story5.13 intent at lines82 and219 requires known-quiescent
+own-release progress beyond the general32-attempt update budget, plus
+concurrent acquire/release controls. It does not promise admission fairness
+under continual reacquisition. Preserve both production paths unchanged.
+The old twelve workers can loop four times independently, exposing one
+acquisition to more than32 competing writes. Correct only the fixture to
+four bounded cohorts with twelve genuinely concurrent acquisitions, hold
+all twelve leases together, then concurrently dispose them and assert durable
+empty inventory before the next cohort. Retain48 total dispatches,64 injected
+own-release conflicts, all prior state/readiness assertions and actual
+concurrency. Assert the general acquisition budget still refuses after32
+forced conflicts with no leaked fence, then prove later uncontended admission
+and release succeed. Do not add production backoff, jitter, retries, a new
+lease policy, deadlines or relaxed assertions.
+
+The focused installed-observation class and existing prepare-fences-new-reader,
+drain-before-commit and concurrent-writer controls must pass. Other product
+source and all prior patch closure hashes stay unchanged. The new exact PR
+head must run normal required/full CI and Integration; a blind rerun or stale
+head proof cannot replace this repair.
+
+
+CI fixture correction local verification: the unchanged single old case
+reproduced red (one failure, same finite acquisition exception). The corrected
+installed-observation class plus the existing prepare/new-reader/drain and
+concurrent-writer controls pass11 cases, no failures/skips, in both implementer
+and independent author execution. The affected Debug test-project build has
+zero warnings/errors. Logs: `/tmp/es31302-core-contention-fixture-{focused,author,build}.log`.
+No production authority code, acquisition budget, retry, backoff, deadline,
+workflow or assertion gate changed. All prior source/claim packets are
+preserved; only this test fixture and this spec differ from ad921. The exact
+new PR head still requires fresh normal CI and full Integration.
