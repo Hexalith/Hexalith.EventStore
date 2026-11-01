@@ -2,6 +2,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Replay;
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Http;
@@ -15,6 +16,13 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
 {
     /// <inheritdoc/>
     public async Task<RouteCatalogDispatchLease?> AcquireAsync(EndpointFilterInvocationContext context)
+        => (await AcquireCoreAsync(context, allowRefusal: false).ConfigureAwait(false)).Lease;
+
+    /// <summary>Acquires the SDK filter's private terminal decision without changing direct guard admission.</summary>
+    internal Task<DomainRouteCatalogDecision> AcquireDecisionAsync(EndpointFilterInvocationContext context)
+        => AcquireCoreAsync(context, allowRefusal: true);
+
+    private async Task<DomainRouteCatalogDecision> AcquireCoreAsync(EndpointFilterInvocationContext context, bool allowRefusal)
     {
         ArgumentNullException.ThrowIfNull(context);
         RouteCatalogDispatchLease lease = await authority.AcquireAsync(context.HttpContext.RequestAborted).ConfigureAwait(false);
@@ -28,6 +36,8 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
             if (!RouteCatalogPeerBinding.Matches(headers, snapshot))
                 throw new RouteCatalogUnavailableException("The incoming call does not bind this committed generation.");
             string appId = options.Value.Identity?.AppId ?? throw new RouteCatalogUnavailableException("The receiver has no catalog host identity.");
+            if (snapshot.LocalAppId is not null && snapshot.LocalAppId != appId)
+                throw new RouteCatalogUnavailableException("The receiver identity differs from its committed local authority.");
             string method = context.HttpContext.Request.Path.Value!.TrimStart('/');
             if (context.HttpContext.GetEndpoint() is Microsoft.AspNetCore.Routing.RouteEndpoint endpoint
                 && endpoint.Metadata.GetMetadata<DomainRouteCatalogAuxiliaryMetadata>() is { } auxiliary)
@@ -41,7 +51,7 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                     throw new RouteCatalogUnavailableException("The auxiliary endpoint code or scope differs from its committed owner binding.");
                 var scope = auxiliary.Scope(request);
                 ValidateAuxiliaryTenant(snapshot, appId, scope.Domain, scope.Tenant, ownerAuxiliary: true);
-                return lease;
+                return new(lease);
             }
             if (!EventStoreDomainServiceRoutes.Operational.Any(route => route.Route == "/" + method))
                 throw new RouteCatalogUnavailableException("The receiver method has no canonical operation policy.");
@@ -51,13 +61,16 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                 or ProjectionOwnerProofRequest or ProjectionAppliedReceiptRequest or AdminOperationalIndexMetadata.Request))
             {
                 case DomainServiceRequest request:
-                    var command = snapshot.Resolve("command", request.Command.TenantId, request.Command.Domain, request.Command.CommandType);
-                    if (command.Target.AppId != appId || command.Target.Method != method)
-                        throw new RouteCatalogUnavailableException("The command was sent to a different target.");
-                    if (DomainServiceVersion.Resolve(request.Command, command.Target.ContractVersion) != command.Target.ContractVersion)
-                        throw new RouteCatalogUnavailableException("A command version override disagrees with the committed target.");
-                    _ = snapshot.Admission(command.Declaration);
-                    RefuseStepUp(snapshot, command.Declaration.RouteId);
+                    bool known = snapshot.Envelope.Declarations.Any(declaration => declaration.Kind == "command"
+                        && declaration.Domain == request.Command.Domain
+                        && (CommandDiscriminatorCompatibility.Matches(declaration, request.Command.CommandType)
+                            || declaration.MessageType == request.Command.CommandType
+                            || declaration.MessageType == "*" && declaration.FallbackTypes.Contains(request.Command.CommandType, StringComparer.Ordinal)));
+                    string? version = known ? ValidateCommand(snapshot, appId, method, request) : null;
+                    if (allowRefusal && (version is null or "v1")
+                        && await TryRefuseAsync(context, lease, appId, method, request).ConfigureAwait(false) is { } refusal)
+                        return new(lease, refusal);
+                    if (!known) _ = ValidateCommand(snapshot, appId, method, request);
                     break;
                 case QueryEnvelope query:
                     var selected = snapshot.Resolve("query", query.TenantId, query.Domain, query.QueryType);
@@ -99,6 +112,8 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                             && snapshot.Envelope.Declarations.Any(declaration => declaration.RouteId == target.RouteId
                                 && declaration.Kind == "projection" && declaration.Domain == projection.Domain)))
                     {
+                        if (method == "project" && !HasLocalOwner(snapshot, appId, projection.Domain))
+                            throw new DomainRouteCatalogMissingLegacyReceiverException();
                         RouteCatalogProjectionPolicy.Auxiliary(snapshot, projection.Domain, appId, method, operation);
                         ValidateAuxiliaryTenant(snapshot, appId, projection.Domain, projection.TenantId);
                         _ = RouteCatalogProjectionPolicy.Outputs(snapshot, projection.TenantId, projection.Domain, appId, "project/v2");
@@ -109,13 +124,79 @@ internal sealed class DomainRouteCatalogGuard(IRouteCatalogAuthority authority, 
                 default:
                     throw new RouteCatalogUnavailableException("The receiver request shape has no catalog scope binding.");
             }
-            return lease;
+            return new(lease);
         }
         catch
         {
             await lease.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    private static string ValidateCommand(CommittedRouteCatalogSnapshot snapshot, string appId, string method, DomainServiceRequest request)
+    {
+        var command = snapshot.Resolve("command", request.Command.TenantId, request.Command.Domain, request.Command.CommandType);
+        if (command.Target.AppId != appId || command.Target.Method != method)
+            throw new RouteCatalogUnavailableException("The command was sent to a different target.");
+        if (DomainServiceVersion.Resolve(request.Command, command.Target.ContractVersion) != command.Target.ContractVersion)
+            throw new RouteCatalogUnavailableException("A command version override disagrees with the committed target.");
+        _ = snapshot.Admission(command.Declaration);
+        RefuseStepUp(snapshot, command.Declaration.RouteId);
+        return command.Target.ContractVersion;
+    }
+
+    private static bool HasLocalOwner(CommittedRouteCatalogSnapshot snapshot, string appId, string domain)
+        => snapshot.Envelope.Declarations.Any(declaration => declaration.Domain == domain
+            && snapshot.Envelope.Routes.Any(target => target.RouteId == declaration.RouteId && target.AppId == appId))
+            || snapshot.AuxiliaryOperations.Any(operation => operation.Domain == domain && operation.AppId == appId);
+
+    private static async Task<IResult?> TryRefuseAsync(EndpointFilterInvocationContext context,
+        RouteCatalogDispatchLease lease, string appId, string method, DomainServiceRequest request)
+    {
+        CommittedRouteCatalogSnapshot snapshot = lease.Snapshot;
+        IServiceProvider services = context.HttpContext.RequestServices;
+        if (snapshot.Envelope.SchemaVersion != 3 || !RouteCatalogPeerBinding.MatchesTerminalRefusal(context.HttpContext.Request.Headers, snapshot)
+            || method != "process" || services is null
+            || request.CompleteSource is not null || request.TrustedEffectOrigin is not null
+            || request.IncludePostCommandState || request.SnapshotCaptureProfileId is not null
+            || request.WriterMode is not null || request.RegistryFingerprint is not null
+            || request.CommandStateProof is not null || request.VerifiedEffectiveEvents is not null
+            || request.HumanAuthorityReceipt is not null
+            || request.Command.Extensions?.Keys.Any(key => string.Equals(key, DomainServiceVersion.ExtensionKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, DomainServiceAdministratorAssertions.GlobalAdminExtensionKey, StringComparison.OrdinalIgnoreCase)) == true
+            || services.GetService<CompleteCommandSourceVerificationOptions>()?.RequiredDomains.Contains(request.Command.Domain, StringComparer.Ordinal) == true)
+            return null;
+
+        DomainServiceTerminalRefusalRule? rule = services.GetServices<DomainServiceTerminalRefusalRule>()
+            .SingleOrDefault(rule => rule.Domain == request.Command.Domain && rule.CommandType == request.Command.CommandType);
+        if (rule is null) return null;
+        if (context.HttpContext.User.Identity?.IsAuthenticated != true || snapshot.LocalAppId != appId
+            || !snapshot.Envelope.Routes.Any(target => target.AppId == appId
+            && target.Method == "process" && target.ContractVersion == "v1"
+            && (target.ResolverTenantPattern is null or "*" || target.ResolverTenantPattern == request.Command.TenantId)
+            && snapshot.Envelope.Declarations.Any(declaration => declaration.RouteId == target.RouteId
+                && declaration.Domain == request.Command.Domain && declaration.Kind == "command" && declaration.Execution!.TargetKind == "domain-service")))
+            throw new RouteCatalogUnavailableException("The refusal rule has no authenticated committed local V1 command and tenant scope.");
+
+        CancellationToken token = context.HttpContext.RequestAborted;
+        token.ThrowIfCancellationRequested();
+        int maximumBytes = services.GetService<IOptions<EventStoreProcessOptions>>()?.Value.MaxCommandBytesPerEnvelope
+            ?? new EventStoreProcessOptions().MaxCommandBytesPerEnvelope;
+        var detached = new DomainServiceTerminalRefusalContext(request.Command, maximumBytes);
+        using var refusalScope = RouteCatalogRemoteCall.Enter(lease);
+        DomainServiceTerminalRefusal outcome = await rule.EvaluateAsync(services, detached, token).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("CapabilityMismatch: a terminal refusal rule returned null.");
+        token.ThrowIfCancellationRequested();
+        if (outcome.Rejection is not { } rejection) return null;
+        var wire = await rule.Producer.ProduceAsync(Hexalith.EventStore.Contracts.Results.DomainResult.Rejection([rejection]), token).ConfigureAwait(false);
+        var payload = wire.Events.Single();
+        if (!wire.IsRejection || payload.Payload.Length == 0 || !string.Equals(payload.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("CapabilityMismatch: terminal refusal must contain one JSON rejection.");
+        using var json = System.Text.Json.JsonDocument.Parse(payload.Payload);
+        if (json.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+            throw new InvalidOperationException("CapabilityMismatch: terminal refusal rejection must be a JSON object.");
+        token.ThrowIfCancellationRequested();
+        return new BoundedV1WireResultResponse(wire);
     }
 
     private static void RefuseStepUp(CommittedRouteCatalogSnapshot snapshot, string routeId)

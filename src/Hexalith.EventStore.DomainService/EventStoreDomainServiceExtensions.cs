@@ -51,6 +51,87 @@ namespace Hexalith.EventStore.DomainService;
 /// </code>
 /// </remarks>
 public static class EventStoreDomainServiceExtensions {
+    /// <summary>Registers a refusal-only rule for one exact domain and wire command pair.</summary>
+    /// <remarks>
+    /// Trusted rule code is not sandboxed. Its responsibility is limited to a typed terminal denial or no opinion,
+    /// with existing sanitized denial auditing permitted. It must never reserve, read protected state, mutate
+    /// precommit state, or perform successful work. Each rule owns its configured bounded V1 rejection producer;
+    /// this registration leaves ordinary domain result serialization unchanged.
+    /// Registration grants no route, handler, acceptance, administrator or source authority.
+    /// The callback and serializer are retained for the service provider lifetime and may run concurrently;
+    /// use thread-safe singleton dependencies, never captured scoped services or mutable per-request state.
+    /// Configuration is completed once at registration. EventStore:Processes:MaxCommandBytesPerEnvelope
+    /// binds the detached input budget without enabling process runtimes. Invocation additionally requires
+    /// current transport authorization, schema-three service authority and complete activation binding;
+    /// absent refusal capability continues ordinary guards without invoking the callback.
+    /// </remarks>
+    public static IServiceCollection AddEventStoreDomainServiceTerminalRefusal(
+        this IServiceCollection services, string domain, string commandType,
+        Func<DomainServiceTerminalRefusalContext, CancellationToken, Task<DomainServiceTerminalRefusal>> evaluateAsync,
+        Action<BoundedV1DomainSerializerProfile> configureRejectionSerialization)
+    {
+        ArgumentNullException.ThrowIfNull(evaluateAsync);
+        return AddTerminalRefusal(services, domain, commandType, (_, context, token) => evaluateAsync(context, token),
+            configureRejectionSerialization);
+    }
+
+    /// <summary>Registers one exact refusal-only rule using an explicitly registered service from the current HTTP request scope.</summary>
+    /// <typeparam name="TService">The service type already registered by the host; it is never registered or resolved by this method.</typeparam>
+    /// <remarks>
+    /// The callback and serializer are retained and may run concurrently; do not capture scoped services or mutable request state.
+    /// The SDK resolves TService only after transport, committed scope, activation binding and detached input budgets pass,
+    /// inside the existing remote-call lease scope. A missing registration fails closed. Request scope owns service disposal.
+    /// Trusted callback code has the same refusal-only responsibility as the singleton overload: only no opinion or a typed rejection,
+    /// optionally with existing sanitized denial auditing; no protected reads, reservations, precommit mutation or successful work.
+    /// This registration grants no executable route, source or administrator authority and does not alter ordinary serialization.
+    /// </remarks>
+    public static IServiceCollection AddEventStoreDomainServiceTerminalRefusal<TService>(
+        this IServiceCollection services, string domain, string commandType,
+        Func<TService, DomainServiceTerminalRefusalContext, CancellationToken, Task<DomainServiceTerminalRefusal>> evaluateAsync,
+        Action<BoundedV1DomainSerializerProfile> configureRejectionSerialization) where TService : class
+    {
+        ArgumentNullException.ThrowIfNull(evaluateAsync);
+        return AddTerminalRefusal(services, domain, commandType,
+            (provider, context, token) => evaluateAsync(provider.GetRequiredService<TService>(), context, token),
+            configureRejectionSerialization);
+    }
+
+    private static IServiceCollection AddTerminalRefusal(IServiceCollection services, string domain, string commandType,
+        Func<IServiceProvider, DomainServiceTerminalRefusalContext, CancellationToken, Task<DomainServiceTerminalRefusal>> evaluateAsync,
+        Action<BoundedV1DomainSerializerProfile> configureRejectionSerialization)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+        ArgumentException.ThrowIfNullOrWhiteSpace(commandType);
+        ArgumentNullException.ThrowIfNull(evaluateAsync);
+        ArgumentNullException.ThrowIfNull(configureRejectionSerialization);
+        DomainServiceTerminalRefusalRule[] rules = services.Where(item => item.ServiceType == typeof(DomainServiceTerminalRefusalRule))
+            .Select(item => (DomainServiceTerminalRefusalRule)item.ImplementationInstance!).ToArray();
+        if (rules.Length >= 1024 || rules.Any(rule => rule.Domain == domain && rule.CommandType == commandType)
+            || System.Text.Encoding.UTF8.GetByteCount(domain) > 1024 || System.Text.Encoding.UTF8.GetByteCount(commandType) > 4096)
+            throw new ArgumentException("CapabilityMismatch: duplicate or unbounded terminal refusal registration.");
+        var profile = new BoundedV1DomainSerializerProfile();
+        configureRejectionSerialization(profile);
+        var producer = profile.Build(1024 * 1024);
+        AddTerminalRefusalOptions(services);
+        if (rules.Length == 0)
+            services.AddOptions<EventStoreProcessOptions>()
+                .Validate(options => options.MaxCommandBytesPerEnvelope is >= 1 and <= 1024 * 1024,
+                    "Terminal refusal MaxCommandBytesPerEnvelope must be 1..1048576.")
+                .ValidateOnStart();
+        services.AddSingleton(new DomainServiceTerminalRefusalRule(domain, commandType, evaluateAsync, producer));
+        return services;
+    }
+
+    private static void AddTerminalRefusalOptions(IServiceCollection services)
+    {
+        services.AddOptions<EventStoreProcessOptions>();
+        // A default budget must precede all existing explicit callbacks, including process registration.
+        if (!services.Any(descriptor => descriptor.ServiceType == typeof(IConfigureOptions<EventStoreProcessOptions>)
+            && descriptor.ImplementationType == typeof(DomainServiceTerminalRefusalOptionsSetup)))
+            services.Insert(0, ServiceDescriptor.Singleton<IConfigureOptions<EventStoreProcessOptions>, DomainServiceTerminalRefusalOptionsSetup>());
+    }
+
     /// <summary>Enrolls a reviewed profile on the actor host without a domain state assembly dependency.</summary>
     /// <param name="services">The actor host service collection.</param>
     /// <param name="domain">The exact domain.</param>
@@ -685,6 +766,7 @@ public static class EventStoreDomainServiceExtensions {
         params Assembly[] domainAssemblies) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(domainAssemblies);
+        AddTerminalRefusalOptions(builder.Services);
         if (domainAssemblies.Length == 0) {
             throw new ArgumentException("At least one domain assembly must be specified.", nameof(domainAssemblies));
         }

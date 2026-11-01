@@ -83,7 +83,7 @@ public sealed partial class DomainServiceWorkloadAssertionHandler(IServiceProvid
             {
                 LogAssertionUnavailable(
                     serviceProvider.GetService<ILogger<DomainServiceWorkloadAssertionHandler>>() ?? NullLogger<DomainServiceWorkloadAssertionHandler>.Instance,
-                    appId!,
+                    DiagnosticAudience(appId!),
                     route!.Operation);
             }
             else
@@ -107,6 +107,11 @@ public sealed partial class DomainServiceWorkloadAssertionHandler(IServiceProvid
             return null;
         }
     }
+
+    private static string DiagnosticAudience(string audience)
+        => audience.Length <= 128 && System.Text.Encoding.UTF8.GetByteCount(audience) <= 128
+            && !audience.Any(character => char.IsControl(character) || character is '\u2028' or '\u2029')
+                ? audience : "<invalid-audience>";
 
     [LoggerMessage(
         EventId = 5541,
