@@ -37,12 +37,13 @@ public sealed class HistoricalSafeJsonTests
     [InlineData("bad-hash")]
     public void OnlyTheExactGeneratedCommitmentSchemaIsRecognized(string fault)
     {
+        string extraToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         var input = JsonSerializer.SerializeToElement(new { proof = "unusable-marker" });
         var commitment = HistoricalSafeJson.Capture(input).GetProperty("proof");
         HistoricalSafeJson.IsCommitment(commitment).ShouldBeTrue();
         JsonElement.DeepEquals(HistoricalSafeJson.Capture(commitment), commitment).ShouldBeTrue();
         var changed = JsonNode.Parse(commitment.GetRawText())!.AsObject();
-        if (fault == "extra-child") changed["token"] = "unusable-marker";
+        if (fault == "extra-child") changed["token"] = extraToken;
         if (fault == "missing-hash") changed.Remove("utf8Sha256");
         if (fault == "wrong-marker") changed["p1rSafeCommitment"] = false;
         if (fault == "unknown-kind") changed["kind"] = "Undefined";
@@ -58,6 +59,7 @@ public sealed class HistoricalSafeJsonTests
             var projected = HistoricalSafeJson.Capture(malformed);
             HistoricalSafeJson.IsCommitment(projected.GetProperty("token")).ShouldBeTrue();
             projected.GetRawText().ShouldNotContain("unusable-marker");
+            projected.GetRawText().ShouldNotContain(extraToken);
         }
         HistoricalSafeJson.NonemptyString(malformed).ShouldBeFalse();
         HistoricalSafeJson.EmptyString(malformed).ShouldBeFalse();
@@ -66,6 +68,7 @@ public sealed class HistoricalSafeJsonTests
         safe.GetProperty("kind").GetString().ShouldBe("Object");
         safe.GetProperty("sha256").GetString().ShouldBe(HistoricalWireInput.HashValue(malformed));
         safe.GetRawText().ShouldNotContain("unusable-marker");
+        safe.GetRawText().ShouldNotContain(extraToken);
     }
 
     [Theory]
