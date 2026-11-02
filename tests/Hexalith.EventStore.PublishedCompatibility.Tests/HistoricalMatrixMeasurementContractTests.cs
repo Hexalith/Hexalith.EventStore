@@ -94,7 +94,8 @@ public sealed class HistoricalMatrixMeasurementContractTests
     {
         using var summary = JsonDocument.Parse(Claims);
         ScenarioObservation[] observations = duplicate ? Enumerable.Repeat(Observation("checkout", "package-to-exact-tag-source"), 239).ToArray() : [];
-        Should.Throw<InvalidOperationException>(() => HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, default, [], []));
+        Should.Throw<InvalidOperationException>(() => HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, default,
+            "2afc90eb107d73490aa0299a32efbca4bc160b05", [], []));
     }
 
     /// <summary>CI success never accepts a false qualification, rollback or changed historical owner decision.</summary>
@@ -481,6 +482,18 @@ public sealed class HistoricalMatrixMeasurementContractTests
             : JsonValue.Create(field == "builds" ? "db897eac9f2819220b32d237109d7255218b46a9" : "erased");
         fixture.RewriteSummary();
         Should.Throw<InvalidOperationException>(fixture.Validate);
+    }
+
+    [Fact]
+    public void CompleteInputBindsExecutorBuildsToCurrentSourcePin()
+    {
+        var fixture = HistoricalMatrixSyntheticFixture.Create();
+        const string currentPin = "728945314c3b7adf300df1964d5668047cfc338a";
+        fixture.Capture["builds"] = currentPin;
+        fixture.RewriteSummary();
+
+        fixture.Validate(currentPin);
+        Should.Throw<InvalidOperationException>(fixture.Validate).Message.ShouldContain("selected Builds or input origin");
     }
 
     /// <summary>Operation capture keeps the real stdin hash without retaining unrelated private input fields.</summary>

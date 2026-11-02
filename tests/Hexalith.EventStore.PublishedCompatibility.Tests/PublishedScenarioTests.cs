@@ -208,7 +208,8 @@ public sealed class PublishedScenarioTests
         TestContext.Current.TestOutputHelper?.WriteLine(serialized);
         using JsonDocument summary = JsonDocument.Parse(serialized);
         using JsonDocument actualCapture = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(runtime.Root, "executor-inputs.json")));
-        HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, actualCapture.RootElement, materializer.Builds,
+        HistoricalMatrixMeasurementContract.Validate(observations, summary.RootElement, actualCapture.RootElement,
+            materializer.ExpectedExecutorBuilds, materializer.Builds,
             actualCommands,
             runtime.Files, runtime.CleanupPasses, runtime.HttpExchanges, runtime.ScenarioInputs, runtime.StateReads, runtime.ProcessScans, runtime.DaprLaunches, runtime.ManagedLaunches);
     }
