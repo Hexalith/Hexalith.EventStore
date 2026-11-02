@@ -31,6 +31,7 @@ public sealed partial class SubmitCommandHandlerProjectionActivationTests
     [InlineData("unstarted")]
     [InlineData("missing-hosted")]
     [InlineData("stopped")]
+    [InlineData("domain-not-selected")]
     public async Task ConstructedButUnownedOrUnqualifiedWorkerRetainsAwaitedReplay(string state)
     {
         using var backend = new RecordingDaprClient { PersistTypedState = true };
@@ -46,12 +47,13 @@ public sealed partial class SubmitCommandHandlerProjectionActivationTests
         int releases = 0;
         using ServiceProvider provider = BuildProvider(backend, outbox, router, replay,
             Authority(() => { releases++; return Task.CompletedTask; }), optIn: state != "opt-out",
-            startWorker: state != "unstarted", removeHostedWorker: state == "missing-hosted");
+            startWorker: state != "unstarted", removeHostedWorker: state == "missing-hosted",
+            responseDomain: state == "domain-not-selected" ? "folders" : null);
         ProjectionActivationWorkerCapability capability = provider.GetRequiredService<ProjectionActivationWorkerCapability>();
         capability.Worker.OwnsOutbox(outbox).ShouldBeTrue();
-        capability.CanDefer(Substitute.For<IProjectionActivationOutbox>()).ShouldBeFalse();
+        capability.CanDefer(Substitute.For<IProjectionActivationOutbox>(), "counter").ShouldBeFalse();
         if (state == "stopped") await capability.Worker.StopAsync(CancellationToken.None);
-        capability.CanDefer(outbox).ShouldBeFalse();
+        capability.CanDefer(outbox, "counter").ShouldBeFalse();
 
         Task<SubmitCommandResult> response = provider.GetRequiredService<SubmitCommandHandler>().Handle(Command(), default);
         try

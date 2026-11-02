@@ -64,7 +64,8 @@ public sealed partial class SubmitCommandHandlerProjectionActivationTests
         });
         int releases = 0;
         using ServiceProvider provider = BuildProvider(backend, outbox, router, replay,
-            Authority(() => { releases++; return Task.CompletedTask; }), statuses, archives, clock: clock, scanBeforeServer: scanBeforeServer);
+            Authority(() => { releases++; return Task.CompletedTask; }), statuses, archives, clock: clock,
+            scanBeforeServer: scanBeforeServer, responseDomain: "counter");
         provider.GetRequiredService<IRequestHandler<SubmitCommand, SubmitCommandResult>>().ShouldBeOfType<SubmitCommandHandler>();
         IMediator mediator = provider.GetRequiredService<IMediator>();
         using var request = new CancellationTokenSource();
@@ -213,13 +214,17 @@ public sealed partial class SubmitCommandHandlerProjectionActivationTests
         ICommandStatusStore? statuses = null, ICommandArchiveStore? archives = null,
         bool workersEnabled = true, bool capabilityPresent = true, TimeProvider? clock = null,
         bool optIn = true, bool startWorker = true, bool removeHostedWorker = false,
-        IIdempotencyAdmissionCoordinator? coordinator = null, bool scanBeforeServer = true)
+        IIdempotencyAdmissionCoordinator? coordinator = null, bool scanBeforeServer = true,
+        string? responseDomain = null)
     {
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        var configurationValues = new Dictionary<string, string?>
         {
             ["EventStore:Projections:WorkersEnabled"] = workersEnabled.ToString(),
             ["EventStore:Projections:WorkerBackedResponsesEnabled"] = optIn.ToString(),
-        }).Build();
+        };
+        if (responseDomain is not null)
+            configurationValues["EventStore:Projections:WorkerBackedResponseDomains:0"] = responseDomain;
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(configurationValues).Build();
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(configuration);

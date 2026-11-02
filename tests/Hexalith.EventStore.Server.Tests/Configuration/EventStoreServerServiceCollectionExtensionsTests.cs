@@ -108,7 +108,7 @@ public class EventStoreServerServiceCollectionExtensionsTests {
         if (expected) {
             capability.ShouldNotBeNull().Worker.ShouldBeSameAs(hosted.Single(service => service is ProjectionActivationWorker));
             capability.Enabled.ShouldBeFalse();
-            capability.CanDefer(provider.GetRequiredService<IProjectionActivationOutbox>()).ShouldBeFalse();
+            capability.CanDefer(provider.GetRequiredService<IProjectionActivationOutbox>(), "counter").ShouldBeFalse();
         }
         else {
             capability.ShouldBeNull();

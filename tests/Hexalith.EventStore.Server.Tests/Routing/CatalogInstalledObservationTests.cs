@@ -128,6 +128,26 @@ public sealed class CatalogInstalledObservationTests
     }
 
     [Fact]
+    public async Task ReusedStructuralValidationStillRecapturesAndRefusesChangedExecutableTarget()
+    {
+        var fixture = new RouteCatalogTestFixture();
+        RouteCatalogHostObservation actual = fixture.Observations[0];
+        int captures = 0;
+        var observer = new ObservedRouteCatalogHost(_ => { captures++; return Task.FromResult(actual); });
+        RouteCatalogActivation activation = fixture.Candidate();
+        RouteCatalogStateCoordinates coordinates = actual.AuthorityCoordinates!;
+
+        RouteCatalogHostIdentity first = await observer.ObserveAsync(activation, coordinates, default);
+        (await observer.ObserveAsync(activation, coordinates, default)).ShouldBe(first);
+        actual = actual with { Targets = actual.Targets.Select((target, index) => index == 0
+            ? target with { Method = target.Method + "-changed" } : target).ToArray() };
+        await Should.ThrowAsync<RouteCatalogUnavailableException>(() => observer.ObserveAsync(activation, coordinates, default));
+        actual = fixture.Observations[0];
+        (await observer.ObserveAsync(activation, coordinates, default)).ShouldBe(first);
+        captures.ShouldBe(4);
+    }
+
+    [Fact]
     public async Task QuiescentOwnLeaseReleaseMakesProgressPast32ConflictsAndConcurrentDispatchDrains()
     {
         var fixture = new RouteCatalogTestFixture(); await fixture.ActivateAsync(fixture.Candidate());

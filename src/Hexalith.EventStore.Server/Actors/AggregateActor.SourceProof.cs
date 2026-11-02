@@ -18,9 +18,13 @@ public partial class AggregateActor
             return new(before, null, null);
         if (metadataOnly)
             return new(before, await InspectSourceProofAsync().ConfigureAwait(false), null);
-        SourceEventRange range = await ReadNativeEventsBoundedRangeAsync(fromSequence,
-            Math.Max(fromSequence, Math.Min(toSequence ?? before.CurrentSequence, before.CurrentSequence)),
-            maxCount, maxBytes).ConfigureAwait(false);
+        long upper = Math.Max(fromSequence, Math.Min(toSequence ?? before.CurrentSequence, before.CurrentSequence));
+        // The range's fresh metadata read also validates its native proof. This
+        // preserves the inside-range observation without a second state read.
+        SourceEventRange range = upper == fromSequence
+            ? await ReadNativeEventsBoundedRangeAsync(fromSequence, upper, maxCount, maxBytes).ConfigureAwait(false)
+            : await ReadMeasuredEventsBoundedRangeCoreAsync(fromSequence, upper, maxCount, maxBytes,
+                requireNativeProof: true).ConfigureAwait(false);
         return new(before, null, range);
     }
 
@@ -93,6 +97,11 @@ public partial class AggregateActor
     /// <inheritdoc/>
     public async Task<SourceEventRange> ReadMeasuredEventsBoundedRangeAsync(
         long fromSequence, long toSequence, int maxCount, int maxBytes)
+        => await ReadMeasuredEventsBoundedRangeCoreAsync(fromSequence, toSequence, maxCount, maxBytes,
+            requireNativeProof: false).ConfigureAwait(false);
+
+    private async Task<SourceEventRange> ReadMeasuredEventsBoundedRangeCoreAsync(
+        long fromSequence, long toSequence, int maxCount, int maxBytes, bool requireNativeProof)
     {
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceRanges);
         ArgumentOutOfRangeException.ThrowIfNegative(fromSequence);
@@ -106,6 +115,9 @@ public partial class AggregateActor
             return EmptySourceRange();
         }
 
+        if (requireNativeProof && (_stateCacheUnsafe || _pendingFinalizerRecoveryRequired || _pendingCountReconciliationRequired))
+            throw new InvalidOperationException("delivery_state_unavailable");
+
         await EnsureStateCacheBarrierAsync(correlationId: null, activity: null).ConfigureAwait(false);
         // The SDK tracker otherwise keeps every loaded envelope across pages and
         // later passes. This read-only turn owns no pending writes after its
@@ -113,7 +125,8 @@ public partial class AggregateActor
         await ClearSourceReadCacheAsync().ConfigureAwait(false);
         try
         {
-            return await ReadMeasuredSourceRangeAsync(fromSequence, toSequence, maxCount, maxBytes).ConfigureAwait(false);
+            return await ReadMeasuredSourceRangeAsync(fromSequence, toSequence, maxCount, maxBytes,
+                requireNativeProof).ConfigureAwait(false);
         }
         finally
         {
@@ -121,19 +134,33 @@ public partial class AggregateActor
         }
     }
 
-    private async Task<SourceEventRange> ReadMeasuredSourceRangeAsync(long fromSequence, long toSequence, int maxCount, int maxBytes)
+    private async Task<SourceEventRange> ReadMeasuredSourceRangeAsync(
+        long fromSequence, long toSequence, int maxCount, int maxBytes, bool requireNativeProof)
     {
+        if (requireNativeProof) ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceInspections);
         AggregateIdentity identity = GetAggregateIdentityFromActorId();
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceMetadataReads);
         ConditionalValue<AggregateMetadata> stored = await StateManager
             .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey).ConfigureAwait(false);
-        if (stored.HasValue) MeasureSourceMetadata(stored.Value);
+        long metadataBytes = stored.HasValue ? MeasureSourceMetadata(stored.Value) : 0;
         if (!stored.HasValue)
         {
-            return EmptySourceRange();
+            return EmptySourceRange(requireNativeProof ? "source_conflict" : null);
         }
 
         AggregateMetadata metadata = stored.Value;
+        if (requireNativeProof && (metadataBytes > 4096
+            || metadata.SourceErasurePending
+            || metadata.CurrentSequence < 0
+            || metadata.RetainedFloor < 1
+            || metadata.RetainedFloor - 1 > metadata.CurrentSequence
+            || metadata.SourceProof is not SourceProof proof
+            || proof.CodecVersion != SourceProofCodec.Version
+            || proof.Erased
+            || !SourceProofCodec.IsValid(proof, identity, metadata.CurrentSequence, metadata.RetainedFloor)))
+        {
+            return EmptySourceRange("source_conflict");
+        }
         if (metadata.SourceErasurePending)
             return EmptySourceRange("history_unavailable");
         if (metadata.CurrentSequence < 0 || metadata.RetainedFloor < 1
