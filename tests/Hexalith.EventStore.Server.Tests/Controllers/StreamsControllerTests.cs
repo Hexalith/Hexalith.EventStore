@@ -6,6 +6,7 @@ using System.Text.Json;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
+using Dapr.Client;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Authentication;
@@ -18,10 +19,12 @@ using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
-using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Tests.Fakes;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Hexalith.EventStore.Testing.Fakes;
 using Hexalith.EventStore.Testing.Security;
 
@@ -528,6 +531,42 @@ public class StreamsControllerTests {
         StreamReadEvent readEvent = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>().Events.Single();
         readEvent.PayloadVersion.ShouldBe(2);
         readEvent.Payload.ShouldBe(payload);
+    }
+
+    [Fact]
+    public async Task PlainStoredEnvelopeHasTheSamePublishedAndGatewayReadIdentityAndPayload() {
+        byte[] payload = "{\"name\":\"parity\"}"u8.ToArray();
+        ServerEventEnvelope stored = BuildEnvelope(1, payload, metadata: null);
+        var identity = new AggregateIdentity(Tenant, Domain, AggregateId);
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        ServerEventEnvelope? published = null;
+        _ = daprClient.PublishEventAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Do<ServerEventEnvelope>(value => published = value),
+                Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var publisher = new EventPublisher(
+            daprClient,
+            Options.Create(new EventPublisherOptions()),
+            NullLogger<EventPublisher>.Instance,
+            new NoOpEventPayloadProtectionService(),
+            new NoOpProjectionUpdateOrchestrator());
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 1));
+        _ = actor.ReadEventsRangeAsync(0, 1, 2).Returns([stored]);
+        (StreamsController controller, _, _, _) = CreateController(actor);
+
+        EventPublishResult publishResult = await publisher.PublishEventsAsync(identity, [stored], stored.CorrelationId);
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(
+            Tenant, Domain, AggregateId, FromSequence: 0, ToSequence: 1, PageSize: 1));
+
+        publishResult.Success.ShouldBeTrue();
+        ServerEventEnvelope delivery = published.ShouldNotBeNull();
+        StreamReadEvent history = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>().Events.ShouldHaveSingleItem();
+        history.MessageId.ShouldBe(delivery.MessageId);
+        history.EventTypeName.ShouldBe(delivery.EventTypeName);
+        Convert.ToHexStringLower(SHA256.HashData(history.Payload))
+            .ShouldBe(Convert.ToHexStringLower(SHA256.HashData(delivery.Payload)));
+        history.Payload.ShouldBe(delivery.Payload);
     }
 
     [Fact]

@@ -142,4 +142,96 @@ public sealed class CheckpointedProjectionReviewPass4Tests
 
         failure.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
     }
+
+    [Theory]
+    [InlineData("tenant")]
+    [InlineData("domain")]
+    [InlineData("aggregate")]
+    [InlineData("from")]
+    [InlineData("to")]
+    [InlineData("sequence")]
+    [InlineData("message")]
+    [InlineData("type")]
+    [InlineData("format")]
+    public async Task MalformedHistoryPageStaysRetryableAndNeverCorrupts(string defect)
+    {
+        var harness = new CheckpointedProjectionHarness();
+        await harness.SeedHealthyThroughAsync(1);
+        harness.Gateway.AppendRange(2, 3);
+        harness.Gateway.PageTransform = page => defect switch
+        {
+            "tenant" => page with { Tenant = "other" },
+            "domain" => page with { Domain = "other" },
+            "aggregate" => page with { AggregateId = "other" },
+            "from" => page with { Metadata = page.Metadata with { FromSequence = 99 } },
+            "to" => page with { Metadata = page.Metadata with { ToSequence = 99 } },
+            "sequence" => page with { Events = [page.Events[0] with { SequenceNumber = 4 }, .. page.Events.Skip(1)] },
+            "message" => page with { Events = [page.Events[0] with { MessageId = " " }, .. page.Events.Skip(1)] },
+            "type" => page with { Events = [page.Events[0] with { EventTypeName = " " }, .. page.Events.Skip(1)] },
+            "format" => page with { Events = [page.Events[0] with { SerializationFormat = " " }, .. page.Events.Skip(1)] },
+            _ => throw new ArgumentOutOfRangeException(nameof(defect)),
+        };
+
+        CheckpointedProjectionUnavailableException failure = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(
+            () => harness.ApplyAsync(3));
+
+        failure.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
+        CheckpointedProjectionRecord<CheckpointedTestState> record = harness.Record.ShouldNotBeNull();
+        record.Health.ShouldBe(CheckpointedProjectionHealth.Gapped);
+        record.CorruptionReason.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("missing-last-accepted")]
+    [InlineData("healthy-pending")]
+    [InlineData("healthy-lease")]
+    [InlineData("wrong-expected")]
+    [InlineData("unsorted-pending")]
+    [InlineData("out-of-range-pending")]
+    [InlineData("corrupt-lease")]
+    [InlineData("corrupt-without-reason")]
+    [InlineData("lease-token-above-fence")]
+    public async Task EveryMalformedRecordRuleRejectsApplyAndRead(string defect)
+    {
+        var harness = new CheckpointedProjectionHarness();
+        CheckpointedProjectionRecord<CheckpointedTestState> empty = CheckpointedProjectionRecord<CheckpointedTestState>.CreateEmpty();
+        CheckpointedProjectionPendingEvidence pending2 = new(2, CheckpointedProjectionHarness.Delivery(2).Evidence);
+        CheckpointedProjectionRecord<CheckpointedTestState> gapped = empty with
+        {
+            Health = CheckpointedProjectionHealth.Gapped,
+            Expected = 1,
+            RecoveryThrough = 2,
+            Pending = [pending2],
+        };
+        CheckpointedProjectionRecord<CheckpointedTestState> corrupt = empty with
+        {
+            Health = CheckpointedProjectionHealth.Corrupt,
+            CorruptionReason = CheckpointedProjectionCorruptionReason.HistoryMissing,
+        };
+        CheckpointedProjectionLease lease = new("worker", 1, 1, harness.Clock.UtcNow.AddSeconds(30));
+        CheckpointedProjectionRecord<CheckpointedTestState> malformed = defect switch
+        {
+            "missing-last-accepted" => empty with { LastContiguousSequence = 1 },
+            "healthy-pending" => empty with { Pending = [pending2] },
+            "healthy-lease" => empty with { Lease = lease, LastFencingToken = 1 },
+            "wrong-expected" => gapped with { Expected = 2 },
+            "unsorted-pending" => gapped with { Pending = [pending2, new(1, CheckpointedProjectionHarness.Delivery(1).Evidence)] },
+            "out-of-range-pending" => gapped with { Pending = [new(3, CheckpointedProjectionHarness.Delivery(3).Evidence)] },
+            "corrupt-lease" => corrupt with { Lease = lease, LastFencingToken = 1 },
+            "corrupt-without-reason" => corrupt with { CorruptionReason = null },
+            "lease-token-above-fence" => gapped with { Lease = lease },
+            _ => throw new ArgumentOutOfRangeException(nameof(defect)),
+        };
+        malformed.SchemaVersion.ShouldBe(1);
+        malformed.IsWellFormed().ShouldBeFalse();
+        harness.Store.SeedRaw(CheckpointedProjectionHarness.StoreName, CheckpointedProjectionHarness.Key, malformed);
+
+        CheckpointedProjectionUnavailableException apply = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(
+            () => harness.ApplyAsync(1));
+        CheckpointedProjectionUnavailableException read = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(
+            () => harness.Writer().ReadAsync(CheckpointedProjectionHarness.StoreName, CheckpointedProjectionHarness.Key, TestContext.Current.CancellationToken));
+
+        apply.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.MalformedRecord);
+        read.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.MalformedRecord);
+    }
 }

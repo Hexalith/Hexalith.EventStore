@@ -27,6 +27,8 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
 
     public Func<StreamReadEvent, StreamReadEvent>? DuplicateFirstEventTransform { get; set; }
 
+    public Func<StreamReadPage, StreamReadPage>? PageTransform { get; set; }
+
     public int PageSize { get; set; } = 2;
 
     public Func<StreamReadRequest, CancellationToken, Task>? BeforeRead { get; set; }
@@ -116,7 +118,7 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
                 page = [.. page, transform(page[0])];
             }
             long latest = _events.Count == 0 ? 0 : _events.Keys.Max();
-            return new StreamReadPage(
+            StreamReadPage result = new(
                 request.Tenant,
                 request.Domain,
                 request.AggregateId,
@@ -129,6 +131,7 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
                     page.Length,
                     TruncateWithoutEvents || inRange.Length > page.Length,
                     null));
+            return PageTransform?.Invoke(result) ?? result;
         }
     }
 

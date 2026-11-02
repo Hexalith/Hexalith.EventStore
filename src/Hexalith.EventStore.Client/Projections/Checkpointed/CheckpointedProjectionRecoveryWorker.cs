@@ -238,7 +238,7 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
                 .LoadAsync<TState>(_store, storeName, key, cancellationToken)
                 .ConfigureAwait(false);
             if (current is null) {
-                throw LeaseLost(storeName, key);
+                throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.RecordMissing);
             }
 
             if (current.Health == CheckpointedProjectionHealth.Corrupt) {
@@ -295,7 +295,6 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
             }
         }
 
-        CheckpointedProjectionLog.Unavailable(_logger, storeName, key, CheckpointedProjectionUnavailableReason.ConcurrencyExhausted);
         throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.ConcurrencyExhausted);
     }
 
@@ -314,7 +313,11 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
                 return Corrupt(current);
             }
 
-            if (current?.Lease is not { } held
+            if (current is null) {
+                throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.RecordMissing);
+            }
+
+            if (current.Lease is not { } held
                 || held.FencingToken != lease.FencingToken
                 || !string.Equals(held.WorkerId, lease.WorkerId, StringComparison.Ordinal)
                 || _timeProvider.GetUtcNow() >= held.ExpiresAt) {

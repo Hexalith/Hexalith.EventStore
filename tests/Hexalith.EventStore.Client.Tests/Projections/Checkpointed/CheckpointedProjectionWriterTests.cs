@@ -224,6 +224,30 @@ public sealed class CheckpointedProjectionWriterTests {
     }
 
     [Fact]
+    public async Task CompetingFutureMergesRetainBothPendingEntriesAndTheLargerHorizon() {
+        var harness = new CheckpointedProjectionHarness();
+        await harness.SeedHealthyThroughAsync(1);
+        harness.Gateway.AppendRange(2, 4);
+        CheckpointedProjectionUnavailableException? competing = null;
+        harness.Store.ConcurrentWriteBeforeTrySave = () => {
+            harness.Store.ConcurrentWriteBeforeTrySave = null;
+            competing = Should.Throw<CheckpointedProjectionUnavailableException>(
+                () => harness.ApplyAsync(4, workerId: "replica-b", withHistory: false).GetAwaiter().GetResult());
+        };
+
+        CheckpointedProjectionUnavailableException loser = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(
+            () => harness.ApplyAsync(3, workerId: "replica-a", withHistory: false));
+
+        competing.ShouldNotBeNull().Reason.ShouldBe(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
+        loser.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
+        CheckpointedProjectionRecord<CheckpointedTestState> record = harness.Record.ShouldNotBeNull();
+        record.Health.ShouldBe(CheckpointedProjectionHealth.Gapped);
+        record.Expected.ShouldBe(2);
+        record.RecoveryThrough.ShouldBe(4);
+        record.Pending.Select(static pending => pending.Sequence).ShouldBe([3L, 4L]);
+    }
+
+    [Fact]
     public async Task RetryExhaustionIsRetryableAfterThreeTotalAttempts() {
         var harness = new CheckpointedProjectionHarness();
         await harness.SeedHealthyThroughAsync(1);

@@ -151,22 +151,19 @@ public sealed class CheckpointedProjectionHistory {
                     exception);
             }
 
-            if (result?.Events is null || result.Metadata is null) {
-                throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
+            long next;
+            try {
+                next = StreamReadPageValidator.ValidateAndGetNextSequence(request, result);
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or ArgumentException) {
+                throw new CheckpointedProjectionUnavailableException(
+                    CheckpointedProjectionUnavailableReason.HistoryUnavailable,
+                    exception);
             }
 
             head = Math.Max(head, result.Metadata.LatestSequence);
             long highest = cursor;
             foreach (StreamReadEvent item in result.Events) {
-                if (item is null || item.SequenceNumber <= cursor || item.SequenceNumber > toSequence) {
-                    continue;
-                }
-
-                if (item.Payload is null) {
-                    // A missing payload is not the empty payload: never fingerprint it into a false mismatch.
-                    throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
-                }
-
                 CheckpointedProjectionEvent candidate = CheckpointedProjectionEvent.FromHistory(stream, item);
                 if (events.TryGetValue(item.SequenceNumber, out CheckpointedProjectionEvent? existing)) {
                     if (existing.Evidence != candidate.Evidence
@@ -181,6 +178,10 @@ public sealed class CheckpointedProjectionHistory {
 
                 events.Add(item.SequenceNumber, candidate);
                 highest = Math.Max(highest, item.SequenceNumber);
+            }
+
+            if (highest != next) {
+                throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
             }
 
             if (highest >= toSequence) {

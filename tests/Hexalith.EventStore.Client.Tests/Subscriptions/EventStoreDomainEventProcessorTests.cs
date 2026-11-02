@@ -3,9 +3,11 @@ using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Projections.Checkpointed;
 using Hexalith.EventStore.Client.Subscriptions;
 using Hexalith.EventStore.Client.Tests.Events;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Streams;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -381,6 +383,9 @@ public class EventStoreDomainEventProcessorTests {
         string oldName = "Historical.VersionedTestEvent";
         string currentName = typeof(VersionedTestEvent).FullName!;
         var handler = Substitute.For<IEventStoreDomainEventHandler<VersionedTestEvent>>();
+        EventStoreDomainEventContext? observed = null;
+        _ = handler.HandleAsync(Arg.Any<VersionedTestEvent>(), Arg.Do<EventStoreDomainEventContext>(value => observed = value), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         using ServiceProvider provider = new ServiceCollection()
             .AddSingleton(handler)
             .BuildServiceProvider();
@@ -405,7 +410,7 @@ public class EventStoreDomainEventProcessorTests {
             NullLogger<EventStoreDomainEventProcessor>.Instance,
             evolution: evolution);
         EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", "{\"Amount\":4}"u8.ToArray())
-            with { EventTypeName = "VersionedTestEvent", PayloadVersion = 1 };
+            with { Domain = "test", EventTypeName = "VersionedTestEvent", PayloadVersion = 1 };
 
         (await processor.ProcessAsync(envelope with { SerializationFormat = unsupportedFormat }))
             .ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
@@ -415,6 +420,15 @@ public class EventStoreDomainEventProcessorTests {
         await handler.Received(1).HandleAsync(
             Arg.Is<VersionedTestEvent>(value => value.Value == 5),
             Arg.Any<EventStoreDomainEventContext>(), Arg.Any<CancellationToken>());
+        EventStoreDomainEventContext context = observed.ShouldNotBeNull();
+        context.EventType.ShouldBe(envelope.EventTypeName, "the stored alias survives event resolution");
+        context.PayloadFingerprint.ShouldBe(EventStorePayloadFingerprint.Compute(envelope.Payload));
+        context.PayloadFingerprint.ShouldNotBe(EventStorePayloadFingerprint.Compute("{\"Value\":5}"u8.ToArray()));
+        var stream = new CheckpointedProjectionStream(envelope.TenantId, envelope.Domain!, envelope.AggregateId);
+        var historical = new StreamReadEvent(envelope.SequenceNumber, envelope.EventTypeName, envelope.Payload,
+            envelope.SerializationFormat, 1, envelope.MessageId, envelope.CorrelationId, null, envelope.Timestamp, null);
+        CheckpointedProjectionEvent.FromDelivery(new VersionedTestEvent(5), context).Evidence
+            .ShouldBe(CheckpointedProjectionEvent.FromHistory(stream, historical).Evidence);
         (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
     }
 

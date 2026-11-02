@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Projections.Checkpointed;
 
 using Shouldly;
@@ -107,6 +108,50 @@ public sealed class CheckpointedProjectionRecoveryWorkerTests {
         restarted.Outcome.ShouldBe(CheckpointedProjectionOutcome.Recovered);
         harness.Record.ShouldNotBeNull().LastFencingToken.ShouldBe(2);
         harness.Record!.LastContiguousSequence.ShouldBe(4);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExpiredUnsupersededLeaseCannotCommitHealthyOrCorrupt(bool corrupt) {
+        CheckpointedProjectionHarness harness = await GappedAsync(through: 4, pending: [4]);
+        if (corrupt) {
+            harness.Gateway.Remove(3);
+        }
+
+        (TaskCompletionSource entered, TaskCompletionSource release) = BlockFirstRead(harness);
+        Task<CheckpointedProjectionResult<CheckpointedTestState>> stale = RecoverAsync(harness, "worker-a");
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        CheckpointedProjectionRecord<CheckpointedTestState> leased = harness.Record.ShouldNotBeNull();
+        leased.Lease.ShouldNotBeNull();
+        harness.Clock.UtcNow += TimeSpan.FromSeconds(31);
+        release.SetResult();
+
+        CheckpointedProjectionUnavailableException failure = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(() => stale);
+
+        failure.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.RecoveryLeaseLost);
+        CheckpointedProjectionRecord<CheckpointedTestState> after = harness.Record.ShouldNotBeNull();
+        after.Health.ShouldBe(CheckpointedProjectionHealth.Gapped);
+        after.Version.ShouldBe(leased.Version);
+        after.Lease.ShouldBe(leased.Lease);
+    }
+
+    [Fact]
+    public async Task RecordRemovedAfterLeaseAcquisitionReportsRecordMissing() {
+        CheckpointedProjectionHarness harness = await GappedAsync(through: 4, pending: [4]);
+        (TaskCompletionSource entered, TaskCompletionSource release) = BlockFirstRead(harness);
+        Task<CheckpointedProjectionResult<CheckpointedTestState>> recovering = RecoverAsync(harness, "worker-a");
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        ReadModelEntry<CheckpointedProjectionRecord<CheckpointedTestState>> leased = await harness.Store
+            .GetAsync<CheckpointedProjectionRecord<CheckpointedTestState>>(Store, Key, TestContext.Current.CancellationToken);
+        (await ((IReadModelConditionalEraser)harness.Store).TryEraseAsync(Store, Key, leased.ETag!, TestContext.Current.CancellationToken))
+            .ShouldBeTrue();
+        release.SetResult();
+
+        CheckpointedProjectionUnavailableException failure = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(() => recovering);
+
+        failure.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.RecordMissing);
+        harness.Record.ShouldBeNull();
     }
 
     [Fact]

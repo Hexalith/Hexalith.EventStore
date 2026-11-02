@@ -4,8 +4,9 @@ namespace Hexalith.EventStore.Client.Projections.Checkpointed;
 /// The durable outcome of offering a delivery to a checkpointed projection.
 /// </summary>
 /// <remarks>
-/// Every member is committed (or proven unchanged) before it is returned, so the caller may acknowledge the
-/// delivery. Retryable failures are thrown as <see cref="CheckpointedProjectionUnavailableException"/> instead.
+/// Every outcome returned by <c>ApplyAsync</c> is committed (or proven unchanged), so the caller may acknowledge
+/// the delivery. A pending write starts inline recovery and is not returned by <c>ApplyAsync</c>.
+/// Retryable failures are thrown as <see cref="CheckpointedProjectionUnavailableException"/> instead.
 /// </remarks>
 public enum CheckpointedProjectionOutcome {
     /// <summary>The exact-next delivery committed its transition and checkpoint atomically.</summary>
@@ -14,7 +15,7 @@ public enum CheckpointedProjectionOutcome {
     /// <summary>The delivery matched accepted or authoritative identity; nothing changed.</summary>
     Duplicate = 2,
 
-    /// <summary>The delivery was merged as pending evidence of a gapped projection.</summary>
+    /// <summary>An internal pending write; <c>ApplyAsync</c> continues with recovery before returning.</summary>
     Pending = 3,
 
     /// <summary>Fenced recovery replayed authoritative history and restored a healthy checkpoint.</summary>
