@@ -134,8 +134,15 @@ public sealed class WorkloadJwtBearerEvents(
             return WorkloadAuthenticationReasons.AssertionMalformed;
         }
 
-        // A human bearer next to a workload assertion is ambiguous: neither credential is trusted.
-        return context.Request.Headers.ContainsKey(HeaderNames.Authorization)
+        // The exact bound-command route authenticates the forwarded human bearer independently
+        // after validating the workload assertion and signed principal binding. Other workload
+        // routes retain the credential-conflict refusal.
+        bool boundCommand = string.Equals(context.Request.Path.Value,
+            "/api/v1/commands/bound/workload", StringComparison.OrdinalIgnoreCase);
+        StringValues authorization = context.Request.Headers[HeaderNames.Authorization];
+        bool boundHumanBearer = boundCommand && authorization.Count == 1 && authorization[0] is { } value
+            && value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) && value.Length > 7;
+        return authorization.Count > 0 && !boundHumanBearer
             ? WorkloadAuthenticationReasons.CredentialConflict
             : null;
     }
