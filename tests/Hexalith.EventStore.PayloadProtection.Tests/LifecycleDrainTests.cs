@@ -63,9 +63,9 @@ public sealed class LifecycleDrainTests
         Task clearing = operations.DrainScopeAsync(PayloadProtectionStateKeys.ScopeDigest(identity)).AsTask();
         await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
         operation.Token.IsCancellationRequested.ShouldBeTrue();
-        clearing.IsCompleted.ShouldBeFalse();
+        await Should.ThrowAsync<TimeoutException>(() => clearing.WaitAsync(TimeSpan.FromMilliseconds(100)));
         operation.Dispose();
-        clearing.IsCompleted.ShouldBeFalse();
+        await Should.ThrowAsync<TimeoutException>(() => clearing.WaitAsync(TimeSpan.FromMilliseconds(100)));
         lateClearing.SetResult();
         await clearing.WaitAsync(TimeSpan.FromSeconds(2));
         Should.Throw<PayloadProtectionStateException>(() => operations.Begin(identity));

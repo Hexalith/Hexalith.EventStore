@@ -113,6 +113,35 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
         denied.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
+    /// <summary>The bound command route alone may carry a separately validated human bearer.</summary>
+    [Fact]
+    public async Task BoundCommandRouteAllowsHumanBearerPastWorkloadAuthenticationOnly()
+    {
+        using HttpClient client = _factory.CreateClient();
+        string assertion = WorkloadAssertionTestTokens.Create(
+            Audience, AllowedCaller, [EventStoreWorkloadOperations.GatewayCommandSubmit]);
+        string bearer = TestJwtHelper.GenerateToken();
+        using var bound = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands/bound/workload")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+        };
+        AddInternalHeaders(bound, assertion, includeChannelToken: true);
+        bound.Headers.Add("X-Hexalith-Scope", "platform:global-administrators");
+        bound.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearer);
+        using HttpResponseMessage boundResponse = await client.SendAsync(bound, TestContext.Current.CancellationToken);
+        boundResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        using var ordinary = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands/workload")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+        };
+        AddInternalHeaders(ordinary, assertion, includeChannelToken: true);
+        ordinary.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearer);
+        using HttpResponseMessage ordinaryResponse = await client.SendAsync(ordinary, TestContext.Current.CancellationToken);
+        ordinaryResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        _factory.CommandRouter.ReceivedCalls().ShouldBeEmpty();
+    }
+
     /// <summary>The actual domain issuer's signed status grant crosses receiving authentication and exact binding checks.</summary>
     /// <param name="scenario">The exact grant or refused binding under test.</param>
     /// <param name="expectedStatus">The receiving HTTP outcome.</param>

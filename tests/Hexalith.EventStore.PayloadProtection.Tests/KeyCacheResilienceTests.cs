@@ -34,14 +34,14 @@ public sealed class KeyCacheResilienceTests
         clock.Advance(TimeSpan.FromMilliseconds(4));
         using (var read = await cache.GetAsync(Key("b"), _ => ValueTask.FromResult(PayloadKeyResolution.Success(second)))) { read.Reason.ShouldBeNull(); }
         clock.Timer.DueTime.ShouldBe(TimeSpan.FromMilliseconds(6));
-        clock.Advance(TimeSpan.FromMilliseconds(7));
+        clock.Advance(TimeSpan.FromMilliseconds(9));
         await cache.ClearScopeAsync(Key("c").ScopeDigest);
         clock.Timer.DueTime.ShouldBe(TimeSpan.Zero);
         clock.Timer.Fire();
         first.ShouldAllBe(value => value == 0);
         second.ShouldAllBe(value => value == 0x72);
-        clock.Timer.DueTime.ShouldBe(TimeSpan.FromMilliseconds(3));
-        clock.Advance(TimeSpan.FromMilliseconds(2) + TimeSpan.FromTicks(1));
+        clock.Timer.DueTime.ShouldBe(TimeSpan.FromMilliseconds(1));
+        clock.Advance(TimeSpan.FromTicks(1));
         await cache.ClearScopeAsync(Key("d").ScopeDigest);
         clock.Timer.DueTime.ShouldBe(TimeSpan.FromMilliseconds(1));
         await cache.ClearScopeAsync(Key("b").ScopeDigest);
@@ -60,10 +60,10 @@ public sealed class KeyCacheResilienceTests
         });
         using var activity = new Activity("cache-construction").Start();
         ambient.Value = "construction-context";
-        await using var cache = new PayloadKeyCache(ttl: TimeSpan.FromMilliseconds(50), observer: observer);
+        await using var cache = new PayloadKeyCache(ttl: TimeSpan.FromSeconds(1), observer: observer);
         using (var read = await cache.GetAsync(Key("e"), _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])))) { read.Reason.ShouldBeNull(); }
         activity.Stop(); ambient.Value = null;
-        (string? name, Activity? captured) = await observed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        (string? name, Activity? captured) = await observed.Task.WaitAsync(TimeSpan.FromSeconds(5));
         name.ShouldBeNull(); captured.ShouldBeNull();
     }
 

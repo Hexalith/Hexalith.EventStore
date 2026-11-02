@@ -33,11 +33,14 @@ public sealed class ReviewDeadlineTests
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
             deadline.Cancel();
             await Should.ThrowAsync<OperationCanceledException>(() => initial.WaitAsync(TimeSpan.FromSeconds(2)));
-            lateCleared.SetResult(); operation.Dispose(); operation.Cleared.IsCompleted.ShouldBeFalse();
+            operation.Dispose();
+            await Should.ThrowAsync<TimeoutException>(() => operation.Cleared.WaitAsync(TimeSpan.FromMilliseconds(100)));
             Task resumed = operations.DrainScopeAsync(scope).AsTask();
-            resumed.IsCompleted.ShouldBeFalse(); callbacks.ShouldBe(1);
-            operation.Cleared.IsCompleted.ShouldBeFalse();
+            await Should.ThrowAsync<TimeoutException>(() => resumed.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            callbacks.ShouldBe(1);
             release.Set(); await callbackDone.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            await Should.ThrowAsync<TimeoutException>(() => resumed.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            lateCleared.SetResult();
             await resumed.WaitAsync(TimeSpan.FromSeconds(2));
             operation.Cleared.IsCompletedSuccessfully.ShouldBeTrue(); callbacks.ShouldBe(1);
         }
@@ -65,7 +68,8 @@ public sealed class ReviewDeadlineTests
             deadline.Cancel();
             await Should.ThrowAsync<OperationCanceledException>(() => drain.WaitAsync(TimeSpan.FromSeconds(2)));
             Task resumed = operations.DrainScopeAsync(scope).AsTask();
-            resumed.IsCompleted.ShouldBeFalse(); operation.Cleared.IsCompleted.ShouldBeFalse();
+            await Should.ThrowAsync<TimeoutException>(() => resumed.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            await Should.ThrowAsync<TimeoutException>(() => operation.Cleared.WaitAsync(TimeSpan.FromMilliseconds(100)));
             release.Set(); await cancelling.WaitAsync(TimeSpan.FromSeconds(2));
             await resumed.WaitAsync(TimeSpan.FromSeconds(2));
             operation.Cleared.IsCompletedSuccessfully.ShouldBeTrue();
@@ -90,18 +94,69 @@ public sealed class ReviewDeadlineTests
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
             await Task.Run(operation.Dispose).WaitAsync(TimeSpan.FromSeconds(2));
-            operation.Cleared.IsCompleted.ShouldBeFalse();
+            await Should.ThrowAsync<TimeoutException>(() => operation.Cleared.WaitAsync(TimeSpan.FromMilliseconds(100)));
             Task initial = operations.DrainScopeAsync(scope, deadline.Token).AsTask();
-            initial.IsCompleted.ShouldBeFalse();
+            await Should.ThrowAsync<TimeoutException>(() => initial.WaitAsync(TimeSpan.FromMilliseconds(100)));
             deadline.Cancel();
             await Should.ThrowAsync<OperationCanceledException>(() => initial.WaitAsync(TimeSpan.FromSeconds(2)));
             Task resumed = operations.DrainScopeAsync(scope).AsTask();
-            resumed.IsCompleted.ShouldBeFalse(); operation.Cleared.IsCompleted.ShouldBeFalse();
+            await Should.ThrowAsync<TimeoutException>(() => resumed.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            await Should.ThrowAsync<TimeoutException>(() => operation.Cleared.WaitAsync(TimeSpan.FromMilliseconds(100)));
             release.Set(); await cancelling.WaitAsync(TimeSpan.FromSeconds(2));
             await resumed.WaitAsync(TimeSpan.FromSeconds(2));
             operation.Cleared.IsCompletedSuccessfully.ShouldBeTrue();
         }
         finally { release.Set(); }
+    }
+
+    [Fact]
+    public async Task ThrowingOperationCallbackDuringCallerCancelStillClears()
+    {
+        var operations = new PayloadLocalOperations();
+        var identity = new AggregateIdentity("tenant-a", "parties", "throwing-callback");
+        using var caller = new CancellationTokenSource();
+        using var operation = operations.Begin(identity, caller.Token);
+        int invoked = 0;
+        using var registration = operation.Token.Register(() =>
+        {
+            Interlocked.Increment(ref invoked);
+            throw new InvalidOperationException("callback failure");
+        });
+        Exception? failure = null;
+        try { caller.Cancel(throwOnFirstException: true); }
+        catch (Exception exception) { failure = exception; }
+        failure.ShouldNotBeNull(); invoked.ShouldBe(1);
+        operation.Dispose();
+        await operations.DrainScopeAsync(PayloadProtectionStateKeys.ScopeDigest(identity)).AsTask().WaitAsync(TimeSpan.FromSeconds(2));
+        operation.Cleared.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task BlockedCallbackInAnotherScopeSharingCallerDoesNotDelayThisDrain()
+    {
+        var operations = new PayloadLocalOperations();
+        var identity = new AggregateIdentity("tenant-a", "parties", "unblocked-scope");
+        var otherIdentity = new AggregateIdentity("tenant-a", "parties", "blocked-scope");
+        using var caller = new CancellationTokenSource();
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var operation = operations.Begin(identity, caller.Token);
+        using var other = operations.Begin(otherIdentity, caller.Token);
+        using var registration = other.Token.Register(() => { entered.TrySetResult(); release.Wait(); });
+        Task cancelling = Task.Run(caller.Cancel);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            operation.Dispose();
+            Task drained = operations.DrainScopeAsync(PayloadProtectionStateKeys.ScopeDigest(identity)).AsTask();
+            await drained.WaitAsync(TimeSpan.FromSeconds(2));
+            operation.Cleared.IsCompletedSuccessfully.ShouldBeTrue();
+        }
+        finally
+        {
+            release.Set();
+            await cancelling.WaitAsync(TimeSpan.FromSeconds(2));
+        }
     }
 
     [Fact]

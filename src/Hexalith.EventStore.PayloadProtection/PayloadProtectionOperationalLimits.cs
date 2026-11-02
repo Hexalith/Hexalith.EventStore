@@ -6,7 +6,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>Conservative supported limits for the qualified default four-MiB gRPC transport; larger structural schemas grant no transport admission.</summary>
 internal static class PayloadProtectionOperationalLimits
 {
-    /// <summary>Maximum lifetime scope or permanent root-block identities retained by one engine registry.</summary>
+    /// <summary>Maximum permanent scope/root blocks or concurrent local operations retained by one engine registry.</summary>
     internal const int ScopeMetadata = 65_536;
     /// <summary>Maximum charged transaction bytes, including a conservative per-operation protobuf/metadata allowance.</summary>
     internal const int TransactionBytes = 2 * 1024 * 1024;

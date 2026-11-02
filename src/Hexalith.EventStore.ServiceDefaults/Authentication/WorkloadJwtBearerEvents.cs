@@ -135,8 +135,8 @@ public sealed class WorkloadJwtBearerEvents(
             return WorkloadAuthenticationReasons.AssertionMalformed;
         }
 
-        // The bound platform command independently validates its administrator bearer, signed
-        // workload proof, and matching principal. Other workload routes reject mixed credentials.
+        // Only the bound platform command accepts one nonempty human bearer beside the workload
+        // assertion. Downstream validates that bearer independently; other routes reject both.
         bool boundPlatformCommand = string.Equals(context.Request.Path.Value,
                 "/api/v1/commands/bound/workload", StringComparison.OrdinalIgnoreCase)
             && context.Request.Headers.TryGetValue("X-Hexalith-Scope", out StringValues scopes)
