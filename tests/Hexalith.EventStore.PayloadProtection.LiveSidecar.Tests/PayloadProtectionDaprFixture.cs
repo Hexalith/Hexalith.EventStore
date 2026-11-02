@@ -81,7 +81,8 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
         }
         catch
         {
-            await DisposeAsync().ConfigureAwait(false);
+            try { await DisposeAsync().ConfigureAwait(false); }
+            catch { /* Preserve the startup failure; cleanup attempted every owned resource. */ }
             throw;
         }
     }
@@ -128,13 +129,13 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
     /// <summary>Attempts every independent owned cleanup before reporting a bounded failure without private exception details.</summary>
     internal static async ValueTask CleanupAsync(IReadOnlyList<Func<ValueTask>> cleanups)
     {
-        bool failed = false;
-        foreach (Func<ValueTask> cleanup in cleanups)
+        var failed = new List<int>();
+        for (int index = 0; index < cleanups.Count; index++)
         {
-            try { await cleanup().ConfigureAwait(false); }
-            catch { failed = true; }
+            try { await cleanups[index]().ConfigureAwait(false); }
+            catch { failed.Add(index); }
         }
-        if (failed) { throw new InvalidOperationException("An isolated PF-02 resource cleanup failed."); }
+        if (failed.Count > 0) { throw new InvalidOperationException($"Isolated PF-02 cleanup failed at steps {string.Join(",", failed)}."); }
     }
 
     private async Task WaitPostgresAsync()

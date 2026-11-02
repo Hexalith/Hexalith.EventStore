@@ -11,7 +11,6 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
     private readonly Dictionary<PayloadKeyCacheKey, PayloadKeyCacheEntry> _entries = [];
     private readonly Dictionary<PayloadKeyCacheKey, TaskCompletionSource<UnreadableProtectedDataReason?>> _flights = [];
     private readonly Dictionary<string, int> _active = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _knownScopes = new(StringComparer.Ordinal);
     private readonly HashSet<string> _blocked = new(StringComparer.Ordinal);
     private readonly HashSet<string> _blockedRoots = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _scopeRoots = new(StringComparer.Ordinal);
@@ -34,8 +33,19 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
         _clock = timeProvider ?? TimeProvider.System;
         _observer = observer;
         if (capacity is < 1 or > 4096 || _ttl <= TimeSpan.Zero || _ttl > TimeSpan.FromMinutes(5)) { throw new PayloadProtectionFormatException(); }
-        _expiryTimer = _clock.CreateTimer(static state => ((PayloadKeyCache)state!).ExpireOnTimer(), this,
-            Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        if (ExecutionContext.IsFlowSuppressed())
+        {
+            _expiryTimer = _clock.CreateTimer(static state => ((PayloadKeyCache)state!).ExpireOnTimer(), this,
+                Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        }
+        else
+        {
+            using (ExecutionContext.SuppressFlow())
+            {
+                _expiryTimer = _clock.CreateTimer(static state => ((PayloadKeyCache)state!).ExpireOnTimer(), this,
+                    Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            }
+        }
     }
 
     /// <summary>Returns an operation-owned copy after the caller's strong erasure/lifecycle check and lease admission.</summary>
@@ -57,7 +67,6 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
                 if (_scopeRoots.TryGetValue(key.ScopeDigest, out string? registeredRoot) && registeredRoot != rootDigest) { throw new PayloadProtectionFormatException(); }
             }
             if (_blocked.Contains(key.ScopeDigest)) { return PayloadKeyResolution.Failure(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted); }
-            AdmitScope(key.ScopeDigest);
             Expire();
             if (_entries.TryGetValue(key, out PayloadKeyCacheEntry? entry)) { PayloadProtectionDiagnostics.CacheAccess(true); return Copy(key.ScopeDigest, entry); }
             PayloadProtectionDiagnostics.CacheAccess(false);
@@ -103,7 +112,8 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
         Task wait;
         lock (_gate)
         {
-            AdmitScope(PayloadProtectionStateKeys.Sha(scope));
+            _ = PayloadProtectionStateKeys.Sha(scope);
+            if (_blocked.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_blocked.Contains(scope)) { throw Capacity(); }
             _blocked.Add(scope);
             foreach (PayloadKeyCacheKey key in _entries.Keys.Where(k => k.ScopeDigest == scope).ToArray()) { Remove(key); }
             ScheduleExpiry();
@@ -233,12 +243,9 @@ internal sealed class PayloadKeyCache : IAsyncDisposable
         if (_disposed) { return; }
         if (_entries.Count == 0) { _expiryTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan); return; }
         TimeSpan due = _ttl - _entries.Values.Max(entry => _clock.GetElapsedTime(entry.CreatedAt));
-        _expiryTimer.Change(due < TimeSpan.Zero ? TimeSpan.Zero : due, Timeout.InfiniteTimeSpan);
-    }
-    private void AdmitScope(string scope)
-    {
-        if (_knownScopes.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_knownScopes.Contains(scope)) { throw Capacity(); }
-        _knownScopes.Add(scope);
+        TimeSpan rounded = due <= TimeSpan.Zero ? TimeSpan.Zero
+            : TimeSpan.FromMilliseconds((due.Ticks + TimeSpan.TicksPerMillisecond - 1) / TimeSpan.TicksPerMillisecond);
+        _expiryTimer.Change(rounded, Timeout.InfiniteTimeSpan);
     }
     private static PayloadProtectionStateException Capacity() => new(UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true);
     private void Remove(PayloadKeyCacheKey key)

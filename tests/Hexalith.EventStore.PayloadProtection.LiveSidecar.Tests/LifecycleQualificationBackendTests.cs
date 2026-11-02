@@ -79,6 +79,7 @@ public sealed class LifecycleQualificationBackendTests
             var failure = await Should.ThrowAsync<InvalidOperationException>(() => PayloadProtectionDaprFixture.CleanupAsync(cleanups).AsTask());
             attempted.ShouldBe([0, 1, 2, 3]); Directory.Exists(directory).ShouldBeFalse();
             failure.InnerException.ShouldBeNull(); failure.ToString().ShouldNotContain("fixture-private-canary");
+            failure.Message.ShouldContain($"steps {failureIndex}");
         }
         finally { if (Directory.Exists(directory)) { Directory.Delete(directory, recursive: true); } }
     }

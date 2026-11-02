@@ -30,6 +30,25 @@ public sealed class PolicyLifecycleTests
     }
 
     [Fact]
+    public void NullableStructPropertyAndListElementSelectNestedSensitivePointers()
+    {
+        var context = PolicyLifecycleJsonContext.Default;
+        JsonTypeInfo root = context.NestedNullablePolicyPayload;
+        JsonTypeInfo value = context.GetTypeInfo(typeof(NestedSensitiveValue))!;
+        var mappings = root.Properties.Select(property => new PayloadPropertyRegistration(typeof(NestedNullablePolicyPayload), property,
+            typeof(NestedNullablePolicyPayload).GetProperties().Single(clr => string.Equals(clr.Name, property.Name, StringComparison.OrdinalIgnoreCase))));
+        var discovery = new PersonalDataDiscovery(new([], []), new([
+            root, context.GetTypeInfo(typeof(NestedSensitiveValue?))!, value,
+            context.GetTypeInfo(typeof(List<NestedSensitiveValue?>))!, context.String,
+        ], mappings));
+        discovery.Select(Identity, new NestedNullablePolicyPayload
+        {
+            Value = new NestedSensitiveValue { Secret = RandomSecret() },
+            Items = [null, new NestedSensitiveValue { Secret = RandomSecret() }],
+        }, root, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/items/1/secret", "/value/secret"]);
+    }
+
+    [Fact]
     public void V031_V040_AttributesUseSerializedNamesAndSkipNulls()
     {
         PersonalDataDiscovery discovery = Discovery();

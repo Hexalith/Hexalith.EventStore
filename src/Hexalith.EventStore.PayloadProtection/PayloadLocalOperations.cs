@@ -9,7 +9,6 @@ internal sealed class PayloadLocalOperations
 {
     private readonly object _gate = new();
     private readonly Dictionary<PayloadLocalOperation, (string Root, string Scope)> _active = [];
-    private readonly HashSet<string> _knownScopes = new(StringComparer.Ordinal);
     private readonly HashSet<string> _blockedScopes = new(StringComparer.Ordinal);
     private readonly HashSet<string> _blockedRoots = new(StringComparer.Ordinal);
 
@@ -51,7 +50,12 @@ internal sealed class PayloadLocalOperations
                 if (_blockedRoots.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_blockedRoots.Contains(root)) { throw Capacity(); }
                 _blockedRoots.Add(root);
             }
-            if (scope is not null) { AdmitScope(PayloadProtectionStateKeys.Sha(scope)); _blockedScopes.Add(scope); }
+            if (scope is not null)
+            {
+                _ = PayloadProtectionStateKeys.Sha(scope);
+                if (_blockedScopes.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_blockedScopes.Contains(scope)) { throw Capacity(); }
+                _blockedScopes.Add(scope);
+            }
             operations = _active.Where(p => root is not null ? p.Value.Root == root : p.Value.Scope == scope).Select(p => p.Key).ToArray();
         }
         Task[] cancellations = operations.Select(operation => operation.CancelAsync()).ToArray();
@@ -60,12 +64,6 @@ internal sealed class PayloadLocalOperations
     private void AssertAllowed(string root, string scope)
     {
         if (_blockedRoots.Contains(root) || _blockedScopes.Contains(scope)) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted); }
-        AdmitScope(scope);
-    }
-    private void AdmitScope(string scope)
-    {
-        if (_knownScopes.Count >= PayloadProtectionOperationalLimits.ScopeMetadata && !_knownScopes.Contains(scope)) { throw Capacity(); }
-        _knownScopes.Add(scope);
     }
     private static PayloadProtectionStateException Capacity() => new(UnreadableProtectedDataReason.ProviderUnavailable, isAdmissionLimit: true);
     private void Released(PayloadLocalOperation operation)

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -19,6 +20,51 @@ public sealed class KeyCacheResilienceTests
         await cleared.Task.WaitAsync(TimeSpan.FromSeconds(2));
         owned.ShouldAllBe(value => value == 0);
         observer.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+    }
+
+    [Fact]
+    public async Task TimerClampsOverdueEntriesRearmsRoundsUpAndDisarmsAfterRemoval()
+    {
+        var clock = new CacheTimerClock();
+        await using var cache = new PayloadKeyCache(ttl: TimeSpan.FromMilliseconds(10), timeProvider: clock);
+        byte[] first = Enumerable.Repeat((byte)0x71, 32).ToArray();
+        byte[] second = Enumerable.Repeat((byte)0x72, 32).ToArray();
+        using (var read = await cache.GetAsync(Key("a"), _ => ValueTask.FromResult(PayloadKeyResolution.Success(first)))) { read.Reason.ShouldBeNull(); }
+        clock.Timer.DueTime.ShouldBe(TimeSpan.FromMilliseconds(10));
+        clock.Advance(TimeSpan.FromMilliseconds(4));
+        using (var read = await cache.GetAsync(Key("b"), _ => ValueTask.FromResult(PayloadKeyResolution.Success(second)))) { read.Reason.ShouldBeNull(); }
+        clock.Timer.DueTime.ShouldBe(TimeSpan.FromMilliseconds(6));
+        clock.Advance(TimeSpan.FromMilliseconds(7));
+        await cache.ClearScopeAsync(Key("c").ScopeDigest);
+        clock.Timer.DueTime.ShouldBe(TimeSpan.Zero);
+        clock.Timer.Fire();
+        first.ShouldAllBe(value => value == 0);
+        second.ShouldAllBe(value => value == 0x72);
+        clock.Timer.DueTime.ShouldBe(TimeSpan.FromMilliseconds(3));
+        clock.Advance(TimeSpan.FromMilliseconds(2) + TimeSpan.FromTicks(1));
+        await cache.ClearScopeAsync(Key("d").ScopeDigest);
+        clock.Timer.DueTime.ShouldBe(TimeSpan.FromMilliseconds(1));
+        await cache.ClearScopeAsync(Key("b").ScopeDigest);
+        second.ShouldAllBe(value => value == 0);
+        clock.Timer.DueTime.ShouldBe(Timeout.InfiniteTimeSpan);
+    }
+
+    [Fact]
+    public async Task ExpiryTimerDoesNotCaptureConstructingExecutionContext()
+    {
+        var ambient = new AsyncLocal<string?>();
+        var observed = new TaskCompletionSource<(string?, Activity?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var observer = new RecordingBufferObserver(kind =>
+        {
+            if (kind == SensitiveBufferKind.DataEncryptionKey) { observed.TrySetResult((ambient.Value, Activity.Current)); }
+        });
+        using var activity = new Activity("cache-construction").Start();
+        ambient.Value = "construction-context";
+        await using var cache = new PayloadKeyCache(ttl: TimeSpan.FromMilliseconds(50), observer: observer);
+        using (var read = await cache.GetAsync(Key("e"), _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])))) { read.Reason.ShouldBeNull(); }
+        activity.Stop(); ambient.Value = null;
+        (string? name, Activity? captured) = await observed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        name.ShouldBeNull(); captured.ShouldBeNull();
     }
 
     [Theory]
