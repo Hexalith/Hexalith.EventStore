@@ -12,6 +12,19 @@ public class SubmitCommandRequestValidatorTests {
     private readonly SubmitCommandRequestValidator _validator = new();
 
     [Fact]
+    public void SubmitCommandRequestValidator_CanonicalPlatformScope_Passes() {
+        var request = new SubmitCommandRequest(
+            MessageId: "msg-platform",
+            Tenant: "platform:global-administrators",
+            Domain: "global-administrators",
+            AggregateId: "global-administrators",
+            CommandType: "SetGlobalAdministrator",
+            Payload: JsonDocument.Parse("{}").RootElement);
+
+        _validator.Validate(request).IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
     public void SubmitCommandRequestValidator_EmptyOpaqueIdempotencyKey_ReturnsValidationError() {
         var request = new SubmitCommandRequest(
             MessageId: "msg-idempotency-invalid",

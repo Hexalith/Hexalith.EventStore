@@ -22,6 +22,13 @@ public class ValidateCommandRequestValidatorTests {
     }
 
     [Fact]
+    public void ValidateCommandRequestValidator_CanonicalPlatformScope_Passes() {
+        var request = new ValidateCommandRequest("platform:global-administrators", "global-administrators", "SetGlobalAdministrator");
+
+        _validator.Validate(request).IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
     public void ValidateCommandRequestValidator_ValidRequestWithAggregateId_Passes() {
         var request = new ValidateCommandRequest(
             Tenant: "test-tenant",

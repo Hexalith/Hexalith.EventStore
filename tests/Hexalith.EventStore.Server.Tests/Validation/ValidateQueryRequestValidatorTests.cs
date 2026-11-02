@@ -22,6 +22,13 @@ public class ValidateQueryRequestValidatorTests {
     }
 
     [Fact]
+    public void ValidateQueryRequestValidator_CanonicalPlatformScope_Passes() {
+        var request = new ValidateQueryRequest("platform:global-administrators", "global-administrators", "get-global-administrators");
+
+        _validator.Validate(request).IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
     public void ValidateQueryRequestValidator_ValidRequestWithAggregateId_Passes() {
         var request = new ValidateQueryRequest(
             Tenant: "test-tenant",
