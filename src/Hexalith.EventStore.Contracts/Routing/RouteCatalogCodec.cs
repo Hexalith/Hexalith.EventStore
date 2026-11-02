@@ -293,7 +293,7 @@ public static class RouteCatalogCodec
 
     private static IdempotencyDescriptorSchema Normalize(IdempotencyDescriptorSchema schema) => schema with
     {
-        Fields = schema.Fields.OrderBy(f => f.Name, StringComparer.Ordinal).ToArray(),
+        Fields = schema.Fields.OrderBy(f => f.Name, StringComparer.Ordinal).ThenBy(f => f.Source, StringComparer.Ordinal).ToArray(),
     };
 
     private static RouteCatalogEnvelope Normalize(RouteCatalogEnvelope envelope) => envelope with
