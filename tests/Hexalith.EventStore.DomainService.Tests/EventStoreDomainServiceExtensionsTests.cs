@@ -33,6 +33,17 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// Tier 1 coverage of the domain-service SDK host extensions and the moved router/metadata helpers.
 /// </summary>
 public sealed class EventStoreDomainServiceExtensionsTests {
+    [Fact]
+    public void OrdinaryDomainRegistrationBindsRefusalBudgetWithoutProcessRuntime()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:Processes:MaxCommandBytesPerEnvelope"] = "128";
+        builder.AddEventStoreDomainService(typeof(WidgetAggregate).Assembly);
+        using var provider = builder.Services.BuildServiceProvider();
+        provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<EventStoreProcessOptions>>().Value.MaxCommandBytesPerEnvelope.ShouldBe(128);
+        provider.GetService<CheckpointedProcessRunner>().ShouldBeNull();
+    }
+
     /// <summary>Selective mapping preserves bespoke routes and protects every SDK projection endpoint.</summary>
     [Fact]
     public void SelectiveProjectionMappingPreservesHostRoutesAndWorkloadPolicies()

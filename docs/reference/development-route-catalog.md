@@ -135,6 +135,147 @@ A valid service signature does not authorize a public UI-only operation. Existin
 protected internal identity protocols and channel-only domain callbacks retain
 their separately verified admissions.
 
+Domain-service hosts may register a refusal-only callback with
+`AddEventStoreDomainServiceTerminalRefusal(domain, wireCommand, callback, configureRejectionSerialization)` for an
+exact, case-sensitive pair. Registration does not declare an executable operation,
+handler or accepting admission stage. A callback returns
+`DomainServiceTerminalRefusal.NoOpinion` or `DomainServiceTerminalRefusal.Reject`
+with exactly one `IRejectionEvent`. Missing rules and no opinion continue the
+existing exact catalog resolution, target/version checks and admission chain;
+an undeclared command still refuses with 503.
+
+This path requires existing transport authorization, an authenticated service
+surface, a committed schema-three catalog, exact root/epoch/activation binding,
+and the local host's committed V1 process domain and tenant scope. It applies only
+to ordinary implicit-V1 requests. Explicit versions, source proofs or required
+complete source, version-aware writers, asserted administrator flags, human
+authority receipts, trusted effect origins and snapshot capture retain their
+existing validation precedence.
+
+The callback receives only detached immutable command data. Its payload and scalar
+metadata are bounded together before copying by
+`EventStoreProcessOptions.MaxCommandBytesPerEnvelope` (256 KiB by default, at most
+1 MiB). Raw extension keys and values are copied into an ordinal immutable,
+bounded snapshot and remain untrusted data, including spelling and ambiguity.
+It receives no live request, state, source proof or administrator authority. Each exact rule configures an existing
+`BoundedV1DomainSerializerProfile` and retains its own private bounded producer.
+Its once-only capped serializer must produce a nonempty JSON object for the typed
+rejection. This registration never installs or replaces ordinary domain-keyed or
+unkeyed producers, so existing successful events and ordinary admission rejections
+keep their original serialization even when absent from the refusal-only profile.
+An existing ordinary bounded profile may coexist independently. The SDK uses the
+rule's private producer and its bounded V1 response writer, without invoking the endpoint delegate,
+accepting admission chain, processor, reservation, protected state read or
+successful state/event writer. The catalog lease lasts through actual response
+execution and drains on failure or cancellation.
+
+Rule code is trusted module code and is not sandboxed. Its responsibility is
+limited to refusing an unsupported command or returning no opinion. Existing
+sanitized denial auditing is permitted; precommit mutation, protected state access,
+reservations and successful work are forbidden responsibilities for this callback.
+Rules are explicitly registered with finite domain/name lengths and at most 1,024
+distinct exact pairs. Duplicate pairs fail registration.
+
+Both the callback and its serializer are retained for the service provider's
+lifetime and may execute concurrently. Use thread-safe singleton dependencies;
+never capture scoped services, a live request, or mutable per-request state in
+either delegate. Profile configuration runs once during registration and must be
+complete before serving traffic. Existing sanitized denial-audit RPCs must use
+the SDK's `RouteCatalogRemoteExecution` boundary: completed calls drain normally,
+while demonstrated ambiguous remote completion retains the existing durable
+catalog fence even if trusted rule code catches the failure.
+
+The ordinary domain-service registration and the refusal registration bind
+`EventStore:Processes:MaxCommandBytesPerEnvelope` without enabling the process
+runtime. This budget default precedes explicit options callbacks and never binds
+unrelated process settings. Registered refusal rules validate only this required
+1..1048576-byte limit at startup; ordinary hosts without rules gain no refusal validation.
+The limit covers the command payload plus UTF-8 scalar metadata, including
+identifiers, wire command name and asserted user data, and all extension keys and
+values. Extensions have a separate 128-entry ceiling; both limits are checked before
+copying. The detached payload and ordinal extension dictionary are immutable.
+Extension spelling, case ambiguity, empty/malformed data and null values are preserved
+without normalization or interpretation as caller authority. Absent and empty extension
+dictionaries remain distinct. Refusal invocation requires
+the complete activation binding in addition to current transport authorization,
+host identity and schema-three service surface. A legacy activation without that
+capability skips the callback and continues unchanged catalog guards. Known
+commands also retain their target, tenant, version, admission and step-up checks;
+a known V2 selection cannot borrow another command's V1 scope.
+
+The SDK retains the existing complete activation-v1 digest privately even when
+`TechnicalHttpReceivers` is empty. Its process transport replaces caller-supplied
+optional process-binding headers with this proof. Only refusal eligibility checks
+its exact singleton value; missing, duplicate or stale proof skips callbacks and
+continues ordinary guards. This does not change the codec preimage, ordinary peer
+admission, technical membership or legacy public readbacks/custody: their v2
+`AttemptId` and `ActivationBindingDigest` remain null. No host should set this header.
+
+For request-scoped dependencies, explicitly register the service and use the typed
+overload. It receives only that service, detached data and cancellation:
+
+```csharp
+builder.Services.AddScoped<WidgetDenialRules>();
+builder.Services.AddEventStoreDomainServiceTerminalRefusal<WidgetDenialRules>(
+    "widget", "UnsupportedWidgetCommand",
+    static (rules, context, cancellationToken) => rules.EvaluateAsync(context, cancellationToken),
+    static profile => profile.Add<UnsupportedWidgetCommandRejected>(
+        typeof(UnsupportedWidgetCommandRejected).FullName!, "json", 1024,
+        static (rejection, stream, cancellationToken) =>
+            JsonSerializer.SerializeAsync(stream, rejection, cancellationToken: cancellationToken)));
+```
+
+`WidgetDenialRules.EvaluateAsync` returns `Task<DomainServiceTerminalRefusal>` and
+has the same trusted refusal-only responsibility, including sanitized denial auditing.
+The SDK resolves the explicitly registered service from the current request scope
+only after authority, local scope, binding and budget checks, within the remote-call
+lease scope. A missing service fails closed; the request scope owns its disposal.
+The retained delegate and serializer must still be safe for concurrent calls and
+must not capture scoped services. Both overloads share exact-pair and finite limits.
+
+For example, place the typed rejection in its own `UnsupportedWidgetCommandRejected.cs`:
+
+```csharp
+using Hexalith.EventStore.Contracts.Events;
+
+public sealed record UnsupportedWidgetCommandRejected(string CommandType) : IRejectionEvent;
+```
+
+Register the exact unsupported wire pair and its bounded rejection serializer at
+startup, alongside the ordinary SDK domain-service registration:
+
+```csharp
+using System.Text.Json;
+using Hexalith.EventStore.DomainService;
+
+builder.AddEventStoreDomainService();
+builder.Services.AddEventStoreDomainServiceTerminalRefusal(
+    "widget",
+    "UnsupportedWidgetCommand",
+    static (context, cancellationToken) =>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(DomainServiceTerminalRefusal.Reject(
+            new UnsupportedWidgetCommandRejected(context.CommandType)));
+    },
+    static profile => profile.Add<UnsupportedWidgetCommandRejected>(
+        typeof(UnsupportedWidgetCommandRejected).FullName!,
+        "json",
+        maximumPayloadBytes: 1024,
+        static (rejection, stream, cancellationToken) =>
+            JsonSerializer.SerializeAsync(stream, rejection, cancellationToken: cancellationToken)));
+```
+
+This registration adds no executable catalog declaration for the unsupported
+command. Missing rules and `NoOpinion` still use the ordinary result pipeline,
+including its existing success and admission-rejection serializers.
+
+For legacy `/project`, an authenticated request for a domain with no committed
+local owner and no installed matching legacy receiver retains 404. A declaration
+joined to this host's target or its local auxiliary inventory establishes ownership.
+Known owners retain all existing projection tenant, auxiliary and output checks,
+including named-only domains; installing an uncommitted receiver still refuses.
+
 The platform routing-header owners remain SDK transports. In addition to the
 ordinary `DaprServiceInvocationHandler` and the isolated catalog state client,
 `RouteCatalogInvocationHandler` owns the Development Admin actor-state read

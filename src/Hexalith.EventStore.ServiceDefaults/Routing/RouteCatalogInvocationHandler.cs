@@ -104,6 +104,8 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
     public const string BindingHeader = "X-Hexalith-Route-Catalog-Binding";
     /// <summary>Header binding a downstream call to its monotonic commit/rollback fence.</summary>
     public const string EpochHeader = "X-Hexalith-Route-Catalog-Epoch";
+    /// <summary>Optional SDK-owned complete activation proof for refusal-only process decisions.</summary>
+    internal const string ProcessBindingHeader = "X-Hexalith-Route-Catalog-Process-Binding";
 
     /// <inheritdoc/>
     protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -149,6 +151,7 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
             request.Headers.Remove(RootHeader);
             request.Headers.Remove(EpochHeader);
             request.Headers.Remove(BindingHeader);
+            request.Headers.Remove(ProcessBindingHeader);
             return await InvocationTransport().SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         HttpMessageInvoker invocation = InvocationTransport();
@@ -169,8 +172,12 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         request.Headers.Remove(RootHeader);
         request.Headers.Remove(EpochHeader);
         request.Headers.Remove(BindingHeader);
+        request.Headers.Remove(ProcessBindingHeader);
         if (lease.Snapshot.TechnicalHttpReceivers.Count > 0)
             request.Headers.TryAddWithoutValidation(BindingHeader, lease.Snapshot.ActivationBindingDigest);
+        if (method == "process" && lease.Snapshot.Envelope.SchemaVersion == 3
+            && lease.Snapshot.CompleteActivationBindingDigest is { } processBinding)
+            request.Headers.TryAddWithoutValidation(ProcessBindingHeader, processBinding);
         request.Headers.TryAddWithoutValidation(RootHeader, lease.Snapshot.RootDigest);
         request.Headers.TryAddWithoutValidation(EpochHeader, lease.Snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return await lease.InvokeRemoteAsync(() => invocation.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
