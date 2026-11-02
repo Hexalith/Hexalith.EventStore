@@ -51,6 +51,22 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
         }
     }
 
+    public void AppendWithoutPayload(long sequence) {
+        lock (_gate) {
+            _events[sequence] = new StreamReadEvent(
+                sequence,
+                EventType,
+                null!,
+                "json",
+                1,
+                MessageIdOf(sequence),
+                $"correlation-{sequence}",
+                null,
+                DateTimeOffset.UnixEpoch.AddMinutes(sequence),
+                null);
+        }
+    }
+
     public void AppendRange(long from, long to) {
         for (long sequence = from; sequence <= to; sequence++) {
             Append(sequence);

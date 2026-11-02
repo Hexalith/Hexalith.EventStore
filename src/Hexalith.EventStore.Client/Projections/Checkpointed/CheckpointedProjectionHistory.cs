@@ -162,6 +162,11 @@ public sealed class CheckpointedProjectionHistory {
                     continue;
                 }
 
+                if (item.Payload is null) {
+                    // A missing payload is not the empty payload: never fingerprint it into a false mismatch.
+                    throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
+                }
+
                 CheckpointedProjectionEvent candidate = CheckpointedProjectionEvent.FromHistory(stream, item);
                 if (events.TryGetValue(item.SequenceNumber, out CheckpointedProjectionEvent? existing)) {
                     if (existing.Evidence != candidate.Evidence) {

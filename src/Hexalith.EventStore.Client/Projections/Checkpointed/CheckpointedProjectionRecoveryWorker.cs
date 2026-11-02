@@ -104,8 +104,9 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
             return await ReplayAndCommitAsync(storeName, key, stream, leased, cancellationToken).ConfigureAwait(false);
         }
         catch (CheckpointedProjectionUnavailableException exception)
-            when (exception.Reason is CheckpointedProjectionUnavailableReason.HistoryUnavailable
-                or CheckpointedProjectionUnavailableReason.TransitionFailed) {
+            when (exception.Reason != CheckpointedProjectionUnavailableReason.RecoveryLeaseLost) {
+            // Every failure except a lost lease releases the lease so another delivery can retry immediately;
+            // a lost lease belongs to a newer invocation and is never touched.
             CheckpointedProjectionLog.Unavailable(_logger, storeName, key, exception.Reason);
             await TryReleaseLeaseAsync(storeName, key, leaseOwner, fencingToken, cancellationToken).ConfigureAwait(false);
             throw;
@@ -118,12 +119,12 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
     /// <param name="transition">The domain transition.</param>
     /// <param name="current">The current state.</param>
     /// <param name="event">The contiguous event.</param>
-    /// <returns>The next state.</returns>
-    internal static TState ApplyTransition(
+    /// <returns>The next state, or <see langword="null"/> when the stream still has no materialized state.</returns>
+    internal static TState? ApplyTransition(
         ICheckpointedProjectionTransition<TState> transition,
         TState? current,
         CheckpointedProjectionEvent @event) {
-        TState next;
+        TState? next;
         try {
             next = transition.Apply(current, @event);
         }
@@ -134,7 +135,7 @@ public sealed class CheckpointedProjectionRecoveryWorker<TState>
             throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.TransitionFailed, exception);
         }
 
-        return next ?? throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.TransitionFailed);
+        return next;
     }
 
     private static CheckpointedProjectionResult<TState> Recovered(CheckpointedProjectionRecord<TState> record)

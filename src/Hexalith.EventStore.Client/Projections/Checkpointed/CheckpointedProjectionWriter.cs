@@ -110,7 +110,7 @@ public sealed class CheckpointedProjectionWriter<TState>
                 outcome = CheckpointedProjectionOutcome.Corrupt;
             }
             else if (current.Health == CheckpointedProjectionHealth.Healthy && sequence == last + 1) {
-                TState state = CheckpointedProjectionRecoveryWorker<TState>.ApplyTransition(_transition, current.State, delivery);
+                TState? state = CheckpointedProjectionRecoveryWorker<TState>.ApplyTransition(_transition, current.State, delivery);
                 next = current with {
                     State = state,
                     LastContiguousSequence = sequence,
