@@ -53,6 +53,9 @@ public sealed partial class StreamsController(
 
     private const string _streamReadMessageCategory = "replay";
     private const string _streamReadMessageType = "StreamRead";
+    private const string _platformScopeHeader = "X-Hexalith-Scope";
+    private const string _tenantsPlatformScope = "platform:tenants";
+    private const string _tenantsReadPermission = "tenants:read";
     private readonly IEventPayloadProtectionService _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
 
     /// <summary>
@@ -109,7 +112,17 @@ public sealed partial class StreamsController(
                 return Forbid();
         }
 
-        if (!workloadOnly)
+        bool platformRead = false;
+        if (!workloadOnly && Request.Headers.ContainsKey(_platformScopeHeader))
+        {
+            // The retained Tenants history is read through its explicit platform scope and exact read
+            // permission, as command replay and status do; the reserved storage tenant is never a request scope.
+            if (!IsAuthorizedTenantsPlatformRead(request))
+                return Forbid();
+            request = request with { Tenant = TenantCanonicalizer.ReservedStorageTenant };
+            platformRead = true;
+        }
+        else if (!workloadOnly)
         {
             if (!TenantCanonicalizer.TryCanonicalize(request.Tenant, out string canonicalTenant))
                 return ProblemWithReason(StatusCodes.Status400BadRequest, ProblemTypeUris.BadRequest,
@@ -139,7 +152,7 @@ public sealed partial class StreamsController(
                 return Forbid();
             }
         }
-        else {
+        else if (!platformRead) {
             TenantValidationResult tenantResult = await tenantValidator
                 .ValidateAsync(User, request.Tenant, cancellationToken, request.AggregateId)
                 .ConfigureAwait(false) ?? throw new InvalidOperationException("ITenantValidator.ValidateAsync returned null. Server bug.");
@@ -509,6 +522,19 @@ public sealed partial class StreamsController(
 
         return false;
     }
+
+    private bool IsAuthorizedTenantsPlatformRead(StreamReadRequest request)
+        => User.Identity?.IsAuthenticated == true
+            && Request.Headers.TryGetValue(_platformScopeHeader, out var scope)
+            && scope.Count == 1
+            && string.Equals(scope[0], request.Tenant, StringComparison.Ordinal)
+            && string.Equals(request.Tenant, _tenantsPlatformScope, StringComparison.Ordinal)
+            && LegacyTenantStorageMap.IsPlatformSourceRead(request.Tenant, request.Domain)
+            && !Request.Headers.ContainsKey("X-Hexalith-Tenant")
+            && User.FindAll("eventstore:permission").Count(claim =>
+                string.Equals(claim.Value, _tenantsReadPermission, StringComparison.Ordinal)) == 1
+            && TenantCanonicalizer.TryCanonicalizeGrants(
+                User.FindAll("eventstore:tenant").Select(claim => claim.Value), out _);
 
     private static bool IsValidAggregateId(string value) {
         if (value.Length > 256 || value.Any(c => c is < (char)0x20 or >= (char)0x7F)) {

@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Streams;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,11 @@ namespace Hexalith.EventStore.Client.Projections.Checkpointed;
 /// not yet reached the requested range surface as a retryable <see cref="CheckpointedProjectionUnavailableException"/>.
 /// Only a sequence the gateway omits while its head already covers the range is reported by its absence, so
 /// callers classify it as missing authoritative history.
+/// </para>
+/// <para>
+/// A retained platform source history stored under the reserved <c>system</c> tenant (for example the Tenants
+/// <c>tenants</c> domain) is requested through its explicit platform scope (<c>platform:tenants</c>), because the
+/// gateway never admits the reserved storage tenant as a request scope; the returned page carries the storage identity.
 /// </para>
 /// <para>
 /// The scope-factory constructor resolves a fresh <see cref="IEventStoreGatewayClient"/> in its own service scope
@@ -129,10 +135,11 @@ public sealed class CheckpointedProjectionHistory {
         long cursor = fromSequence - 1;
         long head = 0;
         bool complete = false;
+        string requestTenant = RequestTenantFor(stream);
         for (int page = 0; page < _maxPages && !complete; page++) {
             cancellationToken.ThrowIfCancellationRequested();
             var request = new StreamReadRequest(
-                stream.TenantId,
+                requestTenant,
                 stream.Domain,
                 stream.AggregateId,
                 FromSequence: cursor,
@@ -153,7 +160,8 @@ public sealed class CheckpointedProjectionHistory {
 
             long next;
             try {
-                next = StreamReadPageValidator.ValidateAndGetNextSequence(request, result);
+                // The gateway answers a platform-scope read with the retained storage identity.
+                next = StreamReadPageValidator.ValidateAndGetNextSequence(request with { Tenant = stream.TenantId }, result);
             }
             catch (Exception exception) when (exception is InvalidOperationException or ArgumentException) {
                 throw new CheckpointedProjectionUnavailableException(
@@ -211,5 +219,15 @@ public sealed class CheckpointedProjectionHistory {
         }
 
         return [.. events.Values];
+    }
+
+    // The reserved storage tenant is never a public request scope: a retained platform source history (such as
+    // system/tenants) is requested through its explicit platform scope (platform:tenants).
+    private static string RequestTenantFor(CheckpointedProjectionStream stream) {
+        string platformScope = "platform:" + stream.Domain;
+        return string.Equals(stream.TenantId, TenantCanonicalizer.ReservedStorageTenant, StringComparison.Ordinal)
+            && LegacyTenantStorageMap.IsPlatformSourceRead(platformScope, stream.Domain)
+            ? platformScope
+            : stream.TenantId;
     }
 }

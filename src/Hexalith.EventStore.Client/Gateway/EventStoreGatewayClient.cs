@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Streams;
@@ -461,8 +462,16 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             return await ReadWorkloadStreamAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
+        using var message = new HttpRequestMessage(HttpMethod.Post, CreateRelativeUri(_options.StreamReadPath)) {
+            Content = JsonContent.Create(request, options: JsonOptions),
+        };
+        if (TenantCanonicalizer.IsPlatformScope(request.Tenant)) {
+            // A platform scope is always explicit on the request, never inferred from grants.
+            message.Headers.TryAddWithoutValidation("X-Hexalith-Scope", request.Tenant);
+        }
+
         using HttpResponseMessage response = await SendTranslatingAsync(
-            () => _httpClient.PostAsJsonAsync(CreateRelativeUri(_options.StreamReadPath), request, JsonOptions, cancellationToken),
+            () => _httpClient.SendAsync(message, cancellationToken),
             cancellationToken).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode) {

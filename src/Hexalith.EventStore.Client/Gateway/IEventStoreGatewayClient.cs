@@ -71,6 +71,10 @@ public interface IEventStoreGatewayClient {
     /// <summary>
     /// Reads a public stream/replay page through <c>POST /api/v1/streams/read</c>.
     /// </summary>
+    /// <remarks>
+    /// A platform-scope tenant (for example <c>platform:tenants</c>) is also sent as the explicit
+    /// <c>X-Hexalith-Scope</c> header; the returned page carries the retained storage identity.
+    /// </remarks>
     Task<StreamReadPage> ReadStreamAsync(
         StreamReadRequest request,
         CancellationToken cancellationToken = default);
