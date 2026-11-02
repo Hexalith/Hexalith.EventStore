@@ -69,7 +69,8 @@ public sealed record CheckpointedProjectionEvent(
     public static CheckpointedProjectionEvent FromHistory(CheckpointedProjectionStream stream, StreamReadEvent streamEvent) {
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentNullException.ThrowIfNull(streamEvent);
-        byte[] payload = streamEvent.Payload ?? [];
+        byte[] payload = streamEvent.Payload ?? throw new CheckpointedProjectionUnavailableException(
+            CheckpointedProjectionUnavailableReason.HistoryUnavailable);
         return new CheckpointedProjectionEvent(
             stream,
             streamEvent.SequenceNumber,

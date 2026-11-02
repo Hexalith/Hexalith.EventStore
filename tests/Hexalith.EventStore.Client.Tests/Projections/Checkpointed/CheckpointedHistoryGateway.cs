@@ -23,6 +23,10 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
     /// <summary>Gets or sets a value indicating whether every page is empty yet claims more events follow.</summary>
     public bool TruncateWithoutEvents { get; set; }
 
+    public bool DuplicateFirstEventWithConflictingPayload { get; set; }
+
+    public Func<StreamReadEvent, StreamReadEvent>? DuplicateFirstEventTransform { get; set; }
+
     public int PageSize { get; set; } = 2;
 
     public Func<StreamReadRequest, CancellationToken, Task>? BeforeRead { get; set; }
@@ -105,6 +109,12 @@ internal sealed class CheckpointedHistoryGateway : IEventStoreGatewayClient {
             StreamReadEvent[] page = TruncateWithoutEvents
                 ? []
                 : [.. inRange.Take(request.PageSize > 0 ? Math.Min(request.PageSize, PageSize) : PageSize)];
+            if (DuplicateFirstEventWithConflictingPayload && page.Length > 0) {
+                page = [.. page, page[0] with { Payload = Encoding.UTF8.GetBytes("conflicting-history-payload") }];
+            }
+            if (DuplicateFirstEventTransform is { } transform && page.Length > 0) {
+                page = [.. page, transform(page[0])];
+            }
             long latest = _events.Count == 0 ? 0 : _events.Keys.Max();
             return new StreamReadPage(
                 request.Tenant,

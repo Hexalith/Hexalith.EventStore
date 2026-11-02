@@ -169,8 +169,10 @@ public sealed class CheckpointedProjectionHistory {
 
                 CheckpointedProjectionEvent candidate = CheckpointedProjectionEvent.FromHistory(stream, item);
                 if (events.TryGetValue(item.SequenceNumber, out CheckpointedProjectionEvent? existing)) {
-                    if (existing.Evidence != candidate.Evidence) {
-                        // Two different events at one sequence cannot be authoritative; never pick one.
+                    if (existing.Evidence != candidate.Evidence
+                        || !string.Equals(existing.SerializationFormat, candidate.SerializationFormat, StringComparison.OrdinalIgnoreCase)
+                        || (existing.PayloadVersion ?? 1) != (candidate.PayloadVersion ?? 1)) {
+                        // Different identity or replay metadata at one sequence cannot be authoritative.
                         throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
                     }
 
