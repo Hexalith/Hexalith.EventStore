@@ -2,6 +2,7 @@
 using System.Diagnostics;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
@@ -92,16 +93,9 @@ public class CommandStatusController(
             // Store correlationId in HttpContext.Items for error handler access
             HttpContext.Items["StatusCorrelationId"] = messageId;
 
-            // Extract tenant claims
-            var tenantClaims = User.FindAll("eventstore:tenant")
-                .Select(c => c.Value)
-                .Where(v => !string.IsNullOrWhiteSpace(v))
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-
-            if (tenantClaims.Count == 0) {
+            if (!TryResolveExplicitStatusScope(out string storageTenant)) {
                 logger.LogWarning(
-                    "Status query denied: no tenant claims. CorrelationId={CorrelationId}",
+                    "Status query denied: invalid or unauthorized explicit scope. CorrelationId={CorrelationId}",
                     requestCorrelationId);
 
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims"));
@@ -109,9 +103,11 @@ public class CommandStatusController(
                     StatusCodes.Status403Forbidden,
                     ProblemTypeUris.Forbidden,
                     "Forbidden",
-                    "No tenant authorization claims found. Access denied.",
+                    "An authorized explicit scope is required.",
                     requestCorrelationId);
             }
+
+            List<string> tenantClaims = [storageTenant];
 
             var directRecords = new List<(string Tenant, CommandStatusRecord? Record)>();
             var exactMatches = new List<(string Tenant, CommandStatusRecord Record)>();
@@ -124,6 +120,9 @@ public class CommandStatusController(
                 CommandStatusRecord? directRecord = await statusStore
                     .ReadStatusAsync(tenant, messageId, cancellationToken)
                     .ConfigureAwait(false);
+                if (directRecord is not null && !StatusDomainAllowed(directRecord.Domain,
+                        Request.Headers["X-Hexalith-Scope"].ToString()))
+                    directRecord = null;
                 directRecords.Add((tenant, directRecord));
                 if (directRecord is not null
                     && string.Equals(directRecord.MessageId, messageId, StringComparison.Ordinal))
@@ -160,6 +159,9 @@ public class CommandStatusController(
                         CommandStatusRecord? indexedRecord = await statusStore
                             .ReadStatusAsync(tenant, resolution.MessageId, cancellationToken)
                             .ConfigureAwait(false);
+                        if (indexedRecord is not null && !StatusDomainAllowed(indexedRecord.Domain,
+                                Request.Headers["X-Hexalith-Scope"].ToString()))
+                            indexedRecord = null;
                         if (indexedRecord is not null) {
                             matches.Add((tenant, resolution.MessageId, indexedRecord));
                             continue;
@@ -239,6 +241,49 @@ public class CommandStatusController(
             ? CreateStatusResult(tenant, messageId, record, Activity.Current)
             : NotFound();
     }
+
+    private bool TryResolveExplicitStatusScope(out string storageTenant)
+    {
+        storageTenant = string.Empty;
+        bool hasTenant = Request.Headers.TryGetValue("X-Hexalith-Tenant", out var tenantHeader);
+        bool hasPlatform = Request.Headers.TryGetValue("X-Hexalith-Scope", out var platformHeader);
+        if (hasTenant == hasPlatform || Request.Query.ContainsKey("tenant") || Request.Query.ContainsKey("tenantId")
+            || tenantHeader.Count > 1 || platformHeader.Count > 1 || User.Identity?.IsAuthenticated != true)
+            return false;
+
+        if (!TenantCanonicalizer.TryCanonicalizeGrants(
+            User.FindAll("eventstore:tenant").Select(claim => claim.Value), out IReadOnlySet<string> grants))
+            return false;
+
+        if (hasTenant)
+        {
+            if (!TenantCanonicalizer.TryCanonicalize(tenantHeader[0], out string canonicalTenant)
+                || !grants.Contains(canonicalTenant))
+                return false;
+            storageTenant = canonicalTenant;
+            return true;
+        }
+
+        string? permission = platformHeader[0] switch
+        {
+            "platform:tenants" => "tenants:read",
+            "platform:global-administrators" => "global-administrators:read",
+            _ => null,
+        };
+        if (permission is null || User.FindAll("eventstore:permission").Count(claim =>
+                string.Equals(claim.Value, permission, StringComparison.Ordinal)) != 1)
+            return false;
+        storageTenant = TenantCanonicalizer.ReservedStorageTenant;
+        return true;
+    }
+
+    private static bool StatusDomainAllowed(string? domain, string platformScope)
+        => platformScope switch
+        {
+            "platform:tenants" => domain == "tenants",
+            "platform:global-administrators" => domain == "global-administrators",
+            _ => true,
+        };
 
     private IActionResult CreateStatusResult(
         string tenant,

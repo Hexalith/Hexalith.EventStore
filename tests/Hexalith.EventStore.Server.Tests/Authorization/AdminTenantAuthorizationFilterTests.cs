@@ -59,7 +59,7 @@ public class AdminTenantAuthorizationFilterTests {
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_UnfilteredTenantArgument_NarrowsToFirstTenantClaim() {
+    public async Task OnActionExecutionAsync_UnfilteredTenantArgument_RequiresExplicitTenant() {
         AdminTenantAuthorizationFilter filter = CreateFilter();
         ActionExecutingContext context = CreateContext(
             CreatePrincipal(
@@ -69,9 +69,8 @@ public class AdminTenantAuthorizationFilterTests {
 
         bool called = await InvokeAsync(filter, context);
 
-        called.ShouldBeTrue();
-        context.Result.ShouldBeNull();
-        context.ActionArguments["tenantId"].ShouldBe("tenant-a");
+        called.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
     }
 
     [Fact]
@@ -89,7 +88,7 @@ public class AdminTenantAuthorizationFilterTests {
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_GlobalAdmin_DoesNotNarrowUnfilteredTenantArgument() {
+    public async Task OnActionExecutionAsync_GlobalAdmin_StillRequiresExplicitTenant() {
         AdminTenantAuthorizationFilter filter = CreateFilter();
         ActionExecutingContext context = CreateContext(
             CreatePrincipal(new Claim("global_admin", "true")),
@@ -97,9 +96,8 @@ public class AdminTenantAuthorizationFilterTests {
 
         bool called = await InvokeAsync(filter, context);
 
-        called.ShouldBeTrue();
-        context.Result.ShouldBeNull();
-        context.ActionArguments["tenantId"].ShouldBeNull();
+        called.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
     }
 
     [Fact]
@@ -144,8 +142,8 @@ public class AdminTenantAuthorizationFilterTests {
         }
 
         var actionArguments = new Dictionary<string, object?>();
-        if (includeTenantArgument) {
-            actionArguments["tenantId"] = null;
+        if (includeTenantArgument || routeTenantId is not null || queryTenantId is not null) {
+            actionArguments["tenantId"] = routeTenantId ?? queryTenantId;
         }
 
         return new ActionExecutingContext(

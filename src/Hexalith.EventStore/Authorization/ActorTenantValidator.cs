@@ -6,6 +6,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Configuration;
 using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors.Authorization;
 
@@ -31,56 +32,67 @@ public partial class ActorTenantValidator(
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (!TenantCanonicalizer.TryCanonicalize(tenantId, out string canonicalTenant)) {
+            return TenantValidationResult.Denied("Tenant is invalid or reserved.",
+                string.IsNullOrEmpty(tenantId) ? AuthorizationFailureReason.TenantMissing : AuthorizationFailureReason.TenantMismatch);
+        }
+
+        if (!TenantCanonicalizer.TryCanonicalizeGrants(
+            user.FindAll("eventstore:tenant").Select(claim => claim.Value), out _)) {
+            return TenantValidationResult.Denied("Tenant authorization claims are invalid or ambiguous.",
+                AuthorizationFailureReason.TenantAmbiguous);
+        }
+
         string userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new InvalidOperationException(
                 "No user identifier (NameIdentifier/sub) found in claims. "
                 + "Actor-based authorization requires a unique user identifier.");
 
         string actorType = options.Value.TenantValidatorActorName!;
-        Log.ActorTenantValidation(logger, userId, tenantId, actorType);
+        Log.ActorTenantValidation(logger, userId, canonicalTenant, actorType);
 
         ActorValidationResponse response;
         try {
             ITenantValidatorActor proxy = actorProxyFactory.CreateActorProxy<ITenantValidatorActor>(
-                new ActorId(tenantId),
+                new ActorId(canonicalTenant),
                 actorType);
 
             response = await proxy.ValidateTenantAccessAsync(
-                new TenantValidationRequest(userId, tenantId, aggregateId)).ConfigureAwait(false);
+                new TenantValidationRequest(userId, canonicalTenant, aggregateId)).ConfigureAwait(false);
         }
         catch (Exception ex) {
-            Log.ActorTenantValidationFailed(logger, ex, userId, tenantId, actorType,
+            Log.ActorTenantValidationFailed(logger, ex, userId, canonicalTenant, actorType,
                 ex.InnerException?.GetType().Name ?? ex.GetType().Name);
 
             throw new AuthorizationServiceUnavailableException(
                 actorType,
-                tenantId,
+                canonicalTenant,
                 ex.Message,
                 ex);
         }
 
         if (response is null) {
-            Log.ActorTenantValidationFailed(logger, null!, userId, tenantId, actorType, "NullResponse");
+            Log.ActorTenantValidationFailed(logger, null!, userId, canonicalTenant, actorType, "NullResponse");
 
             throw new AuthorizationServiceUnavailableException(
                 actorType,
-                tenantId,
+                canonicalTenant,
                 "Actor returned null response",
                 new InvalidOperationException("Actor returned null response"));
         }
 
         if (response.IsAuthorized) {
-            Log.ActorTenantValidationAllowed(logger, userId, tenantId);
-            return TenantValidationResult.Allowed;
+            Log.ActorTenantValidationAllowed(logger, userId, canonicalTenant);
+            return TenantValidationResult.AllowedFor(canonicalTenant);
         }
 
-        Log.ActorTenantValidationDenied(logger, "TenantAccessDenied", userId, tenantId, response.Reason);
+        Log.ActorTenantValidationDenied(logger, "TenantAccessDenied", userId, canonicalTenant, response.Reason);
         AuthorizationFailureReason reasonCode = AuthorizationFailureReasonExtensions.FromReasonCode(
             response.ReasonCode,
             AuthorizationFailureReason.TenantUnavailable);
         if (response.ReasonCode is not null && reasonCode == AuthorizationFailureReason.TenantUnavailable
             && !string.Equals(response.ReasonCode, AuthorizationFailureReason.TenantUnavailable.ToReasonCode(), StringComparison.Ordinal)) {
-            Log.ActorTenantUnrecognizedReasonCode(logger, response.ReasonCode, userId, tenantId);
+            Log.ActorTenantUnrecognizedReasonCode(logger, response.ReasonCode, userId, canonicalTenant);
         }
 
         return TenantValidationResult.Denied(response.Reason ?? "Tenant access denied by actor.", reasonCode);

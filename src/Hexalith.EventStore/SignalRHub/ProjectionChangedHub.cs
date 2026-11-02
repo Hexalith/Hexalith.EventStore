@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Identity;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -90,6 +91,10 @@ public partial class ProjectionChangedHub(
             throw new HubException("projectionType and tenantId must not contain colons.");
         }
 
+        if (!TenantCanonicalizer.TryCanonicalize(tenantId, out string canonicalTenant)) {
+            throw new HubException("Tenant scope is invalid or reserved.");
+        }
+
         // A non-empty scope must not contain the reserved separator either; null/empty/whitespace
         // is allowed and resolves to the tenant-wide group.
         string? normalizedScope = string.IsNullOrWhiteSpace(scope) ? null : scope;
@@ -108,7 +113,7 @@ public partial class ProjectionChangedHub(
         TenantValidationResult tenantValidation;
         try {
             tenantValidation = await tenantValidator
-                .ValidateAsync(Context.User, tenantId, Context.ConnectionAborted)
+                .ValidateAsync(Context.User, canonicalTenant, Context.ConnectionAborted)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
@@ -124,7 +129,7 @@ public partial class ProjectionChangedHub(
             throw new HubException("Tenant authorization failed.");
         }
 
-        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
+        string groupName = BuildGroupName(projectionType, canonicalTenant, normalizedScope);
 
         // Guard: limit groups per connection to prevent resource exhaustion
         HashSet<string> groups = _connectionGroups.GetOrAdd(Context.ConnectionId, _ => []);
@@ -171,6 +176,10 @@ public partial class ProjectionChangedHub(
             throw new HubException("projectionType and tenantId must not contain colons.");
         }
 
+        if (!TenantCanonicalizer.TryCanonicalize(tenantId, out string canonicalTenant)) {
+            throw new HubException("Tenant scope is invalid or reserved.");
+        }
+
         string? normalizedScope = string.IsNullOrWhiteSpace(scope) ? null : scope;
         if (normalizedScope is not null && normalizedScope.Contains(':')) {
             throw new HubException("scope must not contain colons.");
@@ -180,7 +189,7 @@ public partial class ProjectionChangedHub(
             throw new HubException($"scope must not exceed {MaxGroupScopeLength} characters.");
         }
 
-        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
+        string groupName = BuildGroupName(projectionType, canonicalTenant, normalizedScope);
 
         if (_connectionGroups.TryGetValue(Context.ConnectionId, out HashSet<string>? groups)) {
             lock (groups) {

@@ -713,6 +713,7 @@ public class DeadLetterOriginTracingTests {
             },
         };
         replayController.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey] = deadLetterCorrelationId;
+        replayController.Request.Headers["X-Hexalith-Tenant"] = envelope.TenantId;
 
         // Act
         IActionResult result = await replayController.Replay(deadLetterCorrelationId, CancellationToken.None);
@@ -759,6 +760,7 @@ public class DeadLetterOriginTracingTests {
             },
         };
         replayController.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey] = deadLetterCorrelationId;
+        replayController.Request.Headers["X-Hexalith-Tenant"] = envelope.TenantId;
 
         // Act
         IActionResult result = await replayController.Replay(deadLetterCorrelationId, CancellationToken.None);

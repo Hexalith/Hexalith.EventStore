@@ -22,6 +22,7 @@ namespace Hexalith.EventStore.Controllers;
 [Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
 [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
+[ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
 [Route("api/v1/admin/projections")]
 [Tags("Admin - Projection Rebuild")]
 public sealed partial class AdminProjectionRebuildController(
@@ -914,7 +915,7 @@ public sealed partial class AdminProjectionRebuildController(
             throw new ArgumentException("tenantId must not be empty.", nameof(tenantId));
         }
 
-        if (!IsCanonicalTenantOrProjection(tenantId)) {
+        if (!TenantCanonicalizer.TryCanonicalize(tenantId, out string canonicalTenant)) {
             throw new ArgumentException(
                 "tenantId must be lowercase ASCII alphanumeric (a-z, 0-9, '-'), max 64 chars, alphanumeric first and last.",
                 nameof(tenantId));
@@ -931,7 +932,7 @@ public sealed partial class AdminProjectionRebuildController(
         }
 
         return new(
-            tenantId,
+            canonicalTenant,
             projectionName,
             projectionName,
             AggregateId: null,

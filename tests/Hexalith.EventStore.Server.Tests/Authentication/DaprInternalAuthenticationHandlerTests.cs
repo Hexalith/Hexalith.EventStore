@@ -447,12 +447,10 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     }
 
     /// <summary>
-    /// Story 5.5 (BS-B): the Tenants global-administrator bootstrap succeeds with the configured administrator's own
-    /// delegated credential (the locally signed, short-lived symmetric-mode token), not with any app-id grant. The
-    /// command reaches routing as that human administrator.
+    /// A delegated administrator credential cannot expose the historical system tenant through public command ingress.
     /// </summary>
     [Fact]
-    public async Task DelegatedAdministratorCredential_BootstrapsTheGlobalAdministrator()
+    public async Task DelegatedAdministratorCredential_CannotBootstrapThroughPublicSystemScope()
     {
         _ = _factory.CommandRouter.RouteCommandAsync(Arg.Any<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new Hexalith.EventStore.Server.Actors.CommandProcessingResult(Accepted: true, CorrelationId: "story-5-5-correlation"));
@@ -493,13 +491,8 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
 
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
-        _ = await _factory.CommandRouter.Received(1).RouteCommandAsync(
-            Arg.Is<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand>(command => command.CommandType == "BootstrapGlobalAdmin"
-                && command.Tenant == "system"
-                && command.UserId == "bootstrap-administrator"
-                && command.IsGlobalAdmin),
-            Arg.Any<CancellationToken>());
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        _ = await _factory.CommandRouter.DidNotReceiveWithAnyArgs().RouteCommandAsync(default!, default);
     }
 
     /// <summary>

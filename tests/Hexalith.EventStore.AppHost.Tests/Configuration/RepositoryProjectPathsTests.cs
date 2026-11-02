@@ -113,6 +113,42 @@ public class RepositoryProjectPathsTests {
     }
 
     [Fact]
+    public void ResolveReferencedModuleProjectPath_WhenDependencyIsTheDeclaringSuperproject_ReturnsItsProject() {
+        using TemporaryLayout layout = new(workspace: true);
+        DeclareWorkspace(layout, false, "consumer");
+        _ = layout.CreateFile("..", "..", Module + ".slnx");
+        string project = layout.CreateFile(["..", "..", .. _gatewayProject]);
+
+        string path = RepositoryProjectPaths.ResolveReferencedModuleProjectPath(layout.Root, Module, _gatewayProject);
+
+        path.ShouldBe(project);
+    }
+
+    [Fact]
+    public void ResolveReferencedModuleProjectPath_WhenSuperprojectDoesNotDeclareConsumer_Throws() {
+        using TemporaryLayout layout = new(workspace: true);
+        DeclareWorkspace(layout, false, "other-consumer");
+        _ = layout.CreateFile("..", "..", Module + ".slnx");
+        _ = layout.CreateFile(["..", "..", .. _gatewayProject]);
+
+        _ = Should.Throw<InvalidOperationException>(
+            () => RepositoryProjectPaths.ResolveReferencedModuleProjectPath(layout.Root, Module, _gatewayProject));
+    }
+
+    [Fact]
+    public void ResolveReferencedModuleProjectPath_WhenSuperprojectProjectIsMissing_DoesNotSelectSibling() {
+        using TemporaryLayout layout = new(workspace: true);
+        DeclareWorkspace(layout, false, "consumer", Module);
+        _ = layout.CreateFile("..", "..", Module + ".slnx");
+        _ = layout.CreateFile(["..", Module, .. _gatewayProject]);
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => RepositoryProjectPaths.ResolveReferencedModuleProjectPath(layout.Root, Module, _gatewayProject));
+
+        exception.Message.ShouldContain(layout.PathOf(["..", "..", .. _gatewayProject]));
+    }
+
+    [Fact]
     public void ResolveReferencedModuleProjectPath_WhenDirectReferenceAndDeclaredSiblingExist_PrefersDirectReference() {
         using TemporaryLayout layout = new(workspace: true);
         DeclareWorkspace(layout, false, "consumer", Module);

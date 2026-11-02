@@ -30,7 +30,8 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         await using var app = builder.Build();
         app.Use(async (context, next) =>
         {
-            context.User = new ClaimsPrincipal(new ClaimsIdentity([new("sub", "test-user")], "fixture"));
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new("sub", "test-user"), new("eventstore:tenant", "tenant-a")], "fixture"));
             if (installed) context.Items[RouteCatalogGeneratedAction.ValidatorKey] = (Func<Type, string, string, bool>)((_, _, tenant) => tenant == "tenant-a");
             await next();
         });

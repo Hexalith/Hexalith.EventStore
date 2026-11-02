@@ -289,6 +289,7 @@ public class EventStoreTraceTests {
 
         var identity = new ClaimsIdentity(claims, authenticationType: "TestAuth");
         context.User = new ClaimsPrincipal(identity);
+        if (tenantClaims.Count > 0) context.Request.Headers["X-Hexalith-Tenant"] = tenantClaims.First();
 
         return context;
     }

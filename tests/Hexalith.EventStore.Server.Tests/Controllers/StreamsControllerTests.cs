@@ -51,6 +51,33 @@ public class StreamsControllerTests {
     private const string Domain = "party";
     private const string AggregateId = "party-1";
 
+    [Fact]
+    public async Task WorkloadSourceReadMapsOnlyTheDeclaredTenantsPlatformScopeToHistoricalStorage()
+    {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(false, 0));
+        (StreamsController controller, IActorProxyFactory proxies, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator)
+            = CreateController(actor);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, "tenants"),
+            new Claim(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType, "platform:tenants"),
+            new Claim(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType, "tenants"),
+        ], "test-workload"));
+        controller.Request.Headers["X-Hexalith-Scope"] = "platform:tenants";
+        var selected = new StreamReadRequest("platform:tenants", "tenants", "tenant-alpha");
+
+        _ = AssertProblem(await controller.ReadWorkloadStreamAsync(selected), StatusCodes.Status404NotFound);
+        _ = proxies.Received(1).CreateActorProxy<IAggregateActor>(
+            new ActorId("system:tenants:tenant-alpha"), "AggregateActor", Arg.Any<ActorProxyOptions?>());
+        tenantValidator.ReceivedRequests.ShouldBeEmpty();
+        rbacValidator.ReceivedRequests.ShouldBeEmpty();
+
+        _ = (await controller.ReadWorkloadStreamAsync(selected with { Domain = "party" })).ShouldBeOfType<ForbidResult>();
+        _ = AssertProblem(await controller.ReadWorkloadStreamAsync(selected with { Tenant = null! }),
+            StatusCodes.Status400BadRequest);
+        proxies.ReceivedCalls().Count().ShouldBe(1);
+    }
+
     [Theory]
     [InlineData(0, true)]
     [InlineData(5, true)]
@@ -661,11 +688,7 @@ public class StreamsControllerTests {
 
     [Theory]
     [InlineData(Tenant, Domain, ":actor-key")]
-    // P21-6P: uppercase tenant/domain identifiers must be rejected so cross-case callers
-    // cannot address different state-store rows under the illusion of "the same tenant."
-    [InlineData("Tenant-A", Domain, AggregateId)]
     [InlineData(Tenant, "Party", AggregateId)]
-    [InlineData("TENANT", Domain, AggregateId)]
     public async Task ReadStreamAsyncWithInvalidIdentityShapeReturnsDedicatedReasonBeforeActorProxy(
         string tenant,
         string domain,
@@ -678,6 +701,21 @@ public class StreamsControllerTests {
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidAggregateIdentity);
         problem.Detail.ShouldBe("Stream identity is invalid.");
         _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+    }
+
+    [Theory]
+    [InlineData("Tenant-A", "tenant-a")]
+    [InlineData("TENANT", "tenant")]
+    public async Task ReadStreamAsyncCanonicalizesTenantBeforeActorLookup(string requested, string canonical) {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(false, 0));
+        (StreamsController controller, IActorProxyFactory proxies, _, _) = CreateController(actor);
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(requested, Domain, AggregateId));
+
+        _ = AssertProblem(result, StatusCodes.Status404NotFound);
+        _ = proxies.Received(1).CreateActorProxy<IAggregateActor>(
+            new ActorId($"{canonical}:{Domain}:{AggregateId}"), "AggregateActor", Arg.Any<ActorProxyOptions?>());
     }
 
     [Fact]
