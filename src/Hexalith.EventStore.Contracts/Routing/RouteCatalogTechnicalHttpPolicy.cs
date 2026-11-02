@@ -55,6 +55,7 @@ public static class RouteCatalogTechnicalHttpPolicy
                 && endpoint.Policies.SequenceEqual(["EventStoreSidecarChannel"], StringComparer.Ordinal)
                 && endpoint.Operation == "sdk-dapr-callback:" + callback.Kind && Digest(callback.CodeDigest) && Digest(callback.FrameworkDigest) && Digest(callback.InventoryDigest)
                 && (callback.Kind, callback.Verbs, endpoint.Pattern) is ("subscribe", "GET", "/dapr/subscribe") or ("projection-notification", "POST", "/projections/changed")) continue;
+            if (AdmitsCoreGatewayEndpoint(endpoint)) continue;
             if (endpoint.Anonymous || endpoint.IsPattern || endpoint.Methods.Count != 1
                 || !operations.TryGetValue(endpoint.Pattern.TrimStart('/'), out string? operation) || operation != endpoint.Operation) return false;
             bool control = endpoint.Operation is Authorization.EventStoreOperationIdentifiers.RouteCatalogActivate
@@ -62,5 +63,24 @@ public static class RouteCatalogTechnicalHttpPolicy
             if (!participant && !control) return false;
         }
         return true;
+    }
+
+    private static bool AdmitsCoreGatewayEndpoint(RouteCatalogReceiverEndpoint endpoint)
+    {
+        if (endpoint.Anonymous || !endpoint.Admitted || endpoint.IsPattern || !endpoint.Methods.SequenceEqual(["POST"], StringComparer.Ordinal)) return false;
+        string? operation = endpoint.Pattern switch
+        {
+            "/api/v1/commands" or "/api/v1/commands/workload" or "/api/v1/commands/bound/workload"
+                => Authorization.EventStoreOperationIdentifiers.GatewayCommandSubmit,
+            "/api/v1/queries" => "eventstore:query-read",
+            "/api/v1/queries/owner-authority/workload" => Authorization.EventStoreOperationIdentifiers.GatewayOwnerAuthorityQuery,
+            "/api/v1/streams/read" or "/api/v1/streams/read/workload"
+                => Authorization.EventStoreOperationIdentifiers.GatewayStreamRead,
+            _ => null,
+        };
+        if (operation is null || endpoint.Operation != operation) return false;
+        string policy = endpoint.Pattern.EndsWith("/workload", StringComparison.Ordinal)
+            ? "DaprInternal:" + operation : "EventStoreHuman";
+        return endpoint.Policies.SequenceEqual([policy], StringComparer.Ordinal);
     }
 }

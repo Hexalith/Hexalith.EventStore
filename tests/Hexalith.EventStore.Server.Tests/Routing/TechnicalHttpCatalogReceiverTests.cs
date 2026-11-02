@@ -74,6 +74,44 @@ public sealed class TechnicalHttpCatalogReceiverTests
         RouteCatalogTechnicalHttpPolicy.AdmitsGrant(surface, "api/v1/admin/tenants", ["GET", "POST"], new Dictionary<string, string>(), participant: false).ShouldBe(admitted);
     }
 
+    [Fact]
+    public async Task ActualGatewayCoreInvocationGrantsRequireTheirObservedPolicies()
+    {
+        await using var fixture = new TechnicalHttpCatalogFixture();
+        await fixture.StartAsync(TestContext.Current.CancellationToken, fullInventory: true, inventoryAssembly: "Hexalith.EventStore.Gateway");
+        var surface = fixture.App.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>().Observe();
+        // The technical receiver is one half of the production composite. Add the finite
+        // gateway half with its observed operation and policy metadata.
+        var core = new[]
+        {
+            new RouteCatalogReceiverEndpoint("/api/v1/commands", ["POST"], EventStoreOperationIdentifiers.GatewayCommandSubmit, ["EventStoreHuman"], false, false, true),
+            new RouteCatalogReceiverEndpoint("/api/v1/commands/workload", ["POST"], EventStoreOperationIdentifiers.GatewayCommandSubmit,
+                ["DaprInternal:" + EventStoreOperationIdentifiers.GatewayCommandSubmit], false, false, true),
+            new RouteCatalogReceiverEndpoint("/api/v1/commands/bound/workload", ["POST"], EventStoreOperationIdentifiers.GatewayCommandSubmit,
+                ["DaprInternal:" + EventStoreOperationIdentifiers.GatewayCommandSubmit], false, false, true),
+            new RouteCatalogReceiverEndpoint("/api/v1/queries", ["POST"], "eventstore:query-read", ["EventStoreHuman"], false, false, true),
+            new RouteCatalogReceiverEndpoint("/api/v1/queries/owner-authority/workload", ["POST"], EventStoreOperationIdentifiers.GatewayOwnerAuthorityQuery,
+                ["DaprInternal:" + EventStoreOperationIdentifiers.GatewayOwnerAuthorityQuery], false, false, true),
+            new RouteCatalogReceiverEndpoint("/api/v1/streams/read", ["POST"], EventStoreOperationIdentifiers.GatewayStreamRead, ["EventStoreHuman"], false, false, true),
+            new RouteCatalogReceiverEndpoint("/api/v1/streams/read/workload", ["POST"], EventStoreOperationIdentifiers.GatewayStreamRead,
+                ["DaprInternal:" + EventStoreOperationIdentifiers.GatewayStreamRead], false, false, true),
+        };
+        surface = surface with { Endpoints = [.. surface.Endpoints, .. core] };
+        var grants = new[]
+        {
+            (Grant: "api/v1/commands", Workload: "/api/v1/commands/workload"),
+            (Grant: "api/v1/queries", Workload: "/api/v1/queries/owner-authority/workload"),
+            (Grant: "api/v1/streams/read", Workload: "/api/v1/streams/read/workload"),
+        };
+        foreach (var (grant, workload) in grants)
+        {
+            RouteCatalogTechnicalHttpPolicy.AdmitsGrant(surface, grant, ["POST"], new Dictionary<string, string>(), participant: true).ShouldBeTrue();
+            var drift = surface with { Endpoints = surface.Endpoints.Select(endpoint => endpoint.Pattern == workload
+                ? endpoint with { Policies = ["EventStoreHuman"] } : endpoint).ToArray() };
+            RouteCatalogTechnicalHttpPolicy.AdmitsGrant(drift, grant, ["POST"], new Dictionary<string, string>(), participant: true).ShouldBeFalse();
+        }
+    }
+
     [Theory]
     [InlineData("put", 200)]
     [InlineData("admin-post", 202)]
