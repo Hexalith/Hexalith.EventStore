@@ -82,7 +82,11 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
         catch
         {
             try { await DisposeAsync().ConfigureAwait(false); }
-            catch { /* Preserve the startup failure; cleanup attempted every owned resource. */ }
+            catch (InvalidOperationException cleanupFailure)
+            {
+                // CleanupAsync reports only bounded step indexes, never private fixture details.
+                Console.Error.WriteLine(cleanupFailure.Message);
+            }
             throw;
         }
     }

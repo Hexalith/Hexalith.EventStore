@@ -31,6 +31,7 @@ public sealed class ReviewScopeMetadataTests
         await using var cache = new PayloadKeyCache();
         var key = new PayloadKeyCacheKey(scope, "01J00000000000000000009999", 1, 1, "fixture");
         using (var copy = await cache.GetAsync(key, _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])))) { }
+        await operations.DrainScopeAsync(scope); await cache.ClearScopeAsync(scope);
         for (int index = 0; index <= PayloadProtectionOperationalLimits.ScopeMetadata; index++)
         {
             var identity = new AggregateIdentity("tenant-a", "parties", index.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -39,12 +40,10 @@ public sealed class ReviewScopeMetadataTests
             using var read = await cache.GetAsync(transientKey, _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])));
             read.Reason.ShouldBeNull();
         }
-        using (operations.Begin(existing)) { }
         var overflow = new AggregateIdentity("tenant-a", "parties", "overflow");
         using (operations.Begin(overflow)) { }
         using (var read = await cache.GetAsync(key with { ScopeDigest = PayloadProtectionStateKeys.ScopeDigest(overflow) },
             _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])))) { read.Reason.ShouldBeNull(); }
-        await operations.DrainScopeAsync(scope); await cache.ClearScopeAsync(scope);
         (Should.Throw<PayloadProtectionStateException>(() => operations.Begin(existing))).Reason.ShouldBe(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
         using var denied = await cache.GetAsync(key, _ => throw new InvalidOperationException("blocked"));
         denied.Reason.ShouldBe(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);

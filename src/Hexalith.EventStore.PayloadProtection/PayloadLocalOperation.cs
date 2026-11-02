@@ -6,25 +6,18 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>Tracks a local operation until its owned buffers and any abandoned backend result have been cleared.</summary>
 internal sealed class PayloadLocalOperation : IDisposable
 {
-    private readonly CancellationToken _callerToken;
-    private readonly CancellationTokenRegistration _parentCompletion;
     private readonly CancellationTokenSource _cancel;
     private readonly Action<PayloadLocalOperation> _released;
     private readonly TaskCompletionSource _cleared = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly TaskCompletionSource _parentCallbacksCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly object _gate = new();
     private Task? _cancellation;
     private int _references = 1;
     private int _disposed;
 
-    /// <summary>Links caller cancellation while retaining evidence that its callbacks have returned.</summary>
+    /// <summary>Links caller cancellation to this operation's cancellation source.</summary>
     internal PayloadLocalOperation(CancellationToken cancellationToken, Action<PayloadLocalOperation> released)
     {
-        _callerToken = cancellationToken;
         _released = released;
-        // Registrations execute in reverse order: this sentinel runs after the linked source's
-        // parent callback, including any operation-token callback that it invokes.
-        _parentCompletion = cancellationToken.UnsafeRegister(static state => ((PayloadLocalOperation)state!)._parentCallbacksCompleted.TrySetResult(), this);
         _cancel = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
     }
 
@@ -58,7 +51,6 @@ internal sealed class PayloadLocalOperation : IDisposable
         catch (AggregateException) { /* Callbacks have finished; actual foreground/result clearing is still required. */ }
         finally
         {
-            if (_callerToken.IsCancellationRequested) { await _parentCallbacksCompleted.Task.ConfigureAwait(false); }
             Release();
         }
     }
@@ -89,14 +81,12 @@ internal sealed class PayloadLocalOperation : IDisposable
         {
             if (--_references != 0) { return; }
         }
-        _ = Task.Run(CompleteReleaseAsync);
+        _ = Task.Run(CompleteRelease);
     }
 
-    private async Task CompleteReleaseAsync()
+    private void CompleteRelease()
     {
-        if (_callerToken.IsCancellationRequested) { await _parentCallbacksCompleted.Task.ConfigureAwait(false); }
         _cancel.Dispose();
-        _parentCompletion.Dispose();
         _cleared.TrySetResult();
         _released(this);
     }

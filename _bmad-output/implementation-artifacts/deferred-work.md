@@ -6511,3 +6511,15 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
   summary: Define and prove same-type mutable getter correlation for ordinary personal-data policies before domain policy integration.
   evidence: `PersonalDataDiscovery` checks the post-serialization child's type but not its identity/value against the exact serialized JSON; an `IPersonalDataPolicy` using the typed `Owner` can decide on a different same-type object and omit protection. The approved exactly-once serialization contract does not define a safe way to compare or snapshot that owner. Review pass 8 EC1/EC3; resolve before Story 8.9 domain adoption and G5.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Before Story 8.7 host wiring, require restore admission to bind backup fence, lifecycle workflow, and Reserved-key creating-operation identities to live authority.
+  evidence: Pass-10 blind review confirmed Accepted can be returned for differing fence approval ID/write mode/deployment generation, lifecycle operation ID, or Reserved key CreatingOperationId; this internal seam does not import records yet, so the workflow contract and regressions must settle exact backup/live identity before traffic.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Define how erasure completion detects a selectively missing scope index when wrapped keys may still exist.
+  evidence: Pass-10 edge review found absent head plus absent page zero is treated as an empty index. Qualified writers are atomic, but selective provider loss or repair has no demonstrated history proof; establish a reachable failure model and durable evidence before production erasure claims.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Bound reconciliation scheduling latency when one work page has many ready full-duration lifecycle drains.
+  evidence: Pass-10 edge review traced serial work-page processing into ResumeAsync, which can wait a fresh 60 seconds per ready drain and delay other roots for hours. Preserve the 60-second proof and claim fencing while qualifying fair scheduling before host integration.
