@@ -58,7 +58,10 @@ public sealed class LifecycleDrainTests
         PayloadLocalOperation operation = operations.Begin(identity);
         var lateClearing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         operation.RetainUntil(lateClearing.Task);
+        var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = operation.Token.Register(() => cancelled.TrySetResult());
         Task clearing = operations.DrainScopeAsync(PayloadProtectionStateKeys.ScopeDigest(identity)).AsTask();
+        await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
         operation.Token.IsCancellationRequested.ShouldBeTrue();
         clearing.IsCompleted.ShouldBeFalse();
         operation.Dispose();

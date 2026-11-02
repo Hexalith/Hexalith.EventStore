@@ -169,26 +169,25 @@ public class ProjectionChangedHubTests {
     }
 
     [Fact]
-    public async Task JoinGroup_GlobalAdmin_AllowsAnyTenant() {
+    public async Task JoinGroup_GlobalAdmin_RequiresTenantGrant() {
         IGroupManager groups = Substitute.For<IGroupManager>();
         var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim("global_admin", "true")], "Bearer"));
         ProjectionChangedHub sut = CreateHub("conn-admin", groups, maxGroupsPerConnection: 1, user: user);
 
-        await sut.JoinGroup("order-list", "any-tenant");
+        HubException ex = await Should.ThrowAsync<HubException>(() => sut.JoinGroup("order-list", "any-tenant"));
 
-        await groups.Received(1).AddToGroupAsync("conn-admin", "order-list:any-tenant", Arg.Any<CancellationToken>());
+        ex.Message.ShouldBe("Tenant authorization failed.");
+        await groups.DidNotReceive().AddToGroupAsync("conn-admin", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task JoinGroup_TenantComparisonIsCaseSensitiveForNonAdminUsers() {
+    public async Task JoinGroup_TenantComparisonNormalizesCaseForGrantedUsers() {
         IGroupManager groups = Substitute.For<IGroupManager>();
         ProjectionChangedHub sut = CreateHub("conn-case", groups, user: CreateUser("ACME"));
 
-        HubException ex = await Should.ThrowAsync<HubException>(() =>
-            sut.JoinGroup("order-list", "acme"));
+        await sut.JoinGroup("order-list", "acme");
 
-        ex.Message.ShouldBe("Tenant authorization failed.");
-        await groups.DidNotReceive().AddToGroupAsync("conn-case", "order-list:acme", Arg.Any<CancellationToken>());
+        await groups.Received(1).AddToGroupAsync("conn-case", "order-list:acme", Arg.Any<CancellationToken>());
     }
 
     [Fact]

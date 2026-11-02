@@ -86,6 +86,36 @@ public sealed partial class StreamsController(
         bool workloadOnly,
         CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
+        if (workloadOnly && request.Tenant is null)
+            return ProblemWithReason(StatusCodes.Status400BadRequest, ProblemTypeUris.BadRequest,
+                "Bad Request", "Tenant and domain are required.", StreamReplayReasonCodes.MissingRequiredField);
+
+        StreamReadRequest proofRequest = request;
+        if (workloadOnly)
+        {
+            if (LegacyTenantStorageMap.IsPlatformSourceRead(request.Tenant, request.Domain))
+            {
+                if (!Request.Headers.TryGetValue("X-Hexalith-Scope", out var scopeHeader)
+                    || scopeHeader.Count != 1 || !string.Equals(scopeHeader[0], request.Tenant, StringComparison.Ordinal)
+                    || Request.Headers.ContainsKey("X-Hexalith-Tenant"))
+                    return Forbid();
+                request = request with { Tenant = TenantCanonicalizer.ReservedStorageTenant };
+            }
+            else if (request.Tenant.StartsWith("platform:", StringComparison.Ordinal)
+                || Request.Headers.TryGetValue("X-Hexalith-Scope", out var ordinaryScopeHeader)
+                    && (ordinaryScopeHeader.Count != 1 || !string.Equals(ordinaryScopeHeader[0], request.Tenant, StringComparison.Ordinal))
+                || Request.Headers.TryGetValue("X-Hexalith-Tenant", out var tenantHeader)
+                    && (tenantHeader.Count != 1 || !string.Equals(tenantHeader[0], request.Tenant, StringComparison.Ordinal)))
+                return Forbid();
+        }
+
+        if (!workloadOnly)
+        {
+            if (!TenantCanonicalizer.TryCanonicalize(request.Tenant, out string canonicalTenant))
+                return ProblemWithReason(StatusCodes.Status400BadRequest, ProblemTypeUris.BadRequest,
+                    "Bad Request", "Tenant scope is invalid or reserved.", StreamReplayReasonCodes.InvalidAggregateIdentity);
+            request = request with { Tenant = canonicalTenant };
+        }
 
         IActionResult? validationFailure = ValidateRequest(request);
         if (validationFailure is not null) {
@@ -95,7 +125,7 @@ public sealed partial class StreamsController(
         if (workloadOnly) {
             string? caller = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value;
             bool jwtBound = string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
-                    request.Tenant, StringComparison.Ordinal)
+                    proofRequest.Tenant, StringComparison.Ordinal)
                 && string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
                     request.Domain, StringComparison.Ordinal);
             bool hasProof = Request.Headers.TryGetValue(BoundStreamReadProof.HeaderName, out var proofHeader);
@@ -103,7 +133,7 @@ public sealed partial class StreamsController(
             bool domainAllowed = allowedDomains?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Contains(request.Domain, StringComparer.Ordinal) == true;
             bool proofBound = hasProof && proofHeader.Count == 1 && caller is not null && domainAllowed
-                && BoundStreamReadProof.Verify(proofHeader[0], request, caller,
+                && BoundStreamReadProof.Verify(proofHeader[0], proofRequest, caller,
                     configuration?[$"Authentication:BoundStreamRead:PublicKeys:{caller}"], DateTimeOffset.UtcNow);
             if (string.IsNullOrWhiteSpace(caller) || hasProof && !proofBound || !jwtBound && !proofBound) {
                 return Forbid();

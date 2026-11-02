@@ -68,7 +68,7 @@ internal static class RestApiControllerEmitter
             }
 
             ImmutableArray<RestApiRouteParameterDescriptor> effectiveRouteParameters = GetEffectiveRouteParameters(options, route);
-            if (RequiresRouteTenant(options) && !HasTenantRouteParameter(effectiveRouteParameters))
+            if (RequiresRouteTenant(options, route) && !HasTenantRouteParameter(effectiveRouteParameters))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateMissingRouteTenant(message));
                 continue;
@@ -262,7 +262,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Request body is required.\");");
         builder.AppendLine("        }");
-        AppendTenantResolution(builder, options, routeParameters);
+        AppendTenantResolution(builder, options, route, routeParameters);
         AppendCommandRouteMismatchChecks(builder, message, routeParameters, options);
         AppendCatalogTenantValidation(builder, message, "command");
         builder.AppendLine();
@@ -315,7 +315,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        [FromHeader(Name = \"If-None-Match\")] string? ifNoneMatch,");
         builder.AppendLine("        CancellationToken cancellationToken)");
         builder.AppendLine("    {");
-        AppendTenantResolution(builder, options, routeParameters);
+        AppendTenantResolution(builder, options, route, routeParameters);
         AppendQueryPayload(builder, queryParameters);
         AppendQueryRouteValues(builder, message, routeParameters);
         AppendCatalogTenantValidation(builder, message, "query");
@@ -410,44 +410,56 @@ internal static class RestApiControllerEmitter
     private static void AppendHelpers(StringBuilder builder, RestApiOptions options)
     {
         builder.AppendLine();
-        builder.AppendLine("    private ActionResult<string> ResolveTenant(string? tenant, string? tenantId)");
+        builder.AppendLine("    private ActionResult<string> ResolveTenant(string? tenant, string? tenantId, string tenantSource)");
         builder.AppendLine("    {");
-        builder.Append("        const string tenantSource = ").Append(Literal(options.TenantSource)).AppendLine(";");
+        builder.AppendLine("        bool hasTenantHeader = Request.Headers.TryGetValue(\"X-Hexalith-Tenant\", out var tenantHeader);");
+        builder.AppendLine("        bool hasScopeHeader = Request.Headers.TryGetValue(\"X-Hexalith-Scope\", out var scopeHeader);");
+        builder.AppendLine("        if (hasTenantHeader && hasScopeHeader)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Tenant and platform scopes cannot be combined.\");");
+        builder.AppendLine("        }");
         builder.AppendLine("        if (string.Equals(tenantSource, \"System\", StringComparison.Ordinal))");
         builder.AppendLine("        {");
-        builder.AppendLine("            return \"system\";");
+        builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"A public system tenant is not supported.\");");
         builder.AppendLine("        }");
         builder.AppendLine();
+        builder.AppendLine("        if (string.Equals(tenantSource, \"Platform\", StringComparison.Ordinal))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            if (hasTenantHeader || !hasScopeHeader || scopeHeader.Count != 1");
+        builder.AppendLine("                || !global::Hexalith.EventStore.Contracts.Identity.TenantCanonicalizer.IsPlatformScope(scopeHeader[0]))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"An explicit canonical platform scope is required.\");");
+        builder.AppendLine("            }");
+        builder.AppendLine("            return scopeHeader[0]!;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        string? requestedTenant;");
         builder.AppendLine("        if (string.Equals(tenantSource, \"Route\", StringComparison.Ordinal))");
         builder.AppendLine("        {");
-        builder.AppendLine("            string? normalizedTenant = string.IsNullOrWhiteSpace(tenant) ? null : tenant;");
-        builder.AppendLine("            string? normalizedTenantId = string.IsNullOrWhiteSpace(tenantId) ? null : tenantId;");
-        builder.AppendLine("            if (normalizedTenant is not null");
-        builder.AppendLine("                && normalizedTenantId is not null");
-        builder.AppendLine("                && !string.Equals(normalizedTenant, normalizedTenantId, StringComparison.Ordinal))");
+        builder.AppendLine("            if (hasTenantHeader || hasScopeHeader || tenant is not null && tenantId is not null)");
         builder.AppendLine("            {");
-        builder.AppendLine("                return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Tenant route values differ.\");");
+        builder.AppendLine("                return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Duplicate or mixed tenant scopes are not allowed.\");");
         builder.AppendLine("            }");
-        builder.AppendLine();
-        builder.AppendLine("            string? resolvedTenant = normalizedTenant ?? normalizedTenantId;");
-        builder.AppendLine("            return string.IsNullOrWhiteSpace(resolvedTenant)");
-        builder.AppendLine("                ? CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Tenant route value is required.\")");
-        builder.AppendLine("                : resolvedTenant;");
+        builder.AppendLine("            requestedTenant = tenant ?? tenantId;");
         builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.AppendLine("        string[] tenants = User.FindAll(\"eventstore:tenant\")");
-        builder.AppendLine("            .Select(static claim => claim.Value)");
-        builder.AppendLine("            .Where(static value => !string.IsNullOrWhiteSpace(value))");
-        builder.AppendLine("            .Distinct(StringComparer.Ordinal)");
-        builder.AppendLine("            .ToArray();");
-        builder.AppendLine("        if (tenants.Length == 0)");
+        builder.AppendLine("        else");
         builder.AppendLine("        {");
-        builder.AppendLine("            return CreateProblem(StatusCodes.Status403Forbidden, \"Forbidden\", \"A tenant claim is required.\");");
+        builder.AppendLine("            if (hasScopeHeader || !hasTenantHeader || tenantHeader.Count != 1)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"An explicit tenant header is required.\");");
+        builder.AppendLine("            }");
+        builder.AppendLine("            requestedTenant = tenantHeader[0];");
         builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.AppendLine("        return tenants.Length == 1");
-        builder.AppendLine("            ? tenants[0]");
-        builder.AppendLine("            : CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"The tenant is ambiguous.\");");
+        builder.AppendLine("        if (!global::Hexalith.EventStore.Contracts.Identity.TenantCanonicalizer.TryCanonicalize(requestedTenant, out string canonicalTenant))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"The tenant is invalid or reserved.\");");
+        builder.AppendLine("        }");
+        builder.AppendLine("        if (User.Identity?.IsAuthenticated != true || !global::Hexalith.EventStore.Contracts.Identity.TenantCanonicalizer.TryCanonicalizeGrants(");
+        builder.AppendLine("            User.FindAll(\"eventstore:tenant\").Select(static claim => claim.Value), out var grants) || !grants.Contains(canonicalTenant))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return CreateProblem(StatusCodes.Status403Forbidden, \"Forbidden\", \"The tenant is not authorized.\");");
+        builder.AppendLine("        }");
+        builder.AppendLine("        return canonicalTenant;");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    private void AppendQueryMetadataHeaders(QueryResponseMetadata? metadata)");
@@ -879,16 +891,17 @@ internal static class RestApiControllerEmitter
     private static void AppendTenantResolution(
         StringBuilder builder,
         RestApiOptions options,
+        RestApiRouteDescriptor route,
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
     {
         string tenantArgument = FindRouteParameterIdentifier(routeParameters, "tenant") ?? "null";
         string tenantIdArgument = FindRouteParameterIdentifier(routeParameters, "tenantId") ?? "null";
         builder.AppendLine();
         builder.Append("        ActionResult<string> __hexalithTenantResult = ResolveTenant(")
-            .Append(RequiresRouteTenant(options) ? tenantArgument : "null")
+            .Append(RequiresRouteTenant(options, route) ? tenantArgument : "null")
             .Append(", ")
-            .Append(RequiresRouteTenant(options) ? tenantIdArgument : "null")
-            .AppendLine(");");
+            .Append(RequiresRouteTenant(options, route) ? tenantIdArgument : "null")
+            .Append(", ").Append(Literal(GetTenantSource(options, route))).AppendLine(");");
         builder.AppendLine("        if (__hexalithTenantResult.Result is not null)");
         builder.AppendLine("        {");
         builder.AppendLine("            return __hexalithTenantResult.Result;");
@@ -920,7 +933,7 @@ internal static class RestApiControllerEmitter
         // a route/body id mismatch such as POST /api/tenants/acme/disable {"tenantId":"other"} would
         // silently dispatch against the body id. AC2 requires a 400 problem detail on such a mismatch.
         ImmutableArray<RestApiRouteParameterDescriptor> reconciledParameters =
-            RequiresRouteTenant(options)
+            RequiresRouteTenant(options, GetRoute(message))
                 ? GetNonTenantParameters(routeParameters)
                 : routeParameters;
         foreach (RestApiRouteParameterDescriptor parameter in reconciledParameters)
@@ -1634,8 +1647,11 @@ internal static class RestApiControllerEmitter
         => string.Equals(parameter.Name, "tenant", StringComparison.OrdinalIgnoreCase)
             || string.Equals(parameter.Name, "tenantId", StringComparison.OrdinalIgnoreCase);
 
-    private static bool RequiresRouteTenant(RestApiOptions options)
-        => string.Equals(options.TenantSource, "Route", StringComparison.Ordinal);
+    private static bool RequiresRouteTenant(RestApiOptions options, RestApiRouteDescriptor route)
+        => string.Equals(GetTenantSource(options, route), "Route", StringComparison.Ordinal);
+
+    private static string GetTenantSource(RestApiOptions options, RestApiRouteDescriptor route)
+        => string.Equals(route.TenantSource, "Inherit", StringComparison.Ordinal) ? options.TenantSource : route.TenantSource;
 
     private static string ToStringExpression(string identifier, string fallbackExpression)
         => "Convert.ToString(" + identifier + ", CultureInfo.InvariantCulture) ?? " + fallbackExpression;

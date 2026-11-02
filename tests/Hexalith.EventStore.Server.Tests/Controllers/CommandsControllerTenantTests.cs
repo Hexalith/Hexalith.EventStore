@@ -280,23 +280,22 @@ public class CommandsControllerTenantTests {
     }
 
     [Fact]
-    public async Task Submit_NoTenantClaims_StillDelegatesToMediatR() {
-        // Arrange — no tenant claims; controller no longer checks this, behavior does
+    public async Task Submit_NoTenantClaims_RefusesBeforeMediatR() {
         var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "test-user")], "test"));
         (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
         SubmitCommandRequest request = CreateTestRequest();
 
         // Act
-        _ = await controller.Submit(request, CancellationToken.None);
+        IActionResult result = await controller.Submit(request, CancellationToken.None);
 
-        // Assert — controller sends to MediatR regardless of claims; behavior handles auth
-        _ = await mediator.Received(1).Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+        _ = result.ShouldBeOfType<ForbidResult>();
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Submit_MissingSubClaim_ReturnsUnauthorizedAndDoesNotCallMediator() {
         // Arrange
-        var principal = new ClaimsPrincipal(new ClaimsIdentity([], "test"));
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("eventstore:tenant", "test-tenant")], "test"));
         (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
         SubmitCommandRequest request = CreateTestRequest();
 
@@ -309,8 +308,7 @@ public class CommandsControllerTenantTests {
     }
 
     [Fact]
-    public async Task Submit_NoTenantClaims_WithRealPipeline_ThrowsCommandAuthorizationExceptionFromBehavior() {
-        // Arrange — prove the controller delegates into the real MediatR pipeline where AuthorizationBehavior denies the request
+    public async Task Submit_NoTenantClaims_WithRealPipeline_RefusesBeforeBehavior() {
         ClaimsPrincipal principal = CreateAuthenticatedPrincipalWithoutTenants();
         CommandsController controller = CreateControllerWithRealAuthorizationPipeline(
             principal,
@@ -319,11 +317,8 @@ public class CommandsControllerTenantTests {
             out _);
         SubmitCommandRequest request = CreateTestRequest();
 
-        // Act & Assert
-        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
-            () => controller.Submit(request, CancellationToken.None));
-
-        ex.Reason.ShouldContain("No tenant authorization claims");
+        IActionResult result = await controller.Submit(request, CancellationToken.None);
+        _ = result.ShouldBeOfType<ForbidResult>();
     }
 
     [Fact]
@@ -361,7 +356,7 @@ public class CommandsControllerTenantTests {
 
         var controller = new CommandsController(mediator, sanitizer, logger);
         var httpContext = new DefaultHttpContext {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "test-user")], "test")),
+            User = CreateAuthenticatedPrincipal("test-tenant"),
         };
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
@@ -376,7 +371,7 @@ public class CommandsControllerTenantTests {
     [Fact]
     public async Task Submit_StoresRequestTenantIdInHttpContext() {
         // Arrange — verify RequestTenantId is set for rate limiter
-        ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
+        ClaimsPrincipal principal = CreateAuthenticatedPrincipal("my-tenant");
         (CommandsController controller, _) = CreateControllerWithMediator(principal);
         SubmitCommandRequest request = CreateTestRequest(tenant: "my-tenant");
 

@@ -5,6 +5,7 @@ using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Pipeline.Queries;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using MediatR;
 
@@ -69,7 +70,10 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
                 || subjectId is null && context.SubjectId is not null
                 && string.Equals(context.SubjectId,
                     user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
-                    StringComparison.Ordinal))) {
+                    StringComparison.Ordinal)
+                || context.SubjectId is not null && request is SubmitCommand boundCommand
+                && user.HasClaim(claim => claim.Type == EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)
+                && string.Equals(context.SubjectId, boundCommand.AuthenticatedSubject, StringComparison.Ordinal))) {
             Log.AuthorizationPassed(
                 logger,
                 correlationId,

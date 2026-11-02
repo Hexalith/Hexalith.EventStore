@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Contracts.Identity;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -19,36 +20,20 @@ public class AdminTenantAuthorizationFilter(ILogger<AdminTenantAuthorizationFilt
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
 
-        if (GlobalAdministratorHelper.IsGlobalAdministrator(context.HttpContext.User)) {
-            _ = await next().ConfigureAwait(false);
-            return;
-        }
-
-        string? tenantId = ResolveRequestedTenantId(context);
-        if (string.IsNullOrWhiteSpace(tenantId)) {
-            if (!HasTenantArgument(context)) {
-                _ = await next().ConfigureAwait(false);
-                return;
-            }
-
-            string? firstAuthorizedTenant = GetAuthorizedTenantClaims(context).FirstOrDefault();
-            if (string.IsNullOrWhiteSpace(firstAuthorizedTenant)) {
-                Deny(context, null, []);
-                return;
-            }
-
-            context.ActionArguments["tenantId"] = firstAuthorizedTenant;
-
+        if (!HasTenantArgument(context)) {
             _ = await next().ConfigureAwait(false);
             return;
         }
 
         List<string> tenantClaims = GetAuthorizedTenantClaims(context);
-        if (!tenantClaims.Contains(tenantId, StringComparer.Ordinal)) {
+        if (!TryResolveRequestedTenantId(context, out string tenantId)
+            || !TenantCanonicalizer.TryCanonicalizeGrants(tenantClaims, out IReadOnlySet<string> canonicalGrants)
+            || !canonicalGrants.Contains(tenantId)) {
             Deny(context, tenantId, tenantClaims);
             return;
         }
 
+        context.ActionArguments["tenantId"] = tenantId;
         _ = await next().ConfigureAwait(false);
     }
 
@@ -56,26 +41,21 @@ public class AdminTenantAuthorizationFilter(ILogger<AdminTenantAuthorizationFilt
         => context.HttpContext.User
             .FindAll(TenantClaimType)
             .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();
 
-    private static string? ResolveRequestedTenantId(ActionExecutingContext context) {
-        if (context.RouteData.Values.TryGetValue("tenantId", out object? routeValue)
-            && !string.IsNullOrWhiteSpace(routeValue?.ToString())) {
-            return routeValue.ToString();
+    private static bool TryResolveRequestedTenantId(ActionExecutingContext context, out string tenantId) {
+        bool hasRoute = context.RouteData.Values.TryGetValue("tenantId", out object? routeValue);
+        bool hasQuery = context.HttpContext.Request.Query.TryGetValue("tenantId", out Microsoft.Extensions.Primitives.StringValues queryValue);
+        string? requested = hasRoute ? routeValue?.ToString()
+            : hasQuery && queryValue.Count == 1 ? queryValue[0]
+            : !hasQuery && context.ActionArguments.TryGetValue("tenantId", out object? actionValue) ? actionValue?.ToString() : null;
+        if (hasRoute && hasQuery || hasQuery && queryValue.Count != 1)
+        {
+            tenantId = string.Empty;
+            return false;
         }
 
-        if (context.HttpContext.Request.Query.TryGetValue("tenantId", out Microsoft.Extensions.Primitives.StringValues queryValue)
-            && !string.IsNullOrWhiteSpace(queryValue.ToString())) {
-            return queryValue.ToString();
-        }
-
-        if (context.ActionArguments.TryGetValue("tenantId", out object? actionValue)
-            && !string.IsNullOrWhiteSpace(actionValue?.ToString())) {
-            return actionValue.ToString();
-        }
-
-        return null;
+        return TenantCanonicalizer.TryCanonicalize(requested, out tenantId);
     }
 
     private static bool HasTenantArgument(ActionExecutingContext context)

@@ -264,16 +264,20 @@ internal static class RestApiMessageParser
                 ? RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[1])
                 : string.Empty;
             string apiScope = string.Empty;
+            string tenantSource = "Inherit";
             foreach (KeyValuePair<string, TypedConstant> namedArgument in attribute.NamedArguments)
             {
                 if (string.Equals(namedArgument.Key, "ApiScope", StringComparison.Ordinal))
                 {
                     apiScope = RoslynAttributeValueReader.GetString(namedArgument.Value);
-                    break;
+                }
+                else if (string.Equals(namedArgument.Key, "TenantSource", StringComparison.Ordinal))
+                {
+                    tenantSource = RoslynAttributeValueReader.GetEnumName(namedArgument.Value, "Inherit");
                 }
             }
 
-            return new RestApiRouteDescriptor(verb, template, apiScope);
+            return new RestApiRouteDescriptor(verb, template, apiScope, tenantSource);
         }
 
         return null;

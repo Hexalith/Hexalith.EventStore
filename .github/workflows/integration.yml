@@ -143,6 +143,18 @@ jobs:
 
       - name: Restore
         run: dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false
+      - name: Verify canonical tenant and generated explicit-scope boundaries
+        run: |
+          dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj \
+            --configuration Release --no-restore \
+            --filter-class Hexalith.EventStore.Contracts.Tests.Identity.TenantCanonicalizerTests \
+            --minimum-expected-tests 22 --fail-skips on \
+            -p:UseHexalithProjectReferences=false
+          dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj \
+            --configuration Release --no-restore \
+            --filter-class Hexalith.EventStore.RestApi.Generators.Tests.RestApiGeneratedControllerErrorSemanticsTests \
+            --minimum-expected-tests 62 --fail-skips on \
+            -p:UseHexalithProjectReferences=false
       - name: Initialize Dapr
         uses: ./references/Hexalith.Builds/Github/dapr-init
         with:

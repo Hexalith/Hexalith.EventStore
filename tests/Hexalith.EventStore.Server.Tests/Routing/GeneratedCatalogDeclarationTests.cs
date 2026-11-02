@@ -52,7 +52,7 @@ public sealed class GeneratedCatalogDeclarationTests
     }
     [Theory]
     [InlineData("tenant-a", "tenant-a", true)]
-    [InlineData("system", "system", true)]
+    [InlineData("system", "system", false)]
     [InlineData("tenant-a", "tenant-b", false)]
     public async Task ExactCatalogTenantComesOnlyFromTheGeneratedAction(string exactTenant, string partitionTenant, bool accepted)
     {

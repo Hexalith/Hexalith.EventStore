@@ -197,7 +197,8 @@ public class RouteCatalogV3IngressTests
         {
             Issuer = "catalog-test", Audience = "catalog-test", Expires = DateTime.UtcNow.AddMinutes(5),
             SigningCredentials = new(new SymmetricSecurityKey(signing), SecurityAlgorithms.HmacSha256),
-            Subject = new ClaimsIdentity([new("sub", "test-user"), new(RouteCatalogSurfacePolicy.ClaimType, surface)]),
+            Subject = new ClaimsIdentity([new("sub", "test-user"), new("eventstore:tenant", "tenant-a"),
+                new(RouteCatalogSurfacePolicy.ClaimType, surface)]),
         });
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token("agent"));
         var command = declarations.Single(d => d.RouteId == "counter-increment-counter");

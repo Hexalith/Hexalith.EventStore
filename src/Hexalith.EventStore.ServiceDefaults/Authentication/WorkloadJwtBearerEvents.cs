@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
+using Hexalith.EventStore.Contracts.Identity;
 
 namespace Hexalith.EventStore.ServiceDefaults.Authentication;
 
@@ -134,9 +135,17 @@ public sealed class WorkloadJwtBearerEvents(
             return WorkloadAuthenticationReasons.AssertionMalformed;
         }
 
-        // A human bearer next to a workload assertion is ambiguous: neither credential is trusted.
-        return context.Request.Headers.ContainsKey(HeaderNames.Authorization)
-            ? WorkloadAuthenticationReasons.CredentialConflict
-            : null;
+        // The bound platform command independently validates its administrator bearer, signed
+        // workload proof, and matching principal. Other workload routes reject mixed credentials.
+        bool boundPlatformCommand = string.Equals(context.Request.Path.Value,
+                "/api/v1/commands/bound/workload", StringComparison.OrdinalIgnoreCase)
+            && context.Request.Headers.TryGetValue("X-Hexalith-Scope", out StringValues scopes)
+            && scopes.Count == 1 && TenantCanonicalizer.IsPlatformScope(scopes[0]);
+        StringValues authorization = context.Request.Headers[HeaderNames.Authorization];
+        bool boundHumanBearer = boundPlatformCommand && authorization.Count == 1
+            && authorization[0] is { } bearer && bearer.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            && bearer.Length > 7;
+        return authorization.Count > 0 && !boundHumanBearer
+            ? WorkloadAuthenticationReasons.CredentialConflict : null;
     }
 }

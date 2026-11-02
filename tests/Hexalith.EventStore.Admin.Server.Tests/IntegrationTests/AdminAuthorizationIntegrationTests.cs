@@ -35,7 +35,9 @@ public class AdminAuthorizationIntegrationTests : IDisposable {
     public async Task ReadOnlyRole_GetStreams_NotForbiddenOrUnauthorized() {
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "ReadOnly"),
-            new Claim(AdminClaimTypes.Tenant, "tenant-a"));
+            new Claim(AdminClaimTypes.Tenant, "tenant-a"),
+            new Claim("eventstore:permission", "admin:read"));
+        _client.DefaultRequestHeaders.Add("X-Hexalith-Scope", "platform:eventstore-admin");
 
         HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams");
 
@@ -148,14 +150,15 @@ public class AdminAuthorizationIntegrationTests : IDisposable {
 
     [Fact]
     public async Task AdminRole_TenantScopedEndpoint_NotBlockedByTenantFilter() {
-        // Admin users should access any tenant-scoped endpoint even without tenant claims
+        // An admin with an explicit tenant grant may access that tenant's stream.
         SetClaims(
-            new Claim(AdminClaimTypes.AdminRole, "Admin"));
+            new Claim(AdminClaimTypes.AdminRole, "Admin"),
+            new Claim(AdminClaimTypes.Tenant, "any-tenant"));
 
         HttpResponseMessage response = await _client.GetAsync(
             "/api/v1/admin/streams/any-tenant/domain/agg/timeline");
 
-        // Should NOT be 403 — admin is exempt from tenant filter
+        // The matching tenant grant admits the request.
         response.StatusCode.ShouldNotBe(HttpStatusCode.Forbidden);
         response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
     }

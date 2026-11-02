@@ -4,11 +4,12 @@ namespace Hexalith.EventStore.RestApi.Generators;
 
 internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescriptor>
 {
-    public RestApiRouteDescriptor(string verb, string template, string apiScope = "")
+    public RestApiRouteDescriptor(string verb, string template, string apiScope = "", string tenantSource = "Inherit")
     {
         Verb = verb;
         Template = template;
         ApiScope = string.IsNullOrWhiteSpace(apiScope) ? string.Empty : apiScope.Trim();
+        TenantSource = tenantSource;
         IsAbsolute = template.StartsWith("~/", StringComparison.Ordinal);
         Parameters = RestApiRouteTemplateParser.ParseParameters(template);
         TemplateError = RestApiRouteTemplateParser.GetTemplateError(template);
@@ -20,6 +21,8 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
 
     public string ApiScope { get; }
 
+    public string TenantSource { get; }
+
     public bool IsAbsolute { get; }
 
     public ImmutableArray<RestApiRouteParameterDescriptor> Parameters { get; }
@@ -30,6 +33,7 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
         => string.Equals(Verb, other.Verb, StringComparison.Ordinal)
             && string.Equals(Template, other.Template, StringComparison.Ordinal)
             && string.Equals(ApiScope, other.ApiScope, StringComparison.Ordinal)
+            && string.Equals(TenantSource, other.TenantSource, StringComparison.Ordinal)
             && IsAbsolute == other.IsAbsolute
             && Parameters.SequenceEqual(other.Parameters)
             && string.Equals(TemplateError, other.TemplateError, StringComparison.Ordinal);
@@ -43,6 +47,7 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
             int hash = (StringComparer.Ordinal.GetHashCode(Verb) * 397)
                 ^ StringComparer.Ordinal.GetHashCode(Template);
             hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(ApiScope);
+            hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(TenantSource);
             hash = (hash * 397) ^ IsAbsolute.GetHashCode();
             hash = (hash * 397) ^ (TemplateError is null
                 ? 0

@@ -16,5 +16,6 @@ internal sealed class CatalogFixtureAuthenticationHandler(IOptionsMonitor<Authen
 {
     /// <inheritdoc />
     protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(AuthenticateResult.Success(
-        new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new("sub", "test-user")], Scheme.Name)), Scheme.Name)));
+        new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
+            [new("sub", "test-user"), new("eventstore:tenant", "tenant-a")], Scheme.Name)), Scheme.Name)));
 }

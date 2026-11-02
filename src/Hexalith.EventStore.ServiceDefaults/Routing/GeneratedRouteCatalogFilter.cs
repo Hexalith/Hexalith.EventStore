@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using Hexalith.EventStore.Contracts.Routing;
+using Hexalith.EventStore.Contracts.Identity;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -72,7 +73,29 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
                 throw new RouteCatalogUnavailableException("The generated action disagrees with its compiled endpoint metadata.");
             string domain = Read(metadata.ContractType, "Domain");
             string discriminator = Read(metadata.ContractType, metadata.Kind == "command" ? "CommandType" : "QueryType");
-            var selected = lease.Snapshot.Resolve(metadata.Kind, tenant, domain, discriminator);
+            bool platformScope = TenantCanonicalizer.IsPlatformScope(tenant);
+            if (!platformScope)
+            {
+                if (!TenantCanonicalizer.TryCanonicalize(tenant, out string canonicalTenant)
+                    || !string.Equals(canonicalTenant, tenant, StringComparison.Ordinal))
+                    return false;
+            }
+            var selected = lease.Snapshot.Resolve(metadata.Kind,
+                platformScope || metadata.Kind == "query" && LegacyTenantStorageMap.IsSingleTenantRead(domain, discriminator)
+                    ? TenantCanonicalizer.ReservedStorageTenant : tenant, domain, discriminator);
+            if (platformScope)
+            {
+                PlatformAdmissionDeclaration? admission = selected.Declaration.PlatformAdmission;
+                if (admission is null || !string.Equals(admission.Namespace, tenant, StringComparison.Ordinal)
+                    || context.User.Identity?.IsAuthenticated != true
+                    || context.User.FindAll("eventstore:permission").Count(claim =>
+                        string.Equals(claim.Value, admission.RequiredHumanPermission, StringComparison.Ordinal)) != 1
+                    || !TenantCanonicalizer.TryCanonicalizeGrants(
+                        context.User.FindAll("eventstore:tenant").Select(claim => claim.Value), out _))
+                    return false;
+            }
+            else if (selected.Declaration.PlatformAdmission is not null)
+                return false;
             if (lease.Snapshot.Envelope.SchemaVersion == 3
                 && !Authentication.RouteCatalogSurfacePolicy.Allows(lease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId), context.User))
             {

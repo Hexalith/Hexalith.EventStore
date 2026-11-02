@@ -4,6 +4,7 @@ using System.Text.Json;
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Client.Security;
@@ -15,10 +16,13 @@ using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Validation;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hexalith.EventStore.Controllers;
@@ -34,7 +38,8 @@ public class CommandsController(
     IEnumerable<ITrustedCommandExtensionPolicy>? trustedExtensionPolicies = null,
     IIdentityGatewayAdmission? identityAdmission = null,
     IIdentityAdmissionProof? identityVerifier = null,
-    IConfiguration? configuration = null) : ControllerBase {
+    IConfiguration? configuration = null,
+    IRouteCatalogAuthority? catalogAuthority = null) : ControllerBase {
     private const string GlobalAdminExtensionKey = "actor:globalAdmin";
 
     // ES-1 DoS guard for the optional domain-service result payload.
@@ -90,10 +95,10 @@ public class CommandsController(
     [HttpPost("bound/workload")]
     [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayCommandSubmitPolicy)]
     [RequestSizeLimit(1_048_576)]
-    public Task<IActionResult> SubmitBoundWorkload(
+    public async Task<IActionResult> SubmitBoundWorkload(
         [FromBody] BoundWorkloadCommandRequest request, CancellationToken cancellationToken) {
         if (request?.Command is not { } command || string.IsNullOrWhiteSpace(request.PrincipalId)) {
-            return Task.FromResult<IActionResult>(Forbid());
+            return Forbid();
         }
 
         string? caller = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value;
@@ -106,15 +111,60 @@ public class CommandsController(
                 configuration?[$"Authentication:BoundStreamRead:PublicKeys:{caller}"], DateTimeOffset.UtcNow);
         if (string.IsNullOrWhiteSpace(caller) || workloadSubject != "workload:" + caller ||
             !domains.Contains(command.Domain, StringComparer.Ordinal) || !signed) {
-            return Task.FromResult<IActionResult>(Forbid());
+            return Forbid();
         }
 
-        return SubmitCoreAsync(command, workloadOnly: true, cancellationToken, request.PrincipalId);
+        ClaimsPrincipal? platformPrincipal = null;
+        if (TenantCanonicalizer.IsPlatformScope(command.Tenant))
+        {
+            AuthenticateResult human = await HttpContext.AuthenticateAsync(JwtBearerDefaults.AuthenticationScheme).ConfigureAwait(false);
+            platformPrincipal = human.Succeeded ? human.Principal : null;
+            if (platformPrincipal is null || platformPrincipal.FindAll("sub").Count() != 1
+                || !string.Equals(platformPrincipal.FindFirst("sub")?.Value, request.PrincipalId, StringComparison.Ordinal))
+                return Forbid();
+        }
+
+        return await SubmitCoreAsync(command, workloadOnly: true, cancellationToken, request.PrincipalId, platformPrincipal)
+            .ConfigureAwait(false);
     }
 
     private async Task<IActionResult> SubmitCoreAsync(SubmitCommandRequest request, bool workloadOnly,
-        CancellationToken cancellationToken, string? boundPrincipalId = null) {
+        CancellationToken cancellationToken, string? boundPrincipalId = null, ClaimsPrincipal? platformPrincipal = null) {
         ArgumentNullException.ThrowIfNull(request);
+
+        bool platformScope = TenantCanonicalizer.IsPlatformScope(request.Tenant);
+        if (Request.Headers.ContainsKey("X-Hexalith-Scope") && (!platformScope
+                || !string.Equals(Request.Headers["X-Hexalith-Scope"].ToString(), request.Tenant, StringComparison.Ordinal))
+            || Request.Headers.ContainsKey("X-Hexalith-Tenant") && platformScope)
+            return BadRequest("Mixed or conflicting request scopes are not allowed.");
+        if (!platformScope)
+        {
+            if (!TenantCanonicalizer.TryCanonicalize(request.Tenant, out string canonicalTenant))
+                return Forbid();
+            request = request with { Tenant = canonicalTenant };
+        }
+        if (!workloadOnly && !platformScope &&
+            (!TenantCanonicalizer.TryCanonicalizeGrants(User.FindAll("eventstore:tenant").Select(claim => claim.Value), out IReadOnlySet<string> grants)
+             || !grants.Contains(request.Tenant)))
+            return Forbid();
+
+        RouteCatalogDispatchLease? platformLease = null;
+        if (platformScope)
+        {
+            if (workloadOnly && platformPrincipal is null || catalogAuthority is null)
+                return Forbid();
+            platformLease = await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        }
+        await using var platformRelease = new RouteCatalogLeaseReleaser(platformLease).ConfigureAwait(false);
+        if (platformScope)
+        {
+            var selected = platformLease!.Snapshot.Resolve("command", TenantCanonicalizer.ReservedStorageTenant,
+                request.Domain, request.CommandType);
+            if (!LegacyTenantStorageScopeAdapter.TryMapPlatform(selected.Declaration, request.Tenant,
+                    platformPrincipal ?? User, out string storageTenant))
+                return Forbid();
+            request = request with { Tenant = storageTenant };
+        }
 
         if (request.Extensions?.Keys.Any(key => key.StartsWith("identity:", StringComparison.OrdinalIgnoreCase)
             || string.Equals(key, EventStoreGatewayVerifiedOrigin.ExtensionKey, StringComparison.OrdinalIgnoreCase)
@@ -260,7 +310,7 @@ public class CommandsController(
             CorrelationId: string.IsNullOrWhiteSpace(request.CorrelationId) ? messageId : request.CorrelationId,
             UserId: userId,
             Extensions: extensions,
-            IsGlobalAdmin: IsGlobalAdministrator(User),
+            IsGlobalAdmin: IsGlobalAdministrator(platformPrincipal ?? User),
             IdempotencyKey: request.IdempotencyKey)
         {
             AuthenticatedSubject = workloadOnly
@@ -291,13 +341,12 @@ public class CommandsController(
             };
         }
 
-        if (workloadOnly)
+        if (workloadOnly || platformScope)
         {
-            // The workload policy and signed tenant binding were checked at this gateway.
-            // The MediatR human tenant/RBAC behavior must not reinterpret a workload as a user.
+            // The workload binding or declared human platform operation was checked at this gateway.
             HttpContext.Items[AuthorizationBehavior<SubmitCommand, SubmitCommandResult>.PrevalidatedAuthorizationContextKey]
                 = new GatewayAuthorizationContext(request.Tenant, request.Domain, request.CommandType,
-                    "command", request.AggregateId, SubjectId: null);
+                    "command", request.AggregateId, SubjectId: platformScope ? userId : null);
         }
 
         SubmitCommandResult result = await mediator.Send(command, cancellationToken).ConfigureAwait(false);

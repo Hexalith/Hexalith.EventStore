@@ -7,6 +7,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Client.Security;
 using Hexalith.EventStore.Client.Gateway;
@@ -242,8 +243,31 @@ public partial class QueriesController : ControllerBase {
             return Unauthorized();
         }
 
-        await ValidateAuthorizationBeforeLookupAsync(request, userId, correlationId, cancellationToken)
-            .ConfigureAwait(false);
+        string explicitScope = request.Tenant;
+        bool platformScope = TenantCanonicalizer.IsPlatformScope(explicitScope);
+        bool legacyTenantRead = LegacyTenantStorageScopeAdapter.IsSingleTenantRead(request.Domain, request.QueryType);
+        if (Request.Headers.ContainsKey("X-Hexalith-Scope") && (!platformScope
+                || !string.Equals(Request.Headers["X-Hexalith-Scope"].ToString(), explicitScope, StringComparison.Ordinal))
+            || Request.Headers.ContainsKey("X-Hexalith-Tenant") && platformScope)
+            return BadRequest("Mixed or conflicting request scopes are not allowed.");
+        if (!platformScope)
+        {
+            if (!TenantCanonicalizer.TryCanonicalize(explicitScope, out string canonicalTenant))
+                return Forbid();
+            if (legacyTenantRead)
+            {
+                if (!TenantCanonicalizer.TryCanonicalize(request.AggregateId, out string canonicalAggregate)
+                    || !string.Equals(canonicalTenant, canonicalAggregate, StringComparison.Ordinal))
+                    return BadRequest("Single-tenant read scope must match the aggregate identifier.");
+                request = request with { AggregateId = canonicalAggregate };
+            }
+            request = request with { Tenant = canonicalTenant };
+            await ValidateAuthorizationBeforeLookupAsync(request, userId, correlationId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if ((platformScope || legacyTenantRead) && catalogAuthority is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
 
         var catalogLease = catalogAuthority is null ? null
             : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
@@ -251,7 +275,27 @@ public partial class QueriesController : ControllerBase {
         bool protectedInternalIdentity = false;
         if (catalogLease is not null)
         {
-            var selected = catalogLease.Snapshot.Resolve("query", request.Tenant, request.Domain, request.QueryType);
+            var selected = catalogLease.Snapshot.Resolve("query",
+                platformScope || legacyTenantRead ? TenantCanonicalizer.ReservedStorageTenant : request.Tenant,
+                request.Domain, request.QueryType);
+            if (platformScope)
+            {
+                if (!LegacyTenantStorageScopeAdapter.TryMapPlatform(selected.Declaration, explicitScope, User, out string storageTenant))
+                    return Forbid();
+                request = request with { Tenant = storageTenant };
+                HttpContext.Items[AuthorizationBehavior<SubmitQuery, SubmitQueryResult>.PrevalidatedAuthorizationContextKey]
+                    = new GatewayAuthorizationContext(storageTenant, request.Domain, request.QueryType,
+                        "query", request.AggregateId, userId);
+            }
+            else if (legacyTenantRead)
+            {
+                if (selected.Declaration.PlatformAdmission is not null)
+                    return Forbid();
+                request = request with { Tenant = TenantCanonicalizer.ReservedStorageTenant };
+                HttpContext.Items[AuthorizationBehavior<SubmitQuery, SubmitQueryResult>.PrevalidatedAuthorizationContextKey]
+                    = new GatewayAuthorizationContext(request.Tenant, request.Domain, request.QueryType,
+                        "query", request.AggregateId, userId);
+            }
             if (catalogLease.Snapshot.Envelope.SchemaVersion == 3)
             {
                 var operation = catalogLease.Snapshot.Envelope.Operations!.Single(o => o.RouteId == selected.Declaration.RouteId);

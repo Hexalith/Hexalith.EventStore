@@ -365,7 +365,10 @@ public sealed class SampleApiHostMiddlewareTests
         {
             Issuer = issuer,
             Audience = audience,
-            Subject = new ClaimsIdentity([new Claim("sub", "sample-user")]),
+            Subject = new ClaimsIdentity([
+                new Claim("sub", "sample-user"),
+                new Claim("eventstore:tenant", "tenant-a"),
+            ]),
             NotBefore = expiresAt < DateTime.UtcNow ? expiresAt.AddMinutes(-30) : DateTime.UtcNow.AddMinutes(-1),
             Expires = expiresAt,
             SigningCredentials = signed
@@ -404,7 +407,7 @@ public sealed class SampleApiHostMiddlewareTests
         var token = new JwtSecurityToken(
             issuer,
             audience,
-            [new Claim("sub", "authority-mode-user")],
+            [new Claim("sub", "authority-mode-user"), new Claim("eventstore:tenant", "tenant-a")],
             expiresAt < DateTime.UtcNow ? expiresAt.AddMinutes(-30) : DateTime.UtcNow.AddMinutes(-1),
             includeExpiry ? expiresAt : null,
             signed ? new SigningCredentials(signingKey, algorithm) : null);

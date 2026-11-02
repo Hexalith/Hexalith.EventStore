@@ -5,6 +5,8 @@ namespace Hexalith.EventStore.Contracts.Rest;
 /// </summary>
 public enum RestTenantSource
 {
+    /// <summary>Use the assembly default when applied to a message route.</summary>
+    Inherit = -1,
     /// <summary>Resolve the tenant from the authenticated caller's claims.</summary>
     Claims,
 
@@ -13,4 +15,7 @@ public enum RestTenantSource
 
     /// <summary>Use the fixed "system" tenant (no per-request resolution).</summary>
     System,
+
+    /// <summary>Require an explicit cataloged platform scope in the request header.</summary>
+    Platform,
 }

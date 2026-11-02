@@ -398,7 +398,8 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
         HttpClient client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            CreateToken(new Claim(AdminClaimTypes.AdminRole, "Admin")));
+            CreateToken(new Claim(AdminClaimTypes.AdminRole, "Admin"),
+                new Claim(AdminClaimTypes.Tenant, "tenant-a")));
         return client;
     }
 
