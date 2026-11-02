@@ -76,13 +76,28 @@ public sealed class CatalogUpdateContentionTests
     }
 
     [Fact]
-    public async Task PermanentContentionRetainsExactlyThirtyTwoFreshAttemptsAndNoDispatchFence()
+    public async Task SustainedContentionCanClearAfterFortyEightConflicts()
+    {
+        var fixture = new RouteCatalogTestFixture(); await fixture.ActivateAsync(fixture.Candidate());
+        var store = new ControlledCatalogContentionStore(fixture.Store);
+        store.Conflict = (attempt, _) =>
+        {
+            if (attempt == 48) store.AllowExchange = true;
+            return Task.CompletedTask;
+        };
+        await using var lease = await Authority(fixture, store).AcquireAsync(TestContext.Current.CancellationToken);
+        store.Attempts.ShouldBe(49);
+        (await fixture.Store.ReadAsync(default)).State.Leases.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task PermanentContentionRetainsExactlyNinetySixFreshAttemptsAndNoDispatchFence()
     {
         var fixture = new RouteCatalogTestFixture(); await fixture.ActivateAsync(fixture.Candidate());
         string before = JsonSerializer.Serialize((await fixture.Store.ReadAsync(default)).State);
         var store = new ControlledCatalogContentionStore(fixture.Store);
         await Should.ThrowAsync<RouteCatalogUnavailableException>(() => Authority(fixture, store).AcquireAsync(TestContext.Current.CancellationToken));
-        store.Reads.ShouldBe(32); store.Attempts.ShouldBe(32);
+        store.Reads.ShouldBe(96); store.Attempts.ShouldBe(96);
         JsonSerializer.Serialize((await fixture.Store.ReadAsync(default)).State).ShouldBe(before);
     }
 
