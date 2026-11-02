@@ -47,6 +47,7 @@ public static class RouteCatalogServiceCollectionExtensions
         services.TryAddSingleton<IRouteCatalogStateStore, DaprRouteCatalogStateStore>();
         services.TryAddSingleton<IRouteCatalogTrustValidator, DevelopmentRouteCatalogTrustValidator>();
         services.TryAddSingleton<IRouteCatalogAuthority, RouteCatalogAuthority>();
+        services.TryAddSingleton<RouteCatalogInvocationScope>();
         services.TryAddScoped<GeneratedRouteCatalogFilter>();
         services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(mvc => mvc.Filters.AddService<GeneratedRouteCatalogFilter>());
         services.AddAuthentication()

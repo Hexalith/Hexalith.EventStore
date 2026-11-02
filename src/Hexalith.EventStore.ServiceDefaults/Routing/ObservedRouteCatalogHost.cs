@@ -111,12 +111,19 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
         }
         if (!actual.RequiredHostIds.Order(StringComparer.Ordinal).SequenceEqual(activation.RequiredHosts.Select(h => h.HostId).Order(StringComparer.Ordinal), StringComparer.Ordinal)
             || actual.Declarations.Select(d => d.RouteId).Distinct(StringComparer.Ordinal).Count() != actual.Declarations.Count
-            || actual.Targets.Select(t => t.RouteId).Distinct(StringComparer.Ordinal).Count() != actual.Targets.Count
-            || actual.Targets.Any(t => !actual.Declarations.Any(d => d.RouteId == t.RouteId
-                && RouteCatalogCodec.ComputeDeclarationDigest(d) == t.DeclarationDigest))
-            || actual.Declarations.Any(d => !envelope.Declarations.Any(candidate => candidate.RouteId == d.RouteId
-                && RouteCatalogCodec.ComputeDeclarationDigest(candidate) == RouteCatalogCodec.ComputeDeclarationDigest(d)))
-            || actual.Targets.Any(t => !envelope.Routes.Any(r => r.RouteId == t.RouteId && r.DeclarationDigest == t.DeclarationDigest
+            || actual.Targets.Select(t => t.RouteId).Distinct(StringComparer.Ordinal).Count() != actual.Targets.Count)
+            throw new RouteCatalogUnavailableException("The proposed declarations, executable targets or exact host inventory disagree with actual local registrations.", RouteCatalogRefusalReason.Inventory);
+        // Each digest is computed from this fresh local observation. Reuse it only within this
+        // validation instead of rehashing every candidate for every target and declaration.
+        Dictionary<string, string> actualDeclarationDigests = actual.Declarations.ToDictionary(d => d.RouteId,
+            RouteCatalogCodec.ComputeDeclarationDigest, StringComparer.Ordinal);
+        ILookup<string, string> committedDeclarationDigests = envelope.Declarations.ToLookup(d => d.RouteId,
+            RouteCatalogCodec.ComputeDeclarationDigest, StringComparer.Ordinal);
+        ILookup<string, RouteCatalogEntry> committedRoutes = envelope.Routes.ToLookup(r => r.RouteId, StringComparer.Ordinal);
+        if (actual.Targets.Any(t => !actualDeclarationDigests.TryGetValue(t.RouteId, out string? digest)
+                || digest != t.DeclarationDigest)
+            || actualDeclarationDigests.Any(d => !committedDeclarationDigests[d.Key].Contains(d.Value, StringComparer.Ordinal))
+            || actual.Targets.Any(t => !committedRoutes[t.RouteId].Any(r => r.DeclarationDigest == t.DeclarationDigest
                 && r.AppId == t.AppId && r.Method == t.Method && r.ContractVersion == t.ContractVersion && r.CredentialKind == t.CredentialKind
                 && r.Operation == t.Operation && r.IsRuntimeOverride == t.IsRuntimeOverride && r.ResolverTenantPattern == t.ResolverTenantPattern))
             || envelope.Routes.Where(r => r.AppId == actual.AppId).Any(r => !actual.Targets.Any(t => t.RouteId == r.RouteId)))

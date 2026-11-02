@@ -10,6 +10,21 @@ namespace Hexalith.EventStore.Server.Actors;
 public partial class AggregateActor
 {
     /// <inheritdoc/>
+    public async Task<SourceNativeReadBatch> ReadNativeSourceBatchAsync(
+        long fromSequence, long? toSequence, int maxCount, int maxBytes, bool metadataOnly)
+    {
+        SourceProofInspection before = await InspectSourceProofAsync().ConfigureAwait(false);
+        if (before.Status != SourceProofInspectionStatus.Available || !before.Exists || before.Erased || before.Proof is null)
+            return new(before, null, null);
+        if (metadataOnly)
+            return new(before, await InspectSourceProofAsync().ConfigureAwait(false), null);
+        SourceEventRange range = await ReadNativeEventsBoundedRangeAsync(fromSequence,
+            Math.Max(fromSequence, Math.Min(toSequence ?? before.CurrentSequence, before.CurrentSequence)),
+            maxCount, maxBytes).ConfigureAwait(false);
+        return new(before, null, range);
+    }
+
+    /// <inheritdoc/>
     public async Task<SourceProofInspection> InspectSourceProofAsync()
     {
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceInspections);

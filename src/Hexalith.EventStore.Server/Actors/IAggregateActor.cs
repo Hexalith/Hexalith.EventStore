@@ -72,6 +72,9 @@ public interface IAggregateActor : IActor {
     /// <summary>Inspects persisted source evidence using metadata only, preserving the actor cache barrier.</summary>
     Task<SourceProofInspection> InspectSourceProofAsync();
 
+    /// <summary>Executes the existing ordered native inspections and optional bounded page in one actor turn.</summary>
+    Task<SourceNativeReadBatch> ReadNativeSourceBatchAsync(long fromSequence, long? toSequence, int maxCount, int maxBytes, bool metadataOnly);
+
     /// <summary>Bootstraps an eligible legacy stream under a signed quiescent-maintenance authorization.</summary>
     Task<SourceProofInspection> BootstrapSourceProofAsync(SourceProofBootstrapRequest request);
 

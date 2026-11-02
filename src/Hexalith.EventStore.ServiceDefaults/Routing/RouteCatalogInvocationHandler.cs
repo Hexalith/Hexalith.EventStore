@@ -12,6 +12,7 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         "DisableAuth", BindingFlags.Instance | BindingFlags.NonPublic);
 
     private readonly IRouteCatalogAuthority _authority;
+    private readonly RouteCatalogInvocationScope? _nativeReadScope;
     private readonly Microsoft.Extensions.Options.IOptions<RouteCatalogHostOptions>? _options;
     private readonly HttpMessageInvoker _transport;
     private readonly HttpMessageInvoker? _invocationTransport;
@@ -26,15 +27,17 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
     /// <summary>Creates the guard with independently owned ordinary and invocation primary transports.</summary>
     public RouteCatalogInvocationHandler(IRouteCatalogAuthority authority, HttpMessageHandler transport,
         Microsoft.Extensions.Options.IOptions<RouteCatalogHostOptions>? options = null)
-        : this(authority, transport, options, false) { }
+        : this(authority, transport, options, false, null) { }
 
     /// <summary>Also isolates this SDK's authoritative state client from redirects.</summary>
     internal RouteCatalogInvocationHandler(IRouteCatalogAuthority authority, HttpMessageHandler transport,
-        Microsoft.Extensions.Options.IOptions<RouteCatalogHostOptions>? options, bool authorityStateClient)
+        Microsoft.Extensions.Options.IOptions<RouteCatalogHostOptions>? options, bool authorityStateClient,
+        RouteCatalogInvocationScope? nativeReadScope = null)
     {
         ArgumentNullException.ThrowIfNull(authority);
         ArgumentNullException.ThrowIfNull(transport);
         _authority = authority;
+        _nativeReadScope = nativeReadScope;
         _options = options;
         Transport = transport;
         _transport = new(transport);
@@ -155,8 +158,22 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
             return await InvocationTransport().SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         HttpMessageInvoker invocation = InvocationTransport();
+        RouteCatalogDispatchLease? borrowed = _nativeReadScope?.LeaseFor(_authority, appId, method, request.Method);
+        if (borrowed is not null)
+        {
+            if (_authority is not RouteCatalogAuthority catalogAuthority)
+                throw new RouteCatalogUnavailableException("The native source read scope has no owning catalog authority.");
+            await catalogAuthority.ValidateNativeReadLeaseAsync(borrowed, cancellationToken).ConfigureAwait(false);
+            return await SendLeasedAsync(request, appId, method, rawMethod, invocation, borrowed, cancellationToken).ConfigureAwait(false);
+        }
         RouteCatalogDispatchLease lease = await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var release = lease.ConfigureAwait(false);
+        return await SendLeasedAsync(request, appId, method, rawMethod, invocation, lease, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<HttpResponseMessage> SendLeasedAsync(HttpRequestMessage request, string appId, string method,
+        string rawMethod, HttpMessageInvoker invocation, RouteCatalogDispatchLease lease, CancellationToken cancellationToken)
+    {
         if (lease.Snapshot.TechnicalHttpReceivers.Count > 0 && (!OwnedEndpoint(lease.Snapshot, request.RequestUri!)
             || !DevelopmentTechnicalHttpTransport.CanonicalPath(rawMethod)))
             throw new RouteCatalogUnavailableException("The v2 invocation uses a different Dapr runtime endpoint.", RouteCatalogRefusalReason.Configuration);
