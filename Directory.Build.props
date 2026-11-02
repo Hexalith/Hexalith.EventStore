@@ -1,6 +1,8 @@
 <Project>
 
     <PropertyGroup>
+        <!-- Story 2.14 changes the public tenant-scope contract across the EventStore package cohort. -->
+        <HexalithEventStoreVersion Condition="'$(HexalithEventStoreVersion)' == ''">4.0.0</HexalithEventStoreVersion>
         <HexalithBuildPackageVersions1>$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props</HexalithBuildPackageVersions1>
         <HexalithBuildPackageVersions2>$(MSBuildThisFileDirectory)../references/Hexalith.Builds/Props/Directory.Packages.props</HexalithBuildPackageVersions2>
         <HexalithBuildPackageVersions3>$(MSBuildThisFileDirectory)../../references/Hexalith.Builds/Props/Directory.Packages.props</HexalithBuildPackageVersions3>
