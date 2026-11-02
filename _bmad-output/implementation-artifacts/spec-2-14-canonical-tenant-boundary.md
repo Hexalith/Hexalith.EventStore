@@ -22,6 +22,8 @@ context: []
 
 **Owner scope amendment (2026-10-27):** The 5.12 prerequisite is accepted declaration/schema/codec delivery and parity of declared executable targets/policies, subject to its package/validation delivery gate. Declaration construction/checking may pass independently of strict runtime certification. Story 5.13 owns runtime catalog authority, rejection of undeclared query/projection/actor targets, exhaustive runtime parity, metadata-outage target stability or rejection, cross-host agreement and activation. Consuming declarations does not require that activation or grant runtime authority. Keep this spec draft/pending: the managed-`system` inventory, owner-approved migration, NFR12 classification and assurance gates remain required; no automatic unblocking follows from this amendment.
 
+**Owner migration decision (2026-11-02):** Apply the recommended source-level mapping and coordinated SemVer-major classification. Public single-tenant reads take the explicit canonical route tenant; cross-tenant/list and global reads take a cataloged platform scope with a narrow human read permission, preserving their existing result-level authorization. Cataloged platform commands retain their declared scope and operation permission. A trusted adapter maps authorized scope to existing writable `system` storage only after boundary validation. Keep legacy keys, topics and separate audit ownership; reject public `system` and mixed scopes. This approves source and test implementation in EventStore and Tenants once deployed managed-`system` use is inventoried and any active use is reconciled. It authorizes neither deployment nor data mutation. G-HIGH-RISK assurance remains required for closure.
+
 ## Boundaries & Constraints
 
 **Always:** Apply AD-27 lowercase normalization and its 1–64-character grammar to request tenants and grants. Require one explicit request scope; grants authorize it but never select it. Preserve operation authorization, workload resource bindings, and distinct audit ownership. Consume Story 5.12's schema/codec; Story 2.12 is done. Obtain owner approval of the migration and classify public changes under NFR12 before implementation.
@@ -41,17 +43,15 @@ context: []
 
 ## Open Questions
 
-- Managed-`system` inventory — **No active use:** proceed. **Active use:** provide environment, histories and approved access reconciliation. **Unknown:** retain draft.
-- Migration — approve the Design Notes mapping and SemVer-major classification, or specify changes. This covers source/tests only.
+- Managed-`system` inventory — **Absent/retired:** proceed. **Active:** provide environment and approved reconciliation. **Unknown:** retain draft.
 
 ## Code Map
 
-The [investigation](investigations/story-2-14-code-map.md) lists callers and tests. Prefixes: `C=src/Hexalith.EventStore.Contracts`, `G=src/Hexalith.EventStore`, `A=src/Hexalith.EventStore.Admin.Server`, `T=references/Hexalith.Tenants`.
+The [investigation](investigations/story-2-14-code-map.md) lists callers/tests. Prefixes: `C=src/Hexalith.EventStore.Contracts`, `G=src/Hexalith.EventStore`, `T=references/Hexalith.Tenants`.
 
 - `C/Routing/PlatformAdmissionDeclaration.cs` — reuse 5.12; `C/Identity/AggregateIdentity.cs` preserves keys.
-- `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` — scope resolution.
-- `G/Authorization/ClaimsTenantValidator.cs`, `ActorTenantValidator.cs`, `TenantValidationResult.cs` — bypass, raw call, missing canonical result. EventStore/Admin filters infer grants.
-- `T/src/Hexalith.Tenants.Contracts/Identity/TenantIdentity.cs`, `T/src/Hexalith.Tenants.Api/RestApiAssemblyInfo.cs`, `T/src/Hexalith.Tenants.Contracts/Module.cs` — storage and public `system` scope.
+- `G/Authorization/ClaimsTenantValidator.cs`, `ActorTenantValidator.cs`, `TenantValidationResult.cs` — bypass, raw call, missing canonical result.
+- `T/src/Hexalith.Tenants.Contracts/Identity/TenantIdentity.cs`, `T/src/Hexalith.Tenants.Api/RestApiAssemblyInfo.cs` — storage and public `system` scope.
 
 ## Tasks & Acceptance
 
@@ -60,11 +60,11 @@ The [investigation](investigations/story-2-14-code-map.md) lists callers and tes
 - [ ] `C/Identity/TenantCanonicalizer.cs` (new), `C/Rest/RestTenantSource.cs`, `C/Rest/RestApiAttribute.cs`, `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` — validate explicit scope before dispatch and forward canonical values.
 - [ ] `G/Authorization/`, `G/Controllers/`, `G/SignalRHub/ProjectionChangedHub.cs` — fix inventoried callers, actor precheck, status/replay and groups; retain separate policies.
 - [ ] `A/Authorization/AdminTenantAuthorizationFilter.cs`, `A/Controllers/AdminStreamsController.cs`, `A/Services/DaprStreamQueryService.cs` — remove inference and share comparisons.
-- [ ] `T/src/` paths in the investigation — migrate API, UI, bootstrap, authority and McpCli; preserve identities/audits.
+- [ ] `T/src/Hexalith.Tenants.Contracts/Routing/TenantCatalogDeclarations.cs` and `T/src/` investigation paths — declare read scopes; migrate API, UI, bootstrap, authority and McpCli; preserve identities/audits.
 - [ ] `tests/`, `T/tests/`, `.github/workflows/integration.yml`, `T/.github/workflows/ci.yml` — run matrix and Dapr-path legacy readback in CI.
 
 **Acceptance Criteria:**
-- Given compiled controllers and real hosts, when the matrix runs, then scope and denial agree with zero downstream work on invalid input.
+- Given compiled controllers and hosts, when the matrix runs, then scope and denial agree with zero downstream work on invalid input.
 - Given legacy histories, when platform access/replay runs, then Dapr readback preserves events, topics and distinct audit owners.
 - Given completion review, when migration, NFR12 and CI evidence passes G-HIGH-RISK assurance, then FR12-C2 and FR15's boundary slice close.
 
@@ -74,10 +74,6 @@ The [investigation](investigations/story-2-14-code-map.md) lists callers and tes
 
 - 2026-10-27: Applied the owner-approved declaration/runtime split to this frozen prerequisite only. Story 5.13 retains strict runtime enforcement, exhaustive parity and activation, including stable declared targets or rejection during metadata outages. Existing migration/inventory, compatibility, assurance and package gates remain open; status stays draft.
 
-## Design Notes
-
-Proposed mapping: cataloged `platform:*` scope selects writable `system` keys/topics. Public `system` tenant and mixed scopes fail. Tenant and global-administrator audits stay distinct; `audit:system` remains an owner-aware read source. No key rewrite, audit union, public alias or active managed-tenant retirement. Contracts/generator, Tenants REST/UI/McpCli and gateway/Admin public behavior ship as one SemVer-major transition.
-
 ## Verification
 
-Build Debug projects; run focused and full xUnit suites in the investigation. Record commands, counts, full SHA and CI links.
+Build Debug projects; run xUnit suites in the investigation. Record commands, counts, SHA and CI links.
