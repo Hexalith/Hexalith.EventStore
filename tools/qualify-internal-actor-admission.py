@@ -461,7 +461,8 @@ class Qualification:
                 tenant = "quota-tenant" if lane == "tenant" else "quota-" + str(i)
                 subject = "quota-subject" if lane == "consumer" else "quota-subject-" + str(i)
                 status, headers, body = self.request(n["app_url"] + "/api/v1/commands/status/01J00000000000000000000000",
-                                                    headers={"Authorization": "Bearer " + self.token(tenant, subject)})
+                                                    headers={"Authorization": "Bearer " + self.token(tenant, subject),
+                                                             "X-Hexalith-Tenant": tenant})
                 statuses.append(status)
                 if status != 404:
                     break
