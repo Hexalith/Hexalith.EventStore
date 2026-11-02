@@ -34,6 +34,9 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
     /// <summary>Gets every independently preserved materialization failure.</summary>
     internal List<string> Failures { get; } = [];
 
+    /// <summary>The Builds commit recorded by the current executor source tree.</summary>
+    internal string ExpectedExecutorBuilds { get; private set; } = string.Empty;
+
     /// <summary>Downloads and verifies all archives before building nine package consumers and three tagged-source consumers.</summary>
     internal async Task MaterializeAsync(bool prerequisiteOnly = false, bool selectedPairOnly = false)
     {
@@ -67,6 +70,7 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
         foreach ((string path, string hash) in templateHashes)
             if (QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(originalTemplates, path))) != hash)
                 throw new InvalidOperationException("A consumer template changed during executor capture: " + path);
+        ExpectedExecutorBuilds = (await runtime.RequireAsync("git", ["rev-parse", "HEAD:references/Hexalith.Builds"], repository)).Trim();
         string capturedInputsPath = Path.Combine(runtime.Root, "executor-inputs.json");
         await File.WriteAllTextAsync(capturedInputsPath + ".tmp", JsonSerializer.Serialize(new
         {
