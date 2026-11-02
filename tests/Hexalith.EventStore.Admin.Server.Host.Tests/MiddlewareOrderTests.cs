@@ -45,7 +45,9 @@ public class MiddlewareOrderTests : IClassFixture<MiddlewareOrderTests.AuthTestF
     public async Task Authenticated_AdminRole_Returns200() {
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(
             new Claim("sub", "admin-user"),
-            new Claim("global_admin", "true")));
+            new Claim("global_admin", "true"),
+            new Claim("eventstore:permission", "admin:read")));
+        _client.DefaultRequestHeaders.Add("X-Hexalith-Scope", "platform:eventstore-admin");
 
         HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams");
 

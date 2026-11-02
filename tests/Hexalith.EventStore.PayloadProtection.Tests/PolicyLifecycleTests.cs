@@ -41,10 +41,13 @@ public sealed class PolicyLifecycleTests
             root, context.GetTypeInfo(typeof(NestedSensitiveValue?))!, value,
             context.GetTypeInfo(typeof(List<NestedSensitiveValue?>))!, context.String,
         ], mappings));
+        string marker = RandomSecret();
+        var first = new NestedSensitiveValue(marker);
+        var second = new NestedSensitiveValue(marker);
         discovery.Select(Identity, new NestedNullablePolicyPayload
         {
-            Value = new NestedSensitiveValue { Secret = RandomSecret() },
-            Items = [null, new NestedSensitiveValue { Secret = RandomSecret() }],
+            Value = first,
+            Items = [null, second],
         }, root, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/items/1/secret", "/value/secret"]);
     }
 

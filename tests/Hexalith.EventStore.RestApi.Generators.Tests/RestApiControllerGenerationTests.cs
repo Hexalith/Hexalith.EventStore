@@ -172,7 +172,7 @@ public sealed class RestApiControllerGenerationTests
 
         source.ShouldContain("[Route(\"api/{tenantId}/counter\")]");
         source.ShouldContain("[FromRoute(Name = \"tenantId\")] string tenantId");
-        source.ShouldContain("ResolveTenant(null, tenantId);");
+        source.ShouldContain("ResolveTenant(null, tenantId, \"Route\");");
     }
 
     [Fact]
@@ -216,7 +216,7 @@ public sealed class RestApiControllerGenerationTests
         // Under System tenant source the partition tenant comes from the platform, not the route,
         // so the {tenantId} segment is a plain aggregate identifier that MUST be reconciled with the
         // command body — otherwise a route/body id mismatch would dispatch against the body id (AC2).
-        source.ShouldContain("ResolveTenant(null, null);");
+        source.ShouldContain("ResolveTenant(null, null, \"System\");");
         source.ShouldContain("[FromRoute(Name = \"tenantId\")] string tenantId");
         source.ShouldContain("CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Route value 'tenantId' does not match the command body.\")");
     }
@@ -239,7 +239,7 @@ public sealed class RestApiControllerGenerationTests
         // Under Route tenant source the {tenantId} prefix is the partition tenant (validated by
         // ResolveTenant), so it must NOT be body-reconciled even when the command exposes a matching
         // TenantId property. The genuine aggregate route param is still reconciled.
-        source.ShouldContain("ResolveTenant(null, tenantId);");
+        source.ShouldContain("ResolveTenant(null, tenantId, \"Route\");");
         source.ShouldNotContain("Route value 'tenantId' does not match the command body.");
         source.ShouldContain("Route value 'counterId' does not match the command body.");
     }
@@ -407,8 +407,8 @@ public sealed class RestApiControllerGenerationTests
 
         string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
 
-        source.ShouldContain("ResolveTenant(tenant, tenantId);");
-        source.ShouldContain("Tenant route values differ.");
+        source.ShouldContain("ResolveTenant(tenant, tenantId, \"Route\");");
+        source.ShouldContain("Duplicate or mixed tenant scopes are not allowed.");
     }
 
     [Fact]
@@ -434,7 +434,7 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("[HttpGet(\"{entityId}\")]");
         source.ShouldContain("[FromRoute(Name = \"tenant\")] string tenant");
         source.ShouldContain("[FromRoute(Name = \"entityId\")] string entityId");
-        source.ShouldContain("ResolveTenant(tenant, null);");
+        source.ShouldContain("ResolveTenant(tenant, null, \"Route\");");
         source.ShouldContain("string __hexalithAggregateId = Convert.ToString(entityId, CultureInfo.InvariantCulture)");
         source.ShouldContain("string? __hexalithEntityId = Convert.ToString(entityId, CultureInfo.InvariantCulture)");
         source.ShouldContain("JsonElement? __hexalithPayload = null;");

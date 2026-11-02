@@ -192,7 +192,7 @@ public class SampleApiCatalogReadinessTests
 
     private static HttpRequestMessage Request(string? surface)
     {
-        var claims = new List<Claim> { new("sub", "sample-human") };
+        var claims = new List<Claim> { new("sub", "sample-human"), new("eventstore:tenant", "tenant-a") };
         if (surface is not null) claims.Add(new("eventstore:surface", surface));
         var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
