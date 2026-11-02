@@ -1,6 +1,7 @@
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.SignalR;
+using Hexalith.EventStore.ServiceDefaults;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -113,8 +114,10 @@ public static class AdminUIServiceExtensions {
         string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
         _ = builder.Services.AddHttpClient("AdminApi", client => {
             client.BaseAddress = new Uri(daprHttpEndpoint);
-            client.Timeout = TimeSpan.FromSeconds(30);
         })
+            .AddEventStoreBoundedInvocationResilience()
+            // Standard resilience disables HttpClient.Timeout; retain Admin's independent outer bound.
+            .ConfigureHttpClient(static client => client.Timeout = TimeSpan.FromSeconds(30))
             .AddHttpMessageHandler<AdminApiAuthorizationHandler>()
             .AddEventStoreDaprServiceInvocation(builder.Configuration["EventStore:AdminServer:AppId"] ?? "eventstore-admin", daprApiToken);
 

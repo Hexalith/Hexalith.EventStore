@@ -222,7 +222,7 @@ public static class Extensions {
     }
 
     /// <summary>Separates Dapr target circuits even when requests share one sidecar authority.</summary>
-    private static string GetResiliencePipelineKey(HttpRequestMessage request) {
+    internal static string GetResiliencePipelineKey(HttpRequestMessage request) {
         Uri? address = request.RequestUri;
         if (address is null || !address.IsAbsoluteUri) {
             return string.Empty;

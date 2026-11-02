@@ -18,6 +18,9 @@ namespace Hexalith.EventStore.Queries;
 /// <see cref="QueryEnvelope.UserId"/>, and any administrator flag is re-verified by the domain-service boundary.
 /// </remarks>
 public sealed class DaprDomainQueryInvoker : IDomainQueryInvoker {
+    /// <summary>The independently bounded HTTP client used only for domain queries.</summary>
+    public const string HttpClientName = "domain-query-invocation";
+
     private DaprClient daprClient { get; }
     private IHttpClientFactory httpClientFactory { get; }
     private IDomainServiceResolver resolver { get; }
@@ -87,7 +90,7 @@ public sealed class DaprDomainQueryInvoker : IDomainQueryInvoker {
                 committed?.Target.Method ?? QueryMethodName,
                 query);
             if (query.CallerAuthority is not null) httpRequest.Options.Set(QueryCallerAuthorityBinding.RequestBindings, QueryCallerAuthorityBinding.Bind(query));
-            HttpClient httpClient = httpClientFactory.CreateClient();
+            HttpClient httpClient = httpClientFactory.CreateClient(HttpClientName);
             using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             if (httpResponse.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden) return QueryResult.Failure("safe-denial");
             if (committed is not null && httpResponse.StatusCode == HttpStatusCode.ServiceUnavailable)

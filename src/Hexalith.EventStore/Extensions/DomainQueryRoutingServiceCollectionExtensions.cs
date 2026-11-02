@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Queries;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.ServiceDefaults;
 
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -21,6 +22,8 @@ public static class DomainQueryRoutingServiceCollectionExtensions {
     public static IServiceCollection AddEventStoreDomainQueryRouting(this IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
 
+        _ = services.AddHttpClient(DaprDomainQueryInvoker.HttpClientName)
+            .AddEventStoreBoundedInvocationResilience();
         services.TryAddSingleton<IDomainQueryHandlerRegistry, DaprDomainQueryHandlerRegistry>();
         services.TryAddTransient<IDomainQueryInvoker, DaprDomainQueryInvoker>();
 
