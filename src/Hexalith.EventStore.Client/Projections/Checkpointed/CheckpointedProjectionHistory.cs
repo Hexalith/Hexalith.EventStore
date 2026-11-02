@@ -170,46 +170,16 @@ public sealed class CheckpointedProjectionHistory {
             }
 
             head = Math.Max(head, result.Metadata.LatestSequence);
-            long highest = cursor;
             foreach (StreamReadEvent item in result.Events) {
-                CheckpointedProjectionEvent candidate = CheckpointedProjectionEvent.FromHistory(stream, item);
-                if (events.TryGetValue(item.SequenceNumber, out CheckpointedProjectionEvent? existing)) {
-                    if (existing.Evidence != candidate.Evidence
-                        || !string.Equals(existing.SerializationFormat, candidate.SerializationFormat, StringComparison.OrdinalIgnoreCase)
-                        || (existing.PayloadVersion ?? 1) != (candidate.PayloadVersion ?? 1)) {
-                        // Different identity or replay metadata at one sequence cannot be authoritative.
-                        throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
-                    }
-
-                    continue;
-                }
-
-                events.Add(item.SequenceNumber, candidate);
-                highest = Math.Max(highest, item.SequenceNumber);
+                events.Add(item.SequenceNumber, CheckpointedProjectionEvent.FromHistory(stream, item));
             }
 
-            if (highest != next) {
-                throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
-            }
-
-            if (highest >= toSequence) {
+            if (next >= toSequence) {
                 return [.. events.Values];
             }
 
-            if (highest == cursor) {
-                if (result.Metadata.IsTruncated) {
-                    // A truncated page that returned nothing new proves nothing about the rest of the range.
-                    throw new CheckpointedProjectionUnavailableException(CheckpointedProjectionUnavailableReason.HistoryUnavailable);
-                }
-
-                complete = true;
-            }
-            else if (!result.Metadata.IsTruncated) {
-                complete = true;
-            }
-            else {
-                cursor = highest;
-            }
+            complete = !result.Metadata.IsTruncated;
+            cursor = next;
         }
 
         if (!complete || head < toSequence) {
