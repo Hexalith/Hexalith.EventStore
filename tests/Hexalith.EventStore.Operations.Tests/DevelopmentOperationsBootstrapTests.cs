@@ -1,10 +1,10 @@
+using System.Diagnostics;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 using Shouldly;
 
@@ -15,9 +15,10 @@ public sealed class DevelopmentOperationsBootstrapTests
 {
     /// <summary>The supported finite profile observes actual endpoints; the preexisting MVC-only composite refuses Operations.</summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ActualBootstrapKeepsTheSupportedFiniteProfileAndRefusesMvcOnlyComposite(bool composite)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ActualBootstrapKeepsTheSupportedFiniteProfileAndRefusesMvcOnlyComposite(bool composite, bool disposeBeforeClientLookup)
     {
         string directory = Path.Combine(Path.GetTempPath(), "operations-bootstrap-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -52,16 +53,17 @@ public sealed class DevelopmentOperationsBootstrapTests
                 configuration.Remove("EventStore:RouteCatalog:DevelopmentBootstrap:ReceiverProfile");
                 configuration.Remove("EventStore:RouteCatalog:DevelopmentBootstrap:BindingVersion");
             }
-            await using var factory = new OperationsBootstrapFactory(configuration);
-            using var client = factory.CreateClient();
+            await using var factory = new OperationsBootstrapFactory(configuration, disposeBeforeClientLookup);
+            using var client = StartObservedBootstrap(factory.CreateClient, composite);
+            if (disposeBeforeClientLookup) client.ShouldBeNull();
             string path = Path.Combine(directory, "operations.observation.json");
             using var bound = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
             bound.CancelAfter(TimeSpan.FromSeconds(10));
             if (composite)
             {
-                var fence = factory.Services.GetRequiredService<FiniteRouteCatalogReceiver>();
+                var fence = factory.CapturedReceiver;
                 var stopping = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                using var registration = factory.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping.Register(() => stopping.TrySetResult());
+                using var registration = factory.CapturedStoppingToken.Register(() => stopping.TrySetResult());
                 await stopping.Task.WaitAsync(bound.Token);
                 var refusal = await Should.ThrowAsync<RouteCatalogUnavailableException>(() => fence.WaitForCaptureAsync(bound.Token));
                 refusal.Message.ShouldBe("No installed SDK technical MVC action qualifies this receiver.");
@@ -88,5 +90,39 @@ public sealed class DevelopmentOperationsBootstrapTests
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    /// <summary>A different provider-disposal failure cannot count as the expected SDK bootstrap refusal.</summary>
+    [Fact]
+    public void UnrelatedProviderDisposalRemainsVisible()
+    {
+        var expected = new ObjectDisposedException("IServiceProvider");
+        Should.Throw<ObjectDisposedException>(() => StartObservedBootstrap(() => throw expected, composite: true))
+            .ShouldBeSameAs(expected);
+    }
+
+    private static HttpClient? StartObservedBootstrap(Func<HttpClient> createClient, bool composite)
+    {
+        try
+        {
+            return createClient();
+        }
+        catch (ObjectDisposedException exception) when (composite && IsStoppedHostServerLookup(exception))
+        {
+            // The refusing host can finish before the factory obtains its TestServer. The real
+            // receiver refusal and application-stopping assertions remain mandatory below.
+            return null;
+        }
+    }
+
+    private static bool IsStoppedHostServerLookup(ObjectDisposedException exception)
+    {
+        if (exception.ObjectName != "IServiceProvider") return false;
+        var caller = new StackTrace(exception).GetFrames()
+            .Select(frame => frame.GetMethod())
+            .FirstOrDefault(method => method?.DeclaringType?.Namespace?.StartsWith(
+                "Microsoft.Extensions.DependencyInjection", StringComparison.Ordinal) != true);
+        return caller is { Name: "ConfigureHostBuilder", DeclaringType: { IsGenericType: true } type }
+            && type.GetGenericTypeDefinition() == typeof(WebApplicationFactory<>);
     }
 }
