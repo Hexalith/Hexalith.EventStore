@@ -7,9 +7,7 @@ route: 'dispatch'
 review_loop_iteration: 0
 story_id: '2.14'
 story_key: '2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts'
-context:
-  - _bmad-output/implementation-artifacts/epic-2-context.md
-  - _bmad-output/implementation-artifacts/investigations/story-2-14-code-map.md
+context: []
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -41,31 +39,34 @@ context:
 
 </frozen-after-approval>
 
+## Open Questions
+
+- Managed-`system` inventory — **No active use:** proceed. **Active use:** provide environment, histories and approved access reconciliation. **Unknown:** retain draft.
+- Migration — approve the Design Notes mapping and SemVer-major classification, or specify changes. This covers source/tests only.
+
 ## Code Map
 
-Exact paths, callers, tests and migration inventory are in [the investigation](investigations/story-2-14-code-map.md). Path prefixes below are repository-relative: `C=src/Hexalith.EventStore.Contracts`, `G=src/Hexalith.EventStore`, `A=src/Hexalith.EventStore.Admin.Server`, `T=references/Hexalith.Tenants`.
+The [investigation](investigations/story-2-14-code-map.md) lists callers and tests. Prefixes: `C=src/Hexalith.EventStore.Contracts`, `G=src/Hexalith.EventStore`, `A=src/Hexalith.EventStore.Admin.Server`, `T=references/Hexalith.Tenants`.
 
-- `C/Identity/AggregateIdentity.cs` owns durable keys and legacy topics; retain historical identity support.
-- `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` resolves raw/claim/system scope; generated positive fixtures currently lack authentication.
-- `G/Authorization/ClaimsTenantValidator.cs` bypasses validation for administrators; actor validation needs a local precheck. Gateway packaging links this source.
-- `G/Authorization/AdminTenantAuthorizationFilter.cs` and `A/Authorization/AdminTenantAuthorizationFilter.cs` default missing scope from the first grant.
-- `T/src/Hexalith.Tenants.Contracts/Identity/TenantIdentity.cs` addresses platform storage; changing its constant would select different histories.
+- `C/Routing/PlatformAdmissionDeclaration.cs` — reuse 5.12; `C/Identity/AggregateIdentity.cs` preserves keys.
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` — scope resolution.
+- `G/Authorization/ClaimsTenantValidator.cs`, `ActorTenantValidator.cs`, `TenantValidationResult.cs` — bypass, raw call, missing canonical result. EventStore/Admin filters infer grants.
+- `T/src/Hexalith.Tenants.Contracts/Identity/TenantIdentity.cs`, `T/src/Hexalith.Tenants.Api/RestApiAssemblyInfo.cs`, `T/src/Hexalith.Tenants.Contracts/Module.cs` — storage and public `system` scope.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] This spec and `T/docs/audit-stream-rollout.md` — after accepted 5.12 declaration/schema/codec delivery (including its package/validation gate), inventory deployed managed-`system` use, record migration/classifications and reconcile its policy. Keep platform administration writable on existing storage; no active tenant retirement is approved.
-- [ ] `C/Identity/TenantCanonicalizer.cs` (new), `C/Rest/RestTenantSource.cs`, `C/Rest/RestApiAttribute.cs` — define shared boundary validation and approved explicit-scope metadata using 5.12 declarations.
-- [ ] `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` — validate selected scope/grants and forward canonical values; add compiled matrix tests.
-- [ ] `G/Authorization/`, `G/Pipeline/AuthorizationBehavior.cs`, `G/Controllers/`, `G/SignalRHub/ProjectionChangedHub.cs` — update inventoried callers, including actor prechecks, status and replay tenant discovery; preserve their separate operation/identifier policies.
-- [ ] `A/Authorization/AdminTenantAuthorizationFilter.cs`, `A/Controllers/AdminStreamsController.cs`, `A/Services/DaprStreamQueryService.cs` — remove inferred scope and share canonical comparisons.
-- [ ] `T/src/` paths inventoried in the investigation — migrate API, UI gateway, bootstrap, authority queries and McpCli metadata together; preserve legacy storage/topic mappings and audit separation. Any missing shared McpCli capability requires its owner's contract before adoption.
-- [ ] `tests/` suites in the investigation and `T/tests/` — cover every matrix row, canonical propagation, zero downstream work and unchanged persisted histories. Bind runtime tests into `.github/workflows/integration.yml` and Tenants' owning CI; retain existing deterministic CI lanes.
+- [ ] This spec, `T/docs/audit-stream-rollout.md` — record inventory, reconciliation and NFR12 classification.
+- [ ] `C/Identity/TenantCanonicalizer.cs` (new), `C/Rest/RestTenantSource.cs`, `C/Rest/RestApiAttribute.cs`, `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` — validate explicit scope before dispatch and forward canonical values.
+- [ ] `G/Authorization/`, `G/Controllers/`, `G/SignalRHub/ProjectionChangedHub.cs` — fix inventoried callers, actor precheck, status/replay and groups; retain separate policies.
+- [ ] `A/Authorization/AdminTenantAuthorizationFilter.cs`, `A/Controllers/AdminStreamsController.cs`, `A/Services/DaprStreamQueryService.cs` — remove inference and share comparisons.
+- [ ] `T/src/` paths in the investigation — migrate API, UI, bootstrap, authority and McpCli; preserve identities/audits.
+- [ ] `tests/`, `T/tests/`, `.github/workflows/integration.yml`, `T/.github/workflows/ci.yml` — run matrix and Dapr-path legacy readback in CI.
 
 **Acceptance Criteria:**
-- Given all boundary implementations, when the same matrix runs through compiled controllers and real host paths, then they agree on scope and denial and no invalid request reaches downstream work.
-- Given legacy histories, when approved platform access/replay runs, then Dapr-path readback proves preserved events, topics and separate tenant/global attribution.
-- Given completion review, when the migration, NFR12 classifications and test/CI results are evaluated, then FR12-C2 and FR15's boundary slice close only with the required G-HIGH-RISK assurance.
+- Given compiled controllers and real hosts, when the matrix runs, then scope and denial agree with zero downstream work on invalid input.
+- Given legacy histories, when platform access/replay runs, then Dapr readback preserves events, topics and distinct audit owners.
+- Given completion review, when migration, NFR12 and CI evidence passes G-HIGH-RISK assurance, then FR12-C2 and FR15's boundary slice close.
 
 ## Implementation Notes
 
@@ -73,12 +74,10 @@ Exact paths, callers, tests and migration inventory are in [the investigation](i
 
 - 2026-10-27: Applied the owner-approved declaration/runtime split to this frozen prerequisite only. Story 5.13 retains strict runtime enforcement, exhaustive parity and activation, including stable declared targets or rejection during metadata outages. Existing migration/inventory, compatibility, assurance and package gates remain open; status stays draft.
 
-## Review Triage Log
-
 ## Design Notes
 
-Approved direction separates request scope from durable identity: an authorized catalog mapping selects existing storage. The shared `system` partition holds all Tenants aggregates; it must remain writable for platform administration. A managed tenant literally named `system` is a separate inventory item. No blanket rename, audit union or public alias. Scope literals/credential vocabulary come from 5.12.
+Proposed mapping: cataloged `platform:*` scope selects writable `system` keys/topics. Public `system` tenant and mixed scopes fail. Tenant and global-administrator audits stay distinct; `audit:system` remains an owner-aware read source. No key rewrite, audit union, public alias or active managed-tenant retirement. Contracts/generator, Tenants REST/UI/McpCli and gateway/Admin public behavior ship as one SemVer-major transition.
 
 ## Verification
 
-Build affected projects individually in Debug/source mode; run focused built xUnit executables, then their full suites. The investigation lists projects and CI gaps. Record commands, counts, full commit SHA and CI link here under the October 23 evidence policy; do not restore deleted authorization machinery. Planning checks: `git diff --check` and `bash scripts/check-committed-files.sh`.
+Build Debug projects; run focused and full xUnit suites in the investigation. Record commands, counts, full SHA and CI links.
