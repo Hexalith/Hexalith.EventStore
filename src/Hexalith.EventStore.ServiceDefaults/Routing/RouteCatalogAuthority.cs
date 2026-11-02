@@ -168,7 +168,23 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             if (state.Leases.Count >= 4096) throw new RouteCatalogUnavailableException("The durable dispatch lease inventory requires draining.");
             return state with { LastLease = sequence, Leases = [.. state.Leases, new RouteCatalogDispatchFence(sequence, leaseId, options.Value.Identity!.HostId, state.Committed.RootDigest, state.Epoch)] };
         }, cancellationToken).ConfigureAwait(false);
-        return new(new(captured!, epoch, options.Value.Identity!.AppId, store.Coordinates), () => ReleaseAsync(leaseId));
+        return new(new(captured!, epoch, options.Value.Identity!.AppId, store.Coordinates), () => ReleaseAsync(leaseId))
+        {
+            Activation = captured,
+        };
+    }
+
+    /// <summary>Rechecks independently observed local facts for a native read under its existing durable lease.</summary>
+    internal async Task ValidateNativeReadLeaseAsync(RouteCatalogDispatchLease lease, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(lease);
+        lease.RequireOpenForExecution();
+        if (lease.Activation is not { } activation
+            || lease.Snapshot.AuthorityCoordinates != store.Coordinates
+            || lease.Snapshot.LocalAppId != options.Value.Identity?.AppId
+            || lease.Snapshot.RootDigest != activation.RootDigest)
+            throw new RouteCatalogUnavailableException("The native read scope differs from its acquired local authority.");
+        await ValidateAsync(activation, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>

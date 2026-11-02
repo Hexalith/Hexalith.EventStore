@@ -118,7 +118,7 @@ public class StreamsControllerTests {
             .ReadAsync(new(Tenant, Domain, AggregateId), TestContext.Current.CancellationToken);
 
         observation.ShouldNotBeNull().Proof.ShouldBe(SourceProofCodec.ToNative(inspection.Proof!));
-        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+        SourceCalls(actor)
             .ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync), nameof(IAggregateActor.InspectSourceProofAsync)]);
         protection.ReceivedCalls().ShouldBeEmpty();
         tenantValidator.ReceivedRequests.ShouldBeEmpty();
@@ -141,7 +141,7 @@ public class StreamsControllerTests {
             response.StatusCode.ShouldBe(denial is "workload" or "channel" ? HttpStatusCode.Unauthorized : HttpStatusCode.Forbidden);
             if (denial == "channel") http.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, channelToken);
         }
-        actor.ReceivedCalls().Count().ShouldBe(2);
+        SourceCalls(actor).Count().ShouldBe(2);
     }
 
     [Theory]
@@ -166,7 +166,7 @@ public class StreamsControllerTests {
         page.Events.ShouldBeEmpty();
         page.Metadata.ShouldBe(new StreamReadMetadata(0, 0, null, head, 0, false, null)
             { NativeProof = SourceProofCodec.ToNative(inspection.Proof!) });
-        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+        SourceCalls(actor)
             .ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync), nameof(IAggregateActor.InspectSourceProofAsync)]);
         protection.ReceivedCalls().ShouldBeEmpty();
         proxies.Received(1).CreateActorProxy<IAggregateActor>(new ActorId($"{Tenant}:{Domain}:{AggregateId}"), "AggregateActor", Arg.Any<ActorProxyOptions?>());
@@ -202,7 +202,7 @@ public class StreamsControllerTests {
 
         (await controller.ReadWorkloadStreamAsync(HeadRequest())).ShouldBeOfType<StatusCodeResult>()
             .StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
-        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+        SourceCalls(actor)
             .ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync), nameof(IAggregateActor.InspectSourceProofAsync)]);
     }
 
@@ -238,7 +238,7 @@ public class StreamsControllerTests {
         IActionResult result = await controller.ReadWorkloadStreamAsync(HeadRequest());
         if (change == "missing") AssertProblem(result, StatusCodes.Status404NotFound);
         else result.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
-        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name).ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync)]);
+        SourceCalls(actor).ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync)]);
     }
 
     [Theory]
@@ -280,7 +280,7 @@ public class StreamsControllerTests {
         actor.ReceivedCalls().ShouldBeEmpty();
         BindWorkload(controller);
         (await controller.ReadWorkloadStreamAsync(HeadRequest() with { PageSize = 256 })).ShouldBeOfType<BadRequestResult>();
-        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name).ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync)]);
+        SourceCalls(actor).ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync)]);
     }
 
     [Theory]
@@ -320,7 +320,7 @@ public class StreamsControllerTests {
         BindWorkload(controller);
         ProblemDetails problem = AssertProblem(await controller.ReadWorkloadStreamAsync(HeadRequest()), StatusCodes.Status503ServiceUnavailable);
         JsonSerializer.Serialize(problem).ShouldNotContain("private transport diagnostics");
-        actor.ReceivedCalls().All(call => call.GetMethodInfo().Name == nameof(IAggregateActor.InspectSourceProofAsync)).ShouldBeTrue();
+        SourceCalls(actor).All(name => name == nameof(IAggregateActor.InspectSourceProofAsync)).ShouldBeTrue();
     }
 
     [Theory]
@@ -388,8 +388,82 @@ public class StreamsControllerTests {
         await actor.Received(1).ReadNativeEventsBoundedRangeAsync(0, 1, 101, 2_097_152);
     }
 
+    [Fact]
+    public async Task BatchedNativeHeadRetainsBothProofObservationsWithoutASecondActorCall()
+    {
+        SourceProofInspection inspection = NativeInspection(1);
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.ReadNativeSourceBatchAsync(0, 0, 101, 2_097_152, true)
+            .Returns(new SourceNativeReadBatch(inspection, inspection, null));
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+
+        (await controller.ReadWorkloadStreamAsync(HeadRequest())).ShouldBeOfType<OkObjectResult>();
+        await actor.Received(1).ReadNativeSourceBatchAsync(0, 0, 101, 2_097_152, true);
+        await actor.DidNotReceive().InspectSourceProofAsync();
+        await actor.DidNotReceiveWithAnyArgs().ReadNativeEventsBoundedRangeAsync(default, default, default, default);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BatchedNativePageKeepsFinalIndependentProofObservation(bool changed)
+    {
+        SourceProofInspection inspection = NativeInspection(1);
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.ReadNativeSourceBatchAsync(0, null, 101, 2_097_152, false)
+            .Returns(new SourceNativeReadBatch(inspection, null, new SourceEventRange([BuildEnvelope(1)], 1)));
+        actor.InspectSourceProofAsync().Returns(changed ? NativeInspection(0) : inspection);
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+
+        IActionResult result = await controller.ReadWorkloadStreamAsync(HeadRequest() with { ToSequence = null });
+        if (changed) result.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        else result.ShouldBeOfType<OkObjectResult>();
+        await actor.Received(1).ReadNativeSourceBatchAsync(0, null, 101, 2_097_152, false);
+        await actor.Received(1).InspectSourceProofAsync();
+        await actor.DidNotReceiveWithAnyArgs().ReadNativeEventsBoundedRangeAsync(default, default, default, default);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task IncompleteNativeBatchFailsClosed(bool metadataOnly)
+    {
+        SourceProofInspection inspection = NativeInspection(1);
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.ReadNativeSourceBatchAsync(0, metadataOnly ? 0 : null, 101, 2_097_152, metadataOnly)
+            .Returns(new SourceNativeReadBatch(inspection, null, null));
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+
+        StreamReadRequest request = metadataOnly ? HeadRequest() : HeadRequest() with { ToSequence = null };
+        (await controller.ReadWorkloadStreamAsync(request)).ShouldBeOfType<StatusCodeResult>()
+            .StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        await actor.DidNotReceive().InspectSourceProofAsync();
+        await actor.DidNotReceiveWithAnyArgs().ReadNativeEventsBoundedRangeAsync(default, default, default, default);
+    }
+
+    [Fact]
+    public async Task BatchedNativeHeadWithMissingFirstObservationFailsClosed()
+    {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.ReadNativeSourceBatchAsync(0, 0, 101, 2_097_152, true)
+            .Returns(new SourceNativeReadBatch(null!, NativeInspection(1), null));
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+
+        (await controller.ReadWorkloadStreamAsync(HeadRequest())).ShouldBeOfType<StatusCodeResult>()
+            .StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        await actor.DidNotReceive().InspectSourceProofAsync();
+    }
+
     private static StreamReadRequest HeadRequest()
         => new(Tenant, Domain, AggregateId, FromSequence: 0, ToSequence: 0) { RequireNativeProof = true };
+
+    private static IEnumerable<string> SourceCalls(IAggregateActor actor)
+        => actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+            .Where(name => name != nameof(IAggregateActor.ReadNativeSourceBatchAsync));
 
     private static SourceProofInspection NativeInspection(int head, int retainedFloor = 1)
     {

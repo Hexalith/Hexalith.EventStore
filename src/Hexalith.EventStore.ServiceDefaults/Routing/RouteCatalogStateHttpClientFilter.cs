@@ -17,7 +17,8 @@ internal sealed class RouteCatalogStateHttpClientFilter : IHttpMessageHandlerBui
             // Validate at the transport boundary. The SDK header owner remains the innermost
             // delegating handler and this transport sees only its final owned target/credential.
             builder.PrimaryHandler = new RouteCatalogInvocationHandler(builder.Services.GetRequiredService<IRouteCatalogAuthority>(), builder.PrimaryHandler,
-                builder.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<RouteCatalogHostOptions>>(), builder.Name == "route-catalog-state");
+                builder.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<RouteCatalogHostOptions>>(), builder.Name == "route-catalog-state",
+                builder.Services.GetService<RouteCatalogInvocationScope>());
             if (builder.Name != "route-catalog-state") return;
             for (int index = builder.AdditionalHandlers.Count - 1; index >= 0; index--)
                 if (builder.AdditionalHandlers[index] is ResilienceHandler) builder.AdditionalHandlers.RemoveAt(index);

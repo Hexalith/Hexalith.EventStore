@@ -135,11 +135,24 @@ public sealed partial class StreamsController(
                 "AggregateActor");
 
             SourceProofInspection? native = null;
+            SourceNativeReadBatch? nativeBatch = null;
             AggregateStreamMetadata streamMetadata;
             if (request.RequireNativeProof)
             {
                 if (!workloadOnly) return Forbid();
-                native = await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+                // Keep the prior single inspection for oversized requests; valid native reads
+                // execute their same ordered inspections in one serialized actor turn.
+                if (request.PageSize > 255)
+                    native = await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+                else
+                {
+                    nativeBatch = await actor.ReadNativeSourceBatchAsync(request.FromSequence, request.ToSequence,
+                        request.PageSize + 1, 2_097_152, request.FromSequence == 0 && request.ToSequence == 0)
+                        .WaitAsync(cancellationToken).ConfigureAwait(false);
+                    native = nativeBatch is null
+                        ? await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false)
+                        : nativeBatch.Before;
+                }
                 if (native is not { Status: SourceProofInspectionStatus.Available, Erased: false, Proof: { Erased: false } proof }
                     || !SourceProofCodec.IsValid(proof, identity, native.CurrentSequence, proof.RetainedFloor))
                     return StatusCode(StatusCodes.Status503ServiceUnavailable);
@@ -161,7 +174,10 @@ public sealed partial class StreamsController(
             {
                 // Metadata inspection must never enter the event-range or payload/readability path.
                 // Compare the whole observation, including incarnation, prefix, retention and erasure.
-                if (await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false) != native)
+                SourceProofInspection? after = nativeBatch is null
+                    ? await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false)
+                    : nativeBatch.After;
+                if (after != native)
                     return StatusCode(StatusCodes.Status503ServiceUnavailable);
                 cancellationToken.ThrowIfCancellationRequested();
                 return Ok(new StreamReadPage(identity.TenantId, identity.Domain, identity.AggregateId, [],
@@ -173,10 +189,12 @@ public sealed partial class StreamsController(
             try {
                 if (native is not null)
                 {
-                    SourceEventRange range = await actor.ReadNativeEventsBoundedRangeAsync(request.FromSequence,
-                        Math.Max(request.FromSequence, Math.Min(request.ToSequence ?? currentSequence, currentSequence)),
-                        request.PageSize + 1, 2_097_152).WaitAsync(cancellationToken).ConfigureAwait(false);
-                    if (range.ReasonCode is not null) return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                    SourceEventRange? range = nativeBatch is null
+                        ? await actor.ReadNativeEventsBoundedRangeAsync(request.FromSequence,
+                            Math.Max(request.FromSequence, Math.Min(request.ToSequence ?? currentSequence, currentSequence)),
+                            request.PageSize + 1, 2_097_152).WaitAsync(cancellationToken).ConfigureAwait(false)
+                        : nativeBatch.Range;
+                    if (range is null || range.ReasonCode is not null) return StatusCode(StatusCodes.Status503ServiceUnavailable);
                     pageEvents = range.Events;
                 }
                 else pageEvents = await actor

@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Contracts.Routing;
+
 namespace Hexalith.EventStore.ServiceDefaults.Routing;
 
 /// <summary>Durable dispatch fence held through downstream work; disposal releases only its own sequence.</summary>
@@ -12,6 +14,9 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
 
     /// <summary>Gets this dispatch's immutable authority.</summary>
     public CommittedRouteCatalogSnapshot Snapshot { get; } = snapshot;
+
+    /// <summary>The immutable activation that this authority validated when acquiring the lease.</summary>
+    internal RouteCatalogActivation? Activation { get; init; }
 
     /// <summary>Refuses creating new work from a receiver lifetime that has already closed.</summary>
     internal void RequireOpenForExecution()

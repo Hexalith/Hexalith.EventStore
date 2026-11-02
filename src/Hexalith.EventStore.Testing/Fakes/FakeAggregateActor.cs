@@ -14,6 +14,10 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// </summary>
 public class FakeAggregateActor : IAggregateActor {
     /// <inheritdoc/>
+    public Task<SourceNativeReadBatch> ReadNativeSourceBatchAsync(long fromSequence, long? toSequence, int maxCount, int maxBytes, bool metadataOnly)
+        => Task.FromException<SourceNativeReadBatch>(new NotSupportedException("The legacy fake does not supply native source authority."));
+
+    /// <inheritdoc/>
     public Task<SourceEventRange> ReadNativeEventsBoundedRangeAsync(long fromSequence, long toSequence, int maxCount, int maxBytes)
         => Task.FromException<SourceEventRange>(new NotSupportedException("The legacy fake does not supply native source authority."));
 
