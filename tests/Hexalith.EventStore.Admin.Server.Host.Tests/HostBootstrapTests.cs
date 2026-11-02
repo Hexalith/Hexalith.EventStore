@@ -304,7 +304,8 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         using HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(
             new Claim("sub", "admin-user"),
-            new Claim("global_admin", "true")));
+            new Claim("global_admin", "true"),
+            new Claim("eventstore:tenant", "test-tenant")));
 
         HttpResponseMessage response = await client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams?tenantId=test-tenant");
 
@@ -378,6 +379,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         [
             new Claim("sub", "authority-mode-admin"),
             new Claim("global_admin", "true"),
+            new Claim("eventstore:tenant", "test-tenant"),
         ];
 
         await using var baseFactory = new AdminServerHostFactory();
