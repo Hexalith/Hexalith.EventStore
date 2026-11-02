@@ -50,6 +50,33 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     private const string TrustedEffectsRoute = "/api/v1/trusted-effects";
     private const string CommandsRoute = "/api/v1/commands";
 
+    /// <summary>Only a bound platform command may carry a separate human bearer beside its workload assertion.</summary>
+    [Theory]
+    [InlineData("/api/v1/commands/bound/workload", "platform:global-administrators", HttpStatusCode.Forbidden)]
+    [InlineData("/api/v1/commands/bound/workload", "tenant-a", HttpStatusCode.Unauthorized)]
+    [InlineData("/api/v1/commands/workload", "platform:global-administrators", HttpStatusCode.Unauthorized)]
+    public async Task BoundPlatformCommandKeepsBothCredentialBoundaries(
+        string route, string scope, HttpStatusCode expectedStatus)
+    {
+        using HttpClient client = _factory.CreateClient();
+        var command = new SubmitCommandRequest("01ARZ3NDEKTSV4RRFFQ69G5FAV", scope,
+            "global-administrators", "global-administrators", "BootstrapGlobalAdmin",
+            JsonSerializer.SerializeToElement(new { userId = "administrator" }));
+        using var request = new HttpRequestMessage(HttpMethod.Post, route)
+        {
+            Content = JsonContent.Create(new BoundWorkloadCommandRequest(command, "administrator")),
+        };
+        AddInternalHeaders(request, WorkloadAssertionTestTokens.Create(Audience, AllowedCaller,
+            [EventStoreWorkloadOperations.GatewayCommandSubmit]), includeChannelToken: true);
+        request.Headers.Add("X-Hexalith-Scope", scope);
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", TestJwtHelper.GenerateToken());
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(expectedStatus);
+        _factory.CommandRouter.ReceivedCalls().ShouldBeEmpty();
+    }
+
     /// <summary>Every workload gateway route admits only its signed operation through the real middleware.</summary>
     [Theory]
     [InlineData("/api/v1/commands/workload", EventStoreWorkloadOperations.GatewayCommandSubmit, true)]
