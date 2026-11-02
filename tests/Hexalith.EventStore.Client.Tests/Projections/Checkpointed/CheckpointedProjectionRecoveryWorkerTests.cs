@@ -233,6 +233,52 @@ public sealed class CheckpointedProjectionRecoveryWorkerTests {
     }
 
     [Fact]
+    public async Task RecoveryOfACorruptRecordWritesNothing() {
+        var harness = new CheckpointedProjectionHarness();
+        await harness.SeedHealthyThroughAsync(1);
+        (await harness.ApplyAsync(1, "conflicting-payload")).Outcome.ShouldBe(CheckpointedProjectionOutcome.Corrupt);
+        CheckpointedProjectionRecord<CheckpointedTestState> corrupt = harness.Record.ShouldNotBeNull();
+
+        CheckpointedProjectionResult<CheckpointedTestState> result = await RecoverAsync(harness, "worker-a");
+
+        result.Outcome.ShouldBe(CheckpointedProjectionOutcome.Corrupt);
+        CheckpointedProjectionRecord<CheckpointedTestState> after = harness.Record.ShouldNotBeNull();
+        after.Version.ShouldBe(corrupt.Version);
+        after.LastFencingToken.ShouldBe(corrupt.LastFencingToken);
+        after.CorruptionReason.ShouldBe(corrupt.CorruptionReason);
+        after.Lease.ShouldBeNull();
+        harness.Gateway.Requests.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConcurrentCorruptionWhileReplayingIsReturnedWithoutAnotherWrite(bool missingHistory) {
+        CheckpointedProjectionHarness harness = await GappedAsync(through: 4, pending: [4]);
+        if (missingHistory) {
+            harness.Gateway.Remove(3);
+        }
+
+        (TaskCompletionSource entered, TaskCompletionSource release) = BlockFirstRead(harness);
+        Task<CheckpointedProjectionResult<CheckpointedTestState>> recovering = RecoverAsync(harness, "worker-a");
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        harness.Record.ShouldNotBeNull().Lease.ShouldNotBeNull();
+        (await harness.ApplyAsync(4, "conflicting-payload", workerId: "replica-b", withHistory: false))
+            .Outcome.ShouldBe(CheckpointedProjectionOutcome.Corrupt);
+        CheckpointedProjectionRecord<CheckpointedTestState> corrupt = harness.Record.ShouldNotBeNull();
+        release.SetResult();
+
+        CheckpointedProjectionResult<CheckpointedTestState> result = await recovering;
+
+        result.Outcome.ShouldBe(CheckpointedProjectionOutcome.Corrupt);
+        CheckpointedProjectionRecord<CheckpointedTestState> after = harness.Record.ShouldNotBeNull();
+        after.Version.ShouldBe(corrupt.Version);
+        after.LastContiguousSequence.ShouldBe(1);
+        after.CorruptionReason.ShouldBe(CheckpointedProjectionCorruptionReason.PendingEvidenceConflict);
+        after.Lease.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task RecoveryOfAHealthyRecordWritesNothing() {
         var harness = new CheckpointedProjectionHarness();
         await harness.SeedHealthyThroughAsync(2);
