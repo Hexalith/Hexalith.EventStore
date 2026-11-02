@@ -8,6 +8,7 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 internal sealed class RouteCatalogTestStateStore : IRouteCatalogStateStore
 {
     public RouteCatalogStateCoordinates Coordinates { get; set; } = new("route-catalog", "route-catalog-authority-v1", "http://127.0.0.1:3500/");
+    public TimeSpan CompareExchangeLatency { get; set; }
 
     private readonly object _gate = new();
     private byte[] _state = JsonSerializer.SerializeToUtf8Bytes(RouteCatalogActivationState.Empty);
@@ -19,15 +20,17 @@ internal sealed class RouteCatalogTestStateStore : IRouteCatalogStateStore
         lock (_gate) return Task.FromResult((JsonSerializer.Deserialize<RouteCatalogActivationState>(_state)!, _version.ToString(System.Globalization.CultureInfo.InvariantCulture)));
     }
 
-    public Task<bool> CompareExchangeAsync(RouteCatalogActivationState state, string etag, CancellationToken cancellationToken)
+    public async Task<bool> CompareExchangeAsync(RouteCatalogActivationState state, string etag, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (CompareExchangeLatency > TimeSpan.Zero)
+            await Task.Delay(CompareExchangeLatency, cancellationToken).ConfigureAwait(false);
         lock (_gate)
         {
-            if (etag != _version.ToString(System.Globalization.CultureInfo.InvariantCulture)) return Task.FromResult(false);
+            if (etag != _version.ToString(System.Globalization.CultureInfo.InvariantCulture)) return false;
             _state = JsonSerializer.SerializeToUtf8Bytes(state);
             _version++;
-            return Task.FromResult(true);
+            return true;
         }
     }
 }
