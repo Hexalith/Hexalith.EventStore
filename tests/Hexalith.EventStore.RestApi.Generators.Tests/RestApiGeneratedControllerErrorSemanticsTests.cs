@@ -1129,6 +1129,9 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     private static DefaultHttpContext CreateCatalogIsolatedContext()
     {
         var context = new DefaultHttpContext();
+        context.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim("eventstore:tenant", "tenant-a")], "test"));
         context.Items[Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.ValidatorKey] =
             (Func<Type, string, string, bool>)((_, _, _) => true);
         return context;

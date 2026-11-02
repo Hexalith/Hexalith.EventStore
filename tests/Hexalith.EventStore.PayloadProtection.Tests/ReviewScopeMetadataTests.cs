@@ -3,17 +3,17 @@ using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.PayloadProtection.Tests;
 
-/// <summary>Lifetime scope metadata remains bounded without dropping epoch or clearing evidence.</summary>
+/// <summary>Ordinary scope traffic remains available while permanent blocks and epoch evidence are retained.</summary>
 public sealed class ReviewScopeMetadataTests
 {
     [Fact]
-    public async Task ErasureObservationCapacityRejectsNewScopesAndPreservesExistingMonotonicEvidence()
+    public async Task ErasureObservationsBeyondTheBlockLimitPreserveExistingMonotonicEvidence()
     {
         var provider = new LifecycleTestErasureProvider();
         var registry = new ErasureStateRegistry(new([new("tenant-a", "parties")]), [new("parties", provider)]);
-        for (int index = 0; index < PayloadProtectionOperationalLimits.ScopeMetadata; index++)
+        for (int index = 0; index <= PayloadProtectionOperationalLimits.ScopeMetadata; index++)
         { _ = await registry.ObserveAsync(new("tenant-a", "parties", index.ToString(System.Globalization.CultureInfo.InvariantCulture))); }
-        Capacity(await Should.ThrowAsync<PayloadProtectionStateException>(() => registry.ObserveAsync(new("tenant-a", "parties", "overflow")).AsTask()));
+        (await registry.ObserveAsync(new("tenant-a", "parties", "overflow"))).State.ShouldBe(PayloadErasureState.Active);
         provider.State = new(PayloadErasureState.Pending, 2, PayloadErasureReasonCode.DomainPending, DateTimeOffset.UtcNow);
         (await registry.ObserveAsync(new("tenant-a", "parties", "0"))).LifecycleEpoch.ShouldBe(2ul);
         provider.State = new(PayloadErasureState.Active, 1, PayloadErasureReasonCode.None, DateTimeOffset.UtcNow);
@@ -22,7 +22,7 @@ public sealed class ReviewScopeMetadataTests
     }
 
     [Fact]
-    public async Task CacheAndLocalMetadataCapacityPreservesExistingIdentitiesAndPermanentBlocks()
+    public async Task CacheAndLocalTrafficBeyondTheBlockLimitPreservesPermanentBlocks()
     {
         var existing = new AggregateIdentity("tenant-a", "parties", "existing");
         string scope = PayloadProtectionStateKeys.ScopeDigest(existing);
@@ -31,22 +31,24 @@ public sealed class ReviewScopeMetadataTests
         await using var cache = new PayloadKeyCache();
         var key = new PayloadKeyCacheKey(scope, "01J00000000000000000009999", 1, 1, "fixture");
         using (var copy = await cache.GetAsync(key, _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])))) { }
-        for (int index = 0; index < PayloadProtectionOperationalLimits.ScopeMetadata - 1; index++)
+        for (int index = 0; index <= PayloadProtectionOperationalLimits.ScopeMetadata; index++)
         {
-            string blocked = index.ToString("x64");
-            await operations.DrainScopeAsync(blocked);
-            await cache.ClearScopeAsync(blocked);
+            var identity = new AggregateIdentity("tenant-a", "parties", index.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            using (operations.Begin(identity)) { }
+            var transientKey = key with { ScopeDigest = PayloadProtectionStateKeys.ScopeDigest(identity) };
+            using var read = await cache.GetAsync(transientKey, _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])));
+            read.Reason.ShouldBeNull();
         }
         using (operations.Begin(existing)) { }
-        using (var hit = await cache.GetAsync(key, _ => throw new InvalidOperationException("must remain cached"))) { hit.Reason.ShouldBeNull(); }
-        Capacity(Should.Throw<PayloadProtectionStateException>(() => operations.Begin(new("tenant-a", "parties", "overflow"))));
-        Capacity(await Should.ThrowAsync<PayloadProtectionStateException>(() => operations.DrainScopeAsync(new('f', 64)).AsTask()));
-        Capacity(await Should.ThrowAsync<PayloadProtectionStateException>(() => cache.ClearScopeAsync(new('f', 64)).AsTask()));
-        Capacity(await Should.ThrowAsync<PayloadProtectionStateException>(() => cache.GetAsync(key with { ScopeDigest = new('f', 64) }, _ => throw new InvalidOperationException("must not unwrap")).AsTask()));
+        var overflow = new AggregateIdentity("tenant-a", "parties", "overflow");
+        using (operations.Begin(overflow)) { }
+        using (var read = await cache.GetAsync(key with { ScopeDigest = PayloadProtectionStateKeys.ScopeDigest(overflow) },
+            _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])))) { read.Reason.ShouldBeNull(); }
         await operations.DrainScopeAsync(scope); await cache.ClearScopeAsync(scope);
         (Should.Throw<PayloadProtectionStateException>(() => operations.Begin(existing))).Reason.ShouldBe(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
         using var denied = await cache.GetAsync(key, _ => throw new InvalidOperationException("blocked"));
         denied.Reason.ShouldBe(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
+        await operations.DrainScopeAsync(new('f', 64)); await cache.ClearScopeAsync(new('f', 64));
     }
 
     [Fact]

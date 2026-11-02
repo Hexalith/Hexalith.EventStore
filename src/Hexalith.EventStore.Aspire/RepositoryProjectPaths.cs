@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.Aspire;
 /// <summary>
 /// Resolves on-disk paths to project files within a Hexalith mono-repo working tree, where the platform
 /// modules (<c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>, …) are either the current repository or checked
-/// out as direct Git submodules or declared siblings under a workspace's <c>references/</c> directory.
+/// out as direct Git submodules, declared siblings, or the superproject that declares the consumer.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -48,8 +48,9 @@ public static class RepositoryProjectPaths {
     /// itself and the project resolves under <c>&lt;root&gt;</c>. Otherwise it prefers the direct submodule
     /// <c>&lt;root&gt;/references/&lt;module&gt;</c>. When that project is absent and the consumer is under a
     /// workspace's <c>references/</c> directory, it can use a sibling only when the workspace's
-    /// <c>.gitmodules</c> declares both repository paths. Unrelated siblings, ancestors and root-level
-    /// checkouts are never used.
+    /// <c>.gitmodules</c> declares both repository paths. It can use the immediate superproject when
+    /// that repository is the dependency and declares the consumer. Unrelated siblings and ancestors
+    /// are never used.
     /// </summary>
     /// <param name="moduleDirectory">The dependency module's directory name (e.g. <c>Hexalith.EventStore</c>).</param>
     /// <param name="moduleRelativePath">Path segments inside the module, ending in the target project file.</param>
@@ -93,26 +94,26 @@ public static class RepositoryProjectPaths {
                 $"Dependency '{moduleDirectory}' is the repository at '{fullRoot}', but its project '{expected}' does not exist.");
         }
 
-        string? sibling = GetDeclaredSiblingProjectPath(fullRoot, moduleDirectory, relative);
+        string? sibling = GetDeclaredWorkspaceProjectPath(fullRoot, moduleDirectory, relative);
         if (sibling is not null && File.Exists(sibling)) {
             return sibling;
         }
 
         string siblingExpectation = sibling is null
-            ? "A sibling is eligible only when the consumer and dependency are declared under the same workspace's 'references/' directory in its '.gitmodules'."
-            : $"The declared workspace sibling project '{sibling}' also does not exist.";
+            ? "A workspace dependency is eligible only when the consumer is declared in its immediate workspace's '.gitmodules'."
+            : $"The declared workspace project '{sibling}' also does not exist.";
         throw new InvalidOperationException(
             $"Dependency '{moduleDirectory}' has no project at the direct-reference location '{expected}'. {siblingExpectation}");
     }
 
     /// <summary>
-    /// Gets the sibling project location only when the immediate workspace declares both repository paths.
+    /// Gets the dependency project only when the immediate workspace declares the consumer repository.
     /// </summary>
     /// <param name="root">The absolute consuming repository root.</param>
     /// <param name="moduleDirectory">The dependency module's directory name.</param>
     /// <param name="relative">The project path relative to the dependency module.</param>
-    /// <returns>The declared sibling project path, or <see langword="null"/> when the layout is not declared.</returns>
-    private static string? GetDeclaredSiblingProjectPath(string root, string moduleDirectory, string relative) {
+    /// <returns>The declared workspace project path, or <see langword="null"/> when the layout is not declared.</returns>
+    private static string? GetDeclaredWorkspaceProjectPath(string root, string moduleDirectory, string relative) {
         DirectoryInfo consumer = new(root);
         DirectoryInfo? references = consumer.Parent;
         if (references?.Name != "references" || references.Parent is not DirectoryInfo workspace) {
@@ -152,8 +153,17 @@ public static class RepositoryProjectPaths {
             }
         }
 
-        return declaredPaths.Values.Contains("references/" + consumer.Name, StringComparer.Ordinal)
-            && declaredPaths.Values.Contains("references/" + moduleDirectory, StringComparer.Ordinal)
+        if (!declaredPaths.Values.Contains("references/" + consumer.Name, StringComparer.Ordinal)) {
+            return null;
+        }
+
+        // EventStore can itself be the superproject that declares a Tenants consumer. Its own
+        // project is then at the workspace root, with no nested EventStore submodule to initialize.
+        if (File.Exists(Path.Combine(workspace.FullName, moduleDirectory + ".slnx"))) {
+            return Path.GetFullPath(Path.Combine(workspace.FullName, relative));
+        }
+
+        return declaredPaths.Values.Contains("references/" + moduleDirectory, StringComparer.Ordinal)
             ? Path.GetFullPath(Path.Combine(references.FullName, moduleDirectory, relative))
             : null;
     }

@@ -5,6 +5,8 @@ using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -323,7 +325,8 @@ public class AdminStreamsController(
         [FromQuery] int count = 1000,
         CancellationToken ct = default) {
         try {
-            string? effectiveTenantId = ResolveTenantScope(tenantId);
+            if (!TryResolveTenantScope(tenantId, out string? effectiveTenantId))
+                return Forbid();
             int boundedCount = Math.Clamp(count, 1, 1000);
             PagedResult<CommandSummary> result = await streamQueryService
                 .GetRecentCommandsAsync(effectiveTenantId, status, commandType, boundedCount, ct)
@@ -356,7 +359,8 @@ public class AdminStreamsController(
         [FromQuery] int count = 1000,
         CancellationToken ct = default) {
         try {
-            string? effectiveTenantId = ResolveTenantScope(tenantId);
+            if (!TryResolveTenantScope(tenantId, out string? effectiveTenantId))
+                return Forbid();
             PagedResult<StreamSummary> result = await streamQueryService
                 .GetRecentlyActiveStreamsAsync(effectiveTenantId, domain, count, ct)
                 .ConfigureAwait(false);
@@ -527,18 +531,17 @@ public class AdminStreamsController(
         }) { StatusCode = statusCode };
     }
 
-    private string? ResolveTenantScope(string? requestedTenantId) {
-        if (requestedTenantId is not null) {
-            return requestedTenantId;
+    private bool TryResolveTenantScope(string? requestedTenantId, out string? storageTenant) {
+        if (requestedTenantId is null
+            && HttpContext.Items.TryGetValue(AdminPlatformScopeCatalog.ValidatedContextKey, out object? validated)
+            && string.Equals(validated as string, AdminPlatformScopeCatalog.Namespace, StringComparison.Ordinal)) {
+            storageTenant = null;
+            return true;
         }
 
-        // Admin users can see all tenants
-        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
-            return null;
-        }
-
-        // Non-admin: scope to first authorized tenant
-        return User.FindFirst(AdminClaimTypes.Tenant)?.Value;
+        bool valid = TenantCanonicalizer.TryCanonicalize(requestedTenantId, out string canonicalTenant);
+        storageTenant = valid ? canonicalTenant : null;
+        return valid;
     }
 
     private ObjectResult ServiceUnavailable(string method, Exception ex) {

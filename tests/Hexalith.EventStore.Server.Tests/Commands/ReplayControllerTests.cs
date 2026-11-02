@@ -40,6 +40,8 @@ public class ReplayControllerTests {
             User = user ?? CreateUserWithTenants("tenant-a"),
         };
         httpContext.Items["CorrelationId"] = "request-corr-id";
+        string? scope = httpContext.User.FindFirst("eventstore:tenant")?.Value;
+        if (scope is not null) httpContext.Request.Headers["X-Hexalith-Tenant"] = scope;
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         return controller;
@@ -246,6 +248,7 @@ public class ReplayControllerTests {
             },
         };
         const string trackingId = "01AUTHORIZEDLOOKUP0000000001";
+        controller.Request.Headers["X-Hexalith-Tenant"] = "tenant-a";
 
         _ = await controller.Replay(trackingId, CancellationToken.None);
 
@@ -471,7 +474,7 @@ public class ReplayControllerTests {
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(403);
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problemDetails.Detail!.ShouldContain("No tenant authorization claims found");
+        problemDetails.Detail!.ShouldContain("An authorized explicit scope is required");
     }
 
     [Fact]

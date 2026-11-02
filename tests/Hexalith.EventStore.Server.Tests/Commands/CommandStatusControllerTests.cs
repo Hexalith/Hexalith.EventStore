@@ -184,16 +184,15 @@ public class CommandStatusControllerTests {
     }
 
     /// <summary>
-    /// Every supported ambiguity shape gives general remediation without disclosing matched records.
+    /// A collision in another granted tenant does not expand an explicit status lookup.
     /// </summary>
     /// <param name="matchKind">The direct or legacy collision shape.</param>
     [Theory]
     [InlineData("direct")]
     [InlineData("legacy")]
-    public async Task GetStatus_CrossTenantAmbiguity_ReturnsScopeAwareSupportSafeGuidance(string matchKind)
+    public async Task GetStatus_CrossTenantCollisionUsesOnlyExplicitScope(string matchKind)
     {
         const string lookupId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
-        const string otherMessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
         var store = new InMemoryCommandStatusStore();
         var index = new InMemoryCommandCorrelationIndex();
         await store.WriteStatusAsync("tenant-a", lookupId,
@@ -210,18 +209,11 @@ public class CommandStatusControllerTests {
 
         IActionResult result = await controller.GetStatus(lookupId, CancellationToken.None);
 
-        ObjectResult conflict = result.ShouldBeOfType<ObjectResult>();
-        conflict.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
-        ProblemDetails problem = conflict.Value.ShouldBeOfType<ProblemDetails>();
-        problem.Type.ShouldBe("https://hexalith.io/problems/command-correlation-ambiguous");
-        problem.Title.ShouldBe("Ambiguous Command Correlation");
-        problem.Detail.ShouldBe("The identifier matches multiple commands or authorized tenant scopes. Verify the command MessageId and authorized tenant scope; contact support if a MessageId lookup remains ambiguous.");
-        problem.Detail.ShouldNotContain("tenant-a");
-        problem.Detail.ShouldNotContain("tenant-b");
-        problem.Detail.ShouldNotContain("private-");
-        problem.Detail.ShouldNotContain(otherMessageId);
-        problem.Extensions.Keys.ShouldBe(["correlationId"]);
-        controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");
+        CommandStatusResponse response = result.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<CommandStatusResponse>();
+        response.TenantId.ShouldBe("tenant-a");
+        response.AggregateId.ShouldBe("private-aggregate-a");
+        response.AggregateId.ShouldNotBe("private-aggregate-b");
     }
 
     [Theory]
@@ -248,6 +240,7 @@ public class CommandStatusControllerTests {
         }
         var controller = CreateController(store, index, reverseOrder
             ? ["compat-tenant", "exact-tenant"] : ["exact-tenant", "compat-tenant"]);
+        controller.Request.Headers["X-Hexalith-Tenant"] = "exact-tenant";
 
         CommandStatusResponse response = (await controller.GetStatus(lookupId, CancellationToken.None))
             .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<CommandStatusResponse>();
@@ -257,7 +250,7 @@ public class CommandStatusControllerTests {
     }
 
     [Fact]
-    public async Task GetStatus_ExactMessageDeduplicatesClaimsAndSkipsCompatibilityReads()
+    public async Task GetStatus_DuplicateNormalizedClaimsRefuseBeforeStatusLookup()
     {
         ICommandStatusStore store = Substitute.For<ICommandStatusStore>();
         ICommandCorrelationIndex index = Substitute.For<ICommandCorrelationIndex>();
@@ -266,9 +259,9 @@ public class CommandStatusControllerTests {
                 "aggregate", 1, null, null, null, CorrelationId, "trace"));
         var controller = CreateController(store, index, "tenant-a", "tenant-a", "tenant-b");
 
-        (await controller.GetStatus(CorrelationId, CancellationToken.None)).ShouldBeOfType<OkObjectResult>();
-        _ = await store.Received(1).ReadStatusAsync("tenant-a", CorrelationId, Arg.Any<CancellationToken>());
-        _ = await store.Received(1).ReadStatusAsync("tenant-b", CorrelationId, Arg.Any<CancellationToken>());
+        (await controller.GetStatus(CorrelationId, CancellationToken.None))
+            .ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        _ = await store.DidNotReceive().ReadStatusAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _ = await index.DidNotReceive().ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _ = await store.DidNotReceive().ReadStatusAsync("tenant-secret", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -276,7 +269,7 @@ public class CommandStatusControllerTests {
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetStatus_CompatibilityCollisionsRemainAmbiguousWithoutExactMessages(bool reverseOrder)
+    public async Task GetStatus_CompatibilityCollisionInAnotherTenantDoesNotExpandExplicitScope(bool reverseOrder)
     {
         var store = new InMemoryCommandStatusStore();
         var index = new InMemoryCommandCorrelationIndex();
@@ -291,12 +284,13 @@ public class CommandStatusControllerTests {
         var controller = CreateController(store, index, reverseOrder
             ? ["tenant-b", "tenant-a"] : ["tenant-a", "tenant-b"]);
 
-        (await controller.GetStatus(CorrelationId, CancellationToken.None))
-            .ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        CommandStatusResponse response = (await controller.GetStatus(CorrelationId, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<CommandStatusResponse>();
+        response.TenantId.ShouldBe(reverseOrder ? "tenant-b" : "tenant-a");
     }
 
     [Fact]
-    public async Task GetStatus_CompatibilityDeduplicatesClaims()
+    public async Task GetStatus_CompatibilityRejectsDuplicateNormalizedClaims()
     {
         var store = new InMemoryCommandStatusStore();
         var index = new InMemoryCommandCorrelationIndex();
@@ -306,7 +300,8 @@ public class CommandStatusControllerTests {
         _ = await index.AddAsync("tenant-a", CorrelationId, "message-a");
         var controller = CreateController(store, index, "tenant-a", "tenant-a");
 
-        (await controller.GetStatus(CorrelationId, CancellationToken.None)).ShouldBeOfType<OkObjectResult>();
+        (await controller.GetStatus(CorrelationId, CancellationToken.None))
+            .ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
     }
 
     [Fact]
@@ -378,14 +373,14 @@ public class CommandStatusControllerTests {
         ObjectResult objResult = result.ShouldBeOfType<ObjectResult>();
         objResult.StatusCode.ShouldBe(403);
         ProblemDetails pd = objResult.Value.ShouldBeOfType<ProblemDetails>();
-        pd.Detail!.ShouldContain("No tenant authorization claims found");
+        pd.Detail!.ShouldContain("An authorized explicit scope is required");
         pd.Type.ShouldBe("https://hexalith.io/problems/forbidden");
         pd.Extensions.ShouldContainKey("correlationId");
         _controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");
     }
 
     [Fact]
-    public async Task GetStatus_MultipleTenantClaims_TriesAllTenants() {
+    public async Task GetStatus_MultipleTenantClaims_UsesSelectedTenantOnly() {
         // Arrange - status belongs to tenant-b, user has [tenant-a, tenant-b]
         string correlationId = CorrelationId;
         await _statusStore.WriteStatusAsync(
@@ -394,6 +389,7 @@ public class CommandStatusControllerTests {
             CancellationToken.None);
 
         SetupHttpContextWithClaims(["tenant-a", "tenant-b"]);
+        _controller.Request.Headers["X-Hexalith-Tenant"] = "tenant-b";
 
         // Act
         IActionResult result = await _controller.GetStatus(correlationId, CancellationToken.None);
@@ -672,6 +668,7 @@ public class CommandStatusControllerTests {
         var httpContext = new DefaultHttpContext {
             User = principal,
         };
+        if (tenants.Length > 0) httpContext.Request.Headers["X-Hexalith-Tenant"] = tenants[0];
         httpContext.Items["CorrelationId"] = Guid.NewGuid().ToString();
 
         _controller.ControllerContext = new ControllerContext {
@@ -781,6 +778,7 @@ public class CommandStatusControllerTests {
                 User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")),
             },
         };
+        if (tenants.Length > 0) controller.Request.Headers["X-Hexalith-Tenant"] = tenants[0];
         return controller;
     }
 }

@@ -75,20 +75,19 @@ public class ClaimsTenantValidatorTests {
     }
 
     [Fact]
-    public async Task ValidateAsync_CaseSensitive_DifferentCase_ReturnsDenied() {
-        // Arrange — tenant comparison is Ordinal (case-SENSITIVE)
+    public async Task ValidateAsync_CaseVariant_NormalizesToTheSameTenant() {
+        // Arrange — AD-27 normalizes both the request tenant and the grant.
         ClaimsPrincipal principal = CreatePrincipal("TEST-TENANT");
 
         // Act
         TenantValidationResult result = await _validator.ValidateAsync(principal, "test-tenant", CancellationToken.None);
 
         // Assert
-        result.IsAuthorized.ShouldBeFalse();
+        result.IsAuthorized.ShouldBeTrue();
     }
 
     [Fact]
-    public async Task ValidateAsync_WhitespaceOnlyClaims_TreatedAsNoClaims() {
-        // Arrange — whitespace-only claims are filtered out
+    public async Task ValidateAsync_WhitespaceOnlyClaims_AreInvalid() {
         var claims = new List<Claim> {
             new("eventstore:tenant", " "),
             new("eventstore:tenant", ""),
@@ -100,7 +99,7 @@ public class ClaimsTenantValidatorTests {
 
         // Assert
         result.IsAuthorized.ShouldBeFalse();
-        result.Reason.ShouldBe("No tenant authorization claims found. Access denied.");
+        result.Reason.ShouldBe("Tenant authorization claims are invalid or ambiguous.");
     }
 
     [Fact]
@@ -116,7 +115,7 @@ public class ClaimsTenantValidatorTests {
 
         // Assert
         result.IsAuthorized.ShouldBeFalse();
-        result.Reason.ShouldBe("Not authorized for tenant 'test-tenant'.");
+        result.Reason.ShouldBe("Tenant authorization claims are invalid or ambiguous.");
     }
 
     [Fact]
@@ -125,11 +124,10 @@ public class ClaimsTenantValidatorTests {
         _ = await Should.ThrowAsync<ArgumentNullException>(
             () => _validator.ValidateAsync(null!, "test-tenant", CancellationToken.None));
 
-    // --- Global admin bypass tests ---
+    // --- An administrator claim does not replace the explicit tenant grant. ---
 
     [Fact]
-    public async Task ValidateAsync_GlobalAdmin_AllowsAnyTenant() {
-        // Arrange — global admin with no tenant claims can access any tenant
+    public async Task ValidateAsync_GlobalAdmin_CannotRequestReservedSystemTenant() {
         var claims = new List<Claim> { new("global_admin", "true") };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
 
@@ -137,12 +135,12 @@ public class ClaimsTenantValidatorTests {
         TenantValidationResult result = await _validator.ValidateAsync(principal, "system", CancellationToken.None);
 
         // Assert
-        result.IsAuthorized.ShouldBeTrue();
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("Tenant is invalid or reserved.");
     }
 
     [Fact]
-    public async Task ValidateAsync_GlobalAdminWithIsGlobalAdmin_AllowsAnyTenant() {
-        // Arrange — is_global_admin claim variant
+    public async Task ValidateAsync_GlobalAdminWithIsGlobalAdmin_DoesNotReplaceTenantGrant() {
         var claims = new List<Claim> { new("is_global_admin", "true") };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
 
@@ -150,7 +148,7 @@ public class ClaimsTenantValidatorTests {
         TenantValidationResult result = await _validator.ValidateAsync(principal, "any-tenant", CancellationToken.None);
 
         // Assert
-        result.IsAuthorized.ShouldBeTrue();
+        result.IsAuthorized.ShouldBeFalse();
     }
 
     [Fact]
@@ -183,8 +181,7 @@ public class ClaimsTenantValidatorTests {
     [InlineData("GlobalAdministrator")]
     [InlineData("global-administrator")]
     [InlineData("global-admin")]
-    public async Task ValidateAsync_GlobalAdminViaRoleClaim_AllowsAnyTenant(string roleValue) {
-        // Arrange — role-based global admin detection (via GlobalAdministratorHelper)
+    public async Task ValidateAsync_GlobalAdminViaRoleClaim_DoesNotReplaceTenantGrant(string roleValue) {
         var claims = new List<Claim> { new(ClaimTypes.Role, roleValue) };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
 
@@ -192,6 +189,6 @@ public class ClaimsTenantValidatorTests {
         TenantValidationResult result = await _validator.ValidateAsync(principal, "any-tenant", CancellationToken.None);
 
         // Assert
-        result.IsAuthorized.ShouldBeTrue();
+        result.IsAuthorized.ShouldBeFalse();
     }
 }

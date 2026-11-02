@@ -1,11 +1,15 @@
 using System.Security.Claims;
+using System.Reflection;
 
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Controllers;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
+using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -88,7 +92,7 @@ public class AdminTenantAuthorizationFilterTests {
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_OmittedTenantArgument_NarrowsToFirstClaim() {
+    public async Task OnActionExecutionAsync_OmittedTenantArgument_DeniesBeforeNext() {
         ActionExecutingContext context = CreateContext(
             routeTenantId: null,
             tenantClaims: ["tenant-a", "tenant-b"],
@@ -100,8 +104,8 @@ public class AdminTenantAuthorizationFilterTests {
             return Task.FromResult<ActionExecutedContext>(null!);
         });
 
-        nextCalled.ShouldBeTrue();
-        context.ActionArguments["tenantId"].ShouldBe("tenant-a");
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
     }
 
     [Fact]
@@ -122,7 +126,7 @@ public class AdminTenantAuthorizationFilterTests {
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_AdminWithoutTenantClaim_BypassesScope() {
+    public async Task OnActionExecutionAsync_AdminWithoutTenantClaim_DeniesScope() {
         ActionExecutingContext context = CreateContext(
             routeTenantId: "any-tenant",
             tenantClaims: [],
@@ -134,14 +138,14 @@ public class AdminTenantAuthorizationFilterTests {
             return Task.FromResult<ActionExecutedContext>(null!);
         });
 
-        nextCalled.ShouldBeTrue();
-        context.Result.ShouldBeNull();
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
     }
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OnActionExecutionAsync_AdminWithOmittedTenantArgument_StaysUnscoped(bool withTenantClaim) {
+    public async Task OnActionExecutionAsync_AdminWithOmittedTenantArgument_Denies(bool withTenantClaim) {
         ActionExecutingContext context = CreateContext(
             routeTenantId: null,
             tenantClaims: withTenantClaim ? ["tenant-a"] : [],
@@ -154,8 +158,8 @@ public class AdminTenantAuthorizationFilterTests {
             return Task.FromResult<ActionExecutedContext>(null!);
         });
 
-        nextCalled.ShouldBeTrue();
-        context.Result.ShouldBeNull();
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
         context.ActionArguments["tenantId"].ShouldBeNull();
     }
 
@@ -165,7 +169,7 @@ public class AdminTenantAuthorizationFilterTests {
     [InlineData(null, "%20%20", null)]
     [InlineData(null, null, "")]
     [InlineData(null, null, "  ")]
-    public async Task OnActionExecutionAsync_BlankRequestedTenant_IsNarrowedToAuthorizedClaim(
+    public async Task OnActionExecutionAsync_BlankRequestedTenant_Denies(
         string? routeTenantId,
         string? queryTenantId,
         string? actionTenantId) {
@@ -182,13 +186,12 @@ public class AdminTenantAuthorizationFilterTests {
             return Task.FromResult<ActionExecutedContext>(null!);
         });
 
-        nextCalled.ShouldBeTrue();
-        context.Result.ShouldBeNull();
-        context.ActionArguments["tenantId"].ShouldBe("tenant-a");
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_BlankTenantClaims_AreSkippedWhenNarrowing() {
+    public async Task OnActionExecutionAsync_BlankTenantClaims_Deny() {
         ActionExecutingContext context = CreateContext(
             routeTenantId: null,
             tenantClaims: [" ", "", "tenant-b"],
@@ -200,8 +203,8 @@ public class AdminTenantAuthorizationFilterTests {
             return Task.FromResult<ActionExecutedContext>(null!);
         });
 
-        nextCalled.ShouldBeTrue();
-        context.ActionArguments["tenantId"].ShouldBe("tenant-b");
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
     }
 
     [Theory]
@@ -267,6 +270,31 @@ public class AdminTenantAuthorizationFilterTests {
         log.ShouldContain("correlation-safe");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CatalogedGlobalListRequiresExplicitPlatformScopeAndReadPermission(bool permitted) {
+        ActionExecutingContext context = CreateContext(null, []);
+        context.ActionDescriptor = new ControllerActionDescriptor {
+            ControllerTypeInfo = typeof(AdminStreamsController).GetTypeInfo(),
+            MethodInfo = typeof(AdminStreamsController).GetMethod(nameof(AdminStreamsController.GetRecentCommandsAsync))!,
+            Parameters = [new ControllerParameterDescriptor { Name = "tenantId" }],
+        };
+        context.HttpContext.Request.Headers["X-Hexalith-Scope"] = AdminPlatformScopeCatalog.Namespace;
+        context.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            permitted ? [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)] : [], "TestAuth"));
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBe(permitted);
+        if (permitted) context.HttpContext.Items[AdminPlatformScopeCatalog.ValidatedContextKey].ShouldBe(AdminPlatformScopeCatalog.Namespace);
+        else context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
+    }
+
     private static ActionExecutingContext CreateContext(
         string? routeTenantId,
         string[] tenantClaims,
@@ -297,7 +325,10 @@ public class AdminTenantAuthorizationFilterTests {
             routeData.Values["tenantId"] = routeTenantId;
         }
 
-        var actionContext = new ActionContext(httpContext, routeData, new ActionDescriptor());
+        var descriptor = new ActionDescriptor { Parameters = new List<ParameterDescriptor>() };
+        if (routeTenantId is not null || queryTenantId is not null || includeTenantArgument)
+            descriptor.Parameters.Add(new ParameterDescriptor { Name = "tenantId" });
+        var actionContext = new ActionContext(httpContext, routeData, descriptor);
         Dictionary<string, object?> arguments = includeTenantArgument
             ? new Dictionary<string, object?> { ["tenantId"] = actionTenantId }
             : new Dictionary<string, object?>();

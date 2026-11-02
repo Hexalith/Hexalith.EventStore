@@ -54,7 +54,7 @@ public sealed class HttpHostSecurityTests
         {
             Issuer = "story514", Audience = "sample-api", Expires = DateTime.UtcNow.AddMinutes(5),
             Claims = credential == "workload" ? new Dictionary<string, object> { [EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType] = "peer" }
-                : new Dictionary<string, object> { ["sub"] = "human" },
+                : new Dictionary<string, object> { ["sub"] = "human", ["eventstore:tenant"] = "tenant-a" },
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key)), SecurityAlgorithms.HmacSha256),
         }));
         if (credential == "channel") request.Headers.Add(DaprAppChannelToken.HeaderName, "channel");

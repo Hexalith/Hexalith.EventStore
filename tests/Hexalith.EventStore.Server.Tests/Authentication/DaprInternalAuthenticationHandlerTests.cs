@@ -50,6 +50,33 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     private const string TrustedEffectsRoute = "/api/v1/trusted-effects";
     private const string CommandsRoute = "/api/v1/commands";
 
+    /// <summary>Only a bound platform command may carry a separate human bearer beside its workload assertion.</summary>
+    [Theory]
+    [InlineData("/api/v1/commands/bound/workload", "platform:global-administrators", HttpStatusCode.Forbidden)]
+    [InlineData("/api/v1/commands/bound/workload", "tenant-a", HttpStatusCode.Unauthorized)]
+    [InlineData("/api/v1/commands/workload", "platform:global-administrators", HttpStatusCode.Unauthorized)]
+    public async Task BoundPlatformCommandKeepsBothCredentialBoundaries(
+        string route, string scope, HttpStatusCode expectedStatus)
+    {
+        using HttpClient client = _factory.CreateClient();
+        var command = new SubmitCommandRequest("01ARZ3NDEKTSV4RRFFQ69G5FAV", scope,
+            "global-administrators", "global-administrators", "BootstrapGlobalAdmin",
+            JsonSerializer.SerializeToElement(new { userId = "administrator" }));
+        using var request = new HttpRequestMessage(HttpMethod.Post, route)
+        {
+            Content = JsonContent.Create(new BoundWorkloadCommandRequest(command, "administrator")),
+        };
+        AddInternalHeaders(request, WorkloadAssertionTestTokens.Create(Audience, AllowedCaller,
+            [EventStoreWorkloadOperations.GatewayCommandSubmit]), includeChannelToken: true);
+        request.Headers.Add("X-Hexalith-Scope", scope);
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", TestJwtHelper.GenerateToken());
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(expectedStatus);
+        _factory.CommandRouter.ReceivedCalls().ShouldBeEmpty();
+    }
+
     /// <summary>Every workload gateway route admits only its signed operation through the real middleware.</summary>
     [Theory]
     [InlineData("/api/v1/commands/workload", EventStoreWorkloadOperations.GatewayCommandSubmit, true)]
@@ -447,12 +474,10 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     }
 
     /// <summary>
-    /// Story 5.5 (BS-B): the Tenants global-administrator bootstrap succeeds with the configured administrator's own
-    /// delegated credential (the locally signed, short-lived symmetric-mode token), not with any app-id grant. The
-    /// command reaches routing as that human administrator.
+    /// A delegated administrator credential cannot expose the historical system tenant through public command ingress.
     /// </summary>
     [Fact]
-    public async Task DelegatedAdministratorCredential_BootstrapsTheGlobalAdministrator()
+    public async Task DelegatedAdministratorCredential_CannotBootstrapThroughPublicSystemScope()
     {
         _ = _factory.CommandRouter.RouteCommandAsync(Arg.Any<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new Hexalith.EventStore.Server.Actors.CommandProcessingResult(Accepted: true, CorrelationId: "story-5-5-correlation"));
@@ -493,13 +518,8 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
 
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
-        _ = await _factory.CommandRouter.Received(1).RouteCommandAsync(
-            Arg.Is<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand>(command => command.CommandType == "BootstrapGlobalAdmin"
-                && command.Tenant == "system"
-                && command.UserId == "bootstrap-administrator"
-                && command.IsGlobalAdmin),
-            Arg.Any<CancellationToken>());
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        _ = await _factory.CommandRouter.DidNotReceiveWithAnyArgs().RouteCommandAsync(default!, default);
     }
 
     /// <summary>

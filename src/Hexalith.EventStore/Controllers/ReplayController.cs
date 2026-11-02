@@ -3,6 +3,10 @@ using System.Diagnostics;
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Pipeline;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
@@ -31,7 +35,8 @@ public class ReplayController(
     ICommandStatusStore statusStore,
     IMediator mediator,
     ILogger<ReplayController> logger,
-    ICommandCorrelationIndex? correlationIndex = null) : ControllerBase {
+    ICommandCorrelationIndex? correlationIndex = null,
+    IRouteCatalogAuthority? catalogAuthority = null) : ControllerBase {
     private static readonly HashSet<CommandStatus> _replayableStatuses =
     [
         CommandStatus.Rejected,
@@ -89,16 +94,9 @@ public class ReplayController(
             // Store correlationId in HttpContext.Items for error handler access
             HttpContext.Items["ReplayCorrelationId"] = correlationId;
 
-            // Extract tenant claims (same pattern as Story 2.5/2.6)
-            var tenantClaims = User.FindAll("eventstore:tenant")
-                .Select(c => c.Value)
-                .Where(v => !string.IsNullOrWhiteSpace(v))
-                .ToList();
-
-            // AC #6: 403 for missing tenant claims
-            if (tenantClaims.Count == 0) {
+            if (!TryResolveExplicitReplayScope(out string storageTenant, out string requestScope)) {
                 logger.LogWarning(
-                    "Replay denied: no tenant claims. CorrelationId={CorrelationId}",
+                    "Replay denied: invalid or unauthorized explicit scope. CorrelationId={CorrelationId}",
                     requestCorrelationId);
 
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims"));
@@ -106,9 +104,11 @@ public class ReplayController(
                     StatusCodes.Status403Forbidden,
                     ProblemTypeUris.Forbidden,
                     "Forbidden",
-                    "No tenant authorization claims found. Access denied.",
+                    "An authorized explicit scope is required.",
                     requestCorrelationId);
             }
+
+            List<string> tenantClaims = [storageTenant];
 
             // Search only authorized tenants. New archive records are message-primary; the
             // bounded correlation index provides compatibility without a state-store scan.
@@ -121,6 +121,8 @@ public class ReplayController(
                 ArchivedCommand? directCommand = await archiveStore
                     .ReadCommandAsync(tenant, correlationId, cancellationToken)
                     .ConfigureAwait(false);
+                if (directCommand is not null && !ReplayDomainAllowed(directCommand.Domain, requestScope))
+                    directCommand = null;
 
                 if (directCommand is not null
                     && string.Equals(directCommand.MessageId, correlationId, StringComparison.Ordinal)) {
@@ -140,6 +142,8 @@ public class ReplayController(
                         ArchivedCommand? indexedCommand = await archiveStore
                             .ReadCommandAsync(tenant, resolution.MessageId, cancellationToken)
                             .ConfigureAwait(false);
+                        if (indexedCommand is not null && !ReplayDomainAllowed(indexedCommand.Domain, requestScope))
+                            indexedCommand = null;
                         if (indexedCommand is not null) {
                             matches.Add((tenant, resolution.MessageId, indexedCommand));
                             continue;
@@ -215,6 +219,22 @@ public class ReplayController(
 
             string previousStatus = statusRecord.Status.ToString();
 
+            RouteCatalogDispatchLease? platformLease = null;
+            if (TenantCanonicalizer.IsPlatformScope(requestScope))
+            {
+                if (catalogAuthority is null)
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                platformLease = await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            }
+            await using var platformRelease = new RouteCatalogLeaseReleaser(platformLease).ConfigureAwait(false);
+            if (platformLease is not null)
+            {
+                var declared = platformLease.Snapshot.Resolve("command", storageTenant,
+                    archivedCommand.Domain, archivedCommand.CommandType);
+                if (!LegacyTenantStorageScopeAdapter.TryMapPlatform(declared.Declaration, requestScope, User, out _))
+                    return Forbid();
+            }
+
             // Generate a new correlation ID for replay tracking (R2-A7: ULID, not GUID)
             string replayCorrelationId = UniqueIdHelper.GenerateSortableUniqueStringId();
 
@@ -247,6 +267,13 @@ public class ReplayController(
                 previousStatus,
                 true);
 
+            if (platformLease is not null)
+            {
+                HttpContext.Items[AuthorizationBehavior<SubmitCommand, SubmitCommandResult>.PrevalidatedAuthorizationContextKey]
+                    = new GatewayAuthorizationContext(storageTenant, command.Domain, command.CommandType,
+                        "command", command.AggregateId, User.FindFirst("sub")?.Value);
+            }
+
             _ = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 
             // AC #1: Return 202 Accepted with replay response
@@ -273,6 +300,50 @@ public class ReplayController(
             throw;
         }
     }
+
+    private bool TryResolveExplicitReplayScope(out string storageTenant, out string requestScope)
+    {
+        storageTenant = string.Empty;
+        requestScope = string.Empty;
+        bool hasTenant = Request.Headers.TryGetValue("X-Hexalith-Tenant", out var tenantHeader);
+        bool hasPlatform = Request.Headers.TryGetValue("X-Hexalith-Scope", out var platformHeader);
+        if (hasTenant == hasPlatform || tenantHeader.Count > 1 || platformHeader.Count > 1
+            || Request.Query.ContainsKey("tenant") || Request.Query.ContainsKey("tenantId")
+            || User.Identity?.IsAuthenticated != true
+            || !TenantCanonicalizer.TryCanonicalizeGrants(
+                User.FindAll("eventstore:tenant").Select(claim => claim.Value), out IReadOnlySet<string> grants))
+            return false;
+
+        if (hasTenant)
+        {
+            if (!TenantCanonicalizer.TryCanonicalize(tenantHeader[0], out string canonicalTenant)
+                || !grants.Contains(canonicalTenant))
+                return false;
+            requestScope = storageTenant = canonicalTenant;
+            return true;
+        }
+
+        requestScope = platformHeader[0]!;
+        string? permission = requestScope switch
+        {
+            "platform:tenants" => "tenants:read",
+            "platform:global-administrators" => "global-administrators:read",
+            _ => null,
+        };
+        if (permission is null || User.FindAll("eventstore:permission").Count(claim =>
+                string.Equals(claim.Value, permission, StringComparison.Ordinal)) != 1)
+            return false;
+        storageTenant = TenantCanonicalizer.ReservedStorageTenant;
+        return true;
+    }
+
+    private static bool ReplayDomainAllowed(string? domain, string requestScope)
+        => requestScope switch
+        {
+            "platform:tenants" => domain == "tenants",
+            "platform:global-administrators" => domain == "global-administrators",
+            _ => true,
+        };
 
     private ObjectResult CreateProblemDetails(int statusCode, string type, string title, string detail, string correlationId) {
         var problemDetails = new ProblemDetails {

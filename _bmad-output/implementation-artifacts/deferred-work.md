@@ -6508,3 +6508,6 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 
     Removing the `sub` check or the `IsDevelopment()` guard would ship unnoticed.
   reason: Same blocker and owner as D-3 (`ci.yml` is an OQ8 worktree-hashed gate input; Tenants CI is package-mode). This entry only widens D-3's scope.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Define and prove same-type mutable getter correlation for ordinary personal-data policies before domain policy integration.
+  evidence: `PersonalDataDiscovery` checks the post-serialization child's type but not its identity/value against the exact serialized JSON; an `IPersonalDataPolicy` using the typed `Owner` can decide on a different same-type object and omit protection. The approved exactly-once serialization contract does not define a safe way to compare or snapshot that owner. Review pass 8 EC1/EC3; resolve before Story 8.9 domain adoption and G5.

@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Hexalith.EventStore.Contracts.Identity;
 
 using Dapr.Client;
 
@@ -107,6 +108,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         string? commandType,
         int count = 1000,
         CancellationToken ct = default) {
+        if (tenantId is not null && !TenantCanonicalizer.TryCanonicalize(tenantId, out tenantId))
+            throw new ArgumentException("Tenant scope is invalid or reserved.", nameof(tenantId));
         string endpoint = "api/v1/admin/streams/commands";
         var queryParams = new List<string> { $"count={count}" };
         if (!string.IsNullOrWhiteSpace(tenantId)) {
@@ -143,6 +146,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         string? domain,
         int count = 1000,
         CancellationToken ct = default) {
+        if (tenantId is not null && !TenantCanonicalizer.TryCanonicalize(tenantId, out tenantId))
+            throw new ArgumentException("Tenant scope is invalid or reserved.", nameof(tenantId));
         const string indexKey = "admin:stream-activity:all";
         try {
             List<StreamSummary>? result = await _daprClient
@@ -157,7 +162,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             IEnumerable<StreamSummary> filtered = result;
 
             if (!string.IsNullOrWhiteSpace(tenantId)) {
-                filtered = filtered.Where(s => s.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase));
+                filtered = filtered.Where(s => TenantCanonicalizer.TryCanonicalize(s.TenantId, out string candidate)
+                    && string.Equals(candidate, tenantId, StringComparison.Ordinal));
             }
 
             if (!string.IsNullOrWhiteSpace(domain)) {

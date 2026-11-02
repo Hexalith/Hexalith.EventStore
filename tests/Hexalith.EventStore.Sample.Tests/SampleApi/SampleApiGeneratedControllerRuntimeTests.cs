@@ -2,6 +2,7 @@ extern alias SampleApi;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
@@ -427,7 +428,11 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             statusLocationBuilder ?? new FakeCommandStatusLocationBuilder(gatewayStatusBase: null))!;
         controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext(),
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim("sub", "sample-user"), new Claim("eventstore:tenant", "tenant-a")], "Test")),
+            },
         };
 
         return new GeneratedController(controller, gateway);

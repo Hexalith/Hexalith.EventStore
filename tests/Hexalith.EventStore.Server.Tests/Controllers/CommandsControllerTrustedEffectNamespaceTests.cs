@@ -84,7 +84,8 @@ public sealed class CommandsControllerTrustedEffectNamespaceTests
         var controller = new CommandsController(mediator, sanitizer, NullLogger<CommandsController>.Instance, []);
         var httpContext = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "system:agents")], "test")),
+            User = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim("sub", "system:agents"), new Claim("eventstore:tenant", "tenant-a")], "test")),
         };
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "correlation-1";
         httpContext.Request.Scheme = "https";

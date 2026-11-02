@@ -28,6 +28,9 @@ public sealed class RestRouteAttribute(RestVerb verb, string template) : Attribu
     /// <summary>Gets the HTTP verb for the generated endpoint.</summary>
     public RestVerb Verb { get; } = verb;
 
+    /// <summary>Overrides the assembly tenant source for this route.</summary>
+    public RestTenantSource TenantSource { get; set; } = RestTenantSource.Inherit;
+
     /// <summary>Gets the route template appended to the domain route prefix.</summary>
     public string Template { get; } = ValidateTemplate(template);
 

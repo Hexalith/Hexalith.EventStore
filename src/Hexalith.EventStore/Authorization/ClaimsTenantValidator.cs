@@ -2,6 +2,7 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Contracts.Identity;
 
 namespace Hexalith.EventStore.Authorization;
 
@@ -19,36 +20,37 @@ public class ClaimsTenantValidator : ITenantValidator {
         string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
-        // Global administrators may access any tenant (including "system"), even with empty tenantId
-        if (GlobalAdministratorHelper.IsGlobalAdministrator(user)) {
-            return Task.FromResult(TenantValidationResult.Allowed);
-        }
-
-        if (string.IsNullOrWhiteSpace(tenantId)) {
+        if (string.IsNullOrEmpty(tenantId)) {
             return Task.FromResult(TenantValidationResult.Denied(
                 "Tenant is required.",
                 AuthorizationFailureReason.TenantMissing));
         }
 
-        var tenantClaims = user.FindAll("eventstore:tenant")
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .ToList();
+        if (!TenantCanonicalizer.TryCanonicalize(tenantId, out string canonicalTenant)) {
+            return Task.FromResult(TenantValidationResult.Denied(
+                "Tenant is invalid or reserved.", AuthorizationFailureReason.TenantMismatch));
+        }
 
-        if (tenantClaims.Count == 0) {
+        string[] tenantClaims = user.FindAll("eventstore:tenant").Select(c => c.Value).ToArray();
+
+        if (tenantClaims.Length == 0) {
             return Task.FromResult(TenantValidationResult.Denied(
                 "No tenant authorization claims found. Access denied.",
                 AuthorizationFailureReason.PrincipalNotMember));
         }
 
-        // Case-SENSITIVE comparison (StringComparison.Ordinal) — tenant IDs are system-assigned
-        if (!tenantClaims.Any(t => string.Equals(t, tenantId, StringComparison.Ordinal))) {
+        if (!TenantCanonicalizer.TryCanonicalizeGrants(tenantClaims, out IReadOnlySet<string> canonicalGrants)) {
             return Task.FromResult(TenantValidationResult.Denied(
-                $"Not authorized for tenant '{tenantId}'.",
+                "Tenant authorization claims are invalid or ambiguous.", AuthorizationFailureReason.TenantAmbiguous));
+        }
+
+        if (!canonicalGrants.Contains(canonicalTenant)) {
+            return Task.FromResult(TenantValidationResult.Denied(
+                $"Not authorized for tenant '{canonicalTenant}'.",
                 AuthorizationFailureReason.TenantMismatch));
         }
 
-        return Task.FromResult(TenantValidationResult.Allowed);
+        return Task.FromResult(TenantValidationResult.AllowedFor(canonicalTenant));
     }
 
 }

@@ -4,14 +4,29 @@ using Hexalith.EventStore.Contracts.Security;
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Tracks a local operation until its owned buffers and any abandoned backend result have been cleared.</summary>
-internal sealed class PayloadLocalOperation(CancellationToken cancellationToken, Action<PayloadLocalOperation> released) : IDisposable
+internal sealed class PayloadLocalOperation : IDisposable
 {
-    private readonly CancellationTokenSource _cancel = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+    private readonly CancellationToken _callerToken;
+    private readonly CancellationTokenRegistration _parentCompletion;
+    private readonly CancellationTokenSource _cancel;
+    private readonly Action<PayloadLocalOperation> _released;
     private readonly TaskCompletionSource _cleared = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _parentCallbacksCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly object _gate = new();
     private Task? _cancellation;
     private int _references = 1;
     private int _disposed;
+
+    /// <summary>Links caller cancellation while retaining evidence that its callbacks have returned.</summary>
+    internal PayloadLocalOperation(CancellationToken cancellationToken, Action<PayloadLocalOperation> released)
+    {
+        _callerToken = cancellationToken;
+        _released = released;
+        // Registrations execute in reverse order: this sentinel runs after the linked source's
+        // parent callback, including any operation-token callback that it invokes.
+        _parentCompletion = cancellationToken.UnsafeRegister(static state => ((PayloadLocalOperation)state!)._parentCallbacksCompleted.TrySetResult(), this);
+        _cancel = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+    }
 
     /// <summary>Gets the token cancelled by caller cancellation or a local lifecycle drain.</summary>
     internal CancellationToken Token => _cancel.Token;
@@ -34,14 +49,18 @@ internal sealed class PayloadLocalOperation(CancellationToken cancellationToken,
             if (_cancellation is not null) { return _cancellation; }
             if (_references == 0) { return Task.CompletedTask; }
             _references++;
-            return _cancellation = CancelCoreAsync();
+            return _cancellation = Task.Run(CancelCoreAsync);
         }
     }
     private async Task CancelCoreAsync()
     {
         try { await _cancel.CancelAsync().ConfigureAwait(false); }
         catch (AggregateException) { /* Callbacks have finished; actual foreground/result clearing is still required. */ }
-        finally { Release(); }
+        finally
+        {
+            if (_callerToken.IsCancellationRequested) { await _parentCallbacksCompleted.Task.ConfigureAwait(false); }
+            Release();
+        }
     }
     /// <summary>Extends clearing evidence through a background result's final disposal.</summary>
     internal void RetainUntil(Task clearing)
@@ -69,9 +88,16 @@ internal sealed class PayloadLocalOperation(CancellationToken cancellationToken,
         lock (_gate)
         {
             if (--_references != 0) { return; }
-            released(this);
-            _cancel.Dispose();
-            _cleared.TrySetResult();
         }
+        _ = Task.Run(CompleteReleaseAsync);
+    }
+
+    private async Task CompleteReleaseAsync()
+    {
+        if (_callerToken.IsCancellationRequested) { await _parentCallbacksCompleted.Task.ConfigureAwait(false); }
+        _cancel.Dispose();
+        _parentCompletion.Dispose();
+        _cleared.TrySetResult();
+        _released(this);
     }
 }

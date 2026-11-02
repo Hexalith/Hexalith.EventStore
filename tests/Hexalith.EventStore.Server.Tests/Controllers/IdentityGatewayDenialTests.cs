@@ -52,5 +52,5 @@ public sealed class IdentityGatewayDenialTests
     }
 
     private static ControllerContext Context() => new() { HttpContext = new DefaultHttpContext
-        { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "test-user")], "test")) } };
+        { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "test-user"), new Claim("eventstore:tenant", "tenant-a")], "test")) } };
 }
