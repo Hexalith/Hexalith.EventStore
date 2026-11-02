@@ -59,9 +59,13 @@ public sealed class CommittedRouteCatalogSnapshot
         TechnicalHttpReceivers = TechnicalHttpCatalogBinding.Freeze(activation.TechnicalHttpReceivers) ?? Array.AsReadOnly(Array.Empty<RouteCatalogTechnicalHttpReceiver>());
         if (TechnicalHttpReceivers.Count > 0 && (coordinates is null || string.IsNullOrWhiteSpace(localAppId)))
             throw new RouteCatalogUnavailableException("Technical v2 dispatch requires independently observed local authority coordinates and identity.", RouteCatalogRefusalReason.Configuration);
-        ActivationBindingDigest = TechnicalHttpReceivers.Count == 0 ? null : RouteCatalogActivationBinding.ComputeDigest(activation);
+        CompleteActivationBindingDigest = RouteCatalogActivationBinding.ComputeDigest(activation);
+        ActivationBindingDigest = TechnicalHttpReceivers.Count == 0 ? null : CompleteActivationBindingDigest;
         AuthorityCoordinates = coordinates;
     }
+
+    /// <summary>Gets the complete verified activation identity for SDK-owned optional process refusals, including ordinary v1 cohorts.</summary>
+    internal string? CompleteActivationBindingDigest { get; }
 
     /// <summary>Gets deeply frozen technical action membership, separate from executable domain routes.</summary>
     public IReadOnlyList<RouteCatalogTechnicalHttpReceiver> TechnicalHttpReceivers { get; } = Array.AsReadOnly(Array.Empty<RouteCatalogTechnicalHttpReceiver>());
