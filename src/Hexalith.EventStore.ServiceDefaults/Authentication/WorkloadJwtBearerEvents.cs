@@ -141,7 +141,11 @@ public sealed class WorkloadJwtBearerEvents(
                 "/api/v1/commands/bound/workload", StringComparison.OrdinalIgnoreCase)
             && context.Request.Headers.TryGetValue("X-Hexalith-Scope", out StringValues scopes)
             && scopes.Count == 1 && TenantCanonicalizer.IsPlatformScope(scopes[0]);
-        return context.Request.Headers.ContainsKey(HeaderNames.Authorization) && !boundPlatformCommand
+        StringValues authorization = context.Request.Headers[HeaderNames.Authorization];
+        bool boundHumanBearer = boundPlatformCommand && authorization.Count == 1
+            && authorization[0] is { } bearer && bearer.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            && bearer.Length > 7;
+        return authorization.Count > 0 && !boundHumanBearer
             ? WorkloadAuthenticationReasons.CredentialConflict : null;
     }
 }
