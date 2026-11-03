@@ -107,7 +107,7 @@ public sealed class PayloadProtectionReviewLiveTests(PayloadProtectionDaprFixtur
         KeyLifecycleCoordinator lifecycle = env.Lifecycle;
         await lifecycle.BeginAsync(env.Identity, approval, operation, 2, cancellationToken: token);
         Task clearing = lifecycle.AcknowledgeAsync(env.Identity, operation, token).AsTask();
-        clearing.IsCompleted.ShouldBeFalse();
+        await Should.ThrowAsync<TimeoutException>(() => clearing.WaitAsync(TimeSpan.FromMilliseconds(100)));
         string ack = PayloadProtectionStateKeys.ClearAck(env.Scope, 2, env.Leases.InstanceId);
         (await fixture.Store.ReadAsync<CacheClearAckV1>(ack, token)).ShouldBeNull();
         release.SetResult(); await clearing.WaitAsync(token);

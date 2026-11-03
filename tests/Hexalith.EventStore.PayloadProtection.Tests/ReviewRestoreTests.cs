@@ -102,7 +102,7 @@ public sealed class ReviewRestoreTests
         (await f.Store.ReadAsync<ReadLeaseV1>(PayloadProtectionStateKeys.Lease(f.Scope, Admission))).ShouldNotBeNull();
         cancellation.Cancel(); await Should.ThrowAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(2)));
         Task clearing = f.Leases.LocalOperations.DrainScopeAsync(f.Scope).AsTask();
-        clearing.IsCompleted.ShouldBeFalse(); decisions.ShouldBe(0);
+        await Should.ThrowAsync<TimeoutException>(() => clearing.WaitAsync(TimeSpan.FromMilliseconds(100))); decisions.ShouldBe(0);
         byte[] bytes = Enumerable.Repeat((byte)0x5e, 32).ToArray();
         late.SetResult(new(PayloadBackendFailure.None, bytes, key.ProviderKeyVersionId));
         await clearing.WaitAsync(TimeSpan.FromSeconds(2)); bytes.ShouldAllBe(b => b == 0);
