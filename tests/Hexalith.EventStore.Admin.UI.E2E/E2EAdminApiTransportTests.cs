@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.UI;
@@ -62,7 +63,7 @@ public class E2EAdminApiTransportTests
             case "endpoint": request.RequestUri = new Uri("http://127.0.0.1:3500/api/v1/admin/health"); break;
             case "target": request.Headers.Remove("dapr-app-id"); request.Headers.Add("dapr-app-id", "foreign-app"); break;
             case "sidecar-token": request.Headers.Remove("dapr-api-token"); break;
-            case "bearer": request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "invalid"); break;
+            case "bearer": request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Convert.ToHexString(RandomNumberGenerator.GetBytes(32))); break;
         }
 
         using HttpResponseMessage response = await invoker.SendAsync(request, TestContext.Current.CancellationToken);

@@ -9,16 +9,17 @@ public sealed class AzureKeyVaultCredentialTests
     [Fact]
     public async Task V081_RefreshHintPreservesActualExpiryAndForcesForegroundRefresh()
     {
+        string tokenValue = AdapterFixture.CreateToken();
         DateTimeOffset expiry = DateTimeOffset.UtcNow.AddMinutes(2);
-        var credential = new AdapterTestCredential
+        var credential = new AdapterTestCredential(AdapterFixture.CreateToken())
         {
-            Acquire = (_, _) => ValueTask.FromResult(new AccessToken("near-expiry-canary", expiry))
+            Acquire = (_, _) => ValueTask.FromResult(new AccessToken(tokenValue, expiry))
         };
         TokenCredential bounded = AzureKeyVaultCredentialFactory.Bound(credential);
         AccessToken token = await bounded.GetTokenAsync(new TokenRequestContext(["https://vault.azure.net/.default"]), CancellationToken.None);
         token.ExpiresOn.ShouldBe(expiry);
         token.RefreshOn.ShouldBe(expiry);
-        token.Token.ShouldBe("near-expiry-canary");
+        token.Token.ShouldBe(tokenValue);
     }
 
     [Theory]
@@ -26,10 +27,11 @@ public sealed class AzureKeyVaultCredentialTests
     [InlineData(true)]
     public async Task V081_NearExpiryCryptoAndMetadataDoNotStartBackgroundCredentialWork(bool metadata)
     {
+        string tokenValue = AdapterFixture.CreateToken();
         DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(1);
-        var credential = new AdapterTestCredential
+        var credential = new AdapterTestCredential(AdapterFixture.CreateToken())
         {
-            Acquire = (_, _) => ValueTask.FromResult(new AccessToken("near-expiry-canary", expiry))
+            Acquire = (_, _) => ValueTask.FromResult(new AccessToken(tokenValue, expiry))
         };
         var transport = new AdapterTestTransport(message =>
         {

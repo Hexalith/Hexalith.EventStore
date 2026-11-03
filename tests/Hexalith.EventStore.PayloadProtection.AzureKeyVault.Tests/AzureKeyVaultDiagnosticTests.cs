@@ -20,6 +20,7 @@ public sealed class AzureKeyVaultDiagnosticTests
     [InlineData(403)]
     public async Task V127_V132_OwnedTransportDoesNotEmitHttpSdkActivityMetricLogOrExceptionCanaries(int status)
     {
+        string bearerValue = AdapterFixture.CreateToken();
         using var capture = new AzureDiagnosticObserver();
         using var diagnostics = DiagnosticListener.AllListeners.Subscribe(capture);
         using var activities = new ActivityListener
@@ -83,7 +84,7 @@ public sealed class AzureKeyVaultDiagnosticTests
                 message.Request.Method = RequestMethod.Post;
                 message.Request.Uri.Reset(new Uri("http://127.0.0.1:" + port + "/keys/key-name-canary/version-canary/wrapkey"));
                 message.Request.Content = new AzureKeyVaultOwnedRequestContent(Encoding.UTF8.GetBytes(ProtectedDataLeakSentinel.ProtectedPayloadPlaintext));
-                message.Request.Headers.SetValue("Authorization", "Bearer token-unit-canary-8-6");
+                message.Request.Headers.SetValue("Authorization", "Bearer " + bearerValue);
                 if (status == 200)
                 {
                     using var acquisition = new AzureKeyVaultTokenAcquisition(CancellationToken.None);
@@ -113,7 +114,7 @@ public sealed class AzureKeyVaultDiagnosticTests
         {
             value.ShouldNotContain("key-name-canary");
             value.ShouldNotContain("version-canary");
-            value.ShouldNotContain("token-unit-canary-8-6");
+            value.ShouldNotContain(bearerValue);
             value.ShouldNotContain(AdapterFixture.Current);
             value.ShouldNotContain(AdapterFixture.Options.VaultUri.Host);
         }
@@ -134,7 +135,7 @@ public sealed class AzureKeyVaultDiagnosticTests
                 CryptographicOperations.ZeroMemory(raw);
                 return ValueTask.CompletedTask;
             });
-            var client = new AzureKeyVaultMetadataClient(AdapterFixture.Options, new AdapterTestCredential(), transport);
+            var client = new AzureKeyVaultMetadataClient(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport);
             await Should.ThrowAsync<Azure.RequestFailedException>(() => client.GetAsync(null, CancellationToken.None).AsTask());
         }
         finally

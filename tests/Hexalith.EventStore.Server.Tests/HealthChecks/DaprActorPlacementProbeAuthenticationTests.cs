@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 
 using Hexalith.EventStore.HealthChecks;
@@ -25,7 +26,7 @@ public class DaprActorPlacementProbeAuthenticationTests
     [Fact]
     public async Task AuthenticatedMetadataRequiresTheConfiguredSidecarCredential()
     {
-        const string sidecarToken = "synthetic-sidecar-api-token";
+        string sidecarToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         await using WebApplication app = builder.Build();
@@ -38,7 +39,7 @@ public class DaprActorPlacementProbeAuthenticationTests
             .Get<IServerAddressesFeature>()!.Addresses.Single();
         using var client = new HttpClient();
 
-        foreach (string? token in new[] { null, "wrong-sidecar-token", sidecarToken })
+        foreach (string? token in new[] { null, Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), sidecarToken })
         {
             IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -73,18 +74,20 @@ public class DaprActorPlacementProbeAuthenticationTests
     {
         using var handler = new NativeSourceMetadataHttpHandler(Encoding.UTF8.GetBytes(ConnectedMetadata));
         using var client = new HttpClient(handler);
-        client.DefaultRequestHeaders.Add("dapr-api-token", "unrelated-client-default");
+        string defaultToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        string sidecarToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        client.DefaultRequestHeaders.Add("dapr-api-token", defaultToken);
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["DAPR_API_TOKEN"] = "own-sidecar-token",
+            ["DAPR_API_TOKEN"] = sidecarToken,
         }).Build();
 
         DaprActorPlacementStatus status = await new DaprActorPlacementProbe(client, configuration)
             .CheckAsync(TestContext.Current.CancellationToken);
 
         status.HostReady.ShouldBeTrue();
-        handler.ApiToken.ShouldBe("own-sidecar-token");
-        client.DefaultRequestHeaders.GetValues("dapr-api-token").ShouldBe(["unrelated-client-default"]);
+        handler.ApiToken.ShouldBe(sidecarToken);
+        client.DefaultRequestHeaders.GetValues("dapr-api-token").ShouldBe([defaultToken]);
     }
 
     [Theory]
@@ -93,19 +96,20 @@ public class DaprActorPlacementProbeAuthenticationTests
     [InlineData(null, null, "http://localhost:3500/v1.0/metadata")]
     public async Task CredentialUsesOnlyTheConfiguredMetadataEndpoint(string? endpoint, string? port, string expected)
     {
+        string sidecarToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         using var handler = new NativeSourceMetadataHttpHandler(Encoding.UTF8.GetBytes(ConnectedMetadata));
         using var client = new HttpClient(handler);
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["DAPR_HTTP_ENDPOINT"] = endpoint,
             ["DAPR_HTTP_PORT"] = port,
-            ["DAPR_API_TOKEN"] = "own-sidecar-token",
+            ["DAPR_API_TOKEN"] = sidecarToken,
         }).Build();
 
         await new DaprActorPlacementProbe(client, configuration).CheckAsync(TestContext.Current.CancellationToken);
 
         handler.LastUri.ShouldBe(new Uri(expected));
-        handler.ApiToken.ShouldBe("own-sidecar-token");
+        handler.ApiToken.ShouldBe(sidecarToken);
     }
 
     [Theory]

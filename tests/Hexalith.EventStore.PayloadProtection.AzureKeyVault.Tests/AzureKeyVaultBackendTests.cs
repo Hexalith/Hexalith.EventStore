@@ -14,7 +14,7 @@ public sealed class AzureKeyVaultBackendTests
     public async Task V059_V060_EmitsExplicitRemoteVersionedPostAndBindsReturnedKid(bool wrap)
     {
         byte[] output = Enumerable.Repeat((byte)0x6d, wrap ? 384 : 32).ToArray();
-        var credential = new AdapterTestCredential();
+        var credential = new AdapterTestCredential(AdapterFixture.CreateToken());
         var cleared = new List<byte[]>();
         var transport = new AdapterTestTransport(async message =>
         {
@@ -44,7 +44,7 @@ public sealed class AzureKeyVaultBackendTests
     [Fact]
     public async Task V080_CryptoCaeChallengeIsDenialWithoutTokenRefreshOrReplay()
     {
-        var credential = new AdapterTestCredential();
+        var credential = new AdapterTestCredential(AdapterFixture.CreateToken());
         var transport = new AdapterTestTransport(message =>
         {
             message.Response = AdapterFixture.Response(401, [], new(StringComparer.OrdinalIgnoreCase) { ["WWW-Authenticate"] = "Bearer error=\"insufficient_claims\", claims=\"eyJhY2Nlc3NfdG9rZW4iOnt9fQ==\"" });
@@ -78,7 +78,7 @@ public sealed class AzureKeyVaultBackendTests
             message.Response = AdapterFixture.Response(status, []);
             return ValueTask.CompletedTask;
         });
-        using var result = await new AzureKeyVaultDataPlane(AdapterFixture.Options, new AdapterTestCredential(), transport).ExecuteAsync(AdapterFixture.Current, new byte[wrap ? 32 : 384], wrap, CancellationToken.None);
+        using var result = await new AzureKeyVaultDataPlane(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport).ExecuteAsync(AdapterFixture.Current, new byte[wrap ? 32 : 384], wrap, CancellationToken.None);
         result.Failure.ShouldBe((PayloadBackendFailure)expected);
         transport.Count.ShouldBe(1);
     }
@@ -95,7 +95,7 @@ public sealed class AzureKeyVaultBackendTests
     public async Task V081_PreDispatchTokenFailureUsesExecutorThreeAttemptBudget()
     {
         var key = await AdapterFixture.KeyAsync();
-        var credential = new AdapterTestCredential
+        var credential = new AdapterTestCredential(AdapterFixture.CreateToken())
         {
             Failure = new RequestFailedException(503, "private-error-canary")
         };
@@ -125,7 +125,7 @@ public sealed class AzureKeyVaultBackendTests
             ((AzureKeyVaultRequest)message.Request).Dispatched = true;
             throw new IOException("provider-network-canary");
         });
-        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, new AdapterTestCredential(), transport));
+        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport));
         using var result = await new PayloadBackendExecutor().ExecuteAsync(backend, token => backend.WrapAsync(AdapterFixture.Operation, new byte[32], token));
         result.Failure.ShouldBe(PayloadBackendFailure.Ambiguous);
         transport.Count.ShouldBe(1);
@@ -159,7 +159,7 @@ public sealed class AzureKeyVaultBackendTests
             message.Response = AdapterFixture.Response(200, AdapterFixture.Crypto(id, new byte[wrap ? 384 : 32]));
             return ValueTask.CompletedTask;
         });
-        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, metadata, new(AdapterFixture.Options, new AdapterTestCredential(), transport), clock);
+        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, metadata, new(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport), clock);
         using var first = await backend.WrapAsync(AdapterFixture.Operation, new byte[32], CancellationToken.None);
         first.Failure.ShouldBe(PayloadBackendFailure.None);
         clock.Advance(TimeSpan.FromMinutes(5));
@@ -187,7 +187,7 @@ public sealed class AzureKeyVaultBackendTests
             message.Response = AdapterFixture.Response(200, AdapterFixture.Crypto(AdapterFixture.Historical, new byte[384]));
             return ValueTask.CompletedTask;
         });
-        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, metadata, new(AdapterFixture.Options, new AdapterTestCredential(), transport));
+        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, metadata, new(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport));
         using var result = await backend.WrapExactAsync(AdapterFixture.Operation, AdapterFixture.Historical, new byte[32], CancellationToken.None);
         result.Failure.ShouldBe(PayloadBackendFailure.None);
         queried.ShouldBe("00000000000000000000000000000001");
@@ -207,7 +207,7 @@ public sealed class AzureKeyVaultBackendTests
             await release.Task;
             message.Response = AdapterFixture.Response(200, AdapterFixture.Crypto(AdapterFixture.Current, new byte[384]));
         });
-        var data = new AzureKeyVaultDataPlane(AdapterFixture.Options, new AdapterTestCredential(), transport, cleared: cleared.Add);
+        var data = new AzureKeyVaultDataPlane(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport, cleared: cleared.Add);
         var key = await AdapterFixture.KeyAsync();
         var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), data);
         using var cancellation = new CancellationTokenSource();
@@ -240,7 +240,7 @@ public sealed class AzureKeyVaultBackendTests
             clock.Advance(TimeSpan.FromSeconds(10));
             return ValueTask.CompletedTask;
         });
-        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, new AdapterTestCredential(), transport), clock);
+        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport), clock);
         using var result = await new PayloadBackendExecutor(clock).ExecuteAsync(backend, token => backend.WrapAsync(AdapterFixture.Operation, new byte[32], token));
         result.Failure.ShouldBe(PayloadBackendFailure.Ambiguous);
         transport.Count.ShouldBe(1);
@@ -258,7 +258,7 @@ public sealed class AzureKeyVaultBackendTests
             message.Response = AdapterFixture.Response(200, AdapterFixture.Crypto(AdapterFixture.Current, new byte[wrap ? 384 : 32]));
             return ValueTask.CompletedTask;
         });
-        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, new AdapterTestCredential(), transport));
+        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport));
         var result = await new AzureKeyVaultReadinessProbe(backend).ProbeAsync();
         result.Ready.ShouldBeFalse();
         result.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch);
@@ -286,7 +286,7 @@ public sealed class AzureKeyVaultBackendTests
 
             message.Response = AdapterFixture.Response(200, AdapterFixture.Crypto(AdapterFixture.Current, wrap ? new byte[384] : probe!));
         });
-        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, new AdapterTestCredential(), transport));
+        var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport));
         var readiness = new AzureKeyVaultReadinessProbe(backend, cleared: cleared.Add);
         (await readiness.ProbeAsync()).Ready.ShouldBeTrue();
         (await readiness.ProbeAsync()).Ready.ShouldBeTrue();

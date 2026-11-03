@@ -2,7 +2,7 @@
 using Azure.Core;
 
 namespace Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests;
-internal sealed class AdapterTestCredential : TokenCredential
+internal sealed class AdapterTestCredential(string token) : TokenCredential
 {
     internal int Count { get; private set; }
     internal TokenRequestContext LastContext { get; private set; }
@@ -25,6 +25,6 @@ internal sealed class AdapterTestCredential : TokenCredential
             return Acquire(requestContext, cancellationToken);
         }
 
-        return ValueTask.FromResult(new AccessToken("token-unit-canary-8-6", DateTimeOffset.UtcNow.AddHours(2)));
+        return ValueTask.FromResult(new AccessToken(token, DateTimeOffset.UtcNow.AddHours(2)));
     }
 }
