@@ -44,5 +44,46 @@ internal static class NativeAssemblyObservations
         if (assemblies.Length is 0 or > 64 || Encoding.UTF8.GetByteCount(observation) > 65536)
             throw new InvalidOperationException("The native loaded-assembly observation exceeds its bounded diagnostic contract.");
         output.WriteLine(observation);
+        RetainHostedObservation(observation, ownerRunId);
     }
+
+    /// <summary>Preserves the bounded diagnostic in the existing classified integration upload before teardown.</summary>
+    /// <param name="observation">The measured test-process assemblies and actual run bindings.</param>
+    /// <param name="ownerRunId">The validated descriptor's owner identity.</param>
+    private static void RetainHostedObservation(string observation, string ownerRunId)
+    {
+        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true") return;
+        string? workspace = Environment.GetEnvironmentVariable("GITHUB_WORKSPACE");
+        string[] required = ["GITHUB_REPOSITORY", "GITHUB_SHA", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB"];
+        if (!OperatingSystem.IsLinux() || Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted"
+            || required.Any(name => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(name)))
+            || string.IsNullOrWhiteSpace(workspace) || !Path.IsPathFullyQualified(workspace)
+            || ownerRunId.Length != 32 || ownerRunId.Any(character => character is not (>= 'a' and <= 'f' or >= '0' and <= '9')))
+            throw new InvalidOperationException("Hosted native diagnostics require the actual disposable job and owner binding.");
+        string directory = Path.Combine(workspace, "TestResults", "module-integration");
+        if (!Directory.Exists(directory))
+            throw new InvalidOperationException("The classified integration evidence directory must already belong to the invoking runner.");
+        WritePrivateObservation(directory, ownerRunId, observation);
+    }
+
+    /// <summary>Writes once through non-linked directories using private file creation.</summary>
+    /// <param name="directory">The existing classified output directory.</param>
+    /// <param name="ownerRunId">The descriptor-bound diagnostic filename suffix.</param>
+    /// <param name="observation">The previously bounded diagnostic JSON.</param>
+    internal static void WritePrivateObservation(string directory, string ownerRunId, string observation)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Hosted native diagnostic retention requires Linux.");
+        for (DirectoryInfo? parent = new(directory); parent is not null; parent = parent.Parent)
+            if (parent.LinkTarget is not null) throw new IOException("Native diagnostic output cannot traverse symbolic links.");
+        FileStreamOptions options = new()
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.Write,
+            Share = FileShare.None,
+            UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite,
+        };
+        using FileStream stream = new(Path.Combine(directory, "loaded-assemblies-" + ownerRunId + ".json"), options);
+        stream.Write(Encoding.UTF8.GetBytes(observation + "\n"));
+    }
+
 }
