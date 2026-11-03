@@ -117,7 +117,9 @@ jobs:
         run: bash scripts/tests/generated-api-smoke-preflight.test.sh
 
       - name: Verify package publication dependency guards
-        run: python3 -m unittest discover -s tools/tests -p test_release_package_contract.py
+        run: |
+          python3 -m unittest discover -s tools/tests -p test_release_package_contract.py
+          python3 -m unittest discover -s tools/tests -p test_package_consumer_environment.py
 
       - name: Verify qualification runner exit preservation
         run: python3 -m unittest discover -s tools/tests -p test_published_runner_exit.py
