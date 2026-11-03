@@ -2909,16 +2909,24 @@ public sealed partial class SecretsProtectionTests
             while (cursor < challenge.Length && challenge[cursor] is ' ' or '\t') cursor++;
             if (cursor >= challenge.Length || challenge[cursor++] != '=') return false;
             while (cursor < challenge.Length && challenge[cursor] is ' ' or '\t') cursor++;
-            if (cursor >= challenge.Length || challenge[cursor++] != '"') return false;
+            bool escapedQuotes = cursor + 1 < challenge.Length && challenge[cursor] == '\\' && challenge[cursor + 1] == '"';
+            if (escapedQuotes) cursor += 2;
+            else if (cursor >= challenge.Length || challenge[cursor++] != '"') return false;
             bool closed = false;
             while (cursor < challenge.Length)
             {
                 char character = challenge[cursor++];
-                if (character == '"') { closed = true; break; }
+                if (character == '"')
+                {
+                    if (escapedQuotes) return false;
+                    closed = true;
+                    break;
+                }
                 if (character == '\\')
                 {
                     if (cursor >= challenge.Length) return false;
                     character = challenge[cursor++];
+                    if (escapedQuotes && character == '"') { closed = true; break; }
                 }
                 if (character < ' ' && character != '\t' || character == '\u007f') return false;
             }

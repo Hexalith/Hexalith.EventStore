@@ -1209,7 +1209,14 @@ public sealed class ReleasePackageManifestTests
             ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Host"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
             ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Probe"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
             ["tests/Hexalith.EventStore.Sharding.TestHost"] = "tests/Hexalith.EventStore.Sharding.Tests",
+            ["tests/Hexalith.EventStore.QuerySelectorFixture"] = "tests/Hexalith.EventStore.Server.Tests",
         };
+
+        using var moduleManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "module", "hexalith.module-manifest.v2.json")));
+        HashSet<string> profileProjects = moduleManifest.RootElement.GetProperty("modules")[0].GetProperty("tests").EnumerateArray()
+            .Where(test => ci.Contains("integration-test-profiles: " + test.GetProperty("name").GetString(), StringComparison.Ordinal))
+            .Select(test => Path.GetDirectoryName(test.GetProperty("entry").GetString()!)!.Replace('\\', '/'))
+            .ToHashSet(StringComparer.Ordinal);
 
         string[] ignoredProjects = ["tests/Hexalith.EventStore.Client.TestContracts", "tests/Hexalith.EventStore.TestSubscriber"];
         string[] discovered = TrackedTestProjectFiles(root)
@@ -1228,6 +1235,7 @@ public sealed class ReleasePackageManifestTests
                 || payloadProtection.Contains(laneProject, StringComparison.Ordinal)
                 || payloadProtectionLifecycle.Contains(laneProject, StringComparison.Ordinal)
                 || payloadProtectionAzure.Contains(laneProject, StringComparison.Ordinal)
+                || profileProjects.Contains(laneProject)
                 || deferredProjects.Contains(laneProject, StringComparer.Ordinal);
             if (!classified)
             {
