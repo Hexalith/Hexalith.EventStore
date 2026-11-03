@@ -13,6 +13,7 @@ internal static class NativeAssemblyObservations
     /// <param name="ownerRunId">The validated descriptor's actual owner run.</param>
     internal static void Write(ITestOutputHelper output, string ownerRunId)
     {
+        NativeDiagnosticBinding binding = NativeDiagnosticBinding.Read(ownerRunId);
         var assemblies = AppDomain.CurrentDomain.GetAssemblies()
             .Where(assembly => !assembly.IsDynamic && (assembly.GetName().Name!.StartsWith("Hexalith.", StringComparison.Ordinal)
                 || assembly.GetName().Name == "StackExchange.Redis"))
@@ -34,36 +35,29 @@ internal static class NativeAssemblyObservations
         {
             kind = "real-native-test-loaded-assemblies",
             ownerRunId,
-            repository = Environment.GetEnvironmentVariable("GITHUB_REPOSITORY"),
-            revision = Environment.GetEnvironmentVariable("GITHUB_SHA"),
-            workflowRunId = Environment.GetEnvironmentVariable("GITHUB_RUN_ID"),
-            workflowAttempt = Environment.GetEnvironmentVariable("GITHUB_RUN_ATTEMPT"),
-            jobId = Environment.GetEnvironmentVariable("GITHUB_JOB"),
+            ownerAttemptId = binding.AttemptId,
+            environmentId = binding.EnvironmentId,
+            revision = binding.Revision,
+            mappingHash = binding.MappingHash,
+            executionContext = binding.ExecutionContext,
             assemblies,
         });
         if (assemblies.Length is 0 or > 64 || Encoding.UTF8.GetByteCount(observation) > 65536)
             throw new InvalidOperationException("The native loaded-assembly observation exceeds its bounded diagnostic contract.");
         output.WriteLine(observation);
-        RetainHostedObservation(observation, ownerRunId);
+        RetainHostedObservation(observation, binding);
     }
 
     /// <summary>Preserves the bounded diagnostic in the existing classified integration upload before teardown.</summary>
     /// <param name="observation">The measured test-process assemblies and actual run bindings.</param>
-    /// <param name="ownerRunId">The validated descriptor's owner identity.</param>
-    private static void RetainHostedObservation(string observation, string ownerRunId)
+    /// <param name="binding">The actual descriptor, mapping and owner metadata binding.</param>
+    private static void RetainHostedObservation(string observation, NativeDiagnosticBinding binding)
     {
-        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true") return;
-        string? workspace = Environment.GetEnvironmentVariable("GITHUB_WORKSPACE");
-        string[] required = ["GITHUB_REPOSITORY", "GITHUB_SHA", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB"];
-        if (!OperatingSystem.IsLinux() || Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted"
-            || required.Any(name => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(name)))
-            || string.IsNullOrWhiteSpace(workspace) || !Path.IsPathFullyQualified(workspace)
-            || ownerRunId.Length != 32 || ownerRunId.Any(character => character is not (>= 'a' and <= 'f' or >= '0' and <= '9')))
-            throw new InvalidOperationException("Hosted native diagnostics require the actual disposable job and owner binding.");
-        string directory = Path.Combine(workspace, "TestResults", "module-integration");
-        if (!Directory.Exists(directory))
-            throw new InvalidOperationException("The classified integration evidence directory must already belong to the invoking runner.");
-        WritePrivateObservation(directory, ownerRunId, observation);
+        if (binding.ExecutionContext.GetProperty("kind").GetString() == "local") return;
+        if (binding.ExecutionContext.GetProperty("kind").GetString() != "ci" || !OperatingSystem.IsLinux())
+            throw new InvalidDataException("Native diagnostic retention requires the actual CI owner metadata.");
+        binding.VerifyCallerArtifact();
+        WritePrivateObservation(binding.ArtifactDirectory, binding.RunId, observation);
     }
 
     /// <summary>Writes once through non-linked directories using private file creation.</summary>

@@ -149,6 +149,10 @@ package content and supported-range checks remain required. The real native
 persistence test emits bounded TRX diagnostics for the SDK assemblies actually
 loaded in its test process, including their versions and SHA-256 hashes. Those
 measurements do not claim a dependency was loaded in a different process.
+The diagnostic reads the existing descriptor/plan/issued owner and verified
+source mapping to bind the actual context and caller Git revision. Its surviving
+output is the original caller's existing `TestResults/module-integration`
+directory; the native process keeps the published scrubbed environment.
 
 The catalog's EventStore 4.0.4 selection remains the package-profile bootstrap
 input. A new EventStore producer and subsequent catalog/cohort adoption need
