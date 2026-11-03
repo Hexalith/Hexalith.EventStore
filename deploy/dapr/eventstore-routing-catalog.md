@@ -1,10 +1,15 @@
 # Route catalog declarations and runtime certification
 
 `eventstore-routing-catalog.json` is the **declared Development inventory and an
-unactivated runtime candidate**, retained for review and compatibility verification. Its 29 routes
-contain 17 command policies, nine query declarations and three callable
+unactivated runtime candidate**, retained for review and compatibility verification. Its 30 routes
+contain 17 command policies, ten query declarations and three callable
 projections. The canonical root is
-`c156ce0b68bab43f561805db9cd02714d123026d388f65c764d7b6fa4e3b7308`.
+`2579a2d99016508de5ee3102233a4ccf4cad3d951fa84b26c6766fcbf76cc43a`.
+
+The retained candidate follows the public Tenants 7.0.0 declarations with the
+EventStore 4.0.4 dependency selection. It includes the global-administrator audit
+query and the owning queries' explicit platform admission metadata. Those
+declarations grant no human permission, runtime authority or activation.
 
 Declaration construction and exact-byte checking validate compiled aggregate
 inventories, policies, packaged capability declarations, configuration and
@@ -23,8 +28,8 @@ rejects an output path that normalizes to either configuration input with
 existing output and configuration.
 
 ```bash
-dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true -- development . deploy/dapr/eventstore-routing-catalog.json
-dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true -- check-development . deploy/dapr/eventstore-routing-catalog.json
+dotnet run tools/routing-catalog.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -- development . deploy/dapr/eventstore-routing-catalog.json
+dotnet run tools/routing-catalog.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -- check-development . deploy/dapr/eventstore-routing-catalog.json
 ```
 
 The gateway currently forwards unknown query types to an actor fallback and
@@ -38,7 +43,7 @@ exit 2 with `$.developmentProfile: unrepresented-unbounded-query-fallback`; the
 command never writes a catalog:
 
 ```bash
-dotnet run tools/routing-catalog.cs -c Debug -p:UseHexalithProjectReferences=true -- check-development-runtime .
+dotnet run tools/routing-catalog.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -- check-development-runtime .
 ```
 
 Generic `generate` and `validate` continue to check complete declared inputs and
@@ -47,7 +52,7 @@ declaration success proves the declared inventory, not exhaustive runtime parity
 or readiness. The existing gateway routing and admission behavior is unchanged.
 
 The logical Development key references are unprovisioned declarations. Story 5.12
-also remains subject to the unreleased EventStore/Tenants package boundary;
+also remains subject to its separate package and runtime qualification boundary;
 package-mode CI has not passed, and Story 5.12 remains in-progress. Story 5.13 owns
 runtime catalog authority, rejection of undeclared targets, exhaustive runtime
 parity and activation. When handler metadata is unavailable it must preserve the

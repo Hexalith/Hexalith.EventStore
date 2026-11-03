@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using Azure.Core;
+using Hexalith.EventStore.PayloadProtection.AzureKeyVault.Conformance;
+using Hexalith.EventStore.Testing.Security;
 using Azure.Identity;
 
 namespace Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests;
@@ -25,12 +27,24 @@ public sealed class AzureManagedIdentityRetryTests
             try
             {
                 const string clientId = "11111111-2222-3333-4444-555555555555";
+                using var selectedIdentity = new AzureIdentityDiagnosticScope(clientId);
                 var credential = AzureKeyVaultCredentialFactory.Create(new() { VaultUri = AdapterFixture.Options.VaultUri, KeyName = AdapterFixture.Options.KeyName, ManagedIdentityClientId = clientId });
                 var exception = await Should.ThrowAsync<AuthenticationFailedException>(() => credential.GetTokenAsync(new TokenRequestContext(["https://vault.azure.net/.default"]), deadline.Token).AsTask());
                 AzureKeyVaultFailureClassifier.Exception(exception, false, true).ShouldBe(PayloadBackendFailure.Unavailable);
-                var leaking = capture.Values.Where(value => value.Contains(clientId, StringComparison.Ordinal) || value.Contains("unit-identity-header", StringComparison.Ordinal)).ToArray();
-                Console.Error.WriteLine("SDK diagnostic matching categories: " + string.Join("; ", leaking.Select(value => string.Join(':', value.Split(':').Take(2)) + " client-id=" + value.Contains(clientId, StringComparison.Ordinal) + " identity-header=" + value.Contains("unit-identity-header", StringComparison.Ordinal))));
-                leaking.Length.ShouldBe(0);
+                ProtectedDataLeakSentinel.AssertNoLeak(capture.Values);
+                try
+                {
+                    string summary = AzureIdentityDiagnosticPolicy.AssertNativeEvidence(capture.Records, [clientId],
+                        ["unit-identity-header", AdapterFixture.Options.VaultUri.AbsoluteUri, AdapterFixture.Options.VaultUri.Host,
+                            AdapterFixture.Options.KeyName, AdapterFixture.Current, AdapterFixture.Historical, ..ProtectedDataLeakSentinel.All()]);
+                    Console.Error.WriteLine("SDK diagnostic matching categories: " + summary);
+                }
+                catch (InvalidOperationException failure)
+                {
+                    // The shared policy exposes only a closed category and fingerprint.
+                    Console.Error.WriteLine("SDK diagnostic matching categories: " + failure.Message);
+                    throw;
+                }
                 return;
             }
             finally
@@ -99,6 +113,7 @@ public sealed class AzureManagedIdentityRetryTests
             string categorySummary = childError.Split('\n').FirstOrDefault(line => line.StartsWith("SDK diagnostic matching categories:", StringComparison.Ordinal)) ?? "";
             child.ExitCode.ShouldBe(0, "The isolated pinned managed-identity subprocess must pass its typed failure check. " + categorySummary);
             requests.ShouldBe(1);
+            TestContext.Current.TestOutputHelper?.WriteLine(categorySummary + "; physical-requests=" + requests);
         }
         finally
         {

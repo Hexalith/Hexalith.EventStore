@@ -328,7 +328,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                         .ConfigureAwait(false);
                     reconciledFenceStage?.Complete();
                     if (reconciledResult.Accepted && reconciledResult.EventCount > 0
-                        && (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox) != true))
+                        && (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox, request.Domain) != true))
                         await TriggerProjectionUpdateAsync(executionRequest, diagnostics).ConfigureAwait(false);
                     using var reconciledCompletionStage = diagnostics?.Start(DispatchStageName.AdmissionCompletion);
                     await idempotencyAdmissionCoordinator
@@ -622,7 +622,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                     executionRequest,
                     cancellationToken).ConfigureAwait(false);
                 projectionFenceStage?.Complete();
-                if (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox) != true)
+                if (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox, request.Domain) != true)
                 {
                     await TriggerProjectionUpdateAsync(executionRequest, diagnostics).ConfigureAwait(false);
                 }
@@ -787,7 +787,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
         DispatchDiagnostics? diagnostics, bool reconciliation = false)
     {
         if (!result.Accepted || result.EventCount <= 0 || projectionActivationOutbox is null
-            || !reconciliation && projectionActivationWorker?.Enabled != true)
+            || !reconciliation && projectionActivationWorker?.EnabledFor(request.Domain) != true)
             return false;
 
         // An old-head worker may already have removed the write-ahead activation. Commit

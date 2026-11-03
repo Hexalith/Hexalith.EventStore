@@ -1,5 +1,6 @@
 // Approved Azure exception fcf861aa3ba5d723ca589a8ac8a2a31c54a972fe96a28ec71db69e560ecc2394 sections 5-7; separately authorized isolated environment required.
 using System.Security.Cryptography;
+using Hexalith.EventStore.PayloadProtection.AzureKeyVault.Conformance;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 
@@ -25,6 +26,7 @@ internal sealed class AzureLiveAuthority
     public required string MissingVersion { get; init; }
     public required string ExceptionDigest { get; init; }
     public required string CorrectionDigest { get; init; }
+    public required string DiagnosticPolicyDigest { get; init; }
     public required string CustodyReceiptSha256 { get; init; }
     public required string[] Operations { get; init; }
     public required string[] Faults { get; init; }
@@ -48,7 +50,7 @@ internal sealed class AzureLiveAuthority
                 throw Missing();
             }
 
-            var authority = JsonSerializer.Deserialize<AzureLiveAuthority>(bytes, new JsonSerializerOptions { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow }) ?? throw Missing();
+            var authority = ParsePolicyBoundDocument(bytes);
             if (string.IsNullOrWhiteSpace(authority.Owner) || authority.ExpiresAtUtc <= DateTimeOffset.UtcNow || authority.ExpiresAtUtc > DateTimeOffset.UtcNow.AddDays(1) || authority.SourceSha != Environment.GetEnvironmentVariable("HEXALITH_PAYLOAD_AZURE_SOURCE_SHA") || authority.SourceSha.Length != 40 || authority.SourceSha.Any(c => !Uri.IsHexDigit(c)) || authority.ExceptionDigest != "fcf861aa3ba5d723ca589a8ac8a2a31c54a972fe96a28ec71db69e560ecc2394" || authority.CorrectionDigest != "360da00f91d3134054e4ec3f18c0b96921a36911a89d5935e7d59409634ca07e" || new[]
             {
                 authority.ResourceIdSha256,
@@ -127,9 +129,35 @@ internal sealed class AzureLiveAuthority
     internal AzureKeyVaultPayloadProtectionBackend Backend(string? identity = null, Azure.Core.TokenCredential? credential = null)
     {
         var options = Options(identity);
-        credential ??= new AzureLiveCredential(AzureKeyVaultCredentialFactory.Create(options));
+        credential ??= Credential(options);
         var transport = new AzureKeyVaultSafeTransport(options);
         return new(options, new(options, credential, transport), new(options, credential, transport));
+    }
+
+    /// <summary>Retains exact primary/negative-test identity selection through construction and token acquisition.</summary>
+    internal Azure.Core.TokenCredential Credential(AzureKeyVaultPayloadProtectionOptions options)
+    {
+        if (options.ManagedIdentityClientId != ManagedIdentityClientId && options.ManagedIdentityClientId != DeniedManagedIdentityClientId)
+            throw Missing();
+        using var selectedIdentity = new AzureIdentityDiagnosticScope(options.ManagedIdentityClientId);
+        return new AzureLiveCredential(AzureKeyVaultCredentialFactory.Create(options), options.ManagedIdentityClientId);
+    }
+
+    /// <summary>Checks the closed document schema and exact diagnostic-policy binding before external receipts or calls.</summary>
+    internal static AzureLiveAuthority ParsePolicyBoundDocument(byte[] bytes)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(bytes);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || document.RootElement.EnumerateObject().GroupBy(property => property.Name, StringComparer.Ordinal).Any(group => group.Count() != 1))
+                throw Missing();
+            var authority = JsonSerializer.Deserialize<AzureLiveAuthority>(bytes,
+                new JsonSerializerOptions { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow }) ?? throw Missing();
+            if (authority.DiagnosticPolicyDigest != AzureIdentityDiagnosticPolicy.Digest) throw Missing();
+            return authority;
+        }
+        catch (JsonException) { throw Missing(); }
     }
 
     private static InvalidOperationException Missing() => new("Explicit unexpired source-bound Azure conformance authority and custody receipt are required. No Azure call is authorized by the default test run.");

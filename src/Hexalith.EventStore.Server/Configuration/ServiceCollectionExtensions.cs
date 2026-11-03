@@ -297,7 +297,9 @@ public static class EventStoreServerServiceCollectionExtensions {
                     ? null!
                     : new ProjectionActivationWorkerCapability(
                         ActivatorUtilities.CreateInstance<ProjectionActivationWorker>(serviceProvider), outbox,
-                        configuration.GetValue("EventStore:Projections:WorkerBackedResponsesEnabled", false)));
+                        configuration.GetValue("EventStore:Projections:WorkerBackedResponsesEnabled", false),
+                        configuration.GetSection("EventStore:Projections:WorkerBackedResponseDomains")
+                            .Get<string[]>()?.ToHashSet(StringComparer.Ordinal)));
             _ = services.AddSingleton<IHostedService>(serviceProvider =>
                 (IHostedService?)serviceProvider.GetService<ProjectionActivationWorkerCapability>()?.Worker
                     ?? NoOpHostedService.Instance);

@@ -303,6 +303,17 @@ public static partial class RouteCatalogValidator
             Discriminator(execution.HandlerType, path + ".execution.handlerType");
             Require(execution.TargetKind is "domain-service" or "projection-actor", path + ".execution.targetKind", "unsupported-target-kind");
             Require(execution.TargetKind == "projection-actor" ? execution.ActorType == "ProjectionActor" : execution.ActorType is null, path + ".execution.actorType", "invalid-actor-type");
+            if (execution.CompatibilityProjectionActorTypes is { } selectors)
+            {
+                string selectorPath = path + ".execution.compatibilityProjectionActorTypes";
+                Require(declaration.Kind == "query" && execution.TargetKind == "domain-service" && execution.QueryKind == "projection",
+                    selectorPath, "invalid-compatibility-selector-target");
+                Require(selectors.Count is > 0 and <= 16, selectorPath, "invalid-compatibility-selector-count");
+                Require(selectors.All(selector => selector is { Length: <= 64 } && IsDiscriminator(selector)),
+                    selectorPath, "invalid-compatibility-selector");
+                Require(selectors.Distinct(StringComparer.Ordinal).Count() == selectors.Count,
+                    selectorPath, "duplicate-compatibility-selector");
+            }
             Require(!execution.RequiresDelegatedContext || (declaration.Kind == "query" && execution.TargetKind == "domain-service"), path + ".execution.requiresDelegatedContext", "invalid-delegated-context");
             Require(execution.TargetKind != "projection-actor" || declaration.Kind == "query", path + ".execution.targetKind", "actor-requires-query");
             Require(execution.AliasPolicy == "exact" || (execution.AliasPolicy == "clr-short-name-v1" && declaration.Kind == "command"), path + ".execution.aliasPolicy", "unsupported-alias-policy");

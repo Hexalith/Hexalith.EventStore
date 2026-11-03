@@ -1,5 +1,7 @@
 using Hexalith.EventStore.Contracts.Routing;
+using Hexalith.EventStore.ServiceDefaults.Diagnostics;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.ServiceDefaults.Routing;
@@ -12,6 +14,13 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     // lifecycle/verifier work run outside this gate and retain their independent CAS checks.
     private readonly SemaphoreSlim _localAdmission = new(1, 1);
     private const int MaximumUpdateAttempts = 96;
+    private readonly ILogger<RouteCatalogAuthority>? _logger;
+
+    /// <summary>Uses optional host logging without changing the existing public constructor or acquisition authority.</summary>
+    internal RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteCatalogTrustValidator trust,
+        IOptions<RouteCatalogHostOptions> options, IRouteCatalogHostObserver? observer,
+        IRouteCatalogQuiescenceVerifier? quiescenceVerifier, ILogger<RouteCatalogAuthority>? logger)
+        : this(store, trust, options, observer, quiescenceVerifier) => _logger = logger;
 
     /// <inheritdoc/>
     public async Task PrepareAsync(RouteCatalogActivation candidate, CancellationToken cancellationToken = default)
@@ -140,12 +149,17 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     /// <inheritdoc/>
     public async Task<RouteCatalogDispatchLease> AcquireAsync(CancellationToken cancellationToken = default)
     {
-        await _localAdmission.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try { return await AcquireCoreAsync(cancellationToken).ConfigureAwait(false); }
+        DispatchDiagnostics? diagnostics = DispatchDiagnostics.Create(_logger, cancellationToken);
+        using (var stage = diagnostics?.Start(DispatchStageName.CatalogAdmissionWait))
+        {
+            await _localAdmission.WaitAsync(cancellationToken).ConfigureAwait(false);
+            stage?.Complete();
+        }
+        try { return await AcquireCoreAsync(cancellationToken, diagnostics).ConfigureAwait(false); }
         finally { _localAdmission.Release(); }
     }
 
-    private async Task<RouteCatalogDispatchLease> AcquireCoreAsync(CancellationToken cancellationToken)
+    private async Task<RouteCatalogDispatchLease> AcquireCoreAsync(CancellationToken cancellationToken, DispatchDiagnostics? diagnostics)
     {
         RequireLocalIdentity();
         RouteCatalogActivation? captured = null;
@@ -155,24 +169,27 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         {
             if (state.Leases.Any(l => l.LeaseId == leaseId) && state.Committed is { } retained)
             {
-                await ValidateAsync(retained, cancellationToken).ConfigureAwait(false);
+                await ValidateAsync(retained, cancellationToken, diagnostics).ConfigureAwait(false);
                 captured = retained;
                 epoch = state.Epoch;
                 return state;
             }
             if (state.Pending is not null || state.Committed is null)
                 throw new RouteCatalogUnavailableException("No complete catalog generation is serving.");
-            await ValidateAsync(state.Committed, cancellationToken).ConfigureAwait(false);
+            await ValidateAsync(state.Committed, cancellationToken, diagnostics).ConfigureAwait(false);
             captured = state.Committed;
             epoch = state.Epoch;
             long sequence = checked(state.LastLease + 1);
             if (state.Leases.Count >= 4096) throw new RouteCatalogUnavailableException("The durable dispatch lease inventory requires draining.");
             return state with { LastLease = sequence, Leases = [.. state.Leases, new RouteCatalogDispatchFence(sequence, leaseId, options.Value.Identity!.HostId, state.Committed.RootDigest, state.Epoch)] };
-        }, cancellationToken).ConfigureAwait(false);
-        return new(new(captured!, epoch, options.Value.Identity!.AppId, store.Coordinates), () => ReleaseAsync(leaseId))
+        }, cancellationToken, diagnostics).ConfigureAwait(false);
+        using var snapshotStage = diagnostics?.Start(DispatchStageName.CatalogSnapshot);
+        var lease = new RouteCatalogDispatchLease(new(captured!, epoch, options.Value.Identity!.AppId, store.Coordinates), () => ReleaseAsync(leaseId))
         {
             Activation = captured,
         };
+        snapshotStage?.Complete();
+        return lease;
     }
 
     /// <summary>Rechecks independently observed local facts for a native read under its existing durable lease.</summary>
@@ -226,18 +243,31 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         finally { _localAdmission.Release(); }
     }
 
-    private async Task ValidateAsync(RouteCatalogActivation activation, CancellationToken cancellationToken)
+    private async Task ValidateAsync(RouteCatalogActivation activation, CancellationToken cancellationToken, DispatchDiagnostics? diagnostics = null)
     {
         RequireLocalIdentity();
-        string binding = RouteCatalogActivationBinding.ComputeDigest(activation);
+        string binding;
+        using (var stage = diagnostics?.Start(DispatchStageName.CatalogActivationDigest))
+        {
+            binding = RouteCatalogActivationBinding.ComputeDigest(activation);
+            stage?.Complete();
+        }
         RouteCatalogHostOptions local = options.Value;
         if (local.Identity is null || Catalog(activation).Profile != local.Profile
             || !activation.RequiredHosts.Contains(local.Identity))
             throw new RouteCatalogUnavailableException("Local host inventory, topology, authentication or profile disagrees with the exact required host set.");
-        if (store.Coordinates is not { } coordinates || observer is null
-            || await observer.ObserveAsync(activation, coordinates, cancellationToken).ConfigureAwait(false) != local.Identity)
-            throw new RouteCatalogUnavailableException("Configured host identity lacks matching independent registration, topology and authentication observations.", RouteCatalogRefusalReason.Inventory);
-        await trust.ValidateAsync(activation, binding, cancellationToken).ConfigureAwait(false);
+        using (var stage = diagnostics?.Start(DispatchStageName.CatalogHostCapture))
+        {
+            if (store.Coordinates is not { } coordinates || observer is null
+                || await observer.ObserveAsync(activation, coordinates, cancellationToken).ConfigureAwait(false) != local.Identity)
+                throw new RouteCatalogUnavailableException("Configured host identity lacks matching independent registration, topology and authentication observations.", RouteCatalogRefusalReason.Inventory);
+            stage?.Complete();
+        }
+        using (var stage = diagnostics?.Start(DispatchStageName.CatalogTrust))
+        {
+            await trust.ValidateAsync(activation, binding, cancellationToken).ConfigureAwait(false);
+            stage?.Complete();
+        }
     }
 
     private void RequireLocalIdentity()
@@ -249,13 +279,26 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     private Task UpdateAsync(Func<RouteCatalogActivationState, RouteCatalogActivationState> update, CancellationToken cancellationToken)
         => UpdateAsync(state => Task.FromResult(update(state)), cancellationToken);
 
-    private async Task UpdateAsync(Func<RouteCatalogActivationState, Task<RouteCatalogActivationState>> update, CancellationToken cancellationToken)
+    private async Task UpdateAsync(Func<RouteCatalogActivationState, Task<RouteCatalogActivationState>> update, CancellationToken cancellationToken, DispatchDiagnostics? diagnostics = null)
     {
         for (int attempt = 0; attempt < MaximumUpdateAttempts; attempt++)
         {
-            (RouteCatalogActivationState state, string etag) = await store.ReadAsync(cancellationToken).ConfigureAwait(false);
+            RouteCatalogActivationState state;
+            string etag;
+            using (var stage = diagnostics?.Start(DispatchStageName.CatalogStateRead))
+            {
+                (state, etag) = await store.ReadAsync(cancellationToken).ConfigureAwait(false);
+                stage?.Complete();
+            }
             RouteCatalogActivationState next = await update(state).ConfigureAwait(false);
-            if (ReferenceEquals(state, next) || await store.CompareExchangeAsync(next, etag, cancellationToken).ConfigureAwait(false)) return;
+            if (ReferenceEquals(state, next)) return;
+            bool exchanged;
+            using (var stage = diagnostics?.Start(DispatchStageName.CatalogCompareExchange))
+            {
+                exchanged = await store.CompareExchangeAsync(next, etag, cancellationToken).ConfigureAwait(false);
+                stage?.Complete();
+            }
+            if (exchanged) return;
             // Bound conflict scheduling like completed-lease release, desynchronizing competing
             // writers without locking across an awaited owner verifier. The wider
             // jitter breaks a busy fleet's repeated read/write collisions; every

@@ -13,7 +13,7 @@ public sealed class AzurePreparedFaultTests(AzureDaprFixture fixture) : IClassFi
         using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(40));
         var token = deadline.Token;
         await using var env = await AzureLiveEnvironment.CreateAsync(fixture, "prepared-faults", token);
-        var write = await env.Reservations.ProtectEventAsync("{\"secret\":\"authorized-live-canary\"}"u8.ToArray(), ["/secret"], env.Context(), token);
+        var write = await env.Reservations.ProtectEventAsync(fixture.Plaintext("{\"secret\":\"authorized-live-canary\"}"u8), ["/secret"], env.Context(), token);
         await env.Reservations.AcquireCompletionAsync(write.Completion!, token);
         await fixture.Client.SaveByteStateAsync("statestore", "azure-conformance:event:" + env.Scope, write.Result.PayloadBytes, cancellationToken: token);
         await env.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.Persisted, token);
@@ -28,7 +28,7 @@ public sealed class AzurePreparedFaultTests(AzureDaprFixture fixture) : IClassFi
 
             (DateTimeOffset.UtcNow < window.NotAfterUtc).ShouldBeTrue("The operator-prepared fault window must still be active.");
             var options = fixture.Authority.Options();
-            var credential = AzureKeyVaultCredentialFactory.Create(options);
+            var credential = fixture.Authority.Credential(options);
             var observed = new AzureObservedTransport(new AzureKeyVaultSafeTransport(options));
             var backend = new AzureKeyVaultPayloadProtectionBackend(options, new(options, credential, observed), new(options, credential, observed));
             var executor = new PayloadBackendExecutor();
@@ -74,7 +74,7 @@ public sealed class AzurePreparedFaultTests(AzureDaprFixture fixture) : IClassFi
             }
 
             (DateTimeOffset.UtcNow <= window.NotAfterUtc).ShouldBeTrue("The complete observation must be bound to the approved window.");
-            Console.WriteLine($"Prepared real fault={window.Fault}; calls={observed.Calls}; dispatched={observed.CryptoDispatched}; outcome={result.Failure}.");
+            fixture.Log($"Prepared real fault={window.Fault}; calls={observed.Calls}; dispatched={observed.CryptoDispatched}; outcome={result.Failure}.");
             TimeSpan recovery = window.NotAfterUtc - DateTimeOffset.UtcNow;
             if (recovery > TimeSpan.Zero)
             {

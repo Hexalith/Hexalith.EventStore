@@ -1,5 +1,6 @@
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base PF-02/section 10; amendment section 7.
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
 using System.Net;
 using System.Security.Cryptography;
@@ -26,13 +27,25 @@ public sealed class AzureDaprFixture : IAsyncLifetime
     /// <summary>Gets the exact Dapr-backed state primitive, initially unqualified.</summary>
     internal DaprPayloadProtectionStateStore Store { get; private set; } = null!;
 
+    /// <summary>Registers plaintext before passing an owned buffer to protection; registration never mutates the buffer.</summary>
+    internal byte[] Plaintext(ReadOnlySpan<byte> bytes)
+    {
+        byte[] owned = bytes.ToArray();
+        _diagnostics!.RegisterPlaintext(owned);
+        return owned;
+    }
+
+    /// <summary>Routes the fixture's actual application log through its owned diagnostic provider.</summary>
+    internal void Log(string message) => _diagnostics!.Logger.LogInformation("{ConformanceMessage}", message);
+
     /// <inheritdoc/>
     public async ValueTask InitializeAsync()
     {
         Authority = AzureLiveAuthority.Load();
         _diagnostics = new();
         _diagnosticSubscription = DiagnosticListener.AllListeners.Subscribe(_diagnostics);
-        Console.WriteLine($"Authorized source={Authority.SourceSha}; resource={Authority.ResourceIdSha256}; identity={Authority.IdentityIdSha256}; network={Authority.NetworkIdSha256}; custody receipt={Authority.CustodyReceiptSha256}. No Azure resource, key, identity or network mutation is performed.");
+        _diagnostics.Logger.LogInformation("Authorized source={Source}; resource={Resource}; identity={Identity}; network={Network}; custody receipt={Receipt}. No Azure mutation is performed.",
+            Authority.SourceSha, Authority.ResourceIdSha256, Authority.IdentityIdSha256, Authority.NetworkIdSha256, Authority.CustodyReceiptSha256);
         try
         {
             int[] ports = Ports(5);

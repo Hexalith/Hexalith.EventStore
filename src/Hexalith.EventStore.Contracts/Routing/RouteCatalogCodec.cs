@@ -22,6 +22,8 @@ public static class RouteCatalogCodec
     /// <summary>Maximum accepted catalog or construction-input byte length.</summary>
     public const int MaximumByteLength = 4 * 1024 * 1024;
 
+    private static ValidatedRouteCatalogEncoding? _validatedEncoding;
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -51,14 +53,30 @@ public static class RouteCatalogCodec
     /// <summary>Rejects malformed, duplicate, unknown, unsupported, invalid, or noncanonical input.</summary>
     public static RouteCatalogEnvelope Decode(ReadOnlyMemory<byte> bytes, string? expectedRootDigest = null)
     {
-        RouteCatalogEnvelope envelope = ReadClosedDocument<RouteCatalogEnvelope>(bytes);
-        byte[] canonical = Encode(envelope);
-        if (!bytes.Span.SequenceEqual(canonical))
+        // Capture mutable caller buffers before parsing or comparing them. Every invocation still
+        // parses the closed document into an independent model, so callers cannot mutate a model
+        // retained for another dispatch. Only deterministic validation of identical bytes is reused.
+        if (bytes.Length is 0 or > MaximumByteLength)
         {
-            throw Failure("$", "noncanonical-encoding");
+            throw Failure("$", "size-limit");
+        }
+        bytes = bytes.ToArray();
+        RouteCatalogEnvelope envelope = ReadClosedDocument<RouteCatalogEnvelope>(bytes);
+        ValidatedRouteCatalogEncoding? validated = Volatile.Read(ref _validatedEncoding);
+        if (validated is null || !validated.Matches(bytes.Span))
+        {
+            byte[] canonical = Encode(envelope);
+            if (!bytes.Span.SequenceEqual(canonical))
+            {
+                throw Failure("$", "noncanonical-encoding");
+            }
+            validated = new ValidatedRouteCatalogEncoding(canonical);
+            // One immutable entry bounds retention to the existing maximum catalog size. Concurrent
+            // different catalogs can replace it without accepting a partially validated document.
+            Volatile.Write(ref _validatedEncoding, validated);
         }
 
-        if (expectedRootDigest is not null && expectedRootDigest != Convert.ToHexStringLower(SHA256.HashData(bytes.Span)))
+        if (expectedRootDigest is not null && expectedRootDigest != validated.RootDigest)
         {
             throw Failure("$", "root-digest-mismatch");
         }
@@ -288,6 +306,7 @@ public static class RouteCatalogCodec
         {
             Aliases = execution.Aliases.Order(StringComparer.Ordinal).ToArray(),
             ProjectionOutputs = execution.ProjectionOutputs.Order(StringComparer.Ordinal).ToArray(),
+            CompatibilityProjectionActorTypes = execution.CompatibilityProjectionActorTypes?.Order(StringComparer.Ordinal).ToArray(),
         } : null,
     };
 

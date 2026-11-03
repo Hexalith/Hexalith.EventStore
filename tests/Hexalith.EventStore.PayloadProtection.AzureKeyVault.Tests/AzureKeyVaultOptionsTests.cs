@@ -11,14 +11,56 @@ public sealed class AzureKeyVaultOptionsTests
     [InlineData("https://vault-name.vault.usgovcloudapi.net", "https://vault.usgovcloudapi.net/.default")]
     [InlineData("https://vault-name.vault.azure.cn", "https://vault.azure.cn/.default")]
     public void V104_AcceptsOnlyMatchedOrdinaryVaultClouds(string uri, string expected) => AzureKeyVaultOptionsValidator.Validate(new() { VaultUri = new(uri), KeyName = "key-name" }).ShouldBe(expected);
+
+    [Theory]
+    [InlineData("a-b", true)]
+    [InlineData("a1234567890123456789012z", true)]
+    [InlineData("vault--name", false)]
+    public void V104_VaultNamesRequireAzureGrammarInEveryCloud(string name, bool valid)
+    {
+        foreach (string suffix in new[] { "vault.azure.net", "vault.usgovcloudapi.net", "vault.azure.cn" })
+        {
+            var section = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Azure:VaultUri"] = "https://" + name + "." + suffix,
+                ["Azure:KeyName"] = "key-name",
+            }).Build().GetSection("Azure");
+            var services = new ServiceCollection();
+            if (valid)
+            {
+                services.AddAzureKeyVaultPayloadProtectionBackend(section).ShouldBeSameAs(services);
+            }
+            else
+            {
+                Should.Throw<InvalidOperationException>(() => services.AddAzureKeyVaultPayloadProtectionBackend(section))
+                    .Message.ShouldBe("The Azure payload protection profile is invalid.");
+                services.ShouldBeEmpty();
+            }
+        }
+    }
+
     [Theory]
     [InlineData("http://vault-name.vault.azure.net")]
     [InlineData("https://vault-name.managedhsm.azure.net")]
     [InlineData("https://vault-name.vault.azure.net:8443")]
     [InlineData("https://vault-name.vault.azure.net/path")]
+    [MemberData(nameof(CredentialOriginCases))]
     [InlineData("https://vault-name.vault.azure.net/#fragment")]
     [InlineData("https://vault-name.vault.azure.net.evil.invalid")]
     public void V104_RejectsUnsafeOrigins(string uri) => Should.Throw<InvalidOperationException>(() => AzureKeyVaultOptionsValidator.Validate(new() { VaultUri = new(uri), KeyName = "key" }));
+    /// <summary>Retains credential-bearing origin rejection with run-owned canaries.</summary>
+    public static IEnumerable<object[]> CredentialOriginCases()
+    {
+        yield return [new UriBuilder("https://vault-name.vault.azure.net")
+        {
+            Query = string.Join("=", "token", Guid.NewGuid().ToString("N")),
+        }.Uri.AbsoluteUri];
+        yield return [new UriBuilder("https://vault-name.vault.azure.net")
+        {
+            UserName = Guid.NewGuid().ToString("N"),
+        }.Uri.AbsoluteUri];
+    }
+
     [Theory]
     [InlineData("query")]
     [InlineData("userinfo")]

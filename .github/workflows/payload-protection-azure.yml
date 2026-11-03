@@ -42,14 +42,25 @@ jobs:
       - name: Run adapter unit tests
         run: >-
           dotnet test --project tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests.csproj
-          --no-build --configuration Release --minimum-expected-tests 138 --fail-skips on
+          --no-build --configuration Release --minimum-expected-tests 192 --fail-skips on
           --results-directory TestResults/azure-unit --report-xunit-trx
+          -p:UseHexalithProjectReferences=false
+      - name: Build offline live-authority schema gates
+        run: dotnet build tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false
+      - name: Verify live-authority schema without Azure calls
+        run: >-
+          dotnet test --project tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.csproj
+          --no-build --configuration Release
+          --filter-class Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.AzureIdentityAuthoritySchemaTests
+          --minimum-expected-tests 15 --fail-skips on --results-directory TestResults/azure-authority-schema --report-xunit-trx
           -p:UseHexalithProjectReferences=false
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: payload-azure-unit
-          path: TestResults/azure-unit
+          path: |
+            TestResults/azure-unit
+            TestResults/azure-authority-schema
           if-no-files-found: error
           retention-days: 7
 

@@ -13,6 +13,7 @@ using Hexalith.EventStore.ServiceDefaults.Routing;
 namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 
 /// <summary>Builds genuine split owner libraries beside their selected executable; no topology or source stand-in is used.</summary>
+[Collection(AspireEnvironmentMutationCollection.Name)]
 public sealed class DevelopmentRouteCatalogSplitOwnerPreparationTests
 {
     /// <summary>The split API refuses path-bearing names before any selected build can run.</summary>
@@ -50,6 +51,7 @@ public sealed class DevelopmentRouteCatalogSplitOwnerPreparationTests
     [InlineData("linked-declaration")]
     public async Task RealSelectedSplitOutputSuppliesExactOwnersOrRefusesAsync(string scenario)
     {
+        using var mapping = IsolatedSourceMappingEnvironment.Enter();
         string root = Directory.CreateTempSubdirectory("catalog-split-owner-").FullName;
         string output = Path.Combine(root, "selected-output") + Path.DirectorySeparatorChar;
         string? retained = null;

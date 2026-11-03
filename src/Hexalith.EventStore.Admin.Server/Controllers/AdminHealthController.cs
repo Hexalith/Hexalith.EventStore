@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 
 /// <summary>
 /// REST API controller for querying system health and DAPR component status.
-/// Health is system-wide — no tenant scoping.
+/// Global aggregate metrics require the explicit cataloged Admin read scope.
 /// </summary>
 [Hexalith.EventStore.Contracts.Routing.EventStoreTechnicalHttpController]
 [ApiController]
@@ -27,6 +27,7 @@ public class AdminHealthController(
     /// Gets the overall system health report.
     /// </summary>
     [HttpGet]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(SystemHealthReport), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]

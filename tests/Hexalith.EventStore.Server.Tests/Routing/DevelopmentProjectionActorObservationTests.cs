@@ -24,6 +24,39 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 /// <summary>Independently observes the existing SDK actor registration and exercises the real router against complete Sample schemas.</summary>
 public sealed class DevelopmentProjectionActorObservationTests
 {
+    /// <summary>Reusing compiled schemas cannot reuse a previous runtime registration decision.</summary>
+    [Theory]
+    [InlineData("unchanged")]
+    [InlineData("missing")]
+    [InlineData("different-implementation")]
+    [InlineData("different-invoker")]
+    public void FrozenCompiledInventoryStillRechecksCurrentActorAndInvoker(string change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        var services = new ServiceCollection(); services.AddLogging(); services.AddEventStoreServer(new ConfigurationBuilder().Build());
+        using var provider = services.BuildServiceProvider();
+        var owners = new[] { typeof(SampleCatalog).Assembly };
+        var declarations = CompiledRouteCatalogDeclarations.Read(owners);
+        var first = RunScopedRouteCatalogGateway.ActorQueryTargets(provider, owners, declarations, "gateway-owned");
+        first.ShouldHaveSingleItem();
+        var options = provider.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
+        if (change is "missing" or "different-implementation")
+            options.Actors.Remove(options.Actors.Single(actor => actor.Type.ActorTypeName == RouteCatalogProjectionActorPolicy.ActorType).Type);
+        if (change == "different-implementation") options.Actors.RegisterActor<GlobalPositionActor>(RouteCatalogProjectionActorPolicy.ActorType);
+        if (change == "different-invoker")
+        {
+            var replaced = new ServiceCollection();
+            replaced.AddSingleton<IOptions<ActorRuntimeOptions>>(Options.Create(options));
+            replaced.AddSingleton(Substitute.For<IProjectionActorInvoker>());
+            using var changed = replaced.BuildServiceProvider();
+            Should.Throw<RouteCatalogUnavailableException>(() => RunScopedRouteCatalogGateway.ActorQueryTargets(changed, owners, declarations, "gateway-owned"));
+        }
+        else if (change == "unchanged")
+            RunScopedRouteCatalogGateway.ActorQueryTargets(provider, owners, declarations, "gateway-owned").ShouldBe(first);
+        else
+            Should.Throw<RouteCatalogUnavailableException>(() => RunScopedRouteCatalogGateway.ActorQueryTargets(provider, owners, declarations, "gateway-owned"));
+    }
+
     /// <summary>A name alone cannot substitute a missing or different SDK actor implementation.</summary>
     [Theory]
     [InlineData("valid")]

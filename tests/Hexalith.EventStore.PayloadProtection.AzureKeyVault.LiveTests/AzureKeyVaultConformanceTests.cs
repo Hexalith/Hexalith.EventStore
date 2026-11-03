@@ -16,7 +16,7 @@ public sealed class AzureKeyVaultConformanceTests(AzureDaprFixture fixture) : IC
         using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         var token = deadline.Token;
         await using var env = await AzureLiveEnvironment.CreateAsync(fixture, "history", token);
-        byte[] plain = "{\"secret\":\"authorized-live-canary\"}"u8.ToArray();
+        byte[] plain = fixture.Plaintext("{\"secret\":\"authorized-live-canary\"}"u8);
         var write = await env.Reservations.ProtectEventAsync(plain, ["/secret"], env.Context(), token);
         string eventKey = "azure-conformance:event:" + env.Scope;
         await env.Reservations.AcquireCompletionAsync(write.Completion!, token);
@@ -67,7 +67,7 @@ public sealed class AzureKeyVaultConformanceTests(AzureDaprFixture fixture) : IC
         fence.HighestWrittenEpoch.ShouldBe(oldFence.HighestWrittenEpoch);
         byte[] snapshotAfter = (await fixture.Client.GetByteStateAsync("statestore", snapshotKey, ConsistencyMode.Strong, cancellationToken: token)).ToArray();
         snapshotAfter.AsSpan().SequenceEqual(JsonSerializer.SerializeToUtf8Bytes(snapshot.Result)).ShouldBeTrue();
-        Console.WriteLine("Persisted event/snapshot/key/index state verified through Dapr. ReadOnly rollback retains v2. Azure keys retained; no all-copy erasure or Server/Parties claim.");
+        fixture.Log("Persisted event/snapshot/key/index state verified through Dapr. ReadOnly rollback retains v2. Azure keys retained; no all-copy erasure or Server/Parties claim.");
         CryptographicOperations.ZeroMemory(plain);
         CryptographicOperations.ZeroMemory(persisted);
     }
@@ -99,7 +99,7 @@ public sealed class AzureKeyVaultConformanceTests(AzureDaprFixture fixture) : IC
         var invalidClient = new AzureKeyVaultMetadataClient(options, new AzureInvalidToken(), new AzureKeyVaultSafeTransport(options));
         (await Should.ThrowAsync<Azure.RequestFailedException>(() => invalidClient.GetAsync(AzureKeyVaultKeyProfile.Version(options, authority.RotationVersion), CancellationToken.None).AsTask())).Status.ShouldBe(401);
         var deniedOptions = authority.Options(authority.DeniedManagedIdentityClientId);
-        var deniedClient = new AzureKeyVaultMetadataClient(deniedOptions, AzureKeyVaultCredentialFactory.Create(deniedOptions), new AzureKeyVaultSafeTransport(deniedOptions));
+        var deniedClient = new AzureKeyVaultMetadataClient(deniedOptions, authority.Credential(deniedOptions), new AzureKeyVaultSafeTransport(deniedOptions));
         (await Should.ThrowAsync<Azure.RequestFailedException>(() => deniedClient.GetAsync(AzureKeyVaultKeyProfile.Version(options, authority.RotationVersion), CancellationToken.None).AsTask())).Status.ShouldBe(403);
         using var deniedToken = await authority.Backend(credential: new AzureInvalidToken()).WrapExactAsync("01J00000000000000000000866", authority.RotationVersion, new byte[32], CancellationToken.None);
         deniedToken.Failure.ShouldBe(PayloadBackendFailure.Denied);
@@ -119,13 +119,13 @@ public sealed class AzureKeyVaultConformanceTests(AzureDaprFixture fixture) : IC
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(1));
         var token = timeout.Token;
         await using var env = await AzureLiveEnvironment.CreateAsync(fixture, "fault-" + fault, token);
-        var write = await env.Reservations.ProtectEventAsync("{\"secret\":\"authorized-live-canary\"}"u8.ToArray(), ["/secret"], env.Context(), token);
+        var write = await env.Reservations.ProtectEventAsync(fixture.Plaintext("{\"secret\":\"authorized-live-canary\"}"u8), ["/secret"], env.Context(), token);
         await env.Reservations.AcquireCompletionAsync(write.Completion!, token);
         await fixture.Client.SaveByteStateAsync("statestore", "azure-conformance:event:" + env.Scope, write.Result.PayloadBytes, cancellationToken: token);
         await env.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.Persisted, token);
         WrappedDekV1 before = await env.KeyAsync(write.Completion!, token);
         env.Backend.Fault = fault;
-        await Should.ThrowAsync<PayloadProtectionStateException>(() => env.Reservations.ProtectEventAsync("{\"secret\":\"second-live-canary\"}"u8.ToArray(), ["/secret"], env.Context(2), token).AsTask());
+        await Should.ThrowAsync<PayloadProtectionStateException>(() => env.Reservations.ProtectEventAsync(fixture.Plaintext("{\"secret\":\"second-live-canary\"}"u8), ["/secret"], env.Context(2), token).AsTask());
         (await env.KeyAsync(write.Completion!, token)).ShouldBe(before);
         WorkCatalogSnapshot work = await new PayloadProtectionCatalogs(fixture.Store).ReadWorkAsync(env.Root, token);
         if (fault is "timeout" or "5xx" or "lost-wrap-response")
@@ -136,7 +136,7 @@ public sealed class AzureKeyVaultConformanceTests(AzureDaprFixture fixture) : IC
         env.Backend.Fault = null;
         await env.RestartAsync(token);
         await env.AssertReadableAsync(write.Result.PayloadBytes, token);
-        Console.WriteLine("Boundary fault injected; persisted prior material retained. Lost responses remain pending; no provider absence or key deletion inferred.");
+        fixture.Log("Boundary fault injected; persisted prior material retained. Lost responses remain pending; no provider absence or key deletion inferred.");
     }
 
     [Fact]

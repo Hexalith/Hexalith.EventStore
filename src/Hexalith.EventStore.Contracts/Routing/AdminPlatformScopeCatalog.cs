@@ -12,13 +12,17 @@ public static class AdminPlatformScopeCatalog
     /// <summary>The request-local marker set only after the declared scope and permission pass.</summary>
     public const string ValidatedContextKey = "Hexalith.EventStore.Admin.ValidatedPlatformReadScope";
 
-    /// <summary>Gets the declaration for the two existing cross-tenant list actions.</summary>
+    /// <summary>Gets the declaration for Admin global reads and their gateway hop.</summary>
     /// <param name="controller">The compiled controller type name.</param>
     /// <param name="action">The compiled action method name.</param>
     /// <returns>The declared admission, or null for any other action.</returns>
     public static PlatformAdmissionDeclaration? ForAction(string controller, string action)
-        => controller == "Hexalith.EventStore.Admin.Server.Controllers.AdminStreamsController"
+        => (controller == "Hexalith.EventStore.Admin.Server.Controllers.AdminStreamsController"
             && action is "GetRecentCommandsAsync" or "GetRecentlyActiveStreamsAsync"
+            || controller == "Hexalith.EventStore.Admin.Server.Controllers.AdminHealthController"
+            && action == "GetSystemHealth"
+            || controller == "Hexalith.EventStore.Controllers.AdminCommandsQueryController"
+            && action == "GetRecentCommands")
                 ? new PlatformAdmissionDeclaration(Namespace, ReadPermission)
                 : null;
 }

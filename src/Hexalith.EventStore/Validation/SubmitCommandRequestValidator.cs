@@ -45,6 +45,8 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .NotNull().WithMessage("Tenant is required")
             .NotEmpty().WithMessage("Tenant cannot be empty")
             .MaximumLength(MaxTenantDomainLength).WithMessage($"Tenant cannot exceed {MaxTenantDomainLength} characters")
+            // Namespace syntax grants no authority: the controller still requires the exact
+            // committed operation, human permission and ingress before mapping retained storage.
             .Must(tenant => _tenantDomainRegex.IsMatch(tenant) || TenantCanonicalizer.IsPlatformScope(tenant))
             .WithMessage("Tenant must be a lowercase tenant or canonical platform scope")
             .When(x => !string.IsNullOrEmpty(x.Tenant), ApplyConditionTo.CurrentValidator);

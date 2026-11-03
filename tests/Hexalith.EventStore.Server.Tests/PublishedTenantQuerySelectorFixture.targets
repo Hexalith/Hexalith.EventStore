@@ -1,0 +1,20 @@
+<Project>
+  <!-- NuGetPackageRoot comes from restore-generated props, including RestorePackagesPath/globalPackagesFolder.
+       This immutable download is independent of the active Tenants project/package reference. -->
+  <ItemGroup>
+    <PackageDownload Include="Hexalith.Tenants.Contracts" Version="[7.0.0]" />
+    <PublishedTenantQuerySelectorFixture Include="$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))hexalith.tenants.contracts/7.0.0/hexalith.tenants.contracts.7.0.0.nupkg">
+      <TargetPath>published-tenants-7.0.0/Hexalith.Tenants.Contracts.7.0.0.nupkg</TargetPath>
+    </PublishedTenantQuerySelectorFixture>
+    <PublishedTenantQuerySelectorFixture Include="$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))hexalith.tenants.contracts/7.0.0/lib/net10.0/Hexalith.Tenants.Contracts.dll">
+      <TargetPath>published-tenants-7.0.0/Hexalith.Tenants.Contracts.dll</TargetPath>
+    </PublishedTenantQuerySelectorFixture>
+  </ItemGroup>
+  <Target Name="CopyPublishedTenantQuerySelectorFixture" BeforeTargets="CopyFilesToOutputDirectory">
+    <Copy SourceFiles="@(PublishedTenantQuerySelectorFixture)"
+          DestinationFiles="@(PublishedTenantQuerySelectorFixture->'$(OutDir)%(TargetPath)')" SkipUnchangedFiles="true" />
+    <WriteLinesToFile File="$(OutDir)published-tenants-7.0.0/resolved-package-root.txt" Lines="$(NuGetPackageRoot)" Overwrite="true" />
+    <WriteLinesToFile File="$(OutDir)published-tenants-7.0.0/selection.txt"
+                      Lines="$(UseHexalithProjectReferences)|$(HexalithTenantsFromSource)" Overwrite="true" />
+  </Target>
+</Project>

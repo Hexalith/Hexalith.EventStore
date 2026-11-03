@@ -46,7 +46,7 @@ public class AdminActionSecurityMetadataTests {
         (typeof(AdminProjectionsController), "ResumeProjection", AdminAuthorizationPolicies.Operator, true, null),
         (typeof(AdminProjectionsController), "ResetProjection", AdminAuthorizationPolicies.Operator, true, AdminRequestSizeLimits.OrdinaryJsonBody),
         (typeof(AdminProjectionsController), "ReplayProjection", AdminAuthorizationPolicies.Operator, true, AdminRequestSizeLimits.OrdinaryJsonBody),
-        (typeof(AdminHealthController), "GetSystemHealth", AdminAuthorizationPolicies.ReadOnly, false, null),
+        (typeof(AdminHealthController), "GetSystemHealth", AdminAuthorizationPolicies.ReadOnly, true, null),
         (typeof(AdminHealthController), "GetDaprComponentStatus", AdminAuthorizationPolicies.ReadOnly, false, null),
         (typeof(AdminHealthController), "GetComponentHealthHistoryAsync", AdminAuthorizationPolicies.ReadOnly, false, null),
         (typeof(AdminDeadLettersController), "GetDeadLetterCount", AdminAuthorizationPolicies.Admin, false, null),

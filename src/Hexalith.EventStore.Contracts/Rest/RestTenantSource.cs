@@ -7,13 +7,13 @@ public enum RestTenantSource
 {
     /// <summary>Use the assembly default when applied to a message route.</summary>
     Inherit = -1,
-    /// <summary>Resolve the tenant from the authenticated caller's claims.</summary>
+    /// <summary>Require an explicit tenant header and authorize it with the authenticated caller's grants.</summary>
     Claims,
 
     /// <summary>Resolve the tenant from a route parameter.</summary>
     Route,
 
-    /// <summary>Use the fixed "system" tenant (no per-request resolution).</summary>
+    /// <summary>Legacy fixed-storage metadata; generated public requests using this mode are rejected.</summary>
     System,
 
     /// <summary>Require an explicit cataloged platform scope in the request header.</summary>

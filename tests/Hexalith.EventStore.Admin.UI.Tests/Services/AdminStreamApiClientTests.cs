@@ -3,6 +3,7 @@ using System.Net;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Testing.Http;
 using Hexalith.EventStore.Testing.Security;
 
@@ -19,7 +20,73 @@ public class AdminStreamApiClientTests {
         return new AdminStreamApiClient(factory, NullLogger<AdminStreamApiClient>.Instance);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ListReads_AllTenants_SendExplicitCatalogScope(bool commands) {
+        using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(request => {
+            request.Headers.GetValues("X-Hexalith-Scope").ShouldBe([AdminPlatformScopeCatalog.Namespace]);
+            request.Headers.Contains("X-Hexalith-Tenant").ShouldBeFalse();
+            request.RequestUri!.Query.ShouldNotContain("tenantId=");
+            request.RequestUri.AbsolutePath.ShouldBe(commands
+                ? "/api/v1/admin/streams/commands" : "/api/v1/admin/streams/GetRecentlyActiveStreams");
+        }, HttpStatusCode.OK, """{"items":[],"totalCount":0,"continuationToken":null}""");
+        AdminStreamApiClient client = CreateClient(httpClient);
+
+        if (commands) {
+            _ = await client.GetRecentCommandsAsync(null, null, null);
+        }
+        else {
+            _ = await client.GetRecentlyActiveStreamsAsync(null, null);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ListReads_TenantFilter_SendCanonicalTenantWithoutPlatformScope(bool commands) {
+        using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(request => {
+            request.RequestUri!.Query.ShouldContain("tenantId=acme");
+            request.Headers.Contains("X-Hexalith-Scope").ShouldBeFalse();
+        }, HttpStatusCode.OK, """{"items":[],"totalCount":0,"continuationToken":null}""");
+        AdminStreamApiClient client = CreateClient(httpClient);
+
+        if (commands) {
+            _ = await client.GetRecentCommandsAsync("Acme", null, null);
+        }
+        else {
+            _ = await client.GetRecentlyActiveStreamsAsync("Acme", null);
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" system")]
+    [InlineData("System")]
+    [InlineData("acme ")]
+    [InlineData("bad:tenant")]
+    public async Task ListReads_InvalidOrReservedTenant_RejectBeforeHttp(string tenantId) {
+        using MockHttpMessageHandler handler = new(_ => throw new InvalidOperationException("HTTP must not execute."));
+        using HttpClient httpClient = new(handler) { BaseAddress = new Uri("https://localhost") };
+        AdminStreamApiClient client = CreateClient(httpClient);
+
+        _ = await Should.ThrowAsync<ArgumentException>(() => client.GetRecentCommandsAsync(tenantId, null, null));
+        _ = await Should.ThrowAsync<ArgumentException>(() => client.GetRecentlyActiveStreamsAsync(tenantId, null));
+
+        handler.CallCount.ShouldBe(0);
+    }
+
     // === GetSystemHealthAsync ===
+
+    [Fact]
+    public async Task GetSystemHealthAsync_SendsExplicitAdminReadScope() {
+        using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(request => {
+            request.Headers.GetValues("X-Hexalith-Scope").ShouldBe([AdminPlatformScopeCatalog.Namespace]);
+            request.Headers.Contains("X-Hexalith-Tenant").ShouldBeFalse();
+        }, HttpStatusCode.OK, """{"overallStatus":0,"totalEventCount":0,"eventsPerSecond":0,"errorPercentage":0,"daprComponents":[],"observabilityLinks":{}}""");
+
+        _ = await CreateClient(httpClient).GetSystemHealthAsync();
+    }
 
     [Fact]
     public async Task GetSystemHealthAsync_ReturnsHealth_WhenApiResponds() {

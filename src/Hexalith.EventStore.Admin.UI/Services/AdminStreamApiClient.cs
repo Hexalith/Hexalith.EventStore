@@ -8,6 +8,8 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Routing;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
@@ -67,10 +69,15 @@ public class AdminStreamApiClient(
         string? commandType,
         int count = 1000,
         CancellationToken ct = default) {
+        if (tenantId is not null && !TenantCanonicalizer.TryCanonicalize(tenantId, out tenantId)) {
+            throw new ArgumentException("Tenant scope is invalid or reserved.", nameof(tenantId));
+        }
+
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = BuildCommandsUrl(tenantId, status, commandType, count);
         try {
-            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using HttpRequestMessage request = CreateReadRequest(url, tenantId);
+            using HttpResponseMessage response = await client.SendAsync(request, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             PagedResult<CommandSummary>? result = await response.Content
                 .ReadFromJsonAsync<PagedResult<CommandSummary>>(ct)
@@ -101,10 +108,15 @@ public class AdminStreamApiClient(
         string? domain,
         int count = 1000,
         CancellationToken ct = default) {
+        if (tenantId is not null && !TenantCanonicalizer.TryCanonicalize(tenantId, out tenantId)) {
+            throw new ArgumentException("Tenant scope is invalid or reserved.", nameof(tenantId));
+        }
+
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = BuildStreamsUrl(tenantId, domain, count);
         try {
-            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using HttpRequestMessage request = CreateReadRequest(url, tenantId);
+            using HttpResponseMessage response = await client.SendAsync(request, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             PagedResult<StreamSummary>? result = await response.Content
                 .ReadFromJsonAsync<PagedResult<StreamSummary>>(ct)
@@ -130,9 +142,8 @@ public class AdminStreamApiClient(
     public virtual async Task<SystemHealthReport?> GetSystemHealthAsync(CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         try {
-            using HttpResponseMessage response = await client
-                .GetAsync("api/v1/admin/health", ct)
-                .ConfigureAwait(false);
+            using HttpRequestMessage request = CreateReadRequest("api/v1/admin/health", tenantId: null);
+            using HttpResponseMessage response = await client.SendAsync(request, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<SystemHealthReport>(ct)
@@ -719,6 +730,15 @@ public class AdminStreamApiClient(
         return $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/timeline?{string.Join('&', queryParams)}";
     }
 
+    private static HttpRequestMessage CreateReadRequest(string url, string? tenantId) {
+        HttpRequestMessage request = new(HttpMethod.Get, url);
+        if (tenantId is null) {
+            _ = request.Headers.TryAddWithoutValidation("X-Hexalith-Scope", AdminPlatformScopeCatalog.Namespace);
+        }
+
+        return request;
+    }
+
     private static string BuildCommandsUrl(string? tenantId, string? status, string? commandType, int count) {
         List<string> queryParams = [$"count={count}"];
         if (!string.IsNullOrEmpty(tenantId)) {
@@ -746,7 +766,7 @@ public class AdminStreamApiClient(
             queryParams.Add($"domain={Uri.EscapeDataString(domain)}");
         }
 
-        return $"api/v1/admin/streams?{string.Join('&', queryParams)}";
+        return $"api/v1/admin/streams/GetRecentlyActiveStreams?{string.Join('&', queryParams)}";
     }
 
     private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {

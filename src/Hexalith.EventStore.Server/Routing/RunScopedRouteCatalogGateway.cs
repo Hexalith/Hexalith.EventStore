@@ -67,6 +67,12 @@ public static class RunScopedRouteCatalogGateway
                 throw new RouteCatalogUnavailableException($"The owner adapter factory {factory.SourceType.FullName} is unavailable.");
             foreach (var adapter in declared) services.AddSingleton<IIdempotencyIntentAdapter>(adapter);
         }
+        // As in the domain host, compiled declarations belong to these exact loaded
+        // assemblies. Each capture below still observes current runtime registrations,
+        // receiver policies, executable images, configuration, component and ACL inputs.
+        var compiled = new Lazy<(IReadOnlyList<RouteContractDeclaration> Declarations,
+            IReadOnlyList<RouteOperationContract> Operations)>(() =>
+            (CompiledRouteCatalogDeclarations.Read(owners), CompiledRouteCatalogDeclarations.ReadOperations(owners)));
         return services.AddEventStoreDevelopmentRouteCatalogBootstrap(configuration, async (provider, token) =>
         {
             RouteCatalogReceiverSurface receiver;
@@ -83,12 +89,12 @@ public static class RunScopedRouteCatalogGateway
                 receiver = finite.Observe();
             }
             using var scope = provider.CreateScope();
-            var declarations = CompiledRouteCatalogDeclarations.Read(owners);
+            var (declarations, operations) = compiled.Value;
             var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, appId,
-                declarations, ActorQueryTargets(scope.ServiceProvider, owners, appId),
+                declarations, ActorQueryTargets(scope.ServiceProvider, owners, declarations, appId),
                 await RouteCatalogAdmissionObservation.CaptureAsync(provider, appId, token).ConfigureAwait(false), [],
                 DevelopmentTechnicalHttpTransport.Auxiliary(receiver, appId, "gateway"), token).ConfigureAwait(false);
-            return actual with { ReceiverSurface = receiver, Operations = CompiledRouteCatalogDeclarations.ReadOperations(owners) };
+            return actual with { ReceiverSurface = receiver, Operations = operations };
         }, _ => RouteCatalogCodec.Decode(File.ReadAllBytes(section["CatalogPath"]!), section["RootDigest"]));
     }
 
@@ -121,10 +127,15 @@ public static class RunScopedRouteCatalogGateway
 
     /// <summary>Compares an owned typed query to the actual existing SDK actor registration, independently of a proposal.</summary>
     internal static IReadOnlyList<RouteCatalogEntry> ActorQueryTargets(IServiceProvider services, IReadOnlyList<Assembly> owners, string actualAppId)
+        => ActorQueryTargets(services, owners, CompiledRouteCatalogDeclarations.Read(owners), actualAppId);
+
+    /// <summary>Rechecks actual query registrations against the owning host's frozen compiled inventory.</summary>
+    internal static IReadOnlyList<RouteCatalogEntry> ActorQueryTargets(IServiceProvider services, IReadOnlyList<Assembly> owners,
+        IReadOnlyList<RouteContractDeclaration> declarations, string actualAppId)
     {
-        var queries = CompiledRouteCatalogDeclarations.Read(owners).Where(declaration => declaration.Execution?.TargetKind == "projection-actor").ToArray();
+        var queries = declarations.Where(declaration => declaration.Execution?.TargetKind == "projection-actor").ToArray();
         if (queries.Length == 0) return [];
-        var actual = ProjectionTargets(services, actualAppId, CompiledRouteCatalogDeclarations.Read(owners));
+        var actual = ProjectionTargets(services, actualAppId, declarations);
         var assemblies = owners.SelectMany(owner => owner.GetReferencedAssemblies().Select(Assembly.Load).Prepend(owner)).Distinct().ToArray();
         foreach (var query in queries)
         {
