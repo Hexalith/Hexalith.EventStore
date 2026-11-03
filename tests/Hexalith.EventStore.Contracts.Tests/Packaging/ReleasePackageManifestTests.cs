@@ -602,6 +602,38 @@ public sealed class ReleasePackageManifestTests
         suite.GetProperty("entry").GetString().ShouldBe("tests/Hexalith.EventStore.Platform.IntegrationTests/Hexalith.EventStore.Platform.IntegrationTests.csproj");
     }
 
+    /// <summary>SDK-owned test support remains source while external Release dependencies remain packages.</summary>
+    /// <param name="configuration">The consuming build configuration.</param>
+    /// <param name="source">The external dependency mode selected by the caller.</param>
+    [Theory]
+    [InlineData("Debug", true)]
+    [InlineData("Release", false)]
+    public void PlatformPackageIntegrationUsesOwnedHarnessAcrossDependencyModes(string configuration, bool source)
+    {
+        string root = FindRepositoryRoot();
+        string project = Path.Combine(root, "tests", "Hexalith.EventStore.Platform.IntegrationTests", "Hexalith.EventStore.Platform.IntegrationTests.csproj");
+        using JsonDocument evaluated = JsonDocument.Parse(EvaluatedProjectOutput(project,
+            "-getItem:ProjectReference,PackageReference", configuration, source));
+        JsonElement items = evaluated.RootElement.GetProperty("Items");
+        items.GetProperty("PackageReference").EnumerateArray()
+            .Select(item => item.GetProperty("Identity").GetString()!)
+            .ShouldNotContain(identity => identity.StartsWith("Hexalith.EventStore.", StringComparison.Ordinal));
+        string harness = Path.GetFullPath(Path.Combine(root, "src", "Hexalith.EventStore.Testing.Integration", "Hexalith.EventStore.Testing.Integration.csproj"));
+        items.GetProperty("ProjectReference").EnumerateArray()
+            .Select(item => Path.GetFullPath(item.GetProperty("FullPath").GetString()!))
+            .ShouldContain(harness);
+        if (!source)
+        {
+            EvaluatedProjectProperty(project, "UseHexalithProjectReferences").ShouldBe("false");
+            using JsonDocument contracts = JsonDocument.Parse(EvaluatedProjectOutput(
+                Path.Combine(root, "src", "Hexalith.EventStore.Contracts", "Hexalith.EventStore.Contracts.csproj"),
+                "-getItem:PackageReference", configuration, source));
+            contracts.RootElement.GetProperty("Items").GetProperty("PackageReference").EnumerateArray()
+                .Select(item => item.GetProperty("Identity").GetString())
+                .ShouldContain("Hexalith.Commons.UniqueIds");
+        }
+    }
+
     [Fact]
     public void Semantic_release_governance_job_is_unique_unconditional_and_blocking()
     {
@@ -1999,6 +2031,9 @@ public sealed class ReleasePackageManifestTests
     }
 
     private static string EvaluatedProjectProperty(string projectPath, string propertyName)
+        => EvaluatedProjectOutput(projectPath, "-getProperty:" + propertyName, "Release", false);
+
+    private static string EvaluatedProjectOutput(string projectPath, string selector, string configuration, bool source)
     {
         using Process process = new()
         {
@@ -2013,9 +2048,9 @@ public sealed class ReleasePackageManifestTests
 
         process.StartInfo.ArgumentList.Add("msbuild");
         process.StartInfo.ArgumentList.Add(projectPath);
-        process.StartInfo.ArgumentList.Add($"-getProperty:{propertyName}");
-        process.StartInfo.ArgumentList.Add("-p:Configuration=Release");
-        process.StartInfo.ArgumentList.Add("-p:UseHexalithProjectReferences=false");
+        process.StartInfo.ArgumentList.Add(selector);
+        process.StartInfo.ArgumentList.Add("-p:Configuration=" + configuration);
+        process.StartInfo.ArgumentList.Add("-p:UseHexalithProjectReferences=" + source.ToString().ToLowerInvariant());
 
         process.StartInfo.WorkingDirectory = FindRepositoryRoot();
 
@@ -2027,7 +2062,7 @@ public sealed class ReleasePackageManifestTests
         {
             process.Kill(entireProcessTree: true);
             throw new TimeoutException(
-                $"dotnet msbuild -getProperty:{propertyName} timed out after {MsBuildPropertyTimeout} for {projectPath}.");
+                $"dotnet msbuild {selector} timed out after {MsBuildPropertyTimeout} for {projectPath}.");
         }
 
         string output = outputTask.GetAwaiter().GetResult();
@@ -2035,7 +2070,7 @@ public sealed class ReleasePackageManifestTests
 
         process.ExitCode.ShouldBe(
             0,
-            $"dotnet msbuild -getProperty:{propertyName} failed for {projectPath}: {error}");
+            $"dotnet msbuild {selector} failed for {projectPath}: {error}");
 
         return output.Trim();
     }
