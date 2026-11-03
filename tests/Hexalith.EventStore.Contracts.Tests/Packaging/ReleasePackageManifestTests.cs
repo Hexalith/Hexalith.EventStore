@@ -559,12 +559,13 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(workflow, "ci");
         string tenantsSourceModeJob = ExtractTopLevelWorkflowJobBlock(workflow, "tenants-source-mode");
 
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb");
         ciJob.ShouldContain("build-timeout-minutes: 180");
         ciJob.ShouldContain("test-platform: microsoft-testing-platform");
         ciJob.ShouldContain("run-consumer-validation: true");
         ciJob.ShouldContain("tests/Hexalith.EventStore.LoadTests.Tests");
         ciJob.ShouldContain("tests/Hexalith.EventStore.Server.Tests");
+        ciJob.ShouldContain("tests/Hexalith.EventStore.AppHost.Tests");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Server.LiveSidecar.Tests");
         ciJob.ShouldNotContain("run-coverage-gate:");
         ciJob.ShouldNotContain("Category!=LiveSidecar");
@@ -573,6 +574,32 @@ public sealed class ReleasePackageManifestTests
 
         AssertWorkflowJobCannotBeSkippedOrTolerated(ciJob, "Shared deterministic CI");
         AssertTenantsSourceModeJobIsBlocking(tenantsSourceModeJob);
+    }
+
+    [Fact]
+    public void Shared_ci_v2_requires_the_pinned_tool_declared_package_suite_and_pull_only_secrets()
+    {
+        string root = FindRepositoryRoot();
+        string ciJob = ExtractTopLevelWorkflowJobBlock(File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml")), "ci");
+        ciJob.ShouldContain("module-manifest: module/hexalith.module-manifest.v2.json");
+        ciJob.ShouldContain("integration-test-profiles: platform-package");
+        ciJob.ShouldContain("registry-pull-username: ${{ secrets.HEXALITH_CI_REGISTRY_USERNAME }}");
+        ciJob.ShouldContain("registry-pull-password: ${{ secrets.HEXALITH_CI_REGISTRY_PASSWORD }}");
+        foreach (string retired in new[] { "integration-test-projects:", "aspire-test-project:", "dapr-version:", "dapr-runtime-version:", "secrets: inherit" })
+        {
+            ciJob.ShouldNotContain(retired);
+        }
+
+        using JsonDocument tools = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".config", "dotnet-tools.json")));
+        JsonElement tool = tools.RootElement.GetProperty("tools").GetProperty("hexalith.builds.module.cli");
+        tool.GetProperty("version").GetString().ShouldBe("4.43.4");
+        tool.GetProperty("rollForward").GetBoolean().ShouldBeFalse();
+        using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "module", "hexalith.module-manifest.v2.json")));
+        JsonElement suite = manifest.RootElement.GetProperty("modules")[0].GetProperty("tests").EnumerateArray()
+            .Single(test => test.GetProperty("name").GetString() == "platform-package");
+        suite.GetProperty("mode").GetString().ShouldBe("package");
+        suite.GetProperty("executor").GetString().ShouldBe("mtp");
+        suite.GetProperty("entry").GetString().ShouldBe("tests/Hexalith.EventStore.Platform.IntegrationTests/Hexalith.EventStore.Platform.IntegrationTests.csproj");
     }
 
     [Fact]
@@ -720,7 +747,7 @@ public sealed class ReleasePackageManifestTests
         liveSidecarJob.ShouldNotContain("set +e");
 
         string ciJob = ExtractTopLevelWorkflowJobBlock(ci, "ci");
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb");
         ciJob.ShouldContain("unit-test-projects: |");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Contracts.Tests");
         ciJob.ShouldNotContain("continue-on-error");
