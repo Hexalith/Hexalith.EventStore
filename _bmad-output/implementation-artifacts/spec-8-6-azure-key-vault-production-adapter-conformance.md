@@ -10,6 +10,7 @@ story_key: '8-6-azure-key-vault-production-adapter-conformance'
 approval_date: '2026-11-03'
 approved_exception_sha256: 'fcf861aa3ba5d723ca589a8ac8a2a31c54a972fe96a28ec71db69e560ecc2394'
 approved_correction_sha256: '360da00f91d3134054e4ec3f18c0b96921a36911a89d5935e7d59409634ca07e'
+approved_diagnostic_policy_sha256: 'a0a746aeab4de17c1b1b95cfa37fbf42a119e29af0c7354fe174d09512b389d9'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-8-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md'
@@ -17,6 +18,7 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/story-8-6-dapr-qualification.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-6-crypto-boundary-amendment.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-6-azure-core-pin-correction.md'
+  - '{project-root}/_bmad-output/implementation-artifacts/spec-8-6-identity-diagnostics-disposition.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -127,7 +129,7 @@ The pinned SDK also refreshes tokens in background and MSAL can retry token HTTP
 
 The retained test `AzureManagedIdentityRetryTests.V081_ManagedIdentityHasOnePhysicalRequestPerAcquisition` fails its strengthened SDK observer assertion. With all applicable public flags disabled (`IsLoggingEnabled`, `IsLoggingContentEnabled`, `IsDistributedTracingEnabled`, `IsTelemetryEnabled`, `IsAccountIdentifierLoggingEnabled`, `IsUnsafeSupportLoggingEnabled`), a fake selected user-assigned client ID is emitted by **Azure-Identity.LogMsalAlways twice** and **Azure-Identity.ManagedIdentityCredentialSelected once**. All three matches are the public client identifier; the identity-header canary is false for every match. This reproduction observed no access token, identity-header secret, vault URI or key URI leak. It used only a loopback identity fixture and made zero Azure calls.
 
-Exact pinned API/decompiled-source inspection finds `Azure.Identity.AzureIdentityEventSource.LogMsalAlways(string)` calls `WriteEvent(24, message)` directly. `ManagedIdentityCredentialSelected(string, string)` checks only EventSource informational enablement and calls `WriteEvent(26, credentialType, id)`. These event methods have no per-client diagnostic-option check. The inspected public credential diagnostic surface supplies no additional suppression beyond the flags already set. The observed raw identifier conflicts with the safe-fingerprints-only diagnostic boundary; it has not been exempted, user-assigned identity support has not been removed, and no reflection/global-event workaround or package substitution was made. The failing sentinel blocks local completion and the workflow's dependent authorized-service job. Owner disposition is outstanding.
+Exact pinned API/decompiled-source inspection finds `Azure.Identity.AzureIdentityEventSource.LogMsalAlways(string)` calls `WriteEvent(24, message)` directly. `ManagedIdentityCredentialSelected(string, string)` checks only EventSource informational enablement and calls `WriteEvent(26, credentialType, id)`. These event methods have no per-client diagnostic-option check. The inspected public credential diagnostic surface supplies no additional suppression beyond the flags already set. The observed raw identifier conflicts with the safe-fingerprints-only diagnostic boundary; it has not been exempted, user-assigned identity support has not been removed, and no reflection/global-event workaround or package substitution was made. At that pre-supplement checkpoint the failing sentinel blocked local completion and the workflow's dependent authorized-service job; the exact later owner disposition is recorded in the approved diagnostic-policy supplement below.
 
 For net10.0, Azure.Identity 1.21.0 is a facade forwarding identity types into Azure.Core 1.64.0; the inspected emitter implementations are therefore in Core's package/source identity `254a1b693af968afee40958e77d0762b44a1b13c`. Identity retains source identity `f7400e4471111bf7f2154834022786119acbdd77`; Keys retains `94d96d1ca05657c51326df85d11ec829a89b85fd`. Existing transitive MSAL is Microsoft.Identity.Client 4.92.0; no additional direct package reference or pin was added.
 
@@ -166,3 +168,13 @@ A precise [managed-identity diagnostic disposition candidate](spec-8-6-identity-
 
 
 Parent final commands: `dotnet build tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1` passed with zero warnings/errors. `dotnet tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests.dll` after the parent sentinel cleanup/first-chance observation again produced 138 total / 137 passed / one failed / zero skipped. The required failing SDK identifier case is preserved. Logs: `/tmp/story86-parent-build.log`, `/tmp/story86-parent-full-unit.log`. No production code behavior changed during this parent verification.
+
+## Approved diagnostic-policy supplement (2026-11-03)
+
+Before changing diagnostic expectations, the interactive user in this Codex task approved exact normative SHA-256 `a0a746aeab4de17c1b1b95cfa37fbf42a119e29af0c7354fe174d09512b389d9` with **“Approve the exact client-ID exception (Recommended)”**. The [exact question, answer, recording UTC and truthful delegation](story-8-6-identity-diagnostics-owner-approval.json) are retained; no response timestamp or independent reviewer is invented. The [approved policy](spec-8-6-identity-diagnostics-disposition.md) now joins the story context and accepted boundary register. Only the exact selected managed-identity client identifier in the named vendor events is excepted; complete prohibited-payload and other-channel checks, physical-request/typed-failure sentinel, pins and disabled flags remain. Live authority must bind this supplemental digest. Original frozen intent and approval bytes remain unchanged; no Azure mutation/live-run, Server, production, release or G5 authorization follows.
+
+### Offline implementation evidence for the approved supplement
+
+The exact Release/package-mode Azure adapter unit lane executes **162 tests, zero failures/skips**, including the original native managed-identity subprocess and its typed Unavailable and one-physical-request assertions. Safe retained observation categories are two LogMsalAlways24 and one ManagedIdentityCredentialSelected26 emissions; no raw capture is exported. Added controls cover source/name/event-ID/channel/selection mismatches, another identity, additional fields, raw/URI/base64/hex/JSON canaries across complete payloads, execution-scope isolation and unreadable-payload refusal.
+
+Unit/live observers compile the same classifier. Separately supplied live authority requires the exact policy digest; its five closed-schema checks run without a live fixture in ordinary CI. The workflow keeps every existing live case and raises the offline unit discovery floor to 162. Exact commands, source/file/approval hashes, Release build and focused schema/workflow/scanner results are retained in `/tmp/tenants-release-20261103-07JciR/eventstore-approved-identity-policy-handoff.json`. These are local offline checks at source `e97582bf43ffe8c2f7d958dd470a242c21bd4908` plus the preserved shared working delta, not a CI receipt or Azure custody/conformance claim. Vendor pins and disabled logging switches remain unchanged; Azure mutations/live execution, Server, production, release and G5 remain separately gated.

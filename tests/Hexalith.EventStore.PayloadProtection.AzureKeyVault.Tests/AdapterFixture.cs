@@ -19,6 +19,9 @@ internal static class AdapterFixture
     /// <summary>Creates runtime authentication material for isolated adapter fixtures.</summary>
     internal static string CreateToken() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 
+    /// <summary>Creates a credential with runtime authentication material for the owning test.</summary>
+    internal static AdapterTestCredential CreateCredential() => new(CreateToken());
+
     internal static AzureKeyVaultOwnedResponse Response(int status, byte[] body, Dictionary<string, string>? headers = null) => new(status, body, headers ?? []);
     internal static byte[] Crypto(string id, byte[] value) => JsonSerializer.SerializeToUtf8Bytes(new { kid = id, value = Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_') });
     internal static byte[] Metadata(string id = Current, string type = "RSA-HSM", int? size = 3072, bool? exportable = false, bool enabled = true, string? hsm = "PlatformTest", string[]? operations = null, string? privateField = null, long? expires = null, long? notBefore = null)

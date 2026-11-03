@@ -2,15 +2,19 @@
 title: 'Story 8.6 managed-identity diagnostic disposition candidate'
 type: 'security-architecture-amendment-candidate'
 created: '2026-11-03'
-status: 'awaiting-owner-decision'
-implementation_authorized: false
+status: 'approved-authorized'
+implementation_authorized: true
+approval_date: '2026-11-03'
+approval_source: 'interactive user in this Codex task'
+assurance: 'single-maintainer-attested'
+approval_record: 'story-8-6-identity-diagnostics-owner-approval.json'
 candidate_normative_sha256: 'a0a746aeab4de17c1b1b95cfa37fbf42a119e29af0c7354fe174d09512b389d9'
 story_key: '8-6-azure-key-vault-production-adapter-conformance'
 ---
 
 # Story 8.6 Managed-Identity Diagnostic Disposition Candidate
 
-The implemented adapter has one failing SDK diagnostic sentinel. This is a concrete policy proposal, not an approval or a passing conformance claim.
+The interactive user approved the exact normative digest below through the content-bound choice recorded in [the owner approval record](story-8-6-identity-diagnostics-owner-approval.json). Delegated Codex implementation is authorized only within that exception. This single-maintainer-attested decision claims no independent review or Azure conformance.
 
 <!-- HX-PP-IDENTITY-DIAGNOSTICS-BEGIN -->
 
@@ -48,4 +52,8 @@ The retained failing test is `AzureManagedIdentityRetryTests.V081_ManagedIdentit
 
 The selected net10.0 graph is Azure.Core 1.64.0, Azure.Identity 1.21.0, Keys 4.10.2 and existing transitive Microsoft.Identity.Client 4.92.0. Identity's net10.0 facade forwards the inspected identity implementations to Core; the emitter source identity is `254a1b693af968afee40958e77d0762b44a1b13c`, with the package hashes already bound by the approved exception/correction. Local inspection retained `LogMsalAlways` calling `WriteEvent(24, message)` directly and `ManagedIdentityCredentialSelected` checking informational EventSource enablement before `WriteEvent(26, credentialType, id)`. Neither emitter checks a per-client diagnostic flag. No additional supported suppression was found in the inspected public surface.
 
-Raw local observations, decompiled emitter snippets, 65-component dependency inventory and graphs remain under `/tmp/story86-dependencies/`; independent parent build/sentinel logs are `/tmp/story86-parent-build.log` and `/tmp/story86-parent-sentinel.log`. These are disposable local evidence, not CI or Azure receipts. Actual Azure conformance and final workflow review remain pending. No diagnostic allowance has been applied.
+Raw local observations, decompiled emitter snippets, 65-component dependency inventory and graphs remain under `/tmp/story86-dependencies/`; independent parent build/sentinel logs are `/tmp/story86-parent-build.log` and `/tmp/story86-parent-sentinel.log`. These are disposable local evidence, not CI or Azure receipts. Actual Azure conformance and final workflow review remain pending. No diagnostic allowance had been applied at that historical checkpoint; the exact later owner-approved supplement and its limitations are recorded below.
+
+## Approval record
+
+The interactive user in this Codex task answered **“Approve the exact client-ID exception (Recommended)”** to the exact digest-bound question retained in [the owner approval record](story-8-6-identity-diagnostics-owner-approval.json). Its `recordedAtUtc` is recording time only; the response supplied no human-response timestamp. Codex implements under that delegation and claims no independent reviewers. Original normative marker bytes, prior approval bytes and frozen story intent remain unchanged. Historical failed observations above are retained as evidence; the approved exception supplies no live Azure, production, Server, release or G5 authority.

@@ -1,16 +1,28 @@
 // Approved Azure exception fcf861aa3ba5d723ca589a8ac8a2a31c54a972fe96a28ec71db69e560ecc2394 sections 3-7; base V127-V132.
 using System.Collections.Concurrent;
+using Hexalith.EventStore.PayloadProtection.AzureKeyVault.Conformance;
 using System.Diagnostics.Tracing;
 using System.Diagnostics;
 
 namespace Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests;
 internal sealed class AzureDiagnosticObserver : EventListener, IObserver<DiagnosticListener>, IObserver<KeyValuePair<string, object?>>
 {
-    private readonly ConcurrentBag<string> _values = [];
+    private readonly ConcurrentBag<AzureDiagnosticRecord> _records = [];
     private readonly List<IDisposable> _subscriptions = [];
-    internal string[] Values => _values.ToArray();
+    internal string[] Values
+    {
+        get
+        {
+            AzureIdentityDiagnosticPolicy.RequireCaptureIntegrity(Records);
+            return _records.Select(record => record.Content).ToArray();
+        }
+    }
+    internal AzureDiagnosticRecord[] Records => _records.ToArray();
 
-    internal void Record(string value) => _values.Add(value);
+    internal string AssertSafe(IReadOnlyList<string> identities, IReadOnlyList<string> prohibited)
+        => AzureIdentityDiagnosticPolicy.AssertSafe(Records, identities, prohibited);
+
+    internal void Record(string value) => _records.Add(new("Other", "observer", "Record", null, [value], AzureIdentityDiagnosticScope.Current));
     protected override void OnEventSourceCreated(EventSource source)
     {
         if (source.Name.StartsWith("Azure-", StringComparison.Ordinal) || source.Name.StartsWith("Microsoft-Identity", StringComparison.Ordinal) || source.Name.StartsWith("Microsoft.Identity", StringComparison.Ordinal) || source.Name == "System.Net.Http")
@@ -21,9 +33,10 @@ internal sealed class AzureDiagnosticObserver : EventListener, IObserver<Diagnos
 
     protected override void OnEventWritten(EventWrittenEventArgs data)
     {
-        if (_values is not null)
+        if (_records is not null)
         {
-            _values.Add(data.EventSource.Name + ":" + data.EventName + ":" + (data.Payload is null ? "" : string.Join("|", data.Payload)));
+            _records.Add(new("EventSource", data.EventSource.Name, data.EventName ?? "", data.EventId,
+                data.Payload?.Select(AzureDiagnosticRecord.Capture).ToArray() ?? [], AzureIdentityDiagnosticScope.Current));
         }
     }
 
@@ -35,8 +48,8 @@ internal sealed class AzureDiagnosticObserver : EventListener, IObserver<Diagnos
         }
     }
 
-    public void OnNext(KeyValuePair<string, object?> value) => _values.Add(value.Key + ":" + value.Value);
-    public void OnError(Exception error) => _values.Add(error.ToString());
+    public void OnNext(KeyValuePair<string, object?> value) => _records.Add(new("DiagnosticListener", "observer", value.Key, null, [AzureDiagnosticRecord.Capture(value.Value)], AzureIdentityDiagnosticScope.Current));
+    public void OnError(Exception error) => _records.Add(new("Exception", "observer", "OnError", null, [error.ToString()], AzureIdentityDiagnosticScope.Current));
     public void OnCompleted()
     {
     }

@@ -35,6 +35,6 @@ internal static class AzureKeyVaultMetadataChallenge
             throw new AzureKeyVaultTransportException(PayloadBackendFailure.ConsistencyMismatch);
         }
 
-        return "Bearer authorization=\"" + uri.AbsoluteUri + "\", resource=\"" + resource + "\"";
+        return $"Bearer authorization=\"{uri.AbsoluteUri}\", resource=\"{resource}\"";
     }
 }

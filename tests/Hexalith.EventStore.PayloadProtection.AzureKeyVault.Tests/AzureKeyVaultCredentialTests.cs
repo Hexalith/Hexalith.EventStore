@@ -11,10 +11,8 @@ public sealed class AzureKeyVaultCredentialTests
     {
         string tokenValue = AdapterFixture.CreateToken();
         DateTimeOffset expiry = DateTimeOffset.UtcNow.AddMinutes(2);
-        var credential = new AdapterTestCredential(AdapterFixture.CreateToken())
-        {
-            Acquire = (_, _) => ValueTask.FromResult(new AccessToken(tokenValue, expiry))
-        };
+        var credential = AdapterFixture.CreateCredential();
+        credential.Acquire = (_, _) => ValueTask.FromResult(new AccessToken(tokenValue, expiry));
         TokenCredential bounded = AzureKeyVaultCredentialFactory.Bound(credential);
         AccessToken token = await bounded.GetTokenAsync(new TokenRequestContext(["https://vault.azure.net/.default"]), CancellationToken.None);
         token.ExpiresOn.ShouldBe(expiry);
@@ -29,10 +27,8 @@ public sealed class AzureKeyVaultCredentialTests
     {
         string tokenValue = AdapterFixture.CreateToken();
         DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(1);
-        var credential = new AdapterTestCredential(AdapterFixture.CreateToken())
-        {
-            Acquire = (_, _) => ValueTask.FromResult(new AccessToken(tokenValue, expiry))
-        };
+        var credential = AdapterFixture.CreateCredential();
+        credential.Acquire = (_, _) => ValueTask.FromResult(new AccessToken(tokenValue, expiry));
         var transport = new AdapterTestTransport(message =>
         {
             if (metadata && !message.Request.Headers.Contains("Authorization"))

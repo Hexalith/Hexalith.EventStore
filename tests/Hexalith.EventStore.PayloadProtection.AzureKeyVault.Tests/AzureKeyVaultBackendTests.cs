@@ -14,7 +14,7 @@ public sealed class AzureKeyVaultBackendTests
     public async Task V059_V060_EmitsExplicitRemoteVersionedPostAndBindsReturnedKid(bool wrap)
     {
         byte[] output = Enumerable.Repeat((byte)0x6d, wrap ? 384 : 32).ToArray();
-        var credential = new AdapterTestCredential(AdapterFixture.CreateToken());
+        var credential = AdapterFixture.CreateCredential();
         var cleared = new List<byte[]>();
         var transport = new AdapterTestTransport(async message =>
         {
@@ -44,7 +44,7 @@ public sealed class AzureKeyVaultBackendTests
     [Fact]
     public async Task V080_CryptoCaeChallengeIsDenialWithoutTokenRefreshOrReplay()
     {
-        var credential = new AdapterTestCredential(AdapterFixture.CreateToken());
+        var credential = AdapterFixture.CreateCredential();
         var transport = new AdapterTestTransport(message =>
         {
             message.Response = AdapterFixture.Response(401, [], new(StringComparer.OrdinalIgnoreCase) { ["WWW-Authenticate"] = "Bearer error=\"insufficient_claims\", claims=\"eyJhY2Nlc3NfdG9rZW4iOnt9fQ==\"" });
@@ -95,10 +95,8 @@ public sealed class AzureKeyVaultBackendTests
     public async Task V081_PreDispatchTokenFailureUsesExecutorThreeAttemptBudget()
     {
         var key = await AdapterFixture.KeyAsync();
-        var credential = new AdapterTestCredential(AdapterFixture.CreateToken())
-        {
-            Failure = new RequestFailedException(503, "private-error-canary")
-        };
+        var credential = AdapterFixture.CreateCredential();
+        credential.Failure = new RequestFailedException(503, "private-error-canary");
         var transport = new AdapterTestTransport(_ => throw new InvalidOperationException("No provider dispatch is permitted."));
         var backend = new AzureKeyVaultPayloadProtectionBackend(AdapterFixture.Options, new((_, _) => ValueTask.FromResult(key)), new(AdapterFixture.Options, credential, transport));
         var pauses = new List<TimeSpan>();

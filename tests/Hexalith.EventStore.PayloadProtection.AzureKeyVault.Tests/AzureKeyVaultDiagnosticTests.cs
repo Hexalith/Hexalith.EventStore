@@ -20,7 +20,7 @@ public sealed class AzureKeyVaultDiagnosticTests
     [InlineData(403)]
     public async Task V127_V132_OwnedTransportDoesNotEmitHttpSdkActivityMetricLogOrExceptionCanaries(int status)
     {
-        string bearerValue = AdapterFixture.CreateToken();
+        string bearerCanary = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
         using var capture = new AzureDiagnosticObserver();
         using var diagnostics = DiagnosticListener.AllListeners.Subscribe(capture);
         using var activities = new ActivityListener
@@ -84,7 +84,7 @@ public sealed class AzureKeyVaultDiagnosticTests
                 message.Request.Method = RequestMethod.Post;
                 message.Request.Uri.Reset(new Uri("http://127.0.0.1:" + port + "/keys/key-name-canary/version-canary/wrapkey"));
                 message.Request.Content = new AzureKeyVaultOwnedRequestContent(Encoding.UTF8.GetBytes(ProtectedDataLeakSentinel.ProtectedPayloadPlaintext));
-                message.Request.Headers.SetValue("Authorization", "Bearer " + bearerValue);
+                message.Request.Headers.SetValue("Authorization", "Bearer " + bearerCanary);
                 if (status == 200)
                 {
                     using var acquisition = new AzureKeyVaultTokenAcquisition(CancellationToken.None);
@@ -109,14 +109,15 @@ public sealed class AzureKeyVaultDiagnosticTests
             AppDomain.CurrentDomain.FirstChanceException -= exceptionObserver;
         }
 
+        _ = capture.AssertSafe([], [..ProtectedDataLeakSentinel.All(), "key-name-canary", "version-canary", "request-id-canary", AdapterFixture.Current, AdapterFixture.Options.VaultUri.Host]);
         ProtectedDataLeakSentinel.AssertNoLeak(capture.Values);
         foreach (string value in capture.Values)
         {
-            value.ShouldNotContain("key-name-canary");
-            value.ShouldNotContain("version-canary");
-            value.ShouldNotContain(bearerValue);
-            value.ShouldNotContain(AdapterFixture.Current);
-            value.ShouldNotContain(AdapterFixture.Options.VaultUri.Host);
+            value.Contains("key-name-canary", StringComparison.Ordinal).ShouldBeFalse("key-name category");
+            value.Contains("version-canary", StringComparison.Ordinal).ShouldBeFalse("version category");
+            value.Contains(bearerCanary, StringComparison.Ordinal).ShouldBeFalse("access-token category");
+            value.Contains(AdapterFixture.Current, StringComparison.Ordinal).ShouldBeFalse("provider-key URI category");
+            value.Contains(AdapterFixture.Options.VaultUri.Host, StringComparison.Ordinal).ShouldBeFalse("vault-host category");
         }
     }
 
@@ -143,8 +144,9 @@ public sealed class AzureKeyVaultDiagnosticTests
             AppDomain.CurrentDomain.FirstChanceException -= observer;
         }
 
+        _ = capture.AssertSafe([], [..ProtectedDataLeakSentinel.All(), "key-name-canary", "version-canary", "request-id-canary", AdapterFixture.Current, AdapterFixture.Options.VaultUri.Host]);
         ProtectedDataLeakSentinel.AssertNoLeak(capture.Values);
-        capture.Values.ShouldAllBe(value => !value.Contains("request-id-canary", StringComparison.Ordinal));
+        capture.Values.Any(value => value.Contains("request-id-canary", StringComparison.Ordinal)).ShouldBeFalse("provider request-ID category");
     }
 
     private static async Task SendScopedAsync(HttpPipeline pipeline, HttpMessage message)
@@ -152,4 +154,26 @@ public sealed class AzureKeyVaultDiagnosticTests
         using var acquisition = new AzureKeyVaultTokenAcquisition(CancellationToken.None);
         await pipeline.SendAsync(message, CancellationToken.None);
     }
+
+    /// <summary>Both transport consumers use this same actual observer gate before their no-leak assertions.</summary>
+    [Theory]
+    [InlineData("opaque")]
+    [InlineData("throwing-getter")]
+    [InlineData("unsupported")]
+    public void ActualConsumerRefusesOpaqueOrUnreadableProtectedPayload(string kind)
+    {
+        string canary = ProtectedDataLeakSentinel.ProtectedPayloadPlaintext;
+        object payload = kind switch
+        {
+            "opaque" => new OpaqueDiagnosticPayload(canary),
+            "throwing-getter" => new ThrowingDiagnosticPayload(canary),
+            _ => new { Text = canary, Unsupported = (Action)(() => { }) },
+        };
+        using var capture = new AzureDiagnosticObserver();
+        capture.OnNext(new KeyValuePair<string, object?>("Payload", payload));
+        var error = Should.Throw<InvalidOperationException>(() => capture.AssertSafe([], ProtectedDataLeakSentinel.All()));
+        error.Message.Contains(canary, StringComparison.Ordinal).ShouldBeFalse();
+        Should.Throw<InvalidOperationException>(() => ProtectedDataLeakSentinel.AssertNoLeak(capture.Values));
+    }
+
 }

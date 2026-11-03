@@ -16,9 +16,23 @@ public sealed class AzureKeyVaultOptionsTests
     [InlineData("https://vault-name.managedhsm.azure.net")]
     [InlineData("https://vault-name.vault.azure.net:8443")]
     [InlineData("https://vault-name.vault.azure.net/path")]
+    [MemberData(nameof(CredentialOriginCases))]
     [InlineData("https://vault-name.vault.azure.net/#fragment")]
     [InlineData("https://vault-name.vault.azure.net.evil.invalid")]
     public void V104_RejectsUnsafeOrigins(string uri) => Should.Throw<InvalidOperationException>(() => AzureKeyVaultOptionsValidator.Validate(new() { VaultUri = new(uri), KeyName = "key" }));
+    /// <summary>Retains credential-bearing origin rejection with run-owned canaries.</summary>
+    public static IEnumerable<object[]> CredentialOriginCases()
+    {
+        yield return [new UriBuilder("https://vault-name.vault.azure.net")
+        {
+            Query = string.Join("=", "token", Guid.NewGuid().ToString("N")),
+        }.Uri.AbsoluteUri];
+        yield return [new UriBuilder("https://vault-name.vault.azure.net")
+        {
+            UserName = Guid.NewGuid().ToString("N"),
+        }.Uri.AbsoluteUri];
+    }
+
     [Theory]
     [InlineData("query")]
     [InlineData("userinfo")]

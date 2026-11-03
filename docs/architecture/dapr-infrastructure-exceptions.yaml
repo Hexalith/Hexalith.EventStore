@@ -107,6 +107,13 @@ accepted_exceptions:
       and additive local implementation. Azure mutations and live conformance remain unauthorized.
     normative_sha256: fcf861aa3ba5d723ca589a8ac8a2a31c54a972fe96a28ec71db69e560ecc2394
     correction_sha256: 360da00f91d3134054e4ec3f18c0b96921a36911a89d5935e7d59409634ca07e
+    diagnostic_policy_sha256: a0a746aeab4de17c1b1b95cfa37fbf42a119e29af0c7354fe174d09512b389d9
+    diagnostic_policy: _bmad-output/implementation-artifacts/spec-8-6-identity-diagnostics-disposition.md
+    diagnostic_policy_approval: _bmad-output/implementation-artifacts/story-8-6-identity-diagnostics-owner-approval.json
+    diagnostic_policy_decision: >-
+      The interactive user in this Codex task approved the exact client-ID-only
+      vendor-event exception on 2026-11-03; delegated Codex implementation,
+      single-maintainer-attested, with no independent security-review claim.
     operations:
       - current-or-exact-version-key-metadata
       - remote-exact-version-rsa-oaep-256-wrap-and-unwrap
@@ -133,9 +140,9 @@ accepted_exceptions:
       Production custody, provider-generated non-exportability, private connectivity,
       RBAC, retained-history/fault/rotation/rollback conformance and CI remain unproven.
       Unknowable wrap completion stays Ambiguous indefinitely; no absence is inferred.
-      Pinned identity SDK events still expose the selected client ID and fail the
-      safe-fingerprints-only diagnostic gate; the proposed diagnostic disposition
-      remains unapproved and supplies no conformance claim.
+      The approved diagnostic supplement permits only the selected client ID in
+      Azure-Identity LogMsalAlways24 and ManagedIdentityCredentialSelected26. All
+      other protected values/channels remain prohibited; no live conformance is inferred.
     evidence: _bmad-output/implementation-artifacts/story-8-6-dapr-qualification.md
     design: _bmad-output/implementation-artifacts/spec-8-6-crypto-boundary-amendment.md
     correction: _bmad-output/implementation-artifacts/spec-8-6-azure-core-pin-correction.md

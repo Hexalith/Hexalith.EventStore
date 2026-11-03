@@ -69,7 +69,8 @@ public class JwtAuthenticationIntegrationTests
         // Realm is asserted by substring (`hexalith-eventstore`) so a future ops change to
         // namespace the realm (e.g., `hexalith-eventstore-prod`) does not break the test.
         string wwwAuth = response.Headers.WwwAuthenticate.ToString();
-        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        response.Headers.WwwAuthenticate.First().Scheme.ShouldBe("Bearer");
+        response.Headers.WwwAuthenticate.First().Parameter.ShouldStartWith("realm=\"");
         wwwAuth.ShouldContain("hexalith-eventstore");
     }
 
@@ -104,7 +105,8 @@ public class JwtAuthenticationIntegrationTests
 
         // UX-DR4: invalid-token WWW-Authenticate carries error="invalid_token".
         string wwwAuth = response.Headers.WwwAuthenticate.ToString();
-        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        response.Headers.WwwAuthenticate.First().Scheme.ShouldBe("Bearer");
+        response.Headers.WwwAuthenticate.First().Parameter.ShouldStartWith("realm=\"");
         wwwAuth.ShouldContain("hexalith-eventstore");
         wwwAuth.ShouldContain("error=\"invalid_token\"");
     }
@@ -140,7 +142,8 @@ public class JwtAuthenticationIntegrationTests
 
         // UX-DR4: expired-token WWW-Authenticate carries error="invalid_token" + error_description="The token has expired".
         string wwwAuth = response.Headers.WwwAuthenticate.ToString();
-        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        response.Headers.WwwAuthenticate.First().Scheme.ShouldBe("Bearer");
+        response.Headers.WwwAuthenticate.First().Parameter.ShouldStartWith("realm=\"");
         wwwAuth.ShouldContain("hexalith-eventstore");
         wwwAuth.ShouldContain("error=\"invalid_token\"");
         wwwAuth.ShouldContain("error_description=\"The token has expired\"");
@@ -180,7 +183,8 @@ public class JwtAuthenticationIntegrationTests
 
         // UX-DR4: invalid-token WWW-Authenticate carries error="invalid_token".
         string wwwAuth = response.Headers.WwwAuthenticate.ToString();
-        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        response.Headers.WwwAuthenticate.First().Scheme.ShouldBe("Bearer");
+        response.Headers.WwwAuthenticate.First().Parameter.ShouldStartWith("realm=\"");
         wwwAuth.ShouldContain("hexalith-eventstore");
         wwwAuth.ShouldContain("error=\"invalid_token\"");
     }

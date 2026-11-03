@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/AdapterLogProvider.cs" Link="Conformance/AdapterLogProvider.cs" />
+    <Compile Include="../Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/AzureDiagnosticRecord.cs" Link="Conformance/AzureDiagnosticRecord.cs" />
+    <Compile Include="../Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/AzureIdentityDiagnosticScope.cs" Link="Conformance/AzureIdentityDiagnosticScope.cs" />
+    <Compile Include="../Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/AzureIdentityDiagnosticPolicy.cs" Link="Conformance/AzureIdentityDiagnosticPolicy.cs" />
+    <Compile Include="../../src/Hexalith.EventStore.Testing/Security/ProtectedDataLeakSentinel.cs" Link="Conformance/ProtectedDataLeakSentinel.cs" />
     <ProjectReference Include="../../src/Hexalith.EventStore.PayloadProtection.AzureKeyVault/Hexalith.EventStore.PayloadProtection.AzureKeyVault.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" /><PackageReference Include="Shouldly" />

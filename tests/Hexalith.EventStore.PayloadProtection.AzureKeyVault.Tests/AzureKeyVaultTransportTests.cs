@@ -67,7 +67,7 @@ public sealed class AzureKeyVaultTransportTests
     [InlineData("https://login.microsoftonline.com/00000000-0000-0000-0000-000000000001", "https://foreign-resource.invalid")]
     public void V127_MetadataChallengeCannotRetargetAuthenticationOrRenderProviderValues(string authority, string resource)
     {
-        string challenge = "Bearer authorization=\"" + authority + "\", resource=\"" + resource + "\"";
+        string challenge = $"Bearer authorization=\"{authority}\", resource=\"{resource}\"";
         Should.Throw<AzureKeyVaultTransportException>(() => AzureKeyVaultMetadataChallenge.Validate(challenge, AdapterFixture.Options)).Message.ShouldBe("The key transport failed.");
     }
 }
