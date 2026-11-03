@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj" />
+    <ProjectReference Include="../../src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj" />
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="../../tools/Hexalith.EventStore.CatalogConstruction/Hexalith.EventStore.CatalogConstruction.csproj" />
     <ProjectReference Include="$(HexalithTenantsBasePath)/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" Condition="'$(HexalithTenantsFromSource)' == 'true'" />
