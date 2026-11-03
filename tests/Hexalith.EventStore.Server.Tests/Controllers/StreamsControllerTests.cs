@@ -39,6 +39,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -115,13 +116,14 @@ public class StreamsControllerTests {
     [InlineData("global-administrators")]
     [InlineData("tenant-header")]
     [InlineData("reserved-grant")]
+    [InlineData("multi-valued-scope")]
     [InlineData("anonymous")]
     public async Task HumanPlatformReadRefusesAnyOtherScopePermissionOrGrantBeforeActorAccess(string change)
     {
         (StreamsController controller, IActorProxyFactory proxies, _, _) = CreateController(Substitute.For<IAggregateActor>());
         List<Claim> claims = [new("sub", "tenant-access-worker"), new("eventstore:permission", "tenants:read")];
         var request = new StreamReadRequest("platform:tenants", "tenants", "tenant-alpha", 0);
-        string scope = "platform:tenants";
+        StringValues scope = "platform:tenants";
         switch (change)
         {
             case "missing-permission":
@@ -153,6 +155,9 @@ public class StreamsControllerTests {
                 break;
             case "reserved-grant":
                 claims.Add(new("eventstore:tenant", "system"));
+                break;
+            case "multi-valued-scope":
+                scope = new StringValues(["platform:tenants", "platform:global-administrators"]);
                 break;
         }
 
