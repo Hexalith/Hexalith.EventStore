@@ -12,6 +12,7 @@ using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Problems;
+using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -110,6 +111,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         CancellationToken ct = default) {
         if (tenantId is not null && !TenantCanonicalizer.TryCanonicalize(tenantId, out tenantId))
             throw new ArgumentException("Tenant scope is invalid or reserved.", nameof(tenantId));
+        string? platformScope = ResolvePlatformReadScope(tenantId);
         string endpoint = "api/v1/admin/streams/commands";
         var queryParams = new List<string> { $"count={count}" };
         if (!string.IsNullOrWhiteSpace(tenantId)) {
@@ -128,7 +130,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         try {
             PagedResult<CommandSummary>? result = await InvokeEventStoreAsync<PagedResult<CommandSummary>>(
-                HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
+                HttpMethod.Get, endpoint, ct, platformScope: platformScope).ConfigureAwait(false);
             return result ?? new PagedResult<CommandSummary>([], 0, null);
         }
         catch (OperationCanceledException) {
@@ -148,6 +150,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         CancellationToken ct = default) {
         if (tenantId is not null && !TenantCanonicalizer.TryCanonicalize(tenantId, out tenantId))
             throw new ArgumentException("Tenant scope is invalid or reserved.", nameof(tenantId));
+        _ = ResolvePlatformReadScope(tenantId);
         const string indexKey = "admin:stream-activity:all";
         try {
             List<StreamSummary>? result = await _daprClient
@@ -551,11 +554,25 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         };
     }
 
+    private string? ResolvePlatformReadScope(string? tenantId) {
+        string? scope = _authContext.GetValidatedPlatformScope();
+        if (tenantId is not null && scope is null) {
+            return null;
+        }
+
+        if (tenantId is null && string.Equals(scope, AdminPlatformScopeCatalog.Namespace, StringComparison.Ordinal)) {
+            return scope;
+        }
+
+        throw new UnauthorizedAccessException("An explicit tenant or validated Admin platform read scope is required.");
+    }
+
     private async Task<TResponse?> InvokeEventStoreAsync<TResponse>(
         HttpMethod method,
         string endpoint,
         CancellationToken ct,
-        int? timeoutSeconds = null) {
+        int? timeoutSeconds = null,
+        string? platformScope = null) {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
 
@@ -566,6 +583,10 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         string? token = _authContext.GetToken();
         if (token is not null) {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        if (platformScope is not null) {
+            _ = request.Headers.TryAddWithoutValidation("X-Hexalith-Scope", platformScope);
         }
 
         HttpClient httpClient = _httpClientFactory.CreateClient();

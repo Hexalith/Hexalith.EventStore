@@ -1,6 +1,7 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.AspNetCore.Http;
 
@@ -176,6 +177,24 @@ public class HttpContextAdminAuthContextTests {
     }
 
     // === Helpers ===
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetValidatedPlatformScope_RequiresFilterAdmission(bool validated) {
+        DefaultHttpContext httpContext = new();
+        httpContext.Request.Headers["X-Hexalith-Scope"] = AdminPlatformScopeCatalog.Namespace;
+        if (validated) {
+            httpContext.Items[AdminPlatformScopeCatalog.ValidatedContextKey] = AdminPlatformScopeCatalog.Namespace;
+        }
+
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        var sut = new HttpContextAdminAuthContext(accessor);
+
+        sut.GetValidatedPlatformScope().ShouldBe(validated ? AdminPlatformScopeCatalog.Namespace : null);
+    }
 
     private static IHttpContextAccessor CreateAccessorWithAuthHeader(string? authorizationValue) {
         DefaultHttpContext httpContext = new();

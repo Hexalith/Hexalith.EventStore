@@ -295,6 +295,28 @@ public class AdminTenantAuthorizationFilterTests {
         else context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
     }
 
+    [Fact]
+    public async Task CatalogedGlobalListRejectsTenantActionArgumentBeforeAction() {
+        ActionExecutingContext context = CreateContext(null, [], includeTenantArgument: true, actionTenantId: "tenant-a");
+        context.ActionDescriptor = new ControllerActionDescriptor {
+            ControllerTypeInfo = typeof(AdminStreamsController).GetTypeInfo(),
+            MethodInfo = typeof(AdminStreamsController).GetMethod(nameof(AdminStreamsController.GetRecentCommandsAsync))!,
+            Parameters = [new ControllerParameterDescriptor { Name = "tenantId" }],
+        };
+        context.HttpContext.Request.Headers["X-Hexalith-Scope"] = AdminPlatformScopeCatalog.Namespace;
+        context.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)], "TestAuth"));
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
+    }
+
     private static ActionExecutingContext CreateContext(
         string? routeTenantId,
         string[] tenantClaims,

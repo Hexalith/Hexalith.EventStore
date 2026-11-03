@@ -18,19 +18,21 @@ public class AdminTenantAuthorizationFilter(ILogger<AdminTenantAuthorizationFilt
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
 
-        if (!HasTenantArgument(context)) {
+        var action = context.ActionDescriptor as ControllerActionDescriptor;
+        PlatformAdmissionDeclaration? admission = action is null ? null
+            : AdminPlatformScopeCatalog.ForAction(action.ControllerTypeInfo.FullName!, action.MethodInfo.Name);
+        bool hasTenantArgument = HasTenantArgument(context);
+        if (!hasTenantArgument && admission is null) {
             _ = await next().ConfigureAwait(false);
             return;
         }
 
         if (context.HttpContext.Request.Headers.TryGetValue("X-Hexalith-Scope", out var scopeHeader)) {
-            var action = context.ActionDescriptor as ControllerActionDescriptor;
-            PlatformAdmissionDeclaration? admission = action is null ? null
-                : AdminPlatformScopeCatalog.ForAction(action.ControllerTypeInfo.FullName!, action.MethodInfo.Name);
             if (admission is null || scopeHeader.Count != 1
                 || !string.Equals(scopeHeader[0], admission.Namespace, StringComparison.Ordinal)
                 || context.RouteData.Values.ContainsKey("tenantId")
                 || context.HttpContext.Request.Query.ContainsKey("tenantId")
+                || context.ActionArguments.TryGetValue("tenantId", out object? tenantArgument) && tenantArgument is not null
                 || context.HttpContext.Request.Headers.ContainsKey("X-Hexalith-Tenant")
                 || context.HttpContext.User.Identity?.IsAuthenticated != true
                 || context.HttpContext.User.FindAll("eventstore:permission").Count(claim =>
@@ -46,7 +48,8 @@ public class AdminTenantAuthorizationFilter(ILogger<AdminTenantAuthorizationFilt
         }
 
         List<string> tenantClaims = GetAuthorizedTenantClaims(context);
-        if (context.HttpContext.Request.Headers.ContainsKey("X-Hexalith-Tenant")
+        if (!hasTenantArgument
+            || context.HttpContext.Request.Headers.ContainsKey("X-Hexalith-Tenant")
             || !TryResolveRequestedTenantId(context, out string tenantId)
             || !TenantCanonicalizer.TryCanonicalizeGrants(tenantClaims, out IReadOnlySet<string> canonicalGrants)
             || !canonicalGrants.Contains(tenantId)) {

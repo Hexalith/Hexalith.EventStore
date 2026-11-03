@@ -1,11 +1,15 @@
+using System.Reflection;
 using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Routing;
+using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,6 +30,49 @@ public class AdminTenantAuthorizationFilterTests {
 
         called.ShouldBeTrue();
         context.Result.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task OnActionExecutionAsync_MixedCaseTenant_ForwardsCanonicalTenant(bool useRoute) {
+        AdminTenantAuthorizationFilter filter = CreateFilter();
+        ActionExecutingContext context = CreateContext(
+            CreatePrincipal(new Claim(AdminTenantAuthorizationFilter.TenantClaimType, "TENANT-A")),
+            routeTenantId: useRoute ? "Tenant-A" : null,
+            queryTenantId: useRoute ? null : "Tenant-A");
+
+        bool called = await InvokeAsync(filter, context);
+
+        called.ShouldBeTrue();
+        context.ActionArguments["tenantId"].ShouldBe("tenant-a");
+        context.Result.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(true, "X-Hexalith-Tenant", "tenant-a")]
+    [InlineData(true, "X-Hexalith-Tenant", "tenant-b")]
+    [InlineData(true, "X-Hexalith-Scope", "platform:tenants")]
+    [InlineData(true, "X-Hexalith-Scope", "")]
+    [InlineData(false, "X-Hexalith-Tenant", "tenant-a")]
+    [InlineData(false, "X-Hexalith-Tenant", "tenant-b")]
+    [InlineData(false, "X-Hexalith-Scope", "platform:tenants")]
+    [InlineData(false, "X-Hexalith-Scope", "")]
+    public async Task OnActionExecutionAsync_AdditionalScopeHeader_ReturnsForbiddenBeforeAction(
+        bool useRoute, string headerName, string headerValue) {
+        AdminTenantAuthorizationFilter filter = CreateFilter();
+        ActionExecutingContext context = CreateContext(
+            CreatePrincipal(new Claim(AdminTenantAuthorizationFilter.TenantClaimType, "tenant-a")),
+            routeTenantId: useRoute ? "tenant-a" : null,
+            queryTenantId: useRoute ? null : "tenant-a");
+        context.HttpContext.Request.Headers[headerName] = headerValue;
+
+        bool called = await InvokeAsync(filter, context);
+
+        called.ShouldBeFalse();
+        ObjectResult result = context.Result.ShouldBeOfType<ObjectResult>();
+        result.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        result.Value.ShouldBeOfType<ProblemDetails>().Extensions["correlationId"].ShouldBe("corr-1");
     }
 
     [Fact]
@@ -110,6 +157,118 @@ public class AdminTenantAuthorizationFilterTests {
 
         called.ShouldBeTrue();
         context.Result.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("admin:read", true)]
+    [InlineData("other:read", false)]
+    [InlineData(null, false)]
+    public async Task OnActionExecutionAsync_CatalogedCommandList_RequiresReadPermission(string? permission, bool allowed) {
+        ActionExecutingContext context = CreatePlatformContext(permission is null ? [] : [new Claim("eventstore:permission", permission)]);
+
+        bool called = await InvokeAsync(CreateFilter(), context);
+
+        called.ShouldBe(allowed);
+        if (allowed) {
+            context.HttpContext.Items[AdminPlatformScopeCatalog.ValidatedContextKey].ShouldBe(AdminPlatformScopeCatalog.Namespace);
+            context.ActionArguments["tenantId"].ShouldBeNull();
+        }
+        else {
+            context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        }
+    }
+
+    [Theory]
+    [InlineData("route")]
+    [InlineData("query")]
+    [InlineData("header")]
+    [InlineData("argument")]
+    public async Task OnActionExecutionAsync_PlatformWithTenant_ReturnsForbiddenBeforeAction(string source) {
+        ActionExecutingContext context = CreatePlatformContext(new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission));
+        switch (source) {
+            case "route": context.RouteData.Values["tenantId"] = "tenant-a"; break;
+            case "query": context.HttpContext.Request.QueryString = QueryString.Create("tenantId", "tenant-a"); break;
+            case "header": context.HttpContext.Request.Headers["X-Hexalith-Tenant"] = "tenant-a"; break;
+            case "argument": context.ActionArguments["tenantId"] = "tenant-a"; break;
+        }
+
+        bool called = await InvokeAsync(CreateFilter(), context);
+
+        called.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        context.HttpContext.Items.ContainsKey(AdminPlatformScopeCatalog.ValidatedContextKey).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("platform:tenants")]
+    [InlineData("platform:Eventstore-admin")]
+    [InlineData("")]
+    public async Task OnActionExecutionAsync_WrongPlatformScope_ReturnsForbidden(string scope) {
+        ActionExecutingContext context = CreatePlatformContext(new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission));
+        context.HttpContext.Request.Headers["X-Hexalith-Scope"] = scope;
+
+        bool called = await InvokeAsync(CreateFilter(), context);
+
+        called.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+    }
+
+    [Theory]
+    [InlineData("scope")]
+    [InlineData("permission")]
+    [InlineData("grant")]
+    public async Task OnActionExecutionAsync_DuplicatePlatformCredentialOrScope_ReturnsForbidden(string duplicate) {
+        Claim[] claims = duplicate switch {
+            "permission" => [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission), new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)],
+            "grant" => [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission), new Claim("eventstore:tenant", "Acme"), new Claim("eventstore:tenant", "acme")],
+            _ => [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)],
+        };
+        ActionExecutingContext context = CreatePlatformContext(claims);
+        if (duplicate == "scope") {
+            context.HttpContext.Request.Headers["X-Hexalith-Scope"] = new Microsoft.Extensions.Primitives.StringValues(
+                [AdminPlatformScopeCatalog.Namespace, AdminPlatformScopeCatalog.Namespace]);
+        }
+
+        bool called = await InvokeAsync(CreateFilter(), context);
+
+        called.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+    }
+
+    [Fact]
+    public async Task OnActionExecutionAsync_PlatformScopeOnUncatalogedAction_ReturnsForbidden() {
+        ActionExecutingContext context = CreatePlatformContext(new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission));
+        context.ActionDescriptor = new ControllerActionDescriptor {
+            ControllerTypeInfo = typeof(AdminTraceQueryController).GetTypeInfo(),
+            MethodInfo = typeof(AdminTraceQueryController).GetMethod(nameof(AdminTraceQueryController.GetCorrelationTraceMap))!,
+        };
+
+        bool called = await InvokeAsync(CreateFilter(), context);
+
+        called.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+    }
+
+    [Fact]
+    public async Task OnActionExecutionAsync_UnauthenticatedPlatformRequest_ReturnsForbidden() {
+        ActionExecutingContext context = CreatePlatformContext();
+        context.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)]));
+
+        bool called = await InvokeAsync(CreateFilter(), context);
+
+        called.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+    }
+
+    private static ActionExecutingContext CreatePlatformContext(params Claim[] claims) {
+        ActionExecutingContext context = CreateContext(CreatePrincipal(claims), includeTenantArgument: true);
+        context.ActionDescriptor = new ControllerActionDescriptor {
+            ControllerTypeInfo = typeof(AdminCommandsQueryController).GetTypeInfo(),
+            MethodInfo = typeof(AdminCommandsQueryController).GetMethod(nameof(AdminCommandsQueryController.GetRecentCommands))!,
+        };
+        context.HttpContext.Request.Headers["X-Hexalith-Scope"] = AdminPlatformScopeCatalog.Namespace;
+        return context;
     }
 
     private static AdminTenantAuthorizationFilter CreateFilter()
