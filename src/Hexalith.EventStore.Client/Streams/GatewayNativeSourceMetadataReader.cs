@@ -9,15 +9,21 @@ namespace Hexalith.EventStore.Client.Streams;
 /// remain separate requirements; cold actor activation can still run existing recovery.</remarks>
 /// <param name="gateway">The existing EventStore gateway client.</param>
 /// <param name="clock">The observation clock and monotonic interactive deadline source.</param>
-public sealed class GatewayNativeSourceMetadataReader(IEventStoreGatewayClient gateway, TimeProvider clock)
+/// <param name="readTimeout">A positive whole-observation deadline of at most thirty seconds.</param>
+public sealed class GatewayNativeSourceMetadataReader(IEventStoreGatewayClient gateway, TimeProvider clock, TimeSpan readTimeout)
     : INativeSourceMetadataReader
 {
+    /// <summary>Preserves the original two-second observation deadline for existing consumers.</summary>
+    public GatewayNativeSourceMetadataReader(IEventStoreGatewayClient gateway, TimeProvider clock)
+        : this(gateway, clock, TimeSpan.FromSeconds(2)) { }
+
     /// <inheritdoc/>
     public async Task<NativeSourceObservation?> ReadAsync(AggregateIdentity identity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
         cancellationToken.ThrowIfCancellationRequested();
-        using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(2), clock,
+        if (readTimeout <= TimeSpan.Zero || readTimeout > TimeSpan.FromSeconds(30)) return null;
+        using var deadline = new AuthoritativeStreamReadDeadline(readTimeout, clock,
             cancellationToken, clock.GetTimestamp());
         try
         {

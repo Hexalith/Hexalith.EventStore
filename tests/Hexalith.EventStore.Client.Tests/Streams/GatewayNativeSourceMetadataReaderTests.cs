@@ -130,6 +130,43 @@ public sealed class GatewayNativeSourceMetadataReaderTests
         gateway.ReceivedCalls().Count().ShouldBe(1);
     }
 
+    [Fact]
+    public async Task ExplicitDeadlineAllowsAValidNativeObservationAfterTheLegacyTwoSecondLimit()
+    {
+        var clock = new AuthoritativeReadTimeProvider();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var provider = new TaskCompletionSource<StreamReadPage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            entered.TrySetResult();
+            return provider.Task;
+        });
+
+        Task<NativeSourceObservation?> pending = new GatewayNativeSourceMetadataReader(gateway, clock, TimeSpan.FromSeconds(8))
+            .ReadAsync(Identity, TestContext.Current.CancellationToken);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            clock.Advance(TimeSpan.FromSeconds(3));
+            provider.SetResult(Page(5));
+            (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken))
+                .ShouldNotBeNull().Proof.ShouldBe(Page(5).Metadata.NativeProof);
+        }
+        finally { provider.TrySetResult(Page(5)); }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(31)]
+    public async Task InvalidExplicitDeadlineCannotReleaseNativeEvidence(int seconds)
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        (await new GatewayNativeSourceMetadataReader(gateway, TimeProvider.System, TimeSpan.FromSeconds(seconds))
+            .ReadAsync(Identity, TestContext.Current.CancellationToken)).ShouldBeNull();
+        gateway.ReceivedCalls().ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData("null-page")]
     [InlineData("null-events")]
