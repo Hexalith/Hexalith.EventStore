@@ -51,6 +51,81 @@ public class CommandValidationControllerTests {
         new(tenant, domain, commandType, aggregateId);
 
     [Fact]
+    public async Task Validate_CaseVariants_ForwardCanonicalTenantToBothValidators()
+    {
+        (CommandValidationController controller, ITenantValidator tenantValidator, IRbacValidator rbacValidator, _) = CreateController();
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new("sub", "test-user"), new("eventstore:tenant", "ACME")], "Bearer"));
+
+        IActionResult result = await controller.Validate(CreateRequest(tenant: "Acme", aggregateId: "order-123"), CancellationToken.None);
+
+        result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<PreflightValidationResult>().IsAuthorized.ShouldBeTrue();
+        _ = await tenantValidator.Received(1).ValidateAsync(controller.User, "acme", Arg.Any<CancellationToken>(), "order-123");
+        _ = await rbacValidator.Received(1).ValidateAsync(controller.User, "acme", "orders", "CreateOrder", "command", Arg.Any<CancellationToken>(), "order-123");
+        controller.HttpContext.Items["RequestTenantId"].ShouldBe("acme");
+    }
+
+    [Theory]
+    [InlineData(null, "tenant_missing")]
+    [InlineData("", "tenant_missing")]
+    [InlineData(" Acme", "tenant_mismatch")]
+    [InlineData("acme ", "tenant_mismatch")]
+    [InlineData("acme:other", "tenant_mismatch")]
+    [InlineData("system", "tenant_mismatch")]
+    [InlineData("SyStEm", "tenant_mismatch")]
+    [InlineData("platform:tenants", "tenant_mismatch")]
+    public async Task Validate_InvalidTenant_RejectsBeforeEitherValidator(string? tenant, string reasonCode)
+    {
+        (CommandValidationController controller, ITenantValidator tenantValidator, IRbacValidator rbacValidator, _) = CreateController();
+
+        IActionResult result = await controller.Validate(CreateRequest(tenant: tenant!), CancellationToken.None);
+
+        PreflightValidationResult validation = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<PreflightValidationResult>();
+        validation.IsAuthorized.ShouldBeFalse();
+        validation.ReasonCode.ShouldBe(reasonCode);
+        tenantValidator.ReceivedCalls().ShouldBeEmpty();
+        rbacValidator.ReceivedCalls().ShouldBeEmpty();
+        controller.HttpContext.Items.ContainsKey("RequestTenantId").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("X-Hexalith-Tenant", "acme")]
+    [InlineData("X-Hexalith-Tenant", "other")]
+    [InlineData("X-Hexalith-Scope", "platform:tenants")]
+    public async Task Validate_DuplicateOrMixedScope_RejectsBeforeEitherValidator(string header, string value)
+    {
+        (CommandValidationController controller, ITenantValidator tenantValidator, IRbacValidator rbacValidator, _) = CreateController();
+        controller.Request.Headers[header] = value;
+
+        IActionResult result = await controller.Validate(CreateRequest(), CancellationToken.None);
+
+        PreflightValidationResult validation = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<PreflightValidationResult>();
+        validation.IsAuthorized.ShouldBeFalse();
+        validation.ReasonCode.ShouldBe("tenant_ambiguous");
+        tenantValidator.ReceivedCalls().ShouldBeEmpty();
+        rbacValidator.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("Acme", "acme")]
+    [InlineData("acme", "bad grant")]
+    [InlineData("acme", "system")]
+    public async Task Validate_InvalidOrDuplicateGrants_RejectsBeforeEitherValidator(string first, string second)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new("sub", "test-user"), new("eventstore:tenant", first), new("eventstore:tenant", second)], "Bearer"));
+        (CommandValidationController controller, ITenantValidator tenantValidator, IRbacValidator rbacValidator, _) = CreateController(principal);
+
+        IActionResult result = await controller.Validate(CreateRequest(), CancellationToken.None);
+
+        PreflightValidationResult validation = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<PreflightValidationResult>();
+        validation.IsAuthorized.ShouldBeFalse();
+        validation.ReasonCode.ShouldBe("tenant_ambiguous");
+        tenantValidator.ReceivedCalls().ShouldBeEmpty();
+        rbacValidator.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Validate_AuthorizedUser_Returns200WithAuthorized() {
         // Arrange
         (CommandValidationController controller, _, _, _) = CreateController();

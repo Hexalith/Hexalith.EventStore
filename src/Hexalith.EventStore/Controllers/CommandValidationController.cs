@@ -3,11 +3,14 @@ using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Validation;
 using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+using AuthorizationFailureReason = Hexalith.EventStore.Contracts.Authorization.AuthorizationFailureReason;
 
 namespace Hexalith.EventStore.Controllers;
 
@@ -53,11 +56,6 @@ public partial class CommandValidationController(
         Log.PreflightCheckReceived(logger, correlationId, request.Tenant,
             request.Domain, request.CommandType, request.AggregateId);
 
-        // Store tenant for rate limiter OnRejected callback
-        if (!string.IsNullOrEmpty(request.Tenant)) {
-            HttpContext.Items["RequestTenantId"] = request.Tenant;
-        }
-
         ClaimsPrincipal user = HttpContext.User;
 
         // Extract UserId from JWT for logging — mirror CommandsController pattern
@@ -74,6 +72,23 @@ public partial class CommandValidationController(
 
             return Unauthorized();
         }
+
+        if (!TenantCanonicalizer.TryCanonicalize(request.Tenant, out string canonicalTenant))
+        {
+            return Ok(new PreflightValidationResult(false, "Tenant is invalid or reserved.",
+                (string.IsNullOrEmpty(request.Tenant) ? AuthorizationFailureReason.TenantMissing
+                    : AuthorizationFailureReason.TenantMismatch).ToReasonCode()));
+        }
+
+        if (Request.Headers.ContainsKey("X-Hexalith-Tenant") || Request.Headers.ContainsKey("X-Hexalith-Scope")
+            || !TenantCanonicalizer.TryCanonicalizeGrants(user.FindAll("eventstore:tenant").Select(claim => claim.Value), out _))
+        {
+            return Ok(new PreflightValidationResult(false, "Tenant scope or grants are invalid or ambiguous.",
+                AuthorizationFailureReason.TenantAmbiguous.ToReasonCode()));
+        }
+
+        request = request with { Tenant = canonicalTenant };
+        HttpContext.Items["RequestTenantId"] = canonicalTenant;
 
         // Tenant validation
         TenantValidationResult tenantResult = await tenantValidator
