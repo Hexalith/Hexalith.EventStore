@@ -47,6 +47,7 @@ public sealed class PublishedTenantQuerySelectorAbiTests
         try
         {
             var start = new ProcessStartInfo("dotnet") { WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true };
+            SourceMappingFixtureEnvironment.RemoveInheritedMapping(start);
             foreach (string argument in new[] { "msbuild", "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
                 "-t:CopyPublishedTenantQuerySelectorFixture", "-m:1", "-nodeReuse:false", "-v:q", "-p:RestorePackagesPath=" + cache,
                 "-p:NuGetPackageRoot=" + cache,

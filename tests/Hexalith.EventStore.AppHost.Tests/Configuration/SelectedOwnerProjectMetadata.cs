@@ -10,5 +10,14 @@ internal sealed class SelectedOwnerProjectMetadata(string projectPath, string wo
     public IReadOnlyDictionary<string, string> BuildEnvironment => new Dictionary<string, string>
     {
         ["SelectedOwnerArtifact"] = "owned", ["SelectedOwnerOutput"] = outputDirectory,
+        // Synthetic projects live outside the producer source graph. Mask its injected
+        // MSBuild imports so the selected child is evaluated from its own project only.
+        ["AfterMicrosoftNETSdkTargets"] = string.Empty,
+        ["CustomAfterDirectoryBuildTargets"] = string.Empty,
+        ["CustomAfterMicrosoftCommonProps"] = string.Empty,
+        ["CustomBeforeDirectoryBuildProps"] = string.Empty,
+        ["CustomBeforeDirectoryBuildTargets"] = string.Empty,
+        ["HEXALITH_SOURCE_MAPPING_HASH"] = string.Empty,
+        ["HEXALITH_SOURCE_MAPPING_PATH"] = string.Empty,
     };
 }

@@ -14,8 +14,29 @@ using Hexalith.EventStore.ServiceDefaults.Routing;
 namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 
 /// <summary>Uses real SDK builds of selected optional children; no topology or foreign package feed is used.</summary>
+[Collection(AspireEnvironmentMutationCollection.Name)]
 public sealed class DevelopmentRouteCatalogOwnerPreparationTests
 {
+    /// <summary>Standalone fixture overrides retain their selected inputs without mutating the caller's mapping or package cache.</summary>
+    [Fact]
+    public void StandaloneFixtureBuildEnvironmentDoesNotMutateItsCaller()
+    {
+        string[] inherited = ["AfterMicrosoftNETSdkTargets", "CustomAfterDirectoryBuildTargets", "CustomAfterMicrosoftCommonProps",
+            "CustomBeforeDirectoryBuildProps", "CustomBeforeDirectoryBuildTargets", "HEXALITH_SOURCE_MAPPING_HASH", "HEXALITH_SOURCE_MAPPING_PATH"];
+        var before = inherited.Append("NUGET_PACKAGES").ToDictionary(name => name, Environment.GetEnvironmentVariable, StringComparer.Ordinal);
+        var metadata = new SelectedOwnerProjectMetadata("selected.csproj", "selected-directory", "selected-output");
+
+        var environment = metadata.BuildEnvironment;
+
+        foreach (string name in inherited) environment[name].ShouldBeEmpty();
+        environment["SelectedOwnerArtifact"].ShouldBe("owned");
+        environment["SelectedOwnerOutput"].ShouldBe("selected-output");
+        environment.ShouldNotContainKey("NUGET_PACKAGES");
+        metadata.ProjectPath.ShouldBe("selected.csproj");
+        metadata.BuildWorkingDirectory.ShouldBe("selected-directory");
+        foreach (var variable in before) Environment.GetEnvironmentVariable(variable.Key).ShouldBe(variable.Value);
+    }
+
     /// <summary>A file at a loaded assembly's path cannot substitute a different module while retaining the loaded SDK claim.</summary>
     [Fact]
     public void LoadedSdkIdentityRequiresTheActualLoadedModuleBytes()
@@ -68,6 +89,7 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
     [InlineData("diagnostic-overflow")]
     public async Task ActualSelectedBuildOwnsItsOutputMetadataAndSdkIdentityAsync(string scenario)
     {
+        using var mapping = IsolatedSourceMappingEnvironment.Enter();
         string root = Directory.CreateTempSubdirectory("catalog-selected-project-").FullName;
         string path = Path.Combine(root, "Selected.csproj");
         string output = Path.Combine(root, "selected-output") + Path.DirectorySeparatorChar;
@@ -160,6 +182,7 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
     [Fact(Timeout = 60000)]
     public async Task RunningSelectedBuildIsTerminatedAtItsDeadlineAsync()
     {
+        using var mapping = IsolatedSourceMappingEnvironment.Enter();
         string root = Directory.CreateTempSubdirectory("catalog-selected-deadline-").FullName;
         string path = Path.Combine(root, "Deadline.csproj");
         string marker = Path.Combine(root, "running.pid");
