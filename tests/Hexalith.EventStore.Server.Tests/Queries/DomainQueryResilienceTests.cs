@@ -19,6 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
@@ -45,18 +46,61 @@ public sealed class DomainQueryResilienceTests
         capture.HandlerTypes[DaprDomainServiceInvoker.HttpClientName].ShouldNotContain(typeof(Microsoft.Extensions.Http.Resilience.ResilienceHandler));
     }
 
-    [Fact(Timeout = 25000)]
-    public async Task HeldNativeQuerySurvivesElevenSecondsInOneAttemptAndReleasesEveryFence()
+    [Theory]
+    [InlineData(null, 30)]
+    [InlineData(5, 30)]
+    [InlineData(30, 30)]
+    [InlineData(45, 45)]
+    public void ValidatedHostInvocationBudgetExtendsOnlyTheOwnedQueryPipeline(int? invocationSeconds, int expectedSeconds)
+    {
+        var capture = new BoundedInvocationResilienceCapture((_, _) => Task.FromResult(Success()));
+        using ServiceProvider services = Services(capture, invocationSeconds: invocationSeconds);
+        var policies = services.GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>();
+        var owned = policies.Get(DaprDomainQueryInvoker.HttpClientName + "-standard");
+        owned.AttemptTimeout.Timeout.ShouldBe(TimeSpan.FromSeconds(expectedSeconds));
+        owned.TotalRequestTimeout.Timeout.ShouldBe(TimeSpan.FromSeconds(expectedSeconds));
+        owned.CircuitBreaker.SamplingDuration.ShouldBe(TimeSpan.FromSeconds(expectedSeconds * 2));
+        var defaults = new HttpStandardResilienceOptions();
+        var inherited = policies.Get("-standard");
+        inherited.AttemptTimeout.Timeout.ShouldBe(defaults.AttemptTimeout.Timeout);
+        inherited.TotalRequestTimeout.Timeout.ShouldBe(defaults.TotalRequestTimeout.Timeout);
+        inherited.CircuitBreaker.SamplingDuration.ShouldBe(defaults.CircuitBreaker.SamplingDuration);
+        var clients = services.GetRequiredService<IHttpClientFactory>();
+        using HttpClient query = clients.CreateClient(DaprDomainQueryInvoker.HttpClientName);
+        using HttpClient unrelated = clients.CreateClient("query-unrelated-control");
+        using HttpClient command = clients.CreateClient(DaprDomainServiceInvoker.HttpClientName);
+        capture.HandlerTypes[DaprDomainQueryInvoker.HttpClientName].Count(type => type == typeof(ResilienceHandler)).ShouldBe(1);
+        capture.HandlerTypes["query-unrelated-control"].Count(type => type == typeof(ResilienceHandler)).ShouldBe(1);
+        capture.HandlerTypes[DaprDomainServiceInvoker.HttpClientName].ShouldNotContain(typeof(ResilienceHandler));
+        command.Timeout.ShouldBe(Timeout.InfiniteTimeSpan);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3601)]
+    public void QueryBudgetStillRequiresValidatedDomainInvocationOptions(int invocationSeconds)
+    {
+        var capture = new BoundedInvocationResilienceCapture((_, _) => Task.FromResult(Success()));
+        using ServiceProvider services = Services(capture, invocationSeconds: invocationSeconds);
+        Should.Throw<OptionsValidationException>(() => services.GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>()
+            .Get(DaprDomainQueryInvoker.HttpClientName + "-standard"));
+    }
+
+    [Theory(Timeout = 45000)]
+    [InlineData(null, 11)]
+    [InlineData(45, 31)]
+    public async Task HeldNativeQuerySurvivesItsFormerBoundaryInOneAttemptAndReleasesEveryFence(int? invocationSeconds, int heldSeconds)
     {
         int attempts = 0;
         var capture = new BoundedInvocationResilienceCapture(async (request, token) =>
         {
             AssertOwnedQuery(request);
             Interlocked.Increment(ref attempts);
-            await Task.Delay(TimeSpan.FromSeconds(11), token);
+            await Task.Delay(TimeSpan.FromSeconds(heldSeconds - 2), token);
+            await Task.Delay(TimeSpan.FromSeconds(2), token);
             return Success();
         });
-        using ServiceProvider services = Services(capture);
+        using ServiceProvider services = Services(capture, invocationSeconds: invocationSeconds);
         QueryResult result = await services.GetRequiredService<IDomainQueryInvoker>().InvokeAsync(Query(), TestContext.Current.CancellationToken);
         result.Success.ShouldBeTrue();
         attempts.ShouldBe(1);
@@ -215,10 +259,12 @@ public sealed class DomainQueryResilienceTests
         Hexalith.EventStore.ServiceDefaults.Extensions.GetResiliencePipelineKey(request).ShouldBe(expected);
     }
 
-    private static ServiceProvider Services(BoundedInvocationResilienceCapture capture, Action<IServiceCollection>? configure = null)
+    private static ServiceProvider Services(BoundedInvocationResilienceCapture capture, Action<IServiceCollection>? configure = null, int? invocationSeconds = null)
     {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = Environments.Development });
         builder.Logging.ClearProviders();
+        if (invocationSeconds is { } seconds)
+            builder.Configuration["EventStore:DomainServices:InvocationTimeoutSeconds"] = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
         capture.Observe(builder.Services);
         builder.AddServiceDefaults();
         builder.Services.AddDaprClient();
