@@ -1,7 +1,9 @@
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Hexalith.EventStore.Authorization;
@@ -26,7 +28,32 @@ public class AdminTenantAuthorizationFilter(ILogger<AdminTenantAuthorizationFilt
         }
 
         List<string> tenantClaims = GetAuthorizedTenantClaims(context);
+        if (context.HttpContext.Request.Headers.TryGetValue("X-Hexalith-Scope", out var scopeHeader)) {
+            var action = context.ActionDescriptor as ControllerActionDescriptor;
+            PlatformAdmissionDeclaration? admission = action is null ? null
+                : AdminPlatformScopeCatalog.ForAction(action.ControllerTypeInfo.FullName!, action.MethodInfo.Name);
+            if (admission is null || scopeHeader.Count != 1
+                || !string.Equals(scopeHeader[0], admission.Namespace, StringComparison.Ordinal)
+                || context.RouteData.Values.ContainsKey("tenantId")
+                || context.HttpContext.Request.Query.ContainsKey("tenantId")
+                || context.ActionArguments.TryGetValue("tenantId", out object? tenantArgument) && tenantArgument is not null
+                || context.HttpContext.Request.Headers.ContainsKey("X-Hexalith-Tenant")
+                || context.HttpContext.User.Identity?.IsAuthenticated != true
+                || context.HttpContext.User.FindAll("eventstore:permission").Count(claim =>
+                    string.Equals(claim.Value, admission.RequiredHumanPermission, StringComparison.Ordinal)) != 1
+                || !TenantCanonicalizer.TryCanonicalizeGrants(tenantClaims, out _)) {
+                Deny(context, null, tenantClaims);
+                return;
+            }
+
+            context.HttpContext.Items[AdminPlatformScopeCatalog.ValidatedContextKey] = admission.Namespace;
+            _ = await next().ConfigureAwait(false);
+            return;
+        }
+
         if (!TryResolveRequestedTenantId(context, out string tenantId)
+            || context.HttpContext.Request.Headers.ContainsKey("X-Hexalith-Tenant")
+            || context.HttpContext.Request.Headers.ContainsKey("X-Hexalith-Scope")
             || !TenantCanonicalizer.TryCanonicalizeGrants(tenantClaims, out IReadOnlySet<string> canonicalGrants)
             || !canonicalGrants.Contains(tenantId)) {
             Deny(context, tenantId, tenantClaims);

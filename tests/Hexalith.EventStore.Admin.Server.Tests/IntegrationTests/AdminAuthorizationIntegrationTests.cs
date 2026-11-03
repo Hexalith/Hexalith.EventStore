@@ -7,6 +7,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Contracts.Routing;
 
 using NSubstitute;
 
@@ -44,6 +45,42 @@ public class AdminAuthorizationIntegrationTests : IDisposable {
         // Authorization should pass (mock service returns null → 200/204, not 401/403)
         response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
         response.StatusCode.ShouldNotBe(HttpStatusCode.Forbidden);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ReadOnlyRole_GlobalHealthRequiresExplicitOperationScope(bool includeScope, bool includePermission) {
+        SetClaims(includePermission
+            ? [new Claim(AdminClaimTypes.AdminRole, "ReadOnly"), new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)]
+            : [new Claim(AdminClaimTypes.AdminRole, "ReadOnly")]);
+        if (includeScope) {
+            _client.DefaultRequestHeaders.Add("X-Hexalith-Scope", AdminPlatformScopeCatalog.Namespace);
+        }
+
+        using HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/health");
+
+        bool allowed = includeScope && includePermission;
+        if (allowed) response.IsSuccessStatusCode.ShouldBeTrue();
+        else response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        _ = _host.GetService<IHealthQueryService>().Received(allowed ? 1 : 0).GetSystemHealthAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GlobalHealth_RejectsTenantScopeBeforeServiceAccess(bool includePlatformScope) {
+        SetClaims(new Claim(AdminClaimTypes.AdminRole, "ReadOnly"), new Claim(AdminClaimTypes.Tenant, "acme"),
+            new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission));
+        if (includePlatformScope) {
+            _client.DefaultRequestHeaders.Add("X-Hexalith-Scope", AdminPlatformScopeCatalog.Namespace);
+        }
+
+        using HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/health?tenantId=acme");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        _ = _host.GetService<IHealthQueryService>().DidNotReceive().GetSystemHealthAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

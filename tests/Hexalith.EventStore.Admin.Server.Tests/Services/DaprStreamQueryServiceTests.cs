@@ -1,17 +1,28 @@
 #pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
+using System.Reflection;
+using System.Security.Claims;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Server.Configuration;
+using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Controllers;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Problems;
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Testing.Security;
 
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -176,6 +187,121 @@ public class DaprStreamQueryServiceTests {
 
         result.Items.Count.ShouldBe(2);
         result.TotalCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task GetRecentCommandsAsync_PlatformRead_ForwardsValidatedScopeAndHumanBearer() {
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetToken().Returns("operator-token");
+        _ = authContext.GetValidatedPlatformScope().Returns(AdminPlatformScopeCatalog.Namespace);
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
+        handler.SetupJsonResponse(new PagedResult<CommandSummary>([], 0, null));
+
+        _ = await service.GetRecentCommandsAsync(null, null, null);
+
+        handler.RequestCount.ShouldBe(1);
+        HttpRequestMessage request = handler.LastRequest.ShouldNotBeNull();
+        request.Headers.Authorization!.Parameter.ShouldBe("operator-token");
+        request.Headers.GetValues("X-Hexalith-Scope").ShouldBe([AdminPlatformScopeCatalog.Namespace]);
+        request.Headers.Contains("X-Hexalith-Tenant").ShouldBeFalse();
+        request.RequestUri!.ToString().ShouldNotContain("tenantId=");
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task GlobalHealthMetrics_RequireAdmittedScopeBeforeNestedListReads(bool includeScope, bool includePermission) {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var httpContext = new DefaultHttpContext {
+            User = new ClaimsPrincipal(new ClaimsIdentity(includePermission
+                ? [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)] : [], "Test")),
+        };
+        httpContext.Request.Headers.Authorization = "Bearer health-operator-token";
+        if (includeScope) {
+            httpContext.Request.Headers["X-Hexalith-Scope"] = AdminPlatformScopeCatalog.Namespace;
+        }
+
+        var descriptor = new ControllerActionDescriptor {
+            ControllerTypeInfo = typeof(AdminHealthController).GetTypeInfo(),
+            MethodInfo = typeof(AdminHealthController).GetMethod(nameof(AdminHealthController.GetSystemHealth))!,
+        };
+        var context = new ActionExecutingContext(
+            new ActionContext(httpContext, new RouteData(), descriptor), [], new Dictionary<string, object?>(), new object());
+        var authContext = new HttpContextAdminAuthContext(new HttpContextAccessor { HttpContext = httpContext });
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, authContext);
+        handler.SetupJsonResponse(new PagedResult<CommandSummary>([], 0, null));
+        var filter = new AdminTenantAuthorizationFilter(NullLogger<AdminTenantAuthorizationFilter>.Instance);
+        bool actionCalled = false;
+
+        await filter.OnActionExecutionAsync(context, async () => {
+            actionCalled = true;
+            _ = await service.GetRecentlyActiveStreamsAsync(null, null);
+            _ = await service.GetRecentCommandsAsync(null, null, null);
+            return new ActionExecutedContext(context, [], context.Controller);
+        });
+
+        bool allowed = includeScope && includePermission;
+        actionCalled.ShouldBe(allowed);
+        handler.RequestCount.ShouldBe(allowed ? 1 : 0);
+        if (allowed) {
+            HttpRequestMessage request = handler.LastRequest.ShouldNotBeNull();
+            request.Headers.Authorization!.Parameter.ShouldBe("health-operator-token");
+            request.Headers.GetValues("X-Hexalith-Scope").ShouldBe([AdminPlatformScopeCatalog.Namespace]);
+        }
+        else {
+            context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+            daprClient.ReceivedCalls().ShouldBeEmpty();
+        }
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(null, "platform:tenants")]
+    [InlineData("tenant-a", "platform:eventstore-admin")]
+    public async Task ListReads_MissingOrConflictingScope_RejectBeforeHttpOrStateAccess(string? tenantId, string? scope) {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetValidatedPlatformScope().Returns(scope);
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, authContext);
+
+        _ = await Should.ThrowAsync<UnauthorizedAccessException>(
+            () => service.GetRecentCommandsAsync(tenantId, null, null));
+        _ = await Should.ThrowAsync<UnauthorizedAccessException>(
+            () => service.GetRecentlyActiveStreamsAsync(tenantId, null));
+
+        handler.RequestCount.ShouldBe(0);
+        daprClient.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetRecentlyActiveStreamsAsync_ValidatedPlatformRead_PreservesCrossTenantResults() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetValidatedPlatformScope().Returns(AdminPlatformScopeCatalog.Namespace);
+        _ = daprClient.GetStateAsync<List<StreamSummary>>(
+            StateStoreName, "admin:stream-activity:all", cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new List<StreamSummary> {
+                new("tenant-a", "orders", "order-1", 1, DateTimeOffset.UtcNow, 1, false, StreamStatus.Active),
+                new("tenant-b", "orders", "order-2", 2, DateTimeOffset.UtcNow, 2, false, StreamStatus.Active),
+            });
+        (DaprStreamQueryService service, _) = CreateService(daprClient, authContext);
+
+        PagedResult<StreamSummary> result = await service.GetRecentlyActiveStreamsAsync(null, null);
+
+        result.Items.Select(item => item.TenantId).ShouldBe(["tenant-a", "tenant-b"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task GetRecentCommandsAsync_TenantRead_ForwardsCanonicalTenantWithoutPlatformScope() {
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(new PagedResult<CommandSummary>([], 0, null));
+
+        _ = await service.GetRecentCommandsAsync("Acme", null, null);
+
+        HttpRequestMessage request = handler.LastRequest.ShouldNotBeNull();
+        request.RequestUri!.ToString().ShouldContain("tenantId=acme");
+        request.Headers.Contains("X-Hexalith-Scope").ShouldBeFalse();
     }
 
     [Fact]

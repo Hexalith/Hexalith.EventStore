@@ -1,5 +1,7 @@
 using System.Security.Claims;
 
+using Hexalith.EventStore.Contracts.Routing;
+
 using Microsoft.AspNetCore.Http;
 
 namespace Hexalith.EventStore.Admin.Server.Services;
@@ -39,4 +41,8 @@ public sealed class HttpContextAdminAuthContext(IHttpContextAccessor httpContext
             ? itemCorrelationId
             : context?.TraceIdentifier;
     }
+
+    /// <inheritdoc/>
+    public string? GetValidatedPlatformScope()
+        => httpContextAccessor.HttpContext?.Items[AdminPlatformScopeCatalog.ValidatedContextKey] as string;
 }
