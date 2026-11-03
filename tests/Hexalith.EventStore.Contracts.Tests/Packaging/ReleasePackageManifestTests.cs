@@ -559,7 +559,7 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(workflow, "ci");
         string tenantsSourceModeJob = ExtractTopLevelWorkflowJobBlock(workflow, "tenants-source-mode");
 
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@725754075e1d6369430a3adf94d46fb71e6eaf9e");
         ciJob.ShouldContain("build-timeout-minutes: 180");
         ciJob.ShouldContain("test-platform: microsoft-testing-platform");
         ciJob.ShouldContain("run-consumer-validation: true");
@@ -779,7 +779,7 @@ public sealed class ReleasePackageManifestTests
         liveSidecarJob.ShouldNotContain("set +e");
 
         string ciJob = ExtractTopLevelWorkflowJobBlock(ci, "ci");
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@725754075e1d6369430a3adf94d46fb71e6eaf9e");
         ciJob.ShouldContain("unit-test-projects: |");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Contracts.Tests");
         ciJob.ShouldNotContain("continue-on-error");

@@ -8,7 +8,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
-| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` and `release/parties-sdk-3.130.2` | Runs the required shared `domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
+| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` and `release/parties-sdk-3.130.2` | Runs the required shared `domain-ci-v2.yml@725754075e1d6369430a3adf94d46fb71e6eaf9e` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
 | **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Visible non-release-blocking browser and governance suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
 | **Payload Protection Lifecycle** | `.github/workflows/payload-protection-lifecycle.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Isolated Dapr 1.18.7/PostgreSQL v2 capability, catalog, lease, drain, recovery, rotation, generation and restore tests. Requires at least thirty-one executed tests with zero skips, including cumulative transport limits, writer capacity, conditional restore decisions and authority races. Local qualification and its limits are recorded in the Story 8.5 spec; a CI run is separate evidence. |
@@ -76,7 +76,7 @@ Reusable CI/CD logic belongs in `Hexalith.Builds`:
 EventStore keeps only module-specific wiring here:
 
 - `Hexalith.EventStore.slnx`.
-- The isolated test project list passed to `domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb`.
+- The isolated test project list passed to `domain-ci-v2.yml@725754075e1d6369430a3adf94d46fb71e6eaf9e`.
 - The advisory test project list and Playwright browser install needed by the
   Admin UI E2E suite.
 - Manifest-backed package validation scripts under `scripts/`.
@@ -117,7 +117,7 @@ place for run output.
 
 | Lane | Projects | Workflow behavior |
 |------|----------|-------------------|
-| Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb` job through `unit-test-projects`. All nineteen previous unit projects and the self-contained AppHost model-test project execute before integration; no AppHost topology is started by these tests. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
+| Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci-v2.yml@725754075e1d6369430a3adf94d46fb71e6eaf9e` job through `unit-test-projects`. All nineteen previous unit projects and the self-contained AppHost model-test project execute before integration; no AppHost topology is started by these tests. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
 | Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs`, `tools/tests/test_release_publication_authority.py` | Blocking EventStore-owned CI job. It provisions Node 24, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. It also runs the publication-authority regressions against the exact approved Builds publication engine. |
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`, plus `scripts/check-committed-files.sh`, `tools/tests/test_check_committed_files.py` and `tools/tests/test_dapr_broker_qualification.py` | Dedicated `Integration Tests` workflow after `dapr init`; its required `live-sidecar` job first runs the committed-file guard and the two Python suites. This lane is visible but not part of the semantic-release gate. It is not a `dotnet test` of `Server.Tests`. |
 | Payload-protection lifecycle | `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests` | Dedicated `Payload Protection Lifecycle` workflow; isolated processes and digest-pinned PostgreSQL v2 state, persisted assertions and zero skips. The existing `Payload Protection` core workflow runs independently. |
@@ -131,22 +131,24 @@ The v2 caller explicitly maps only `HEXALITH_CI_REGISTRY_USERNAME` and
 accepts no inherited secrets, caller Dapr overrides or direct integration/AppHost
 execution inputs. Existing independent jobs and consumer/coverage gates remain.
 
-The package-profile bootstrap records Builds
-`89f62052c932d054bda2b435bdfef60d96e77612` and released Platform `v1.1.6`
-(`8ea8fe092f8abb5c932a61830aae16051d442463`). Platform records the same Builds
-catalog, which selects public EventStore 4.0.4, Azure.Core 1.64.0 and
-Azure.Security.KeyVault.Keys 4.10.2. These recorded source identities remain
-unchanged by the tool update.
+The package-profile bootstrap, v2 workflow and executing public module CLI
+4.43.6 now select the same Builds source
+`725754075e1d6369430a3adf94d46fb71e6eaf9e`, with genuine released Platform
+[`v1.1.7`](https://github.com/Hexalith/Hexalith.Platform/releases/tag/v1.1.7)
+(`ed1560a57f4d4cb55b6b03f485cbfa01316837a7`). Platform records that exact
+Builds gitlink and tool floor `[4.43.6,5.0.0-0)`. The approved catalog still
+selects public EventStore 4.0.4, Azure.Core 1.64.0 and
+Azure.Security.KeyVault.Keys 4.10.2, with catalog blob
+`ab01a410d9e3d5b626ae7feb8da6ec3c1a0af27b`.
 
-The executing module CLI is genuine public 4.43.6, released from Builds
-`725754075e1d6369430a3adf94d46fb71e6eaf9e` by successful normal release
+The CLI was published by successful normal Builds release
 [41666723123](https://github.com/Hexalith/Hexalith.Builds/actions/runs/41666723123).
-Its source differs from the recorded catalog source. Platform's supported tool
-range `[4.43.5,5.0.0-0)` admits that CLI; both sources contain the same catalog
-blob `ab01a410d9e3d5b626ae7feb8da6ec3c1a0af27b`. The newer tool resolves a cold
-direct-only module from its verified direct Builds checkout, without requiring
-Platform's nested dependency checkouts. Matching catalog bytes do not replace
-the separately verified source identities or the supported-range check.
+It resolves a cold direct-only module from the verified direct Builds checkout,
+without requiring Platform's nested dependency checkouts. Exact source, signed
+package content and supported-range checks remain required. The real native
+persistence test emits bounded TRX diagnostics for the SDK assemblies actually
+loaded in its test process, including their versions and SHA-256 hashes. Those
+measurements do not claim a dependency was loaded in a different process.
 
 The catalog's EventStore 4.0.4 selection remains the package-profile bootstrap
 input. A new EventStore producer and subsequent catalog/cohort adoption need
@@ -248,7 +250,7 @@ dedicated LiveSidecar lane; they are not a reason to add the project to
 
 ## Package Validation
 
-Shared `domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb` calls these EventStore entry points when
+Shared `domain-ci-v2.yml@725754075e1d6369430a3adf94d46fb71e6eaf9e` calls these EventStore entry points when
 `run-consumer-validation: true`:
 
 ```bash
