@@ -85,6 +85,23 @@ public class RouteCatalogV3Tests
         first.Routes.All(r => r.OperationContractDigest != r.DeclarationDigest).ShouldBeTrue();
     }
 
+    [Fact]
+    public void RepeatedDecodeKeepsIndependentOwnerSchemasAndCanonicalBytes()
+    {
+        byte[] bytes = RouteCatalogCodec.Encode(VersionedRouteCatalogBuilder.Build(Input(8)));
+        RouteCatalogEnvelope first = RouteCatalogCodec.Decode(bytes);
+        var operations = (IList<RouteOperationContract>)first.Operations!;
+        operations[0] = operations[0] with
+        {
+            RequestSchema = JsonSerializer.SerializeToElement(new { type = "object", title = "changed" }),
+            Eligibility = "UI-only",
+        };
+        RouteCatalogEnvelope second = RouteCatalogCodec.Decode(bytes);
+        second.Operations.ShouldNotBeSameAs(first.Operations);
+        RouteCatalogCodec.Encode(second).ShouldBe(bytes);
+        Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.Encode(first));
+    }
+
     [Theory]
     [InlineData("eligibility")]
     [InlineData("schema")]

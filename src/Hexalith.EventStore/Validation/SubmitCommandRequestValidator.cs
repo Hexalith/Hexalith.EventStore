@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using FluentValidation;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 
 namespace Hexalith.EventStore.Validation;
 
@@ -44,7 +45,10 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .NotNull().WithMessage("Tenant is required")
             .NotEmpty().WithMessage("Tenant cannot be empty")
             .MaximumLength(MaxTenantDomainLength).WithMessage($"Tenant cannot exceed {MaxTenantDomainLength} characters")
-            .Matches(_tenantDomainRegex).WithMessage("Tenant must contain only lowercase alphanumeric characters and hyphens")
+            // Namespace syntax grants no authority: the controller still requires the exact
+            // committed operation, human permission and ingress before mapping retained storage.
+            .Must(scope => TenantCanonicalizer.IsPlatformScope(scope) || _tenantDomainRegex.IsMatch(scope))
+            .WithMessage("Tenant must be a lowercase tenant identifier or an explicit canonical platform namespace")
             .When(x => !string.IsNullOrEmpty(x.Tenant), ApplyConditionTo.CurrentValidator);
 
         _ = RuleFor(x => x.Domain)

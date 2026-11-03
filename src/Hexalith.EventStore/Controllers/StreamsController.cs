@@ -135,6 +135,16 @@ public sealed partial class StreamsController(
             bool proofBound = hasProof && proofHeader.Count == 1 && caller is not null && domainAllowed
                 && BoundStreamReadProof.Verify(proofHeader[0], proofRequest, caller,
                     configuration?[$"Authentication:BoundStreamRead:PublicKeys:{caller}"], DateTimeOffset.UtcNow);
+            // Explicit source-only enrollment is receiver authority. It cannot be waived by
+            // a resource-bound JWT or a caller-supplied request flag. Generic stream readers
+            // retain their existing grant; enrolled metadata callers never enter a range read.
+            string? metadataOnly = caller is null ? null
+                : configuration?[$"Authentication:BoundStreamRead:MetadataOnlyCallers:{caller}"];
+            if (metadataOnly is not null && (!string.Equals(metadataOnly, "true", StringComparison.OrdinalIgnoreCase)
+                || !proofBound || request.FromSequence != 0 || request.ToSequence != 0 || request.PageSize != 1
+                || !request.RequireNativeProof || request.Checkpoint is not null || request.ContinuationToken is not null
+                || request.ProjectionName is not null))
+                return Forbid();
             if (string.IsNullOrWhiteSpace(caller) || hasProof && !proofBound || !jwtBound && !proofBound) {
                 return Forbid();
             }

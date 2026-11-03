@@ -1,16 +1,64 @@
 using System.Security.Cryptography;
 
 using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Client.Registration;
+using Hexalith.EventStore.Client.Streams;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.DomainService;
 
 /// <summary>Composes the SDK gateway client's workload command and stream transport for a domain host.</summary>
 public static class EventStoreGatewayWorkloadTransportExtensions
 {
+    /// <summary>Registers an independent metadata-only workload client without replacing the host's human-command gateway.</summary>
+    /// <remarks>The receiver must explicitly enroll this caller in Authentication:BoundStreamRead:MetadataOnlyCallers.
+    /// The host's own workload issuer and independently provisioned BoundStreamRead private key are required;
+    /// missing credentials fail closed. No source proof is created and no command/status client is exposed.</remarks>
+    /// <param name="services">The host services.</param>
+    /// <param name="domain">The one exact managed source domain.</param>
+    /// <param name="gatewayAudience">The logical workload audience, independent of its selected Dapr application id.</param>
+    /// <returns>The independent HTTP builder, for supported transport customization.</returns>
+    public static IHttpClientBuilder AddEventStoreGatewayNativeSourceMetadataReader(
+        this IServiceCollection services, string domain,
+        string gatewayAudience = EventStoreTrustedEffectSubmissionExtensions.DefaultGatewayAudience)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+        ArgumentException.ThrowIfNullOrWhiteSpace(gatewayAudience);
+        if (domain != domain.Trim() || domain.Length > 64 || domain.Contains('*', StringComparison.Ordinal)
+            || gatewayAudience != gatewayAudience.Trim())
+            throw new ArgumentException("Configure one exact source domain and gateway audience.");
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddEventStoreWorkloadAssertionIssuer();
+        return services.AddHttpClient("Hexalith.EventStore.NativeSourceMetadata", (provider, client) =>
+        {
+            IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
+            string endpoint = configuration["DAPR_HTTP_ENDPOINT"]
+                ?? $"http://localhost:{configuration["DAPR_HTTP_PORT"] ?? "3500"}";
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri? address) || address.Scheme != Uri.UriSchemeHttp
+                || !string.IsNullOrEmpty(address.UserInfo) || !string.IsNullOrEmpty(address.Query)
+                || !string.IsNullOrEmpty(address.Fragment) || address.AbsolutePath != "/")
+                throw new InvalidOperationException("The configured local Dapr HTTP endpoint is unavailable.");
+            client.BaseAddress = address;
+        }).AddEventStoreDaprServiceInvocation(provider => provider.GetRequiredService<IConfiguration>(),
+            configuration => configuration["EventStore:Gateway:AppId"] ?? "eventstore",
+            configuration => configuration["DAPR_API_TOKEN"])
+          .AddTypedClient<INativeSourceMetadataReader>((client, provider) =>
+          {
+              var clock = provider.GetRequiredService<TimeProvider>();
+              var credentials = new DomainServiceNativeSourceCredentials(provider.GetRequiredService<IWorkloadAssertionIssuer>(),
+                  provider.GetRequiredService<IConfiguration>(), domain, gatewayAudience, clock);
+              var gateway = new EventStoreGatewayClient(client, Options.Create(new EventStoreGatewayClientOptions
+                  { UseWorkloadTransport = true, MaxStreamReadResponseBytes = 8192 }), credentials, credentials);
+              return new GatewayNativeSourceMetadataReader(gateway, clock);
+          });
+    }
+
     /// <summary>
     /// Uses workload-only command and stream endpoints with assertions from the host's independently configured
     /// issuer. Each assertion grants exactly one operation, receiving audience, tenant and configured domain.
