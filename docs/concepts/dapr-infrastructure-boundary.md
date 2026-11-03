@@ -55,6 +55,8 @@ The investigated Dapr 1.18.7 executable returns 501 for bare metadata/wrap/unwra
 
 The exception does not establish Azure custody or live conformance. Lost wrap outcomes can remain pending indefinitely; provider 404 cannot prove lifecycle deletion or operation absence. Azure provisioning, resource/identity/network/fault mutations, Server activation, release and G5 retain their separate authority. Re-review changes to any runtime, component, SDK, API, credential, profile, path or operation; remove only after an identified released Dapr profile passes the same real-service suite under an approved migration. Missing qualification is not evidence of a permanent capability gap.
 
+Local Story 8.6 validation remains blocked by a pinned identity SDK diagnostic sentinel: the selected managed-identity client ID appears in two vendor EventSource types despite disabled public logging options. The [diagnostic disposition candidate](../../_bmad-output/implementation-artifacts/spec-8-6-identity-diagnostics-disposition.md) is unapproved. This observation grants no diagnostic waiver or Azure conformance claim.
+
 Before introducing an operation-specific bypass, retain:
 
 1. The operation, required guarantee, exact Dapr runtime/client/component profile, reproducible gap evidence, and alternatives considered.

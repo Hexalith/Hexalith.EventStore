@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.PayloadProtection.AzureKeyVault;
 internal sealed class AzureKeyVaultSafeTransport(AzureKeyVaultPayloadProtectionOptions options, bool identity = false) : HttpPipelineTransport
 {
     private const int MaximumHeaderBytes = 16384;
+    /// <summary>The fixed maximum owned response body size in bytes.</summary>
     internal const int MaximumBodyBytes = 65536;
     /// <inheritdoc/>
     public override Request CreateRequest() => new AzureKeyVaultRequest();

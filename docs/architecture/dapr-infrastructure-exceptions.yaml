@@ -133,6 +133,9 @@ accepted_exceptions:
       Production custody, provider-generated non-exportability, private connectivity,
       RBAC, retained-history/fault/rotation/rollback conformance and CI remain unproven.
       Unknowable wrap completion stays Ambiguous indefinitely; no absence is inferred.
+      Pinned identity SDK events still expose the selected client ID and fail the
+      safe-fingerprints-only diagnostic gate; the proposed diagnostic disposition
+      remains unapproved and supplies no conformance claim.
     evidence: _bmad-output/implementation-artifacts/story-8-6-dapr-qualification.md
     design: _bmad-output/implementation-artifacts/spec-8-6-crypto-boundary-amendment.md
     correction: _bmad-output/implementation-artifacts/spec-8-6-azure-core-pin-correction.md

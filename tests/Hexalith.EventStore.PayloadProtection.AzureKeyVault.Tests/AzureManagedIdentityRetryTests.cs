@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Net;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using Azure.Core;
 using Azure.Identity;
@@ -19,14 +20,23 @@ public sealed class AzureManagedIdentityRetryTests
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             using var capture = new AzureDiagnosticObserver();
             using var diagnostics = System.Diagnostics.DiagnosticListener.AllListeners.Subscribe(capture);
-            const string clientId = "11111111-2222-3333-4444-555555555555";
-            var credential = AzureKeyVaultCredentialFactory.Create(new() { VaultUri = AdapterFixture.Options.VaultUri, KeyName = AdapterFixture.Options.KeyName, ManagedIdentityClientId = clientId });
-            var exception = await Should.ThrowAsync<AuthenticationFailedException>(() => credential.GetTokenAsync(new TokenRequestContext(["https://vault.azure.net/.default"]), deadline.Token).AsTask());
-            AzureKeyVaultFailureClassifier.Exception(exception, false, true).ShouldBe(PayloadBackendFailure.Unavailable);
-            var leaking = capture.Values.Where(value => value.Contains(clientId, StringComparison.Ordinal) || value.Contains("unit-identity-header", StringComparison.Ordinal)).ToArray();
-            Console.Error.WriteLine("SDK diagnostic matching categories: " + string.Join("; ", leaking.Select(value => string.Join(':', value.Split(':').Take(2)) + " client-id=" + value.Contains(clientId, StringComparison.Ordinal) + " identity-header=" + value.Contains("unit-identity-header", StringComparison.Ordinal))));
-            leaking.Length.ShouldBe(0);
-            return;
+            EventHandler<FirstChanceExceptionEventArgs> observer = (_, args) => capture.Record("FirstChance:" + args.Exception.ToString());
+            AppDomain.CurrentDomain.FirstChanceException += observer;
+            try
+            {
+                const string clientId = "11111111-2222-3333-4444-555555555555";
+                var credential = AzureKeyVaultCredentialFactory.Create(new() { VaultUri = AdapterFixture.Options.VaultUri, KeyName = AdapterFixture.Options.KeyName, ManagedIdentityClientId = clientId });
+                var exception = await Should.ThrowAsync<AuthenticationFailedException>(() => credential.GetTokenAsync(new TokenRequestContext(["https://vault.azure.net/.default"]), deadline.Token).AsTask());
+                AzureKeyVaultFailureClassifier.Exception(exception, false, true).ShouldBe(PayloadBackendFailure.Unavailable);
+                var leaking = capture.Values.Where(value => value.Contains(clientId, StringComparison.Ordinal) || value.Contains("unit-identity-header", StringComparison.Ordinal)).ToArray();
+                Console.Error.WriteLine("SDK diagnostic matching categories: " + string.Join("; ", leaking.Select(value => string.Join(':', value.Split(':').Take(2)) + " client-id=" + value.Contains(clientId, StringComparison.Ordinal) + " identity-header=" + value.Contains("unit-identity-header", StringComparison.Ordinal))));
+                leaking.Length.ShouldBe(0);
+                return;
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.FirstChanceException -= observer;
+            }
         }
 
         var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -84,9 +94,10 @@ public sealed class AzureManagedIdentityRetryTests
                 }
             }
 
-            string childOutput = await output; string childError = await error;
-            if (child.ExitCode != 0) { File.WriteAllText("/tmp/story86-mi-child-diagnostics.log", childOutput + childError); }
-            child.ExitCode.ShouldBe(0, "The isolated pinned managed-identity subprocess must pass its typed failure check.");
+            _ = await output;
+            string childError = await error;
+            string categorySummary = childError.Split('\n').FirstOrDefault(line => line.StartsWith("SDK diagnostic matching categories:", StringComparison.Ordinal)) ?? "";
+            child.ExitCode.ShouldBe(0, "The isolated pinned managed-identity subprocess must pass its typed failure check. " + categorySummary);
             requests.ShouldBe(1);
         }
         finally
