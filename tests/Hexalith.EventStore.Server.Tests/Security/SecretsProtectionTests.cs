@@ -13,8 +13,14 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// </summary>
 public sealed partial class SecretsProtectionTests
 {
-    private static readonly string RepoRoot = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+    private static readonly string RepoRoot = FindRepositoryRoot();
+
+    private static string FindRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx"))) return directory.FullName;
+        throw new InvalidOperationException("Repository root unavailable.");
+    }
     /// <summary>
     /// Verifies Git-tracked text, including root/build configuration and workflows. Generated output,
     /// VCS data, and submodule contents are excluded by Git's tracked-file model rather than by path.

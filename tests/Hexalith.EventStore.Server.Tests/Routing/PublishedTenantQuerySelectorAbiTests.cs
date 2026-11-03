@@ -50,7 +50,6 @@ public sealed class PublishedTenantQuerySelectorAbiTests
             foreach (string argument in new[] { "msbuild", "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
                 "-t:CopyPublishedTenantQuerySelectorFixture", "-m:1", "-nodeReuse:false", "-v:q", "-p:RestorePackagesPath=" + cache,
                 "-p:NuGetPackageRoot=" + cache,
-                "-p:NuGetPackageRoot=" + cache,
                 "-p:UseHexalithProjectReferences=" + sourceMode.ToString().ToLowerInvariant(), "-p:UseNuGetDeps=" + (!sourceMode).ToString().ToLowerInvariant(),
                 "-p:OutDir=" + output + Path.DirectorySeparatorChar }) start.ArgumentList.Add(argument);
             using var process = Process.Start(start)!;
