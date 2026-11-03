@@ -45,6 +45,46 @@ public sealed partial class SecretsProtectionTests
         FindViolations("samples/placeholder.json", line).ShouldBeEmpty();
     }
 
+    /// <summary>Verifies the finite quoted Bearer challenge parameter grammar without admitting credentials.</summary>
+    [Theory]
+    [InlineData("realm=")]
+    [InlineData("authorization=")]
+    [InlineData("resource=")]
+    [InlineData("scope=")]
+    [InlineData("error=")]
+    [InlineData("error_description=")]
+    [InlineData("error_uri=")]
+    [InlineData("claims=")]
+    public void QuotedBearerChallengeParameters_AreAllowedWithoutConcealingCredentials(string parameter)
+    {
+        ArgumentNullException.ThrowIfNull(parameter);
+        foreach (string quote in new[] { "\"", "\\\"" })
+        {
+            string challenge = "Bearer " + parameter.ToUpperInvariant() + quote + "https://identity.example.test" + quote;
+            FindViolations("docs/challenge.md", challenge).ShouldBeEmpty();
+            string credential = RandomSecret();
+            FindViolations("docs/challenge.md", challenge + "\nAuthorization: Bearer " + credential).ShouldBe(["docs/challenge.md:2"]);
+            FindViolations("docs/challenge.md", challenge + " Authorization: Bearer " + credential).ShouldBe(["docs/challenge.md:1"]);
+        }
+    }
+
+    /// <summary>Verifies challenge recognition does not exempt arbitrary equals suffixes or unquoted credentials.</summary>
+    [Fact]
+    public void BearerChallengeException_RejectsUnknownParametersAndUnquotedValues()
+    {
+        foreach (string suffix in new[]
+        {
+            RandomSecret().TrimEnd('=') + "=\"value\"",
+            "unknown=\"value\"",
+            "authorization=" + RandomSecret(),
+            "realm=" + RandomSecret(),
+            "error=" + RandomSecret(),
+        })
+        {
+            FindViolations("docs/challenge.md", "Bearer " + suffix).ShouldBe(["docs/challenge.md:1"]);
+        }
+    }
+
     /// <summary>
     /// Verifies GitHub's fixed SSH transport username is not treated as a credential.
     /// </summary>
@@ -2731,7 +2771,8 @@ public sealed partial class SecretsProtectionTests
     {
         Group token = match.Groups["token"];
         int afterToken = token.Index + token.Length;
-        return token.Value.Equals("realm=", StringComparison.OrdinalIgnoreCase)
+        return token.Value.ToLowerInvariant() is "realm=" or "authorization=" or "resource=" or "scope="
+            or "error=" or "error_description=" or "error_uri=" or "claims="
             && afterToken < content.Length
             && (content[afterToken] is '\'' or '"'
                 || (content[afterToken] == '\\'

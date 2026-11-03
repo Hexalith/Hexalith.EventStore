@@ -17,5 +17,8 @@ internal static class E2EAuthenticationSettings
             ["EventStore:Authentication:Domains:0"] = "counter",
             ["EventStore:Authentication:Permissions:0"] = "admin:read",
             ["EventStore:Authentication:Permissions:1"] = "admin:write",
+            ["DAPR_HTTP_ENDPOINT"] = E2EAdminApiHandler.Endpoint,
+            ["DAPR_API_TOKEN"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
+            ["EventStore:AdminServer:AppId"] = E2EAdminApiHandler.AppId,
         };
 }

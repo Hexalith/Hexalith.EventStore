@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.Admin.UI.E2E;
 
@@ -18,12 +20,25 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     private WebApplicationFactory<Program> CreateSidecarAwareFactory()
-        => _factory.WithWebHostBuilder(builder =>
+    {
+        Dictionary<string, string?> settings = E2EAuthenticationSettings.Create();
+        return _factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("DAPR_HTTP_PORT", "3500");
+            foreach ((string key, string? value) in settings)
+            {
+                builder.UseSetting(key, value);
+            }
             builder.ConfigureAppConfiguration((_, configuration) =>
-                configuration.AddInMemoryCollection(E2EAuthenticationSettings.Create()));
+                configuration.AddInMemoryCollection(settings));
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddSingleton<E2EAdminApiHandler>();
+                services.AddHttpClient("AdminApi")
+                    .ConfigurePrimaryHttpMessageHandler(provider => provider.GetRequiredService<E2EAdminApiHandler>())
+                    .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
+            });
         });
+    }
 
     [Fact]
     public async Task LandingPage_ReturnsSuccessAndContainsShell()
@@ -40,6 +55,7 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
         response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
         content.ShouldContain("Hexalith EventStore Admin");
         content.ShouldContain("lang=\"en\"");
+        factory.Services.GetRequiredService<E2EAdminApiHandler>().VerifyNoRejectedRequests();
     }
 
     [Fact]
@@ -56,6 +72,7 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
         // Assert — accessibility: skip-to-main-content link present
         response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
         content.ShouldContain("Skip to main content");
+        factory.Services.GetRequiredService<E2EAdminApiHandler>().VerifyNoRejectedRequests();
     }
 
     [Fact]
@@ -74,6 +91,7 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
         content.ShouldContain("<main");
         content.ShouldContain("role=\"main\"");
         content.ShouldContain("<nav");
+        factory.Services.GetRequiredService<E2EAdminApiHandler>().VerifyNoRejectedRequests();
     }
 
     [Fact]
@@ -90,5 +108,6 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
         // Assert — functional only. The "shell within 2s" budget (AC 14) is owned by
         // perf-lab.yml; a wall-clock assertion here flakes on cold-start under CI load.
         response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
+        factory.Services.GetRequiredService<E2EAdminApiHandler>().VerifyNoRejectedRequests();
     }
 }

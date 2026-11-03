@@ -1,4 +1,5 @@
 // Approved Azure exception fcf861aa3ba5d723ca589a8ac8a2a31c54a972fe96a28ec71db69e560ecc2394 sections 3-7; base V079-V106, V127-V132.
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text;
 using Azure.Security.KeyVault.Keys;
@@ -14,6 +15,9 @@ internal static class AdapterFixture
         VaultUri = new("https://hx-pp-unit.vault.azure.net"),
         KeyName = "eventstore-pp"
     };
+
+    /// <summary>Creates runtime authentication material for isolated adapter fixtures.</summary>
+    internal static string CreateToken() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 
     internal static AzureKeyVaultOwnedResponse Response(int status, byte[] body, Dictionary<string, string>? headers = null) => new(status, body, headers ?? []);
     internal static byte[] Crypto(string id, byte[] value) => JsonSerializer.SerializeToUtf8Bytes(new { kid = id, value = Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_') });
@@ -44,7 +48,7 @@ internal static class AdapterFixture
             message.Response = Response(200, body ?? Metadata());
             return ValueTask.CompletedTask;
         });
-        return await new AzureKeyVaultMetadataClient(Options, new AdapterTestCredential(), transport).GetAsync(null, CancellationToken.None);
+        return await new AzureKeyVaultMetadataClient(Options, new AdapterTestCredential(AdapterFixture.CreateToken()), transport).GetAsync(null, CancellationToken.None);
     }
 
     internal static async ValueTask<byte[]> ReadRequestAsync(Azure.Core.HttpMessage message)

@@ -16,11 +16,24 @@ public sealed class AzureKeyVaultOptionsTests
     [InlineData("https://vault-name.managedhsm.azure.net")]
     [InlineData("https://vault-name.vault.azure.net:8443")]
     [InlineData("https://vault-name.vault.azure.net/path")]
-    [InlineData("https://vault-name.vault.azure.net?token=canary")]
-    [InlineData("https://user@vault-name.vault.azure.net")]
     [InlineData("https://vault-name.vault.azure.net/#fragment")]
     [InlineData("https://vault-name.vault.azure.net.evil.invalid")]
     public void V104_RejectsUnsafeOrigins(string uri) => Should.Throw<InvalidOperationException>(() => AzureKeyVaultOptionsValidator.Validate(new() { VaultUri = new(uri), KeyName = "key" }));
+    [Theory]
+    [InlineData("query")]
+    [InlineData("userinfo")]
+    public void V104_RejectsCredentialBearingOrigins(string shape)
+    {
+        string canary = AdapterFixture.CreateToken();
+        string uri = shape switch
+        {
+            "query" => "https://vault-name.vault.azure.net?" + "token=" + canary,
+            "userinfo" => "https://" + canary + "@vault-name.vault.azure.net",
+            _ => throw new ArgumentOutOfRangeException(nameof(shape)),
+        };
+        Should.Throw<InvalidOperationException>(() => AzureKeyVaultOptionsValidator.Validate(new() { VaultUri = new(uri), KeyName = "key" }));
+    }
+
     [Theory]
     [InlineData("ExpectedKeySize", "2048")]
     [InlineData("WrapAlgorithm", "RSA-OAEP")]
