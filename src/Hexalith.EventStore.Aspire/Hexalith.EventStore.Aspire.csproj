@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.EventStore.AppHost.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
   </ItemGroup>
 
 </Project>

@@ -203,20 +203,25 @@ jobs:
           for name in ('DOCKER_CONTEXT', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH'):
               docker_environment.pop(name, None)
           docker_environment['DOCKER_HOST'] = endpoint
-          for image in (profile['images']['sentry']['reference'], 'redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf'):
+          for image in (*(profile['images'][name]['reference'] for name in ('sentry', 'placement', 'scheduler')), 'redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf'):
               subprocess.run(['docker', '--host', endpoint, 'pull', image], check=True, timeout=300, env=docker_environment)
           version = profile['runtime']['version']
-          data = urllib.request.urlopen(f'https://github.com/dapr/dapr/releases/download/v{version}/daprd_linux_amd64.tar.gz', timeout=60).read()
-          with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
-              member = next(m for m in archive.getmembers() if pathlib.PurePosixPath(m.name).name == 'daprd' and m.isfile())
-              binary = archive.extractfile(member).read()
-          assert hashlib.sha256(binary).hexdigest() == profile['runtime']['binarySha256'], 'catalog fixture runtime checksum mismatch'
-          destination = pathlib.Path(os.environ['RUNNER_TEMP']) / 'route-catalog-tools' / 'daprd'
-          destination.parent.mkdir(parents=True, exist_ok=True)
-          destination.write_bytes(binary)
-          destination.chmod(0o755)
-          with open(os.environ['GITHUB_ENV'], 'a') as target:
-              target.write(f'EVENTSTORE_ROUTE_CATALOG_DAPRD={destination}\n')
+          tools = (
+              ('daprd', 'dapr', version, profile['runtime']['binarySha256'], 'EVENTSTORE_ROUTE_CATALOG_DAPRD'),
+              ('dapr', 'cli', profile['runtime']['cliVersion'], profile['runtime']['cliSha256'], 'EVENTSTORE_ROUTE_CATALOG_DAPR_CLI'),
+          )
+          for executable, repository, selected_version, checksum, variable in tools:
+              data = urllib.request.urlopen(f'https://github.com/dapr/{repository}/releases/download/v{selected_version}/{executable}_linux_amd64.tar.gz', timeout=60).read()
+              with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
+                  member = next(m for m in archive.getmembers() if pathlib.PurePosixPath(m.name).name == executable and m.isfile())
+                  binary = archive.extractfile(member).read()
+              assert hashlib.sha256(binary).hexdigest() == checksum, 'catalog fixture tool checksum mismatch'
+              destination = pathlib.Path(os.environ['RUNNER_TEMP']) / 'route-catalog-tools' / executable
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              destination.write_bytes(binary)
+              destination.chmod(0o755)
+              with open(os.environ['GITHUB_ENV'], 'a') as target:
+                  target.write(f'{variable}={destination}\n')
           PY
 
       - name: Run Live-Sidecar Integration Tests
