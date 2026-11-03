@@ -12,10 +12,12 @@ namespace Hexalith.EventStore.HealthChecks;
 /// or <c>actorRuntime.placement</c> (it surfaces only the registered actor type list), so this probe
 /// reads the raw metadata JSON over HTTP. The endpoint is resolved from the sidecar-injected
 /// <c>DAPR_HTTP_ENDPOINT</c> / <c>DAPR_HTTP_PORT</c> environment variables (default port 3500).
+/// The configured <c>DAPR_API_TOKEN</c> authenticates this request without changing shared client headers.
 /// </remarks>
 public sealed class DaprActorPlacementProbe : IDaprActorPlacementProbe {
     private readonly HttpClient _httpClient;
     private readonly string _metadataUri;
+    private readonly string? _apiToken;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprActorPlacementProbe"/> class.
@@ -32,12 +34,18 @@ public sealed class DaprActorPlacementProbe : IDaprActorPlacementProbe {
             ? configuredEndpoint
             : $"http://localhost:{(!string.IsNullOrWhiteSpace(configuredPort) ? configuredPort : "3500")}";
         _metadataUri = $"{endpoint.TrimEnd('/')}/v1.0/metadata";
+        _apiToken = configuration["DAPR_API_TOKEN"];
     }
 
     /// <inheritdoc/>
     public async Task<DaprActorPlacementStatus> CheckAsync(CancellationToken cancellationToken) {
+        using var request = new HttpRequestMessage(HttpMethod.Get, _metadataUri);
+        if (!string.IsNullOrWhiteSpace(_apiToken))
+        {
+            request.Headers.Add("dapr-api-token", _apiToken);
+        }
         using HttpResponseMessage response = await _httpClient
-            .GetAsync(_metadataUri, cancellationToken)
+            .SendAsync(request, cancellationToken)
             .ConfigureAwait(false);
         _ = response.EnsureSuccessStatusCode();
 
