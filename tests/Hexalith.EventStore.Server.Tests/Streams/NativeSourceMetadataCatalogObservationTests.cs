@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Hexalith.EventStore.ServiceDefaults.Routing;
@@ -15,6 +16,7 @@ public sealed class NativeSourceMetadataCatalogObservationTests
     [Fact]
     public async Task SourceOnlyReceiverEnrollmentIsPartOfTheIndependentCatalogObservation()
     {
+        string privateSentinel = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         string directory = Path.Combine(Path.GetTempPath(), "native-source-catalog-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
@@ -28,13 +30,13 @@ public sealed class NativeSourceMetadataCatalogObservationTests
                 ["EventStore:RouteCatalog:DevelopmentBootstrap:ComponentPath"] = component,
                 ["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"] = acl,
                 ["Authentication:BoundStreamRead:MetadataOnlyCallers:folders"] = "true",
-                ["Authentication:BoundStreamRead:PrivateKey"] = "private-sentinel",
+                ["Authentication:BoundStreamRead:PrivateKey"] = privateSentinel,
             }).Build();
             var before = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, "eventstore", [], [], [], [], [], TestContext.Current.CancellationToken);
             using JsonDocument observed = JsonDocument.Parse(before.AuthenticationProfile);
             observed.RootElement.GetProperty("settings").GetProperty("Authentication:BoundStreamRead:MetadataOnlyCallers:folders")
                 .GetString().ShouldBe("true");
-            System.Text.Encoding.UTF8.GetString(before.AuthenticationProfile).ShouldNotContain("private-sentinel");
+            System.Text.Encoding.UTF8.GetString(before.AuthenticationProfile).ShouldNotContain(privateSentinel);
             configuration["Authentication:BoundStreamRead:MetadataOnlyCallers:folders"] = null;
             var after = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, "eventstore", [], [], [], [], [], TestContext.Current.CancellationToken);
             before.AuthenticationProfile.SequenceEqual(after.AuthenticationProfile).ShouldBeFalse();
