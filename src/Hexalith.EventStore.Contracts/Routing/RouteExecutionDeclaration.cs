@@ -17,4 +17,9 @@ public sealed record RouteExecutionDeclaration(
     string? QueryKind,
     IReadOnlyList<string> ProjectionOutputs,
     string? ActorType = null,
-    bool RequiresDelegatedContext = false);
+    bool RequiresDelegatedContext = false)
+{
+    /// <summary>Finite owner-enrolled legacy query selectors; assertions about this HTTP projection query, never executable actor targets.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? CompatibilityProjectionActorTypes { get; init; }
+}

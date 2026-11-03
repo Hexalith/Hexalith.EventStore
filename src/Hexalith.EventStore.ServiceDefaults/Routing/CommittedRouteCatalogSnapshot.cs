@@ -32,6 +32,7 @@ public sealed class CommittedRouteCatalogSnapshot
                 {
                     Aliases = Array.AsReadOnly(e.Aliases.ToArray()),
                     ProjectionOutputs = Array.AsReadOnly(e.ProjectionOutputs.ToArray()),
+                    CompatibilityProjectionActorTypes = e.CompatibilityProjectionActorTypes is { } selectors ? Array.AsReadOnly(selectors.ToArray()) : null,
                 } : null,
             }).ToArray()),
             Routes = Array.AsReadOnly(decoded.Routes.ToArray()),

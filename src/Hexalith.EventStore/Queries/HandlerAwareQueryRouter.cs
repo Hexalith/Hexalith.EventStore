@@ -67,7 +67,7 @@ public sealed class HandlerAwareQueryRouter : IQueryRouter {
             if (committed.Declaration.Execution is not { } execution)
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The committed declaration has no execution metadata.");
             if ((!string.IsNullOrWhiteSpace(query.ProjectionType) && query.ProjectionType != committed.Declaration.ProjectionType)
-                || (!string.IsNullOrWhiteSpace(query.ProjectionActorType) && query.ProjectionActorType != execution.ActorType))
+                || !Hexalith.EventStore.Contracts.Routing.RouteCatalogQuerySelectorPolicy.Matches(committed.Declaration, query.ProjectionActorType))
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("Caller-selected projection or actor differs from the committed query target.");
             if (execution.RequiresDelegatedContext && query.CallerAuthority is null)
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The committed query requires delegated caller authority.");

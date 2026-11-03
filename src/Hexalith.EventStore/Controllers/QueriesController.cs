@@ -311,7 +311,7 @@ public partial class QueriesController : ControllerBase {
             bool legacyIdentityHint = protectedInternalIdentity && selected.Declaration.ProjectionType is null
                 && request.ProjectionType == request.Domain && string.IsNullOrWhiteSpace(request.ProjectionActorType);
             if ((!legacyIdentityHint && !string.IsNullOrWhiteSpace(request.ProjectionType) && request.ProjectionType != selected.Declaration.ProjectionType)
-                || (!string.IsNullOrWhiteSpace(request.ProjectionActorType) && request.ProjectionActorType != selected.Declaration.Execution!.ActorType))
+                || !Hexalith.EventStore.Contracts.Routing.RouteCatalogQuerySelectorPolicy.Matches(selected.Declaration, request.ProjectionActorType))
                 throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The selected query target differs from committed authority.");
         }
 
