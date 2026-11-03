@@ -42,7 +42,7 @@ class PackageConsumerEnvironmentTests(unittest.TestCase):
                     "open(sys.argv[1],'w').write(json.dumps({k:os.environ[k] for k in keys if k in os.environ}))",
                     str(output), json.dumps(retained_keys),
                 ], cwd=directory)
-                self.assertEqual(dict(os.environ), before)
+                self.assertTrue(dict(os.environ) == before, "Consumer command changed the parent environment.")
             child = json.loads(output.read_text())
             mapping_keys = set(inherited) - {"Configuration", "CONSUMER_UNRELATED"}
             self.assertTrue(mapping_keys.isdisjoint(child))
@@ -54,17 +54,51 @@ class PackageConsumerEnvironmentTests(unittest.TestCase):
     def test_tool_cache_override_is_child_only_and_cannot_reintroduce_mapping(self):
         with tempfile.TemporaryDirectory(prefix="tool-consumer-environment-") as scratch:
             cache = Path(scratch) / "packages"
-            with patch.dict(os.environ, {"CustomBeforeDirectoryBuildProps": "producer.targets",
-                                         "HEXALITH_SOURCE_MAPPING_HASH": "producer-hash"}):
+            with patch.dict(os.environ, {"cUSTOMbEFOREdIRECTORYbUILDpROPS": "producer.targets",
+                                         "hexalith_source_mapping_hash": "producer-hash"}):
                 before = dict(os.environ)
                 with patch.object(CONSUMERS.subprocess, "run") as child:
                     child.return_value = subprocess.CompletedProcess(["dotnet", "tool", "install"], 0)
                     CONSUMERS.run(["dotnet", "tool", "install"], packages_folder=cache)
-                self.assertEqual(dict(os.environ), before)
+                self.assertTrue(dict(os.environ) == before, "Consumer command changed the parent environment.")
             environment = child.call_args.kwargs["env"]
             self.assertEqual(environment["NUGET_PACKAGES"], str(cache))
-            self.assertNotIn("CustomBeforeDirectoryBuildProps", environment)
-            self.assertNotIn("HEXALITH_SOURCE_MAPPING_HASH", environment)
+            self.assertFalse(any(key.casefold() == "custombeforedirectorybuildprops" for key in environment), "Caller import reached consumer child.")
+            self.assertFalse(any(key.casefold().startswith("hexalith_source_mapping_") for key in environment), "Caller identity reached consumer child.")
+
+    def test_real_msbuild_consumer_does_not_inherit_mapping_imports(self):
+        hooks = (
+            "CustomBeforeDirectoryBuildProps", "CustomAfterMicrosoftCommonProps",
+            "CustomBeforeDirectoryBuildTargets", "CustomAfterDirectoryBuildTargets",
+            "AfterMicrosoftNETSdkTargets",
+        )
+        with tempfile.TemporaryDirectory(prefix="package-consumer-mapping-test-") as folder:
+            directory = Path(folder)
+            injected = directory / "caller-mapping.props"
+            injected.write_text(
+                "<Project><PropertyGroup><CallerMappingImported>true</CallerMappingImported>"
+                "</PropertyGroup></Project>", encoding="utf-8"
+            )
+            project = directory / "Consumer.csproj"
+            project.write_text("""<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <Target Name="ProbeStandaloneConsumer">
+    <Error Condition="'$(CallerMappingImported)' == 'true'" Text="Caller source mapping leaked into standalone consumer." />
+    <Error Condition="'$(ConsumerUnrelatedSetting)' != 'retained'" Text="Unrelated consumer environment was removed." />
+  </Target>
+</Project>""", encoding="utf-8")
+            for hook in (*hooks, *(key.swapcase() for key in hooks)):
+                with self.subTest(hook=hook), patch.dict(os.environ, {
+                    hook: str(injected),
+                    "HEXALITH_SOURCE_MAPPING_HASH": "synthetic-caller-mapping",
+                    "ConsumerUnrelatedSetting": "retained",
+                }):
+                    before = dict(os.environ)
+                    CONSUMERS.run([
+                        "dotnet", "msbuild", str(project), "-nologo",
+                        "-target:ProbeStandaloneConsumer", "-p:UseHexalithProjectReferences=false",
+                    ], cwd=directory)
+                    self.assertTrue(dict(os.environ) == before, "Consumer command changed the parent environment.")
 
     def test_child_failure_keeps_original_exit_code(self):
         with patch.object(CONSUMERS.subprocess, "run") as child:

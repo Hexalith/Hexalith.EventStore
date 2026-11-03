@@ -19,7 +19,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 # The parent CI job builds mapped owner source. These package-only probes run in
 # separate temporary projects and must not inherit that source mapping.
-SOURCE_MAPPING_IMPORTS = frozenset({
+# MSBuild import property names are case-insensitive.
+SOURCE_MAPPING_IMPORTS = frozenset(key.casefold() for key in {
     "AfterMicrosoftNETSdkTargets",
     "CustomAfterDirectoryBuildTargets",
     "CustomAfterMicrosoftCommonProps",
@@ -548,7 +549,7 @@ def run(
 
     env = {
         key: value for key, value in os.environ.items()
-        if key not in SOURCE_MAPPING_IMPORTS and not key.startswith("HEXALITH_SOURCE_MAPPING_")
+        if key.casefold() not in SOURCE_MAPPING_IMPORTS and not key.casefold().startswith("hexalith_source_mapping_")
     }
     if packages_folder is not None:
         env["NUGET_PACKAGES"] = str(packages_folder)

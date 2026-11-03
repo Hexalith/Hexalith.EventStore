@@ -122,7 +122,7 @@ place for run output.
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`, plus `scripts/check-committed-files.sh`, `tools/tests/test_check_committed_files.py` and `tools/tests/test_dapr_broker_qualification.py` | Dedicated `Integration Tests` workflow after `dapr init`; its required `live-sidecar` job first runs the committed-file guard and the two Python suites. This lane is visible but not part of the semantic-release gate. It is not a `dotnet test` of `Server.Tests`. |
 | Payload-protection lifecycle | `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests` | Dedicated `Payload Protection Lifecycle` workflow; isolated processes and digest-pinned PostgreSQL v2 state, persisted assertions and zero skips. The existing `Payload Protection` core workflow runs independently. |
 | Advisory browser/governance suites | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
-| Runner-owned package integration proposal | `tests/Hexalith.EventStore.Platform.IntegrationTests` | The declared `platform-package` suite requires the real gateway and run-scoped Redis persistence after all twenty isolated projects pass. The exact published CLI 4.43.4 and pinned v2 producer perform unconditional owned cleanup. Missing identity/catalog prerequisites block preparation; this proposal is not hosted qualification. The separate Contracts gate remains blocking. |
+| Runner-owned package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | The declared `platform-package` suite requires the real gateway and run-scoped Redis persistence after all twenty isolated projects pass. Published CLI 4.43.6 and the pinned v2 producer perform unconditional owned cleanup. Identity/catalog prerequisites remain blocking; the current SDK revision still requires exact-head hosted qualification. The separate Contracts gate remains blocking. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 | Isolated synthetic sharding | `tests/Hexalith.EventStore.Sharding.Tests` | Deferred CI automation; the operator opt-in Debug lane and its owned `Sharding.TestHost` fixture are documented in `tests/Hexalith.EventStore.Sharding.Tests/README.md`. Synthetic observations do not qualify a production provider profile or release gate. |
 
@@ -131,17 +131,35 @@ The v2 caller explicitly maps only `HEXALITH_CI_REGISTRY_USERNAME` and
 accepts no inherited secrets, caller Dapr overrides or direct integration/AppHost
 execution inputs. Existing independent jobs and consumer/coverage gates remain.
 
-The recorded dependency selections remain unchanged during this proposal.
-EventStore selects Builds `048260858048494d1c47156f4bf5e05a5403a02d` for the
-approved Azure.Core 1.64.0 and Azure.Security.KeyVault.Keys 4.10.2 additions, while
-its recorded Platform source is `ab56a8deb9bafef8a717640beba11aca43d8d65a`.
-Released CLI 4.43.4 requires a clean, genuinely release-tagged Platform identity
-whose Builds pin exactly matches the module catalog. Current Platform
-`bf101b9d5f19ba741852b0230e526d1f01422022` pins Builds
-`26991e8c542704be44cd8d9f58084d56fa627adb`; adopting that pointer alone would
-still refuse with `HXW009`. Normal coherent catalog/Platform publication and
-owner adoption are prerequisites; neither the Azure pins nor the identity gates
-are overridden here. No runtime, cleanup or candidate acceptance is claimed.
+The package-profile bootstrap records Builds
+`89f62052c932d054bda2b435bdfef60d96e77612` and released Platform `v1.1.6`
+(`8ea8fe092f8abb5c932a61830aae16051d442463`). Platform records the same Builds
+catalog, which selects public EventStore 4.0.4, Azure.Core 1.64.0 and
+Azure.Security.KeyVault.Keys 4.10.2. These recorded source identities remain
+unchanged by the tool update.
+
+The executing module CLI is genuine public 4.43.6, released from Builds
+`725754075e1d6369430a3adf94d46fb71e6eaf9e` by successful normal release
+[41666723123](https://github.com/Hexalith/Hexalith.Builds/actions/runs/41666723123).
+Its source differs from the recorded catalog source. Platform's supported tool
+range `[4.43.5,5.0.0-0)` admits that CLI; both sources contain the same catalog
+blob `ab01a410d9e3d5b626ae7feb8da6ec3c1a0af27b`. The newer tool resolves a cold
+direct-only module from its verified direct Builds checkout, without requiring
+Platform's nested dependency checkouts. Matching catalog bytes do not replace
+the separately verified source identities or the supported-range check.
+
+The catalog's EventStore 4.0.4 selection remains the package-profile bootstrap
+input. A new EventStore producer and subsequent catalog/cohort adoption need
+normal publication and fresh qualification. This tooling adoption does not
+claim hosted acceptance for the current SDK revision.
+
+Standalone package probes and synthetic MSBuild fixtures select independent
+child build environments before applying their deliberate test mapping inputs.
+They retain the producer's environment, package-cache boundaries, existing
+assertions and deadlines. Actual selected SDK projects keep their inherited
+mapping; `HXW005`, `HXW006` and the exact selected-output identity guards remain
+blocking. The twenty-project isolated tier must pass before the runner-owned
+package integration can start.
 
 The qualified lifecycle profile keeps Dapr's default 4 MiB gRPC request limit.
 Each transaction admits at most 512 operations and 2 MiB of charged data: value,
