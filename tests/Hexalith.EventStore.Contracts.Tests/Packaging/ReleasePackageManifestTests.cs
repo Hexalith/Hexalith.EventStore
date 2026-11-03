@@ -2314,7 +2314,7 @@ public sealed class ReleasePackageManifestTests
 
         lines.ShouldContain("  semantic-release-governance:");
         lines.ShouldContain("    runs-on: ubuntu-latest");
-        lines.ShouldContain("    timeout-minutes: 10");
+        lines.ShouldContain("    timeout-minutes: 45");
         checkoutActions.Length.ShouldBe(1);
         checkoutActions[0].Groups["sha"].Value.ShouldBe(CheckoutActionSha);
         lines.ShouldContain("          persist-credentials: false");
