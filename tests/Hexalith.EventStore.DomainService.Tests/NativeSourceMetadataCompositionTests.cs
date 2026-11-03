@@ -33,22 +33,31 @@ public sealed class NativeSourceMetadataCompositionTests
     public async Task SeparateMetadataClientPreservesDefaultGatewayAndRefusesUnprovableScope(string scenario)
     {
         using RSA key = RSA.Create(2048);
+        string sidecarToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+        string? boundReadKey = Convert.ToBase64String(key.ExportPkcs8PrivateKey());
+        if (scenario == "missing-key")
+        {
+            boundReadKey = null;
+        }
+        else if (scenario == "bad-key")
+        {
+            boundReadKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        }
         var identity = new AggregateIdentity("tenant-a", scenario == "foreign-domain" ? "other-domain" : "folders", "organization-a");
         var proof = NativeSourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500",
-            ["DAPR_API_TOKEN"] = "component-sidecar-token",
+            ["DAPR_API_TOKEN"] = sidecarToken,
             ["EventStore:Gateway:AppId"] = "eventstore-isolated",
             ["Authentication:WorkloadIssuer:Workload"] = "folders-isolated",
-            ["Authentication:BoundStreamRead:PrivateKey"] = scenario == "missing-key" ? null
-                : scenario == "bad-key" ? "invalid" : Convert.ToBase64String(key.ExportPkcs8PrivateKey()),
+            ["Authentication:BoundStreamRead:PrivateKey"] = boundReadKey,
         }).Build();
         using var metadataTransport = new MockHttpMessageHandler(request =>
         {
             request.RequestUri!.AbsoluteUri.ShouldBe("http://localhost:3500/api/v1/streams/read/workload");
             request.Headers.GetValues("dapr-app-id").Single().ShouldBe("eventstore-isolated");
-            request.Headers.GetValues("dapr-api-token").Single().ShouldBe("component-sidecar-token");
+            request.Headers.GetValues("dapr-api-token").Single().ShouldBe(sidecarToken);
             request.Headers.Authorization.ShouldBeNull();
             request.Headers.GetValues(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName).Single().ShouldBe("component-workload-assertion");
             var sent = JsonSerializer.Deserialize<StreamReadRequest>(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult(), JsonSerializerOptions.Web)!;
