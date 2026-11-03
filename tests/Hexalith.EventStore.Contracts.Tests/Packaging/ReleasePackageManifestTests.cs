@@ -592,7 +592,7 @@ public sealed class ReleasePackageManifestTests
 
         using JsonDocument tools = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".config", "dotnet-tools.json")));
         JsonElement tool = tools.RootElement.GetProperty("tools").GetProperty("hexalith.builds.module.cli");
-        tool.GetProperty("version").GetString().ShouldBe("4.43.4");
+        tool.GetProperty("version").GetString().ShouldBe("4.43.5");
         tool.GetProperty("rollForward").GetBoolean().ShouldBeFalse();
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "module", "hexalith.module-manifest.v2.json")));
         JsonElement suite = manifest.RootElement.GetProperty("modules")[0].GetProperty("tests").EnumerateArray()
