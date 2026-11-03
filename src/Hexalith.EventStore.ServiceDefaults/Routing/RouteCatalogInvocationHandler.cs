@@ -155,32 +155,43 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
             return await InvocationTransport().SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         HttpMessageInvoker invocation = InvocationTransport();
-        RouteCatalogDispatchLease lease = await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
-        await using var release = lease.ConfigureAwait(false);
-        if (lease.Snapshot.TechnicalHttpReceivers.Count > 0 && (!OwnedEndpoint(lease.Snapshot, request.RequestUri!)
-            || !DevelopmentTechnicalHttpTransport.CanonicalPath(rawMethod)))
-            throw new RouteCatalogUnavailableException("The v2 invocation uses a different Dapr runtime endpoint.", RouteCatalogRefusalReason.Configuration);
-        if (!lease.Snapshot.Envelope.Routes.Any(r => r.AppId == appId && r.Method == method)
-            && !lease.Snapshot.AuxiliaryOperations.Any(auxiliary => auxiliary.NativeActor is null && auxiliary.DaprCallback is null && auxiliary.Sidecar is null && auxiliary.Http is null
-                && auxiliary.AppId == appId && auxiliary.Method == method)
-            && !(lease.Snapshot.TechnicalHttpReceivers.All(receiver => receiver.AppId != appId)
-                && lease.Snapshot.AuxiliaryOperations.Any(auxiliary => auxiliary.NativeActor is null && auxiliary.DaprCallback is null && auxiliary.Sidecar is null
-                    && auxiliary.AppId == appId && auxiliary.Http is not null
-                    && DevelopmentTechnicalHttpTransport.Matches(auxiliary, rawMethod, request.Method.Method)))
-            && !TechnicalHttpCatalogBinding.Matches(lease.Snapshot.TechnicalHttpReceivers, appId, method, request.Method.Method, lease.Snapshot.LocalAppId))
-            throw new RouteCatalogUnavailableException("The Dapr invocation target is outside the committed catalog and auxiliary inventory.");
-        request.Headers.Remove(RootHeader);
-        request.Headers.Remove(EpochHeader);
-        request.Headers.Remove(BindingHeader);
-        request.Headers.Remove(ProcessBindingHeader);
-        if (lease.Snapshot.TechnicalHttpReceivers.Count > 0)
-            request.Headers.TryAddWithoutValidation(BindingHeader, lease.Snapshot.ActivationBindingDigest);
-        if (method == "process" && lease.Snapshot.Envelope.SchemaVersion == 3
-            && lease.Snapshot.CompleteActivationBindingDigest is { } processBinding)
-            request.Headers.TryAddWithoutValidation(ProcessBindingHeader, processBinding);
-        request.Headers.TryAddWithoutValidation(RootHeader, lease.Snapshot.RootDigest);
-        request.Headers.TryAddWithoutValidation(EpochHeader, lease.Snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        return await lease.InvokeRemoteAsync(() => invocation.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
+        using RouteCatalogHeldMetadataDispatch? held = _authority is RouteCatalogAuthority issuer
+            ? await issuer.GetHeldMetadataDispatchAsync(request, appId, rawMethod, cancellationToken).ConfigureAwait(false) : null;
+        RouteCatalogDispatchLease lease = held?.Lease ?? await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        HttpRequestMessage dispatchRequest = held?.Request ?? request;
+        try
+        {
+            if (lease.Snapshot.TechnicalHttpReceivers.Count > 0 && (!OwnedEndpoint(lease.Snapshot, dispatchRequest.RequestUri!)
+                || !DevelopmentTechnicalHttpTransport.CanonicalPath(rawMethod)))
+                throw new RouteCatalogUnavailableException("The v2 invocation uses a different Dapr runtime endpoint.", RouteCatalogRefusalReason.Configuration);
+            if (!lease.Snapshot.Envelope.Routes.Any(r => r.AppId == appId && r.Method == method)
+                && !lease.Snapshot.AuxiliaryOperations.Any(auxiliary => auxiliary.NativeActor is null && auxiliary.DaprCallback is null && auxiliary.Sidecar is null && auxiliary.Http is null
+                    && auxiliary.AppId == appId && auxiliary.Method == method)
+                && !(lease.Snapshot.TechnicalHttpReceivers.All(receiver => receiver.AppId != appId)
+                    && lease.Snapshot.AuxiliaryOperations.Any(auxiliary => auxiliary.NativeActor is null && auxiliary.DaprCallback is null && auxiliary.Sidecar is null
+                        && auxiliary.AppId == appId && auxiliary.Http is not null
+                        && DevelopmentTechnicalHttpTransport.Matches(auxiliary, rawMethod, dispatchRequest.Method.Method)))
+                && !TechnicalHttpCatalogBinding.Matches(lease.Snapshot.TechnicalHttpReceivers, appId, method, dispatchRequest.Method.Method, lease.Snapshot.LocalAppId))
+                throw new RouteCatalogUnavailableException("The Dapr invocation target is outside the committed catalog and auxiliary inventory.");
+            dispatchRequest.Headers.Remove(RootHeader);
+            dispatchRequest.Headers.Remove(EpochHeader);
+            dispatchRequest.Headers.Remove(BindingHeader);
+            dispatchRequest.Headers.Remove(ProcessBindingHeader);
+            if (lease.Snapshot.TechnicalHttpReceivers.Count > 0)
+                dispatchRequest.Headers.TryAddWithoutValidation(BindingHeader, lease.Snapshot.ActivationBindingDigest);
+            if (method == "process" && lease.Snapshot.Envelope.SchemaVersion == 3
+                && lease.Snapshot.CompleteActivationBindingDigest is { } processBinding)
+                dispatchRequest.Headers.TryAddWithoutValidation(ProcessBindingHeader, processBinding);
+            dispatchRequest.Headers.TryAddWithoutValidation(RootHeader, lease.Snapshot.RootDigest);
+            dispatchRequest.Headers.TryAddWithoutValidation(EpochHeader, lease.Snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            return held is not null
+                ? await held.InvokeAsync(token => invocation.SendAsync(dispatchRequest, token)).ConfigureAwait(false)
+                : await lease.InvokeRemoteAsync(() => invocation.SendAsync(dispatchRequest, cancellationToken), cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (held is null) await lease.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
 

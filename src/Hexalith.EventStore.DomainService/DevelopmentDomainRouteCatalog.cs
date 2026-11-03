@@ -64,9 +64,16 @@ public static class DevelopmentDomainRouteCatalog
             {
                 ReceiverSurface = fence.Observe(), Operations = CompiledRouteCatalogDeclarations.ReadOperations(contractOwners),
                 ExecutableOwners = implementations.Distinct().OrderBy(assembly => assembly.FullName, StringComparer.Ordinal)
-                    .ToDictionary(assembly => assembly.FullName!, assembly => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(assembly.Location))), StringComparer.Ordinal),
+                    .ToDictionary(assembly => assembly.FullName!, assembly => ReadExecutableDigest(assembly.Location), StringComparer.Ordinal),
             };
         });
+    }
+
+    /// <summary>Reopens and hashes the complete current image without allocating an image-sized temporary array.</summary>
+    internal static string ReadExecutableDigest(string path)
+    {
+        using FileStream image = File.OpenRead(path);
+        return Convert.ToHexStringLower(SHA256.HashData(image));
     }
 
     /// <summary>Captures targets from compiled declarations only after comparing the complete actual local query/projection inventory and canonical receiver policies.</summary>

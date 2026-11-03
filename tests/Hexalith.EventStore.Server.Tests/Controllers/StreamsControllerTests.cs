@@ -20,9 +20,11 @@ using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 using Hexalith.EventStore.Server.Tests.Fakes;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Testing.Fakes;
+using Hexalith.EventStore.Testing.Http;
 using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.AspNetCore.Http;
@@ -52,16 +54,21 @@ public class StreamsControllerTests {
     private const string AggregateId = "party-1";
 
     [Theory]
-    [InlineData(0, true)]
-    [InlineData(5, true)]
-    [InlineData(0, false)]
-    [InlineData(5, false)]
-    public async Task NativeHeadGatewayCrossesRealWorkloadMiddlewareWithJwtBindingsOrExactSignedProof(int head, bool jwtBindings)
+    [InlineData(0, true, false)]
+    [InlineData(5, true, false)]
+    [InlineData(0, false, false)]
+    [InlineData(5, false, false)]
+    [InlineData(0, true, true)]
+    [InlineData(5, true, true)]
+    [InlineData(0, false, true)]
+    [InlineData(5, false, true)]
+    public async Task NativeHeadGatewayCrossesRealWorkloadMiddlewareWithJwtBindingsOrExactSignedProof(int head, bool jwtBindings, bool atomicMetadata)
     {
         using RSA key = RSA.Create(2048);
         const string channelToken = "native-head-test-channel";
         SourceProofInspection inspection = NativeInspection(head, head + 1);
         IAggregateActor actor = HeadOnlyActor(inspection);
+        actor.InspectSourceMetadataPairAsync().Returns(new SourceProofInspectionPair(inspection, inspection));
         IActorProxyFactory proxies = Substitute.For<IActorProxyFactory>();
         proxies.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor", Arg.Any<ActorProxyOptions?>()).Returns(actor);
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
@@ -70,6 +77,12 @@ public class StreamsControllerTests {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
+        if (atomicMetadata)
+        {
+            builder.Configuration["EventStore:Testing:AtomicNativeMetadataInspection:Enabled"] = "true";
+            builder.Services.Configure<RouteCatalogHostOptions>(options =>
+            { options.DevelopmentFixture = true; options.Profile = "Development"; options.RequireTechnicalHttpBinding = true; });
+        }
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             [DaprAppChannelToken.ConfigurationKey] = channelToken,
@@ -118,7 +131,8 @@ public class StreamsControllerTests {
             .ReadAsync(new(Tenant, Domain, AggregateId), TestContext.Current.CancellationToken);
 
         observation.ShouldNotBeNull().Proof.ShouldBe(SourceProofCodec.ToNative(inspection.Proof!));
-        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+        if (atomicMetadata) AssertMetadataCalls(actor);
+        else actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
             .ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync), nameof(IAggregateActor.InspectSourceProofAsync)]);
         protection.ReceivedCalls().ShouldBeEmpty();
         tenantValidator.ReceivedRequests.ShouldBeEmpty();
@@ -141,7 +155,7 @@ public class StreamsControllerTests {
             response.StatusCode.ShouldBe(denial is "workload" or "channel" ? HttpStatusCode.Unauthorized : HttpStatusCode.Forbidden);
             if (denial == "channel") http.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, channelToken);
         }
-        actor.ReceivedCalls().Count().ShouldBe(2);
+        actor.ReceivedCalls().Count().ShouldBe(atomicMetadata && AtomicBuild ? 1 : 2);
     }
 
     [Theory]
@@ -386,6 +400,202 @@ public class StreamsControllerTests {
         page.Metadata.NativeProof.ShouldBe(SourceProofCodec.ToNative(inspection.Proof!));
         await actor.Received(2).InspectSourceProofAsync();
         await actor.Received(1).ReadNativeEventsBoundedRangeAsync(0, 1, 101, 2_097_152);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(5, 1)]
+    [InlineData(5, 6)]
+    public async Task SelectedAtomicMetadataReturnsSameStrictProofWithoutRangesOrLegacyFallback(int head, int floor)
+    {
+        SourceProofInspection inspection = NativeInspection(head, floor);
+        IAggregateActor actor = HeadOnlyActor(inspection);
+        actor.InspectSourceMetadataPairAsync().Returns(new SourceProofInspectionPair(inspection, inspection));
+        (StreamsController controller, _, _, _) = CreateController(actor, atomicMetadata: true);
+        BindWorkload(controller);
+
+        StreamReadPage page = (await controller.ReadWorkloadStreamAsync(HeadRequest()))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>();
+
+        page.Metadata.LatestSequence.ShouldBe(head);
+        page.Metadata.NativeProof.ShouldBe(SourceProofCodec.ToNative(inspection.Proof!));
+        page.Events.ShouldBeEmpty();
+        AssertMetadataCalls(actor);
+    }
+
+    [Fact]
+    public async Task AdditiveAtomicMethodUsesTheActualGeneratedDaprProxyAndJsonPairContract()
+    {
+        SourceProofInspection initial = NativeInspection(5);
+        var expected = new SourceProofInspectionPair(initial, initial);
+        int calls = 0;
+        using var transport = new MockHttpMessageHandler((request, _) =>
+        {
+            calls++;
+            request.RequestUri!.AbsolutePath.ShouldBe($"/v1.0/actors/AggregateActor/{Tenant}:{Domain}:{AggregateId}/method/InspectSourceMetadataPairAsync");
+            // Strong Dapr remoting wraps the generated response body's retVal field in value.
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            { Content = JsonContent.Create(new { value = new { retVal = expected } }, options: JsonSerializerOptions.Web) });
+        });
+        var factory = new ActorProxyFactory(new ActorProxyOptions
+        { HttpEndpoint = "http://localhost:3500", UseJsonSerialization = true, JsonSerializerOptions = JsonSerializerOptions.Web }, transport);
+        IAggregateActor proxy = factory.CreateActorProxy<IAggregateActor>(new ActorId($"{Tenant}:{Domain}:{AggregateId}"), "AggregateActor");
+
+        (await proxy.InspectSourceMetadataPairAsync()).ShouldBe(expected);
+        calls.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("incarnation")]
+    [InlineData("head")]
+    [InlineData("unsupported")]
+    [InlineData("invalid")]
+    [InlineData("erased")]
+    [InlineData("missing")]
+    [InlineData("digest")]
+    [InlineData("retention")]
+    [InlineData("head-message")]
+    [InlineData("identity")]
+    [InlineData("null-final")]
+    public async Task AtomicMetadataPreservesCompleteSecondObservationComparison(string changed)
+    {
+        SourceProofInspection initial = NativeInspection(5);
+        SourceProofInspection? final = changed switch
+        {
+            "incarnation" => initial with { Proof = initial.Proof! with { SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" } },
+            "head" => NativeInspection(4),
+            "unsupported" => initial with { Status = SourceProofInspectionStatus.Unsupported, Proof = null },
+            "invalid" => initial with { Status = SourceProofInspectionStatus.Invalid },
+            "erased" => initial with { Erased = true },
+            "missing" => initial with { Exists = false },
+            "digest" => initial with { Proof = initial.Proof! with { CumulativeDigest = new string('a', 64) } },
+            "retention" => initial with { Proof = initial.Proof! with { RetainedFloor = 2 } },
+            "head-message" => initial with { Proof = initial.Proof! with { HeadMessageId = "other-message" } },
+            "identity" => initial with { Proof = initial.Proof! with { AggregateId = "other-aggregate" } },
+            _ => null,
+        };
+        IAggregateActor actor = HeadOnlyActor(initial);
+        actor.InspectSourceMetadataPairAsync().Returns(new SourceProofInspectionPair(initial, final!));
+        actor.InspectSourceProofAsync().Returns(Task.FromResult(initial), Task.FromResult(final!));
+        (StreamsController controller, _, _, _) = CreateController(actor, atomicMetadata: true);
+        BindWorkload(controller);
+
+        (await controller.ReadWorkloadStreamAsync(HeadRequest())).ShouldBeOfType<StatusCodeResult>()
+            .StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        AssertMetadataCalls(actor);
+    }
+
+    [Theory]
+    [InlineData("unsupported")]
+    [InlineData("invalid")]
+    [InlineData("foreign")]
+    [InlineData("null")]
+    [InlineData("null-pair")]
+    public async Task AtomicMetadataRejectsInvalidInitialObservationBeforeSuccessfulResponse(string invalid)
+    {
+        SourceProofInspection initial = NativeInspection(0);
+        SourceProofInspection? invalidInitial = invalid switch
+        {
+            "unsupported" => initial with { Status = SourceProofInspectionStatus.Unsupported, Proof = null },
+            "invalid" => initial with { Status = SourceProofInspectionStatus.Invalid },
+            "foreign" => initial with { Proof = initial.Proof! with { TenantId = "foreign-tenant" } },
+            _ => null,
+        };
+        IAggregateActor actor = HeadOnlyActor(initial);
+        actor.InspectSourceMetadataPairAsync().Returns(Task.FromResult(invalid == "null-pair"
+            ? null! : new SourceProofInspectionPair(invalidInitial!, initial)));
+        actor.InspectSourceProofAsync().Returns(Task.FromResult(invalidInitial!));
+        (StreamsController controller, _, _, _) = CreateController(actor, atomicMetadata: true);
+        BindWorkload(controller);
+
+        (await controller.ReadWorkloadStreamAsync(HeadRequest())).ShouldBeOfType<StatusCodeResult>()
+            .StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        AssertMetadataCalls(actor, legacyCalls: 1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AtomicMetadataCancellationCannotAcceptAnAlreadyCompletedOrLaterPair(bool late)
+    {
+        using var canceled = new CancellationTokenSource();
+        SourceProofInspection initial = NativeInspection(5);
+        var pending = new TaskCompletionSource<SourceProofInspectionPair>();
+        IAggregateActor actor = HeadOnlyActor(initial);
+        actor.InspectSourceMetadataPairAsync().Returns(_ =>
+        {
+            canceled.Cancel();
+            return late ? pending.Task : Task.FromResult(new SourceProofInspectionPair(initial, initial));
+        });
+        actor.InspectSourceProofAsync().Returns(_ => { canceled.Cancel(); return Task.FromResult(initial); });
+        (StreamsController controller, _, _, _) = CreateController(actor, atomicMetadata: true);
+        BindWorkload(controller);
+
+        await Should.ThrowAsync<OperationCanceledException>(() => controller.ReadWorkloadStreamAsync(HeadRequest(), canceled.Token));
+        pending.TrySetResult(new(initial, initial));
+        actor.ReceivedCalls().All(call => call.GetMethodInfo().Name == (AtomicBuild
+            ? nameof(IAggregateActor.InspectSourceMetadataPairAsync) : nameof(IAggregateActor.InspectSourceProofAsync))).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AtomicMetadataTransportOrOlderImplementationFailureRemainsUnavailableWithoutFallback(bool older)
+    {
+        IAggregateActor actor = HeadOnlyActor(NativeInspection(5));
+        Exception fault = older ? new NotSupportedException("old implementation") : new HttpRequestException("private transport diagnostics");
+        actor.InspectSourceMetadataPairAsync().Returns(Task.FromException<SourceProofInspectionPair>(fault));
+        actor.InspectSourceProofAsync().Returns(Task.FromException<SourceProofInspection>(new HttpRequestException("private transport diagnostics")));
+        (StreamsController controller, _, _, _) = CreateController(actor, atomicMetadata: true);
+        BindWorkload(controller);
+
+        IActionResult response = await controller.ReadWorkloadStreamAsync(HeadRequest());
+        if (AtomicBuild && older) response.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        else JsonSerializer.Serialize(AssertProblem(response, StatusCodes.Status503ServiceUnavailable)).ShouldNotContain(fault.Message);
+        AssertMetadataCalls(actor, legacyCalls: 1);
+    }
+
+    [Fact]
+    public async Task SelectedAtomicMetadataDoesNotChangeNativeRangeReadOrdering()
+    {
+        SourceProofInspection initial = NativeInspection(1);
+        IAggregateActor actor = HeadOnlyActor(initial);
+        actor.ReadNativeEventsBoundedRangeAsync(0, 1, 101, 2_097_152).Returns(new SourceEventRange([BuildEnvelope(1)], 1));
+        (StreamsController controller, _, _, _) = CreateController(actor, atomicMetadata: true);
+        BindWorkload(controller);
+
+        (await controller.ReadWorkloadStreamAsync(HeadRequest() with { ToSequence = null })).ShouldBeOfType<OkObjectResult>();
+        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name).ShouldBe([
+            nameof(IAggregateActor.InspectSourceProofAsync), nameof(IAggregateActor.ReadNativeEventsBoundedRangeAsync), nameof(IAggregateActor.InspectSourceProofAsync)]);
+    }
+
+    [Fact]
+    public async Task SelectedAtomicMetadataKeepsPublicDenialAndExistingNativePageLimitPath()
+    {
+        IAggregateActor actor = HeadOnlyActor(NativeInspection(5));
+        (StreamsController controller, _, _, _) = CreateController(actor, atomicMetadata: true);
+        (await controller.ReadStreamAsync(HeadRequest())).ShouldBeOfType<ForbidResult>();
+        actor.ReceivedCalls().ShouldBeEmpty();
+        BindWorkload(controller);
+        (await controller.ReadWorkloadStreamAsync(HeadRequest() with { PageSize = 256 })).ShouldBeOfType<BadRequestResult>();
+        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name).ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync)]);
+    }
+
+    private static void AssertMetadataCalls(IAggregateActor actor, int legacyCalls = 2)
+        => actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name).ShouldBe(AtomicBuild
+            ? [nameof(IAggregateActor.InspectSourceMetadataPairAsync)]
+            : Enumerable.Repeat(nameof(IAggregateActor.InspectSourceProofAsync), legacyCalls));
+
+    private static bool AtomicBuild
+    {
+        get
+        {
+#if DEBUG
+            return true;
+#else
+            return false;
+#endif
+        }
     }
 
     private static StreamReadRequest HeadRequest()
@@ -887,7 +1097,7 @@ public class StreamsControllerTests {
     private static (StreamsController Controller, IActorProxyFactory ActorProxyFactory, FakeTenantValidator TenantValidator, FakeRbacValidator RbacValidator) CreateController(
         IAggregateActor? actor = null,
         IEventPayloadProtectionService? payloadProtectionService = null,
-        IConfiguration? configuration = null) {
+        IConfiguration? configuration = null, bool atomicMetadata = false) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         if (actor is not null) {
             _ = actorProxyFactory
@@ -907,7 +1117,11 @@ public class StreamsControllerTests {
             rbacValidator,
             NullLogger<StreamsController>.Instance,
             payloadProtectionService,
-            configuration) {
+            atomicMetadata ? new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            { ["EventStore:Testing:AtomicNativeMetadataInspection:Enabled"] = "true" }).Build() : configuration,
+            atomicMetadata ? Options.Create(new RouteCatalogHostOptions
+            { DevelopmentFixture = true, Profile = "Development", RequireTechnicalHttpBinding = true }) : null,
+            atomicMetadata ? new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { EnvironmentName = Environments.Development } : null) {
             ControllerContext = new ControllerContext {
                 HttpContext = new DefaultHttpContext {
                     User = new ClaimsPrincipal(new ClaimsIdentity([

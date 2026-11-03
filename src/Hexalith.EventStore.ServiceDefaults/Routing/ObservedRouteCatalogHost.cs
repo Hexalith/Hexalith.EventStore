@@ -9,7 +9,9 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteCatalogHostObservation>> capture) : IRouteCatalogHostObserver
 {
     /// <summary>Calculates the observed host identity; no candidate-supplied fingerprint participates in a preimage.</summary>
-    public static RouteCatalogHostIdentity Identity(RouteCatalogHostObservation observation)
+    public static RouteCatalogHostIdentity Identity(RouteCatalogHostObservation observation) => Identity(observation, out _);
+
+    private static RouteCatalogHostIdentity Identity(RouteCatalogHostObservation observation, out ObservedRouteCatalogInventory inventory)
     {
         ArgumentNullException.ThrowIfNull(observation);
         if (string.IsNullOrWhiteSpace(observation.HostId) || string.IsNullOrWhiteSpace(observation.AppId)
@@ -24,14 +26,16 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
             || observation.AuxiliaryOperations.Any(a => a.AppId != observation.AppId || string.IsNullOrWhiteSpace(a.Operation))
             || observation.AuxiliaryOperations.Select(a => (a.Domain, a.Method)).Distinct().Count() != observation.AuxiliaryOperations.Count)
             throw new RouteCatalogUnavailableException("Independent host inventory, loaded topology and authentication observations are required.", RouteCatalogRefusalReason.Configuration);
-        string inventory = Hash(JsonSerializer.SerializeToUtf8Bytes(new
+        inventory = new(observation);
+        observation = inventory.Observation;
+        string inventoryDigest = Hash(JsonSerializer.SerializeToUtf8Bytes(new
         {
-            admission = observation.AdmissionPolicies.OrderBy(a => a.RouteId, StringComparer.Ordinal).Select(RouteCatalogCodec.ComputeIdempotencyPolicyDigest).ToArray(),
-            capabilities = observation.ProjectionCapabilities.OrderBy(c => c.Domain, StringComparer.Ordinal).ThenBy(c => c.ContractVersion, StringComparer.Ordinal)
+            admission = observation.AdmissionPolicies!.OrderBy(a => a.RouteId, StringComparer.Ordinal).Select(inventory.Admission).ToArray(),
+            capabilities = observation.ProjectionCapabilities!.OrderBy(c => c.Domain, StringComparer.Ordinal).ThenBy(c => c.ContractVersion, StringComparer.Ordinal)
                 .Select(c => new { c.AppId, c.Domain, c.ContractVersion, c.Fingerprint, types = c.ProjectionTypes.Order(StringComparer.Ordinal).ToArray() }).ToArray(),
-            auxiliary = observation.AuxiliaryOperations.OrderBy(a => a.Domain, StringComparer.Ordinal).ThenBy(a => a.Method, StringComparer.Ordinal).ToArray(),
-            declarations = observation.Declarations.OrderBy(d => d.RouteId, StringComparer.Ordinal).Select(RouteCatalogCodec.ComputeDeclarationDigest).ToArray(),
-            operations = observation.Operations?.OrderBy(o => o.RouteId, StringComparer.Ordinal).Select(RouteCatalogCodec.ComputeOperationContractDigest).ToArray(),
+            auxiliary = observation.AuxiliaryOperations!.OrderBy(a => a.Domain, StringComparer.Ordinal).ThenBy(a => a.Method, StringComparer.Ordinal).ToArray(),
+            declarations = observation.Declarations.OrderBy(d => d.RouteId, StringComparer.Ordinal).Select(inventory.Declaration).ToArray(),
+            operations = observation.Operations?.OrderBy(o => o.RouteId, StringComparer.Ordinal).Select(inventory.Operation).ToArray(),
             targets = observation.Targets.OrderBy(t => t.RouteId, StringComparer.Ordinal).Select(t => new
             { t.RouteId, t.DeclarationDigest, t.AppId, t.Method, t.ContractVersion, t.CredentialKind, t.Operation, t.IsRuntimeOverride, t.ResolverTenantPattern }).ToArray(),
         }));
@@ -66,7 +70,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 throw new RouteCatalogUnavailableException("The actual executable owner identities are incomplete.", RouteCatalogRefusalReason.Inventory);
             executable = Hash(JsonSerializer.SerializeToUtf8Bytes(owners.OrderBy(owner => owner.Key, StringComparer.Ordinal).ToArray()));
         }
-        return new(observation.HostId, observation.AppId, inventory, topology, Hash(observation.AuthenticationProfile)) { ExecutableDigest = executable };
+        return new(observation.HostId, observation.AppId, inventoryDigest, topology, Hash(observation.AuthenticationProfile)) { ExecutableDigest = executable };
     }
 
     /// <inheritdoc/>
@@ -77,7 +81,8 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
         RouteCatalogHostObservation actual = await capture(cancellationToken).ConfigureAwait(false);
         if (actual.AuthorityCoordinates != coordinates)
             throw new RouteCatalogUnavailableException("Observed authority coordinates disagree with the effective state store.", RouteCatalogRefusalReason.Configuration);
-        RouteCatalogHostIdentity identity = Identity(actual);
+        RouteCatalogHostIdentity identity = Identity(actual, out var inventory);
+        actual = inventory.Observation;
         TechnicalHttpCatalogBinding.Validate(activation);
         var expectedTechnical = activation.TechnicalHttpReceivers?.SingleOrDefault(receiver => receiver.AppId == actual.AppId);
         bool installedTechnical = actual.ReceiverSurface?.FenceVersion == RouteCatalogTechnicalHttpPolicy.FenceVersion
@@ -90,7 +95,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
         RouteCatalogEnvelope envelope = RouteCatalogCodec.Decode(activation.CanonicalCatalog, activation.RootDigest);
         if (envelope.SchemaVersion == 3 && (actual.Operations is null
             || !actual.Operations.Select(o => o.RouteId).Order(StringComparer.Ordinal).SequenceEqual(actual.Declarations.Select(d => d.RouteId).Order(StringComparer.Ordinal), StringComparer.Ordinal)
-            || actual.Operations.Any(o => o.Digest != RouteCatalogCodec.ComputeOperationContractDigest(o)
+            || actual.Operations.Any(o => o.Digest != inventory.Operation(o)
                 || !envelope.Operations!.Any(candidate => candidate.RouteId == o.RouteId && candidate.Digest == o.Digest))))
             throw new RouteCatalogUnavailableException("The installed owner operation schemas or eligibility differ from the proposed generation.", RouteCatalogRefusalReason.Inventory);
         if (actual.TopologyDocuments.Count < 2) throw new RouteCatalogUnavailableException("Loaded component and ACL inputs are required.", RouteCatalogRefusalReason.Configuration);
@@ -113,19 +118,23 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
             || actual.Declarations.Select(d => d.RouteId).Distinct(StringComparer.Ordinal).Count() != actual.Declarations.Count
             || actual.Targets.Select(t => t.RouteId).Distinct(StringComparer.Ordinal).Count() != actual.Targets.Count
             || actual.Targets.Any(t => !actual.Declarations.Any(d => d.RouteId == t.RouteId
-                && RouteCatalogCodec.ComputeDeclarationDigest(d) == t.DeclarationDigest))
+                && inventory.Declaration(d) == t.DeclarationDigest))
             || actual.Declarations.Any(d => !envelope.Declarations.Any(candidate => candidate.RouteId == d.RouteId
-                && RouteCatalogCodec.ComputeDeclarationDigest(candidate) == RouteCatalogCodec.ComputeDeclarationDigest(d)))
+                && inventory.Declaration(candidate) == inventory.Declaration(d)))
             || actual.Targets.Any(t => !envelope.Routes.Any(r => r.RouteId == t.RouteId && r.DeclarationDigest == t.DeclarationDigest
                 && r.AppId == t.AppId && r.Method == t.Method && r.ContractVersion == t.ContractVersion && r.CredentialKind == t.CredentialKind
                 && r.Operation == t.Operation && r.IsRuntimeOverride == t.IsRuntimeOverride && r.ResolverTenantPattern == t.ResolverTenantPattern))
             || envelope.Routes.Where(r => r.AppId == actual.AppId).Any(r => !actual.Targets.Any(t => t.RouteId == r.RouteId)))
             throw new RouteCatalogUnavailableException("The proposed declarations, executable targets or exact host inventory disagree with actual local registrations.", RouteCatalogRefusalReason.Inventory);
         var localAdmission = envelope.Idempotency.Where(a => a.ConsumerAppId == actual.AppId).ToArray();
+        // Capture each freshly observed serialized record once. This preserves the prior
+        // ordinal serialized-record equality without repeating serialization for every pair.
+        var installedAuxiliary = actual.AuxiliaryOperations!.Select(operation => JsonSerializer.Serialize(operation))
+            .ToHashSet(StringComparer.Ordinal);
         if (actual.AdmissionPolicies!.Any(a => a.ConsumerAppId != actual.AppId)
             || actual.AdmissionPolicies!.Select(a => a.RouteId).Distinct(StringComparer.Ordinal).Count() != actual.AdmissionPolicies!.Count
             || localAdmission.Any(a => !actual.AdmissionPolicies!.Any(installed => installed.RouteId == a.RouteId
-                && RouteCatalogCodec.ComputeIdempotencyPolicyDigest(installed) == RouteCatalogCodec.ComputeIdempotencyPolicyDigest(a)))
+                && inventory.Admission(installed) == inventory.Admission(a)))
             || envelope.Routes.Where(r => r.AppId == actual.AppId && r.Method == "project/v2").Any(r =>
                 !envelope.Declarations.Any(d => d.RouteId == r.RouteId && d.Kind == "projection"
                     && (activation.ProjectionCapabilities ?? []).Any(c => c.AppId == actual.AppId && c.Domain == d.Domain
@@ -134,7 +143,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                 !actual.ProjectionCapabilities!.Any(installed => installed.AppId == c.AppId && installed.Domain == c.Domain
                     && installed.ContractVersion == c.ContractVersion && installed.Fingerprint == c.Fingerprint
                     && installed.ProjectionTypes.Order(StringComparer.Ordinal).SequenceEqual(c.ProjectionTypes.Order(StringComparer.Ordinal), StringComparer.Ordinal)))
-            || (activation.AuxiliaryOperations ?? []).Where(a => a.AppId == actual.AppId).Any(a => !actual.AuxiliaryOperations!.Any(installed => JsonSerializer.Serialize(installed) == JsonSerializer.Serialize(a))))
+            || (activation.AuxiliaryOperations ?? []).Where(a => a.AppId == actual.AppId).Any(a => !installedAuxiliary.Contains(JsonSerializer.Serialize(a))))
             throw new RouteCatalogUnavailableException("The proposed admission, named projection capability or auxiliary operation disagrees with installed local policy.", RouteCatalogRefusalReason.Inventory);
         return identity;
     }

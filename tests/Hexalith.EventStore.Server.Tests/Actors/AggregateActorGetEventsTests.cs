@@ -25,6 +25,65 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class AggregateActorGetEventsTests {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AtomicMetadataPairPerformsTwoActualReadOnlyInspectionsAndPreservesChangedState(bool changed)
+    {
+        (AggregateActor actor, IActorStateManager state) = CreateActor();
+        var identity = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity("tenant-a", "counter", "counter-1");
+        var initial = new AggregateMetadata(0, DateTimeOffset.UnixEpoch, null)
+        { SourceProof = SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV") };
+        AggregateMetadata final = changed ? initial with { SourceErasurePending = true } : initial;
+        state.TryGetStateAsync<AggregateMetadata>(MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, initial), new ConditionalValue<AggregateMetadata>(true, final));
+        using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
+
+        SourceProofInspectionPair pair = await actor.InspectSourceMetadataPairAsync();
+
+        pair.Initial.Status.ShouldBe(SourceProofInspectionStatus.Available);
+        pair.Final.Status.ShouldBe(changed ? SourceProofInspectionStatus.Invalid : SourceProofInspectionStatus.Available);
+        (pair.Initial == pair.Final).ShouldBe(!changed);
+        costs[ProjectionDeliveryCost.SourceInspections].ShouldBe(2);
+        costs[ProjectionDeliveryCost.SourceMetadataReads].ShouldBe(2);
+        costs[ProjectionDeliveryCost.SourceRanges].ShouldBe(0);
+        costs[ProjectionDeliveryCost.SourceEventReads].ShouldBe(0);
+        await state.Received(2).TryGetStateAsync<AggregateMetadata>(MetadataKey, Arg.Any<CancellationToken>());
+        state.ReceivedCalls().All(call => call.GetMethodInfo().Name is "TryGetStateAsync" or "ClearCacheAsync").ShouldBeTrue();
+        System.Text.Json.JsonSerializer.Deserialize<SourceProofInspectionPair>(System.Text.Json.JsonSerializer.Serialize(pair)).ShouldBe(pair);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AtomicMetadataPairPropagatesSecondReadFaultOrCancellationWithoutWrites(bool canceled)
+    {
+        var state = new FaultInjectingActorStateManager();
+        state.FaultOnCall($"TryGetState:{MetadataKey}", 2,
+            canceled ? new OperationCanceledException("metadata canceled") : new IOException("metadata unavailable"));
+        await state.SeedCommittedStateAsync(new Dictionary<string, object>
+        { [MetadataKey] = new AggregateMetadata(0, DateTimeOffset.UnixEpoch, null) });
+        (AggregateActor actor, _) = CreateActor(state);
+        using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
+
+        if (canceled) await Should.ThrowAsync<OperationCanceledException>(() => actor.InspectSourceMetadataPairAsync());
+        else await Should.ThrowAsync<IOException>(() => actor.InspectSourceMetadataPairAsync());
+
+        costs[ProjectionDeliveryCost.SourceInspections].ShouldBe(2);
+        costs[ProjectionDeliveryCost.SourceMetadataReads].ShouldBe(2);
+        costs[ProjectionDeliveryCost.SourceRanges].ShouldBe(0);
+        costs[ProjectionDeliveryCost.SourceEventReads].ShouldBe(0);
+        state.Trace.ShouldNotContain("SaveState");
+        state.Trace.ShouldNotContain(item => item.StartsWith("SetState:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task OlderActorImplementationRefusesAtomicMetadataInsteadOfInventingPair()
+    {
+        IAggregateActor older = new Hexalith.EventStore.Testing.Fakes.FakeAggregateActor();
+        await Should.ThrowAsync<NotSupportedException>(() => older.InspectSourceMetadataPairAsync());
+    }
+
+    [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]

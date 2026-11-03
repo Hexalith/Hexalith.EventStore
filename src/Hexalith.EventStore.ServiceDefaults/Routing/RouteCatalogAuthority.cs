@@ -1,21 +1,42 @@
+using System.Diagnostics;
+
 using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Hosting;
 
 namespace Hexalith.EventStore.ServiceDefaults.Routing;
 
 /// <summary>CAS-serialized prepare/ready/commit/rollback authority with durable, non-expiring dispatch leases.</summary>
+[method: Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
 public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteCatalogTrustValidator trust,
-    IOptions<RouteCatalogHostOptions> options, IRouteCatalogHostObserver? observer = null, IRouteCatalogQuiescenceVerifier? quiescenceVerifier = null) : IRouteCatalogAuthority
+    IOptions<RouteCatalogHostOptions> options, IRouteCatalogHostObserver? observer = null, IRouteCatalogQuiescenceVerifier? quiescenceVerifier = null,
+    IHostEnvironment? environment = null) : IRouteCatalogAuthority, IDisposable
 {
+    /// <summary>Preserves the original packaged constructor signature for existing compiled consumers.</summary>
+    /// <param name="store">The fresh durable authority store.</param>
+    /// <param name="trust">The independent trust validator.</param>
+    /// <param name="options">The effective local host options.</param>
+    /// <param name="observer">The independent local host observer.</param>
+    /// <param name="quiescenceVerifier">The independently owned quiescence verifier.</param>
+    public RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteCatalogTrustValidator trust,
+        IOptions<RouteCatalogHostOptions> options, IRouteCatalogHostObserver? observer,
+        IRouteCatalogQuiescenceVerifier? quiescenceVerifier)
+        : this(store, trust, options, observer, quiescenceVerifier, null) { }
+
     // Admission is locally queued only until its fence is recorded. Remote dispatch and all
     // lifecycle/verifier work run outside this gate and retain their independent CAS checks.
     private readonly SemaphoreSlim _localAdmission = new(1, 1);
+    private readonly RouteCatalogValidatedBytesMemo _validatedBytes = new();
+
+    /// <summary>Releases only private computational byte storage, without removing or reconciling any durable dispatch fence.</summary>
+    public void Dispose() => _validatedBytes.Dispose();
 
     /// <inheritdoc/>
     public async Task PrepareAsync(RouteCatalogActivation candidate, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(candidate);
+        using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
         candidate = Freeze(candidate);
         await ValidateAsync(candidate, cancellationToken).ConfigureAwait(false);
         await UpdateAsync(state =>
@@ -38,6 +59,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     /// <inheritdoc/>
     public async Task<RouteCatalogHostAttestation> ReadyAsync(string attemptId, CancellationToken cancellationToken = default)
     {
+        using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
         RouteCatalogHostAttestation? receipt = null;
         await UpdateAsync(async state =>
         {
@@ -56,6 +78,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     /// <inheritdoc/>
     public async Task CommitAsync(string attemptId, CancellationToken cancellationToken = default)
     {
+        using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
         await UpdateAsync(async state =>
         {
             if (state.Pending is null && state.Committed?.AttemptId == attemptId)
@@ -82,6 +105,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     public async Task RollbackAsync(RouteCatalogRollbackRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
         await UpdateAsync(async state =>
         {
             if (state.CompletedTransitions.Contains(request)) return state;
@@ -108,6 +132,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     public async Task ReconcileAsync(RouteCatalogQuiescenceRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
         await UpdateAsync(async state =>
         {
             RouteCatalogActivation committed = state.Committed ?? throw new RouteCatalogUnavailableException("No committed generation can verify quiescence.");
@@ -140,9 +165,95 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     public async Task<RouteCatalogDispatchLease> AcquireAsync(CancellationToken cancellationToken = default)
     {
         await _localAdmission.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try { return await AcquireCoreAsync(cancellationToken).ConfigureAwait(false); }
+        try
+        {
+            using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+            using var admissionTurn = PrivateSerializedReleaseEnabled() ? RouteCatalogLocalAdmissionTurn.Enter(this) : null;
+            using var decoding = BeginPrivateDecodeScope();
+            long started = Stopwatch.GetTimestamp();
+            bool completed = false;
+            try
+            {
+                RouteCatalogDispatchLease lease = await AcquireCoreAsync(cancellationToken).ConfigureAwait(false);
+                completed = true;
+                return lease;
+            }
+            finally
+            {
+                if (decoding is not null)
+                {
+                    try
+                    {
+                        Activity.Current?.AddEvent(new ActivityEvent("private.route_catalog.decode_scope", tags: new ActivityTagsCollection
+                        {
+                            ["enabled"] = true, ["completed"] = completed, ["request_canceled"] = cancellationToken.IsCancellationRequested,
+                            ["capture_count"] = decoding.CaptureCount, ["cache_hits"] = decoding.CacheHits,
+                            ["document_count"] = decoding.Count, ["retained_bytes"] = decoding.RetainedBytes,
+                            ["host_memo_enabled"] = decoding.HasHostMemo,
+                            ["elapsed_ms"] = Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+                        }));
+                    }
+                    catch (Exception) { /* Private metadata diagnostics cannot change admission or lease ownership. */ }
+                }
+            }
+        }
         finally { _localAdmission.Release(); }
     }
+
+#if DEBUG
+    private static bool ScopedDecodeBuildEnabled => true;
+#else
+    private static bool ScopedDecodeBuildEnabled => false;
+#endif
+
+    private bool PrivateScopedDecodeEnabled() => ScopedDecodeBuildEnabled && environment?.IsDevelopment() == true
+        && options.Value is { ScopedDecodeReuse: true, DevelopmentFixture: true, Profile: "Development", RequireTechnicalHttpBinding: true };
+
+    private bool PrivateSerializedReleaseEnabled() => ScopedDecodeBuildEnabled && environment?.IsDevelopment() == true
+        && options.Value is { SerializeLocalLeaseRelease: true, DevelopmentFixture: true, Profile: "Development", RequireTechnicalHttpBinding: true };
+
+    private bool PrivateHeldMetadataEnabled() => ScopedDecodeBuildEnabled && environment?.IsDevelopment() == true
+        && options.Value is { ReuseHeldMetadataDispatch: true, DevelopmentFixture: true, Profile: "Development", RequireTechnicalHttpBinding: true };
+
+    /// <summary>Freshly validates the issuer's frozen activation before using its genuine receiver scope for exact metadata transport.</summary>
+    internal async Task<RouteCatalogHeldMetadataDispatch?> GetHeldMetadataDispatchAsync(HttpRequestMessage request,
+        string appId, string method, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (method != "api/v1/streams/read/workload" || request.Method.Method != "POST" || !PrivateHeldMetadataEnabled()) return null;
+        var scopes = RouteCatalogRemoteCall.CaptureMetadataScopes(this);
+        if (scopes is null) return null;
+        var held = new RouteCatalogHeldMetadataDispatch(this, scopes, cancellationToken);
+        bool returned = false;
+        try
+        {
+            if (!held.MatchesLocal(options.Value.Identity?.AppId, store.Coordinates))
+                throw new RouteCatalogUnavailableException("Nested metadata scopes disagree on local issuer, generation or coordinates.");
+            if (!RouteCatalogMetadataRequest.IsGateway(held.Snapshot, appId, method, request.Method)) return null;
+            held.Request = await RouteCatalogMetadataRequest.CaptureAsync(request, appId, method, held.Token).ConfigureAwait(false);
+            if (held.Request is null) return null;
+            using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+            using var decoding = BeginPrivateDecodeScope();
+            var activation = System.Text.Json.JsonSerializer.Deserialize<RouteCatalogActivation>(held.Activation,
+                System.Text.Json.JsonSerializerOptions.Web) ?? throw new RouteCatalogUnavailableException("The private issuer activation is unavailable.");
+            if (activation.RootDigest != held.Snapshot.RootDigest
+                || RouteCatalogActivationBinding.ComputeDigest(activation) != held.Snapshot.CompleteActivationBindingDigest)
+                throw new RouteCatalogUnavailableException("The private issuer activation binding changed.");
+            await ValidateAsync(activation, held.Token).ConfigureAwait(false);
+            held.RequireOpen();
+            if (!held.MatchesLocal(options.Value.Identity?.AppId, store.Coordinates))
+                throw new RouteCatalogUnavailableException("The local metadata issuer configuration changed.");
+            returned = true;
+            return held;
+        }
+        finally { if (!returned) held.Dispose(); }
+    }
+
+    private bool PrivateHostMemoEnabled() => PrivateScopedDecodeEnabled() && !_validatedBytes.IsClosed
+        && options.Value.RetainValidatedCatalogBytes;
+
+    private RouteCatalogDecodeScope? BeginPrivateDecodeScope() => !PrivateScopedDecodeEnabled() ? null
+        : PrivateHostMemoEnabled() ? RouteCatalogDecodeScope.EnterWithMemo(_validatedBytes) : RouteCatalogDecodeScope.Enter();
 
     private async Task<RouteCatalogDispatchLease> AcquireCoreAsync(CancellationToken cancellationToken)
     {
@@ -168,12 +279,19 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             if (state.Leases.Count >= 4096) throw new RouteCatalogUnavailableException("The durable dispatch lease inventory requires draining.");
             return state with { LastLease = sequence, Leases = [.. state.Leases, new RouteCatalogDispatchFence(sequence, leaseId, options.Value.Identity!.HostId, state.Committed.RootDigest, state.Epoch)] };
         }, cancellationToken).ConfigureAwait(false);
-        return new(new(captured!, epoch, options.Value.Identity!.AppId, store.Coordinates), () => ReleaseAsync(leaseId));
+        var snapshot = new CommittedRouteCatalogSnapshot(captured!, epoch, options.Value.Identity!.AppId, store.Coordinates);
+        if (PrivateHeldMetadataEnabled())
+        {
+            byte[] activation = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(captured!, System.Text.Json.JsonSerializerOptions.Web);
+            if (activation.Length <= 4 * 1024 * 1024) return new(snapshot, () => ReleaseAsync(leaseId), this, activation);
+        }
+        return new(snapshot, () => ReleaseAsync(leaseId));
     }
 
     /// <inheritdoc/>
     public async Task<RouteCatalogGenerationReadback> ReadbackAsync(CancellationToken cancellationToken = default)
     {
+        using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
         RequireLocalIdentity();
         (RouteCatalogActivationState state, _) = await store.ReadAsync(cancellationToken).ConfigureAwait(false);
         RouteCatalogActivation committed = state.Committed ?? throw new RouteCatalogUnavailableException("No catalog has been activated.");
@@ -189,6 +307,19 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
 
     private async Task ReleaseAsync(string leaseId)
     {
+        // A release called by an open validation callback keeps the original CAS path:
+        // queuing behind that same callback would deadlock. Its write still forces a
+        // fresh acquisition retry. Closed or unrelated flows cannot use this exception.
+        bool queued = PrivateSerializedReleaseEnabled() && !RouteCatalogLocalAdmissionTurn.IsHeldBy(this);
+        if (queued) await _localAdmission.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        try { await ReleaseCoreAsync(leaseId).ConfigureAwait(false); }
+        finally { if (queued) _localAdmission.Release(); }
+    }
+
+    private async Task ReleaseCoreAsync(string leaseId)
+    {
+        using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+        using var decoding = PrivateHostMemoEnabled() ? RouteCatalogDecodeScope.EnterWithMemo(_validatedBytes) : null;
         // Only this completed local lease is removed. CAS contention cannot turn known
         // quiescence into an abandoned fence; backend failures still propagate for retry.
         int conflicts = 0;
@@ -204,16 +335,33 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
 
     private async Task ValidateAsync(RouteCatalogActivation activation, CancellationToken cancellationToken)
     {
+        long phase = RouteCatalogDecodeScope.Current is null ? 0 : Stopwatch.GetTimestamp();
         RequireLocalIdentity();
         string binding = RouteCatalogActivationBinding.ComputeDigest(activation);
+        phase = ReportDecodePhase("binding", phase);
         RouteCatalogHostOptions local = options.Value;
         if (local.Identity is null || Catalog(activation).Profile != local.Profile
             || !activation.RequiredHosts.Contains(local.Identity))
             throw new RouteCatalogUnavailableException("Local host inventory, topology, authentication or profile disagrees with the exact required host set.");
+        phase = ReportDecodePhase("profile", phase);
         if (store.Coordinates is not { } coordinates || observer is null
             || await observer.ObserveAsync(activation, coordinates, cancellationToken).ConfigureAwait(false) != local.Identity)
             throw new RouteCatalogUnavailableException("Configured host identity lacks matching independent registration, topology and authentication observations.", RouteCatalogRefusalReason.Inventory);
+        phase = ReportDecodePhase("observer", phase);
         await trust.ValidateAsync(activation, binding, cancellationToken).ConfigureAwait(false);
+        _ = ReportDecodePhase("trust", phase);
+    }
+
+    private static long ReportDecodePhase(string phase, long started)
+    {
+        if (started == 0) return 0;
+        try
+        {
+            Activity.Current?.AddEvent(new ActivityEvent("private.route_catalog.validate_phase", tags: new ActivityTagsCollection
+            { ["phase"] = phase, ["elapsed_ms"] = Stopwatch.GetElapsedTime(started).TotalMilliseconds }));
+        }
+        catch (Exception) { /* Private timing observation cannot change validation. */ }
+        return Stopwatch.GetTimestamp();
     }
 
     private void RequireLocalIdentity()

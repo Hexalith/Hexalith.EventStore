@@ -24,6 +24,13 @@ builder.Services.AddEventStoreDomainQueryRouting();
 if (!string.IsNullOrEmpty(builder.Configuration["EventStore:RouteCatalog:DevelopmentBootstrap:CatalogPath"]))
     Hexalith.EventStore.Server.Routing.RunScopedRouteCatalogGateway.AddEventStoreRunScopedCatalogGateway(builder.Services, builder.Configuration);
 builder.Services.AddEventStoreSignalR(builder.Configuration);
+#if PRIVATE_CATALOG_INVOCATION_PROOF
+Hexalith.EventStore.Testing.CatalogInvocation.CatalogInvocationServiceCollectionExtensions.AddPrivateCatalogInvocation(
+    builder.Services, builder.Configuration, builder.Environment);
+#else
+if (builder.Configuration.GetValue<bool>("EventStore:Testing:CatalogInvocation:Enabled"))
+    throw new InvalidOperationException("Private catalog invocation requires an explicitly selected Debug proof build.");
+#endif
 
 bool workloadAuthorityEnabled = builder.Configuration.GetValue<bool>("Authentication:WorkloadAuthority:Enabled");
 if (workloadAuthorityEnabled)

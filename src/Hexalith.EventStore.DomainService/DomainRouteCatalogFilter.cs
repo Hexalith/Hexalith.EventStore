@@ -27,10 +27,12 @@ internal sealed class DomainRouteCatalogFilter(IDomainRouteCatalogGuard guard, M
         RouteCatalogDispatchLease? lease = decision.Lease;
         try
         {
-            using var scope = lease is null ? null : RouteCatalogRemoteCall.Enter(lease);
+            using var scope = lease is null ? null : guard is DomainRouteCatalogGuard
+                ? RouteCatalogRemoteCall.EnterReceiver(lease, context.HttpContext.RequestAborted)
+                : RouteCatalogRemoteCall.Enter(lease);
             object? result = decision.TerminalRefusal ?? await next(context).ConfigureAwait(false);
             // ASP.NET executes IResult after endpoint filters return, including streamed/custom results.
-            if (result is IResult response && lease is not null) return new DomainRouteCatalogResult(response, lease);
+            if (result is IResult response && lease is not null) return new DomainRouteCatalogResult(response, lease, guard is DomainRouteCatalogGuard);
             if (lease is not null) await lease.DisposeAsync().ConfigureAwait(false);
             return result;
         }

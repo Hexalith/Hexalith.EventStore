@@ -35,7 +35,7 @@ public sealed class WorkloadBindingAuthority(IOptionsMonitor<WorkloadAuthorityOp
         WorkloadAuthorityGrant[] candidates = [.. current.Grants.Where(grant => grant is not null && grant.ClientId == clientId
             && !grant.Revoked && grant.Revision > 0 && !string.IsNullOrWhiteSpace(grant.GrantId)
             && !string.IsNullOrWhiteSpace(grant.Workload) && now >= grant.NotBefore && now < grant.ExpiresAt
-            && grant.Audience == details.Audience && grant.Operations is not null && grant.Bindings is not null
+            && grant.Audience == details.Audience && grant.Surface is null or "service" && grant.Operations is not null && grant.Bindings is not null
             && grant.Operations.Contains(details.Operation, StringComparer.Ordinal)
             && PermitsBindings(grant, details))];
         if (candidates.Length != 1 || !MatchesSecret(clientSecret, candidates[0].ClientSecretSha256)) return null;
@@ -53,6 +53,7 @@ public sealed class WorkloadBindingAuthority(IOptionsMonitor<WorkloadAuthorityOp
                 ["eventstore:grant-id"] = approved.GrantId,
                 ["eventstore:grant-revision"] = approved.Revision,
             };
+            if (approved.Surface is "service") claims.Add(RouteCatalogSurfacePolicy.ClaimType, approved.Surface);
             foreach (KeyValuePair<string, string> binding in details.Bindings) claims.Add(binding.Key, binding.Value);
             DateTimeOffset expiry = now.AddSeconds(Math.Clamp(current.LifetimeSeconds, 1, WorkloadAuthorityOptions.MaximumLifetimeSeconds));
             if (approved.ExpiresAt < expiry) expiry = approved.ExpiresAt;

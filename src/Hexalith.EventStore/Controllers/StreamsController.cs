@@ -14,9 +14,11 @@ using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Authentication;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 using GatewayTenantValidator = Hexalith.EventStore.Authorization.ITenantValidator;
 using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
@@ -31,13 +33,28 @@ namespace Hexalith.EventStore.Controllers;
 [Consumes("application/json")]
 [Produces("application/json")]
 [Tags("Streams")]
+[method: Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
 public sealed partial class StreamsController(
     IActorProxyFactory actorProxyFactory,
     GatewayTenantValidator tenantValidator,
     IRbacValidator rbacValidator,
     ILogger<StreamsController> logger,
     IEventPayloadProtectionService? payloadProtectionService = null,
-    IConfiguration? configuration = null) : ControllerBase {
+    IConfiguration? configuration = null,
+    IOptions<RouteCatalogHostOptions>? routeCatalogHost = null,
+    IHostEnvironment? hostEnvironment = null) : ControllerBase {
+
+    /// <summary>Preserves the original packaged controller constructor signature for existing compiled consumers.</summary>
+    /// <param name="actorProxyFactory">The actual native actor proxy factory.</param>
+    /// <param name="tenantValidator">The public-read tenant validator.</param>
+    /// <param name="rbacValidator">The public-read RBAC validator.</param>
+    /// <param name="logger">The actual host logger.</param>
+    /// <param name="payloadProtectionService">The actual payload-protection service.</param>
+    /// <param name="configuration">The actual host configuration.</param>
+    public StreamsController(IActorProxyFactory actorProxyFactory, GatewayTenantValidator tenantValidator,
+        IRbacValidator rbacValidator, ILogger<StreamsController> logger,
+        IEventPayloadProtectionService? payloadProtectionService, IConfiguration? configuration)
+        : this(actorProxyFactory, tenantValidator, rbacValidator, logger, payloadProtectionService, configuration, null, null) { }
 
     // Bound is exclusive; depth==0..MaxExceptionFrames-1 are examined (== MaxExceptionFrames frames).
     private const int _maxExceptionFrames = 8;
@@ -135,11 +152,24 @@ public sealed partial class StreamsController(
                 "AggregateActor");
 
             SourceProofInspection? native = null;
+            SourceProofInspectionPair? metadataPair = null;
             AggregateStreamMetadata streamMetadata;
             if (request.RequireNativeProof)
             {
                 if (!workloadOnly) return Forbid();
-                native = await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+                if (request.FromSequence == 0 && request.ToSequence == 0 && request.PageSize <= 255
+                    && AtomicNativeMetadataInspectionPolicy.IsEnabled(configuration, routeCatalogHost, hostEnvironment))
+                {
+                    try
+                    {
+                        metadataPair = await NativeSourceReadDiagnostics.ObservePair(actor.InspectSourceMetadataPairAsync(), identity,
+                            configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (NotSupportedException) { return StatusCode(StatusCodes.Status503ServiceUnavailable); }
+                    native = metadataPair?.Initial;
+                }
+                else native = await NativeSourceReadDiagnostics.Observe(actor.InspectSourceProofAsync(), identity, recheck: false,
+                    configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
                 if (native is not { Status: SourceProofInspectionStatus.Available, Erased: false, Proof: { Erased: false } proof }
                     || !SourceProofCodec.IsValid(proof, identity, native.CurrentSequence, proof.RetainedFloor))
                     return StatusCode(StatusCodes.Status503ServiceUnavailable);
@@ -161,7 +191,10 @@ public sealed partial class StreamsController(
             {
                 // Metadata inspection must never enter the event-range or payload/readability path.
                 // Compare the whole observation, including incarnation, prefix, retention and erasure.
-                if (await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false) != native)
+                SourceProofInspection? final = metadataPair is not null ? metadataPair.Final
+                    : await NativeSourceReadDiagnostics.Observe(actor.InspectSourceProofAsync(), identity, recheck: true,
+                        configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
+                if (final != native)
                     return StatusCode(StatusCodes.Status503ServiceUnavailable);
                 cancellationToken.ThrowIfCancellationRequested();
                 return Ok(new StreamReadPage(identity.TenantId, identity.Domain, identity.AggregateId, [],

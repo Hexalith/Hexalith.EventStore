@@ -72,6 +72,12 @@ public interface IAggregateActor : IActor {
     /// <summary>Inspects persisted source evidence using metadata only, preserving the actor cache barrier.</summary>
     Task<SourceProofInspection> InspectSourceProofAsync();
 
+    /// <summary>Performs the existing initial and final metadata inspections in one actor turn, without reading events.</summary>
+    /// <returns>Both complete observations for the caller's unchanged strict comparison.</returns>
+    /// <remarks>Older implementations refuse this additive operation instead of supplying invented observations.</remarks>
+    Task<SourceProofInspectionPair> InspectSourceMetadataPairAsync()
+        => Task.FromException<SourceProofInspectionPair>(new NotSupportedException("Atomic native metadata inspection is unavailable."));
+
     /// <summary>Bootstraps an eligible legacy stream under a signed quiescent-maintenance authorization.</summary>
     Task<SourceProofInspection> BootstrapSourceProofAsync(SourceProofBootstrapRequest request);
 
