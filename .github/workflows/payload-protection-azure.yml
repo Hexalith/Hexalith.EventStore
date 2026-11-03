@@ -1,0 +1,136 @@
+name: Payload Protection Azure
+
+on:
+  push:
+    branches: [main, release/parties-sdk-3.130.2]
+  pull_request:
+    branches: [main, release/parties-sdk-3.130.2]
+  workflow_dispatch:
+    inputs:
+      run_live:
+        description: Run separately authorized isolated Azure conformance
+        type: boolean
+        default: false
+      authority_sha256:
+        description: Exact owner-approved environment and fault-scope document SHA-256
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payload-protection-azure-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  adapter-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          submodules: false
+          persist-credentials: false
+      - name: Initialize root-declared submodules
+        run: git -c submodule.recurse=false submodule update --init
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Build adapter unit tests
+        run: dotnet build tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false
+      - name: Run adapter unit tests
+        run: >-
+          dotnet test --project tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests.csproj
+          --no-build --configuration Release --minimum-expected-tests 138 --fail-skips on
+          --results-directory TestResults/azure-unit --report-xunit-trx
+          -p:UseHexalithProjectReferences=false
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: payload-azure-unit
+          path: TestResults/azure-unit
+          if-no-files-found: error
+          retention-days: 7
+
+  authorized-service:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live == true && inputs.authority_sha256 != ''
+    needs: adapter-unit
+    environment: payload-protection-azure-conformance
+    runs-on:
+      group: payload-protection-azure-private-ephemeral
+      labels: [self-hosted, linux, x64]
+    timeout-minutes: 45
+    env:
+      HEXALITH_PAYLOAD_AZURE_LIVE: authorized
+      HEXALITH_PAYLOAD_AZURE_AUTHORITY_SHA256: ${{ inputs.authority_sha256 }}
+      HEXALITH_PAYLOAD_AZURE_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          submodules: false
+          persist-credentials: false
+      - name: Initialize root-declared submodules
+        run: git -c submodule.recurse=false submodule update --init
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Load exact separately approved authority
+        env:
+          AUTHORITY_JSON: ${{ secrets.PAYLOAD_AZURE_AUTHORITY_JSON }}
+          CUSTODY_JSON: ${{ secrets.PAYLOAD_AZURE_CUSTODY_JSON }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          value = os.environ['AUTHORITY_JSON'].encode('utf-8')
+          assert hashlib.sha256(value).hexdigest() == os.environ['HEXALITH_PAYLOAD_AZURE_AUTHORITY_SHA256']
+          target = Path(os.environ['RUNNER_TEMP']) / 'payload-azure-authority.json'
+          target.write_bytes(value)
+          target.chmod(0o600)
+          receipt = Path(os.environ['RUNNER_TEMP']) / 'payload-azure-custody.json'
+          receipt.write_bytes(os.environ['CUSTODY_JSON'].encode('utf-8'))
+          receipt.chmod(0o600)
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'HEXALITH_PAYLOAD_AZURE_AUTHORITY={target}\n')
+              env.write(f'HEXALITH_PAYLOAD_AZURE_CUSTODY_RECEIPT={receipt}\n')
+          PY
+      - name: Verify runner Dapr prerequisite
+        run: |
+          test "$("$HOME/.dapr/bin/daprd" --version)" = '1.18.7'
+          printf '%s  %s\n' 'e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488' "$HOME/.dapr/bin/daprd" | sha256sum --check --status
+      - name: Prepare isolated Dapr fixture image
+        run: docker pull postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+      - name: Record exact source
+        run: git rev-parse HEAD
+      - name: Build authorized-service conformance
+        run: dotnet build tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false
+      - name: Run healthy persisted service conformance
+        env:
+          HEXALITH_PAYLOAD_AZURE_PHASE: healthy
+        run: >-
+          dotnet test --project tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.csproj
+          --no-build --configuration Release --filter-class Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.AzureKeyVaultConformanceTests --minimum-expected-tests 11 --fail-skips on
+          --results-directory TestResults/azure-live --report-xunit-trx
+          -p:UseHexalithProjectReferences=false
+      - name: Observe externally prepared real fault windows
+        env:
+          HEXALITH_PAYLOAD_AZURE_PHASE: prepared-faults
+        run: >-
+          dotnet test --project tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.csproj
+          --no-build --configuration Release --filter-class Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.AzurePreparedFaultTests
+          --minimum-expected-tests 1 --fail-skips on
+          --results-directory TestResults/azure-live-faults --report-xunit-trx
+          -p:UseHexalithProjectReferences=false
+      - name: Remove authority file
+        if: always()
+        run: rm -f -- "$HEXALITH_PAYLOAD_AZURE_AUTHORITY" "$HEXALITH_PAYLOAD_AZURE_CUSTODY_RECEIPT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: payload-azure-authorized-service
+          path: |
+            TestResults/azure-live
+            TestResults/azure-live-faults
+          if-no-files-found: error
+          retention-days: 7

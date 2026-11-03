@@ -1,6 +1,6 @@
 # Preliminary planning register; Story 3.17 owns the final validated schema/guard.
 schema_version: 1
-updated: '2026-10-25'
+updated: '2026-11-03'
 status: preliminary-unqualified
 policy: _bmad-output/planning-artifacts/prd.md#84-dapr-infrastructure-boundary
 inventory_owner_story: 3-17-dapr-boundary-inventory-and-enforcement
@@ -96,24 +96,51 @@ accepted_exceptions:
       broker and binding-capable issuer. Any change to the allowed paths, package
       version, configuration keys, Redis server major version or replica topology, or
       any production use of the backplane, needs a new decision.
-unresolved:
   - id: payload-production-key-operations
-    disposition: unresolved-planned-integration
-    owner: Payload owner with Architecture, Security, Operations, and Release owners
+    disposition: accepted-scoped-exception
+    accepted: '2026-11-03'
+    owner: EventStore payload owner with Architecture, Security, Operations, Release and Test owners
     owner_story: 8-6-azure-key-vault-production-adapter-conformance
+    decision: >-
+      Administrator approved the exact scoped SDK exception and predecessor disposition
+      on 2026-11-03 (single-maintainer-attested), then approved the Core pin correction
+      and additive local implementation. Azure mutations and live conformance remain unauthorized.
+    normative_sha256: fcf861aa3ba5d723ca589a8ac8a2a31c54a972fe96a28ec71db69e560ecc2394
+    correction_sha256: 360da00f91d3134054e4ec3f18c0b96921a36911a89d5935e7d59409634ca07e
     operations:
-      - current-version-discovery-and-key-profile-validation
-      - exact-version-wrap-and-unwrap
-    planned_paths:
+      - current-or-exact-version-key-metadata
+      - remote-exact-version-rsa-oaep-256-wrap-and-unwrap
+    missing_guarantees:
+      - Dapr 1.18.7 executable exposes get-key/wrap/unwrap as 501 ERR_API_UNIMPLEMENTED.
+      - Tagged component loses full HSM profile and constructive provider failure details.
+      - Local public-key wrapping cannot establish remote HSM execution.
+    allowed_paths:
       - src/Hexalith.EventStore.PayloadProtection.AzureKeyVault/
-    candidate_interfaces:
-      - Dapr cryptography API with crypto.azure.keyvault
-    required_evidence:
-      - exact-runtime-client-component-and-emitted-provider-api-versions
-      - rsa-hsm-profile-identity-custody-cancellation-retry-and-typed-failures
-      - pdenc-v2-aad-buffer-ownership-historical-reads-and-post-v2-rollback
-    decision: pending-qualification-and-detached-amendment-reapproval
+    allowed_packages:
+      - { id: Azure.Core, version: 1.64.0 }
+      - { id: Azure.Identity, version: 1.21.0 }
+      - { id: Azure.Security.KeyVault.Keys, version: 4.10.2 }
+    allowed_configuration: EventStore:PayloadProtection:AzureKeyVault
+    service_api: '2025-07-01'
+    isolated_adapter: >-
+      KeyClient.GetKeyAsync for metadata; owned Azure.Core pipeline POSTs only to
+      /keys/{name}/{version}/wrapkey and /unwrapkey on the configured ordinary-vault
+      origin. No local RSA, list, management, export, secret or certificate operation.
+    credential_boundary: >-
+      Deterministic managed identity, fixed deployment-cloud scope, no crypto challenge
+      replay, no credential chain, nested retries or Dapr/direct-provider fallback.
+    unresolved_guarantees: >-
+      Production custody, provider-generated non-exportability, private connectivity,
+      RBAC, retained-history/fault/rotation/rollback conformance and CI remain unproven.
+      Unknowable wrap completion stays Ambiguous indefinitely; no absence is inferred.
+    evidence: _bmad-output/implementation-artifacts/story-8-6-dapr-qualification.md
+    design: _bmad-output/implementation-artifacts/spec-8-6-crypto-boundary-amendment.md
+    correction: _bmad-output/implementation-artifacts/spec-8-6-azure-core-pin-correction.md
+    guard_handoff: 3-17-dapr-boundary-inventory-and-enforcement
     review_removal_trigger: >-
-      Resolve before provider dependency selection or Story 8.6 implementation;
-      any approved design, profile, format, or dependency change rebinds affected
-      predecessor, release, compatibility, and G5 evidence.
+      Re-review any runtime/client/component/SDK/API/credential/profile/path/operation
+      change or new Dapr capability. Remove only after an identified released Dapr
+      profile supplies every required guarantee and passes the same real-service
+      compatibility, rotation and rollback suite under approved migration authority.
+      No automatic switch, production eligibility, release, Server activation or G5 is granted.
+unresolved: []

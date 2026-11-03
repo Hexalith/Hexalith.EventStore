@@ -258,7 +258,8 @@ development_status:
   8-5-policy-and-key-lifecycle-mechanics: done
   # Approved 2026-11-03: exact scoped SDK exception and two named Builds catalog edits;
   # stop before implementation. Azure resource/conformance authority remains separate.
-  8-6-azure-key-vault-production-adapter-conformance: ready-for-dev
+  # Core 1.64.0 correction approved 2026-11-03; additive local implementation resumed.
+  8-6-azure-key-vault-production-adapter-conformance: in-progress
   8-7-server-persistence-and-snapshot-integration: backlog
   8-8-package-and-release-integration: backlog
   8-9-parties-dual-provider-parity: backlog

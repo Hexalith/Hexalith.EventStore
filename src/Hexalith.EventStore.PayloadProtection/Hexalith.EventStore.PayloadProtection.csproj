@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.AzureKeyVault" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests" />
   </ItemGroup>
 

@@ -1105,6 +1105,62 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Fact]
+    public void Azure_payload_companion_stays_non_packable_and_live_service_is_explicitly_authorized()
+    {
+        string root = FindRepositoryRoot();
+        foreach (string project in new[] { "src/Hexalith.EventStore.PayloadProtection.AzureKeyVault", "tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests", "tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests" })
+        {
+            string path = Path.Combine(root, project, Path.GetFileName(project) + ".csproj");
+            EvaluatedProjectProperty(path, "IsPackable").ShouldBe("false");
+            File.ReadAllText(Path.Combine(root, "Hexalith.EventStore.slnx")).ShouldContain(project + "/");
+        }
+        LoadReleasePackages().Count().ShouldBe(14);
+        AssertAzurePayloadWorkflow(File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection-azure.yml")));
+    }
+
+    [Theory]
+    [InlineData("automatic-live")]
+    [InlineData("skip-tolerance")]
+    [InlineData("missing-receipt")]
+    public void Azure_payload_workflow_guard_rejects_authority_and_test_bypasses(string mutation)
+    {
+        string workflow = File.ReadAllText(Path.Combine(FindRepositoryRoot(), ".github", "workflows", "payload-protection-azure.yml"));
+        string changed = mutation switch
+        {
+            "automatic-live" => workflow.Replace("if: github.event_name == 'workflow_dispatch' && inputs.run_live == true && inputs.authority_sha256 != ''", "if: always()", StringComparison.Ordinal),
+            "skip-tolerance" => workflow.Replace("--fail-skips on", "--fail-skips off", StringComparison.Ordinal),
+            "missing-receipt" => workflow.Replace("environment: payload-protection-azure-conformance", "environment: unprotected", StringComparison.Ordinal),
+            _ => throw new ArgumentOutOfRangeException(nameof(mutation)),
+        };
+        changed.ShouldNotBe(workflow);
+        Should.Throw<Shouldly.ShouldAssertException>(() => AssertAzurePayloadWorkflow(changed));
+    }
+
+    private static void AssertAzurePayloadWorkflow(string workflow)
+    {
+        var yaml = new YamlStream(); yaml.Load(new StringReader(workflow));
+        var root = (YamlMappingNode)yaml.Documents[0].RootNode;
+        var triggers = (YamlMappingNode)root.Children[new YamlScalarNode("on")];
+        triggers.Children.Keys.Select(key => ((YamlScalarNode)key).Value).Order(StringComparer.Ordinal).ShouldBe(["pull_request", "push", "workflow_dispatch"]);
+        var jobs = (YamlMappingNode)root.Children[new YamlScalarNode("jobs")];
+        var live = (YamlMappingNode)jobs.Children[new YamlScalarNode("authorized-service")];
+        ((YamlScalarNode)live.Children[new YamlScalarNode("if")]).Value.ShouldBe("github.event_name == 'workflow_dispatch' && inputs.run_live == true && inputs.authority_sha256 != ''");
+        ((YamlScalarNode)live.Children[new YamlScalarNode("environment")]).Value.ShouldBe("payload-protection-azure-conformance");
+        workflow.ShouldContain("group: payload-protection-azure-private-ephemeral");
+        workflow.ShouldContain("HEXALITH_PAYLOAD_AZURE_AUTHORITY_SHA256: ${{ inputs.authority_sha256 }}");
+        workflow.ShouldContain("e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488");
+        workflow.ShouldContain("--minimum-expected-tests 138 --fail-skips on");
+        workflow.ShouldContain("--minimum-expected-tests 11 --fail-skips on");
+        workflow.ShouldContain("--minimum-expected-tests 1 --fail-skips on");
+        workflow.ShouldContain("--filter-class Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.AzurePreparedFaultTests");
+        workflow.ShouldNotContain("--fail-skips off");
+        workflow.ShouldNotContain("continue-on-error");
+        workflow.ShouldNotContain("dotnet pack");
+        workflow.ShouldNotContain("dotnet publish");
+        workflow.ShouldNotContain("az keyvault");
+    }
+
+    [Fact]
     public void Test_projects_are_classified_into_release_live_advisory_or_deferred_lanes()
     {
         string root = FindRepositoryRoot();
@@ -1113,6 +1169,7 @@ public sealed class ReleasePackageManifestTests
         string advisory = File.ReadAllText(Path.Combine(root, ".github", "workflows", "advisory-tests.yml"));
         string payloadProtection = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"));
         string payloadProtectionLifecycle = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection-lifecycle.yml"));
+        string payloadProtectionAzure = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection-azure.yml"));
         string docs = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
         string[] deferredProjects = DeferredTestLaneProjects(docs);
 
@@ -1141,6 +1198,7 @@ public sealed class ReleasePackageManifestTests
                 || advisory.Contains(laneProject, StringComparison.Ordinal)
                 || payloadProtection.Contains(laneProject, StringComparison.Ordinal)
                 || payloadProtectionLifecycle.Contains(laneProject, StringComparison.Ordinal)
+                || payloadProtectionAzure.Contains(laneProject, StringComparison.Ordinal)
                 || deferredProjects.Contains(laneProject, StringComparer.Ordinal);
             if (!classified)
             {

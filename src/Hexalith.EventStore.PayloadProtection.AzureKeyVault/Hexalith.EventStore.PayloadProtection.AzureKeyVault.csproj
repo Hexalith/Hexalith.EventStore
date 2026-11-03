@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsPackable>false</IsPackable><Description>Isolated remote Azure Key Vault payload key adapter; live conformance remains separately gated.</Description></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.Core" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Security.KeyVault.Keys" />
+    <ProjectReference Include="../Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests" />
+  </ItemGroup>
+</Project>
