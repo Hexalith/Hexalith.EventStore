@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Hexalith.EventStore.ServiceDefaults" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Client" />
     <InternalsVisibleTo Include="Hexalith.EventStore.DomainService" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server" />

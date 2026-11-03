@@ -164,15 +164,21 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
             if (_authority is not RouteCatalogAuthority catalogAuthority)
                 throw new RouteCatalogUnavailableException("The native source read scope has no owning catalog authority.");
             await catalogAuthority.ValidateNativeReadLeaseAsync(borrowed, cancellationToken).ConfigureAwait(false);
-            return await SendLeasedAsync(request, appId, method, rawMethod, invocation, borrowed, cancellationToken).ConfigureAwait(false);
+            return await SendLeasedAsync(request, appId, method, rawMethod, invocation, borrowed, null, cancellationToken).ConfigureAwait(false);
         }
+        // A private held metadata dispatch borrows its genuine receiver scope; it never owns or releases that lease.
+        using RouteCatalogHeldMetadataDispatch? held = _authority is RouteCatalogAuthority issuer
+            ? await issuer.GetHeldMetadataDispatchAsync(request, appId, rawMethod, cancellationToken).ConfigureAwait(false) : null;
+        if (held is not null)
+            return await SendLeasedAsync(held.Request!, appId, method, rawMethod, invocation, held.Lease, held, cancellationToken).ConfigureAwait(false);
         RouteCatalogDispatchLease lease = await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var release = lease.ConfigureAwait(false);
-        return await SendLeasedAsync(request, appId, method, rawMethod, invocation, lease, cancellationToken).ConfigureAwait(false);
+        return await SendLeasedAsync(request, appId, method, rawMethod, invocation, lease, null, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<HttpResponseMessage> SendLeasedAsync(HttpRequestMessage request, string appId, string method,
-        string rawMethod, HttpMessageInvoker invocation, RouteCatalogDispatchLease lease, CancellationToken cancellationToken)
+        string rawMethod, HttpMessageInvoker invocation, RouteCatalogDispatchLease lease, RouteCatalogHeldMetadataDispatch? held,
+        CancellationToken cancellationToken)
     {
         if (lease.Snapshot.TechnicalHttpReceivers.Count > 0 && (!OwnedEndpoint(lease.Snapshot, request.RequestUri!)
             || !DevelopmentTechnicalHttpTransport.CanonicalPath(rawMethod)))
@@ -197,7 +203,9 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
             request.Headers.TryAddWithoutValidation(ProcessBindingHeader, processBinding);
         request.Headers.TryAddWithoutValidation(RootHeader, lease.Snapshot.RootDigest);
         request.Headers.TryAddWithoutValidation(EpochHeader, lease.Snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        return await lease.InvokeRemoteAsync(() => invocation.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
+        return held is not null
+            ? await held.InvokeAsync(token => invocation.SendAsync(request, token)).ConfigureAwait(false)
+            : await lease.InvokeRemoteAsync(() => invocation.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
 

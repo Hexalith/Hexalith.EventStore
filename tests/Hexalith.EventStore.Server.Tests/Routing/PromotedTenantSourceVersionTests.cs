@@ -42,7 +42,10 @@ public sealed class PromotedTenantSourceVersionTests
             string path = Path.Combine(work, "promotion.proj");
             await File.WriteAllTextAsync(path, project.ToString(), TestContext.Current.CancellationToken);
             var start = new ProcessStartInfo("dotnet") { WorkingDirectory = work, RedirectStandardOutput = true, RedirectStandardError = true };
+            // This synthetic node owns its explicit mapping scenario; an actual parent mapper
+            // must not relabel the deliberately unmapped control. Keep the parent unchanged.
             SourceMappingFixtureEnvironment.RemoveInheritedMapping(start);
+            start.Environment.Remove("Configuration");
             foreach (string argument in new[] { "msbuild", path, "-nologo", "-t:IncludeTransitiveProjectReferences", "-getItem:ProjectReference" }) start.ArgumentList.Add(argument);
             start.Environment["MSBUILDDISABLENODEREUSE"] = "1";
             start.Environment["DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER"] = "1";

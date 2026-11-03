@@ -15,6 +15,8 @@ public sealed class WorkloadAuthorityGrant
     public string Workload { get; set; } = string.Empty;
     /// <summary>Gets or sets the one receiving audience.</summary>
     public string Audience { get; set; } = string.Empty;
+    /// <summary>Gets or sets the explicitly approved signed surface; only service is permitted. Absence preserves legacy assertions.</summary>
+    public string? Surface { get; set; }
     /// <summary>Gets or sets explicitly approved operations.</summary>
     public string[] Operations { get; set; } = [];
     /// <summary>Gets or sets exact permitted values for every mandatory binding claim; omitted claims are denied.</summary>

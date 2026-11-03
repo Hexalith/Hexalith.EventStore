@@ -13,6 +13,21 @@ namespace Hexalith.EventStore.Server.Tests.Authentication;
 
 public sealed partial class WorkloadBindingAuthorityTests
 {
+    /// <summary>Only an explicit owner grant adds a signed service surface; absent and invalid selections never escalate.</summary>
+    [Fact]
+    public void ServiceSurfaceRequiresAnExplicitClosedOwnerGrant()
+    {
+        new JsonWebToken(Issue().ShouldNotBeNull()).Claims.ShouldNotContain(claim => claim.Type == RouteCatalogSurfacePolicy.ClaimType);
+        _options.Grants[0].Surface = "service";
+        var token = new JsonWebToken(Issue().ShouldNotBeNull());
+        token.GetClaim(RouteCatalogSurfacePolicy.ClaimType).Value.ShouldBe("service");
+        foreach (string invalid in new[] { "ui", "agent", "", "service ui" })
+        {
+            _options.Grants[0].Surface = invalid;
+            Issue().ShouldBeNull();
+        }
+    }
+
     /// <summary>Configuration preserves every protocol-permitted family without making client-selected names authoritative.</summary>
     [Theory]
     [InlineData("eventstore:bound-retention")]

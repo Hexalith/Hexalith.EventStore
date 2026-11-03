@@ -34,7 +34,10 @@ public sealed class DirectTenantSourceVersionTests
                     new XElement("WriteLinesToFile", new XAttribute("File", Path.Combine(root, "actual.txt")), new XAttribute("Lines", "@(Actual)"))));
             string path = Path.Combine(root, "direct.proj"); await File.WriteAllTextAsync(path, project.ToString(), TestContext.Current.CancellationToken);
             var start = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = root };
+            // This synthetic node owns its explicit mapping scenario; an actual parent mapper
+            // must not relabel the deliberately unmapped control. Keep the parent unchanged.
             SourceMappingFixtureEnvironment.RemoveInheritedMapping(start);
+            start.Environment.Remove("Configuration");
             foreach (string argument in new[] { "msbuild", path, "-t:Probe", "-nologo", "-nodeReuse:false" }) start.ArgumentList.Add(argument);
             using var process = Process.Start(start)!;
             Task<string> stdout = process.StandardOutput.ReadToEndAsync(), stderr = process.StandardError.ReadToEndAsync();

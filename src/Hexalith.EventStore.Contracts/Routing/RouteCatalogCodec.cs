@@ -51,6 +51,28 @@ public static class RouteCatalogCodec
     /// <summary>Rejects malformed, duplicate, unknown, unsupported, invalid, or noncanonical input.</summary>
     public static RouteCatalogEnvelope Decode(ReadOnlyMemory<byte> bytes, string? expectedRootDigest = null)
     {
+        RouteCatalogDecodeScope? scope = RouteCatalogDecodeScope.Current;
+        if (scope?.TryCapture(bytes, out byte[] captured, out string root, out bool validated) == true)
+        {
+            bytes = captured;
+            if (validated)
+            {
+                // Full byte equality proves the closed schema, duplicate freedom and semantic
+                // validation already performed on these exact canonical bytes. Deserialize a
+                // fresh graph with the same closed options; never reuse a caller-visible graph.
+                RouteCatalogEnvelope fresh = ReadValidatedDocument(bytes);
+                if (expectedRootDigest is not null && expectedRootDigest != root)
+                    throw Failure("$", "root-digest-mismatch");
+                return fresh;
+            }
+            return DecodeCore(bytes, expectedRootDigest, scope, root);
+        }
+        return DecodeCore(bytes, expectedRootDigest, null, null);
+    }
+
+    private static RouteCatalogEnvelope DecodeCore(ReadOnlyMemory<byte> bytes, string? expectedRootDigest,
+        RouteCatalogDecodeScope? scope, string? capturedRoot)
+    {
         RouteCatalogEnvelope envelope = ReadClosedDocument<RouteCatalogEnvelope>(bytes);
         byte[] canonical = Encode(envelope);
         if (!bytes.Span.SequenceEqual(canonical))
@@ -63,7 +85,20 @@ public static class RouteCatalogCodec
             throw Failure("$", "root-digest-mismatch");
         }
 
+        if (scope is not null) scope.Remember(capturedRoot!, canonical);
         return envelope;
+    }
+
+    private static RouteCatalogEnvelope ReadValidatedDocument(ReadOnlyMemory<byte> bytes)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<RouteCatalogEnvelope>(bytes.Span, Options) ?? throw Failure("$", "missing-document");
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+        {
+            throw Failure("$", "invalid-json-or-closed-schema");
+        }
     }
 
     /// <summary>Reads a closed construction document using the same duplicate/unknown/required-field rules.</summary>
@@ -186,31 +221,39 @@ public static class RouteCatalogCodec
     }
 
     /// <summary>Computes the complete routing facet preimage.</summary>
-    internal static string ComputeRouteFacetDigest(RouteCatalogEnvelope envelope) => envelope.SchemaVersion == 3 ? Hash(new
+    internal static string ComputeRouteFacetDigest(RouteCatalogEnvelope envelope)
     {
-        purpose = "route-facet", envelope.SchemaVersion, envelope.Generation,
-        Normalize(envelope).Declarations, Normalize(envelope).Routes, Normalize(envelope).Operations,
-    }) : Hash(new
-    {
-        purpose = "route-facet",
-        envelope.SchemaVersion,
-        envelope.Generation,
-        Normalize(envelope).Declarations,
-        Normalize(envelope).Routes,
-    });
+        RouteCatalogEnvelope normalized = Normalize(envelope);
+        return envelope.SchemaVersion == 3 ? Hash(new
+        {
+            purpose = "route-facet", envelope.SchemaVersion, envelope.Generation,
+            normalized.Declarations, normalized.Routes, normalized.Operations,
+        }) : Hash(new
+        {
+            purpose = "route-facet",
+            envelope.SchemaVersion,
+            envelope.Generation,
+            normalized.Declarations,
+            normalized.Routes,
+        });
+    }
 
     /// <summary>Computes the complete idempotency facet preimage.</summary>
-    internal static string ComputeIdempotencyFacetDigest(RouteCatalogEnvelope envelope) => envelope.SchemaVersion == 3 ? Hash(new
+    internal static string ComputeIdempotencyFacetDigest(RouteCatalogEnvelope envelope)
     {
-        purpose = "idempotency-facet", envelope.SchemaVersion, envelope.Generation,
-        entries = Normalize(envelope).Idempotency, retained = Normalize(envelope).RetainedIdempotency,
-    }) : Hash(new
-    {
-        purpose = "idempotency-facet",
-        envelope.SchemaVersion,
-        envelope.Generation,
-        entries = Normalize(envelope).Idempotency,
-    });
+        RouteCatalogEnvelope normalized = Normalize(envelope);
+        return envelope.SchemaVersion == 3 ? Hash(new
+        {
+            purpose = "idempotency-facet", envelope.SchemaVersion, envelope.Generation,
+            entries = normalized.Idempotency, retained = normalized.RetainedIdempotency,
+        }) : Hash(new
+        {
+            purpose = "idempotency-facet",
+            envelope.SchemaVersion,
+            envelope.Generation,
+            entries = normalized.Idempotency,
+        });
+    }
 
     /// <summary>Returns lowercase SHA-256 of the exact canonical envelope bytes, outside the envelope.</summary>
     public static string ComputeRootDigest(RouteCatalogEnvelope envelope) => Convert.ToHexStringLower(SHA256.HashData(Encode(envelope)));
@@ -233,10 +276,35 @@ public static class RouteCatalogCodec
         if (element.ValueKind == JsonValueKind.Object)
         {
             writer.WriteStartObject();
-            foreach (JsonProperty property in element.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
+            // Embedded canonical schemas are usually already ordered. Retain the stable sort
+            // for every unordered object, including the original relative order of equal names.
+            bool ordered = true;
+            string? previous = null;
+            foreach (JsonProperty property in element.EnumerateObject())
             {
-                writer.WritePropertyName(property.Name);
-                WriteCanonical(writer, property.Value);
+                string name = property.Name;
+                if (previous is not null && StringComparer.Ordinal.Compare(previous, name) > 0)
+                {
+                    ordered = false;
+                    break;
+                }
+                previous = name;
+            }
+            if (ordered)
+            {
+                foreach (JsonProperty property in element.EnumerateObject())
+                {
+                    writer.WritePropertyName(property.Name);
+                    WriteCanonical(writer, property.Value);
+                }
+            }
+            else
+            {
+                foreach (JsonProperty property in element.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
+                {
+                    writer.WritePropertyName(property.Name);
+                    WriteCanonical(writer, property.Value);
+                }
             }
 
             writer.WriteEndObject();

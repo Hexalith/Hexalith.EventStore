@@ -35,6 +35,13 @@
     <ProjectReference Include="..\Hexalith.EventStore.Gateway\Hexalith.EventStore.Gateway.csproj" />
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(EnablePrivateCatalogInvocationProof)' == 'true'">
+    <DefineConstants>$(DefineConstants);PRIVATE_CATALOG_INVOCATION_PROOF</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug' and '$(EnablePrivateCatalogInvocationProof)' == 'true'">
+    <ProjectReference Include="..\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Dapr.AspNetCore" />
     <PackageReference Include="MediatR" />

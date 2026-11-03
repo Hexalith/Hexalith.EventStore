@@ -12,11 +12,47 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     private int _remoteCalls;
     private TaskCompletionSource? _remoteDrain;
 
+    private readonly object? _metadataIssuer;
+    private readonly byte[]? _metadataActivation;
+
+    /// <summary>Coordinates original private scope closure with actual remote enrollment.</summary>
+    internal static object MetadataLifetimeGate => _stateGate;
+
+    /// <summary>Marks only a real, durably acquired private metadata scope with its actual issuing authority.</summary>
+    internal RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snapshot, Func<Task> release, object metadataIssuer, byte[] activation)
+        : this(snapshot, release)
+    {
+        ArgumentNullException.ThrowIfNull(metadataIssuer);
+        _metadataIssuer = metadataIssuer;
+        _metadataActivation = activation.ToArray();
+    }
+
+    /// <summary>Gets whether this lease carries a platform-issued metadata scope marker.</summary>
+    internal bool HasMetadataIssuer => _metadataIssuer is not null;
+
+    /// <summary>Requires this exact issuer and an open original execution lifetime before nested metadata work.</summary>
+    internal void RequireMetadataIssuer(object issuer)
+    {
+        lock (_stateGate)
+            if (!ReferenceEquals(_metadataIssuer, issuer) || _closedForExecution)
+                throw new RouteCatalogUnavailableException("Nested metadata requires the actual issuing authority's open receiver lease.");
+    }
+
     /// <summary>Gets this dispatch's immutable authority.</summary>
     public CommittedRouteCatalogSnapshot Snapshot { get; } = snapshot;
 
     /// <summary>The immutable activation that this authority validated when acquiring the lease.</summary>
     internal RouteCatalogActivation? Activation { get; init; }
+
+    /// <summary>Copies the issuer's privately retained frozen activation for fresh nested validation.</summary>
+    internal byte[] GetMetadataActivation(object issuer)
+    {
+        lock (_stateGate)
+        {
+            RequireMetadataIssuer(issuer);
+            return _metadataActivation!.ToArray();
+        }
+    }
 
     /// <summary>Refuses creating new work from a receiver lifetime that has already closed.</summary>
     internal void RequireOpenForExecution()

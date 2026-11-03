@@ -178,7 +178,7 @@ public sealed class TechnicalHttpRouteCatalogReceiver
                 }
                 try
                 {
-                    using var remote = RouteCatalogRemoteCall.Enter(lease);
+                    using var remote = RouteCatalogRemoteCall.EnterReceiver(lease, context.RequestAborted);
                     RouteCatalogRemoteExecution.Current = new RouteCatalogBackgroundBoundary(RouteCatalogRemoteExecution.Current!,
                         context.RequestServices.GetRequiredService<IRouteCatalogAuthority>(), lease);
                     using var stage = diagnostics?.Start(DispatchStageName.ReceiverNext);
@@ -316,7 +316,7 @@ public sealed class TechnicalHttpRouteCatalogReceiver
         }
         try
         {
-            using var scope = RouteCatalogRemoteCall.Enter(lease);
+            using var scope = RouteCatalogRemoteCall.EnterReceiver(lease, context.RequestAborted);
             try
             {
                 using (var stage = diagnostics?.Start(DispatchStageName.NativeCallback))

@@ -25,6 +25,14 @@ public partial class AggregateActor
     }
 
     /// <inheritdoc/>
+    public async Task<SourceProofInspectionPair> InspectSourceMetadataPairAsync()
+    {
+        SourceProofInspection initial = await InspectSourceProofAsync().ConfigureAwait(false);
+        SourceProofInspection final = await InspectSourceProofAsync().ConfigureAwait(false);
+        return new(initial, final);
+    }
+
+    /// <inheritdoc/>
     public async Task<SourceProofInspection> InspectSourceProofAsync()
     {
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceInspections);

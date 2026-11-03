@@ -6,7 +6,40 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 public static class RouteCatalogRemoteCall
 {
     private static readonly AsyncLocal<IReadOnlyList<RouteCatalogDispatchLease>?> Active = new();
+    private static readonly AsyncLocal<IReadOnlyList<RouteCatalogRemoteScope>?> MetadataScopes = new();
     internal static IReadOnlyList<RouteCatalogDispatchLease> Current => Active.Value ?? [];
+
+    /// <summary>Tracks selected private scope lifetimes without changing ordinary remote enrollment.</summary>
+    internal static IReadOnlyList<RouteCatalogRemoteScope>? PushMetadataScope(RouteCatalogRemoteScope scope, bool isolated)
+    {
+        var prior = MetadataScopes.Value;
+        if (scope.Lease.HasMetadataIssuer || prior is not null)
+            MetadataScopes.Value = isolated ? [scope] : [.. prior ?? [], scope];
+        return prior;
+    }
+
+    /// <summary>Restores the enclosing private lifetime markers.</summary>
+    internal static void RestoreMetadataScopes(IReadOnlyList<RouteCatalogRemoteScope>? prior) => MetadataScopes.Value = prior;
+
+    /// <summary>Captures only genuine SDK receiver layers; public scopes cannot confer nested borrowing.</summary>
+    internal static RouteCatalogRemoteScope[]? CaptureMetadataScopes(object issuer)
+    {
+        lock (RouteCatalogDispatchLease.MetadataLifetimeGate)
+        {
+            var scopes = MetadataScopes.Value;
+            if (scopes is null || !scopes.Any(scope => scope.IsReceiver)) return null;
+            var leases = Current;
+            if (scopes.Count != leases.Count || scopes.Where((scope, index) => !ReferenceEquals(scope.Lease, leases[index])).Any())
+                throw new RouteCatalogUnavailableException("Nested metadata requires every original receiver layer.");
+            foreach (var scope in scopes) scope.RequireMetadataLifetime(issuer);
+            return scopes.ToArray();
+        }
+    }
+
+    /// <summary>Enters only an actual SDK receiver's original cancellation-bound execution lifetime.</summary>
+    internal static IDisposable EnterReceiver(RouteCatalogDispatchLease lease, CancellationToken requestAborted)
+        => new RouteCatalogRemoteScope(lease, receiverToken: requestAborted);
+
     /// <summary>Enters a receiver execution scope; disposal restores its enclosing scope without releasing the lease.</summary>
     public static IDisposable Enter(RouteCatalogDispatchLease lease)
     {
