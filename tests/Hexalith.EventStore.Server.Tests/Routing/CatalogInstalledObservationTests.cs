@@ -191,10 +191,10 @@ public sealed class CatalogInstalledObservationTests
     }
 
     [Fact]
-    public async Task AcquisitionRefusesAfter32ConflictsWithoutLeakingAndLaterSucceeds()
+    public async Task AcquisitionRefusesAfter96ConflictsWithoutLeakingAndLaterSucceeds()
     {
         var fixture = new RouteCatalogTestFixture(); await fixture.ActivateAsync(fixture.Candidate());
-        var contended = new CatalogContendedStateStore(fixture.Store) { ConflictsRemaining = 32 };
+        var contended = new CatalogContendedStateStore(fixture.Store) { ConflictsRemaining = 96 };
         var options = Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development", DevelopmentFixture = true });
         var environment = Substitute.For<IHostEnvironment>(); environment.EnvironmentName.Returns("Development");
         var authority = new RouteCatalogAuthority(contended, new DevelopmentRouteCatalogTrustValidator(options, environment), options,
@@ -202,7 +202,7 @@ public sealed class CatalogInstalledObservationTests
         var before = await fixture.Store.ReadAsync(default);
         var refusal = await Should.ThrowAsync<RouteCatalogUnavailableException>(() => authority.AcquireAsync());
         refusal.Message.ShouldBe("Concurrent catalog authority updates could not be serialized.");
-        contended.ConflictsObserved.ShouldBe(32);
+        contended.ConflictsObserved.ShouldBe(96);
         contended.ConflictsRemaining.ShouldBe(0);
         var refused = await fixture.Store.ReadAsync(default);
         refused.ETag.ShouldBe(before.ETag);

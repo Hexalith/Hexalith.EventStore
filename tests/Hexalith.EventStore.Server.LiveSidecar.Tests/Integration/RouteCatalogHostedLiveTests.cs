@@ -58,7 +58,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 
 /// <summary>Actual gateway controller, SDK domain host and source-generated API host share one Development activation.</summary>
 [Trait("Category", "LiveSidecar")]
-public sealed class RouteCatalogHostedLiveTests
+public sealed partial class RouteCatalogHostedLiveTests
 {
     [Theory]
     [InlineData(false)]

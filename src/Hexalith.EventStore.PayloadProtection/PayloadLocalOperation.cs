@@ -23,7 +23,7 @@ internal sealed class PayloadLocalOperation : IDisposable
 
     /// <summary>Gets the token cancelled by caller cancellation or a local lifecycle drain.</summary>
     internal CancellationToken Token => _cancel.Token;
-    /// <summary>Gets completion only after every registered late result has been disposed.</summary>
+    /// <summary>Gets completion only after the foreground, every retained late result and any running cancellation callback have finished.</summary>
     internal Task Cleared => _cleared.Task;
     /// <summary>Rejects results from cancelled or already-cleared work.</summary>
     internal void AssertCurrent(CancellationToken caller = default)
@@ -86,6 +86,7 @@ internal sealed class PayloadLocalOperation : IDisposable
 
     private void CompleteRelease()
     {
+        // Disposing the linked source waits for this operation's running caller-cancellation callback; keep it before signaling.
         _cancel.Dispose();
         _cleared.TrySetResult();
         _released(this);

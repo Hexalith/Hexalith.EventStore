@@ -17,6 +17,17 @@ from xml.sax.saxutils import quoteattr
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+# The parent CI job builds mapped owner source. These package-only probes run in
+# separate temporary projects and must not inherit that source mapping.
+# MSBuild import property names are case-insensitive.
+SOURCE_MAPPING_IMPORTS = frozenset(key.casefold() for key in {
+    "AfterMicrosoftNETSdkTargets",
+    "CustomAfterDirectoryBuildTargets",
+    "CustomAfterMicrosoftCommonProps",
+    "CustomBeforeDirectoryBuildProps",
+    "CustomBeforeDirectoryBuildTargets",
+})
+
 from release_package_contract import (  # noqa: E402
     TOOL_PACKAGE_IDS,
     PackageMetadata,
@@ -536,9 +547,12 @@ def run(
 ) -> None:
     """Run one consumer command and preserve its diagnostic output."""
 
-    env = None
+    env = {
+        key: value for key, value in os.environ.items()
+        if key.casefold() not in SOURCE_MAPPING_IMPORTS and not key.casefold().startswith("hexalith_source_mapping_")
+    }
     if packages_folder is not None:
-        env = {**os.environ, "NUGET_PACKAGES": str(packages_folder)}
+        env["NUGET_PACKAGES"] = str(packages_folder)
     completed = subprocess.run(command, cwd=cwd, check=False, env=env)
     if completed.returncode != 0:
         raise subprocess.CalledProcessError(completed.returncode, completed.args)

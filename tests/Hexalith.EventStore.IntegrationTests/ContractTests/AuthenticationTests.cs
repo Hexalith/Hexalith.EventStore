@@ -68,7 +68,8 @@ public class AuthenticationTests {
         // Realm is asserted by substring (`hexalith-eventstore`) so a future ops change to
         // namespace the realm (e.g., `hexalith-eventstore-prod`) does not break the test.
         string wwwAuth = response.Headers.WwwAuthenticate.ToString();
-        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        response.Headers.WwwAuthenticate.First().Scheme.ShouldBe("Bearer");
+        response.Headers.WwwAuthenticate.First().Parameter.ShouldStartWith("realm=\"");
         wwwAuth.ShouldContain("hexalith-eventstore");
     }
 

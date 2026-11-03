@@ -118,7 +118,7 @@ internal sealed class TechnicalHttpCatalogFixture : IAsyncDisposable
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddAuthentication().AddEventStoreWorkloadScheme(Hexalith.EventStore.Authentication.DaprInternalAuthenticationOptions.SchemeName,
                 "Authentication:Workload", (options, _) => { options.Audience = "technical-fixture"; options.AllowedCallers = ["eventstore-admin-server"]; });
-            builder.Services.AddEventStoreWorkloadPolicies(Hexalith.EventStore.Authentication.DaprInternalAuthenticationOptions.SchemeName, [EventStoreOperationIdentifiers.GatewayCommandSubmit, EventStoreOperationIdentifiers.GatewayCommandStatus, EventStoreOperationIdentifiers.GatewayStreamRead]);
+            builder.Services.AddEventStoreWorkloadPolicies(Hexalith.EventStore.Authentication.DaprInternalAuthenticationOptions.SchemeName, [EventStoreOperationIdentifiers.GatewayCommandSubmit, EventStoreOperationIdentifiers.GatewayCommandStatus, EventStoreOperationIdentifiers.GatewayStreamRead, EventStoreOperationIdentifiers.TrustedEffect]);
             builder.Services.AddTransient<Hexalith.EventStore.Validation.ExtensionMetadataSanitizer>();
             builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options => options.MapInboundClaims = false);
         }

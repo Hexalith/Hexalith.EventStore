@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 
 using FluentValidation;
 
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Validation;
 
 namespace Hexalith.EventStore.Validation;
@@ -24,7 +25,8 @@ public partial class ValidateQueryRequestValidator : AbstractValidator<ValidateQ
             .NotNull().WithMessage("Tenant is required")
             .NotEmpty().WithMessage("Tenant cannot be empty")
             .MaximumLength(MaxTenantDomainLength).WithMessage($"Tenant cannot exceed {MaxTenantDomainLength} characters")
-            .Matches(_tenantDomainRegex).WithMessage("Tenant must contain only lowercase alphanumeric characters and hyphens")
+            .Must(tenant => _tenantDomainRegex.IsMatch(tenant) || TenantCanonicalizer.IsPlatformScope(tenant))
+            .WithMessage("Tenant must be a lowercase tenant or canonical platform scope")
             .When(x => !string.IsNullOrEmpty(x.Tenant), ApplyConditionTo.CurrentValidator);
 
         _ = RuleFor(x => x.Domain)

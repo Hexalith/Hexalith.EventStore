@@ -559,12 +559,13 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(workflow, "ci");
         string tenantsSourceModeJob = ExtractTopLevelWorkflowJobBlock(workflow, "tenants-source-mode");
 
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb");
         ciJob.ShouldContain("build-timeout-minutes: 180");
         ciJob.ShouldContain("test-platform: microsoft-testing-platform");
         ciJob.ShouldContain("run-consumer-validation: true");
         ciJob.ShouldContain("tests/Hexalith.EventStore.LoadTests.Tests");
         ciJob.ShouldContain("tests/Hexalith.EventStore.Server.Tests");
+        ciJob.ShouldContain("tests/Hexalith.EventStore.AppHost.Tests");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Server.LiveSidecar.Tests");
         ciJob.ShouldNotContain("run-coverage-gate:");
         ciJob.ShouldNotContain("Category!=LiveSidecar");
@@ -573,6 +574,64 @@ public sealed class ReleasePackageManifestTests
 
         AssertWorkflowJobCannotBeSkippedOrTolerated(ciJob, "Shared deterministic CI");
         AssertTenantsSourceModeJobIsBlocking(tenantsSourceModeJob);
+    }
+
+    [Fact]
+    public void Shared_ci_v2_requires_the_pinned_tool_declared_package_suite_and_pull_only_secrets()
+    {
+        string root = FindRepositoryRoot();
+        string ciJob = ExtractTopLevelWorkflowJobBlock(File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml")), "ci");
+        ciJob.ShouldContain("module-manifest: module/hexalith.module-manifest.v2.json");
+        ciJob.ShouldContain("integration-test-profiles: platform-package");
+        ciJob.ShouldContain("registry-pull-username: ${{ secrets.HEXALITH_CI_REGISTRY_USERNAME }}");
+        ciJob.ShouldContain("registry-pull-password: ${{ secrets.HEXALITH_CI_REGISTRY_PASSWORD }}");
+        foreach (string retired in new[] { "integration-test-projects:", "aspire-test-project:", "dapr-version:", "dapr-runtime-version:", "secrets: inherit" })
+        {
+            ciJob.ShouldNotContain(retired);
+        }
+
+        using JsonDocument tools = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".config", "dotnet-tools.json")));
+        JsonElement tool = tools.RootElement.GetProperty("tools").GetProperty("hexalith.builds.module.cli");
+        tool.GetProperty("version").GetString().ShouldBe("4.43.6");
+        tool.GetProperty("rollForward").GetBoolean().ShouldBeFalse();
+        using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "module", "hexalith.module-manifest.v2.json")));
+        JsonElement suite = manifest.RootElement.GetProperty("modules")[0].GetProperty("tests").EnumerateArray()
+            .Single(test => test.GetProperty("name").GetString() == "platform-package");
+        suite.GetProperty("mode").GetString().ShouldBe("package");
+        suite.GetProperty("executor").GetString().ShouldBe("mtp");
+        suite.GetProperty("entry").GetString().ShouldBe("tests/Hexalith.EventStore.Platform.IntegrationTests/Hexalith.EventStore.Platform.IntegrationTests.csproj");
+    }
+
+    /// <summary>SDK-owned test support remains source while external Release dependencies remain packages.</summary>
+    /// <param name="configuration">The consuming build configuration.</param>
+    /// <param name="source">The external dependency mode selected by the caller.</param>
+    [Theory]
+    [InlineData("Debug", true)]
+    [InlineData("Release", false)]
+    public void PlatformPackageIntegrationUsesOwnedHarnessAcrossDependencyModes(string configuration, bool source)
+    {
+        string root = FindRepositoryRoot();
+        string project = Path.Combine(root, "tests", "Hexalith.EventStore.Platform.IntegrationTests", "Hexalith.EventStore.Platform.IntegrationTests.csproj");
+        using JsonDocument evaluated = JsonDocument.Parse(EvaluatedProjectOutput(project,
+            "-getItem:ProjectReference,PackageReference", configuration, source));
+        JsonElement items = evaluated.RootElement.GetProperty("Items");
+        items.GetProperty("PackageReference").EnumerateArray()
+            .Select(item => item.GetProperty("Identity").GetString()!)
+            .ShouldNotContain(identity => identity.StartsWith("Hexalith.EventStore.", StringComparison.Ordinal));
+        string harness = Path.GetFullPath(Path.Combine(root, "src", "Hexalith.EventStore.Testing.Integration", "Hexalith.EventStore.Testing.Integration.csproj"));
+        items.GetProperty("ProjectReference").EnumerateArray()
+            .Select(item => Path.GetFullPath(item.GetProperty("FullPath").GetString()!))
+            .ShouldContain(harness);
+        if (!source)
+        {
+            EvaluatedProjectProperty(project, "UseHexalithProjectReferences").ShouldBe("false");
+            using JsonDocument contracts = JsonDocument.Parse(EvaluatedProjectOutput(
+                Path.Combine(root, "src", "Hexalith.EventStore.Contracts", "Hexalith.EventStore.Contracts.csproj"),
+                "-getItem:PackageReference", configuration, source));
+            contracts.RootElement.GetProperty("Items").GetProperty("PackageReference").EnumerateArray()
+                .Select(item => item.GetProperty("Identity").GetString())
+                .ShouldContain("Hexalith.Commons.UniqueIds");
+        }
     }
 
     [Fact]
@@ -720,7 +779,7 @@ public sealed class ReleasePackageManifestTests
         liveSidecarJob.ShouldNotContain("set +e");
 
         string ciJob = ExtractTopLevelWorkflowJobBlock(ci, "ci");
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb");
         ciJob.ShouldContain("unit-test-projects: |");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Contracts.Tests");
         ciJob.ShouldNotContain("continue-on-error");
@@ -1105,6 +1164,64 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Fact]
+    public void Azure_payload_companion_stays_non_packable_and_live_service_is_explicitly_authorized()
+    {
+        string root = FindRepositoryRoot();
+        foreach (string project in new[] { "src/Hexalith.EventStore.PayloadProtection.AzureKeyVault", "tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests", "tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests" })
+        {
+            string path = Path.Combine(root, project, Path.GetFileName(project) + ".csproj");
+            EvaluatedProjectProperty(path, "IsPackable").ShouldBe("false");
+            File.ReadAllText(Path.Combine(root, "Hexalith.EventStore.slnx")).ShouldContain(project + "/");
+        }
+        LoadReleasePackages().Count().ShouldBe(14);
+        AssertAzurePayloadWorkflow(File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection-azure.yml")));
+    }
+
+    [Theory]
+    [InlineData("automatic-live")]
+    [InlineData("skip-tolerance")]
+    [InlineData("missing-receipt")]
+    public void Azure_payload_workflow_guard_rejects_authority_and_test_bypasses(string mutation)
+    {
+        string workflow = File.ReadAllText(Path.Combine(FindRepositoryRoot(), ".github", "workflows", "payload-protection-azure.yml"));
+        string changed = mutation switch
+        {
+            "automatic-live" => workflow.Replace("if: github.event_name == 'workflow_dispatch' && inputs.run_live == true && inputs.authority_sha256 != ''", "if: always()", StringComparison.Ordinal),
+            "skip-tolerance" => workflow.Replace("--fail-skips on", "--fail-skips off", StringComparison.Ordinal),
+            "missing-receipt" => workflow.Replace("environment: payload-protection-azure-conformance", "environment: unprotected", StringComparison.Ordinal),
+            _ => throw new ArgumentOutOfRangeException(nameof(mutation)),
+        };
+        changed.ShouldNotBe(workflow);
+        Should.Throw<Shouldly.ShouldAssertException>(() => AssertAzurePayloadWorkflow(changed));
+    }
+
+    private static void AssertAzurePayloadWorkflow(string workflow)
+    {
+        var yaml = new YamlStream(); yaml.Load(new StringReader(workflow));
+        var root = (YamlMappingNode)yaml.Documents[0].RootNode;
+        var triggers = (YamlMappingNode)root.Children[new YamlScalarNode("on")];
+        triggers.Children.Keys.Select(key => ((YamlScalarNode)key).Value).Order(StringComparer.Ordinal).ShouldBe(["pull_request", "push", "workflow_dispatch"]);
+        var jobs = (YamlMappingNode)root.Children[new YamlScalarNode("jobs")];
+        var live = (YamlMappingNode)jobs.Children[new YamlScalarNode("authorized-service")];
+        ((YamlScalarNode)live.Children[new YamlScalarNode("if")]).Value.ShouldBe("github.event_name == 'workflow_dispatch' && inputs.run_live == true && inputs.authority_sha256 != ''");
+        ((YamlScalarNode)live.Children[new YamlScalarNode("environment")]).Value.ShouldBe("payload-protection-azure-conformance");
+        workflow.ShouldContain("group: payload-protection-azure-private-ephemeral");
+        workflow.ShouldContain("HEXALITH_PAYLOAD_AZURE_AUTHORITY_SHA256: ${{ inputs.authority_sha256 }}");
+        workflow.ShouldContain("e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488");
+        workflow.ShouldContain("--minimum-expected-tests 187 --fail-skips on");
+        workflow.ShouldContain("--filter-class Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.AzureIdentityAuthoritySchemaTests");
+        workflow.ShouldContain("--minimum-expected-tests 15 --fail-skips on");
+        workflow.ShouldContain("--minimum-expected-tests 11 --fail-skips on");
+        workflow.ShouldContain("--minimum-expected-tests 1 --fail-skips on");
+        workflow.ShouldContain("--filter-class Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.AzurePreparedFaultTests");
+        workflow.ShouldNotContain("--fail-skips off");
+        workflow.ShouldNotContain("continue-on-error");
+        workflow.ShouldNotContain("dotnet pack");
+        workflow.ShouldNotContain("dotnet publish");
+        workflow.ShouldNotContain("az keyvault");
+    }
+
+    [Fact]
     public void Test_projects_are_classified_into_release_live_advisory_or_deferred_lanes()
     {
         string root = FindRepositoryRoot();
@@ -1113,6 +1230,7 @@ public sealed class ReleasePackageManifestTests
         string advisory = File.ReadAllText(Path.Combine(root, ".github", "workflows", "advisory-tests.yml"));
         string payloadProtection = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"));
         string payloadProtectionLifecycle = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection-lifecycle.yml"));
+        string payloadProtectionAzure = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection-azure.yml"));
         string docs = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
         string[] deferredProjects = DeferredTestLaneProjects(docs);
 
@@ -1123,7 +1241,14 @@ public sealed class ReleasePackageManifestTests
             ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Host"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
             ["tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Probe"] = "tests/Hexalith.EventStore.PublishedCompatibility.Tests",
             ["tests/Hexalith.EventStore.Sharding.TestHost"] = "tests/Hexalith.EventStore.Sharding.Tests",
+            ["tests/Hexalith.EventStore.QuerySelectorFixture"] = "tests/Hexalith.EventStore.Server.Tests",
         };
+
+        using var moduleManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "module", "hexalith.module-manifest.v2.json")));
+        HashSet<string> profileProjects = moduleManifest.RootElement.GetProperty("modules")[0].GetProperty("tests").EnumerateArray()
+            .Where(test => ci.Contains("integration-test-profiles: " + test.GetProperty("name").GetString(), StringComparison.Ordinal))
+            .Select(test => Path.GetDirectoryName(test.GetProperty("entry").GetString()!)!.Replace('\\', '/'))
+            .ToHashSet(StringComparer.Ordinal);
 
         string[] ignoredProjects = ["tests/Hexalith.EventStore.Client.TestContracts", "tests/Hexalith.EventStore.TestSubscriber"];
         string[] discovered = TrackedTestProjectFiles(root)
@@ -1141,6 +1266,8 @@ public sealed class ReleasePackageManifestTests
                 || advisory.Contains(laneProject, StringComparison.Ordinal)
                 || payloadProtection.Contains(laneProject, StringComparison.Ordinal)
                 || payloadProtectionLifecycle.Contains(laneProject, StringComparison.Ordinal)
+                || payloadProtectionAzure.Contains(laneProject, StringComparison.Ordinal)
+                || profileProjects.Contains(laneProject)
                 || deferredProjects.Contains(laneProject, StringComparer.Ordinal);
             if (!classified)
             {
@@ -1904,6 +2031,9 @@ public sealed class ReleasePackageManifestTests
     }
 
     private static string EvaluatedProjectProperty(string projectPath, string propertyName)
+        => EvaluatedProjectOutput(projectPath, "-getProperty:" + propertyName, "Release", false);
+
+    private static string EvaluatedProjectOutput(string projectPath, string selector, string configuration, bool source)
     {
         using Process process = new()
         {
@@ -1918,9 +2048,9 @@ public sealed class ReleasePackageManifestTests
 
         process.StartInfo.ArgumentList.Add("msbuild");
         process.StartInfo.ArgumentList.Add(projectPath);
-        process.StartInfo.ArgumentList.Add($"-getProperty:{propertyName}");
-        process.StartInfo.ArgumentList.Add("-p:Configuration=Release");
-        process.StartInfo.ArgumentList.Add("-p:UseHexalithProjectReferences=false");
+        process.StartInfo.ArgumentList.Add(selector);
+        process.StartInfo.ArgumentList.Add("-p:Configuration=" + configuration);
+        process.StartInfo.ArgumentList.Add("-p:UseHexalithProjectReferences=" + source.ToString().ToLowerInvariant());
 
         process.StartInfo.WorkingDirectory = FindRepositoryRoot();
 
@@ -1932,7 +2062,7 @@ public sealed class ReleasePackageManifestTests
         {
             process.Kill(entireProcessTree: true);
             throw new TimeoutException(
-                $"dotnet msbuild -getProperty:{propertyName} timed out after {MsBuildPropertyTimeout} for {projectPath}.");
+                $"dotnet msbuild {selector} timed out after {MsBuildPropertyTimeout} for {projectPath}.");
         }
 
         string output = outputTask.GetAwaiter().GetResult();
@@ -1940,7 +2070,7 @@ public sealed class ReleasePackageManifestTests
 
         process.ExitCode.ShouldBe(
             0,
-            $"dotnet msbuild -getProperty:{propertyName} failed for {projectPath}: {error}");
+            $"dotnet msbuild {selector} failed for {projectPath}: {error}");
 
         return output.Trim();
     }

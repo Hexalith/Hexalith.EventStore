@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using Hexalith.EventStore.Client.Projections.Checkpointed;
 using Hexalith.EventStore.Contracts.Streams;
 
@@ -182,14 +184,39 @@ public sealed class CheckpointedProjectionReviewPass4Tests
     }
 
     [Theory]
+    [InlineData("pending-null")]
+    [InlineData("last-accepted-at-zero")]
+    [InlineData("last-accepted-without-message")]
+    [InlineData("last-accepted-without-type")]
+    [InlineData("last-accepted-without-fingerprint")]
+    [InlineData("negative-checkpoint")]
+    [InlineData("negative-version")]
+    [InlineData("negative-fence")]
     [InlineData("missing-last-accepted")]
+    [InlineData("healthy-expected")]
+    [InlineData("healthy-recovery-through")]
+    [InlineData("healthy-corruption-reason")]
     [InlineData("healthy-pending")]
     [InlineData("healthy-lease")]
+    [InlineData("missing-expected")]
+    [InlineData("missing-recovery-through")]
+    [InlineData("recovery-through-before-expected")]
     [InlineData("wrong-expected")]
+    [InlineData("gapped-corruption-reason")]
+    [InlineData("empty-pending")]
+    [InlineData("null-pending-entry")]
+    [InlineData("null-pending-evidence")]
+    [InlineData("pending-without-message")]
+    [InlineData("pending-without-type")]
+    [InlineData("pending-without-fingerprint")]
+    [InlineData("last-pending-before-recovery-through")]
     [InlineData("unsorted-pending")]
     [InlineData("out-of-range-pending")]
     [InlineData("corrupt-lease")]
     [InlineData("corrupt-without-reason")]
+    [InlineData("lease-without-worker")]
+    [InlineData("zero-lease-token")]
+    [InlineData("negative-lease-token")]
     [InlineData("lease-token-above-fence")]
     public async Task EveryMalformedRecordRuleRejectsApplyAndRead(string defect)
     {
@@ -209,16 +236,43 @@ public sealed class CheckpointedProjectionReviewPass4Tests
             CorruptionReason = CheckpointedProjectionCorruptionReason.HistoryMissing,
         };
         CheckpointedProjectionLease lease = new("worker", 1, 1, harness.Clock.UtcNow.AddSeconds(30));
+        CheckpointedProjectionEvidence accepted = CheckpointedProjectionHarness.Delivery(1).Evidence;
+        CheckpointedProjectionRecord<CheckpointedTestState> healthy = empty with { LastContiguousSequence = 1, LastAccepted = accepted };
         CheckpointedProjectionRecord<CheckpointedTestState> malformed = defect switch
         {
+            "pending-null" => empty with { Pending = null! },
+            "last-accepted-at-zero" => empty with { LastAccepted = accepted },
+            "last-accepted-without-message" => healthy with { LastAccepted = accepted with { MessageId = " " } },
+            "last-accepted-without-type" => healthy with { LastAccepted = accepted with { EventType = " " } },
+            "last-accepted-without-fingerprint" => healthy with { LastAccepted = accepted with { PayloadFingerprint = " " } },
+            "negative-checkpoint" => healthy with { LastContiguousSequence = -1 },
+            "negative-version" => empty with { Version = -1 },
+            "negative-fence" => empty with { LastFencingToken = -1 },
             "missing-last-accepted" => empty with { LastContiguousSequence = 1 },
+            "healthy-expected" => empty with { Expected = 1 },
+            "healthy-recovery-through" => empty with { RecoveryThrough = 1 },
+            "healthy-corruption-reason" => empty with { CorruptionReason = CheckpointedProjectionCorruptionReason.HistoryMissing },
             "healthy-pending" => empty with { Pending = [pending2] },
             "healthy-lease" => empty with { Lease = lease, LastFencingToken = 1 },
+            "missing-expected" => gapped with { Expected = null },
+            "missing-recovery-through" => gapped with { RecoveryThrough = null },
+            "recovery-through-before-expected" => gapped with { RecoveryThrough = 0 },
             "wrong-expected" => gapped with { Expected = 2 },
+            "gapped-corruption-reason" => gapped with { CorruptionReason = CheckpointedProjectionCorruptionReason.HistoryMissing },
+            "empty-pending" => gapped with { Pending = [] },
+            "null-pending-entry" => gapped with { Pending = [null!] },
+            "null-pending-evidence" => gapped with { Pending = [pending2 with { Evidence = null! }] },
+            "pending-without-message" => gapped with { Pending = [pending2 with { Evidence = pending2.Evidence with { MessageId = " " } }] },
+            "pending-without-type" => gapped with { Pending = [pending2 with { Evidence = pending2.Evidence with { EventType = " " } }] },
+            "pending-without-fingerprint" => gapped with { Pending = [pending2 with { Evidence = pending2.Evidence with { PayloadFingerprint = " " } }] },
+            "last-pending-before-recovery-through" => gapped with { RecoveryThrough = 3 },
             "unsorted-pending" => gapped with { Pending = [pending2, new(1, CheckpointedProjectionHarness.Delivery(1).Evidence)] },
             "out-of-range-pending" => gapped with { Pending = [new(3, CheckpointedProjectionHarness.Delivery(3).Evidence)] },
             "corrupt-lease" => corrupt with { Lease = lease, LastFencingToken = 1 },
             "corrupt-without-reason" => corrupt with { CorruptionReason = null },
+            "lease-without-worker" => gapped with { Lease = lease with { WorkerId = " " }, LastFencingToken = 1 },
+            "zero-lease-token" => gapped with { Lease = lease with { FencingToken = 0 } },
+            "negative-lease-token" => gapped with { Lease = lease with { FencingToken = -1 } },
             "lease-token-above-fence" => gapped with { Lease = lease },
             _ => throw new ArgumentOutOfRangeException(nameof(defect)),
         };
@@ -233,5 +287,23 @@ public sealed class CheckpointedProjectionReviewPass4Tests
 
         apply.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.MalformedRecord);
         read.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.MalformedRecord);
+    }
+
+    [Fact]
+    public async Task StoredRecordThatCannotDeserializeRejectsApplyAndReadAsMalformed()
+    {
+        var harness = new CheckpointedProjectionHarness();
+        harness.Store.SeedRaw(Store, Key, new JsonObject { ["schemaVersion"] = 1, ["health"] = (int)CheckpointedProjectionHealth.Healthy, ["pending"] = 5 });
+        byte[] before = harness.Store.SnapshotRaw(Store, Key).ShouldNotBeNull();
+
+        CheckpointedProjectionUnavailableException apply = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(
+            () => harness.ApplyAsync(1));
+        CheckpointedProjectionUnavailableException read = await Should.ThrowAsync<CheckpointedProjectionUnavailableException>(
+            () => harness.Writer().ReadAsync(Store, Key, TestContext.Current.CancellationToken));
+
+        apply.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.MalformedRecord);
+        read.Reason.ShouldBe(CheckpointedProjectionUnavailableReason.MalformedRecord);
+        harness.Store.SnapshotRaw(Store, Key).ShouldBe(before);
+        harness.Gateway.Requests.ShouldBeEmpty();
     }
 }

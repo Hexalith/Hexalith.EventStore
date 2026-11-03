@@ -25,6 +25,24 @@ public class SubmitQueryRequestValidatorTests {
         result.IsValid.ShouldBeTrue();
     }
 
+    [Theory]
+    [InlineData("platform:global-administrators")]
+    [InlineData("platform:tenants")]
+    public void SubmitQueryRequestValidator_CanonicalPlatformScope_Passes(string scope) {
+        var request = new SubmitQueryRequest(scope, "global-administrators", "global-administrators", "get-global-administrators");
+
+        _validator.Validate(request).IsValid.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("platform:Global")]
+    [InlineData("platform:bad--name")]
+    public void SubmitQueryRequestValidator_NoncanonicalPlatformScope_Fails(string scope) {
+        var request = new SubmitQueryRequest(scope, "global-administrators", "global-administrators", "get-global-administrators");
+
+        _validator.Validate(request).Errors.ShouldContain(error => error.PropertyName == "Tenant");
+    }
+
     [Fact]
     public void SubmitQueryRequestValidator_ValidPageSizeAndOffset_Passes() {
         var request = new SubmitQueryRequest(

@@ -39,6 +39,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -79,6 +80,119 @@ public class StreamsControllerTests {
         _ = AssertProblem(await controller.ReadWorkloadStreamAsync(selected with { Tenant = null! }),
             StatusCodes.Status400BadRequest);
         proxies.ReceivedCalls().Count().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task HumanTenantsPlatformReadMapsToHistoricalStorageWithTheExactReadPermission()
+    {
+        ServerEventEnvelope stored = BuildEnvelope(1) with { TenantId = "system", Domain = "tenants", AggregateId = "tenant-alpha" };
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(true, 1));
+        _ = actor.ReadEventsRangeAsync(0, null, 101).Returns([stored]);
+        (StreamsController controller, IActorProxyFactory proxies, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator)
+            = CreateController(actor);
+        BindTenantsPlatformReader(controller, sendScopeHeader: true);
+
+        StreamReadPage page = (await controller.ReadStreamAsync(new StreamReadRequest("platform:tenants", "tenants", "tenant-alpha", 0)))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>();
+
+        page.Tenant.ShouldBe("system");
+        page.Domain.ShouldBe("tenants");
+        page.AggregateId.ShouldBe("tenant-alpha");
+        page.Events.ShouldHaveSingleItem().MessageId.ShouldBe("msg-1");
+        _ = proxies.Received(1).CreateActorProxy<IAggregateActor>(
+            new ActorId("system:tenants:tenant-alpha"), "AggregateActor", Arg.Any<ActorProxyOptions?>());
+        tenantValidator.ReceivedRequests.ShouldBeEmpty();
+        rbacValidator.ReceivedRequests.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("missing-permission")]
+    [InlineData("duplicate-permission")]
+    [InlineData("other-permission")]
+    [InlineData("other-domain")]
+    [InlineData("scope-mismatch")]
+    [InlineData("reserved-body")]
+    [InlineData("global-administrators")]
+    [InlineData("tenant-header")]
+    [InlineData("reserved-grant")]
+    [InlineData("multi-valued-scope")]
+    [InlineData("anonymous")]
+    public async Task HumanPlatformReadRefusesAnyOtherScopePermissionOrGrantBeforeActorAccess(string change)
+    {
+        (StreamsController controller, IActorProxyFactory proxies, _, _) = CreateController(Substitute.For<IAggregateActor>());
+        List<Claim> claims = [new("sub", "tenant-access-worker"), new("eventstore:permission", "tenants:read")];
+        var request = new StreamReadRequest("platform:tenants", "tenants", "tenant-alpha", 0);
+        StringValues scope = "platform:tenants";
+        switch (change)
+        {
+            case "missing-permission":
+                claims.RemoveAt(1);
+                break;
+            case "duplicate-permission":
+                claims.Add(new("eventstore:permission", "tenants:read"));
+                break;
+            case "other-permission":
+                claims[1] = new("eventstore:permission", "StreamRead");
+                break;
+            case "other-domain":
+                request = request with { Domain = "party" };
+                break;
+            case "scope-mismatch":
+                scope = "platform:global-administrators";
+                break;
+            case "reserved-body":
+                request = request with { Tenant = "system" };
+                scope = "system";
+                break;
+            case "global-administrators":
+                request = request with { Tenant = "platform:global-administrators", Domain = "global-administrators" };
+                scope = request.Tenant;
+                claims.Add(new("eventstore:permission", "global-administrators:read"));
+                break;
+            case "tenant-header":
+                controller.Request.Headers["X-Hexalith-Tenant"] = "tenant-a";
+                break;
+            case "reserved-grant":
+                claims.Add(new("eventstore:tenant", "system"));
+                break;
+            case "multi-valued-scope":
+                scope = new StringValues(["platform:tenants", "platform:global-administrators"]);
+                break;
+        }
+
+        controller.HttpContext.User = change == "anonymous"
+            ? new ClaimsPrincipal(new ClaimsIdentity())
+            : new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+        controller.Request.Headers["X-Hexalith-Scope"] = scope;
+
+        _ = (await controller.ReadStreamAsync(request)).ShouldBeOfType<ForbidResult>();
+        proxies.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("system")]
+    [InlineData("platform:tenants")]
+    public async Task HumanReadWithoutTheScopeHeaderStillRefusesReservedAndPlatformTenants(string tenant)
+    {
+        (StreamsController controller, IActorProxyFactory proxies, _, _) = CreateController(Substitute.For<IAggregateActor>());
+        BindTenantsPlatformReader(controller, sendScopeHeader: false);
+
+        _ = AssertProblem(await controller.ReadStreamAsync(new StreamReadRequest(tenant, "tenants", "tenant-alpha", 0)),
+            StatusCodes.Status400BadRequest);
+        proxies.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    private static void BindTenantsPlatformReader(StreamsController controller, bool sendScopeHeader)
+    {
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", "tenant-access-worker"),
+            new Claim("eventstore:permission", "tenants:read"),
+        ], "test"));
+        if (sendScopeHeader)
+        {
+            controller.Request.Headers["X-Hexalith-Scope"] = "platform:tenants";
+        }
     }
 
     [Theory]

@@ -14,7 +14,7 @@ internal static class HistoricalMatrixMeasurementContract
 
     /// <summary>Requires every original case, unchanged failure accounting and a nonqualifying receipt.</summary>
     internal static void Validate(IReadOnlyList<ScenarioObservation> observations, JsonElement summary,
-        JsonElement actualCapture, IReadOnlyList<ConsumerBuild> builds, IReadOnlyList<HistoricalExecutionCommand> commands,
+        JsonElement actualCapture, string expectedExecutorBuilds, IReadOnlyList<ConsumerBuild> builds, IReadOnlyList<HistoricalExecutionCommand> commands,
         IReadOnlyList<QualificationFileFingerprint>? files = null, IReadOnlyList<QualificationCleanupPass>? cleanupPasses = null, IReadOnlyList<QualificationHttpExchange>? httpExchanges = null,
         IReadOnlyList<QualificationScenarioInput>? scenarioInputs = null, IReadOnlyList<QualificationStateRead>? stateReads = null,
         IReadOnlyList<QualificationProcessScan>? processScans = null, IReadOnlyList<QualificationDaprLaunch>? daprLaunches = null,
@@ -50,7 +50,7 @@ internal static class HistoricalMatrixMeasurementContract
             if (observation.Error is not null) ValidateXmlFailure(observation, builds, commands);
         }
         ValidateReceiptClaims(summary);
-        ValidateCapture(summary, actualCapture);
+        ValidateCapture(summary, actualCapture, expectedExecutorBuilds);
         if (!summary.TryGetProperty("files", out var savedFiles) || !JsonElement.DeepEquals(savedFiles, JsonSerializer.SerializeToElement(files ?? [])))
             throw new InvalidOperationException("The saved sensitive-file fingerprints differ from actual independent observations.");
         if (!summary.TryGetProperty("cleanupPasses", out var savedPasses) || !JsonElement.DeepEquals(savedPasses, JsonSerializer.SerializeToElement(cleanupPasses ?? [])))
@@ -77,7 +77,7 @@ internal static class HistoricalMatrixMeasurementContract
                 throw new InvalidOperationException("Historical characterization cannot erase measured " + name + ".");
     }
 
-    private static void ValidateCapture(JsonElement summary, JsonElement capture)
+    private static void ValidateCapture(JsonElement summary, JsonElement capture, string expectedExecutorBuilds)
     {
         static string RequireText(JsonElement element, string name, int length)
         {
@@ -90,7 +90,7 @@ internal static class HistoricalMatrixMeasurementContract
         string executor = RequireText(capture, "executor", 40);
         string diffHash = RequireText(capture, "diffHash", 64);
         _ = RequireText(capture, "coordinatorHash", 64);
-        if (RequireText(capture, "builds", 40) != "2afc90eb107d73490aa0299a32efbca4bc160b05"
+        if (RequireText(capture, "builds", 40) != expectedExecutorBuilds
             || !capture.TryGetProperty("consumerInputOrigin", out JsonElement origin)
             || origin.GetString() is not { Length: > 0 } path || !Path.IsPathFullyQualified(path))
             throw new InvalidOperationException("The actual executor capture lost its selected Builds or input origin.");

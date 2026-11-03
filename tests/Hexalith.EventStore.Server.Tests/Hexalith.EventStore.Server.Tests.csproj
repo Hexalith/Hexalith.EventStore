@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="PublishedTenantQuerySelectorFixture.targets" />
+
   <!-- Test-only immutable previous-peer binaries; never participate in the production dependency graph. -->
   <ItemGroup>
     <PackageDownload Include="Hexalith.EventStore.ServiceDefaults" Version="[3.129.0]" />
@@ -24,6 +26,7 @@
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Gateway\Hexalith.EventStore.Gateway.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
+    <ProjectReference Include="../Hexalith.EventStore.QuerySelectorFixture/Hexalith.EventStore.QuerySelectorFixture.csproj" />
   </ItemGroup>
 
   <ItemGroup>

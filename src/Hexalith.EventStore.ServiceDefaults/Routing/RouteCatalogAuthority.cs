@@ -13,6 +13,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     // Admission is locally queued only until its fence is recorded. Remote dispatch and all
     // lifecycle/verifier work run outside this gate and retain their independent CAS checks.
     private readonly SemaphoreSlim _localAdmission = new(1, 1);
+    private const int MaximumUpdateAttempts = 96;
     private readonly ILogger<RouteCatalogAuthority>? _logger;
 
     /// <summary>Uses optional host logging without changing the existing public constructor or acquisition authority.</summary>
@@ -224,15 +225,22 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     {
         // Only this completed local lease is removed. CAS contention cannot turn known
         // quiescence into an abandoned fence; backend failures still propagate for retry.
-        int conflicts = 0;
-        while (true)
+        // Release writes share the local admission gate with acquisitions, so this
+        // host does not manufacture avoidable conflicts against its own new reads.
+        await _localAdmission.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        try
         {
-            (RouteCatalogActivationState state, string etag) = await store.ReadAsync(CancellationToken.None).ConfigureAwait(false);
-            if (!state.Leases.Any(lease => lease.LeaseId == leaseId)) return;
-            var next = state with { Leases = [.. state.Leases.Where(lease => lease.LeaseId != leaseId)] };
-            if (await store.CompareExchangeAsync(next, etag, CancellationToken.None).ConfigureAwait(false)) return;
-            await Task.Delay(Math.Min(++conflicts, 25), CancellationToken.None).ConfigureAwait(false);
+            int conflicts = 0;
+            while (true)
+            {
+                (RouteCatalogActivationState state, string etag) = await store.ReadAsync(CancellationToken.None).ConfigureAwait(false);
+                if (!state.Leases.Any(lease => lease.LeaseId == leaseId)) return;
+                var next = state with { Leases = [.. state.Leases.Where(lease => lease.LeaseId != leaseId)] };
+                if (await store.CompareExchangeAsync(next, etag, CancellationToken.None).ConfigureAwait(false)) return;
+                await Task.Delay(Math.Min(++conflicts, 25), CancellationToken.None).ConfigureAwait(false);
+            }
         }
+        finally { _localAdmission.Release(); }
     }
 
     private async Task ValidateAsync(RouteCatalogActivation activation, CancellationToken cancellationToken, DispatchDiagnostics? diagnostics = null)
@@ -273,7 +281,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
 
     private async Task UpdateAsync(Func<RouteCatalogActivationState, Task<RouteCatalogActivationState>> update, CancellationToken cancellationToken, DispatchDiagnostics? diagnostics = null)
     {
-        for (int attempt = 0; attempt < 32; attempt++)
+        for (int attempt = 0; attempt < MaximumUpdateAttempts; attempt++)
         {
             RouteCatalogActivationState state;
             string etag;
@@ -292,9 +300,11 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             }
             if (exchanged) return;
             // Bound conflict scheduling like completed-lease release, desynchronizing competing
-            // writers without locking across an awaited owner verifier. Every retry revalidates fresh
-            // state within the same 32-attempt bound; randomness supplies no identity or authority.
-            if (attempt < 31) await Task.Delay(Random.Shared.Next(1, Math.Min(attempt + 1, 25) + 1), cancellationToken).ConfigureAwait(false);
+            // writers without locking across an awaited owner verifier. The wider
+            // jitter breaks a busy fleet's repeated read/write collisions; every
+            // retry still revalidates fresh state within a finite attempt bound.
+            if (attempt < MaximumUpdateAttempts - 1)
+                await Task.Delay(Random.Shared.Next(1, Math.Min((attempt + 1) * 4, 50) + 1), cancellationToken).ConfigureAwait(false);
         }
         throw new RouteCatalogUnavailableException("Concurrent catalog authority updates could not be serialized.");
     }

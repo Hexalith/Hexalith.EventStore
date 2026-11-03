@@ -24,6 +24,19 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 /// <summary>Exercises genuine installed SDK admin MVC actions and control authorization over real HTTP.</summary>
 public sealed class TechnicalHttpCatalogReceiverTests
 {
+    [Fact]
+    public async Task TrustedEffectsWorkloadGrantIsBoundToInstalledTechnicalAction()
+    {
+        await using var fixture = new TechnicalHttpCatalogFixture();
+        await fixture.StartAsync(TestContext.Current.CancellationToken, fullInventory: true, inventoryAssembly: "Hexalith.EventStore.Gateway");
+        var surface = fixture.App.Services.GetRequiredService<TechnicalHttpRouteCatalogReceiver>().Observe();
+        surface.TechnicalHttp.ShouldContain(endpoint => endpoint.Pattern == "/api/v1/trusted-effects"
+            && endpoint.Methods.SequenceEqual(new[] { "POST" }, StringComparer.Ordinal)
+            && endpoint.Policies.SequenceEqual(new[] { Hexalith.EventStore.Authentication.DaprInternalAuthenticationOptions.TrustedEffectPolicy }, StringComparer.Ordinal));
+        RouteCatalogTechnicalHttpPolicy.AdmitsGrant(surface, "api/v1/trusted-effects", ["POST"],
+            new Dictionary<string, string>(), participant: true).ShouldBeTrue();
+    }
+
     [Theory]
     [InlineData("Hexalith.EventStore.Gateway")]
     [InlineData("Hexalith.EventStore.Admin.Server")]

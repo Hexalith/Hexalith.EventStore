@@ -48,6 +48,39 @@ public sealed class ReviewDeadlineTests
     }
 
     [Fact]
+    public async Task DrainStartedBlockingCallbackAloneHoldsResumedClearing()
+    {
+        var operations = new PayloadLocalOperations();
+        var identity = new AggregateIdentity("tenant-a", "parties", "callback-only");
+        string scope = PayloadProtectionStateKeys.ScopeDigest(identity);
+        using var release = new ManualResetEventSlim();
+        using var deadline = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var callbackDone = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lateCleared = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var operation = operations.Begin(identity);
+        operation.RetainUntil(lateCleared.Task);
+        using var registration = operation.Token.Register(() => { entered.TrySetResult(); release.Wait(); callbackDone.TrySetResult(); });
+        try
+        {
+            Task initial = operations.DrainScopeAsync(scope, deadline.Token).AsTask();
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            deadline.Cancel();
+            await Should.ThrowAsync<OperationCanceledException>(() => initial.WaitAsync(TimeSpan.FromSeconds(2)));
+            // With the late result and foreground both released, only CancelAsync's reference holds clearing open.
+            lateCleared.SetResult(); operation.Dispose();
+            await Should.ThrowAsync<TimeoutException>(() => operation.Cleared.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            Task resumed = operations.DrainScopeAsync(scope).AsTask();
+            await Should.ThrowAsync<TimeoutException>(() => resumed.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            await Should.ThrowAsync<TimeoutException>(() => operation.Cleared.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            release.Set(); await callbackDone.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            await resumed.WaitAsync(TimeSpan.FromSeconds(2));
+            operation.Cleared.IsCompletedSuccessfully.ShouldBeTrue();
+        }
+        finally { release.Set(); lateCleared.TrySetResult(); }
+    }
+
+    [Fact]
     public async Task CallerCancellationCallbackCannotBlockTheDrainDeadline()
     {
         var operations = new PayloadLocalOperations();
@@ -140,6 +173,7 @@ public sealed class ReviewDeadlineTests
         using var caller = new CancellationTokenSource();
         using var release = new ManualResetEventSlim();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Caller callbacks run last-in-first-out: beginning `other` second runs its blocked callback before this operation's link.
         using var operation = operations.Begin(identity, caller.Token);
         using var other = operations.Begin(otherIdentity, caller.Token);
         using var registration = other.Token.Register(() => { entered.TrySetResult(); release.Wait(); });
@@ -147,6 +181,7 @@ public sealed class ReviewDeadlineTests
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            operation.Token.IsCancellationRequested.ShouldBeFalse();
             operation.Dispose();
             Task drained = operations.DrainScopeAsync(PayloadProtectionStateKeys.ScopeDigest(identity)).AsTask();
             await drained.WaitAsync(TimeSpan.FromSeconds(2));

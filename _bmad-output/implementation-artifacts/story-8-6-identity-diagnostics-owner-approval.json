@@ -1,0 +1,13 @@
+{
+  "recordedAtUtc": "2026-11-03T13:12:33.684410+00:00",
+  "decision": "approved",
+  "normativeSha256": "a0a746aeab4de17c1b1b95cfa37fbf42a119e29af0c7354fe174d09512b389d9",
+  "answer": "Approve the exact client-ID exception (Recommended)",
+  "question": "With those tradeoffs, should I apply the exact documented exception a0a746aeab4de17c1b1b95cfa37fbf42a119e29af0c7354fe174d09512b389d9? Its policy requires explicit owner approval; the implementation will retain every other diagnostic, authorization and CI check.",
+  "decisionMaker": "interactive user in this Codex task",
+  "implementer": "delegated Codex agent",
+  "independentReviewClaimed": false,
+  "scope": "Only exact configured selected ManagedIdentityClientId in Azure-Identity LogMsalAlways24 and ManagedIdentityCredentialSelected26; complete other canary/channel/sentinel checks retained; no Azure environment or live-run/production authority inferred.",
+  "responseTimestampUtc": null,
+  "timestampMeaning": "recordedAtUtc is the Codex recording time; the interactive tool response did not provide a human-response wall-clock timestamp."
+}

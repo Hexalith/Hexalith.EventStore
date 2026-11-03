@@ -50,6 +50,18 @@ Execute a query against the current projection/read model.
 | orderBy             | array  | No       | Public ordering policy. Reserved for future query engines and currently rejected.                                                                  |
 | freshness           | object | No       | Public freshness policy. Requests that require freshness fail closed as `query_projection_stale` when authoritative freshness evidence is unavailable or stale. |
 
+With native catalog authority, the committed declaration selects the receiver. A supplied
+`projectionActorType` must match its exact actor target, or an explicitly owner-enrolled
+`RouteExecutionDeclaration.CompatibilityProjectionActorTypes` entry for that HTTP projection query.
+This optional collection contains 1–16 unique exact names, each at most 64 ASCII letters,
+digits, dots, underscores, hyphens or plus signs. It is covered by declaration/catalog digests;
+it grants no actor, scope or permission authority and never changes the committed HTTP
+target, method or handler. Other selectors refuse. Omission retains default native selection.
+Existing declarations without this collection retain their canonical bytes and constructor ABI.
+Readers using the previous closed schema reject catalogs containing this property. Upgrade
+and qualify the complete reader cohort before enabling owner selector enrollment; unchanged
+constructor signatures and absent-property bytes do not make those new catalogs readable by older peers.
+
 ### Query Policy
 
 `POST /api/v1/queries` accepts additive query policy fields so clients can adopt a stable public contract before every projection supports every behavior.

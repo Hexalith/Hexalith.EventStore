@@ -60,18 +60,14 @@ jobs:
         run: python3 scripts/verify-process-packages.py
 
   ci:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb
     with:
       solution: Hexalith.EventStore.slnx
-      # Package integration profiles and registry credentials belong to domain-ci-v2.
-      # Keep the existing blocking AppHost integration until that migration is qualified.
+      module-manifest: module/hexalith.module-manifest.v2.json
+      integration-test-profiles: platform-package
       build-timeout-minutes: 180
       test-platform: microsoft-testing-platform
       run-consumer-validation: true
-      dapr-version: '1.18.2'
-      dapr-runtime-version: '1.18.7'
-      integration-test-projects: |
-        tests/Hexalith.EventStore.AppHost.Tests
       unit-test-projects: |
         tests/Hexalith.EventStore.Client.Tests
         tests/Hexalith.EventStore.ServiceDefaults.Tests
@@ -92,6 +88,10 @@ jobs:
         tests/Hexalith.EventStore.Testing.Integration.Tests
         tests/Hexalith.EventStore.Server.Tests
         tests/Hexalith.EventStore.ProviderVerification.Tests
+        tests/Hexalith.EventStore.AppHost.Tests
+    secrets:
+      registry-pull-username: ${{ secrets.HEXALITH_CI_REGISTRY_USERNAME }}
+      registry-pull-password: ${{ secrets.HEXALITH_CI_REGISTRY_PASSWORD }}
 
   contracts:
     name: ci / contracts
@@ -117,7 +117,9 @@ jobs:
         run: bash scripts/tests/generated-api-smoke-preflight.test.sh
 
       - name: Verify package publication dependency guards
-        run: python3 -m unittest discover -s tools/tests -p test_release_package_contract.py
+        run: |
+          python3 -m unittest discover -s tools/tests -p test_release_package_contract.py
+          python3 -m unittest discover -s tools/tests -p test_package_consumer_environment.py
 
       - name: Verify qualification runner exit preservation
         run: python3 -m unittest discover -s tools/tests -p test_published_runner_exit.py

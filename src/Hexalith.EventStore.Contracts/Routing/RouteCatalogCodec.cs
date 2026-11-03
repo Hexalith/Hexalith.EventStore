@@ -306,6 +306,7 @@ public static class RouteCatalogCodec
         {
             Aliases = execution.Aliases.Order(StringComparer.Ordinal).ToArray(),
             ProjectionOutputs = execution.ProjectionOutputs.Order(StringComparer.Ordinal).ToArray(),
+            CompatibilityProjectionActorTypes = execution.CompatibilityProjectionActorTypes?.Order(StringComparer.Ordinal).ToArray(),
         } : null,
     };
 

@@ -55,6 +55,7 @@ public static class CompiledRouteCatalogDeclarations
                             Execution = route.Execution is { } e ? e with
                             {
                                 Aliases = Array.AsReadOnly(e.Aliases.ToArray()), ProjectionOutputs = Array.AsReadOnly(e.ProjectionOutputs.ToArray()),
+                                CompatibilityProjectionActorTypes = e.CompatibilityProjectionActorTypes is { } selectors ? Array.AsReadOnly(selectors.ToArray()) : null,
                             } : null,
                         };
                     }

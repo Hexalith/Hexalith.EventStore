@@ -18,6 +18,61 @@ positive through that same caller-sidecar path and one exact API-to-gateway ACL
 grant. ACLs remain deny by default. This does not qualify the deployed profiles
 owned by Stories 5.6/5.7.
 
+The opt-in public `AddEventStoreDevelopmentRouteCatalogTransportAsync` capability
+now owns temporary trust plus native Sentry, TLS placement and TLS scheduler for a
+Development-only Linux run. It extracts only the existing immutable 1.18.7 image
+pins, never pulls images, and requires the native runtime checksum in the lock.
+Call `WithEventStoreDevelopmentRouteCatalogTransport` on every selected project
+**before** catalog composition. It enables mTLS without changing the receiver ACL;
+the catalog then observes the actual resulting configuration. Credential values
+are secret Aspire parameters. Ordinary topology and production enrollment are
+unchanged.
+
+The pinned Dapr CLI 1.18.2 automatically selects native mTLS from configuration but
+hardcodes Sentry to `localhost:50001` (`RunConfig.getArgs` / `mtlsEndpoint` in
+`dapr/cli` commit `f5cf43ef4b3eb586fa4061413709085ee4e7d24c`). The SDK's private
+runtime adapter replaces exactly that CLI-generated address, supplies the owned
+control-plane trust domain/namespace, and refuses missing, duplicate or alternate
+controlled flags, changed runtime bytes, wrong trust, or unavailable control owners.
+The CLI installation root contains `.dapr/bin/daprd`; the focused
+`PublicDevelopmentTransportAspireCliLaunchUsesOwnedSecretInputs` witness renders
+the actual public Aspire API and launches the pinned CLI with its resolved secret
+parameters, independently of the real-actor native witness.
+It never supplies workload, application or catalog authority headers.
+
+`PublicDevelopmentTransportAuthenticatesPeersAndPersistsActorsAcrossNativeRestart`
+uses that public native seam with a real Actor SDK state manager, independent
+persisted readback, a sidecar restart, and actual scheduler reminder delivery.
+Its wrong-app/namespace and foreign-trust probes preserve the stored marker;
+application-channel denial is checked separately. The additional incomplete-identity
+and partial-startup tests qualify refusal and private custody. These witnesses
+qualify local transport only; production enrollment, owner producers, signed
+service/catalog context, domain effects and deployed acceptance require their own
+evidence.
+
+Dispose the application and all native sidecars before transport ownership. Each
+native process is bound by exact PID/start identity. Cleanup retains immutable
+attempt receipts in the supplied new private custody directory, and claims
+temporary-trust removal only after actual deletion. Incomplete startup/shutdown
+retains protected trust and diagnostics for recovery; it never falls back to
+machine-wide credentials or control services.
+
+Startup requires a canonical, executable, non-symlink native runtime path and
+working Python 3 at the adapter's exact `/usr/bin/python3` shebang path; these
+prerequisites are checked before custody or trust/control resources are created.
+The isolated CI preparation pulls the locked Sentry, placement and scheduler
+images and selects checksum-pinned runtime/CLI executables through
+`EVENTSTORE_ROUTE_CATALOG_DAPRD` / `EVENTSTORE_ROUTE_CATALOG_DAPR_CLI`, leaving
+the ordinary job's CLI/runtime versions unchanged.
+
+Private `startup.json` records the allocated directory and selected endpoints;
+each service's launch, PID and kernel-start receipts are durable before its
+readiness wait. Failed publication of `ready.json` retains unqualified custody
+and temporary trust. The technical test host's explicit service-write positive
+control and rejected wrong-app/namespace/trust writes verify independent stored
+end state. Credential validity is tested with unchanged bytes and an internal
+clock; production routes and grants are unaffected.
+
 Activation is explicit: prepare retained canonical bytes, attest each independently
 observed host after prior leases drain, then commit. A failed prepare/ready retains
 the previous catalog. A failed host's outstanding lease never expires into an

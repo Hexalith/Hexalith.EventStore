@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Authentication;
 using Hexalith.EventStore.Contracts.Effects;
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
 
@@ -11,6 +12,7 @@ namespace Hexalith.EventStore.Controllers;
 
 /// <summary>Authenticated ingress for target-receipted effects.</summary>
 [ApiController]
+[EventStoreTechnicalHttpController]
 [Authorize(Policy = DaprInternalAuthenticationOptions.TrustedEffectPolicy)]
 [Route("api/v1/trusted-effects")]
 public sealed class TrustedEffectsController(

@@ -1,8 +1,11 @@
 using Hexalith.EventStore.Queries;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.ServiceDefaults;
 
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Extensions;
 
@@ -24,6 +27,17 @@ public static class DomainQueryRoutingServiceCollectionExtensions {
 
         _ = services.AddHttpClient(DaprDomainQueryInvoker.HttpClientName)
             .AddEventStoreBoundedInvocationResilience();
+        // Only this host-owned query pipeline encloses the domain service's complete invocation.
+        // Resolve the server's validated options while retaining the shared thirty-second minimum.
+        _ = services.AddOptions<HttpStandardResilienceOptions>(DaprDomainQueryInvoker.HttpClientName + "-standard")
+            .Configure<IOptions<DomainServiceOptions>>(static (options, domainServices) =>
+            {
+                TimeSpan timeout = TimeSpan.FromSeconds(Math.Max(30, domainServices.Value.InvocationTimeoutSeconds));
+                options.AttemptTimeout.Timeout = timeout;
+                options.TotalRequestTimeout.Timeout = timeout;
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(
+                    Math.Max(options.CircuitBreaker.SamplingDuration.TotalSeconds, timeout.TotalSeconds * 2));
+            });
         services.TryAddSingleton<IDomainQueryHandlerRegistry, DaprDomainQueryHandlerRegistry>();
         services.TryAddTransient<IDomainQueryInvoker, DaprDomainQueryInvoker>();
 

@@ -13,8 +13,14 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// </summary>
 public sealed partial class SecretsProtectionTests
 {
-    private static readonly string RepoRoot = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+    private static readonly string RepoRoot = FindRepositoryRoot();
+
+    private static string FindRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx"))) return directory.FullName;
+        throw new InvalidOperationException("Repository root unavailable.");
+    }
     /// <summary>
     /// Verifies Git-tracked text, including root/build configuration and workflows. Generated output,
     /// VCS data, and submodule contents are excluded by Git's tracked-file model rather than by path.
@@ -43,6 +49,46 @@ public sealed partial class SecretsProtectionTests
     {
         ArgumentNullException.ThrowIfNull(line);
         FindViolations("samples/placeholder.json", line).ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies the finite quoted Bearer challenge parameter grammar without admitting credentials.</summary>
+    [Theory]
+    [InlineData("realm=")]
+    [InlineData("authorization=")]
+    [InlineData("resource=")]
+    [InlineData("scope=")]
+    [InlineData("error=")]
+    [InlineData("error_description=")]
+    [InlineData("error_uri=")]
+    [InlineData("claims=")]
+    public void QuotedBearerChallengeParameters_AreAllowedWithoutConcealingCredentials(string parameter)
+    {
+        ArgumentNullException.ThrowIfNull(parameter);
+        foreach (string quote in new[] { "\"", "\\\"" })
+        {
+            string challenge = "Bearer " + parameter.ToUpperInvariant() + quote + "https://identity.example.test" + quote;
+            FindViolations("docs/challenge.md", challenge).ShouldBeEmpty();
+            string credential = RandomSecret();
+            FindViolations("docs/challenge.md", challenge + "\nAuthorization: Bearer " + credential).ShouldBe(["docs/challenge.md:2"]);
+            FindViolations("docs/challenge.md", challenge + " Authorization: Bearer " + credential).ShouldBe(["docs/challenge.md:1"]);
+        }
+    }
+
+    /// <summary>Verifies challenge recognition does not exempt arbitrary equals suffixes or unquoted credentials.</summary>
+    [Fact]
+    public void BearerChallengeException_RejectsUnknownParametersAndUnquotedValues()
+    {
+        foreach (string suffix in new[]
+        {
+            RandomSecret().TrimEnd('=') + "=\"value\"",
+            "unknown=\"value\"",
+            "authorization=" + RandomSecret(),
+            "realm=" + RandomSecret(),
+            "error=" + RandomSecret(),
+        })
+        {
+            FindViolations("docs/challenge.md", "Bearer " + suffix).ShouldBe(["docs/challenge.md:1"]);
+        }
     }
 
     /// <summary>
@@ -114,6 +160,34 @@ public sealed partial class SecretsProtectionTests
         const string name = "to" + "ken";
         const string line = "ParameterResource " + name + " = builder.Resources.OfType<ParameterResource>()";
         FindViolations("tests/Example.cs", line).ShouldBeEmpty();
+    }
+
+    /// <summary>Reviewed runtime credential factories do not admit arbitrary object constructors.</summary>
+    [Fact]
+    public void RuntimeCredentialFactory_RejectsArbitraryConstructorsAndLiteralInputs()
+    {
+        const string name = "cre" + "dential";
+        FindViolations("tests/Example.cs", "var " + name + " = AdapterFixture.CreateCredential();").ShouldBeEmpty();
+        foreach (string expression in new[]
+        {
+            "new AdapterTestCredential()", "new AdapterTestCredential", "new OtherTokenSource()",
+            "new Other.CancellationTokenSource()", "AdapterFixture.CreateCredential(\"" + RandomSecret() + "\")",
+        })
+        {
+            FindViolations("tests/Example.cs", "var " + name + " = " + expression + ";")
+                .ShouldBe(["tests/Example.cs:1"]);
+        }
+    }
+
+    [Theory]
+    [InlineData("authorization=\\\"https://login.microsoftonline.com/tenant\\\", resource=\\\"https://vault.azure.net\\\"")]
+    [InlineData("error=\\\"insufficient_claims\\\", claims=\\\"test-claims\\\"")]
+    public void StructuredBearerChallenge_IsNotAnAccessToken(string parameters)
+    {
+        string challenge = "Be" + "arer " + parameters;
+        FindViolations("tests/Example.cs", "string challenge = \"" + challenge + "\";").ShouldBeEmpty();
+        FindViolations("tests/Example.cs", "string header = \"Be" + "arer actual-access-token\";")
+            .ShouldBe(["tests/Example.cs:1"]);
     }
 
     /// <summary>
@@ -232,6 +306,59 @@ public sealed partial class SecretsProtectionTests
                     $"Candidate category {candidateIndex} must not bypass bearer detection.");
             }
         }
+    }
+
+    /// <summary>Only complete quoted standard/Azure authentication challenges are protocol values.</summary>
+    /// <param name="parameters">The complete challenge parameters.</param>
+    [Theory]
+    [InlineData("realm=\"api\"")]
+    [InlineData("claims=\"a+b=\"")]
+    [InlineData("realm=\"a\\\"b\\\\c\"")]
+    [InlineData("error=\"insufficient_claims\", claims=\"e30=\"")]
+    [InlineData("authorization=\"https://login.microsoftonline.com/tenant\", resource=\"https://vault.azure.net\"")]
+    [InlineData("realm=\"api\", scope=\"read write\", error_description=\"denied\", error_uri=\"https://example.test/error\"")]
+    public void AuthenticationChallenges_CompleteQuotedParametersAreAllowed(string parameters)
+    {
+        string challenge = "Bearer " + parameters;
+        FindViolations("response.txt", challenge).ShouldBeEmpty();
+        FindViolations("response.json", JsonSerializer.Serialize(new { challenge })).ShouldBeEmpty();
+        string source = "string challenge = " + JsonSerializer.Serialize(challenge) + ";";
+        FindViolations("tests/challenge.cs", source).ShouldBeEmpty();
+        FindViolations("tests/challenge.cs", source + "\n" + Assignment("pass" + "word", JsonSerializer.Serialize(RandomSecret())))
+            .ShouldBe(["tests/challenge.cs:2"]);
+    }
+
+    /// <summary>Malformed, extended and token-bearing inputs never inherit a challenge exemption.</summary>
+    /// <param name="parameters">The invalid challenge parameter syntax.</param>
+    [Theory]
+    [InlineData("realm=unquoted")]
+    [InlineData("realm=\"unterminated")]
+    [InlineData("realm='single-quoted'")]
+    [InlineData("realm=\"api\", unknown=\"value\"")]
+    [InlineData("realm=\"api\", realm=\"duplicate\"")]
+    [InlineData("realm=\"api\", ")]
+    [InlineData("realm=\"api\" trailing")]
+    [InlineData("realm=\"api\"\"; unexpected")]
+    [InlineData("realm=\"api\ncontinued\"")]
+    public void AuthenticationChallenges_MalformedOrTrailingParametersAreRejected(string parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        FindViolations("response.txt", "Bearer " + parameters).ShouldNotBeEmpty();
+        string source = "string challenge = " + JsonSerializer.Serialize("Bearer " + parameters) + ";";
+        FindViolations("tests/challenge.cs", source).ShouldNotBeEmpty();
+    }
+
+    /// <summary>Real tokens and credential-bearing parameter values remain independently detectable.</summary>
+    [Fact]
+    public void AuthenticationChallenges_DoNotHideOrdinaryTokensOrAdjacentSecrets()
+    {
+        string challenge = "Bearer " + "realm=\"api\"";
+        FindViolations("response.txt", challenge + ", " + ("to" + "ken") + "=\"" + RandomSecret() + "\"").ShouldNotBeEmpty();
+        FindViolations("response.txt", "Bearer " + RandomSecret()).ShouldNotBeEmpty();
+        FindViolations("response.txt", challenge + "\nBearer " + RandomSecret()).ShouldNotBeEmpty();
+        FindViolations("response.txt", "Bearer " + "realm=\"" + new string('x', 2049) + "\"").ShouldNotBeEmpty();
+        string source = "string challenge = " + JsonSerializer.Serialize(challenge) + " + " + JsonSerializer.Serialize(RandomSecret()) + ";";
+        FindViolations("tests/challenge.cs", source).ShouldNotBeEmpty();
     }
 
     [Fact]
@@ -914,7 +1041,7 @@ public sealed partial class SecretsProtectionTests
         foreach (Match match in BearerCredentialPattern().Matches(content))
         {
             if (IsStructuredBearerValue(content, match)
-                && !IsBearerChallenge(content, match)
+                && !IsBearerChallenge(relativePath, content, match)
                 && !IsBearerSourceExpression(content, match)
                 && !IsInertPlaceholder(match.Groups["token"].Value))
             {
@@ -2727,16 +2854,94 @@ public sealed partial class SecretsProtectionTests
             || AuthorizationPrefixPattern().IsMatch(prefix);
     }
 
-    private static bool IsBearerChallenge(string content, Match match)
+    private static bool IsBearerChallenge(string relativePath, string content, Match match)
     {
-        Group token = match.Groups["token"];
-        int afterToken = token.Index + token.Length;
-        return token.Value.Equals("realm=", StringComparison.OrdinalIgnoreCase)
-            && afterToken < content.Length
-            && (content[afterToken] is '\'' or '"'
-                || (content[afterToken] == '\\'
-                    && afterToken + 1 < content.Length
-                    && content[afterToken + 1] is '\'' or '"'));
+        string path = GetEffectiveSourcePath(relativePath, content, match.Index);
+        bool source = path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".razor", StringComparison.OrdinalIgnoreCase);
+        bool json = false;
+        if (!source)
+        {
+            try { using var document = JsonDocument.Parse(content); json = true; }
+            catch (JsonException) { }
+        }
+        string challenge;
+        if ((source || json) && IsInsideCSharpString(content, match.Index))
+        {
+            int start = match.Index - 1;
+            while (start >= 0 && (content[start] != '"' || IsInsideCSharpString(content, start))) start--;
+            if (start < 0) return false;
+            bool verbatim = source && start > 0 && content[start - 1] == '@';
+            int end = start + 1;
+            for (; end < content.Length; end++)
+            {
+                if (content[end] == '"')
+                {
+                    if (verbatim && end + 1 < content.Length && content[end + 1] == '"') { end++; continue; }
+                    break;
+                }
+                if (!verbatim && content[end] == '\\') end++;
+            }
+            if (end >= content.Length || end - start > 8192) return false;
+            int next = end + 1;
+            while (next < content.Length && content[next] is ' ' or '\t') next++;
+            if (next < content.Length && content[next] is not ('\r' or '\n' or ',' or ';' or ')' or '}' or ']')) return false;
+            try
+            {
+                string raw = content[(start + 1)..end];
+                string prefix = content[(start + 1)..match.Index];
+                string decoded = verbatim ? raw.Replace("\"\"", "\"", StringComparison.Ordinal)
+                    : JsonSerializer.Deserialize<string>("\"" + raw + "\"")!;
+                int offset = verbatim ? prefix.Replace("\"\"", "\"", StringComparison.Ordinal).Length
+                    : JsonSerializer.Deserialize<string>("\"" + prefix + "\"")!.Length;
+                challenge = decoded[offset..];
+            }
+            catch (JsonException) { return false; }
+        }
+        else
+        {
+            int end = content.IndexOfAny(['\r', '\n'], match.Index);
+            challenge = content[match.Index..(end < 0 ? content.Length : end)];
+        }
+        if (challenge.Length > 2048 || !challenge.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return false;
+        int cursor = 7;
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (names.Count < 8)
+        {
+            while (cursor < challenge.Length && challenge[cursor] is ' ' or '\t') cursor++;
+            int start = cursor;
+            while (cursor < challenge.Length && (char.IsAsciiLetter(challenge[cursor]) || challenge[cursor] == '_')) cursor++;
+            string name = challenge[start..cursor].ToLowerInvariant();
+            if (name is not ("realm" or "error" or "error_description" or "error_uri" or "scope" or "authorization" or "resource" or "claims") || !names.Add(name)) return false;
+            while (cursor < challenge.Length && challenge[cursor] is ' ' or '\t') cursor++;
+            if (cursor >= challenge.Length || challenge[cursor++] != '=') return false;
+            while (cursor < challenge.Length && challenge[cursor] is ' ' or '\t') cursor++;
+            bool escapedQuotes = cursor + 1 < challenge.Length && challenge[cursor] == '\\' && challenge[cursor + 1] == '"';
+            if (escapedQuotes) cursor += 2;
+            else if (cursor >= challenge.Length || challenge[cursor++] != '"') return false;
+            bool closed = false;
+            while (cursor < challenge.Length)
+            {
+                char character = challenge[cursor++];
+                if (character == '"')
+                {
+                    if (escapedQuotes) return false;
+                    closed = true;
+                    break;
+                }
+                if (character == '\\')
+                {
+                    if (cursor >= challenge.Length) return false;
+                    character = challenge[cursor++];
+                    if (escapedQuotes && character == '"') { closed = true; break; }
+                }
+                if (character < ' ' && character != '\t' || character == '\u007f') return false;
+            }
+            if (!closed) return false;
+            while (cursor < challenge.Length && challenge[cursor] is ' ' or '\t') cursor++;
+            if (cursor == challenge.Length) return true;
+            if (challenge[cursor++] != ',') return false;
+        }
+        return false;
     }
 
     private static bool IsBearerSourceExpression(string content, Match match)

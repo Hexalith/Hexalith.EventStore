@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Hexalith.EventStore.PayloadProtection.AzureKeyVault/Hexalith.EventStore.PayloadProtection.AzureKeyVault.csproj" />
+    <Compile Include="../../src/Hexalith.EventStore.Testing/Security/ProtectedDataLeakSentinel.cs" Link="ProtectedDataLeakSentinel.cs" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" /><PackageReference Include="Shouldly" />
+    <Using Include="Shouldly" /><Using Include="Xunit" />
+  </ItemGroup>
+</Project>

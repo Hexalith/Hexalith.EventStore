@@ -47,7 +47,12 @@ public sealed class ReviewScopeMetadataTests
         (Should.Throw<PayloadProtectionStateException>(() => operations.Begin(existing))).Reason.ShouldBe(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
         using var denied = await cache.GetAsync(key, _ => throw new InvalidOperationException("blocked"));
         denied.Reason.ShouldBe(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
-        await operations.DrainScopeAsync(new('f', 64)); await cache.ClearScopeAsync(new('f', 64));
+        var late = new AggregateIdentity("tenant-a", "parties", "late-block");
+        string lateScope = PayloadProtectionStateKeys.ScopeDigest(late);
+        await operations.DrainScopeAsync(lateScope); await cache.ClearScopeAsync(lateScope);
+        (Should.Throw<PayloadProtectionStateException>(() => operations.Begin(late))).Reason.ShouldBe(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
+        using var lateDenied = await cache.GetAsync(key with { ScopeDigest = lateScope }, _ => throw new InvalidOperationException("blocked"));
+        lateDenied.Reason.ShouldBe(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
     }
 
     [Fact]

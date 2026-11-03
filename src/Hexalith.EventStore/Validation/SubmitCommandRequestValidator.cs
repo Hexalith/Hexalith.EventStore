@@ -47,8 +47,8 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .MaximumLength(MaxTenantDomainLength).WithMessage($"Tenant cannot exceed {MaxTenantDomainLength} characters")
             // Namespace syntax grants no authority: the controller still requires the exact
             // committed operation, human permission and ingress before mapping retained storage.
-            .Must(scope => TenantCanonicalizer.IsPlatformScope(scope) || _tenantDomainRegex.IsMatch(scope))
-            .WithMessage("Tenant must be a lowercase tenant identifier or an explicit canonical platform namespace")
+            .Must(tenant => _tenantDomainRegex.IsMatch(tenant) || TenantCanonicalizer.IsPlatformScope(tenant))
+            .WithMessage("Tenant must be a lowercase tenant or canonical platform scope")
             .When(x => !string.IsNullOrEmpty(x.Tenant), ApplyConditionTo.CurrentValidator);
 
         _ = RuleFor(x => x.Domain)

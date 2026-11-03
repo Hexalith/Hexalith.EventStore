@@ -5,9 +5,9 @@ namespace Hexalith.EventStore.Admin.UI.E2E;
 /// TEA <c>*automate</c> workflow (coverage plan: <c>_bmad-output/test-artifacts/automation-summary.md</c>).
 ///
 /// <para>
-/// The shared <see cref="PlaywrightFixture"/> boots Admin.UI <b>standalone with no backend API</b>,
-/// so every test asserts render / navigation / interaction only — never live data. The fixture's
-/// SignalR client and dashboard polling target an absent backend, so the browser console carries
+/// The shared <see cref="PlaywrightFixture"/> boots Admin.UI with an owned empty Admin API transport,
+/// so every test asserts render / navigation / interaction only — never live data. Its SignalR
+/// connection has no live backend, so the browser console can carry
 /// connection/resource noise on every page; <see cref="IsInfrastructureNoise"/> filters that out so
 /// the assertion keeps only genuine JS / Blazor render errors (the render-loop signal the DW5 tests
 /// also guard).
@@ -30,7 +30,7 @@ public class RouteRenderSmokeTests
 
     // RSMOKE-01..20 — every nav-reachable route renders its page shell.
     // The dashboard ("/") and StreamDetail ("/streams/{tenant}/{domain}/{aggregate}") are excluded:
-    // "/" is covered by BrowserSmokeTests; StreamDetail needs seeded IDs the no-backend fixture lacks.
+    // "/" is covered by BrowserSmokeTests; StreamDetail needs seeded IDs the empty fixture lacks.
     [Theory]
     [InlineData("/commands", "Commands")]
     [InlineData("/events", "Events")]

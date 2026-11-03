@@ -26,6 +26,7 @@ public sealed class PlaywrightFixture : IAsyncLifetime
     private WebApplication? _app;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private E2EAdminApiHandler? _adminApi;
 
     public string BaseUrl { get; private set; } = string.Empty;
 
@@ -55,6 +56,12 @@ public sealed class PlaywrightFixture : IAsyncLifetime
 
         // Reuse the same service registrations as production Program.cs
         builder.AddAdminUI();
+        // Keep the real bearer and Dapr invocation handlers; own only the terminal transport.
+        var adminApi = new E2EAdminApiHandler(builder.Configuration);
+        _adminApi = adminApi;
+        builder.Services.AddHttpClient("AdminApi")
+            .ConfigurePrimaryHttpMessageHandler(() => adminApi)
+            .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
         _app = builder.Build();
 
@@ -132,5 +139,6 @@ public sealed class PlaywrightFixture : IAsyncLifetime
             await _app.StopAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             await _app.DisposeAsync().ConfigureAwait(false);
         }
+        _adminApi?.VerifyNoRejectedRequests();
     }
 }

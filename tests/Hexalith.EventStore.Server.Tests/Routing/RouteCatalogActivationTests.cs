@@ -8,6 +8,36 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 public sealed class RouteCatalogActivationTests
 {
     [Fact]
+    public async Task IndependentHostsSerializeConcurrentDurableAdmission()
+    {
+        var fixture = new RouteCatalogTestFixture();
+        await fixture.ActivateAsync(fixture.Candidate());
+        fixture.Store.CompareExchangeLatency = TimeSpan.FromMilliseconds(3);
+        RouteCatalogAuthority[] hosts = [.. Enumerable.Range(0, 64).Select(_ => fixture.CreateAuthority(fixture.Hosts[0]))];
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<RouteCatalogDispatchLease>[] pending = [.. hosts.Select(async host =>
+        {
+            await start.Task;
+            return await host.AcquireAsync();
+        })];
+        start.SetResult();
+
+        try
+        {
+            _ = await Task.WhenAll(pending);
+            (RouteCatalogActivationState state, _) = await fixture.Store.ReadAsync(default);
+            state.Leases.Count.ShouldBe(hosts.Length);
+        }
+        finally
+        {
+            foreach (Task<RouteCatalogDispatchLease> task in pending.Where(task => task.IsCompletedSuccessfully))
+                await (await task).DisposeAsync();
+        }
+        (RouteCatalogActivationState drained, _) = await fixture.Store.ReadAsync(default);
+        drained.Leases.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task DeclarationsAloneCannotActivateOrServe()
     {
         var fixture = new RouteCatalogTestFixture();

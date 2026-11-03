@@ -79,11 +79,13 @@ internal sealed class HistoricalMatrixSyntheticFixture
     }
 
     /// <summary>Runs the complete contract against independent synthetic saved and actual captures.</summary>
-    internal void Validate()
+    internal void Validate() => Validate("2afc90eb107d73490aa0299a32efbca4bc160b05");
+
+    internal void Validate(string expectedExecutorBuilds)
     {
         using JsonDocument summary = JsonDocument.Parse(Summary.ToJsonString());
         using JsonDocument capture = JsonDocument.Parse(Capture.ToJsonString());
-        HistoricalMatrixMeasurementContract.Validate(Observations, summary.RootElement, capture.RootElement, Builds, Commands.Select(HistoricalExecutionCommand.Capture).ToArray(), Files, CleanupPasses, HttpExchanges, ScenarioInputs, StateReads, ProcessScans, DaprLaunches, ManagedLaunches);
+        HistoricalMatrixMeasurementContract.Validate(Observations, summary.RootElement, capture.RootElement, expectedExecutorBuilds, Builds, Commands.Select(HistoricalExecutionCommand.Capture).ToArray(), Files, CleanupPasses, HttpExchanges, ScenarioInputs, StateReads, ProcessScans, DaprLaunches, ManagedLaunches);
     }
 
     private void Add(JsonElement row, int index)

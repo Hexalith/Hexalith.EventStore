@@ -17,6 +17,8 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
     public int AppPort { get; }
     public string RuntimeFingerprint { get; }
     public byte[] Arguments => System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(_start.ArgumentList.ToArray());
+    /// <summary>Retains bounded private diagnostics after this owned sidecar exits.</summary>
+    internal string Diagnostics { get; private set; } = "";
     /// <summary>Gets the checksum-verified executable selected for this fixture process.</summary>
     internal string Executable => _start.FileName;
     /// <summary>Gets the process identity retained for this fixture's exact-process cleanup.</summary>
@@ -121,13 +123,30 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
         }
     }
 
+    /// <summary>Enrolls the actual native actor-capable process through the public Development transport seam.</summary>
+    internal void ConfigureOwnedTransport(Hexalith.EventStore.Aspire.DevelopmentRouteCatalogTransport transport)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
+        transport.ConfigureSidecar(_start);
+        for (int index = 0; index < _start.ArgumentList.Count - 1; index++)
+            if (_start.ArgumentList[index] == "--log-level") _start.ArgumentList[index + 1] = "info";
+    }
+
+    /// <summary>Binds cleanup to the actual native sidecar rather than a launcher.</summary>
+    internal void ObserveOwnedTransport(Hexalith.EventStore.Aspire.DevelopmentRouteCatalogTransport transport)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
+        transport.ObserveSidecar(_process ?? throw new InvalidOperationException("Sidecar has not started."));
+    }
+
     public async Task StopAsync()
     {
         if (_process is null) return;
         if (!_process.HasExited) _process.Kill(entireProcessTree: true);
-        await _process.WaitForExitAsync().ConfigureAwait(false);
-        if (_stdout is not null) await _stdout.ConfigureAwait(false);
-        if (_stderr is not null) await _stderr.ConfigureAwait(false);
+        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await _process.WaitForExitAsync(cleanup.Token).ConfigureAwait(false);
+        if (_stdout is not null) Diagnostics += await _stdout.WaitAsync(cleanup.Token).ConfigureAwait(false);
+        if (_stderr is not null) Diagnostics += await _stderr.WaitAsync(cleanup.Token).ConfigureAwait(false);
         _process.Dispose();
         _process = null;
     }

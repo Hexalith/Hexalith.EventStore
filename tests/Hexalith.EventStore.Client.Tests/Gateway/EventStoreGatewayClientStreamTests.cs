@@ -53,6 +53,50 @@ public class EventStoreGatewayClientStreamTests {
         _ = observedBody.ShouldNotBeNull();
         observedBody.ShouldContain("\"tenant\":\"tenant-a\"");
         observedBody.ShouldContain("\"pageSize\":25");
+        observedRequest.Headers.Contains("X-Hexalith-Scope").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ReadStreamAsyncSendsAPlatformScopeAsTheExplicitScopeHeader() {
+        HttpRequestMessage? observedRequest = null;
+        string? observedBody = null;
+        using HttpClient httpClient = CreateClient(async request => {
+            observedRequest = request;
+            observedBody = await request.Content!.ReadAsStringAsync().ConfigureAwait(false);
+            return Json(HttpStatusCode.OK, """
+                {
+                  "tenant": "system",
+                  "domain": "tenants",
+                  "aggregateId": "tenant-alpha",
+                  "events": [],
+                  "metadata": {
+                    "fromSequence": 0,
+                    "toSequence": null,
+                    "lastSequenceReturned": null,
+                    "latestSequence": 0,
+                    "eventCount": 0,
+                    "isTruncated": false,
+                    "nextContinuationToken": null
+                  }
+                }
+                """);
+        });
+
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        StreamReadPage page = await client.ReadStreamAsync(new StreamReadRequest(
+            Tenant: "platform:tenants",
+            Domain: "tenants",
+            AggregateId: "tenant-alpha",
+            FromSequence: 0,
+            PageSize: 25));
+
+        page.Tenant.ShouldBe("system");
+        _ = observedRequest.ShouldNotBeNull();
+        observedRequest.RequestUri!.AbsolutePath.ShouldBe("/api/v1/streams/read");
+        observedRequest.Headers.GetValues("X-Hexalith-Scope").ShouldBe(["platform:tenants"]);
+        _ = observedBody.ShouldNotBeNull();
+        observedBody.ShouldContain("\"tenant\":\"platform:tenants\"");
     }
 
     [Fact]

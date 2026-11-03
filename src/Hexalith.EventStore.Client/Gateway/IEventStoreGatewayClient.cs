@@ -71,6 +71,15 @@ public interface IEventStoreGatewayClient {
     /// <summary>
     /// Reads a public stream/replay page through <c>POST /api/v1/streams/read</c>.
     /// </summary>
+    /// <remarks>
+    /// On the human/authority transport, a platform-scope tenant (for example <c>platform:tenants</c>)
+    /// is also sent as the explicit <c>X-Hexalith-Scope</c> header; the returned page carries the
+    /// retained storage identity. <see cref="EventStoreGatewayClient"/> with
+    /// <see cref="EventStoreGatewayClientOptions.UseWorkloadTransport"/> sends no scope header and refuses a
+    /// page whose identity differs from the request, so that client does not support platform-scope reads.
+    /// The <c>api/v1/streams/read/workload</c> route itself admits them with one exact
+    /// <c>X-Hexalith-Scope</c> header.
+    /// </remarks>
     Task<StreamReadPage> ReadStreamAsync(
         StreamReadRequest request,
         CancellationToken cancellationToken = default);
