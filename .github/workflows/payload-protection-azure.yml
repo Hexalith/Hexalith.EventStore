@@ -42,7 +42,7 @@ jobs:
       - name: Run adapter unit tests
         run: >-
           dotnet test --project tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests.csproj
-          --no-build --configuration Release --minimum-expected-tests 187 --fail-skips on
+          --no-build --configuration Release --minimum-expected-tests 189 --fail-skips on
           --results-directory TestResults/azure-unit --report-xunit-trx
           -p:UseHexalithProjectReferences=false
       - name: Build offline live-authority schema gates

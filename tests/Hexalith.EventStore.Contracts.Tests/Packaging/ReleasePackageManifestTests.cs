@@ -1208,7 +1208,7 @@ public sealed class ReleasePackageManifestTests
         workflow.ShouldContain("group: payload-protection-azure-private-ephemeral");
         workflow.ShouldContain("HEXALITH_PAYLOAD_AZURE_AUTHORITY_SHA256: ${{ inputs.authority_sha256 }}");
         workflow.ShouldContain("e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488");
-        workflow.ShouldContain("--minimum-expected-tests 187 --fail-skips on");
+        workflow.ShouldContain("--minimum-expected-tests 189 --fail-skips on");
         workflow.ShouldContain("--filter-class Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.AzureIdentityAuthoritySchemaTests");
         workflow.ShouldContain("--minimum-expected-tests 15 --fail-skips on");
         workflow.ShouldContain("--minimum-expected-tests 11 --fail-skips on");
