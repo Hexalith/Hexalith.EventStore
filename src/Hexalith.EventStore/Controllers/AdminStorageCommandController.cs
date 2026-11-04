@@ -71,6 +71,13 @@ public sealed class AdminStorageCommandController(
             return Ok(validationResult);
         }
 
+        if (!TenantCanonicalizer.TryCanonicalize(request.TenantId, out string canonicalTenant))
+        {
+            return Ok(new AdminOperationResult(false, "snapshot-policy-set-request-invalid",
+                "Tenant is invalid or reserved.", "RejectedValidation"));
+        }
+        request = request with { TenantId = canonicalTenant };
+
         AdminOperationResult? authResult = await AuthorizePolicyMutationAsync(
             request.TenantId,
             request.Domain,
@@ -109,6 +116,13 @@ public sealed class AdminStorageCommandController(
         if (validationResult is not null) {
             return Ok(validationResult);
         }
+
+        if (!TenantCanonicalizer.TryCanonicalize(request.TenantId, out string canonicalTenant))
+        {
+            return Ok(new AdminOperationResult(false, "snapshot-policy-delete-request-invalid",
+                "Tenant is invalid or reserved.", "RejectedValidation"));
+        }
+        request = request with { TenantId = canonicalTenant };
 
         AdminOperationResult? authResult = await AuthorizePolicyMutationAsync(
             request.TenantId,
@@ -152,6 +166,19 @@ public sealed class AdminStorageCommandController(
                 "Tenant, domain, and aggregate identifier are required.",
                 "RejectedValidation"));
         }
+
+        if (!TenantCanonicalizer.TryCanonicalize(request.TenantId, out string canonicalTenant))
+        {
+            return Ok(new AdminOperationResult(false, requestOperationId,
+                "Tenant is invalid or reserved.", "RejectedValidation"));
+        }
+        if (!HasUnambiguousTenantScope())
+        {
+            return Ok(new AdminOperationResult(false, requestOperationId,
+                "Tenant scope or grants are invalid or ambiguous.", "RejectedUnauthorized"));
+        }
+        request = request with { TenantId = canonicalTenant };
+        requestOperationId = CreateRequestOperationId(request);
 
         TenantValidationResult tenantResult = await tenantValidator
             .ValidateAsync(User, request.TenantId, ct, request.AggregateId)
@@ -314,6 +341,11 @@ public sealed class AdminStorageCommandController(
         || user.HasClaim("eventstore:admin-role", "Admin")
         || user.HasClaim("eventstore:permission", "command:replay");
 
+    private bool HasUnambiguousTenantScope()
+        => !Request.Headers.ContainsKey("X-Hexalith-Tenant")
+        && !Request.Headers.ContainsKey("X-Hexalith-Scope")
+        && TenantCanonicalizer.TryCanonicalizeGrants(User.FindAll("eventstore:tenant").Select(claim => claim.Value), out _);
+
     private async Task<AdminOperationResult?> AuthorizePolicyMutationAsync(
         string? tenantId,
         string? domain,
@@ -324,6 +356,12 @@ public sealed class AdminStorageCommandController(
         string safeDomain = domain ?? string.Empty;
         string safeAggregateType = aggregateType ?? string.Empty;
         string operationId = $"{operationPrefix}-{Hash($"{safeTenantId}|{safeDomain}|{safeAggregateType}")}";
+
+        if (!HasUnambiguousTenantScope())
+        {
+            return new AdminOperationResult(false, operationId,
+                "Tenant scope or grants are invalid or ambiguous.", "RejectedUnauthorized");
+        }
 
         TenantValidationResult tenantResult = await tenantValidator
             .ValidateAsync(User, safeTenantId, ct, safeAggregateType)

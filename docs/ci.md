@@ -8,7 +8,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
-| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` and `release/parties-sdk-3.130.2` | Runs the required shared `domain-ci-v2.yml@6249a8c0a0480a4b8a8ba04fc214c6104c3c9045` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
+| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` and `release/parties-sdk-3.130.2` | Runs the required shared `domain-ci-v2.yml@ae68c59bd2f4145a23ccf68c3711f98eaf62195f` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
 | **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Visible non-release-blocking browser and governance suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
 | **Payload Protection Lifecycle** | `.github/workflows/payload-protection-lifecycle.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Isolated Dapr 1.18.7/PostgreSQL v2 capability, catalog, lease, drain, recovery, rotation, generation and restore tests. Requires at least thirty-one executed tests with zero skips, including cumulative transport limits, writer capacity, conditional restore decisions and authority races. Local qualification and its limits are recorded in the Story 8.5 spec; a CI run is separate evidence. |
@@ -76,7 +76,7 @@ Reusable CI/CD logic belongs in `Hexalith.Builds`:
 EventStore keeps only module-specific wiring here:
 
 - `Hexalith.EventStore.slnx`.
-- The isolated test project list passed to `domain-ci-v2.yml@6249a8c0a0480a4b8a8ba04fc214c6104c3c9045`.
+- The isolated test project list passed to `domain-ci-v2.yml@ae68c59bd2f4145a23ccf68c3711f98eaf62195f`.
 - The advisory test project list and Playwright browser install needed by the
   Admin UI E2E suite.
 - Manifest-backed package validation scripts under `scripts/`.
@@ -117,7 +117,7 @@ place for run output.
 
 | Lane | Projects | Workflow behavior |
 |------|----------|-------------------|
-| Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci-v2.yml@6249a8c0a0480a4b8a8ba04fc214c6104c3c9045` job through `unit-test-projects`. All nineteen previous unit projects and the self-contained AppHost model-test project execute before integration; no AppHost topology is started by these tests. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
+| Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci-v2.yml@ae68c59bd2f4145a23ccf68c3711f98eaf62195f` job through `unit-test-projects`. All nineteen previous unit projects and the self-contained AppHost model-test project execute before integration; no AppHost topology is started by these tests. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
 | Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs`, `tools/tests/test_release_publication_authority.py` | Blocking EventStore-owned CI job. It provisions Node 24, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. It also runs the publication-authority regressions against the exact approved Builds publication engine. |
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`, plus `scripts/check-committed-files.sh`, `tools/tests/test_check_committed_files.py` and `tools/tests/test_dapr_broker_qualification.py` | Dedicated `Integration Tests` workflow after `dapr init`; its required `live-sidecar` job first runs the committed-file guard and the two Python suites. This lane is visible but not part of the semantic-release gate. It is not a `dotnet test` of `Server.Tests`. |
 | Payload-protection lifecycle | `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests` | Dedicated `Payload Protection Lifecycle` workflow; isolated processes and digest-pinned PostgreSQL v2 state, persisted assertions and zero skips. The existing `Payload Protection` core workflow runs independently. |
@@ -131,61 +131,77 @@ The v2 caller explicitly maps only `HEXALITH_CI_REGISTRY_USERNAME` and
 accepts no inherited secrets, caller Dapr overrides or direct integration/AppHost
 execution inputs. Existing independent jobs and consumer/coverage gates remain.
 
-The package-profile bootstrap, v2 workflow and executing public module CLI
-4.44.0 now select the same Builds source
-`6249a8c0a0480a4b8a8ba04fc214c6104c3c9045`, with genuine released Platform
-[`v1.2.3`](https://github.com/Hexalith/Hexalith.Platform/releases/tag/v1.2.3)
-(`991e2df97dc8493e41096006b0d3203a71730ae8`). Platform records that exact
-Builds gitlink and tool floor `[4.44.0,5.0.0-0)`. The approved catalog still
-selects public EventStore 4.0.4, Azure.Core 1.64.0 and
-Azure.Security.KeyVault.Keys 4.10.2, with catalog blob
-`ab01a410d9e3d5b626ae7feb8da6ec3c1a0af27b`.
-
-Platform 1.2.3 forwards each declared Tenants domain/API app-channel credential
-to `APP_API_TOKEN` on the application and its own sidecar. The API's separate
-`Tenants:ApiDaprToken` still supplies `DAPR_API_TOKEN`. Its source-bound
-[tuple run 41790026906](https://github.com/Hexalith/Hexalith.Platform/actions/runs/41790026906)
-passed all 201 required cases, including the actual unstarted model callbacks
-and SDK missing, wrong and duplicate-token controls. This is component evidence;
-it does not establish a reference native pass.
-
-The prior EventStore revision `005c9cfb0f938214ba889e645f81e389d82476b6`
-[hosted run 41787766444](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/41787766444)
-passed all twenty isolated projects and five independent jobs, then exhausted the
-unchanged 600-second startup bound with `HXR021`. Native facts never ran. Exact
-cleanup verified no remaining owned resources; detailed API exit text was not
-retained. The published 4.44.0 helper's separate lifecycle-diagnostic retention
-gap remains pending a coherent producer adoption. Fresh hosted gateway/persistence
-facts and cleanup remain mandatory after this dependency correction.
-
-The CLI was published by successful normal Builds release
+The package-profile bootstrap records Builds
+`6249a8c0a0480a4b8a8ba04fc214c6104c3c9045` and released Platform `v1.2.3`
+(`991e2df97dc8493e41096006b0d3203a71730ae8`). That recorded Builds source
+supplies the genuine public module CLI 4.44.0, published by successful normal release
 [41736408981](https://github.com/Hexalith/Hexalith.Builds/actions/runs/41736408981).
-It resolves a cold direct-only module from the verified direct Builds checkout,
-without requiring Platform's nested dependency checkouts. Exact source, signed
-package content and supported-range checks remain required. The real native
-persistence test emits bounded TRX diagnostics for the SDK assemblies actually
-loaded in its test process, including their versions and SHA-256 hashes. Those
-measurements do not claim a dependency was loaded in a different process.
-The diagnostic reads the existing descriptor/plan/issued owner and verified
-source mapping to bind the actual context and caller Git revision. Its surviving
-output is the original caller's existing `TestResults/module-integration`
-directory; the native process keeps the published scrubbed environment.
+Platform records that exact Builds source and requires tool range
+`[4.44.0, 5.0.0-0)`. Its recorded catalog blob
+`ab01a410d9e3d5b626ae7feb8da6ec3c1a0af27b` still selects public EventStore
+4.0.4, Azure.Core 1.64.0 and Azure.Security.KeyVault.Keys 4.10.2. Equal catalog
+bytes with earlier releases do not substitute for these actual publication and
+source identities. No Platform nested dependency checkout is required.
 
-The caller selects `integration-test-reference-owners: tenants`. The released
-helper passes the additive `--with-owner=tenants` request to the fresh package
-test; Platform admits only its qualified Development Linux/x64 EventStore
-4.0.4/Tenants 7.0.0 cohort. The production declaration stays unchanged, and all
-declared dependencies remain required. The complete server closure includes
-the SDK gateway and the released Tenants domain and API, whose Linux/amd64
-images are pinned by Platform to their measured immutable digests. Expanded
-owner candidate reuse and attachments remain unsupported. Memories and other
-SDK/owner cohorts require separate qualification.
+The shared CI executor is independently pinned to Builds
+`ae68c59bd2f4145a23ccf68c3711f98eaf62195f`. It retains only the receipt-bound
+result's declared, redacted lifecycle, native-report and functional-observation
+diagnostics after exact owned cleanup. Each bounded private regular file must
+match its content-addressed reference and digest; links, foreign owners and
+changed bytes refuse. Complete snapshots publish atomically without replacing
+existing evidence. This closes the missing native TRX upload while preserving
+the CLI 4.44.0, recorded catalog, package cohort and approved release publisher.
 
-The catalog's EventStore 4.0.4 selection remains the package-profile bootstrap
-input. A new EventStore producer and subsequent catalog/cohort adoption need
-normal publication and fresh qualification. The real gateway/Redis assertions,
-actual loaded-SDK observations and exact-run cleanup must pass in fresh hosted
-CI; this tuple adoption alone does not claim native acceptance.
+The literal `integration-test-reference-owners: tenants` adds the real declared
+Tenants reference-owner closure to a fresh package qualification. The SDK's
+production module manifest remains gateway-only and its two native integration
+facts remain unchanged. The runner preserves every declared transitive
+dependency and authenticates the expanded owner request before composition;
+expanded requests do not support candidate reuse or attachments. Platform admits
+only the independently qualified public EventStore 4.0.4/Tenants 7.0.0 artifact
+cohort and pinned Tenants images. Platform 1.2.3 probes both immutable owner
+images using canonical repository-at-digest references. Its private Package-mode
+routing reader builds from the verified run-materialized catalog in a scrubbed
+child environment, with effective package/version and restored-asset checks.
+Both Tenants receivers bind their declared app-channel input to `APP_API_TOKEN`;
+the API retains its separate sidecar API credential in `DAPR_API_TOKEN`.
+Source-mode selection and ordinary mixed-source guards remain enforced. This
+input grants no Memories admission or future SDK cohort support.
+
+[Platform v1.2.3](https://github.com/Hexalith/Hexalith.Platform/releases/tag/v1.2.3)
+was published after its exact source passed
+[201 tuple cases](https://github.com/Hexalith/Hexalith.Platform/actions/runs/41790026906)
+and the
+[four-SDK catalog matrix](https://github.com/Hexalith/Hexalith.Platform/actions/runs/41789946328),
+including 60 executable cases and 208 finite-gate evaluations. That proof covers
+the published prerequisite's supported inputs. This SDK caller adoption still
+requires its own exact-source hosted checks and actual runner-owned package
+integration. The catalog's EventStore 4.0.4 is the bootstrap runtime, distinct
+from the SDK source supplying the owned integration harness; it does not qualify
+the current SDK as a new public producer.
+
+The native persistence test retains its source-bound assembly observations in
+`TestResults/module-integration`. It measures assemblies actually loaded in its
+test process without claiming host-process loading, and binds the descriptor,
+plan, issued owner, verified mapping and caller revision. The published scrubbed
+native environment remains unchanged.
+
+Historical run [41787766444](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/41787766444)
+at `005c9cfb0f938214ba889e645f81e389d82476b6` passed the isolated and
+independent jobs before HXR021 exhausted the unchanged 600-second startup
+bound. Native facts never ran; exact cleanup found no remaining owned resources,
+and detailed API exit text was not retained. Later run
+[41796717649](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/41796717649)
+at `b63dc2fe15e41621741d0e49e088f10046ec7bed` reported successful package
+integration and exact cleanup, but the old helper omitted the referenced native
+TRX and lifecycle bodies. Those prior-source observations do not qualify this
+incoming merge; fresh hosted execution must prove the retained diagnostics and
+actual native cases with the selected executor.
+
+The separately approved publication execution engine remains Builds
+`30ea43a56330a9828ed0bb2e837289231d8630d1` in `release.yml` and its governance
+regression checkout. Adopting a newer CI workflow, CLI and catalog does not change
+that publication authority.
 
 Standalone package probes and synthetic MSBuild fixtures select independent
 child build environments before applying their deliberate test mapping inputs.
@@ -282,7 +298,7 @@ dedicated LiveSidecar lane; they are not a reason to add the project to
 
 ## Package Validation
 
-Shared `domain-ci-v2.yml@6249a8c0a0480a4b8a8ba04fc214c6104c3c9045` calls these EventStore entry points when
+Shared `domain-ci-v2.yml@ae68c59bd2f4145a23ccf68c3711f98eaf62195f` calls these EventStore entry points when
 `run-consumer-validation: true`:
 
 ```bash

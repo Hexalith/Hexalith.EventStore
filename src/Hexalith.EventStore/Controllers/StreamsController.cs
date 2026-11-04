@@ -127,6 +127,11 @@ public sealed partial class StreamsController(
             if (!TenantCanonicalizer.TryCanonicalize(request.Tenant, out string canonicalTenant))
                 return ProblemWithReason(StatusCodes.Status400BadRequest, ProblemTypeUris.BadRequest,
                     "Bad Request", "Tenant scope is invalid or reserved.", StreamReplayReasonCodes.InvalidAggregateIdentity);
+            if (Request.Headers.ContainsKey("X-Hexalith-Tenant")
+                || !TenantCanonicalizer.TryCanonicalizeGrants(User.FindAll("eventstore:tenant").Select(claim => claim.Value), out _))
+            {
+                return Forbid();
+            }
             request = request with { Tenant = canonicalTenant };
         }
 
