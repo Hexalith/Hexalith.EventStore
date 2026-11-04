@@ -653,6 +653,7 @@ public sealed class ReleasePackageManifestTests
     public void Semantic_release_governance_validation_rejects_skip_or_tolerance_mutations(string mutation)
     {
         string job = CreateValidSemanticReleaseGovernanceJobBlock();
+        AssertSemanticReleaseGovernanceJobIsBlocking(job);
         string mutatedJob = mutation switch
         {
             "job-skip" => job.Replace(
@@ -2385,7 +2386,7 @@ public sealed class ReleasePackageManifestTests
             [
                 "  semantic-release-governance:",
                 "    runs-on: ubuntu-latest",
-                "    timeout-minutes: 10",
+                "    timeout-minutes: 45",
                 "    steps:",
                 $"      - uses: actions/checkout@{CheckoutActionSha} # v7.0.0",
                 "        with:",
