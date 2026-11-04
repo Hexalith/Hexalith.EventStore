@@ -132,8 +132,8 @@ accepts no inherited secrets, caller Dapr overrides or direct integration/AppHos
 execution inputs. Existing independent jobs and consumer/coverage gates remain.
 
 The package-profile bootstrap records Builds
-`6249a8c0a0480a4b8a8ba04fc214c6104c3c9045` and released Platform `v1.2.0`
-(`c077c0c8fab3e112db5e2bc5b756ac8e8672ab66`). The same Builds source supplies
+`6249a8c0a0480a4b8a8ba04fc214c6104c3c9045` and released Platform `v1.2.1`
+(`728baa7c0f006d86e71d6c9b29527dabc8e16e49`). The same Builds source supplies
 both the pinned shared workflow and genuine public module CLI 4.44.0, published by
 successful normal release
 [41736408981](https://github.com/Hexalith/Hexalith.Builds/actions/runs/41736408981).
@@ -151,14 +151,15 @@ facts remain unchanged. The runner preserves every declared transitive
 dependency and authenticates the expanded owner request before composition;
 expanded requests do not support candidate reuse or attachments. Platform admits
 only the independently qualified public EventStore 4.0.4/Tenants 7.0.0 artifact
-cohort and pinned Tenants images. This input grants no Memories admission or
-future SDK cohort support.
+cohort and pinned Tenants images. Platform 1.2.1 probes both immutable owner
+images using canonical repository-at-digest references. This input grants no
+Memories admission or future SDK cohort support.
 
-[Platform v1.2.0](https://github.com/Hexalith/Hexalith.Platform/releases/tag/v1.2.0)
+[Platform v1.2.1](https://github.com/Hexalith/Hexalith.Platform/releases/tag/v1.2.1)
 was published after its exact source passed
-[188 tuple cases](https://github.com/Hexalith/Hexalith.Platform/actions/runs/41754333612)
+[188 tuple cases](https://github.com/Hexalith/Hexalith.Platform/actions/runs/41763592675)
 and the
-[four-SDK catalog matrix](https://github.com/Hexalith/Hexalith.Platform/actions/runs/41754243220),
+[four-SDK catalog matrix](https://github.com/Hexalith/Hexalith.Platform/actions/runs/41763558526),
 including 60 executable cases and 208 finite-gate evaluations. That proof covers
 the published prerequisite's supported inputs. This SDK caller adoption still
 requires its own exact-source hosted checks and actual runner-owned package
