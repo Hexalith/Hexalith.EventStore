@@ -35,11 +35,18 @@ public static class DevelopmentDomainRouteCatalog
         IConfiguration configuration, params Assembly[] contractOwners)
     {
         ArgumentNullException.ThrowIfNull(contractOwners);
+        // Loaded assembly declarations cannot mutate within this host. The fresh
+        // observation below still hashes the executable files and inspects the
+        // installed receiver, configuration, component and ACL on every call.
+        Assembly[] owners = [.. contractOwners];
+        var compiled = new Lazy<(IReadOnlyList<RouteContractDeclaration> Declarations,
+            IReadOnlyList<RouteOperationContract> Operations)>(() =>
+            (CompiledRouteCatalogDeclarations.Read(owners), CompiledRouteCatalogDeclarations.ReadOperations(owners)));
         return services.AddEventStoreDevelopmentRouteCatalogBootstrap(configuration, async (provider, token) =>
         {
             using var scope = provider.CreateScope();
             var local = scope.ServiceProvider;
-            var declarations = CompiledRouteCatalogDeclarations.Read(contractOwners);
+            var (declarations, operations) = compiled.Value;
             var endpoints = provider.GetRequiredService<EndpointDataSource>().Endpoints;
             var identity = local.GetRequiredService<IOptions<DomainProjectionIdentityOptions>>().Value;
             var fence = provider.GetRequiredService<FiniteRouteCatalogReceiver>();
@@ -48,8 +55,8 @@ public static class DevelopmentDomainRouteCatalog
                 Targets(local, endpoints, declarations), [], RouteCatalogDomainObservation.Capabilities(local),
                 RouteCatalogDomainObservation.Auxiliary(local, endpoints), token).ConfigureAwait(false);
             var discovery = local.GetRequiredService<DiscoveryResult>();
-            Assembly[] implementations = [.. contractOwners, typeof(DevelopmentDomainRouteCatalog).Assembly,
-                .. contractOwners.SelectMany(owner => owner.GetReferencedAssemblies()).Select(Assembly.Load),
+            Assembly[] implementations = [.. owners, typeof(DevelopmentDomainRouteCatalog).Assembly,
+                .. owners.SelectMany(owner => owner.GetReferencedAssemblies()).Select(Assembly.Load),
                 .. discovery.Projections.Select(projection => projection.Type.Assembly),
                 .. declarations.Where(declaration => declaration.Kind == "command").Select(declaration => declaration.Domain).Distinct(StringComparer.Ordinal)
                     .Select(domain => local.GetRequiredKeyedService<IDomainProcessor>(domain)).OfType<IDomainCommandPayloadInventory>()
@@ -62,7 +69,7 @@ public static class DevelopmentDomainRouteCatalog
                 .. local.GetServices<IAsyncDomainProjectionHandler>().Select(handler => handler.GetType().Assembly)];
             return actual with
             {
-                ReceiverSurface = fence.Observe(), Operations = CompiledRouteCatalogDeclarations.ReadOperations(contractOwners),
+                ReceiverSurface = fence.Observe(), Operations = operations,
                 ExecutableOwners = implementations.Distinct().OrderBy(assembly => assembly.FullName, StringComparer.Ordinal)
                     .ToDictionary(assembly => assembly.FullName!, assembly => ReadExecutableDigest(assembly.Location), StringComparer.Ordinal),
             };

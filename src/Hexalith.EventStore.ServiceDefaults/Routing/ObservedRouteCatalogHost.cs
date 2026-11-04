@@ -8,6 +8,8 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 /// <summary>Derives all fingerprints from independent local facts and compares complete declaration and target inventories.</summary>
 public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteCatalogHostObservation>> capture) : IRouteCatalogHostObserver
 {
+    private ValidatedObservation? _validated;
+
     /// <summary>Calculates the observed host identity; no candidate-supplied fingerprint participates in a preimage.</summary>
     public static RouteCatalogHostIdentity Identity(RouteCatalogHostObservation observation) => Identity(observation, out _);
 
@@ -83,6 +85,13 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
             throw new RouteCatalogUnavailableException("Observed authority coordinates disagree with the effective state store.", RouteCatalogRefusalReason.Configuration);
         RouteCatalogHostIdentity identity = Identity(actual, out var inventory);
         actual = inventory.Observation;
+        // The activation binding validates every candidate field. A later fresh capture with
+        // the same complete host identity has the same executable, topology, auth and policy
+        // facts that already passed the structural walk for this exact activation.
+        string binding = RouteCatalogActivationBinding.ComputeDigest(activation);
+        ValidatedObservation? validated = Volatile.Read(ref _validated);
+        if (validated is not null && validated.Binding == binding && validated.Identity == identity)
+            return identity;
         TechnicalHttpCatalogBinding.Validate(activation);
         var expectedTechnical = activation.TechnicalHttpReceivers?.SingleOrDefault(receiver => receiver.AppId == actual.AppId);
         bool installedTechnical = actual.ReceiverSurface?.FenceVersion == RouteCatalogTechnicalHttpPolicy.FenceVersion
@@ -153,8 +162,11 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
                     && installed.ProjectionTypes.Order(StringComparer.Ordinal).SequenceEqual(c.ProjectionTypes.Order(StringComparer.Ordinal), StringComparer.Ordinal)))
             || (activation.AuxiliaryOperations ?? []).Where(a => a.AppId == actual.AppId).Any(a => !installedAuxiliary.Contains(JsonSerializer.Serialize(a))))
             throw new RouteCatalogUnavailableException("The proposed admission, named projection capability or auxiliary operation disagrees with installed local policy.", RouteCatalogRefusalReason.Inventory);
+        Volatile.Write(ref _validated, new ValidatedObservation(binding, identity));
         return identity;
     }
+
+    private sealed record ValidatedObservation(string Binding, RouteCatalogHostIdentity Identity);
 
     private static string Hash(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 }

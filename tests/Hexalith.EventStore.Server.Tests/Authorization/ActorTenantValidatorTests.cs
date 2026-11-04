@@ -72,6 +72,63 @@ public class ActorTenantValidatorTests {
     }
 
     [Fact]
+    public async Task ValidateAsync_CaseVariant_ForwardsCanonicalTenantToActor()
+    {
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+        ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
+        _ = actor.ValidateTenantAccessAsync(Arg.Any<TenantValidationRequest>())
+            .Returns(new ActorValidationResponse(true));
+        _ = factory.CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), ActorType).Returns(actor);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+        ((ClaimsIdentity)user.Identity!).AddClaim(new Claim("eventstore:tenant", "ACME"));
+
+        TenantValidationResult result = await validator.ValidateAsync(user, "Acme", CancellationToken.None, "order-123");
+
+        result.IsAuthorized.ShouldBeTrue();
+        result.CanonicalTenantId.ShouldBe("acme");
+        _ = factory.Received(1).CreateActorProxy<ITenantValidatorActor>(
+            Arg.Is<ActorId>(id => id.GetId() == "acme"), ActorType);
+        _ = await actor.Received(1).ValidateTenantAccessAsync(
+            Arg.Is<TenantValidationRequest>(request => request.TenantId == "acme" && request.AggregateId == "order-123"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" Acme")]
+    [InlineData("acme ")]
+    [InlineData("acme:other")]
+    [InlineData("SyStEm")]
+    [InlineData("platform:tenants")]
+    public async Task ValidateAsync_InvalidOrReservedTenant_DoesNotCreateActorProxy(string? tenant)
+    {
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+
+        TenantValidationResult result = await validator.ValidateAsync(
+            CreatePrincipalWithNameIdentifier(UserId), tenant!, CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        factory.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("Acme", "acme")]
+    [InlineData("acme", "bad grant")]
+    [InlineData("acme", "system")]
+    public async Task ValidateAsync_InvalidOrDuplicateGrants_DoesNotCreateActorProxy(string first, string second)
+    {
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+        ((ClaimsIdentity)user.Identity!).AddClaims([new("eventstore:tenant", first), new("eventstore:tenant", second)]);
+
+        TenantValidationResult result = await validator.ValidateAsync(user, "acme", CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationFailureReason.TenantAmbiguous);
+        factory.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task ValidateAsync_ActorAllows_ReturnsAllowed() {
         // Arrange
         (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();

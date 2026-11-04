@@ -68,6 +68,6 @@ internal static partial class AzureKeyVaultOptionsValidator
     internal static InvalidOperationException Invalid() => new("The Azure payload protection profile is invalid.");
     [GeneratedRegex("\\A[A-Za-z0-9-]{1,127}\\z", RegexOptions.CultureInvariant)]
     private static partial Regex KeyNamePattern();
-    [GeneratedRegex("\\A[a-z][a-z0-9-]{1,22}[a-z0-9]\\z", RegexOptions.CultureInvariant)]
+    [GeneratedRegex("\\A(?!.*--)[a-z][a-z0-9-]{1,22}[a-z0-9]\\z", RegexOptions.CultureInvariant)]
     private static partial Regex VaultNamePattern();
 }

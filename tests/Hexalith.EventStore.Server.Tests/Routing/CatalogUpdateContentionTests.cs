@@ -56,7 +56,7 @@ public sealed class CatalogUpdateContentionTests
         };
         await Should.ThrowAsync<RouteCatalogUnavailableException>(() => authority.AcquireAsync(TestContext.Current.CancellationToken));
         store.Attempts.ShouldBe(1);
-        store.Reads.ShouldBe(2);
+        store.Reads.ShouldBe(3);
         var state = (await fixture.Store.ReadAsync(default)).State;
         state.Leases.ShouldBeEmpty(); state.Epoch.ShouldBe(1); state.Committed!.RootDigest.ShouldBe(first.RootDigest);
         (state.Pending is not null).ShouldBe(mutation == "pending");
@@ -71,7 +71,7 @@ public sealed class CatalogUpdateContentionTests
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         store.Conflict = (_, _) => { cancelled.Cancel(); return Task.CompletedTask; };
         await Should.ThrowAsync<OperationCanceledException>(() => Authority(fixture, store).AcquireAsync(cancelled.Token));
-        store.Reads.ShouldBe(1); store.Attempts.ShouldBe(1);
+        store.Reads.ShouldBe(2); store.Attempts.ShouldBe(1);
         JsonSerializer.Serialize((await fixture.Store.ReadAsync(default)).State).ShouldBe(before);
     }
 
@@ -97,7 +97,7 @@ public sealed class CatalogUpdateContentionTests
         string before = JsonSerializer.Serialize((await fixture.Store.ReadAsync(default)).State);
         var store = new ControlledCatalogContentionStore(fixture.Store);
         await Should.ThrowAsync<RouteCatalogUnavailableException>(() => Authority(fixture, store).AcquireAsync(TestContext.Current.CancellationToken));
-        store.Reads.ShouldBe(96); store.Attempts.ShouldBe(96);
+        store.Reads.ShouldBe(192); store.Attempts.ShouldBe(96);
         JsonSerializer.Serialize((await fixture.Store.ReadAsync(default)).State).ShouldBe(before);
     }
 

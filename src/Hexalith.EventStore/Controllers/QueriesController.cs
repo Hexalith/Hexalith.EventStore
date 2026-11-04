@@ -228,11 +228,6 @@ public partial class QueriesController : ControllerBase {
         string correlationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? Guid.NewGuid().ToString();
 
-        // Store tenant in HttpContext for error handlers and rate limiter OnRejected callback
-        if (!string.IsNullOrEmpty(request.Tenant)) {
-            HttpContext.Items["RequestTenantId"] = request.Tenant;
-        }
-
         // Extract UserId from JWT -- use 'sub' claim ONLY (F-RT2: 'name' may be user-controllable)
         string? userId = User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(userId) || User.FindAll("sub").Count() != 1) {
@@ -248,12 +243,16 @@ public partial class QueriesController : ControllerBase {
         bool legacyTenantRead = LegacyTenantStorageScopeAdapter.IsSingleTenantRead(request.Domain, request.QueryType);
         if (Request.Headers.ContainsKey("X-Hexalith-Scope") && (!platformScope
                 || !string.Equals(Request.Headers["X-Hexalith-Scope"].ToString(), explicitScope, StringComparison.Ordinal))
-            || Request.Headers.ContainsKey("X-Hexalith-Tenant") && platformScope)
+            || Request.Headers.ContainsKey("X-Hexalith-Tenant"))
             return BadRequest("Mixed or conflicting request scopes are not allowed.");
         if (!platformScope)
         {
             if (!TenantCanonicalizer.TryCanonicalize(explicitScope, out string canonicalTenant))
                 return Forbid();
+            if (!TenantCanonicalizer.TryCanonicalizeGrants(User.FindAll("eventstore:tenant").Select(claim => claim.Value), out _))
+            {
+                return Forbid();
+            }
             if (legacyTenantRead)
             {
                 if (!TenantCanonicalizer.TryCanonicalize(request.AggregateId, out string canonicalAggregate)
@@ -262,8 +261,13 @@ public partial class QueriesController : ControllerBase {
                 request = request with { AggregateId = canonicalAggregate };
             }
             request = request with { Tenant = canonicalTenant };
+            HttpContext.Items["RequestTenantId"] = canonicalTenant;
             await ValidateAuthorizationBeforeLookupAsync(request, userId, correlationId, cancellationToken)
                 .ConfigureAwait(false);
+        }
+        else
+        {
+            HttpContext.Items["RequestTenantId"] = explicitScope;
         }
 
         if ((platformScope || legacyTenantRead) && catalogAuthority is null)

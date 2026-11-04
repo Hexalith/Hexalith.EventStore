@@ -267,6 +267,25 @@ public class SubmitCommandRequestValidatorTests {
         result.Errors.ShouldContain(e => e.PropertyName == "Tenant" && e.ErrorMessage.Contains("lowercase"));
     }
 
+    [Theory]
+    [InlineData("platform:tenants", true)]
+    [InlineData("platform:global-administrators", true)]
+    [InlineData("platform:unknown-owner", true)]
+    [InlineData("platform:", false)]
+    [InlineData("platform:tenants--invalid", false)]
+    [InlineData("platform:Tenants", false)]
+    [InlineData("platform:tenants ", false)]
+    [InlineData("platform:tenants/other", false)]
+    [InlineData("platform:tenants,tenant-a", false)]
+    public void SubmitCommandRequestValidator_AllowsOnlyPlatformSyntaxForSubsequentCatalogAuthorization(string scope, bool valid)
+    {
+        var request = new SubmitCommandRequest("platform-model-control", scope, "tenants", "managed-tenant",
+            "CreateTenant", JsonSerializer.SerializeToElement(new { tenantId = "managed-tenant" }));
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+        result.IsValid.ShouldBe(valid);
+        if (!valid) result.Errors.ShouldContain(error => error.PropertyName == "Tenant");
+    }
+
     [Fact]
     public void SubmitCommandRequestValidator_ValidRequest_Passes() {
         // Arrange

@@ -31,6 +31,63 @@ public partial class ProjectionChangedHub(
     private const int MaxGroupScopeLength = 64;
 
     private static readonly ConcurrentDictionary<string, HashSet<string>> _connectionGroups = new();
+    private static readonly ConcurrentDictionary<string, ProjectionMembershipState> _membershipStates = new();
+
+    /// <summary>Negotiates generation-ordered, acknowledged full-membership snapshots.</summary>
+    public int GetProjectionMembershipProtocol() => Context.User?.Identity?.IsAuthenticated == true
+        ? 1 : throw new HubException("Authentication is required to negotiate projection membership.");
+
+    /// <summary>Checks rejoin authority without changing remote membership.</summary>
+    /// <param name="projectionType">The projection type.</param>
+    /// <param name="tenantId">The requested tenant.</param>
+    /// <param name="scope">The optional sub-tenant scope.</param>
+    public async Task ValidateProjectionGroup(string projectionType, string tenantId, string? scope) {
+        _ = await AuthorizeGroupAsync(projectionType, tenantId, scope).ConfigureAwait(false);
+    }
+
+    /// <summary>Applies the latest complete intent, ignoring older delayed invocations.</summary>
+    /// <param name="generation">The monotonically increasing connection-local intent generation.</param>
+    /// <param name="groups">Bounded projection, tenant and optional scope triples.</param>
+    /// <returns>The latest fully applied generation.</returns>
+    public async Task<long> ReconcileProjectionMembership(long generation, string[][] groups) {
+        if (generation < 0 || groups is null || groups.Length > options.Value.MaxGroupsPerConnection
+            || groups.Any(group => group is null || group.Length != 3)) {
+            throw new HubException("Invalid projection membership snapshot.");
+        }
+        ProjectionMembershipState state = _membershipStates.GetOrAdd(Context.ConnectionId, _ => new());
+        bool acquired = false;
+        try {
+            await state.Gate.WaitAsync(Context.ConnectionAborted).ConfigureAwait(false);
+            acquired = true;
+            if (generation <= state.Generation) { return state.Generation; }
+            // Authorize the complete bounded snapshot before mutating membership. Removing
+            // obsolete groups before adding replacements permits swaps at the connection quota.
+            var desired = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string[] group in groups) {
+                desired.Add(await AuthorizeGroupAsync(group[0], group[1], group[2]).ConfigureAwait(false));
+            }
+            if (_connectionGroups.TryGetValue(Context.ConnectionId, out HashSet<string>? current)) {
+                lock (current) { state.PossibleGroups.UnionWith(current); }
+            }
+            foreach (string group in state.PossibleGroups.Where(group => !desired.Contains(group)).ToArray()) {
+                string[] parts = group.Split(':');
+                await LeaveGroupCoreAsync(parts[0], parts[1], parts.Length == 3 ? parts[2] : null).ConfigureAwait(false);
+                state.PossibleGroups.Remove(group);
+            }
+            foreach (string group in desired) {
+                // Backend failure can occur after admission. Keep that obligation even if
+                // legacy quota tracking rolls back; only acknowledged removal can retire it.
+                state.PossibleGroups.Add(group);
+                await AddGroupAsync(group).ConfigureAwait(false);
+            }
+            state.Generation = generation;
+            return generation;
+        }
+        finally {
+            if (acquired) { state.Gate.Release(); }
+            if (Context.ConnectionAborted.IsCancellationRequested) { _ = _membershipStates.TryRemove(Context.ConnectionId, out _); }
+        }
+    }
 
     /// <summary>
     /// Adds the calling client to the tenant-wide projection change group.
@@ -83,6 +140,11 @@ public partial class ProjectionChangedHub(
             : $"{projectionType}:{tenantId}:{scope}";
 
     private async Task JoinGroupCoreAsync(string projectionType, string tenantId, string? scope) {
+        string groupName = await AuthorizeGroupAsync(projectionType, tenantId, scope).ConfigureAwait(false);
+        await AddGroupAsync(groupName).ConfigureAwait(false);
+    }
+
+    private async Task<string> AuthorizeGroupAsync(string projectionType, string tenantId, string? scope) {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
 
@@ -129,8 +191,11 @@ public partial class ProjectionChangedHub(
             throw new HubException("Tenant authorization failed.");
         }
 
-        string groupName = BuildGroupName(projectionType, canonicalTenant, normalizedScope);
+        return BuildGroupName(projectionType, canonicalTenant, normalizedScope);
+    }
 
+    private async Task AddGroupAsync(string groupName) {
+        Context.ConnectionAborted.ThrowIfCancellationRequested();
         // Guard: limit groups per connection to prevent resource exhaustion
         HashSet<string> groups = _connectionGroups.GetOrAdd(Context.ConnectionId, _ => []);
         bool addedToTracking = false;
@@ -143,7 +208,7 @@ public partial class ProjectionChangedHub(
         }
 
         try {
-            await Groups.AddToGroupAsync(Context.ConnectionId, groupName).ConfigureAwait(false);
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName, Context.ConnectionAborted).ConfigureAwait(false);
         }
         catch {
             if (addedToTracking) {
@@ -211,6 +276,7 @@ public partial class ProjectionChangedHub(
     public override Task OnDisconnectedAsync(Exception? exception) {
         // Clean up group tracking for this connection
         _ = _connectionGroups.TryRemove(Context.ConnectionId, out _);
+        _ = _membershipStates.TryRemove(Context.ConnectionId, out _);
         Log.ClientDisconnected(logger, Context.ConnectionId, exception?.GetType().Name);
         return base.OnDisconnectedAsync(exception);
     }

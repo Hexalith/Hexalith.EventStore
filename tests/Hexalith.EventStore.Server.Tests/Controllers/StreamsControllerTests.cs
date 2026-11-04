@@ -57,6 +57,48 @@ public class StreamsControllerTests {
     private const string Domain = "party";
     private const string AggregateId = "party-1";
 
+    /// <summary>Verifies that an additional tenant header is rejected before stream authorization or actor access.</summary>
+    /// <param name="headerTenant">The additional header value alongside the body tenant.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData("tenant-a")]
+    [InlineData("tenant-b")]
+    [InlineData("")]
+    public async Task HumanReadWithAdditionalTenantHeaderRejectsBeforeAuthorizationOrActorAccess(string headerTenant)
+    {
+        (StreamsController controller, IActorProxyFactory proxies, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator)
+            = CreateController(Substitute.For<IAggregateActor>());
+        controller.Request.Headers["X-Hexalith-Tenant"] = headerTenant;
+
+        (await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId))).ShouldBeOfType<ForbidResult>();
+
+        tenantValidator.ReceivedRequests.ShouldBeEmpty();
+        rbacValidator.ReceivedRequests.ShouldBeEmpty();
+        proxies.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies that malformed or duplicate grants are rejected before stream authorization or actor access.</summary>
+    /// <param name="extraGrant">The malformed or normalized-duplicate grant.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData("system")]
+    [InlineData(" tenant-a")]
+    [InlineData("TENANT-A")]
+    public async Task HumanReadWithMalformedOrDuplicateGrantRejectsBeforeAuthorizationOrActorAccess(string extraGrant)
+    {
+        (StreamsController controller, IActorProxyFactory proxies, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator)
+            = CreateController(Substitute.For<IAggregateActor>());
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", "test-user"), new Claim("eventstore:tenant", Tenant), new Claim("eventstore:tenant", extraGrant),
+        ], "test"));
+
+        (await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId))).ShouldBeOfType<ForbidResult>();
+
+        tenantValidator.ReceivedRequests.ShouldBeEmpty();
+        rbacValidator.ReceivedRequests.ShouldBeEmpty();
+        proxies.ReceivedCalls().ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task WorkloadSourceReadMapsOnlyTheDeclaredTenantsPlatformScopeToHistoricalStorage()
     {

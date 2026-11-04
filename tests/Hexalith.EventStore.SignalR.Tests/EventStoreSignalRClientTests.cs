@@ -796,6 +796,208 @@ public class EventStoreSignalRClientTests {
         }
     }
 
+    [Fact]
+    public async Task RealCallbackSelfDisposalReturnsAndExternalDisposalDrainsOwnedShutdown()
+    {
+        var control = new StalledProjectionRpc();
+        control.ReleaseJoin.SetResult();
+        control.ReleaseLeave.SetResult();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddSignalR();
+        builder.Services.AddSingleton(control);
+        await using WebApplication app = builder.Build();
+        app.MapHub<StalledProjectionHub>("/hub");
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        string address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = address + "/hub" });
+        using var release = new ManualResetEventSlim();
+        var returned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int calls = 0;
+        try
+        {
+            await client.StartAsync(TestContext.Current.CancellationToken);
+            await client.SubscribeAsync("counter", "acme", () =>
+            {
+                Interlocked.Increment(ref calls);
+                client.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                returned.TrySetResult();
+                release.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+            }, TestContext.Current.CancellationToken);
+            await app.Services.GetRequiredService<IHubContext<StalledProjectionHub>>().Clients.Group("counter:acme")
+                .SendAsync("ProjectionChanged", "counter", "acme", TestContext.Current.CancellationToken);
+            await returned.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Task external = client.DisposeAsync().AsTask();
+            external.IsCompleted.ShouldBeFalse("An external disposer must retain the callback frame and shutdown task.");
+            await Should.ThrowAsync<ObjectDisposedException>(() => client.SubscribeAsync("late", "acme", () => { }, TestContext.Current.CancellationToken));
+            await Should.ThrowAsync<ObjectDisposedException>(() => client.SubscribeDetailAsync("late", "acme", "scope", _ => { }, TestContext.Current.CancellationToken));
+            await Should.ThrowAsync<ObjectDisposedException>(() => client.StartAsync(TestContext.Current.CancellationToken));
+            release.Set();
+            await external.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await client.DisposeAsync();
+            calls.ShouldBe(1);
+            client.IsConnected.ShouldBeFalse();
+        }
+        finally { release.Set(); await client.DisposeAsync(); await app.StopAsync(TestContext.Current.CancellationToken); }
+    }
+
+    [Fact]
+    public async Task LegacyAcknowledgedOrdinaryChurnRetiresMembershipBookkeeping()
+    {
+        var control = new StalledProjectionRpc();
+        control.ReleaseJoin.SetResult();
+        control.ReleaseLeave.SetResult();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddSignalR();
+        builder.Services.AddSingleton(control);
+        await using WebApplication app = builder.Build();
+        app.MapHub<StalledProjectionHub>("/hub");
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        string address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        await using var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = address + "/hub" });
+        try
+        {
+            await client.StartAsync(TestContext.Current.CancellationToken);
+            client.SupportsAcknowledgedMembership.ShouldBeFalse();
+            for (int index = 0; index < 32; index++)
+            {
+                string group = "counter-" + index;
+                await client.SubscribeAsync(group, "acme", () => { }, TestContext.Current.CancellationToken);
+                await client.UnsubscribeAsync(group, "acme", TestContext.Current.CancellationToken);
+            }
+            var groups = (System.Collections.IDictionary)typeof(EventStoreSignalRClient).GetField("_legacyGroups", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(client)!;
+            groups.Count.ShouldBe(0);
+            var uncertain = (IReadOnlyCollection<string>)typeof(EventStoreSignalRClient).GetField("_legacyUncertainGroups", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(client)!;
+            uncertain.ShouldBeEmpty();
+        }
+        finally { await app.StopAsync(TestContext.Current.CancellationToken); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExternalRemovalDrainsAnEnteredCallbackEvenWhenCancelled(bool detail)
+    {
+        await using var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = "http://localhost/hub" });
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var cancellation = new CancellationTokenSource();
+        int calls = 0;
+        void Callback() { Interlocked.Increment(ref calls); entered.Set(); release.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue(); }
+        Action signal = Callback;
+        Action<ProjectionChangedDetail> detailed = _ => Callback();
+        if (detail) { await client.SubscribeDetailAsync("counter", "acme", "scope", detailed, TestContext.Current.CancellationToken); }
+        else { await client.SubscribeAsync("counter", "acme", signal, TestContext.Current.CancellationToken); }
+        Task dispatch = Task.Run(() =>
+        {
+            if (detail) { InvokeProjectionChangedDetail(client, "counter", "acme", "scope", new Dictionary<string, string>()); }
+            else { InvokeProjectionChanged(client, "counter", "acme"); }
+        }, TestContext.Current.CancellationToken);
+        try
+        {
+            entered.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+            Task removal = detail ? client.UnsubscribeDetailAsync("counter", "acme", "scope", detailed, cancellation.Token)
+                : client.UnsubscribeAsync("counter", "acme", signal, cancellation.Token);
+            removal.IsCompleted.ShouldBeFalse();
+            await cancellation.CancelAsync();
+            removal.IsCompleted.ShouldBeFalse("Cancellation must not turn callback revocation into quiescence evidence.");
+            release.Set();
+            await Task.WhenAll(dispatch, removal).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            InvokeProjectionChanged(client, "counter", "acme");
+            InvokeProjectionChangedDetail(client, "counter", "acme", "scope", new Dictionary<string, string>());
+            calls.ShouldBe(1);
+        }
+        finally { release.Set(); await dispatch; }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConcurrentGroupSelfRemovalReturnsAndExternalRemovalStillDrains(bool detail)
+    {
+        await using var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = "http://localhost/hub" });
+        using var entered = new CountdownEvent(2);
+        using var selfRemoved = new CountdownEvent(2);
+        using var release = new ManualResetEventSlim();
+        void Callback()
+        {
+            entered.Signal();
+            entered.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+            Task removal = detail ? client.UnsubscribeDetailAsync("counter", "acme", "scope", TestContext.Current.CancellationToken)
+                : client.UnsubscribeAsync("counter", "acme", TestContext.Current.CancellationToken);
+            removal.GetAwaiter().GetResult();
+            selfRemoved.Signal();
+            release.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        }
+        if (detail) { await client.SubscribeDetailAsync("counter", "acme", "scope", _ => Callback(), TestContext.Current.CancellationToken); }
+        else { await client.SubscribeAsync("counter", "acme", Callback, TestContext.Current.CancellationToken); }
+        Task Dispatch() => Task.Run(() =>
+        {
+            if (detail) { InvokeProjectionChangedDetail(client, "counter", "acme", "scope", new Dictionary<string, string>()); }
+            else { InvokeProjectionChanged(client, "counter", "acme"); }
+        }, TestContext.Current.CancellationToken);
+        Task first = Dispatch(), second = Dispatch();
+        try
+        {
+            selfRemoved.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+            Task external = detail ? client.UnsubscribeDetailAsync("counter", "acme", "scope", TestContext.Current.CancellationToken)
+                : client.UnsubscribeAsync("counter", "acme", TestContext.Current.CancellationToken);
+            external.IsCompleted.ShouldBeFalse();
+            release.Set();
+            await Task.WhenAll(first, second, external).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+        finally { release.Set(); await Task.WhenAll(first, second); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CrossGroupCallbackRemovalReturnsWhileExternalRemovalStillDrains(bool detail)
+    {
+        await using var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = "http://localhost/hub" });
+        using var entered = new CountdownEvent(2);
+        using var removed = new CountdownEvent(2);
+        using var release = new ManualResetEventSlim();
+        Action? first = null, second = null;
+        Action<ProjectionChangedDetail>? firstDetail = null, secondDetail = null;
+        void Run(bool left)
+        {
+            entered.Signal();
+            entered.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+            string target = left ? "second" : "first";
+            Task removal = detail ? client.UnsubscribeDetailAsync(target, "acme", "scope", left ? secondDetail! : firstDetail!, TestContext.Current.CancellationToken)
+                : client.UnsubscribeAsync(target, "acme", left ? second! : first!, TestContext.Current.CancellationToken);
+            removal.GetAwaiter().GetResult();
+            removed.Signal();
+            release.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        }
+        first = () => Run(true); second = () => Run(false);
+        firstDetail = _ => Run(true); secondDetail = _ => Run(false);
+        if (detail) {
+            await client.SubscribeDetailAsync("first", "acme", "scope", firstDetail, TestContext.Current.CancellationToken);
+            await client.SubscribeDetailAsync("second", "acme", "scope", secondDetail, TestContext.Current.CancellationToken);
+        }
+        else {
+            await client.SubscribeAsync("first", "acme", first, TestContext.Current.CancellationToken);
+            await client.SubscribeAsync("second", "acme", second, TestContext.Current.CancellationToken);
+        }
+        Task Dispatch(string projection) => Task.Run(() => {
+            if (detail) { InvokeProjectionChangedDetail(client, projection, "acme", "scope", new Dictionary<string, string>()); }
+            else { InvokeProjectionChanged(client, projection, "acme"); }
+        }, TestContext.Current.CancellationToken);
+        Task left = Dispatch("first"), right = Dispatch("second");
+        try {
+            removed.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue("Callback-specific cross-group removers cannot mutually await active callbacks.");
+            Task external = detail ? client.UnsubscribeDetailAsync("first", "acme", "scope", TestContext.Current.CancellationToken)
+                : client.UnsubscribeAsync("first", "acme", TestContext.Current.CancellationToken);
+            external.IsCompleted.ShouldBeFalse();
+            release.Set();
+            await Task.WhenAll(left, right, external).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+        finally { release.Set(); await Task.WhenAll(left, right); }
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -870,6 +1072,8 @@ public class EventStoreSignalRClientTests {
             InvokeProjectionChanged(client, "counter", "acme");
             InvokeProjectionChangedDetail(client, "counter", "acme", "party-1", new Dictionary<string, string>());
             calls.ShouldBe(0);
+            var uncertain = (IReadOnlyCollection<string>)typeof(EventStoreSignalRClient).GetField("_legacyUncertainGroups", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(client)!;
+            uncertain.ShouldContain(detail ? "counter:acme:party-1" : "counter:acme");
         }
         finally
         {

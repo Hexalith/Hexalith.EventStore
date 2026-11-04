@@ -37,6 +37,23 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 /// Replaces the 7 characterization tests that tested inline tenant checks removed in 17-3.
 /// </summary>
 public class CommandsControllerTenantTests {
+    /// <summary>Verifies that an additional tenant header is rejected before command dispatch.</summary>
+    /// <param name="headerTenant">The additional header value alongside the body tenant.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData("test-tenant")]
+    [InlineData("other-tenant")]
+    [InlineData("")]
+    public async Task Submit_AdditionalTenantHeader_RejectsBeforeDispatch(string headerTenant)
+    {
+        (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(CreateAuthenticatedPrincipal("test-tenant"));
+        controller.Request.Headers["X-Hexalith-Tenant"] = headerTenant;
+
+        (await controller.Submit(CreateTestRequest(), CancellationToken.None)).ShouldBeOfType<BadRequestObjectResult>();
+
+        mediator.ReceivedCalls().ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task Submit_GlobalAdministratorCommandCapturesAuthenticatedSubjectWithoutReceiptOrExtensionFallback()
     {

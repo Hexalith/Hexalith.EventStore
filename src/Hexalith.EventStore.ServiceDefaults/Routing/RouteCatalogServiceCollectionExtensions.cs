@@ -46,7 +46,11 @@ public static class RouteCatalogServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, RouteCatalogStateHttpClientFilter>());
         services.TryAddSingleton<IRouteCatalogStateStore, DaprRouteCatalogStateStore>();
         services.TryAddSingleton<IRouteCatalogTrustValidator, DevelopmentRouteCatalogTrustValidator>();
-        services.TryAddSingleton<IRouteCatalogAuthority, RouteCatalogAuthority>();
+        services.TryAddSingleton<IRouteCatalogAuthority>(provider => new RouteCatalogAuthority(
+            provider.GetRequiredService<IRouteCatalogStateStore>(), provider.GetRequiredService<IRouteCatalogTrustValidator>(),
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RouteCatalogHostOptions>>(),
+            provider.GetService<IRouteCatalogHostObserver>(), provider.GetService<IRouteCatalogQuiescenceVerifier>(),
+            OptionalAuthorityLogger(provider), provider.GetService<Microsoft.Extensions.Hosting.IHostEnvironment>()));
         services.TryAddSingleton<RouteCatalogInvocationScope>();
         services.TryAddScoped<GeneratedRouteCatalogFilter>();
         services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(mvc => mvc.Filters.AddService<GeneratedRouteCatalogFilter>());
@@ -58,5 +62,11 @@ public static class RouteCatalogServiceCollectionExtensions
              Hexalith.EventStore.Contracts.Authorization.EventStoreOperationIdentifiers.RouteCatalogActivate]);
         services.AddHealthChecks().AddCheck<RouteCatalogReadinessCheck>("route-catalog", tags: ["ready"]);
         return services;
+    }
+
+    private static Microsoft.Extensions.Logging.ILogger<RouteCatalogAuthority>? OptionalAuthorityLogger(IServiceProvider provider)
+    {
+        try { return provider.GetService<Microsoft.Extensions.Logging.ILogger<RouteCatalogAuthority>>(); }
+        catch { return null; }
     }
 }

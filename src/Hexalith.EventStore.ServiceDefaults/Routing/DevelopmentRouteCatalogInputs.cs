@@ -63,7 +63,7 @@ public static class DevelopmentRouteCatalogInputs
         string[] segments = key.Split(':');
         if (segments.Any(segment => segment.Contains("Key", StringComparison.OrdinalIgnoreCase)
             || segment.Contains("Token", StringComparison.OrdinalIgnoreCase) || segment.Contains("Secret", StringComparison.OrdinalIgnoreCase))) return false;
-        string[] names = ["Issuer", "Audience", "Algorithm", "Algorithms", "AllowedDomains", "AllowedOperations", "AllowedCallers",
+        string[] names = ["Issuer", "Audience", "Algorithm", "Algorithms", "AllowedDomains", "AllowedOperations", "AllowedCallers", "MetadataOnlyCallers",
             "ValidateIssuer", "ValidateAudience", "ValidateLifetime", "RequireHttpsMetadata", "Authority"];
         return segments.Any(segment => names.Contains(segment, StringComparer.OrdinalIgnoreCase));
     }

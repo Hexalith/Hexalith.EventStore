@@ -25,4 +25,10 @@ public interface IAdminAuthContext {
     /// </summary>
     /// <returns>The correlation identifier, or null.</returns>
     string? GetCorrelationId();
+
+    /// <summary>
+    /// Gets the explicit platform read scope admitted by the current request's authorization filter.
+    /// </summary>
+    /// <returns>The validated catalog scope, or null when the request has no admitted platform scope.</returns>
+    string? GetValidatedPlatformScope() => null;
 }

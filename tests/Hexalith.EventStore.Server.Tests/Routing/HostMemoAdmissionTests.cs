@@ -92,14 +92,16 @@ public sealed class HostMemoAdmissionTests
 
         await using (var next = await first.AcquireAsync().WaitAsync(TimeSpan.FromSeconds(5))) { }
 
-        foreignReads.Count.ShouldBe(2);
+        foreignReads.Count.ShouldBe(3); // Initial authority, fresh admission inventory, then completed-lease release.
         foreignReads[0].Count.ShouldBe(0); // A was warm; this exact separate host was not.
         if (PrivateExpected && mode != "disabled") foreignReads[0].Scope.ShouldNotBeNull().ShouldNotBeSameAs(outer);
         else foreignReads[0].Scope.ShouldBeNull();
         foreignReads[0].Memo.ShouldBe(PrivateExpected && mode == "enabled");
+        foreignReads[1].Scope.ShouldBeSameAs(foreignReads[0].Scope);
         foreignReads[1].Memo.ShouldBe(PrivateExpected && mode == "enabled");
-        if (mode != "enabled" || !PrivateExpected) foreignReads[1].Scope.ShouldBeNull();
-        else foreignReads[1].Scope.ShouldNotBeNull().ShouldNotBeSameAs(outer);
+        foreignReads[2].Memo.ShouldBe(PrivateExpected && mode == "enabled");
+        if (mode != "enabled" || !PrivateExpected) foreignReads[2].Scope.ShouldBeNull();
+        else foreignReads[2].Scope.ShouldNotBeNull().ShouldNotBeSameAs(outer);
         RouteCatalogDecodeScope.Current.ShouldBeNull();
         (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
     }

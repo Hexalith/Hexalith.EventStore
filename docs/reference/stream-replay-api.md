@@ -159,3 +159,30 @@ Downstream rebuild implementations must not use:
 - DAPR sidecar addresses, connection strings, or state-store index records.
 
 Use `Hexalith.EventStore.Contracts.Streams`, `IEventStoreGatewayClient.ReadStreamAsync`, and test fakes/builders from `Hexalith.EventStore.Testing` instead.
+
+## Independently enrolled native metadata readers
+
+Domain hosts can register `services.AddEventStoreGatewayNativeSourceMetadataReader("your-domain")`
+from the public DomainService SDK. It exposes only `INativeSourceMetadataReader`, uses a separate
+HTTP client/options/proof source, and preserves the default human-command gateway. Configure the
+host's own `Authentication:WorkloadIssuer` client and workload, its independently provisioned
+`Authentication:BoundStreamRead:PrivateKey`, the exact configured `DAPR_HTTP_ENDPOINT` (or existing
+port/default), and optional physical `EventStore:Gateway:AppId` (default `eventstore`). The logical
+assertion audience remains `eventstore`. No registration grants issuer or resource authority.
+
+The receiving gateway must independently enroll the actual caller in its workload allowlist, set
+`Authentication:BoundStreamRead:PublicKeys:<caller>` and exact `AllowedDomains:<caller>`, and set
+`Authentication:BoundStreamRead:MetadataOnlyCallers:<caller>=true`. This last trusted receiver
+setting requires an actual valid resource proof even for JWTs carrying tenant/domain bindings. It
+admits only `FromSequence=0`, `ToSequence=0`, `PageSize=1`, `RequireNativeProof=true`, without
+checkpoint, continuation or projection context. Other shapes are refused before actor observation.
+A present malformed/false restriction is refused; omission retains existing generic stream-reader
+behavior. A request header or body flag cannot waive enrollment. These settings participate in the
+independent Development catalog's authentication observation. Keep issuer grants stream-read-only;
+allowlist membership by itself grants no operation and never substitutes for credentials/proof.
+
+A valid existing native proof at head zero establishes an empty stream. Missing/unactivated metadata,
+unsupported legacy proof, erasure, corruption, denial and unavailable evidence return no observation.
+The read never creates a seed or bootstraps proof and never converts 404/null/503 into zero. Existing
+native reader cancellation and its two-second deadline remain unchanged; cold actor activation may
+still perform the SDK's existing recovery. Keys and issuer secrets belong in protected configuration.

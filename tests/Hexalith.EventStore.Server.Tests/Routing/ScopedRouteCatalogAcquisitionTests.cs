@@ -201,7 +201,8 @@ public sealed class ScopedRouteCatalogAcquisitionTests
             store.Attempts.ShouldBe(2);
         }
 
-        store.Reads.ShouldBe(changed is "epoch" or "new-catalog" ? 3 : 2); // Successful disposal performs its own fresh release read.
+        // Each validated attempt reads the fresh admission inventory before CAS; disposal reads it again.
+        store.Reads.ShouldBe(changed is "epoch" or "new-catalog" ? 5 : 3);
         if (changed != "different-bytes-same-root") observations.ShouldBe(2);
         if (changed is not ("host" or "different-bytes-same-root")) trustCalls.ShouldBe(2);
         if (ReuseExpected)

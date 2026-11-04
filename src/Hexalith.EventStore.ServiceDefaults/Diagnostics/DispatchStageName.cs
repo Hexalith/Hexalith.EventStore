@@ -63,4 +63,26 @@ internal enum DispatchStageName
     RecoveryPersistence,
     /// <summary>Disposing the submission handler lease.</summary>
     SubmitRelease,
+    /// <summary>Obtaining or revalidating the outgoing invocation's existing catalog lease.</summary>
+    InvocationAcquire,
+    /// <summary>Checking the existing committed target and binding the outgoing headers.</summary>
+    InvocationValidation,
+    /// <summary>Entering and awaiting the actual owned outgoing invocation transport.</summary>
+    InvocationTransport,
+    /// <summary>Disposing only the outgoing invocation's owned lease.</summary>
+    InvocationRelease,
+    /// <summary>Waiting for the existing local catalog admission semaphore.</summary>
+    CatalogAdmissionWait,
+    /// <summary>Reading the existing durable catalog state.</summary>
+    CatalogStateRead,
+    /// <summary>Comparing and exchanging the existing durable catalog state.</summary>
+    CatalogCompareExchange,
+    /// <summary>Computing the complete existing activation binding.</summary>
+    CatalogActivationDigest,
+    /// <summary>Capturing and verifying fresh independent host observations.</summary>
+    CatalogHostCapture,
+    /// <summary>Validating the existing owner trust proof.</summary>
+    CatalogTrust,
+    /// <summary>Constructing the immutable snapshot after durable acquisition.</summary>
+    CatalogSnapshot,
 }

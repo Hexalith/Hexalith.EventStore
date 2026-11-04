@@ -559,7 +559,7 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(workflow, "ci");
         string tenantsSourceModeJob = ExtractTopLevelWorkflowJobBlock(workflow, "tenants-source-mode");
 
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@ae68c59bd2f4145a23ccf68c3711f98eaf62195f");
         ciJob.ShouldContain("build-timeout-minutes: 180");
         ciJob.ShouldContain("test-platform: microsoft-testing-platform");
         ciJob.ShouldContain("run-consumer-validation: true");
@@ -583,6 +583,8 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml")), "ci");
         ciJob.ShouldContain("module-manifest: module/hexalith.module-manifest.v2.json");
         ciJob.ShouldContain("integration-test-profiles: platform-package");
+        ciJob.ShouldContain("integration-test-reference-owners: tenants");
+        AssertPlatformPackageReferenceOwnerSelection(ciJob);
         ciJob.ShouldContain("registry-pull-username: ${{ secrets.HEXALITH_CI_REGISTRY_USERNAME }}");
         ciJob.ShouldContain("registry-pull-password: ${{ secrets.HEXALITH_CI_REGISTRY_PASSWORD }}");
         foreach (string retired in new[] { "integration-test-projects:", "aspire-test-project:", "dapr-version:", "dapr-runtime-version:", "secrets: inherit" })
@@ -592,7 +594,7 @@ public sealed class ReleasePackageManifestTests
 
         using JsonDocument tools = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".config", "dotnet-tools.json")));
         JsonElement tool = tools.RootElement.GetProperty("tools").GetProperty("hexalith.builds.module.cli");
-        tool.GetProperty("version").GetString().ShouldBe("4.43.6");
+        tool.GetProperty("version").GetString().ShouldBe("4.44.0");
         tool.GetProperty("rollForward").GetBoolean().ShouldBeFalse();
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "module", "hexalith.module-manifest.v2.json")));
         JsonElement suite = manifest.RootElement.GetProperty("modules")[0].GetProperty("tests").EnumerateArray()
@@ -600,6 +602,27 @@ public sealed class ReleasePackageManifestTests
         suite.GetProperty("mode").GetString().ShouldBe("package");
         suite.GetProperty("executor").GetString().ShouldBe("mtp");
         suite.GetProperty("entry").GetString().ShouldBe("tests/Hexalith.EventStore.Platform.IntegrationTests/Hexalith.EventStore.Platform.IntegrationTests.csproj");
+    }
+
+    /// <summary>The qualification caller accepts only one literal reviewed reference owner.</summary>
+    /// <param name="replacement">An unqualified replacement for the required owner input.</param>
+    [Theory]
+    [InlineData("")]
+    [InlineData("      integration-test-reference-owners:")]
+    [InlineData("      integration-test-reference-owners: memories")]
+    [InlineData("      integration-test-reference-owners: tenants,memories")]
+    [InlineData("      integration-test-reference-owners: tenants,tenants")]
+    [InlineData("      integration-test-reference-owners: ${{ inputs.owner }}")]
+    [InlineData("      integration-test-reference-owners: tenants\n      integration-test-reference-owners: tenants")]
+    public void SharedCiV2ReferenceOwnerSelectionRejectsChangedInputs(string replacement)
+    {
+        const string OwnerInput = "      integration-test-reference-owners: tenants";
+        string valid = $"  ci:\n    with:\n{OwnerInput}\n";
+        AssertPlatformPackageReferenceOwnerSelection(valid);
+
+        string changed = valid.Replace(OwnerInput, replacement, StringComparison.Ordinal);
+
+        _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertPlatformPackageReferenceOwnerSelection(changed));
     }
 
     /// <summary>SDK-owned test support remains source while external Release dependencies remain packages.</summary>
@@ -644,6 +667,10 @@ public sealed class ReleasePackageManifestTests
         AssertSemanticReleaseGovernanceJobIsBlocking(job);
     }
 
+    [Fact]
+    public void SemanticReleaseGovernanceValidationAcceptsValidJob()
+        => AssertSemanticReleaseGovernanceJobIsBlocking(CreateValidSemanticReleaseGovernanceJobBlock());
+
     [Theory]
     [InlineData("job-skip")]
     [InlineData("step-skip")]
@@ -653,6 +680,7 @@ public sealed class ReleasePackageManifestTests
     public void Semantic_release_governance_validation_rejects_skip_or_tolerance_mutations(string mutation)
     {
         string job = CreateValidSemanticReleaseGovernanceJobBlock();
+        AssertSemanticReleaseGovernanceJobIsBlocking(job);
         string mutatedJob = mutation switch
         {
             "job-skip" => job.Replace(
@@ -680,6 +708,20 @@ public sealed class ReleasePackageManifestTests
 
         _ = Should.Throw<Shouldly.ShouldAssertException>(
             () => AssertSemanticReleaseGovernanceJobIsBlocking(mutatedJob));
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(60)]
+    public void SemanticReleaseGovernanceValidationRejectsChangedTimeout(int timeoutMinutes)
+    {
+        string job = CreateValidSemanticReleaseGovernanceJobBlock()
+            .Replace(
+                "    timeout-minutes: 45",
+                $"    timeout-minutes: {timeoutMinutes}",
+                StringComparison.Ordinal);
+
+        _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertSemanticReleaseGovernanceJobIsBlocking(job));
     }
 
     [Fact]
@@ -779,7 +821,7 @@ public sealed class ReleasePackageManifestTests
         liveSidecarJob.ShouldNotContain("set +e");
 
         string ciJob = ExtractTopLevelWorkflowJobBlock(ci, "ci");
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@26991e8c542704be44cd8d9f58084d56fa627adb");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@ae68c59bd2f4145a23ccf68c3711f98eaf62195f");
         ciJob.ShouldContain("unit-test-projects: |");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Contracts.Tests");
         ciJob.ShouldNotContain("continue-on-error");
@@ -1208,7 +1250,7 @@ public sealed class ReleasePackageManifestTests
         workflow.ShouldContain("group: payload-protection-azure-private-ephemeral");
         workflow.ShouldContain("HEXALITH_PAYLOAD_AZURE_AUTHORITY_SHA256: ${{ inputs.authority_sha256 }}");
         workflow.ShouldContain("e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488");
-        workflow.ShouldContain("--minimum-expected-tests 187 --fail-skips on");
+        workflow.ShouldContain("--minimum-expected-tests 192 --fail-skips on");
         workflow.ShouldContain("--filter-class Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.AzureIdentityAuthoritySchemaTests");
         workflow.ShouldContain("--minimum-expected-tests 15 --fail-skips on");
         workflow.ShouldContain("--minimum-expected-tests 11 --fail-skips on");
@@ -2292,6 +2334,18 @@ public sealed class ReleasePackageManifestTests
             "Tenants source-mode");
     }
 
+    private static void AssertPlatformPackageReferenceOwnerSelection(string jobBlock)
+    {
+        string[] ownerInputs = jobBlock
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Split('\n')
+            .Where(static line => line.TrimStart().StartsWith("integration-test-reference-owners:", StringComparison.Ordinal))
+            .ToArray();
+
+        ownerInputs.ShouldBe(["      integration-test-reference-owners: tenants"]);
+    }
+
     private static void AssertSemanticReleaseGovernanceJobIsBlocking(string jobBlock)
     {
         string normalizedJob = jobBlock
@@ -2314,7 +2368,7 @@ public sealed class ReleasePackageManifestTests
 
         lines.ShouldContain("  semantic-release-governance:");
         lines.ShouldContain("    runs-on: ubuntu-latest");
-        lines.ShouldContain("    timeout-minutes: 10");
+        lines.ShouldContain("    timeout-minutes: 45");
         checkoutActions.Length.ShouldBe(1);
         checkoutActions[0].Groups["sha"].Value.ShouldBe(CheckoutActionSha);
         lines.ShouldContain("          persist-credentials: false");
@@ -2385,7 +2439,7 @@ public sealed class ReleasePackageManifestTests
             [
                 "  semantic-release-governance:",
                 "    runs-on: ubuntu-latest",
-                "    timeout-minutes: 10",
+                "    timeout-minutes: 45",
                 "    steps:",
                 $"      - uses: actions/checkout@{CheckoutActionSha} # v7.0.0",
                 "        with:",

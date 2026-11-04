@@ -15,6 +15,19 @@ namespace Hexalith.EventStore.Server.Tests.SignalR;
 
 public class ProjectionChangedHubTests {
     [Fact]
+    public async Task CanceledSnapshotAdmissionRemovesNewMembershipState()
+    {
+        string id = "canceled-snapshot-" + Guid.NewGuid().ToString("N");
+        ProjectionChangedHub hub = CreateHub(id, Substitute.For<IGroupManager>(), user: CreateUser("acme"));
+        using var canceled = new CancellationTokenSource();
+        await canceled.CancelAsync();
+        hub.Context.ConnectionAborted.Returns(canceled.Token);
+        await Should.ThrowAsync<OperationCanceledException>(() => hub.ReconcileProjectionMembership(1, []));
+        var field = typeof(ProjectionChangedHub).GetField("_membershipStates", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        ((System.Collections.IDictionary)field.GetValue(null)!).Contains(id).ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task JoinGroup_ValidInput_AddsConnectionToGroup() {
         IGroupManager groups = Substitute.For<IGroupManager>();
         ProjectionChangedHub sut = CreateHub("conn-join", groups, maxGroupsPerConnection: 5, user: CreateUser("acme"));
@@ -458,6 +471,23 @@ public class ProjectionChangedHubTests {
         HubException ex = await Should.ThrowAsync<HubException>(() =>
             sut.JoinGroup("order-list", "acme"));
         ex.Message.ShouldContain("Maximum groups per connection");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AcknowledgedSnapshotReplacesAtQuotaAndIgnoresOlderIntent(bool scoped)
+    {
+        string connection = "snapshot-quota-" + scoped;
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub hub = CreateHub(connection, groups, maxGroupsPerConnection: 1);
+        string scope = scoped ? "scope" : string.Empty;
+        (await hub.ReconcileProjectionMembership(1, [["old", "acme", scope]])).ShouldBe(1);
+        (await hub.ReconcileProjectionMembership(3, [["new", "acme", scope]])).ShouldBe(3);
+        (await hub.ReconcileProjectionMembership(2, [])).ShouldBe(3);
+        await groups.Received(1).RemoveFromGroupAsync(connection, "old:acme" + (scoped ? ":scope" : string.Empty), Arg.Any<CancellationToken>());
+        await groups.DidNotReceive().RemoveFromGroupAsync(connection, "new:acme" + (scoped ? ":scope" : string.Empty), Arg.Any<CancellationToken>());
+        await hub.OnDisconnectedAsync(null);
     }
 
     private static ProjectionChangedHub CreateHub(

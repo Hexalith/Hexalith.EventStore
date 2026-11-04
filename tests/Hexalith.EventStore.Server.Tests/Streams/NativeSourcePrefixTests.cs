@@ -103,6 +103,57 @@ public sealed class NativeSourcePrefixTests
         state.CommittedSnapshots.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task NativeBatchReusesFreshRangeMetadataForItsInsideProof()
+    {
+        var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
+        var stored = new EventEnvelope("actual-message", identity.AggregateId, "Aggregate", identity.TenantId, identity.Domain,
+            1, 5, DateTimeOffset.UnixEpoch, "corr", "cause", "actor", "v1", "Event", 1, "json", "{}"u8.ToArray(), null);
+        SourceProof proof = SourceProofCodec.Extend(SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV"), stored);
+        var state = new Hexalith.EventStore.Server.Tests.Actors.FaultInjectingActorStateManager();
+        await state.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [identity.MetadataKey] = new AggregateMetadata(1, DateTimeOffset.UnixEpoch, null) { SourceProof = proof },
+            [identity.EventStreamKeyPrefix + "1"] = stored,
+        });
+        var actor = Hexalith.EventStore.Server.Tests.Actors.AggregateActorTestHelper.CreateActor(stateManager: state).Actor;
+
+        SourceNativeReadBatch result = await actor.ReadNativeSourceBatchAsync(0, 1, 100, 2_097_152, metadataOnly: false);
+
+        result.Range!.Events.ShouldBe([stored]);
+        result.Range.ReasonCode.ShouldBeNull();
+        state.Trace.Count(entry => entry == $"TryGetState:{identity.MetadataKey}").ShouldBe(2);
+        state.Trace.ShouldNotContain(entry => entry.StartsWith("SaveState", StringComparison.Ordinal)
+            || entry.StartsWith("SetState", StringComparison.Ordinal) || entry.StartsWith("AddState", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task NativeBatchRefusesInvalidProofInFreshRangeMetadataBeforeReadingEvents()
+    {
+        var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
+        var stored = new EventEnvelope("actual-message", identity.AggregateId, "Aggregate", identity.TenantId, identity.Domain,
+            1, 5, DateTimeOffset.UnixEpoch, "corr", "cause", "actor", "v1", "Event", 1, "json", "{}"u8.ToArray(), null);
+        SourceProof proof = SourceProofCodec.Extend(SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV"), stored);
+        var state = new Hexalith.EventStore.Server.Tests.Actors.FaultInjectingActorStateManager();
+        await state.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [identity.MetadataKey] = new AggregateMetadata(1, DateTimeOffset.UnixEpoch, null) { SourceProof = proof },
+            [identity.EventStreamKeyPrefix + "1"] = stored,
+        });
+        state.ActBeforeCall($"TryGetState:{identity.MetadataKey}", 2, manager => manager.InjectConcurrentWinnerAsync(
+            new Dictionary<string, object>
+            {
+                [identity.MetadataKey] = new AggregateMetadata(1, DateTimeOffset.UnixEpoch, null),
+            }));
+        var actor = Hexalith.EventStore.Server.Tests.Actors.AggregateActorTestHelper.CreateActor(stateManager: state).Actor;
+
+        SourceNativeReadBatch result = await actor.ReadNativeSourceBatchAsync(0, 1, 100, 2_097_152, metadataOnly: false);
+
+        result.Range!.ReasonCode.ShouldBe("source_conflict");
+        result.Range.Events.ShouldBeEmpty();
+        state.Trace.ShouldNotContain($"TryGetState:{identity.EventStreamKeyPrefix}1");
+    }
+
     [Theory]
     [InlineData("stable")]
     [InlineData("same-head-replacement")]

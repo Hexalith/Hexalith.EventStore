@@ -86,9 +86,9 @@ public sealed class LocalLeaseReleaseSchedulingTests
         await using var next = await authority.AcquireAsync(TestContext.Current.CancellationToken);
     }
 
-    /// <summary>A real validation callback can complete its prior lease without waiting on its own gate.</summary>
+    /// <summary>A real validation callback completes its prior lease without deadlock, then rebases onto the fresh unchanged authority.</summary>
     [Fact]
-    public async Task ReentrantObserverCompletionUsesOriginalCasAndForcesFreshValidationRetry()
+    public async Task ReentrantObserverCompletionRebasesOntoFreshLeaseInventory()
     {
         var fixture = new RouteCatalogTestFixture();
         await fixture.ActivateAsync(fixture.Candidate());
@@ -107,7 +107,7 @@ public sealed class LocalLeaseReleaseSchedulingTests
 
         await using RouteCatalogDispatchLease next = await authority.AcquireAsync().WaitAsync(TimeSpan.FromSeconds(5));
 
-        observations.ShouldBe(3);
+        observations.ShouldBe(2);
         (await fixture.Store.ReadAsync(default)).State.Leases.Single().LeaseId.ShouldNotBe(priorId);
         RouteCatalogLocalAdmissionTurn.IsHeldBy(authority).ShouldBeFalse();
     }
