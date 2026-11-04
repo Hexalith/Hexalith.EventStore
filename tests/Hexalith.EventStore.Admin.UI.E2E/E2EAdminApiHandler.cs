@@ -8,6 +8,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -57,6 +58,7 @@ internal sealed class E2EAdminApiHandler(IConfiguration configuration) : HttpMes
         {
             "/api/v1/admin/health" => new SystemHealthReport(HealthStatus.Healthy, 0, 0, 0, [], new(null, null, null)),
             "/api/v1/admin/health/dapr/history" => new DaprComponentHealthTimeline([], false, HistoryStatus: SystemHealthMetricStatus.Available),
+            "/api/v1/admin/streams/GetRecentlyActiveStreams" => new PagedResult<StreamSummary>([], 0, null),
             "/api/v1/admin/streams" or "/api/v1/admin/streams/commands" or "/api/v1/admin/dead-letters" => new PagedResult<object>([], 0, null),
             "/api/v1/admin/dead-letters/count" => 0,
             "/api/v1/admin/storage/overview" => new StorageOverview(0, null, [], 0, StorageIndexStatus.Empty),

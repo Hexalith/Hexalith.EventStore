@@ -3,7 +3,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI;
 using Hexalith.EventStore.Admin.UI.Services;
 
@@ -31,12 +33,19 @@ public class E2EAdminApiTransportTests
 
         report.ShouldNotBeNull();
         report.TotalEventCount.ShouldBe(0);
+        using IServiceScope scope = app.Services.CreateScope();
+        PagedResult<StreamSummary> streams = await scope.ServiceProvider.GetRequiredService<AdminStreamApiClient>()
+            .GetRecentlyActiveStreamsAsync(null, null, 100, TestContext.Current.CancellationToken);
+        streams.Items.ShouldBeEmpty();
+        streams.TotalCount.ShouldBe(0);
+        streams.ContinuationToken.ShouldBeNull();
         backend.VerifyNoRejectedRequests();
     }
 
     [Theory]
     [InlineData("method", HttpStatusCode.MethodNotAllowed)]
     [InlineData("route", HttpStatusCode.NotFound)]
+    [InlineData("route-prefix", HttpStatusCode.NotFound)]
     [InlineData("endpoint", HttpStatusCode.Forbidden)]
     [InlineData("target", HttpStatusCode.Forbidden)]
     [InlineData("sidecar-token", HttpStatusCode.Unauthorized)]
@@ -60,6 +69,7 @@ public class E2EAdminApiTransportTests
         {
             case "method": request.Method = HttpMethod.Post; break;
             case "route": request.RequestUri = new Uri(E2EAdminApiHandler.Endpoint + "/undeclared"); break;
+            case "route-prefix": request.RequestUri = new Uri(E2EAdminApiHandler.Endpoint + "/api/v1/admin/streams/GetRecentlyActiveStreams/undeclared"); break;
             case "endpoint": request.RequestUri = new Uri("http://127.0.0.1:3500/api/v1/admin/health"); break;
             case "target": request.Headers.Remove("dapr-app-id"); request.Headers.Add("dapr-app-id", "foreign-app"); break;
             case "sidecar-token": request.Headers.Remove("dapr-api-token"); break;
