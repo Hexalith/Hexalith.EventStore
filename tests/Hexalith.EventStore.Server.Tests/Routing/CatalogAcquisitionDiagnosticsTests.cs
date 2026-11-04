@@ -36,8 +36,12 @@ public sealed class CatalogAcquisitionDiagnosticsTests
         {
             if (loggerResolutionThrows) log.Records.ShouldBeEmpty();
             else
-                foreach (string stage in new[] { "CatalogAdmissionWait", "CatalogStateRead", "CatalogActivationDigest", "CatalogHostCapture", "CatalogTrust", "CatalogCompareExchange", "CatalogSnapshot" })
+            {
+                log.Records.Where(record => Equals(record["Stage"], "CatalogStateRead")).Select(record => record["Status"])
+                    .ShouldBe(new object[] { "Started", "Completed", "Started", "Completed" });
+                foreach (string stage in new[] { "CatalogAdmissionWait", "CatalogActivationDigest", "CatalogHostCapture", "CatalogTrust", "CatalogCompareExchange", "CatalogSnapshot" })
                     CommandDispatchDiagnosticsTests.AssertClosed(log, stage, "Completed");
+            }
         }
         (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
         CommandDispatchDiagnosticsTests.AssertPrivate(log);
