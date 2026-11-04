@@ -26,6 +26,76 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Controllers;
 
 public partial class QueriesControllerTests {
+    /// <summary>Verifies that an additional tenant header is rejected before query authorization or lookup.</summary>
+    /// <param name="headerTenant">The additional header value alongside the body tenant.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData("test-tenant")]
+    [InlineData("other-tenant")]
+    [InlineData("")]
+    public async Task Submit_AdditionalTenantHeader_RejectsBeforeAuthorizationOrLookup(string headerTenant)
+    {
+        IMediator mediator = Substitute.For<IMediator>();
+        IETagService etag = Substitute.For<IETagService>();
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        QueriesController controller = CreateController(mediator, etag, tenantValidator: tenantValidator, rbacValidator: rbacValidator);
+        controller.Request.Headers["X-Hexalith-Tenant"] = headerTenant;
+
+        (await controller.Submit(CreateTestRequest(), null, CancellationToken.None)).ShouldBeOfType<BadRequestObjectResult>();
+
+        tenantValidator.ReceivedCalls().ShouldBeEmpty();
+        rbacValidator.ReceivedCalls().ShouldBeEmpty();
+        etag.ReceivedCalls().ShouldBeEmpty();
+        mediator.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies that malformed or duplicate grants are rejected before query authorization or lookup.</summary>
+    /// <param name="extraGrant">The malformed or normalized-duplicate grant.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData("system")]
+    [InlineData(" tenant-a")]
+    [InlineData("TEST-TENANT")]
+    public async Task Submit_MalformedOrDuplicateGrant_RejectsBeforeAuthorizationOrLookup(string extraGrant)
+    {
+        IMediator mediator = Substitute.For<IMediator>();
+        IETagService etag = Substitute.For<IETagService>();
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", "test-user"), new Claim("eventstore:tenant", "test-tenant"), new Claim("eventstore:tenant", extraGrant),
+        ], "test"));
+        QueriesController controller = CreateController(mediator, etag, principal, tenantValidator, rbacValidator);
+
+        (await controller.Submit(CreateTestRequest(), null, CancellationToken.None)).ShouldBeOfType<ForbidResult>();
+
+        tenantValidator.ReceivedCalls().ShouldBeEmpty();
+        rbacValidator.ReceivedCalls().ShouldBeEmpty();
+        etag.ReceivedCalls().ShouldBeEmpty();
+        mediator.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies that query authorization, dispatch and rate-limit context use the canonical tenant.</summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async Task Submit_MixedCaseScope_CanonicalizesBeforeAuthorizationAndRateLimitContext()
+    {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>()).Returns(CreateProjectionResult());
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), "test-tenant", Arg.Any<CancellationToken>(), "order-1")
+            .Returns(TenantValidationResult.AllowedFor("test-tenant"));
+        QueriesController controller = CreateController(mediator, tenantValidator: tenantValidator);
+
+        (await controller.Submit(CreateTestRequest() with { Tenant = "Test-Tenant" }, null, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>();
+
+        controller.HttpContext.Items["RequestTenantId"].ShouldBe("test-tenant");
+        _ = await tenantValidator.Received(1).ValidateAsync(Arg.Any<ClaimsPrincipal>(), "test-tenant", Arg.Any<CancellationToken>(), "order-1");
+        _ = await mediator.Received(1).Send(Arg.Is<SubmitQuery>(query => query.Tenant == "test-tenant"), Arg.Any<CancellationToken>());
+    }
+
     /// <summary>
     /// Generates a self-routing ETag for the "orders" projection type (matches CreateTestRequest).
     /// </summary>

@@ -135,7 +135,7 @@ public class CommandsController(
         bool platformScope = TenantCanonicalizer.IsPlatformScope(request.Tenant);
         if (Request.Headers.ContainsKey("X-Hexalith-Scope") && (!platformScope
                 || !string.Equals(Request.Headers["X-Hexalith-Scope"].ToString(), request.Tenant, StringComparison.Ordinal))
-            || Request.Headers.ContainsKey("X-Hexalith-Tenant") && platformScope)
+            || Request.Headers.ContainsKey("X-Hexalith-Tenant") && (!workloadOnly || platformScope))
             return BadRequest("Mixed or conflicting request scopes are not allowed.");
         if (!platformScope)
         {

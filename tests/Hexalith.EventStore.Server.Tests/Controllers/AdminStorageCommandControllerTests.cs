@@ -26,6 +26,117 @@ using EventStoreTenantValidator = Hexalith.EventStore.Authorization.ITenantValid
 namespace Hexalith.EventStore.Server.Tests.Controllers;
 
 public class AdminStorageCommandControllerTests {
+    /// <summary>Provides invalid tenant-scope scenarios for each storage mutation.</summary>
+    /// <returns>Each storage operation paired with one invalid scope scenario.</returns>
+    public static IEnumerable<object[]> InvalidScopes()
+    {
+        foreach (string operation in new[] { "snapshot", "set", "delete" })
+        {
+            foreach (string violation in new[] { "reserved", "malformed", "tenant-header", "platform-header", "invalid-grant", "duplicate-grant" })
+            {
+                yield return [operation, violation];
+            }
+        }
+    }
+
+    /// <summary>Verifies that invalid storage scopes are rejected before authorization or state access.</summary>
+    /// <param name="operation">The storage mutation to invoke.</param>
+    /// <param name="violation">The invalid scope or grant scenario.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [MemberData(nameof(InvalidScopes))]
+    public async Task StorageMutation_InvalidOrMixedScope_RejectsBeforeAuthorizationOrState(string operation, string violation)
+    {
+        List<Claim> claims = [new("eventstore:tenant", "tenant-a"), new("eventstore:admin-role", "Operator")];
+        if (violation == "invalid-grant")
+        {
+            claims.Add(new Claim("eventstore:tenant", "system"));
+        }
+        if (violation == "duplicate-grant")
+        {
+            claims.Add(new Claim("eventstore:tenant", "TENANT-A"));
+        }
+        (AdminStorageCommandController controller, IActorProxyFactory factory, EventStoreTenantValidator tenantValidator,
+            IRbacValidator rbacValidator, DaprClient dapr) = CreateController(CreatePrincipal([.. claims]));
+        string tenant = violation switch
+        {
+            "reserved" => "SYSTEM",
+            "malformed" => " tenant-a",
+            _ => "tenant-a",
+        };
+        if (violation == "tenant-header")
+        {
+            controller.Request.Headers["X-Hexalith-Tenant"] = tenant;
+        }
+        if (violation == "platform-header")
+        {
+            controller.Request.Headers["X-Hexalith-Scope"] = "platform:tenants";
+        }
+
+        AdminOperationResult result = ExtractOperation(await InvokeStorageMutation(controller, operation, tenant));
+
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe(violation is "reserved" or "malformed" ? "RejectedValidation" : "RejectedUnauthorized");
+        tenantValidator.ReceivedCalls().ShouldBeEmpty();
+        rbacValidator.ReceivedCalls().ShouldBeEmpty();
+        factory.ReceivedCalls().ShouldBeEmpty();
+        dapr.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies that storage authorization and persisted identities use the canonical tenant.</summary>
+    /// <param name="operation">The storage mutation to invoke.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData("snapshot")]
+    [InlineData("set")]
+    [InlineData("delete")]
+    public async Task StorageMutation_MixedCaseTenant_CanonicalizesBeforeAuthorizationAndState(string operation)
+    {
+        (AdminStorageCommandController controller, IActorProxyFactory factory, EventStoreTenantValidator tenantValidator,
+            IRbacValidator rbacValidator, DaprClient dapr) = CreateController(CreatePrincipal(
+                new Claim("eventstore:tenant", "TENANT-A"), new Claim("eventstore:admin-role", "Operator")));
+        SetupPolicyIndex(dapr, operation == "delete"
+            ? [new SnapshotPolicy("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow)] : []);
+        _ = dapr.GetStateAndETagAsync<List<SnapshotPolicy>>("statestore", Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(), metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>()).Returns(_ => (new List<SnapshotPolicy>(), "etag"));
+        _ = dapr.TrySaveStateAsync("statestore", Arg.Any<string>(), Arg.Any<List<SnapshotPolicy>>(), Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(), metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await InvokeStorageMutation(controller, operation, "Tenant-A");
+
+        _ = await tenantValidator.Received(1).ValidateAsync(Arg.Any<ClaimsPrincipal>(), "tenant-a", Arg.Any<CancellationToken>(),
+            operation == "snapshot" ? "order-1" : "OrderAggregate");
+        _ = await rbacValidator.Received(1).ValidateAsync(Arg.Any<ClaimsPrincipal>(), "tenant-a", "orders",
+            operation == "snapshot" ? "command:replay" : "snapshot:policy", operation == "snapshot" ? "command" : "admin",
+            Arg.Any<CancellationToken>(), operation == "snapshot" ? "order-1" : "OrderAggregate");
+        if (operation == "snapshot")
+        {
+            _ = factory.Received(1).CreateActorProxy<IAggregateActor>(new ActorId("tenant-a:orders:order-1"), "AggregateActor");
+            _ = await dapr.Received(1).TrySaveStateAsync("statestore", "admin:storage-snapshot-jobs:tenant-a",
+                Arg.Is<List<SnapshotJob>>(jobs => jobs.Count == 1 && jobs[0].TenantId == "tenant-a"), Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(), metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            _ = await dapr.Received(1).TrySaveStateAsync("statestore", "admin:storage-snapshot-policies:tenant-a",
+                Arg.Is<List<SnapshotPolicy>>(policies => operation == "delete" ? policies.Count == 0
+                    : policies.Count == 1 && policies[0].TenantId == "tenant-a"), Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(), metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>());
+        }
+    }
+
+    private static Task<ActionResult<AdminOperationResult>> InvokeStorageMutation(AdminStorageCommandController controller, string operation, string tenant)
+        => operation switch
+        {
+            "snapshot" => controller.CreateSnapshot(new ManualSnapshotRequest(tenant, "orders", "order-1")),
+            "set" => controller.SetSnapshotPolicy(new SnapshotPolicySetRequest(tenant, "orders", "OrderAggregate", 100)),
+            _ => controller.DeleteSnapshotPolicy(new SnapshotPolicyDeleteRequest(tenant, "orders", "OrderAggregate")),
+        };
+
     [Fact]
     public async Task CreateSnapshot_CommandSubmitOnly_DoesNotCreateActorProxy() {
         (AdminStorageCommandController controller, IActorProxyFactory factory, _, _, _) = CreateController(
