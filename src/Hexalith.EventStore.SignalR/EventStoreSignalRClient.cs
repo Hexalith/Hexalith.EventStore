@@ -16,8 +16,28 @@ namespace Hexalith.EventStore.SignalR;
 public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     private const string CategoryName = "Hexalith.EventStore.SignalR.EventStoreSignalRClient";
     private const int MaxGroupScopeLength = 64;
+    private static readonly TimeSpan MembershipAttemptBudget = TimeSpan.FromSeconds(5);
+    private long _connectionRecoveryEpoch = -1;
+    private int _membershipRecoveryPending;
+    private long _rejectedIntentGeneration = -1;
+    private HubException? _membershipRejection;
 
     private long _recoveryGeneration;
+    private Task? _disposeTask;
+    private IProjectionCallback[] _disposingCallbacks = [];
+    private long _intentGeneration;
+    private readonly SemaphoreSlim _membershipGate = new(1, 1);
+    private int _membershipProtocol;
+    private string? _membershipConnectionId;
+    private long _connectionEpoch;
+    private long _membershipEpoch;
+    private readonly Dictionary<string, GroupSubscription> _legacyGroups = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _legacyUncertainGroups = new(StringComparer.Ordinal);
+    private int _repairRunning;
+    private readonly object _repairGate = new();
+    private Task _repairTask = Task.CompletedTask;
+    private long _repairRequested;
+    private readonly Dictionary<string, List<IProjectionCallback>> _retiredCallbacks = new(StringComparer.Ordinal);
 
     private readonly object _subscriptionGate = new();
 
@@ -82,27 +102,45 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// <summary>Gets whether the underlying SignalR hub connection is currently connected.</summary>
     public bool IsConnected => _connection.State == HubConnectionState.Connected;
 
-    /// <inheritdoc/>
-    public async ValueTask DisposeAsync() {
-        await _disposeCts.CancelAsync().ConfigureAwait(false);
+    /// <summary>Gets whether this connection negotiated generation-ordered membership acknowledgements.</summary>
+    public bool SupportsAcknowledgedMembership => Volatile.Read(ref _membershipProtocol) == 1;
+
+    /// <summary>Revokes immediately. Self-disposal returns; external disposal awaits the owned callback drain and transport shutdown.</summary>
+    public ValueTask DisposeAsync() {
         lock (_subscriptionGate) {
-            foreach (GroupSubscription subscription in _subscribedGroups.Values) {
-                foreach (ProjectionCallback<bool> callback in subscription.Callbacks.Values) {
-                    callback.Revoke();
-                }
-                foreach (ProjectionCallback<ProjectionChangedDetail> callback in subscription.DetailCallbacks.Values) {
-                    callback.Revoke();
-                }
+            if (_disposeTask is null) {
+                _disposingCallbacks = [.. _subscribedGroups.Values.SelectMany(subscription =>
+                    subscription.Callbacks.Values.Cast<IProjectionCallback>().Concat(subscription.DetailCallbacks.Values)),
+                    .. _retiredCallbacks.Values.SelectMany(callbacks => callbacks)];
+                foreach (IProjectionCallback callback in _disposingCallbacks) { _ = callback.RevokeAndDrainAsync(); }
+                _subscribedGroups.Clear();
+                // Shutdown cannot begin on a synchronous dispatch frame: StopAsync can wait
+                // for that frame. Retain one task which every external disposer can await.
+                _disposeTask = Task.Run(DisposeCoreAsync);
             }
-            _subscribedGroups.Clear();
+            return _disposingCallbacks.Any(callback => callback.IsExecuting)
+                ? ValueTask.CompletedTask : new ValueTask(_disposeTask);
         }
+    }
 
-        if (_connection.State != HubConnectionState.Disconnected) {
-            await _connection.StopAsync().ConfigureAwait(false);
+    private async Task DisposeCoreAsync() {
+        List<Exception> failures = [];
+        try { await _disposeCts.CancelAsync().ConfigureAwait(false); }
+        catch (Exception exception) { failures.Add(exception); }
+        try { await Task.WhenAll(_disposingCallbacks.Select(callback => callback.Completion)).ConfigureAwait(false); }
+        catch (Exception exception) { failures.Add(exception); }
+        Task repair;
+        lock (_repairGate) { repair = _repairTask; }
+        try { await repair.ConfigureAwait(false); }
+        catch (Exception exception) { failures.Add(exception); }
+        try {
+            if (_connection.State != HubConnectionState.Disconnected) { await _connection.StopAsync().ConfigureAwait(false); }
         }
-
-        await _connection.DisposeAsync().ConfigureAwait(false);
+        catch (Exception exception) { failures.Add(exception); }
+        try { await _connection.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception exception) { failures.Add(exception); }
         _disposeCts.Dispose();
+        if (failures.Count > 0) { throw new AggregateException("Projection client teardown failed.", failures); }
     }
 
     /// <summary>
@@ -111,7 +149,9 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task StartAsync(CancellationToken cancellationToken = default) {
+        ThrowIfDisposing();
         await _connection.StartAsync(cancellationToken).ConfigureAwait(false);
+        Interlocked.Increment(ref _connectionEpoch);
 
         // Join all pre-subscribed groups on initial connect
         await JoinAllGroupsAsync(cancellationToken).ConfigureAwait(false);
@@ -133,6 +173,7 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// <param name="onChanged">The onChanged argument.</param>
     /// <param name="cancellationToken">Cancels the underlying RPC, settling its awaiter.</param>
     public async Task SubscribeAsync(string projectionType, string tenantId, Action onChanged, CancellationToken cancellationToken) {
+        ThrowIfDisposing();
         using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
         CancellationToken token = invocation.Token;
         ValidateGroupPart(projectionType, nameof(projectionType));
@@ -144,19 +185,22 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         GroupSubscription subscription;
         Guid callbackId = Guid.NewGuid();
         lock (_subscriptionGate) {
+            ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
             subscription = _subscribedGroups.GetOrAdd(groupName, _ => new GroupSubscription(projectionType, tenantId, null));
             _ = subscription.Callbacks.TryAdd(callbackId, new ProjectionCallback<bool>(onChanged, _ => onChanged()));
+            _intentGeneration++;
         }
 
         try {
             token.ThrowIfCancellationRequested();
             if (_connection.State == HubConnectionState.Connected) {
-                await _connection.InvokeAsync("JoinGroup", projectionType, tenantId, token).ConfigureAwait(false);
+                await ReconcileMembershipAsync(token).ConfigureAwait(false);
             }
             token.ThrowIfCancellationRequested();
         }
         catch {
-            RollBackSignalCallback(groupName, subscription, callbackId);
+            await RollBackSignalCallbackAsync(groupName, subscription, callbackId).ConfigureAwait(false);
+            ScheduleMembershipRepair();
             throw;
         }
     }
@@ -206,6 +250,7 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         string tenantId,
         string? groupScope,
         Action<ProjectionChangedDetail> onChanged, CancellationToken cancellationToken) {
+        ThrowIfDisposing();
         using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
         CancellationToken token = invocation.Token;
         ValidateGroupPart(projectionType, nameof(projectionType));
@@ -218,19 +263,22 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         GroupSubscription subscription;
         Guid callbackId = Guid.NewGuid();
         lock (_subscriptionGate) {
+            ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
             subscription = _subscribedGroups.GetOrAdd(groupName, _ => new GroupSubscription(projectionType, tenantId, normalizedScope));
             _ = subscription.DetailCallbacks.TryAdd(callbackId, new ProjectionCallback<ProjectionChangedDetail>(onChanged, onChanged));
+            _intentGeneration++;
         }
 
         try {
             token.ThrowIfCancellationRequested();
             if (_connection.State == HubConnectionState.Connected) {
-                await _connection.InvokeAsync("JoinGroupScoped", projectionType, tenantId, normalizedScope, token).ConfigureAwait(false);
+                await ReconcileMembershipAsync(token).ConfigureAwait(false);
             }
             token.ThrowIfCancellationRequested();
         }
         catch {
-            RollBackDetailCallback(groupName, subscription, callbackId);
+            await RollBackDetailCallbackAsync(groupName, subscription, callbackId).ConfigureAwait(false);
+            ScheduleMembershipRepair();
             throw;
         }
     }
@@ -251,29 +299,8 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// <param name="onChanged">The onChanged argument.</param>
     /// <param name="cancellationToken">Cancels the underlying RPC, settling its awaiter.</param>
     public async Task UnsubscribeAsync(string projectionType, string tenantId, Action onChanged, CancellationToken cancellationToken) {
-        using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
-        ValidateGroupPart(projectionType, nameof(projectionType));
-        ValidateGroupPart(tenantId, nameof(tenantId));
         ArgumentNullException.ThrowIfNull(onChanged);
-        string? normalizedScope = null;
-        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
-        bool leave;
-        lock (_subscriptionGate) {
-            if (!_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
-                return;
-            }
-            foreach ((Guid key, ProjectionCallback<bool> callback) in subscription.Callbacks.ToArray()) {
-                if (callback.Original == (Delegate)onChanged) {
-                    callback.Revoke();
-                    _ = subscription.Callbacks.TryRemove(key, out _);
-                }
-            }
-            leave = subscription.Callbacks.IsEmpty && subscription.DetailCallbacks.IsEmpty;
-            RemoveSubscriptionIfEmpty(groupName, subscription);
-        }
-        if (leave && _connection.State == HubConnectionState.Connected) {
-            await _connection.InvokeAsync("LeaveGroup", projectionType, tenantId, invocation.Token).ConfigureAwait(false);
-        }
+        await RemoveCallbacksAsync(projectionType, tenantId, null, onChanged, false, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -289,26 +316,7 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// <param name="tenantId">The tenantId argument.</param>
     /// <param name="cancellationToken">Cancels the underlying RPC, settling its awaiter.</param>
     public async Task UnsubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken) {
-        using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
-        ValidateGroupPart(projectionType, nameof(projectionType));
-        ValidateGroupPart(tenantId, nameof(tenantId));
-        string? normalizedScope = null;
-        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
-        bool leave;
-        lock (_subscriptionGate) {
-            if (!_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
-                return;
-            }
-            foreach ((Guid key, ProjectionCallback<bool> callback) in subscription.Callbacks.ToArray()) {
-                callback.Revoke();
-                _ = subscription.Callbacks.TryRemove(key, out _);
-            }
-            leave = subscription.Callbacks.IsEmpty && subscription.DetailCallbacks.IsEmpty;
-            RemoveSubscriptionIfEmpty(groupName, subscription);
-        }
-        if (leave && _connection.State == HubConnectionState.Connected) {
-            await _connection.InvokeAsync("LeaveGroup", projectionType, tenantId, invocation.Token).ConfigureAwait(false);
-        }
+        await RemoveCallbacksAsync(projectionType, tenantId, null, null, false, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -348,29 +356,8 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         string tenantId,
         string? groupScope,
         Action<ProjectionChangedDetail> onChanged, CancellationToken cancellationToken) {
-        using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
-        ValidateGroupPart(projectionType, nameof(projectionType));
-        ValidateGroupPart(tenantId, nameof(tenantId));
         ArgumentNullException.ThrowIfNull(onChanged);
-        string? normalizedScope = NormalizeScope(groupScope, nameof(groupScope));
-        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
-        bool leave;
-        lock (_subscriptionGate) {
-            if (!_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
-                return;
-            }
-            foreach ((Guid key, ProjectionCallback<ProjectionChangedDetail> callback) in subscription.DetailCallbacks.ToArray()) {
-                if (callback.Original == (Delegate)onChanged) {
-                    callback.Revoke();
-                    _ = subscription.DetailCallbacks.TryRemove(key, out _);
-                }
-            }
-            leave = subscription.Callbacks.IsEmpty && subscription.DetailCallbacks.IsEmpty;
-            RemoveSubscriptionIfEmpty(groupName, subscription);
-        }
-        if (leave && _connection.State == HubConnectionState.Connected) {
-            await _connection.InvokeAsync("LeaveGroupScoped", projectionType, tenantId, normalizedScope, invocation.Token).ConfigureAwait(false);
-        }
+        await RemoveCallbacksAsync(projectionType, tenantId, groupScope, onChanged, true, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -396,26 +383,7 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// <param name="groupScope">The groupScope argument.</param>
     /// <param name="cancellationToken">Cancels the underlying RPC, settling its awaiter.</param>
     public async Task UnsubscribeDetailAsync(string projectionType, string tenantId, string? groupScope, CancellationToken cancellationToken) {
-        using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
-        ValidateGroupPart(projectionType, nameof(projectionType));
-        ValidateGroupPart(tenantId, nameof(tenantId));
-        string? normalizedScope = NormalizeScope(groupScope, nameof(groupScope));
-        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
-        bool leave;
-        lock (_subscriptionGate) {
-            if (!_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
-                return;
-            }
-            foreach ((Guid key, ProjectionCallback<ProjectionChangedDetail> callback) in subscription.DetailCallbacks.ToArray()) {
-                callback.Revoke();
-                _ = subscription.DetailCallbacks.TryRemove(key, out _);
-            }
-            leave = subscription.Callbacks.IsEmpty && subscription.DetailCallbacks.IsEmpty;
-            RemoveSubscriptionIfEmpty(groupName, subscription);
-        }
-        if (leave && _connection.State == HubConnectionState.Connected) {
-            await _connection.InvokeAsync("LeaveGroupScoped", projectionType, tenantId, normalizedScope, invocation.Token).ConfigureAwait(false);
-        }
+        await RemoveCallbacksAsync(projectionType, tenantId, groupScope, null, true, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Removes a tenant-wide detail callback with cancellation of the leave invocation.</summary>
@@ -432,6 +400,71 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// <param name="cancellationToken">The leave invocation lifetime.</param>
     public Task UnsubscribeDetailAsync(string projectionType, string tenantId, CancellationToken cancellationToken)
         => UnsubscribeDetailAsync(projectionType, tenantId, groupScope: null, cancellationToken);
+
+    private void ThrowIfDisposing() {
+        lock (_subscriptionGate) { ObjectDisposedException.ThrowIf(_disposeTask is not null, this); }
+    }
+
+    private async Task RemoveCallbacksAsync(string projectionType, string tenantId, string? scope, Delegate? original,
+        bool detail, CancellationToken cancellationToken) {
+        using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
+        ValidateGroupPart(projectionType, nameof(projectionType));
+        ValidateGroupPart(tenantId, nameof(tenantId));
+        string? normalizedScope = NormalizeScope(scope, nameof(scope));
+        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
+        Task[] drains;
+        bool reentrant;
+        lock (_subscriptionGate) {
+            ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
+            if (_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
+                if (detail) {
+                    foreach ((Guid id, ProjectionCallback<ProjectionChangedDetail> callback) in subscription.DetailCallbacks.ToArray()) {
+                        if (original is null || callback.Original == original) {
+                            _ = subscription.DetailCallbacks.TryRemove(id, out _);
+                            RetireCallback(groupName, callback);
+                        }
+                    }
+                }
+                else {
+                    foreach ((Guid id, ProjectionCallback<bool> callback) in subscription.Callbacks.ToArray()) {
+                        if (original is null || callback.Original == original) {
+                            _ = subscription.Callbacks.TryRemove(id, out _);
+                            RetireCallback(groupName, callback);
+                        }
+                    }
+                }
+                RemoveSubscriptionIfEmpty(groupName, subscription);
+                _intentGeneration++;
+            }
+            if (!_retiredCallbacks.TryGetValue(groupName, out List<IProjectionCallback>? retired)) { return; }
+            reentrant = IsExecutingCallback();
+            drains = [.. retired.Select(callback => callback.Completion)];
+        }
+        // Group-wide self-removal cannot await any active frame: two callbacks could
+        // otherwise each wait for the other's return. External removers retain all drains.
+        if (reentrant) { ScheduleMembershipRepair(); return; }
+        await Task.WhenAll(drains).ConfigureAwait(false);
+        try { await ReconcileMembershipAsync(invocation.Token).ConfigureAwait(false); }
+        catch { ScheduleMembershipRepair(); throw; }
+    }
+
+    private bool IsExecutingCallback() => _subscribedGroups.Values.Any(subscription =>
+        subscription.Callbacks.Values.Any(callback => callback.IsExecuting)
+        || subscription.DetailCallbacks.Values.Any(callback => callback.IsExecuting))
+        || _retiredCallbacks.Values.Any(callbacks => callbacks.Any(callback => callback.IsExecuting));
+
+    private void RetireCallback(string groupName, IProjectionCallback callback) {
+        foreach (string key in _retiredCallbacks.Keys.ToArray()) {
+            _retiredCallbacks[key].RemoveAll(item => item.Completion.IsCompleted);
+            if (_retiredCallbacks[key].Count == 0) { _retiredCallbacks.Remove(key); }
+        }
+        _ = callback.RevokeAndDrainAsync();
+        if (!_retiredCallbacks.TryGetValue(groupName, out List<IProjectionCallback>? retired)) {
+            _retiredCallbacks[groupName] = retired = [];
+        }
+        retired.RemoveAll(item => item.Completion.IsCompleted);
+        retired.Add(callback);
+    }
 
     private static string BuildGroupName(string projectionType, string tenantId, string? groupScope)
         => string.IsNullOrWhiteSpace(groupScope)
@@ -460,38 +493,199 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
             : new ReadOnlyDictionary<string, string>(
                 new Dictionary<string, string>(metadata, StringComparer.Ordinal));
 
-    private static Task JoinSubscriptionAsync(HubConnection connection, GroupSubscription subscription, CancellationToken cancellationToken) {
-        if (subscription.GroupScope is not null) {
-            return connection.InvokeAsync(
-                "JoinGroupScoped",
-                subscription.ProjectionType,
-                subscription.TenantId,
-                subscription.GroupScope,
-                cancellationToken);
-        }
-
-        return connection.InvokeAsync(
-            "JoinGroup",
-            subscription.ProjectionType,
-            subscription.TenantId,
-            cancellationToken);
-    }
-
-    private void RollBackSignalCallback(string groupName, GroupSubscription subscription, Guid callbackId) {
+    private async Task RollBackSignalCallbackAsync(string groupName, GroupSubscription subscription, Guid callbackId) {
+        Task drain = Task.CompletedTask;
         lock (_subscriptionGate) {
             if (subscription.Callbacks.TryRemove(callbackId, out ProjectionCallback<bool>? callback)) {
-                callback.Revoke();
+                RetireCallback(groupName, callback);
+                drain = IsExecutingCallback() ? Task.CompletedTask : callback.Completion;
+                _intentGeneration++;
             }
             RemoveSubscriptionIfEmpty(groupName, subscription);
         }
+        await drain.ConfigureAwait(false);
     }
 
-    private void RollBackDetailCallback(string groupName, GroupSubscription subscription, Guid callbackId) {
+    private async Task RollBackDetailCallbackAsync(string groupName, GroupSubscription subscription, Guid callbackId) {
+        Task drain = Task.CompletedTask;
         lock (_subscriptionGate) {
             if (subscription.DetailCallbacks.TryRemove(callbackId, out ProjectionCallback<ProjectionChangedDetail>? callback)) {
-                callback.Revoke();
+                RetireCallback(groupName, callback);
+                drain = IsExecutingCallback() ? Task.CompletedTask : callback.Completion;
+                _intentGeneration++;
             }
             RemoveSubscriptionIfEmpty(groupName, subscription);
+        }
+        await drain.ConfigureAwait(false);
+    }
+
+    private async Task ReconcileMembershipAsync(CancellationToken cancellationToken, bool pruneUnauthorized = false) {
+        if (_connection.State != HubConnectionState.Connected) { return; }
+        using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
+        attempt.CancelAfter(MembershipAttemptBudget);
+        CancellationToken token = attempt.Token;
+        bool acquired = false;
+        long epoch = -1;
+        long attemptedGeneration = -1;
+        try {
+            await _membershipGate.WaitAsync(token).ConfigureAwait(false);
+            acquired = true;
+            if (_connection.State != HubConnectionState.Connected) { return; }
+            epoch = Interlocked.Read(ref _connectionEpoch);
+            if (Interlocked.Read(ref _connectionRecoveryEpoch) >= 0) {
+                throw new TimeoutException("The original projection connection must terminate before membership can resume.");
+            }
+            if (_membershipEpoch != epoch || _membershipConnectionId != _connection.ConnectionId) {
+                _membershipEpoch = epoch;
+                _membershipConnectionId = _connection.ConnectionId;
+                _membershipProtocol = 0;
+                _legacyGroups.Clear();
+                _legacyUncertainGroups.Clear();
+            }
+            if (_membershipProtocol == 0) {
+                try {
+                    int protocol = await _connection.InvokeAsync<int>("GetProjectionMembershipProtocol", token).ConfigureAwait(false);
+                    if (protocol != 1) { throw new HubException("Unsupported projection membership protocol."); }
+                    _membershipProtocol = 1;
+                }
+                catch (HubException exception) when (exception.Message.Contains("Unknown hub method", StringComparison.OrdinalIgnoreCase)
+                    || exception.Message.Contains("does not exist", StringComparison.OrdinalIgnoreCase)) {
+                    _membershipProtocol = -1;
+                }
+            }
+            while (_connection.State == HubConnectionState.Connected) {
+                GroupSubscription[] desired;
+                long generation;
+                lock (_subscriptionGate) {
+                    desired = [.. _subscribedGroups.Values];
+                    generation = _intentGeneration;
+                    attemptedGeneration = generation;
+                    if (generation == Interlocked.Read(ref _rejectedIntentGeneration) && _membershipRejection is not null) {
+                        throw _membershipRejection;
+                    }
+                    if (_membershipProtocol == -1) {
+                        foreach (GroupSubscription group in desired) {
+                            _legacyGroups[BuildGroupName(group.ProjectionType, group.TenantId, group.GroupScope)] = group;
+                        }
+                    }
+                }
+                if (_membershipProtocol == 1) {
+                    string[][] groups = [.. desired.Select(group => new[] { group.ProjectionType, group.TenantId, group.GroupScope ?? string.Empty })];
+                    try {
+                        long acknowledged = await _connection.InvokeAsync<long>("ReconcileProjectionMembership", generation, groups, token).ConfigureAwait(false);
+                        if (acknowledged < generation) { throw new HubException("Projection membership acknowledgement is stale."); }
+                    }
+                    catch (HubException exception) when (pruneUnauthorized && IsAuthorizationRejection(exception)) {
+                        foreach (GroupSubscription group in desired) {
+                            try {
+                                await _connection.InvokeAsync("ValidateProjectionGroup", group.ProjectionType,
+                                    group.TenantId, group.GroupScope, token).ConfigureAwait(false);
+                            }
+                            catch (HubException rejected) when (IsAuthorizationRejection(rejected)) {
+                                await PruneRejectedGroupAsync(group).ConfigureAwait(false);
+                            }
+                        }
+                        continue;
+                    }
+                }
+                else {
+                    // Legacy servers have no fence for cancelled invocations. Retain all uncertain groups
+                    // until connection termination; this fallback does not claim acknowledged membership.
+                    // Retire obsolete groups first so correcting an offline over-quota intent
+                    // can converge without a rejected join monopolizing the legacy iteration.
+                    foreach (GroupSubscription group in _legacyGroups.Values.OrderBy(group => desired.Contains(group)).ToArray()) {
+                        string name = BuildGroupName(group.ProjectionType, group.TenantId, group.GroupScope);
+                        bool present = desired.Contains(group);
+                        try {
+                            string method = present ? "JoinGroupScoped" : "LeaveGroupScoped";
+                            if (group.GroupScope is null) {
+                                await _connection.InvokeAsync(present ? "JoinGroup" : "LeaveGroup", group.ProjectionType, group.TenantId, token).ConfigureAwait(false);
+                            }
+                            else {
+                                await _connection.InvokeAsync(method, group.ProjectionType, group.TenantId, group.GroupScope, token).ConfigureAwait(false);
+                            }
+                            // An ordinary acknowledged leave can retire bookkeeping. A prior canceled
+                            // invocation could still finish later on an old server, so its obligation
+                            // survives further acknowledgements until this physical connection ends.
+                            if (!present && !_legacyUncertainGroups.Contains(name)) { _legacyGroups.Remove(name); }
+                        }
+                        catch (HubException exception) when (present && IsAuthorizationRejection(exception)) {
+                            await PruneRejectedGroupAsync(group).ConfigureAwait(false);
+                            if (!pruneUnauthorized) { throw; }
+                        }
+                        catch {
+                            _legacyUncertainGroups.Add(name);
+                            throw;
+                        }
+                    }
+                }
+                lock (_subscriptionGate) {
+                    if (_intentGeneration == generation) {
+                        if (_connection.State == HubConnectionState.Connected && epoch == Interlocked.Read(ref _connectionEpoch)
+                            && Interlocked.Exchange(ref _membershipRecoveryPending, 0) == 1) {
+                            Interlocked.Increment(ref _recoveryGeneration);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException) when (attempt.IsCancellationRequested && !cancellationToken.IsCancellationRequested && !_disposeCts.IsCancellationRequested) {
+            // Cancelling the invocation cannot prove remote absence. End this exact physical
+            // connection before dropping its uncertainty, then restore every retained intent.
+            if (acquired && epoch >= 0) { Interlocked.Exchange(ref _connectionRecoveryEpoch, epoch); }
+            ScheduleMembershipRepair();
+            throw new TimeoutException("Projection membership exceeded its five-second attempt budget.");
+        }
+        catch (HubException exception) when (IsPermanentMembershipRejection(exception)) {
+            _membershipRejection = exception;
+            Interlocked.Exchange(ref _rejectedIntentGeneration, attemptedGeneration >= 0 ? attemptedGeneration : Interlocked.Read(ref _intentGeneration));
+            throw;
+        }
+        catch { ScheduleMembershipRepair(); throw; }
+        finally { if (acquired) { _membershipGate.Release(); } }
+    }
+
+    private void ScheduleMembershipRepair() {
+        lock (_repairGate) {
+            _repairRequested++;
+            if (_disposeCts.IsCancellationRequested || HasRejectedCurrentIntent || (!IsConnected && Interlocked.Read(ref _connectionRecoveryEpoch) < 0) || _repairRunning != 0) { return; }
+            _repairRunning = 1;
+            _repairTask = Task.Run(RepairMembershipAsync);
+        }
+    }
+
+    private async Task RepairMembershipAsync() {
+        long observed = 0;
+        int failures = 0;
+        try {
+            while (!_disposeCts.IsCancellationRequested && (IsConnected || Interlocked.Read(ref _connectionRecoveryEpoch) >= 0)) {
+                observed = Interlocked.Read(ref _repairRequested);
+                try {
+                    if (Interlocked.Read(ref _connectionRecoveryEpoch) >= 0) { await RecoverPhysicalConnectionAsync().ConfigureAwait(false); }
+                    await ReconcileMembershipAsync(_disposeCts.Token, pruneUnauthorized: true).ConfigureAwait(false);
+                    failures = 0;
+                    if (observed == Interlocked.Read(ref _repairRequested)) { return; }
+                }
+                catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested) { return; }
+                catch (HubException exception) when (IsPermanentMembershipRejection(exception)) { return; }
+                catch (Exception exception) {
+                    _logger?.LogWarning(exception, "Projection membership remains uncertain; reconciliation will retry.");
+                    double ceiling = Math.Min(5000, 200 * Math.Pow(2, Math.Min(failures++, 5)));
+                    // Positive jitter avoids synchronized repairs while retaining a five-second cap.
+                    await Task.Delay(TimeSpan.FromMilliseconds(ceiling * (0.75 + Random.Shared.NextDouble() * 0.25)), _disposeCts.Token).ConfigureAwait(false);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested) { }
+        finally {
+            lock (_repairGate) {
+                _repairRunning = 0;
+                if (!_disposeCts.IsCancellationRequested && !HasRejectedCurrentIntent && (IsConnected || Interlocked.Read(ref _connectionRecoveryEpoch) >= 0) && observed != _repairRequested) {
+                    _repairRunning = 1;
+                    _repairTask = Task.Run(RepairMembershipAsync);
+                }
+            }
         }
     }
 
@@ -517,31 +711,64 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
 
     private async Task JoinAllGroupsAsync(CancellationToken cancellationToken) {
         using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
-        foreach (KeyValuePair<string, GroupSubscription> item in _subscribedGroups.ToArray()) {
-            if (_disposeCts.IsCancellationRequested) {
-                break;
-            }
+        try { await ReconcileMembershipAsync(invocation.Token, pruneUnauthorized: true).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { ScheduleMembershipRepair(); throw; }
+        catch (HubException exception) when (IsPermanentMembershipRejection(exception)) { throw; }
+        catch (Exception exception) {
+            _logger?.LogWarning(exception, "Failed to reconcile projection membership.");
+            ScheduleMembershipRepair();
+        }
+    }
 
-            try {
-                await JoinSubscriptionAsync(_connection, item.Value, invocation.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !_disposeCts.IsCancellationRequested) {
-                throw;
-            }
-            catch (OperationCanceledException) {
-                break; // Client is disposing
-            }
-            catch (HubException ex) {
-                // Server actively rejected the rejoin (e.g., tenant authorization denied).
-                // Prune the subscription so we do not retry forever and do not leave the
-                // consumer with the impression the group is still authorized.
-                _ = _subscribedGroups.TryRemove(item.Key, out _);
-                _logger?.LogError(ex, "Server rejected rejoin for group {GroupName}; subscription pruned.", item.Key);
-            }
-            catch (Exception ex) {
-                _logger?.LogWarning(ex, "Failed to rejoin group {GroupName}", item.Key);
+    private bool HasRejectedCurrentIntent => Interlocked.Read(ref _rejectedIntentGeneration) == Interlocked.Read(ref _intentGeneration);
+
+    private static bool IsPermanentMembershipRejection(HubException exception)
+        => exception.Message.Contains("Invalid projection membership snapshot.", StringComparison.Ordinal)
+            || exception.Message.Contains("Maximum groups per connection", StringComparison.Ordinal)
+            || exception.Message.Contains("Unsupported projection membership protocol.", StringComparison.Ordinal)
+            || exception.Message.Contains("Tenant scope is invalid or reserved.", StringComparison.Ordinal);
+
+    private static bool IsAuthorizationRejection(HubException exception)
+        => exception.Message.Contains("Tenant authorization failed.", StringComparison.Ordinal);
+
+    private Task PruneRejectedGroupAsync(GroupSubscription subscription) {
+        lock (_subscriptionGate) {
+            string name = BuildGroupName(subscription.ProjectionType, subscription.TenantId, subscription.GroupScope);
+            if (_subscribedGroups.TryGetValue(name, out GroupSubscription? current) && ReferenceEquals(current, subscription)) {
+                foreach (IProjectionCallback callback in subscription.Callbacks.Values.Cast<IProjectionCallback>().Concat(subscription.DetailCallbacks.Values)) {
+                    RetireCallback(name, callback);
+                }
+                _ = _subscribedGroups.TryRemove(name, out _);
+                _intentGeneration++;
             }
         }
+        // Revoked invocations remain owned by the retired inventory. External removal and
+        // disposal drain them; membership recovery never holds its gate across user code.
+        return Task.CompletedTask;
+    }
+
+    private async Task RecoverPhysicalConnectionAsync() {
+        using var attempt = CancellationTokenSource.CreateLinkedTokenSource(_disposeCts.Token);
+        attempt.CancelAfter(MembershipAttemptBudget);
+        await _membershipGate.WaitAsync(attempt.Token).ConfigureAwait(false);
+        try {
+            long recoveryEpoch = Interlocked.Read(ref _connectionRecoveryEpoch);
+            if (recoveryEpoch < 0) { return; }
+            if (recoveryEpoch == Interlocked.Read(ref _connectionEpoch)) {
+                await _connection.StopAsync(attempt.Token).ConfigureAwait(false);
+                // Stop completion establishes termination; cancellation alone never does.
+                Interlocked.Increment(ref _connectionEpoch);
+                Interlocked.Increment(ref _recoveryGeneration);
+                Interlocked.Exchange(ref _membershipRecoveryPending, 1);
+            }
+            if (_connection.State == HubConnectionState.Disconnected) {
+                await _connection.StartAsync(attempt.Token).ConfigureAwait(false);
+                Interlocked.Increment(ref _connectionEpoch);
+            }
+            if (_connection.State != HubConnectionState.Connected) { throw new InvalidOperationException("Projection connection recovery has not completed."); }
+            Interlocked.Exchange(ref _connectionRecoveryEpoch, -1);
+        }
+        finally { _membershipGate.Release(); }
     }
 
     private static void ConfigureAutomaticReconnect(HubConnectionBuilder builder, IRetryPolicy? retryPolicy) => _ = retryPolicy is not null
@@ -626,8 +853,9 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// </summary>
     private async Task OnReconnectedAsync(string? connectionId) {
         Interlocked.Increment(ref _recoveryGeneration);
+        Interlocked.Increment(ref _connectionEpoch);
+        Interlocked.Exchange(ref _membershipRecoveryPending, 1);
         await JoinAllGroupsAsync().ConfigureAwait(false);
-        Interlocked.Increment(ref _recoveryGeneration);
     }
 
     private Task OnReconnectingAsync(Exception? exception) {

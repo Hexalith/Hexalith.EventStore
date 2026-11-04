@@ -21,6 +21,10 @@ internal sealed class E2EAdminApiHandler(IConfiguration configuration) : HttpMes
     internal const string Endpoint = "http://127.0.0.1:1";
     internal const string AppId = "e2e-admin";
     private readonly ConcurrentQueue<string> _rejections = new();
+    private readonly ConcurrentQueue<(string PathAndQuery, string? Scope)> _requests = new();
+
+    /// <summary>Gets the requested paths and explicit scopes without retaining fixture credentials.</summary>
+    internal IReadOnlyList<(string PathAndQuery, string? Scope)> Requests => _requests.ToArray();
 
     /// <summary>Refuses silently swallowed fixture transport errors after browser assertions finish.</summary>
     internal void VerifyNoRejectedRequests()
@@ -53,11 +57,13 @@ internal sealed class E2EAdminApiHandler(IConfiguration configuration) : HttpMes
             return Refuse(HttpStatusCode.Unauthorized, "invalid fixture credential");
         }
 
+        _requests.Enqueue((uri.PathAndQuery, request.Headers.TryGetValues("X-Hexalith-Scope", out var scopes)
+            ? string.Join(",", scopes) : null));
         object? body = uri.AbsolutePath switch
         {
             "/api/v1/admin/health" => new SystemHealthReport(HealthStatus.Healthy, 0, 0, 0, [], new(null, null, null)),
             "/api/v1/admin/health/dapr/history" => new DaprComponentHealthTimeline([], false, HistoryStatus: SystemHealthMetricStatus.Available),
-            "/api/v1/admin/streams" or "/api/v1/admin/streams/commands" or "/api/v1/admin/dead-letters" => new PagedResult<object>([], 0, null),
+            "/api/v1/admin/streams/GetRecentlyActiveStreams" or "/api/v1/admin/streams/commands" or "/api/v1/admin/dead-letters" => new PagedResult<object>([], 0, null),
             "/api/v1/admin/dead-letters/count" => 0,
             "/api/v1/admin/storage/overview" => new StorageOverview(0, null, [], 0, StorageIndexStatus.Empty),
             "/api/v1/admin/dapr/sidecar" => Sidecar(),

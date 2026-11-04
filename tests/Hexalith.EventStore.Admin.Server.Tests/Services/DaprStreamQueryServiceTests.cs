@@ -217,7 +217,8 @@ public class DaprStreamQueryServiceTests {
             User = new ClaimsPrincipal(new ClaimsIdentity(includePermission
                 ? [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)] : [], "Test")),
         };
-        httpContext.Request.Headers.Authorization = "Bearer health-operator-token";
+        string testToken = Guid.NewGuid().ToString("N");
+        httpContext.Request.Headers.Authorization = "Bearer " + testToken;
         if (includeScope) {
             httpContext.Request.Headers["X-Hexalith-Scope"] = AdminPlatformScopeCatalog.Namespace;
         }
@@ -246,7 +247,7 @@ public class DaprStreamQueryServiceTests {
         handler.RequestCount.ShouldBe(allowed ? 1 : 0);
         if (allowed) {
             HttpRequestMessage request = handler.LastRequest.ShouldNotBeNull();
-            request.Headers.Authorization!.Parameter.ShouldBe("health-operator-token");
+            request.Headers.Authorization!.Parameter.ShouldBe(testToken);
             request.Headers.GetValues("X-Hexalith-Scope").ShouldBe([AdminPlatformScopeCatalog.Namespace]);
         }
         else {
