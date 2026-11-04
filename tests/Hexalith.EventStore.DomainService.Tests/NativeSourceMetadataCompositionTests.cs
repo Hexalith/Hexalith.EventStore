@@ -33,18 +33,17 @@ public sealed class NativeSourceMetadataCompositionTests
     public async Task SeparateMetadataClientPreservesDefaultGatewayAndRefusesUnprovableScope(string scenario)
     {
         using RSA key = RSA.Create(2048);
-        string sidecarToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string sidecarToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
         byte[] malformedKeyBytes = RandomNumberGenerator.GetBytes(32);
         malformedKeyBytes[0] = 0; // A PKCS#8 DER sequence cannot start with this byte.
-        string malformedPrivateKey = Convert.ToBase64String(malformedKeyBytes);
-        string? selectedPrivateKey = null;
-        if (scenario == "bad-key")
+        string? boundReadKey = Convert.ToBase64String(key.ExportPkcs8PrivateKey());
+        if (scenario == "missing-key")
         {
-            selectedPrivateKey = malformedPrivateKey;
+            boundReadKey = null;
         }
-        else if (scenario != "missing-key")
+        else if (scenario == "bad-key")
         {
-            selectedPrivateKey = Convert.ToBase64String(key.ExportPkcs8PrivateKey());
+            boundReadKey = Convert.ToBase64String(malformedKeyBytes);
         }
         var identity = new AggregateIdentity("tenant-a", scenario == "foreign-domain" ? "other-domain" : "folders", "organization-a");
         var proof = NativeSourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
@@ -54,7 +53,7 @@ public sealed class NativeSourceMetadataCompositionTests
             ["DAPR_API_TOKEN"] = sidecarToken,
             ["EventStore:Gateway:AppId"] = "eventstore-isolated",
             ["Authentication:WorkloadIssuer:Workload"] = "folders-isolated",
-            ["Authentication:BoundStreamRead:PrivateKey"] = selectedPrivateKey,
+            ["Authentication:BoundStreamRead:PrivateKey"] = boundReadKey,
         }).Build();
         using var metadataTransport = new MockHttpMessageHandler(request =>
         {
