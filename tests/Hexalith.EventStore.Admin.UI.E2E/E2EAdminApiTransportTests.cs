@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.UI;
 using Hexalith.EventStore.Admin.UI.Services;
+using Hexalith.EventStore.Contracts.Routing;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -35,8 +36,31 @@ public class E2EAdminApiTransportTests
     }
 
     [Theory]
+    [InlineData(null, "/api/v1/admin/streams/GetRecentlyActiveStreams?count=1000", AdminPlatformScopeCatalog.Namespace)]
+    [InlineData("Acme", "/api/v1/admin/streams/GetRecentlyActiveStreams?count=1000&tenantId=acme", null)]
+    public async Task RealStreamClientUsesCompiledListRouteAndExplicitScope(string? tenant, string expectedPath, string? expectedScope)
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
+        builder.Configuration.AddInMemoryCollection(E2EAuthenticationSettings.Create());
+        builder.AddAdminUI();
+        using var backend = new E2EAdminApiHandler(builder.Configuration);
+        builder.Services.AddHttpClient("AdminApi").ConfigurePrimaryHttpMessageHandler(() => backend);
+        await using WebApplication app = builder.Build();
+        using IServiceScope scope = app.Services.CreateScope();
+
+        var streams = await scope.ServiceProvider.GetRequiredService<AdminStreamApiClient>()
+            .GetRecentlyActiveStreamsAsync(tenant, null, ct: TestContext.Current.CancellationToken);
+
+        streams.Items.ShouldBeEmpty();
+        streams.TotalCount.ShouldBe(0);
+        backend.Requests.ShouldHaveSingleItem().ShouldBe((expectedPath, expectedScope));
+        backend.VerifyNoRejectedRequests();
+    }
+
+    [Theory]
     [InlineData("method", HttpStatusCode.MethodNotAllowed)]
     [InlineData("route", HttpStatusCode.NotFound)]
+    [InlineData("legacy-stream-list", HttpStatusCode.NotFound)]
     [InlineData("endpoint", HttpStatusCode.Forbidden)]
     [InlineData("target", HttpStatusCode.Forbidden)]
     [InlineData("sidecar-token", HttpStatusCode.Unauthorized)]
@@ -60,6 +84,7 @@ public class E2EAdminApiTransportTests
         {
             case "method": request.Method = HttpMethod.Post; break;
             case "route": request.RequestUri = new Uri(E2EAdminApiHandler.Endpoint + "/undeclared"); break;
+            case "legacy-stream-list": request.RequestUri = new Uri(E2EAdminApiHandler.Endpoint + "/api/v1/admin/streams"); break;
             case "endpoint": request.RequestUri = new Uri("http://127.0.0.1:3500/api/v1/admin/health"); break;
             case "target": request.Headers.Remove("dapr-app-id"); request.Headers.Add("dapr-app-id", "foreign-app"); break;
             case "sidecar-token": request.Headers.Remove("dapr-api-token"); break;
