@@ -583,6 +583,7 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml")), "ci");
         ciJob.ShouldContain("module-manifest: module/hexalith.module-manifest.v2.json");
         ciJob.ShouldContain("integration-test-profiles: platform-package");
+        ciJob.ShouldContain("integration-test-reference-owners: tenants");
         AssertPlatformPackageReferenceOwnerSelection(ciJob);
         ciJob.ShouldContain("registry-pull-username: ${{ secrets.HEXALITH_CI_REGISTRY_USERNAME }}");
         ciJob.ShouldContain("registry-pull-password: ${{ secrets.HEXALITH_CI_REGISTRY_PASSWORD }}");
@@ -679,6 +680,7 @@ public sealed class ReleasePackageManifestTests
     public void Semantic_release_governance_validation_rejects_skip_or_tolerance_mutations(string mutation)
     {
         string job = CreateValidSemanticReleaseGovernanceJobBlock();
+        AssertSemanticReleaseGovernanceJobIsBlocking(job);
         string mutatedJob = mutation switch
         {
             "job-skip" => job.Replace(

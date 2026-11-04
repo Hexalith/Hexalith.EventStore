@@ -6,7 +6,9 @@ using Shouldly;
 using StackExchange.Redis;
 
 /// <summary>Requires a live gateway and real run-scoped persistence; no absent-environment skip is permitted.</summary>
-public sealed class GatewayPersistenceTests(PlatformEnvironmentFixture fixture) : IClassFixture<PlatformEnvironmentFixture>
+/// <param name="fixture">The actual runner-owned environment.</param>
+/// <param name="output">The native TRX diagnostic channel.</param>
+public sealed class GatewayPersistenceTests(PlatformEnvironmentFixture fixture, ITestOutputHelper output) : IClassFixture<PlatformEnvironmentFixture>
 {
     /// <summary>Proves the declared gateway is ready and the supplied isolated store retains the exact synthetic payload.</summary>
     /// <returns>The real gateway and persistence checks.</returns>
@@ -29,6 +31,7 @@ public sealed class GatewayPersistenceTests(PlatformEnvironmentFixture fixture) 
         string value = fixture.Descriptor.RunId + ":" + fixture.Descriptor.SyntheticTenantId;
         (await store.StringSetAsync(key, value, TimeSpan.FromMinutes(10), When.NotExists).WaitAsync(bound.Token).ConfigureAwait(true)).ShouldBeTrue();
         (await store.StringGetAsync(key).WaitAsync(bound.Token).ConfigureAwait(true)).ToString().ShouldBe(value);
+        NativeAssemblyObservations.Write(output, fixture.Descriptor.RunId);
         // Leave the asserted state intact for runner-owned teardown; the suite never stops infrastructure.
     }
 

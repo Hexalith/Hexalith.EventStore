@@ -180,6 +180,24 @@ integration. The catalog's EventStore 4.0.4 is the bootstrap runtime, distinct
 from the SDK source supplying the owned integration harness; it does not qualify
 the current SDK as a new public producer.
 
+The native persistence test retains its source-bound assembly observations in
+`TestResults/module-integration`. It measures assemblies actually loaded in its
+test process without claiming host-process loading, and binds the descriptor,
+plan, issued owner, verified mapping and caller revision. The published scrubbed
+native environment remains unchanged.
+
+Historical run [41787766444](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/41787766444)
+at `005c9cfb0f938214ba889e645f81e389d82476b6` passed the isolated and
+independent jobs before HXR021 exhausted the unchanged 600-second startup
+bound. Native facts never ran; exact cleanup found no remaining owned resources,
+and detailed API exit text was not retained. Later run
+[41796717649](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/41796717649)
+at `b63dc2fe15e41621741d0e49e088f10046ec7bed` reported successful package
+integration and exact cleanup, but the old helper omitted the referenced native
+TRX and lifecycle bodies. Those prior-source observations do not qualify this
+incoming merge; fresh hosted execution must prove the retained diagnostics and
+actual native cases with the selected executor.
+
 The separately approved publication execution engine remains Builds
 `30ea43a56330a9828ed0bb2e837289231d8630d1` in `release.yml` and its governance
 regression checkout. Adopting a newer CI workflow, CLI and catalog does not change
