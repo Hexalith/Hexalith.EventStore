@@ -257,7 +257,8 @@ public sealed partial class DomainServiceTrustBoundaryTests
     /// <summary>
     /// Story 5.5 (P-4): an unavailable administrator verifier fails <c>/process</c> and <c>/query</c> closed before any
     /// domain work with a bounded, retryable 503, the <c>administrator-verifier-unavailable</c> reason, and the
-    /// correlation identifier, while the raw exception text never reaches the response or the logs.
+    /// correlation identifier. The process denial remains bounded; the protected query emits no detailed public logs.
+    /// The raw exception text never reaches the response or the logs.
     /// </summary>
     [Fact]
     public async Task WireAdministratorFlag_VerifierFailure_FailsClosedWithBoundedUnavailable()
@@ -265,6 +266,7 @@ public sealed partial class DomainServiceTrustBoundaryTests
         string internalDetail = "verifier-internal-detail-" + Guid.NewGuid().ToString("N");
         var processor = new CapturingWidgetProcessor();
         var logs = new CapturingLoggerProvider();
+        var verifierCalls = new ConcurrentQueue<DomainServiceAdministratorClaim>();
         IDomainQueryHandler handler = Substitute.For<IDomainQueryHandler>();
         _ = handler.Domain.Returns("widget");
         _ = handler.QueryType.Returns("probe-administrator-hint");
@@ -275,7 +277,11 @@ public sealed partial class DomainServiceTrustBoundaryTests
             {
                 _ = services.AddScoped(_ => handler);
                 _ = services.AddSingleton<IDomainServiceAdministratorVerifier>(
-                    new DelegateVerifier(_ => throw new InvalidOperationException(internalDetail)));
+                    new DelegateVerifier(claim =>
+                    {
+                        verifierCalls.Enqueue(claim);
+                        throw new InvalidOperationException(internalDetail);
+                    }));
             });
         HttpClient client = app.GetTestClient();
         using HttpRequestMessage command = ProcessRequest(Assertion([EventStoreWorkloadOperations.DomainServiceProcess]), adminFlag: true);
@@ -287,24 +293,33 @@ public sealed partial class DomainServiceTrustBoundaryTests
         AddInternalHeaders(queryRequest, Assertion([EventStoreWorkloadOperations.DomainServiceQuery]), [ChannelToken]);
 
         using HttpResponseMessage commandResponse = await client.SendAsync(command, TestContext.Current.CancellationToken);
+        string processDenial = logs.Messages.Where(static message => message.Contains(
+            "Reason=" + WorkloadAuthenticationReasons.AdministratorVerifierUnavailable,
+            StringComparison.Ordinal)).ShouldHaveSingleItem();
+        processDenial.ShouldContain("Path=/process", Case.Sensitive);
+        processDenial.ShouldContain("CorrelationId=story-5-5-domain", Case.Sensitive);
+        processDenial.ShouldContain("StatusCode=503", Case.Sensitive);
+        string[] logsBeforeQuery = [.. logs.Messages];
+
         using HttpResponseMessage queryResponse = await client.SendAsync(queryRequest, TestContext.Current.CancellationToken);
+        // The real query host suppresses detailed read diagnostics before the verifier runs.
+        logs.Messages.ShouldBe(logsBeforeQuery);
 
         foreach (HttpResponseMessage response in new[] { commandResponse, queryResponse })
         {
             response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
             string body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            body.ShouldBeEmpty();
             body.ShouldNotContain(internalDetail);
             body.ShouldNotContain(nameof(InvalidOperationException));
         }
 
         processor.Commands.ShouldBeEmpty();
         _ = await handler.DidNotReceiveWithAnyArgs().ExecuteAsync(default!, default);
-        string[] denials = [.. logs.Messages.Where(static message => message.Contains(
-            "Reason=" + WorkloadAuthenticationReasons.AdministratorVerifierUnavailable,
-            StringComparison.Ordinal))];
-        denials.Length.ShouldBe(2);
-        denials.ShouldAllBe(static message => message.Contains("CorrelationId=story-5-5-domain", StringComparison.Ordinal)
-            && message.Contains("StatusCode=503", StringComparison.Ordinal));
+        verifierCalls.Count.ShouldBe(2);
+        verifierCalls.Select(static claim => claim.CorrelationId).ShouldBe(["corr-1", "corr-q"]);
+        verifierCalls.ShouldAllBe(static claim => claim.TenantId == "tenant-a"
+            && claim.Domain == "widget" && claim.UserId == "acting-user");
         logs.Messages.ShouldAllBe(message => !message.Contains(internalDetail, StringComparison.Ordinal));
     }
 

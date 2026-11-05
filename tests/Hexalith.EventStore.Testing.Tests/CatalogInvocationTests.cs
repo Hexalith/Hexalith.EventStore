@@ -73,19 +73,23 @@ public sealed class CatalogInvocationTests : IDisposable
     /// <param name="app">The app control.</param>
     /// <param name="method">The method control.</param>
     /// <param name="credential">The credential control.</param>
-    /// <param name="token">The token control.</param>
+    /// <param name="includeToken">Whether a fresh nonfunctional token canary is supplied.</param>
     [Theory]
-    [InlineData("other", "project/v2", CatalogInvocationCredential.Workload, null)]
-    [InlineData("projects", "http://other/", CatalogInvocationCredential.Workload, null)]
-    [InlineData("projects", "project/v2?query=x", CatalogInvocationCredential.Workload, null)]
-    [InlineData("projects", "process", CatalogInvocationCredential.Workload, null)]
-    [InlineData("projects", "project/v2", CatalogInvocationCredential.Workload, "extra")]
-    [InlineData("projects", "project/v2", CatalogInvocationCredential.HumanBearer, null)]
-    [InlineData("projects", "project/v2", (CatalogInvocationCredential)99, null)]
-    public void FiniteSelectionRejectsCallerExpansion(string app, string method, CatalogInvocationCredential credential, string? token)
+    [InlineData("other", "project/v2", CatalogInvocationCredential.Workload, false)]
+    [InlineData("projects", "http://other/", CatalogInvocationCredential.Workload, false)]
+    [InlineData("projects", "project/v2?query=x", CatalogInvocationCredential.Workload, false)]
+    [InlineData("projects", "process", CatalogInvocationCredential.Workload, false)]
+    [InlineData("projects", "project/v2", CatalogInvocationCredential.Workload, true)]
+    [InlineData("projects", "project/v2", CatalogInvocationCredential.HumanBearer, false)]
+    [InlineData("projects", "project/v2", (CatalogInvocationCredential)99, false)]
+    public void FiniteSelectionRejectsCallerExpansion(string app, string method, CatalogInvocationCredential credential, bool includeToken)
     {
+        string? token = includeToken ? Guid.NewGuid().ToString("N") : null;
         using var worker = Worker(Substitute.For<IRouteCatalogAuthority>(), Substitute.For<IWorkloadAssertionIssuer>());
-        Should.Throw<InvalidOperationException>(() => worker.Validate(Request() with { AppId = app, Method = method, Credential = credential, Token = token }));
+        Should.Throw<InvalidOperationException>(() => worker.Validate(Request() with
+        {
+            AppId = app, Method = method, Credential = credential, Token = token,
+        }));
         Should.Throw<InvalidOperationException>(() => worker.Validate(Request() with { ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5) }));
         Should.Throw<InvalidOperationException>(() => worker.Validate(Request() with { ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1) }));
     }
@@ -106,18 +110,22 @@ public sealed class CatalogInvocationTests : IDisposable
 
     /// <summary>Verifies explicit Negative Modes Never Acquire Replacement Credentials.</summary>
     /// <param name="credential">The credential control.</param>
-    /// <param name="token">The token control.</param>
+    /// <param name="includeToken">Whether a fresh nonfunctional token canary is supplied.</param>
     [Theory]
-    [InlineData(CatalogInvocationCredential.Anonymous, null)]
-    [InlineData(CatalogInvocationCredential.HumanBearer, "human.token")]
-    [InlineData(CatalogInvocationCredential.PublicIssuerWorkload, "public.issuer.token")]
-    public async Task ExplicitNegativeModesNeverAcquireReplacementCredentials(CatalogInvocationCredential credential, string? token)
+    [InlineData(CatalogInvocationCredential.Anonymous, false)]
+    [InlineData(CatalogInvocationCredential.HumanBearer, true)]
+    [InlineData(CatalogInvocationCredential.PublicIssuerWorkload, true)]
+    public async Task ExplicitNegativeModesNeverAcquireReplacementCredentials(CatalogInvocationCredential credential, bool includeToken)
     {
+        string? token = includeToken ? Guid.NewGuid().ToString("N") : null;
         var authority = Substitute.For<IRouteCatalogAuthority>();
         authority.AcquireAsync(Arg.Any<CancellationToken>()).Returns(Task.FromException<RouteCatalogDispatchLease>(new RouteCatalogUnavailableException("not enrolled")));
         var issuer = Substitute.For<IWorkloadAssertionIssuer>();
         using var worker = Worker(authority, issuer);
-        await Should.ThrowAsync<RouteCatalogUnavailableException>(() => worker.InvokeAsync(Request() with { Credential = credential, Token = token }, TestContext.Current.CancellationToken));
+        await Should.ThrowAsync<RouteCatalogUnavailableException>(() => worker.InvokeAsync(Request() with
+        {
+            Credential = credential, Token = token,
+        }, TestContext.Current.CancellationToken));
         await issuer.DidNotReceive().IssueAsync(Arg.Any<WorkloadAssertionRequest>(), Arg.Any<CancellationToken>());
     }
 
