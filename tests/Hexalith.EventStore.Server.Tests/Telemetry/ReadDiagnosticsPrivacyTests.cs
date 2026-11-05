@@ -29,7 +29,7 @@ public sealed class ReadDiagnosticsPrivacyTests
     [Fact]
     public async Task RealHostingFailureAfterPathRewriteOmitsProtectedException()
     {
-        const string secret = "protected-unhandled-query-exception";
+        string secret = Guid.NewGuid().ToString("N");
         using StringWriter console = new(CultureInfo.InvariantCulture);
         TextWriter previous = Console.Out;
         using ReadPrivacyLogExporter logs = new();
@@ -153,7 +153,7 @@ public sealed class ReadDiagnosticsPrivacyTests
     [InlineData("/API/V1/QUERIES/")]
     public async Task RealProvidersOmitWholeReadSubtreesAndKeepUniformCompletion(string publicPath)
     {
-        const string secret = "protected-tenant-project-and-owner-cause";
+        string secret = Guid.NewGuid().ToString("N");
         using StringWriter console = new(CultureInfo.InvariantCulture);
         TextWriter previous = Console.Out;
         using ReadPrivacyLogExporter logs = new();
