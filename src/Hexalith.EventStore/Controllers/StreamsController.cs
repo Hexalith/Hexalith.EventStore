@@ -203,6 +203,7 @@ public sealed partial class StreamsController(
             }
         }
 
+        bool protectedNativeRead = workloadOnly || Hexalith.EventStore.ServiceDefaults.ReadDiagnosticsPrivacy.IsProtectedRequest(HttpContext);
         try {
             var identity = new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId!);
             IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
@@ -221,14 +222,14 @@ public sealed partial class StreamsController(
                 // native read executes the same ordered inspections in one serialized actor turn.
                 if (request.PageSize > 255)
                     native = await NativeSourceReadDiagnostics.Observe(actor.InspectSourceProofAsync(), identity, recheck: false,
-                        configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
+                        configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken, protectedRead: protectedNativeRead).WaitAsync(cancellationToken).ConfigureAwait(false);
                 else if (request.FromSequence == 0 && request.ToSequence == 0
                     && AtomicNativeMetadataInspectionPolicy.IsEnabled(configuration, routeCatalogHost, hostEnvironment))
                 {
                     try
                     {
                         metadataPair = await NativeSourceReadDiagnostics.ObservePair(actor.InspectSourceMetadataPairAsync(), identity,
-                            configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
+                            configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken, protectedRead: protectedNativeRead).WaitAsync(cancellationToken).ConfigureAwait(false);
                     }
                     catch (NotSupportedException) { return StatusCode(StatusCodes.Status503ServiceUnavailable); }
                     native = metadataPair?.Initial;
@@ -240,7 +241,7 @@ public sealed partial class StreamsController(
                         .WaitAsync(cancellationToken).ConfigureAwait(false);
                     native = nativeBatch is null
                         ? await NativeSourceReadDiagnostics.Observe(actor.InspectSourceProofAsync(), identity, recheck: false,
-                            configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false)
+                            configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken, protectedRead: protectedNativeRead).WaitAsync(cancellationToken).ConfigureAwait(false)
                         : nativeBatch.Before;
                 }
                 if (native is not { Status: SourceProofInspectionStatus.Available, Erased: false, Proof: { Erased: false } proof }
@@ -267,7 +268,7 @@ public sealed partial class StreamsController(
                 SourceProofInspection? final = metadataPair is not null ? metadataPair.Final
                     : nativeBatch is not null ? nativeBatch.After
                     : await NativeSourceReadDiagnostics.Observe(actor.InspectSourceProofAsync(), identity, recheck: true,
-                        configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
+                        configuration, routeCatalogHost, hostEnvironment, logger, cancellationToken, protectedRead: protectedNativeRead).WaitAsync(cancellationToken).ConfigureAwait(false);
                 if (final != native)
                     return StatusCode(StatusCodes.Status503ServiceUnavailable);
                 cancellationToken.ThrowIfCancellationRequested();

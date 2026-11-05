@@ -21,6 +21,7 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Telemetry;
 
 /// <summary>Exercises real request logs through the shared Console and OpenTelemetry providers.</summary>
+[Collection("ReadDiagnosticsPrivacy")]
 public sealed class RequestLogPrivacyTests
 {
     /// <summary>The no-rule fallback retains the caller's global minimum level.</summary>
@@ -110,7 +111,7 @@ public sealed class RequestLogPrivacyTests
         using RequestPrivacyLogExporter exporter = new();
         try
         {
-            // Server.Tests is assembly-serialized. Restore the process writer even on failure.
+            // The nonparallel privacy collection owns the process writer; restore it even on failure.
             Console.SetOut(console);
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
             builder.WebHost.UseTestServer();

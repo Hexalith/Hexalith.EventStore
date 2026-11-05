@@ -18,7 +18,7 @@ using YamlDotNet.Serialization;
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>Opt-in, local Development catalog composition using real compiled owners and independently observing SDK hosts.</summary>
-public static class DevelopmentRouteCatalogAspireExtensions
+public static partial class DevelopmentRouteCatalogAspireExtensions
 {
     /// <summary>Retains a receiver's existing closed allow inventory, binding each explicitly selected caller to its actual resource.</summary>
     public static DevelopmentRouteCatalogReceiver CaptureEventStoreDevelopmentReceiver(this IResourceBuilder<ProjectResource> project,

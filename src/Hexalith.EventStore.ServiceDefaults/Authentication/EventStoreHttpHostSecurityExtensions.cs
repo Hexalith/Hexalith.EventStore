@@ -25,6 +25,7 @@ public static class EventStoreHttpHostSecurityExtensions
     public static IServiceCollection AddEventStoreHttpHostSecurity(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.AddEventStoreReadDiagnosticsPrivacy();
         if (services.Any(static descriptor => descriptor.ServiceType == typeof(EventStoreHttpEndpointSource)))
         {
             return services;

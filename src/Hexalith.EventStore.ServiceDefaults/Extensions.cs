@@ -63,7 +63,7 @@ public static class Extensions {
         // Hosting request-start/finish Information records include the raw query string.
         // Enforce the floor after all post-configuration so Console/OTel
         // overrides cannot accidentally export capability tokens or other query values.
-        builder.Services.Replace(ServiceDescriptor.Transient<IOptionsFactory<LoggerFilterOptions>, RequestLogPrivacyOptionsFactory>());
+        builder.Services.AddEventStoreReadDiagnosticsPrivacy();
 
         IOpenTelemetryBuilder telemetry = builder.Services.AddOpenTelemetry();
         _ = telemetry
@@ -101,23 +101,28 @@ public static class Extensions {
 
     /// <summary>Applies the request diagnostic floor after caller configuration and before options validation.</summary>
     /// <param name="options">The fully configured filter rules.</param>
-    internal static void GuardRequestDiagnostics(LoggerFilterOptions options)
+    internal static void GuardRequestDiagnostics(LoggerFilterOptions options, IHttpContextAccessor accessor)
     {
         for (int index = 0; index < options.Rules.Count; index++) {
             LoggerFilterRule rule = options.Rules[index];
             options.Rules[index] = new LoggerFilterRule(rule.ProviderName, rule.CategoryName, rule.LogLevel,
                 (provider, category, level) =>
-                    AllowsRequestDiagnostic(category, level)
+                    AllowsRequestDiagnostic(category, level, accessor)
                     && (rule.Filter?.Invoke(provider, category, level) ?? true));
         }
         // Lowest precedence preserves stricter thresholds and existing global predicates.
         options.Rules.Insert(0, new LoggerFilterRule(null, null, options.MinLevel,
-            static (_, category, level) => AllowsRequestDiagnostic(category, level)));
+            (_, category, level) => AllowsRequestDiagnostic(category, level, accessor)));
     }
 
-    private static bool AllowsRequestDiagnostic(string? category, LogLevel level)
-        => level >= LogLevel.Warning
-            || category?.StartsWith("Microsoft.AspNetCore.Hosting.Diagnostics", StringComparison.OrdinalIgnoreCase) != true;
+    private static bool AllowsRequestDiagnostic(string? category, LogLevel level, IHttpContextAccessor accessor)
+        => !ReadDiagnosticsPrivacyScope.IsActive
+            && (accessor.HttpContext is not { } context || !ReadDiagnosticsPrivacy.IsProtectedExecution(context))
+            && (level >= LogLevel.Warning
+                || (category?.StartsWith("Microsoft.AspNetCore.Hosting.Diagnostics", StringComparison.OrdinalIgnoreCase) != true
+                    // Connection acceptance precedes HttpContext creation; verbose records disclose private subrequest topology.
+                    && category?.StartsWith("Microsoft.AspNetCore.Server.Kestrel.Connections", StringComparison.OrdinalIgnoreCase) != true
+                    && category?.StartsWith("Microsoft.AspNetCore.Server.Kestrel.Transport", StringComparison.OrdinalIgnoreCase) != true));
 
     public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder {
         ArgumentNullException.ThrowIfNull(builder);

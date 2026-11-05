@@ -5,6 +5,8 @@ using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Server.Tests.Routing;
 using Hexalith.EventStore.ServiceDefaults.Routing;
+using Hexalith.EventStore.ServiceDefaults;
+using Microsoft.AspNetCore.Http;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -199,6 +201,52 @@ public sealed class NativeSourceReadDiagnosticsTests
         string logs = string.Join('\n', entries.Select(entry => entry.Message));
         logs.ShouldNotContain("private-");
         logs.ShouldNotContain(proof.CumulativeDigest);
+#else
+        entries.ShouldBeEmpty();
+#endif
+    }
+
+    /// <summary>Detached completions cannot restore identifiers after the captured request privacy decision.</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CompletionOutsideOriginalExecutionContextRetainsCapturedPrivacy(bool pair, bool protect)
+    {
+        var entries = new List<LogEntry>();
+        DefaultHttpContext context = new();
+        context.Request.Method = "POST";
+        context.Request.Path = protect ? "/api/v1/streams/read/workload" : "/ordinary";
+        bool captured = ReadDiagnosticsPrivacy.IsProtectedRequest(context);
+        var identity = new AggregateIdentity("private-tenant", "private-domain", "private-aggregate");
+        var value = new SourceProofInspection(SourceProofInspectionStatus.Available, true, 17, false, null);
+        Task completion;
+        if (pair)
+        {
+            TaskCompletionSource<SourceProofInspectionPair> source = new();
+            NativeSourceReadDiagnostics.ObservePair(source.Task, identity,
+                new ConfigurationBuilder().AddInMemoryCollection(PrivateSettings()).Build(), Options.Create(PrivateOptions()),
+                DevelopmentEnvironment(), new TestLogger<NativeSourceReadDiagnosticsTests>(entries), CancellationToken.None, captured).ShouldBeSameAs(source.Task);
+            context.Request.Path = "/ordinary";
+            using (ExecutionContext.SuppressFlow()) completion = Task.Run(() => source.SetResult(new(value, value)));
+            await completion;
+            (await source.Task).Initial.ShouldBeSameAs(value);
+        }
+        else
+        {
+            TaskCompletionSource<SourceProofInspection> source = new();
+            NativeSourceReadDiagnostics.Observe(source.Task, identity, false,
+                new ConfigurationBuilder().AddInMemoryCollection(PrivateSettings()).Build(), Options.Create(PrivateOptions()),
+                DevelopmentEnvironment(), new TestLogger<NativeSourceReadDiagnosticsTests>(entries), CancellationToken.None, captured).ShouldBeSameAs(source.Task);
+            context.Request.Path = "/ordinary";
+            using (ExecutionContext.SuppressFlow()) completion = Task.Run(() => source.SetResult(value));
+            await completion;
+            (await source.Task).ShouldBeSameAs(value);
+        }
+#if DEBUG
+        entries.Count.ShouldBe(protect ? 0 : 2);
+        if (!protect) entries[1].Message.ShouldContain(pair ? "InitialSequence=17" : "CurrentSequence=17");
 #else
         entries.ShouldBeEmpty();
 #endif

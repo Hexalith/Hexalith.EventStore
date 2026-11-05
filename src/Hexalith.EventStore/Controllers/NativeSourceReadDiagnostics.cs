@@ -22,14 +22,17 @@ internal static class NativeSourceReadDiagnostics
     /// <param name="environment">The actual hosting environment.</param>
     /// <param name="logger">The actual host logger.</param>
     /// <param name="cancellationToken">The original request cancellation.</param>
+    /// <param name="protectedRead">The protection decision captured from the actual request before context suppression.</param>
     /// <returns>The unchanged original task.</returns>
     internal static Task<SourceProofInspection> Observe(Task<SourceProofInspection> inspection, AggregateIdentity identity,
         bool recheck, IConfiguration? configuration, IOptions<RouteCatalogHostOptions>? options,
-        IHostEnvironment? environment, ILogger logger, CancellationToken cancellationToken)
+        IHostEnvironment? environment, ILogger logger, CancellationToken cancellationToken, bool protectedRead = false)
     {
+        // Capture this decision in the request before any detached completion can lose its ExecutionContext.
+        bool omitDiagnostics = protectedRead;
         try
         {
-            if (!Enabled(configuration, options?.Value, environment)) return inspection;
+            if (omitDiagnostics || !Enabled(configuration, options?.Value, environment)) return inspection;
             string tenant = Hash(identity.TenantId), domain = Hash(identity.Domain), aggregate = Hash(identity.AggregateId);
             string phase = recheck ? "recheck" : "initial";
             long started = Stopwatch.GetTimestamp();
@@ -72,14 +75,17 @@ internal static class NativeSourceReadDiagnostics
     /// <param name="environment">The actual hosting environment.</param>
     /// <param name="logger">The actual host logger.</param>
     /// <param name="cancellationToken">The original request cancellation.</param>
+    /// <param name="protectedRead">The protection decision captured from the actual request before context suppression.</param>
     /// <returns>The unchanged original task.</returns>
     internal static Task<SourceProofInspectionPair> ObservePair(Task<SourceProofInspectionPair> inspection, AggregateIdentity identity,
         IConfiguration? configuration, IOptions<RouteCatalogHostOptions>? options, IHostEnvironment? environment,
-        ILogger logger, CancellationToken cancellationToken)
+        ILogger logger, CancellationToken cancellationToken, bool protectedRead = false)
     {
+        // Capture this decision in the request before any detached completion can lose its ExecutionContext.
+        bool omitDiagnostics = protectedRead;
         try
         {
-            if (!Enabled(configuration, options?.Value, environment)) return inspection;
+            if (omitDiagnostics || !Enabled(configuration, options?.Value, environment)) return inspection;
             string tenant = Hash(identity.TenantId), domain = Hash(identity.Domain), aggregate = Hash(identity.AggregateId);
             long started = Stopwatch.GetTimestamp();
             logger.LogInformation("Private native metadata pair started: TenantHash={TenantHash}, DomainHash={DomainHash}, AggregateHash={AggregateHash}, ScopedDecodeReuseConfigured={ScopedDecodeReuseConfigured}, SerializeLocalLeaseReleaseConfigured={SerializeLocalLeaseReleaseConfigured}, RetainValidatedCatalogBytesConfigured={RetainValidatedCatalogBytesConfigured}",
