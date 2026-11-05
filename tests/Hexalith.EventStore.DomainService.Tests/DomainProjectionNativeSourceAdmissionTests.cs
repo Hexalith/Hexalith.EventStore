@@ -331,15 +331,22 @@ public sealed class DomainProjectionNativeSourceAdmissionTests
         ArgumentNullException.ThrowIfNull(scenario);
         var (original, source) = Fixture();
         using RSA key = RSA.Create(2048);
-        string? privateKey = scenario switch
+        string? privateKey = Convert.ToBase64String(key.ExportPkcs8PrivateKey());
+        switch (scenario)
         {
-            "missing-key" => null,
-            "malformed-base64" or "cancelled-malformed-base64" => "invalid-base64!",
-            "malformed-pkcs8" or "cancelled-malformed-pkcs8" => Convert.ToBase64String([0, 1, 2, 3]),
-            _ => Convert.ToBase64String(key.ExportPkcs8PrivateKey()),
-        };
+            case "missing-key":
+                privateKey = null;
+                break;
+            case "malformed-base64" or "cancelled-malformed-base64":
+                privateKey = "PROTECTED_NATIVE_SOURCE_MARKER";
+                break;
+            case "malformed-pkcs8" or "cancelled-malformed-pkcs8":
+                privateKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(4));
+                break;
+        }
+        string daprApiToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
-            ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500", ["DAPR_API_TOKEN"] = "sidecar-token",
+            ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500", ["DAPR_API_TOKEN"] = daprApiToken,
             ["EventStore:Gateway:AppId"] = "source-gateway", ["Authentication:WorkloadIssuer:Workload"] = "source-owner",
             ["Authentication:BoundStreamRead:PrivateKey"] = privateKey,
         }).Build();
@@ -353,7 +360,7 @@ public sealed class DomainProjectionNativeSourceAdmissionTests
             message.RequestUri!.AbsoluteUri.ShouldBe("http://localhost:3500/api/v1/streams/read/workload");
             message.Headers.Authorization.ShouldBeNull();
             message.Headers.GetValues("dapr-app-id").Single().ShouldBe("source-gateway");
-            message.Headers.GetValues("dapr-api-token").Single().ShouldBe("sidecar-token");
+            message.Headers.GetValues("dapr-api-token").Single().ShouldBe(daprApiToken);
             message.Headers.GetValues(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName).Single().ShouldBe("exact-owner-assertion");
             var query = JsonSerializer.Deserialize<StreamReadRequest>(message.Content!.ReadAsStringAsync().GetAwaiter().GetResult(), JsonSerializerOptions.Web)!;
             BoundStreamReadProof.Verify(message.Headers.GetValues(BoundStreamReadProof.HeaderName).Single(), query,
