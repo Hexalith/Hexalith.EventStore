@@ -23,7 +23,10 @@ public interface IEventStoreGatewayClient {
         string tenant, string messageId, CancellationToken cancellationToken = default)
         => Task.FromException<CommandStatusQueryResponse?>(new InvalidOperationException("Workload status transport is unavailable."));
 
-    /// <summary>Reads one tenant-bound stream page through the workload-only channel.</summary>
+    /// <summary>Reads one exact tenant-bound stream page through the workload-only channel.</summary>
+    /// <remarks>Approved platform source scopes carry one explicit scope header and accept only their
+    /// historical storage Tenant with unchanged Domain and AggregateId. Assertion and proof remain bound
+    /// to the original public request. Unsupported platform/domain pairs and conflicting scope headers refuse.</remarks>
     Task<StreamReadPage> ReadWorkloadStreamAsync(
         StreamReadRequest request, CancellationToken cancellationToken = default)
         => Task.FromException<StreamReadPage>(new InvalidOperationException("Workload stream transport is unavailable."));
@@ -74,11 +77,10 @@ public interface IEventStoreGatewayClient {
     /// <remarks>
     /// On the human/authority transport, a platform-scope tenant (for example <c>platform:tenants</c>)
     /// is also sent as the explicit <c>X-Hexalith-Scope</c> header; the returned page carries the
-    /// retained storage identity. <see cref="EventStoreGatewayClient"/> with
-    /// <see cref="EventStoreGatewayClientOptions.UseWorkloadTransport"/> sends no scope header and refuses a
-    /// page whose identity differs from the request, so that client does not support platform-scope reads.
-    /// The <c>api/v1/streams/read/workload</c> route itself admits them with one exact
-    /// <c>X-Hexalith-Scope</c> header.
+    /// retained storage identity. With <see cref="EventStoreGatewayClientOptions.UseWorkloadTransport"/>,
+    /// the client delegates to <see cref="ReadWorkloadStreamAsync"/>: only the approved
+    /// platform:tenants/tenants and platform:global-administrators/global-administrators mappings may
+    /// return the reserved storage Tenant, with exact Domain and AggregateId validation.
     /// </remarks>
     Task<StreamReadPage> ReadStreamAsync(
         StreamReadRequest request,

@@ -8,12 +8,86 @@ using Hexalith.EventStore.Contracts.Streams;
 
 using Microsoft.Extensions.Options;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.EventStore.Client.Tests.Gateway;
 
 public sealed class EventStoreGatewayWorkloadClientTests
 {
+    [Theory]
+    [InlineData("platform:tenants", "tenants", "system", true)]
+    [InlineData("platform:global-administrators", "global-administrators", "system", true)]
+    [InlineData("platform:tenants", "tenants", "platform:tenants", false)]
+    [InlineData("platform:global-administrators", "global-administrators", "tenant-a", false)]
+    [InlineData("tenant-a", "timesheets", "tenant-a", true)]
+    [InlineData("tenant-a", "timesheets", "system", false)]
+    public async Task Stream_scope_mapping_keeps_original_assertion_and_proof_binding(
+        string scope, string domain, string storageTenant, bool accepted)
+    {
+        var original = new StreamReadRequest(scope, domain, "aggregate-1");
+        var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
+        assertions.IssueAsync(EventStoreGatewayWorkloadOperations.StreamRead, scope, domain, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<string?>("original-assertion"));
+        var proofs = Substitute.For<IEventStoreGatewayStreamReadProofSource>();
+        proofs.IssueAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<string?>("original-proof"));
+        using var http = new HttpClient(new Handler(message =>
+        {
+            message.Headers.Contains("X-Hexalith-Scope").ShouldBe(scope.StartsWith("platform:", StringComparison.Ordinal));
+            if (scope.StartsWith("platform:", StringComparison.Ordinal)) message.Headers.GetValues("X-Hexalith-Scope").ShouldBe([scope]);
+            message.Headers.Contains("X-Hexalith-Tenant").ShouldBeFalse();
+            message.Headers.GetValues("X-Hexalith-Bound-Stream-Read-Proof").ShouldBe(["original-proof"]);
+            message.Headers.GetValues("X-Hexalith-Workload-Assertion").ShouldBe(["original-assertion"]);
+            JsonSerializer.Deserialize<StreamReadRequest>(message.Content!.ReadAsStringAsync().GetAwaiter().GetResult(),
+                EventStoreGatewayClient.JsonOptions).ShouldBe(original);
+            return StreamResponse(storageTenant, domain, "aggregate-1");
+        })) { BaseAddress = new Uri("https://eventstore.test/") };
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions()), assertions, proofs);
+        if (accepted) (await gateway.ReadWorkloadStreamAsync(original)).Tenant.ShouldBe(storageTenant);
+        else await Should.ThrowAsync<EventStoreGatewayException>(() => gateway.ReadWorkloadStreamAsync(original));
+        await proofs.Received(1).IssueAsync(Arg.Is<StreamReadRequest>(request => ReferenceEquals(original, request)), Arg.Any<CancellationToken>());
+        await assertions.Received(1).IssueAsync(EventStoreGatewayWorkloadOperations.StreamRead, scope, domain, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("platform:tenants", "global-administrators", null)]
+    [InlineData("platform:global-administrators", "tenants", null)]
+    [InlineData("platform:other", "other", null)]
+    [InlineData("platform:tenants", "tenants", "X-Hexalith-Scope")]
+    [InlineData("platform:tenants", "tenants", "X-Hexalith-Tenant")]
+    [InlineData("tenant-a", "timesheets", "X-Hexalith-Scope")]
+    [InlineData("tenant-a", "timesheets", "X-Hexalith-Tenant")]
+    public async Task Unsupported_or_conflicting_stream_scope_refuses_before_credentials(
+        string scope, string domain, string? header)
+    {
+        using var http = new HttpClient(new Handler(_ => throw new InvalidOperationException("Unexpected transport")))
+            { BaseAddress = new Uri("https://eventstore.test/") };
+        if (header is not null) http.DefaultRequestHeaders.Add(header, "conflicting-scope");
+        var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
+        var proofs = Substitute.For<IEventStoreGatewayStreamReadProofSource>();
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions()), assertions, proofs);
+        await Should.ThrowAsync<InvalidOperationException>(() => gateway.ReadWorkloadStreamAsync(new(scope, domain, "aggregate-1")));
+        await proofs.DidNotReceive().IssueAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("other", "aggregate-1")]
+    [InlineData("tenants", "other")]
+    public async Task Platform_mapping_still_requires_exact_domain_and_aggregate(string domain, string aggregate)
+    {
+        using var http = new HttpClient(new Handler(_ => StreamResponse("system", domain, aggregate)))
+            { BaseAddress = new Uri("https://eventstore.test/") };
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions()), new StubAssertions());
+        await Should.ThrowAsync<EventStoreGatewayException>(() => gateway.ReadWorkloadStreamAsync(new("platform:tenants", "tenants", "aggregate-1")));
+    }
+
+    private static HttpResponseMessage StreamResponse(string tenant, string domain, string aggregate)
+        => new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(new StreamReadPage(
+            tenant, domain, aggregate, [], new(0, null, null, 0, 0, false, null)), EventStoreGatewayClient.JsonOptions),
+            Encoding.UTF8, "application/json") };
+
     [Fact]
     public async Task Workload_calls_attach_assertion_and_use_only_workload_routes()
     {

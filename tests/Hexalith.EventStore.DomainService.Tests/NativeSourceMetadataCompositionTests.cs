@@ -99,7 +99,10 @@ public sealed class NativeSourceMetadataCompositionTests
             observation.ShouldNotBeNull().Proof.ShouldBe(proof);
             metadataTransport.CallCount.ShouldBe(1);
             await issuer.Received(1).IssueAsync(Arg.Is<WorkloadAssertionRequest>(request => request.Audience == "eventstore"
-                && request.Operation == EventStoreWorkloadOperations.GatewayStreamRead && request.Bindings == null), Arg.Any<CancellationToken>());
+                && request.Operation == EventStoreWorkloadOperations.GatewayStreamRead && request.Bindings != null
+                && request.Bindings.Count == 2
+                && request.Bindings[EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] == identity.TenantId
+                && request.Bindings[EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] == identity.Domain), Arg.Any<CancellationToken>());
         }
         else
         {

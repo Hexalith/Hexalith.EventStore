@@ -15,6 +15,57 @@ namespace Hexalith.EventStore.DomainService;
 /// <summary>Composes the SDK gateway client's workload command and stream transport for a domain host.</summary>
 public static class EventStoreGatewayWorkloadTransportExtensions
 {
+    /// <summary>Registers complete authenticated source reads independently of the host's human gateway client.</summary>
+    /// <remarks>The reader uses the existing host issuer and owner proof key. It exposes no command client,
+    /// grants no authority, and verifies complete native source prefixes through the existing SDK transport.
+    /// Native admission uses a qualified internal registration; an existing ordinary reader is preserved.</remarks>
+    /// <param name="services">The host services.</param>
+    /// <param name="domain">The one exact managed source domain.</param>
+    /// <param name="gatewayAudience">The existing receiving workload audience.</param>
+    /// <returns>The independent HTTP builder for supported transport customization.</returns>
+    public static IHttpClientBuilder AddEventStoreGatewayAuthoritativeEventStreamReader(
+        this IServiceCollection services, string domain,
+        string gatewayAudience = EventStoreTrustedEffectSubmissionExtensions.DefaultGatewayAudience)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+        ArgumentException.ThrowIfNullOrWhiteSpace(gatewayAudience);
+        if (domain != domain.Trim() || domain.Length > 64 || domain.Contains('*', StringComparison.Ordinal)
+            || gatewayAudience != gatewayAudience.Trim())
+            throw new ArgumentException("Configure one exact source domain and gateway audience.");
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddEventStoreWorkloadAssertionIssuer();
+        services.TryAddTransient<IAuthoritativeEventStreamReader>(provider =>
+            provider.GetRequiredService<DomainProjectionNativeSourceReader>().Reader);
+        return services.AddHttpClient("Hexalith.EventStore.AuthoritativeSource", (provider, client) =>
+        {
+            IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
+            string endpoint = configuration["DAPR_HTTP_ENDPOINT"]
+                ?? $"http://localhost:{configuration["DAPR_HTTP_PORT"] ?? "3500"}";
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri? address) || address.Scheme != Uri.UriSchemeHttp
+                || !string.IsNullOrEmpty(address.UserInfo) || !string.IsNullOrEmpty(address.Query)
+                || !string.IsNullOrEmpty(address.Fragment) || address.AbsolutePath != "/")
+                throw new InvalidOperationException("The configured local Dapr HTTP endpoint is unavailable.");
+            client.BaseAddress = address;
+        }).AddEventStoreDaprServiceInvocation(provider => provider.GetRequiredService<IConfiguration>(),
+            configuration => configuration["EventStore:Gateway:AppId"] ?? "eventstore",
+            configuration => configuration["DAPR_API_TOKEN"])
+          .AddTypedClient<DomainProjectionNativeSourceReader>((client, provider) =>
+          {
+              IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
+              TimeProvider clock = provider.GetRequiredService<TimeProvider>();
+              var domains = new HashSet<string>([domain], StringComparer.Ordinal);
+              var assertions = new DomainServiceGatewayWorkloadAssertionSource(
+                  provider.GetRequiredService<IWorkloadAssertionIssuer>(), domains, gatewayAudience);
+              var proofs = new DomainServiceGatewayBoundStreamReadProofSource(
+                  configuration["Authentication:WorkloadIssuer:Workload"] ?? string.Empty,
+                  configuration["Authentication:BoundStreamRead:PrivateKey"] ?? string.Empty, domains, clock);
+              var gateway = new EventStoreGatewayClient(client, Options.Create(new EventStoreGatewayClientOptions
+                  { UseWorkloadTransport = true }), assertions, proofs);
+              return new(new AuthoritativeEventStreamReader(gateway, clock, requireNativeProof: true));
+          });
+    }
+
     /// <summary>Registers an independent metadata-only workload client without replacing the host's human-command gateway.</summary>
     /// <remarks>The receiver must explicitly enroll this caller in Authentication:BoundStreamRead:MetadataOnlyCallers.
     /// The host's own workload issuer and independently provisioned BoundStreamRead private key are required;

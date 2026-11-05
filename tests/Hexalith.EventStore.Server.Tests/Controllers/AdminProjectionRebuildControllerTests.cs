@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.DomainService;
@@ -844,6 +845,59 @@ public class AdminProjectionRebuildControllerTests {
             "order-detail",
             "operator-1",
             Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData((int)ProjectionDeliveryReconciliationStatus.Completed, 200)]
+    [InlineData((int)ProjectionDeliveryReconciliationStatus.ScopeDenied, 403)]
+    [InlineData((int)ProjectionDeliveryReconciliationStatus.RebuildRequired, 409)]
+    [InlineData((int)ProjectionDeliveryReconciliationStatus.StateUnavailable, 503)]
+    public async Task PlatformDeliveryMaintenance_UsesOnlyFixedInternalScopeAndExistingOutcomes(
+        int status, int expectedStatus) {
+        IProjectionRebuildCheckpointStore checkpoint = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionDeliveryReconciler reconciler = Substitute.For<IProjectionDeliveryReconciler>();
+        reconciler.ReconcileFromEventStoreAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ProjectionDeliveryReconciliationResult((ProjectionDeliveryReconciliationStatus)status, ProjectionDispatchReasonCodes.DeliveryReconciled, 7));
+        using ServiceProvider services = new ServiceCollection().AddSingleton(reconciler).BuildServiceProvider();
+        AdminProjectionRebuildController controller = CreateController(checkpoint, true, serviceProvider: services);
+        controller.HttpContext.Items[ProjectionDeliveryMaintenanceScopeCatalog.ValidatedContextKey] = ProjectionDeliveryMaintenanceScopeCatalog.Namespace;
+        IActionResult result = await controller.ReconcileGlobalAdministratorsDeliveryFromEventStoreAsync(CancellationToken.None);
+        result.ShouldBeAssignableTo<ObjectResult>().StatusCode.ShouldBe(expectedStatus);
+        await reconciler.Received(1).ReconcileFromEventStoreAsync(Arg.Is<AggregateIdentity>(identity =>
+            identity.TenantId == "system" && identity.Domain == "global-administrators" && identity.AggregateId == "global-administrators"),
+            "global-administrators", "operator-1", Arg.Any<CancellationToken>());
+        checkpoint.ReceivedCalls().ShouldBeEmpty();
+        if (result is OkObjectResult ok) {
+            ok.Value.ShouldBeOfType<ProjectionDeliveryReconciliationResponse>().PreservedSequence.ShouldBe(7);
+        }
+    }
+
+    [Theory]
+    [InlineData("non-admin")]
+    [InlineData("missing-operator")]
+    [InlineData("missing-admission")]
+    [InlineData("read-admission")]
+    [InlineData("wrong-admission")]
+    [InlineData("unauthenticated")]
+    public async Task PlatformDeliveryMaintenance_DeniesBeforeAnyStateAccess(string invalid) {
+        IProjectionRebuildCheckpointStore checkpoint = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionDeliveryReconciler reconciler = Substitute.For<IProjectionDeliveryReconciler>();
+        using ServiceProvider services = new ServiceCollection().AddSingleton(reconciler).BuildServiceProvider();
+        AdminProjectionRebuildController controller = CreateController(checkpoint, invalid != "non-admin", serviceProvider: services);
+        if (invalid != "missing-admission")
+            controller.HttpContext.Items[ProjectionDeliveryMaintenanceScopeCatalog.ValidatedContextKey] = invalid == "wrong-admission"
+                ? "platform:other" : ProjectionDeliveryMaintenanceScopeCatalog.Namespace;
+        if (invalid == "read-admission") {
+            controller.HttpContext.Items.Remove(ProjectionDeliveryMaintenanceScopeCatalog.ValidatedContextKey);
+            controller.HttpContext.Items[AdminPlatformScopeCatalog.ValidatedContextKey] = AdminPlatformScopeCatalog.Namespace;
+        }
+        if (invalid is "missing-operator" or "unauthenticated")
+            controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.Role, "GlobalAdministrator")], invalid == "unauthenticated" ? null : "test"));
+        IActionResult result = await controller.ReconcileGlobalAdministratorsDeliveryFromEventStoreAsync(CancellationToken.None);
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
+        checkpoint.ReceivedCalls().ShouldBeEmpty();
+        reconciler.ReceivedCalls().ShouldBeEmpty();
     }
 
     private static AdminProjectionRebuildController CreateController(

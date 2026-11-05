@@ -454,7 +454,11 @@ public sealed partial class AdminProjectionRebuildController(
         ProjectionDeliveryReconciliationResult result = await reconciler
             .ReconcileFromEventStoreAsync(identity, projectionName, operatorId, cancellationToken)
             .ConfigureAwait(false);
-        return result.Status switch {
+        return MapDeliveryReconciliationResult(result);
+    }
+
+    private IActionResult MapDeliveryReconciliationResult(ProjectionDeliveryReconciliationResult result)
+        => result.Status switch {
             ProjectionDeliveryReconciliationStatus.Completed => Ok(new ProjectionDeliveryReconciliationResponse("Completed", result.ReasonCode, result.PreservedSequence)),
             ProjectionDeliveryReconciliationStatus.ScopeDenied => ProblemWithReason(
                 StatusCodes.Status403Forbidden,
@@ -472,7 +476,6 @@ public sealed partial class AdminProjectionRebuildController(
                 "Projection delivery reconciliation state is unavailable.",
                 ProjectionDispatchReasonCodes.DeliveryStateUnavailable),
         };
-    }
 
     /// <summary>
     /// Maps a coordinated erase result to an HTTP outcome, disclosing only the outcome kind, the

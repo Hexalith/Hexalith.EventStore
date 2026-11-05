@@ -24,7 +24,12 @@ internal sealed class DomainServiceNativeSourceCredentials(
         cancellationToken.ThrowIfCancellationRequested();
         return operation == EventStoreGatewayWorkloadOperations.StreamRead && requestedDomain == domain
             && TenantCanonicalizer.TryCanonicalize(tenant, out string canonical) && canonical == tenant
-            ? issuer.IssueAsync(new WorkloadAssertionRequest(audience, EventStoreGatewayWorkloadOperations.StreamRead), cancellationToken)
+            ? issuer.IssueAsync(new WorkloadAssertionRequest(audience, EventStoreGatewayWorkloadOperations.StreamRead,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = tenant,
+                    [EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] = requestedDomain,
+                }), cancellationToken)
             : ValueTask.FromResult<string?>(null);
     }
 

@@ -57,10 +57,14 @@ internal static class DomainProjectionNativeSourceAdmission
         original.ClearNativeSourceAdmission();
         // Hosts without the supported authenticated transport retain unproven generations. No new
         // registration or owner authority is inferred from a producer hint or a local cursor.
-        IEventStoreGatewayClient? gateway = services.GetService<IEventStoreGatewayClient>();
-        if (gateway is null) return original;
-        var reader = new AuthoritativeEventStreamReader(gateway,
-            services.GetService<TimeProvider>() ?? TimeProvider.System, requireNativeProof: true);
+        IAuthoritativeEventStreamReader? reader = services.GetService<DomainProjectionNativeSourceReader>()?.Reader;
+        if (reader is null)
+        {
+            IEventStoreGatewayClient? gateway = services.GetService<IEventStoreGatewayClient>();
+            if (gateway is null) return original;
+            reader = new AuthoritativeEventStreamReader(gateway,
+                services.GetService<TimeProvider>() ?? TimeProvider.System, requireNativeProof: true);
+        }
         AuthoritativeStreamReadResult read = await reader.ReadAsync(identity, cancellationToken).ConfigureAwait(false);
         // Native read enrollment is independently gated. Its absence must not disable ordinary
         // projections: the delivered generation remains unproven and cannot authorize metadata.

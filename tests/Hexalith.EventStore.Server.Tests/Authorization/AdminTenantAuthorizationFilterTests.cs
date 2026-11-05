@@ -261,6 +261,82 @@ public class AdminTenantAuthorizationFilterTests {
         context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
     }
 
+    [Fact]
+    public async Task MaintenanceWithoutTenantArgument_RequiresExactSeparateAdmission() {
+        ActionExecutingContext context = CreateMaintenanceContext();
+        (await InvokeAsync(CreateFilter(), context)).ShouldBeTrue();
+        context.Result.ShouldBeNull();
+        context.HttpContext.Items[ProjectionDeliveryMaintenanceScopeCatalog.ValidatedContextKey]
+            .ShouldBe(ProjectionDeliveryMaintenanceScopeCatalog.Namespace);
+        context.HttpContext.Items.ContainsKey(AdminPlatformScopeCatalog.ValidatedContextKey).ShouldBeFalse();
+        AdminPlatformScopeCatalog.ForAction(typeof(AdminProjectionRebuildController).FullName!,
+            nameof(AdminProjectionRebuildController.ReconcileGlobalAdministratorsDeliveryFromEventStoreAsync)).ShouldBeNull();
+        ProjectionDeliveryMaintenanceScopeCatalog.ForAction(typeof(AdminProjectionRebuildController).FullName!,
+            nameof(AdminProjectionRebuildController.ReconcileDeliveryFromEventStoreAsync)).ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("missing-scope")]
+    [InlineData("duplicate-scope")]
+    [InlineData("wrong-scope")]
+    [InlineData("read-scope")]
+    [InlineData("missing-permission")]
+    [InlineData("duplicate-permission")]
+    [InlineData("read-permission")]
+    [InlineData("foreign-permission")]
+    [InlineData("route")]
+    [InlineData("query")]
+    [InlineData("header")]
+    [InlineData("argument")]
+    [InlineData("reserved-grant")]
+    [InlineData("duplicate-grant")]
+    [InlineData("unauthenticated")]
+    public async Task MaintenanceInvalidAdmission_DeniesBeforeAction(string invalid) {
+        ActionExecutingContext context = CreateMaintenanceContext();
+        switch (invalid) {
+            case "missing-scope": context.HttpContext.Request.Headers.Remove("X-Hexalith-Scope"); break;
+            case "duplicate-scope": context.HttpContext.Request.Headers["X-Hexalith-Scope"] = new Microsoft.Extensions.Primitives.StringValues(
+                [ProjectionDeliveryMaintenanceScopeCatalog.Namespace, ProjectionDeliveryMaintenanceScopeCatalog.Namespace]); break;
+            case "wrong-scope": context.HttpContext.Request.Headers["X-Hexalith-Scope"] = "platform:global-administrators"; break;
+            case "read-scope": context.HttpContext.Request.Headers["X-Hexalith-Scope"] = AdminPlatformScopeCatalog.Namespace; break;
+            case "route": context.RouteData.Values["tenantId"] = "tenant-a"; break;
+            case "query": context.HttpContext.Request.QueryString = QueryString.Create("tenantId", "tenant-a"); break;
+            case "header": context.HttpContext.Request.Headers["X-Hexalith-Tenant"] = "tenant-a"; break;
+            case "argument": context.ActionArguments["tenantId"] = null; break;
+            default:
+                Claim[] claims = invalid switch {
+                    "missing-permission" => [],
+                    "read-permission" => [new Claim("eventstore:permission", AdminPlatformScopeCatalog.ReadPermission)],
+                    "foreign-permission" => [new Claim("eventstore:permission", ProjectionDeliveryMaintenanceScopeCatalog.Permission + ":other")],
+                    "duplicate-permission" => [new Claim("eventstore:permission", ProjectionDeliveryMaintenanceScopeCatalog.Permission),
+                        new Claim("eventstore:permission", ProjectionDeliveryMaintenanceScopeCatalog.Permission)],
+                    "reserved-grant" => [new Claim("eventstore:permission", ProjectionDeliveryMaintenanceScopeCatalog.Permission), new Claim("eventstore:tenant", "system")],
+                    "duplicate-grant" => [new Claim("eventstore:permission", ProjectionDeliveryMaintenanceScopeCatalog.Permission),
+                        new Claim("eventstore:tenant", "Acme"), new Claim("eventstore:tenant", "acme")],
+                    _ => [new Claim("eventstore:permission", ProjectionDeliveryMaintenanceScopeCatalog.Permission)],
+                };
+                context.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims,
+                    invalid == "unauthenticated" ? null : "Test"));
+                break;
+        }
+        (await InvokeAsync(CreateFilter(), context)).ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        context.HttpContext.Items.ContainsKey(ProjectionDeliveryMaintenanceScopeCatalog.ValidatedContextKey).ShouldBeFalse();
+    }
+
+    private static ActionExecutingContext CreateMaintenanceContext() {
+        ActionExecutingContext context = CreateContext(CreatePrincipal(
+            new Claim("eventstore:permission", ProjectionDeliveryMaintenanceScopeCatalog.Permission),
+            new Claim("eventstore:tenant", "tenant-a")));
+        context.ActionDescriptor = new ControllerActionDescriptor {
+            ControllerTypeInfo = typeof(AdminProjectionRebuildController).GetTypeInfo(),
+            MethodInfo = typeof(AdminProjectionRebuildController).GetMethod(
+                nameof(AdminProjectionRebuildController.ReconcileGlobalAdministratorsDeliveryFromEventStoreAsync))!,
+        };
+        context.HttpContext.Request.Headers["X-Hexalith-Scope"] = ProjectionDeliveryMaintenanceScopeCatalog.Namespace;
+        return context;
+    }
+
     private static ActionExecutingContext CreatePlatformContext(params Claim[] claims) {
         ActionExecutingContext context = CreateContext(CreatePrincipal(claims), includeTenantArgument: true);
         context.ActionDescriptor = new ControllerActionDescriptor {

@@ -14,6 +14,24 @@ Projection delivery v2 upgrades each projection-scoped checkpoint row in place. 
 
 The activation endpoint uses first-write ETag concurrency. A conflicting marker is a failed cutover, not permission to overwrite control-plane state.
 
+## Retained global-administrator checkpoint
+
+For the retained platform global-administrator delivery checkpoint, use exactly
+`POST /api/v1/admin/projections/platform/global-administrators/delivery-reconciliation`
+with the single header `X-Hexalith-Scope: platform:global-administrators-delivery-reconciliation`.
+The caller must be an authenticated human `GlobalAdministrator` with an attributable operator identity
+and the exact permission `admin:reconcile-global-administrators-delivery`. Do not add a Tenant selector
+or substitute a read-only Admin scope. The route fixes the internal storage Tenant to `system`,
+Domain/AggregateId to `global-administrators` and projection to `global-administrators`; it grants no
+public `system` access. Ordinary Tenant checkpoint reconciliation keeps its existing route and admission.
+
+The operation uses the same reconciliation outcomes: HTTP 200 `Completed` with the preserved sequence,
+403 for denied scope/admission, 409 when authoritative history cannot prove the checkpoint and rebuild
+is required, and 503 when reconciliation capability or state is unavailable. It reloads and validates
+the original authoritative prefix, records attributable technical checkpoint/work evidence, preserves
+source events and sequence, and invokes no projection handler or domain append. All backup, source
+preservation, fleet quiescence and marker/no-downgrade boundaries above still apply.
+
 ## Rollback boundary
 
 Before the v2 marker is written, keep all writers stopped. You may restore the verified pre-cutover backup and redeploy the complete old fleet.

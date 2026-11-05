@@ -160,6 +160,14 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     public async Task<StreamReadPage> ReadWorkloadStreamAsync(
         StreamReadRequest request, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(request);
+        bool platformSource = LegacyTenantStorageMap.IsPlatformSourceRead(request.Tenant, request.Domain);
+        bool conflictingTenant = _httpClient.DefaultRequestHeaders.TryGetValues("X-Hexalith-Tenant", out IEnumerable<string>? tenants)
+            && (platformSource || !tenants.SequenceEqual([request.Tenant], StringComparer.Ordinal));
+        if (request.Tenant.StartsWith("platform:", StringComparison.Ordinal) && !platformSource
+            || _httpClient.DefaultRequestHeaders.Contains("X-Hexalith-Scope")
+            || conflictingTenant) {
+            throw new InvalidOperationException("The workload stream scope is unsupported or conflicting.");
+        }
         string? boundProof = _streamReadProofs is null
             ? null
             : await _streamReadProofs.IssueAsync(request, cancellationToken).ConfigureAwait(false);
@@ -169,7 +177,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         using HttpResponseMessage response = await SendWorkloadAsync(
             HttpMethod.Post, _options.WorkloadStreamReadPath, request,
             EventStoreGatewayWorkloadOperations.StreamRead, request.Tenant, cancellationToken,
-            boundProof).ConfigureAwait(false);
+            boundProof, explicitScope: platformSource ? request.Tenant : null).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) {
             await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
         }
@@ -177,7 +185,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         StreamReadPage? result = await response.Content
             .ReadFromJsonAsync<StreamReadPage>(JsonOptions, cancellationToken).ConfigureAwait(false);
         return result is not null
-            && string.Equals(result.Tenant, request.Tenant, StringComparison.Ordinal)
+            && string.Equals(result.Tenant, platformSource ? TenantCanonicalizer.ReservedStorageTenant : request.Tenant, StringComparison.Ordinal)
             && string.Equals(result.Domain, request.Domain, StringComparison.Ordinal)
             && string.Equals(result.AggregateId, request.AggregateId, StringComparison.Ordinal)
             ? result
@@ -186,7 +194,8 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
     private async Task<HttpResponseMessage> SendWorkloadAsync(
         HttpMethod method, string path, object? body, string operation, string tenant,
-        CancellationToken cancellationToken, string? streamReadProof = null, string? boundCommandProof = null) {
+        CancellationToken cancellationToken, string? streamReadProof = null, string? boundCommandProof = null,
+        string? explicitScope = null) {
         string? assertion = _workloadAssertions is null
             ? null
             : body switch {
@@ -201,6 +210,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
         using var request = new HttpRequestMessage(method, CreateRelativeUri(path));
         request.Headers.TryAddWithoutValidation("X-Hexalith-Workload-Assertion", assertion);
+        if (explicitScope is not null) {
+            request.Headers.Add("X-Hexalith-Scope", explicitScope);
+        }
         if (streamReadProof is not null) {
             request.Headers.TryAddWithoutValidation("X-Hexalith-Bound-Stream-Read-Proof", streamReadProof);
         }

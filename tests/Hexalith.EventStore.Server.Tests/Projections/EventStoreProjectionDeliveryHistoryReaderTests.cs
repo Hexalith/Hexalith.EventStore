@@ -236,6 +236,33 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
         _ = await aggregate.Received(1).ReadEventsRangeAsync(9_989, 10_000, 1);
     }
 
+    [Theory]
+    [InlineData("tenant")]
+    [InlineData("domain")]
+    [InlineData("aggregate")]
+    [InlineData("sequence")]
+    public async Task RetainedAdministratorHistory_RejectsForeignOrNoncontiguousSource(string invalid) {
+        var identity = new AggregateIdentity("system", "global-administrators", "global-administrators");
+        EventEnvelope envelope = Envelope(1, null) with {
+            TenantId = identity.TenantId, Domain = identity.Domain, AggregateId = identity.AggregateId,
+        };
+        envelope = invalid switch {
+            "tenant" => envelope with { TenantId = "tenant-a" },
+            "domain" => envelope with { Domain = "tenants" },
+            "aggregate" => envelope with { AggregateId = "another" },
+            _ => envelope with { SequenceNumber = 2 },
+        };
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.ReadEventsRangeAsync(0, 1, 1).Returns([envelope]);
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        factory.CreateActorProxy<IAggregateActor>(Arg.Is<ActorId>(id => id.ToString() == identity.ActorId), nameof(AggregateActor)).Returns(actor);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var reader = new EventStoreProjectionDeliveryHistoryReader(factory, protection, Options.Create(new EventStoreActorOptions()));
+        await Should.ThrowAsync<ProjectionDeliveryHistoryValidationException>(() => reader.ReadAsync(identity, 1));
+        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name).ShouldBe([nameof(IAggregateActor.ReadEventsRangeAsync)]);
+        protection.ReceivedCalls().ShouldBeEmpty();
+    }
+
     private static EventStoreProjectionDeliveryHistoryReader CreateReader(
         IAggregateActor aggregate,
         IEventPayloadProtectionService protection) {

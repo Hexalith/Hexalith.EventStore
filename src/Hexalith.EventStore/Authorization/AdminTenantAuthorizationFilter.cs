@@ -22,6 +22,32 @@ public class AdminTenantAuthorizationFilter(ILogger<AdminTenantAuthorizationFilt
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
 
+        var maintenanceAction = context.ActionDescriptor as ControllerActionDescriptor;
+        PlatformAdmissionDeclaration? maintenance = maintenanceAction is null ? null
+            : ProjectionDeliveryMaintenanceScopeCatalog.ForAction(
+                maintenanceAction.ControllerTypeInfo.FullName!, maintenanceAction.MethodInfo.Name);
+        if (maintenance is not null) {
+            List<string> grants = GetAuthorizedTenantClaims(context);
+            if (!context.HttpContext.Request.Headers.TryGetValue("X-Hexalith-Scope", out var maintenanceScope)
+                || maintenanceScope.Count != 1
+                || !string.Equals(maintenanceScope[0], maintenance.Namespace, StringComparison.Ordinal)
+                || context.RouteData.Values.ContainsKey("tenantId")
+                || context.HttpContext.Request.Query.ContainsKey("tenantId")
+                || context.ActionArguments.ContainsKey("tenantId")
+                || context.HttpContext.Request.Headers.ContainsKey("X-Hexalith-Tenant")
+                || context.HttpContext.User.Identity?.IsAuthenticated != true
+                || context.HttpContext.User.FindAll("eventstore:permission").Count(claim =>
+                    string.Equals(claim.Value, maintenance.RequiredHumanPermission, StringComparison.Ordinal)) != 1
+                || !TenantCanonicalizer.TryCanonicalizeGrants(grants, out _)) {
+                Deny(context, null, grants);
+                return;
+            }
+
+            context.HttpContext.Items[ProjectionDeliveryMaintenanceScopeCatalog.ValidatedContextKey] = maintenance.Namespace;
+            _ = await next().ConfigureAwait(false);
+            return;
+        }
+
         if (!HasTenantArgument(context)) {
             _ = await next().ConfigureAwait(false);
             return;

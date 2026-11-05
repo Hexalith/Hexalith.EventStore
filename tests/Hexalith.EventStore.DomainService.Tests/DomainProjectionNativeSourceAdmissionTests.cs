@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Gateway;
@@ -8,6 +10,9 @@ using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Streams;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.Testing.Http;
 using NSubstitute;
 using Shouldly;
 
@@ -189,9 +194,11 @@ public sealed class DomainProjectionNativeSourceAdmissionTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task RealRebuildAndReconciliationAdmitUntrustedJsonAndPersistOnlyOriginalProof(bool reconcile)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task RealRebuildAndReconciliationAdmitUntrustedJsonAndPersistOnlyOriginalProof(bool reconcile, bool selectedReader)
     {
         var (request, gateway) = Fixture();
         request = JsonSerializer.Deserialize<ProjectionRequest>(JsonSerializer.Serialize(request))!;
@@ -210,9 +217,13 @@ public sealed class DomainProjectionNativeSourceAdmissionTests
                 await store.SaveAsync("models", "original-proof", call.Arg<ProjectionRequest>().VerifiedNativeSourceProof.ShouldNotBeNull(), Token);
                 return DomainProjectionHandlerResult.Completed();
             });
-        using var services = new ServiceCollection().AddSingleton<IAsyncDomainProjectionHandler>(handler).AddSingleton(gateway)
+        IEventStoreGatewayClient human = selectedReader ? Substitute.For<IEventStoreGatewayClient>() : gateway;
+        var registrations = new ServiceCollection().AddSingleton<IAsyncDomainProjectionHandler>(handler).AddSingleton(human)
             .AddSingleton<Hexalith.EventStore.Client.Projections.IReadModelStore>(store)
-            .AddSingleton<Hexalith.EventStore.Client.Projections.IReadModelBatchStore>(store).BuildServiceProvider();
+            .AddSingleton<Hexalith.EventStore.Client.Projections.IReadModelBatchStore>(store);
+        if (selectedReader) registrations.AddSingleton(new DomainProjectionNativeSourceReader(
+            new AuthoritativeEventStreamReader(gateway, TimeProvider.System, requireNativeProof: true)));
+        using var services = registrations.BuildServiceProvider();
         string fingerprint = Hexalith.EventStore.Client.Projections.ProjectionRouteCatalogFingerprint.Compute("native-service", "v1", [new(Identity.Domain, "native-proof")]);
         var dispatch = new ProjectionDispatchRequest(request, ["native-proof"], "original-operation", fingerprint);
         var identity = new DomainProjectionIdentityOptions { AppId = "native-service", ServiceVersion = "v1" };
@@ -224,6 +235,7 @@ public sealed class DomainProjectionNativeSourceAdmissionTests
         var changed = dispatch with { Request = request with { Events = [request.Events[0] with { Payload = "{}"u8.ToArray() }] } };
         await Should.ThrowAsync<ProjectionDispatchValidationException>(() => Invoke(changed));
         store.Snapshot<NativeSourceProof>("models", "original-proof").ShouldBe(request.NativeSourceProof);
+        if (selectedReader) human.ReceivedCalls().ShouldBeEmpty();
     }
 
     [Theory]
@@ -300,6 +312,144 @@ public sealed class DomainProjectionNativeSourceAdmissionTests
         (await Should.ThrowAsync<OperationCanceledException>(() => DomainProjectionNativeSourceAdmission.VerifyAsync(services, request, caller.Token)))
             .CancellationToken.ShouldBe(caller.Token);
         await gateway.DidNotReceive().ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("legacy-after")]
+    [InlineData("payload")]
+    [InlineData("source-replaced")]
+    [InlineData("unavailable")]
+    [InlineData("missing-key")]
+    [InlineData("malformed-base64")]
+    [InlineData("malformed-pkcs8")]
+    [InlineData("cancelled-malformed-base64")]
+    [InlineData("cancelled-malformed-pkcs8")]
+    [InlineData("foreign-domain")]
+    public async Task SelectedNamedWorkloadSourceVerifiesOriginalPrefixWithoutUsingHumanGateway(string scenario)
+    {
+        ArgumentNullException.ThrowIfNull(scenario);
+        var (original, source) = Fixture();
+        using RSA key = RSA.Create(2048);
+        string? privateKey = scenario switch
+        {
+            "missing-key" => null,
+            "malformed-base64" or "cancelled-malformed-base64" => "invalid-base64!",
+            "malformed-pkcs8" or "cancelled-malformed-pkcs8" => Convert.ToBase64String([0, 1, 2, 3]),
+            _ => Convert.ToBase64String(key.ExportPkcs8PrivateKey()),
+        };
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500", ["DAPR_API_TOKEN"] = "sidecar-token",
+            ["EventStore:Gateway:AppId"] = "source-gateway", ["Authentication:WorkloadIssuer:Workload"] = "source-owner",
+            ["Authentication:BoundStreamRead:PrivateKey"] = privateKey,
+        }).Build();
+        var assertions = new List<WorkloadAssertionRequest>();
+        IWorkloadAssertionIssuer issuer = Substitute.For<IWorkloadAssertionIssuer>();
+        issuer.IssueAsync(Arg.Any<WorkloadAssertionRequest>(), Arg.Any<CancellationToken>()).Returns(call => {
+            assertions.Add(call.Arg<WorkloadAssertionRequest>());
+            return ValueTask.FromResult<string?>("exact-owner-assertion");
+        });
+        using var transport = new MockHttpMessageHandler(message => {
+            message.RequestUri!.AbsoluteUri.ShouldBe("http://localhost:3500/api/v1/streams/read/workload");
+            message.Headers.Authorization.ShouldBeNull();
+            message.Headers.GetValues("dapr-app-id").Single().ShouldBe("source-gateway");
+            message.Headers.GetValues("dapr-api-token").Single().ShouldBe("sidecar-token");
+            message.Headers.GetValues(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName).Single().ShouldBe("exact-owner-assertion");
+            var query = JsonSerializer.Deserialize<StreamReadRequest>(message.Content!.ReadAsStringAsync().GetAwaiter().GetResult(), JsonSerializerOptions.Web)!;
+            BoundStreamReadProof.Verify(message.Headers.GetValues(BoundStreamReadProof.HeaderName).Single(), query,
+                "source-owner", Convert.ToBase64String(key.ExportSubjectPublicKeyInfo()), DateTimeOffset.UtcNow).ShouldBeTrue();
+            if (scenario == "unavailable") return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            StreamReadPage page = source.ReadStreamAsync(query, Token).GetAwaiter().GetResult();
+            if (scenario == "source-replaced") page = page with { Metadata = page.Metadata with {
+                NativeProof = NativeSourceProofCodec.ExtendDigest(NativeSourceProofCodec.CreateSeed(Identity,
+                    "01ARZ3NDEKTSV4RRFFQ69G5FAW"), Identity, 1, original.Events[0].MessageId!,
+                    Convert.ToHexStringLower(SHA256.HashData(original.Events[0].Payload))) } };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(page) };
+        });
+        IEventStoreGatewayClient human = Substitute.For<IEventStoreGatewayClient>();
+        var legacy = new AuthoritativeEventStreamReader(source, TimeProvider.System);
+        var services = new ServiceCollection(); services.AddLogging(); services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton(issuer); services.AddSingleton(human);
+        if (scenario != "legacy-after") services.AddSingleton<IAuthoritativeEventStreamReader>(legacy);
+        services.AddEventStoreGatewayAuthoritativeEventStreamReader(scenario == "foreign-domain" ? "other" : Identity.Domain)
+            .ConfigurePrimaryHttpMessageHandler(() => transport);
+        if (scenario == "legacy-after") services.AddSingleton<IAuthoritativeEventStreamReader>(legacy);
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IAuthoritativeEventStreamReader>().ShouldBeSameAs(legacy);
+        ProjectionRequest request = scenario == "payload" ? original with { Events = [original.Events[0] with { Payload = "{}"u8.ToArray() }] } : original;
+        if (scenario.StartsWith("cancelled-", StringComparison.Ordinal))
+        {
+            using var caller = CancellationTokenSource.CreateLinkedTokenSource(Token);
+            caller.Cancel();
+            (await Should.ThrowAsync<OperationCanceledException>(() =>
+                DomainProjectionNativeSourceAdmission.VerifyAsync(provider, request, caller.Token)))
+                .CancellationToken.ShouldBe(caller.Token);
+        }
+        else if (scenario is "payload" or "source-replaced")
+            await Should.ThrowAsync<ProjectionDispatchValidationException>(() => DomainProjectionNativeSourceAdmission.VerifyAsync(provider, request, Token));
+        else {
+            ProjectionRequest admitted = await DomainProjectionNativeSourceAdmission.VerifyAsync(provider, request, Token);
+            if (scenario is "valid" or "legacy-after") admitted.VerifiedNativeSourceProof.ShouldBe(original.NativeSourceProof);
+            else admitted.VerifiedNativeSourceProof.ShouldBeNull();
+        }
+        human.ReceivedCalls().ShouldBeEmpty();
+        if (scenario is "missing-key" or "foreign-domain" or "malformed-base64" or "malformed-pkcs8"
+            or "cancelled-malformed-base64" or "cancelled-malformed-pkcs8") {
+            transport.CallCount.ShouldBe(0); assertions.ShouldBeEmpty();
+        }
+        else {
+            transport.CallCount.ShouldBeGreaterThan(0);
+            assertions.ShouldAllBe(assertion => assertion.Audience == "eventstore"
+                && assertion.Operation == EventStoreWorkloadOperations.GatewayStreamRead && assertion.Bindings != null
+                && assertion.Bindings.Count == 2
+                && assertion.Bindings[EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] == Identity.TenantId
+                && assertion.Bindings[EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] == Identity.Domain);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExplicitReaderRefusalOrErrorNeverFallsBackToHumanGateway(bool error)
+    {
+        var (request, human) = Fixture();
+        IAuthoritativeEventStreamReader selected = Substitute.For<IAuthoritativeEventStreamReader>();
+        selected.ReadAsync(Identity, Arg.Any<CancellationToken>()).Returns(_ => error
+            ? Task.FromException<AuthoritativeStreamReadResult>(new InvalidOperationException("selected-reader-failure"))
+            : Task.FromResult(new AuthoritativeStreamReadResult(null, "selected-reader-unavailable")));
+        using var provider = new ServiceCollection().AddSingleton(human)
+            .AddSingleton<IAuthoritativeEventStreamReader>(new AuthoritativeEventStreamReader(human, TimeProvider.System))
+            .AddSingleton(new DomainProjectionNativeSourceReader(selected)).BuildServiceProvider();
+        if (error) await Should.ThrowAsync<InvalidOperationException>(() => DomainProjectionNativeSourceAdmission.VerifyAsync(provider, request, Token));
+        else (await DomainProjectionNativeSourceAdmission.VerifyAsync(provider, request, Token)).VerifiedNativeSourceProof.ShouldBeNull();
+        human.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RealLegacyReaderDoesNotReplaceUnenrolledNativeGatewayFallback(bool gatewayAvailable)
+    {
+        var (request, gateway) = Fixture();
+        var (_, legacyGateway) = Fixture();
+        var legacy = new AuthoritativeEventStreamReader(legacyGateway, TimeProvider.System);
+        (await legacy.ReadAsync(Identity, Token)).Stream.ShouldNotBeNull().NativeProof.ShouldBeNull();
+        legacyGateway.ClearReceivedCalls();
+        var registrations = new ServiceCollection().AddSingleton<IAuthoritativeEventStreamReader>(legacy);
+        if (gatewayAvailable) registrations.AddSingleton(gateway);
+        using var provider = registrations.BuildServiceProvider();
+
+        ProjectionRequest admitted = await DomainProjectionNativeSourceAdmission.VerifyAsync(provider, request, Token);
+
+        provider.GetRequiredService<IAuthoritativeEventStreamReader>().ShouldBeSameAs(legacy);
+        legacyGateway.ReceivedCalls().ShouldBeEmpty();
+        if (gatewayAvailable)
+        {
+            admitted.VerifiedNativeSourceProof.ShouldBe(request.NativeSourceProof);
+            await gateway.Received().ReadStreamAsync(Arg.Is<StreamReadRequest>(query => query.RequireNativeProof), Arg.Any<CancellationToken>());
+            await gateway.DidNotReceive().ReadStreamAsync(Arg.Is<StreamReadRequest>(query => !query.RequireNativeProof), Arg.Any<CancellationToken>());
+        }
+        else admitted.VerifiedNativeSourceProof.ShouldBeNull();
     }
 
     private static (ProjectionRequest, IEventStoreGatewayClient) Fixture(string eventType = "ConversationCreated", byte[]? payload = null, bool protectedPayload = false)

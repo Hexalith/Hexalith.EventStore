@@ -38,6 +38,19 @@ The authorized maintenance endpoint
 `POST /api/v1/admin/projections/{tenantId}/{projectionName}/delivery-reconciliation/{domain}/{aggregateId}`
 requires `GlobalAdministrator` and an attributable operator identity. It reloads the exact authoritative EventStore prefix through the already-persisted checkpoint, validates identities/order/scope, recomputes the frozen chain, and hydrates bounded receipts with operator attribution. It preserves the sequence and never invokes a projection handler or changes detail/index/batch state. A short, unreadable, wrong-scope, or fingerprint-mismatched history remains rebuild-required.
 
+The retained platform administrator checkpoint has the separate fixed route
+`POST /api/v1/admin/projections/platform/global-administrators/delivery-reconciliation`,
+with exactly one `X-Hexalith-Scope: platform:global-administrators-delivery-reconciliation` header.
+It requires an authenticated human `GlobalAdministrator`, an attributable operator and the exact
+permission `admin:reconcile-global-administrators-delivery`; read-only Admin scope cannot authorize it,
+and Tenant selectors are refused. Its internal storage Tenant is always `system`, its Domain and
+AggregateId are `global-administrators`, and its projection is `global-administrators`. This supplies
+no public `system` grant and leaves ordinary Tenant maintenance unchanged. Existing outcomes apply:
+200 `Completed` with preserved sequence, 403 scope/admission refusal, 409 rebuild-required when the
+authoritative prefix cannot prove the checkpoint, and 503 unavailable capability/state. Only technical
+checkpoint/work records change; original source events and sequence remain intact, without projection
+dispatch or domain append. The cutover backup, quiescence and no-downgrade requirements still apply.
+
 ## Migration and operations
 
 Projection delivery v2 is a maintenance cutover, not a rolling upgrade. All old servers and retry workers must be quiesced, delivery state backed up, and non-zero sequence-only rows reconciled before activating the store-global `projection-delivery-writer-protocol` marker. Readiness requires the exact v2 marker. Once activated, rolling downgrade is forbidden; projection erasure never removes the global marker.

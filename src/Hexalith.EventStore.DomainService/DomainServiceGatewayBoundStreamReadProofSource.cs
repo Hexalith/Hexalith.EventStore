@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Streams;
 
@@ -16,7 +18,17 @@ internal sealed class DomainServiceGatewayBoundStreamReadProofSource(
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult<string?>(domains.Contains(request.Domain)
-            ? BoundStreamReadProof.Issue(request, caller, privateKey, clock.GetUtcNow()) : null);
+        try
+        {
+            string? proof = domains.Contains(request.Domain)
+                ? BoundStreamReadProof.Issue(request, caller, privateKey, clock.GetUtcNow()) : null;
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(proof);
+        }
+        catch (Exception exception) when (exception is ArgumentException or FormatException or CryptographicException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult<string?>(null);
+        }
     }
 }
