@@ -256,9 +256,8 @@ public sealed partial class DomainServiceTrustBoundaryTests
 
     /// <summary>
     /// Story 5.5 (P-4): an unavailable administrator verifier fails <c>/process</c> and <c>/query</c> closed before any
-    /// domain work with a bounded, retryable 503, the <c>administrator-verifier-unavailable</c> reason, and the
-    /// correlation identifier. The process denial remains bounded; the protected query emits no detailed public logs.
-    /// The raw exception text never reaches the response or the logs.
+    /// domain work with a bounded, retryable 503. The command emits its bounded reason and correlation identifier;
+    /// the protected query suppresses internal denial diagnostics. Neither exposes raw exception details.
     /// </summary>
     [Fact]
     public async Task WireAdministratorFlag_VerifierFailure_FailsClosedWithBoundedUnavailable()
@@ -292,14 +291,16 @@ public sealed partial class DomainServiceTrustBoundaryTests
         };
         AddInternalHeaders(queryRequest, Assertion([EventStoreWorkloadOperations.DomainServiceQuery]), [ChannelToken]);
 
+        int commandLogStart = logs.Messages.Count;
         using HttpResponseMessage commandResponse = await client.SendAsync(command, TestContext.Current.CancellationToken);
-        string processDenial = logs.Messages.Where(static message => message.Contains(
+        string processDenial = logs.Messages.Skip(commandLogStart).Where(static message => message.Contains(
             "Reason=" + WorkloadAuthenticationReasons.AdministratorVerifierUnavailable,
             StringComparison.Ordinal)).ShouldHaveSingleItem();
         processDenial.ShouldContain("Path=/process", Case.Sensitive);
         processDenial.ShouldContain("CorrelationId=story-5-5-domain", Case.Sensitive);
         processDenial.ShouldContain("StatusCode=503", Case.Sensitive);
         string[] logsBeforeQuery = [.. logs.Messages];
+        int queryLogStart = logs.Messages.Count;
 
         using HttpResponseMessage queryResponse = await client.SendAsync(queryRequest, TestContext.Current.CancellationToken);
         // The real query host suppresses detailed read diagnostics before the verifier runs.
@@ -320,7 +321,11 @@ public sealed partial class DomainServiceTrustBoundaryTests
         verifierCalls.Select(static claim => claim.CorrelationId).ShouldBe(["corr-1", "corr-q"]);
         verifierCalls.ShouldAllBe(static claim => claim.TenantId == "tenant-a"
             && claim.Domain == "widget" && claim.UserId == "acting-user");
+        logs.Messages.Skip(queryLogStart).ShouldNotContain(static message => message.Contains(
+            "SecurityEvent=InternalAuthenticationDenied", StringComparison.Ordinal));
         logs.Messages.ShouldAllBe(message => !message.Contains(internalDetail, StringComparison.Ordinal));
+        logs.Messages.Skip(commandLogStart).ShouldAllBe(static message => !message.Contains(
+            nameof(InvalidOperationException), StringComparison.Ordinal));
     }
 
     /// <summary>

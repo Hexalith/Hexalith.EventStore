@@ -88,7 +88,10 @@ public sealed class CatalogInvocationTests : IDisposable
         using var worker = Worker(Substitute.For<IRouteCatalogAuthority>(), Substitute.For<IWorkloadAssertionIssuer>());
         Should.Throw<InvalidOperationException>(() => worker.Validate(Request() with
         {
-            AppId = app, Method = method, Credential = credential, Token = token,
+            AppId = app,
+            Method = method,
+            Credential = credential,
+            Token = token,
         }));
         Should.Throw<InvalidOperationException>(() => worker.Validate(Request() with { ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5) }));
         Should.Throw<InvalidOperationException>(() => worker.Validate(Request() with { ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1) }));
@@ -124,7 +127,8 @@ public sealed class CatalogInvocationTests : IDisposable
         using var worker = Worker(authority, issuer);
         await Should.ThrowAsync<RouteCatalogUnavailableException>(() => worker.InvokeAsync(Request() with
         {
-            Credential = credential, Token = token,
+            Credential = credential,
+            Token = token,
         }, TestContext.Current.CancellationToken));
         await issuer.DidNotReceive().IssueAsync(Arg.Any<WorkloadAssertionRequest>(), Arg.Any<CancellationToken>());
     }
