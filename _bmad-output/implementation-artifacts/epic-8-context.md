@@ -6,6 +6,8 @@
 
 Provide an optional EventStore-owned payload-protection engine with stable cryptographic formats, shared policy and key-lifecycle mechanics, production-backend conformance, compatibility, governed release and exercised rollback. Domains retain legal-policy ownership and operators retain production key custody. This additive, disabled-by-default capability is post-MVP; it cannot block Phase 4 MVP completion. Parties migration requires a separately approved G5 availability decision.
 
+**Owner scope clarification (2026-11-06):** Azure is outside the MVP. Staging/production targets on-premises Kubernetes at `192.168.1.30`, with infrastructure managed by [Hexalith.Platform](../../references/Hexalith.Platform/README.md). Story 8.6's Azure conformance is deferred post-MVP, as recorded in its [owner disposition](spec-8-6-azure-key-vault-production-adapter-conformance.md#owner-scope-disposition--2026-11-06). Do not request Azure provisioning or authority/custody documents as MVP prerequisites. The Azure story remains incomplete, its approved design is retained, and Platform's own deployment prerequisites still apply.
+
 ## Stories
 
 - Story 8.1: Shared Payload-Protection Security Spec And ADR

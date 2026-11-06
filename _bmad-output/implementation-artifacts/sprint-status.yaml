@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-11-02
+# last_updated: 2026-11-06
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-03
+last_updated: 2026-11-06
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -94,7 +94,9 @@ development_status:
   2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts: in-progress
   # do 5.12 before
   2-15-messageid-only-command-status-identity: backlog
-  2-16-bounded-signalr-detail-metadata: backlog
+  # 2026-11-06: NFR5 local conformance 178/178 server + 63/63 client; independent review complete.
+  # CI pending; commands/results: spec-2-16-bounded-signalr-detail-metadata.md.
+  2-16-bounded-signalr-detail-metadata: review
   2-17-generated-code-and-generator-build-quality: backlog
   epic-2-retrospective: done
 
@@ -246,6 +248,7 @@ development_status:
   7-22-production-restore-posture-including-scheduler-state: backlog
   epic-7-retrospective: optional
 
+  # Post-MVP: Epic 8 cannot block Phase 4 MVP completion.
   epic-8: in-progress
   # Security/architecture gate approved; Story 8.2 alone is authorized for exact-digest/source preflight.
   8-1-shared-payload-protection-security-spec-and-adr: done
@@ -259,6 +262,9 @@ development_status:
   # Approved 2026-11-03: exact scoped SDK exception and two named Builds catalog edits;
   # stop before implementation. Azure resource/conformance authority remains separate.
   # Core 1.64.0 correction approved 2026-11-03; additive local implementation resumed.
+  # Owner clarification 2026-11-06: Azure work is deferred post-MVP, not an MVP gate.
+  # MVP target: on-premises Kubernetes 192.168.1.30; Hexalith.Platform owns infrastructure.
+  # in-progress preserves incomplete conformance; execution_disposition is in the story spec.
   8-6-azure-key-vault-production-adapter-conformance: in-progress
   8-7-server-persistence-and-snapshot-integration: backlog
   8-8-package-and-release-integration: backlog

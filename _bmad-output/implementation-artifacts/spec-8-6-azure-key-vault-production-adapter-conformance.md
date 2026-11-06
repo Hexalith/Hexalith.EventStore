@@ -3,6 +3,8 @@ title: 'Story 8.6: Azure Key Vault Production Adapter Conformance'
 type: 'feature'
 created: '2026-11-03'
 status: 'in-progress'
+delivery_scope: 'post-mvp'
+execution_disposition: 'deferred-post-mvp'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '45d29a03d8be155d2251251a5bc6ba42035b672d'
@@ -20,6 +22,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-6-azure-core-pin-correction.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-6-identity-diagnostics-disposition.md'
 ---
+
+## Owner scope disposition — 2026-11-06
+
+The owner clarified during this build run: "Azure is not in MVP scope. On premise 192.168.1.30 K8S is the staging/production platform. Infrastructure is managed by module Hexalith.Platform." This confirms the PRD and Epic 8's existing post-MVP scope. Story 8.6's Azure work is deferred; Azure provisioning, authority/custody documents and live conformance are not MVP prerequisites.
+
+The MVP staging/production target is the owner's on-premises Kubernetes platform at `192.168.1.30`. [Hexalith.Platform](../../references/Hexalith.Platform/README.md) owns infrastructure preparation, composition and deployment. Its [staging foundation](../../references/Hexalith.Platform/eng/staging-foundation/README.md) retains its own prerequisites; identifying the target does not establish deployment readiness. EventStore does not provision a replacement backend or move Platform infrastructure work into this story.
+
+The existing Azure adapter and verification remain retained. `status: in-progress` records incomplete conformance; `execution_disposition: deferred-post-mvp` records the owner's scheduling decision. The approved frozen design and original baseline stay intact. Resume Azure conformance only after explicit post-MVP reactivation and the separately required environment authority. Deferral does not satisfy the live acceptance criteria or authorize Story 8.7, production protection, release or G5.
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 

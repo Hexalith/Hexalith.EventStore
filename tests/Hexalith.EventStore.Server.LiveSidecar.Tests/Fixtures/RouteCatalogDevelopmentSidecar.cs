@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 
@@ -27,6 +28,8 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
     public RouteCatalogDevelopmentSidecar(string appId, string resources, string configuration, string? appToken = null)
     {
         AppId = appId;
+        int placementPort = DaprTestInfrastructurePorts.Read("EVENTSTORE_TEST_PLACEMENT_PORT", 50005);
+        int schedulerPort = DaprTestInfrastructurePorts.Read("EVENTSTORE_TEST_SCHEDULER_PORT", 50006);
         var reservations = Enumerable.Range(0, 6).Select(_ => new TcpListener(IPAddress.Loopback, 0)).ToArray();
         foreach (TcpListener listener in reservations) listener.Start();
         int[] ports = [.. reservations.Select(listener => ((IPEndPoint)listener.LocalEndpoint).Port)];
@@ -48,7 +51,8 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
         string[] arguments = ["--app-id", appId, "--dapr-http-port", ports[0].ToString(), "--dapr-grpc-port", ports[1].ToString(),
             "--dapr-internal-grpc-port", ports[2].ToString(), "--metrics-port", ports[3].ToString(), "--profile-port", ports[4].ToString(),
             "--resources-path", resources, "--config", configuration, "--dapr-listen-addresses", "127.0.0.1", "--log-level", "warn",
-            "--placement-host-address", "localhost:50005", "--scheduler-host-address", "localhost:50006"];
+            "--placement-host-address", "localhost:" + placementPort.ToString(CultureInfo.InvariantCulture),
+            "--scheduler-host-address", "localhost:" + schedulerPort.ToString(CultureInfo.InvariantCulture)];
         foreach (string argument in arguments) _start.ArgumentList.Add(argument);
         if (appToken is not null)
         {

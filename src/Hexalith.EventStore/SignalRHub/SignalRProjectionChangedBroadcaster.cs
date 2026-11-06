@@ -180,7 +180,9 @@ public partial class SignalRProjectionChangedBroadcaster : IProjectionChangedBro
             _ = activity?.SetTag(TagResult, BroadcastResultFailOpenFailure);
             _ = activity?.SetTag(TagExceptionType, exceptionType);
             _ = activity?.SetTag(TagElapsedMilliseconds, elapsedMilliseconds);
-            Log.DetailBroadcastFailed(_logger, ex, detail.ProjectionType, detail.TenantId, groupName, elapsedMilliseconds, BroadcastResultFailOpenFailure, exceptionType, traceId, spanId, CategoryName);
+            // Transport exceptions may echo metadata in their message, inner exceptions or Data.
+            // Retain only the type in the Warning event so log providers cannot render those values.
+            Log.DetailBroadcastFailed(_logger, detail.ProjectionType, detail.TenantId, groupName, elapsedMilliseconds, BroadcastResultFailOpenFailure, exceptionType, traceId, spanId, CategoryName);
         }
     }
 
@@ -220,7 +222,7 @@ public partial class SignalRProjectionChangedBroadcaster : IProjectionChangedBro
 
         [LoggerMessage(EventId = 1095, Level = LogLevel.Warning,
             Message = "SignalR detail broadcast failed (fail-open). ProjectionType: {ProjectionType}, TenantId: {TenantId}, Group: {GroupName}, ElapsedMilliseconds: {ElapsedMilliseconds}, Result: {Result}, ExceptionType: {ExceptionType}, TraceId: {TraceId}, SpanId: {SpanId}, CategoryName: {CategoryName}")]
-        public static partial void DetailBroadcastFailed(ILogger logger, Exception exception, string projectionType, string tenantId, string groupName, double elapsedMilliseconds, string result, string exceptionType, string? traceId, string? spanId, string categoryName);
+        public static partial void DetailBroadcastFailed(ILogger logger, string projectionType, string tenantId, string groupName, double elapsedMilliseconds, string result, string exceptionType, string? traceId, string? spanId, string categoryName);
 
         [LoggerMessage(EventId = 1096, Level = LogLevel.Warning,
             Message = "SignalR detail broadcast metadata clipped to configured bounds. Group: {GroupName}, OriginalCount: {OriginalCount}, BoundedCount: {BoundedCount}, CategoryName: {CategoryName}")]
