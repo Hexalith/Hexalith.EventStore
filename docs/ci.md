@@ -8,7 +8,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
-| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` and `release/parties-sdk-3.130.2` | Runs the required shared `domain-ci-v2.yml@f4e908206f2d6481c0ced6b7d4e62e28dcf3b330` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
+| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` and `release/parties-sdk-3.130.2` | Runs the required shared `domain-ci-v2.yml@567604b616613ba429be0609636d805db776a709` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
 | **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Visible non-release-blocking browser and governance suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
 | **Payload Protection Lifecycle** | `.github/workflows/payload-protection-lifecycle.yml` | `push`, `pull_request` to `main` and `release/parties-sdk-3.130.2`, manual dispatch | Isolated Dapr 1.18.7/PostgreSQL v2 capability, catalog, lease, drain, recovery, rotation, generation and restore tests. Requires at least thirty-one executed tests with zero skips, including cumulative transport limits, writer capacity, conditional restore decisions and authority races. Local qualification and its limits are recorded in the Story 8.5 spec; a CI run is separate evidence. |
@@ -76,7 +76,7 @@ Reusable CI/CD logic belongs in `Hexalith.Builds`:
 EventStore keeps only module-specific wiring here:
 
 - `Hexalith.EventStore.slnx`.
-- The isolated test project list passed to `domain-ci-v2.yml@f4e908206f2d6481c0ced6b7d4e62e28dcf3b330`.
+- The isolated test project list passed to `domain-ci-v2.yml@567604b616613ba429be0609636d805db776a709`.
 - The advisory test project list and Playwright browser install needed by the
   Admin UI E2E suite.
 - Manifest-backed package validation scripts under `scripts/`.
@@ -117,12 +117,12 @@ place for run output.
 
 | Lane | Projects | Workflow behavior |
 |------|----------|-------------------|
-| Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci-v2.yml@f4e908206f2d6481c0ced6b7d4e62e28dcf3b330` job through `unit-test-projects`. All nineteen previous unit projects and the self-contained AppHost model-test project execute before integration; no AppHost topology is started by these tests. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
+| Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci-v2.yml@567604b616613ba429be0609636d805db776a709` job through `unit-test-projects`. All nineteen previous unit projects and the self-contained AppHost model-test project execute before integration; no AppHost topology is started by these tests. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
 | Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs`, `tools/tests/test_release_publication_authority.py` | Blocking EventStore-owned CI job. It provisions Node 24, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. It also runs the publication-authority regressions against the exact approved Builds publication engine. |
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`, plus `scripts/check-committed-files.sh`, `tools/tests/test_check_committed_files.py` and `tools/tests/test_dapr_broker_qualification.py` | Dedicated `Integration Tests` workflow after `dapr init`; its required `live-sidecar` job first runs the committed-file guard and the two Python suites. This lane is visible but not part of the semantic-release gate. It is not a `dotnet test` of `Server.Tests`. |
 | Payload-protection lifecycle | `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests` | Dedicated `Payload Protection Lifecycle` workflow; isolated processes and digest-pinned PostgreSQL v2 state, persisted assertions and zero skips. The existing `Payload Protection` core workflow runs independently. |
 | Advisory browser/governance suites | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
-| Runner-owned package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | The declared `platform-package` suite requires the real gateway and run-scoped Redis persistence after all twenty isolated projects pass. Published CLI 4.44.0 and the pinned v2 producer perform unconditional owned cleanup. Identity/catalog prerequisites remain blocking; the current SDK revision still requires exact-head hosted qualification. The separate Contracts gate remains blocking. |
+| Runner-owned package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | The declared `platform-package` suite requires the real gateway and run-scoped Redis persistence after all twenty isolated projects pass. Published CLI 4.44.11 and the pinned v2 producer perform unconditional owned cleanup. Identity/catalog prerequisites remain blocking; the current SDK revision still requires exact-head hosted qualification. The separate Contracts gate remains blocking. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 | Isolated synthetic sharding | `tests/Hexalith.EventStore.Sharding.Tests` | Deferred CI automation; the operator opt-in Debug lane and its owned `Sharding.TestHost` fixture are documented in `tests/Hexalith.EventStore.Sharding.Tests/README.md`. Synthetic observations do not qualify a production provider profile or release gate. |
 
@@ -130,6 +130,27 @@ The v2 caller explicitly maps only `HEXALITH_CI_REGISTRY_USERNAME` and
 `HEXALITH_CI_REGISTRY_PASSWORD` to its pull-only registry secret interface. It
 accepts no inherited secrets, caller Dapr overrides or direct integration/AppHost
 execution inputs. Existing independent jobs and consumer/coverage gates remain.
+
+### Current package-test producer selection — 2026-11-06
+
+The active package profile records genuine Builds4.44.11 source
+`567604b616613ba429be0609636d805db776a709` and Platform source
+`01e5b6530af96ad6eaa69cc1867d43def56c43ca`. The exact module-tool pin,
+shared CI caller and producer catalog agree. Builds normal release
+[42252030945](https://github.com/Hexalith/Hexalith.Builds/actions/runs/42252030945)
+published the signed tool after its successful source CI. The catalog selects
+EventStore4.1.0 and genuine Tenants7.0.5, whose corrected owner source is
+`d88aef6b52d7e8a2e2d81132b1d76b7e1d1f0f35`.
+
+Platform admits this six-DLL/two-image combination only through its separate
+private EventStore `platform-package` test purpose and authenticated owner proof.
+Public version selection and full-Parties launch admission remain unchanged.
+The caller retains both declared integration facts, real gateway persistence,
+all isolated unit projects, original deadlines and unconditional owned cleanup.
+Fresh exact-source CI must establish native execution; producer/source checks
+alone do not grant it.
+
+### Historical package-profile bootstrap
 
 The package-profile bootstrap records Builds
 `6249a8c0a0480a4b8a8ba04fc214c6104c3c9045` and released Platform `v1.2.3`
@@ -143,7 +164,7 @@ Platform records that exact Builds source and requires tool range
 bytes with earlier releases do not substitute for these actual publication and
 source identities. No Platform nested dependency checkout is required.
 
-The shared CI executor is independently pinned to Builds
+The shared CI executor for this earlier preparation was pinned to Builds
 `f4e908206f2d6481c0ced6b7d4e62e28dcf3b330`. It retains only the receipt-bound
 result's declared, redacted lifecycle, native-report and functional-observation
 diagnostics after exact owned cleanup. Each bounded private regular file must
@@ -298,7 +319,7 @@ dedicated LiveSidecar lane; they are not a reason to add the project to
 
 ## Package Validation
 
-Shared `domain-ci-v2.yml@f4e908206f2d6481c0ced6b7d4e62e28dcf3b330` calls these EventStore entry points when
+Shared `domain-ci-v2.yml@567604b616613ba429be0609636d805db776a709` calls these EventStore entry points when
 `run-consumer-validation: true`:
 
 ```bash
