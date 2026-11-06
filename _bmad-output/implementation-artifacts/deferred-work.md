@@ -6523,3 +6523,10 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
   summary: Bound reconciliation scheduling latency when one work page has many ready full-duration lifecycle drains.
   evidence: Pass-10 edge review traced serial work-page processing into ResumeAsync, which can wait a fresh 60 seconds per ready drain and delay other roots for hours. Preserve the 60-second proof and claim fencing while qualifying fair scheduling before host integration.
+
+## Deferred from: code review of spec-2-16-bounded-signalr-detail-metadata.md (2026-11-06)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-16-bounded-signalr-detail-metadata.md`
+  summary: ASP.NET Core SignalR server and backplane logs have never been captured over a real hub to check them for metadata values above Debug (medium if true, unverified).
+  evidence: Acceptance Auditor. `SignalRDetailMetadataConformanceTests` mocks `IHubContext` and captures only the `SignalRProjectionChangedBroadcaster` and `EventStoreSignalRClient` logger categories. No leaking EventStore source path is known. Whether the SignalR stack logs invocation arguments above Debug is unverified.
+  reason: maybe-false. To settle it, run a real hub (TestServer + `HubConnection`), capture every logger category above Debug, and send a marker metadata value. If NFR5's "framework logs" means EventStore's own logs, close this as satisfied.

@@ -394,3 +394,79 @@ Documentation checks: all **3/3** frontmatter context paths exist; normative dig
 The user replied **“yes”** to the proposed fresh section 10 qualification pass covering Debug/source, Release/package and live tests. This authorizes one fresh finite pass for the current checkout, superseding the exhausted historical-pass limits solely for this queue. Run the existing focused and complete affected suites sequentially, once per complete cohort with no full-cohort retries, and include the owning Live/W0–W6/R4096 checks as applicable. Use fresh coherent outputs; never substitute a stale assembly after a producer fails. Apply the repository's focused/serialized fallback validation ladder for build or environment blockers and retain each exact command/result separately.
 
 Preserve approved normative bytes, assertions, budgets, dependency declarations, policies, historical records and unrelated working changes. Use task-owned live resources and clean them up. Record commands, counts, source revision and any CI link in this spec under the current evidence-storage policy; native output may remain local scratch or CI artifacts. No staging, commit, push, publication, deployment or maintenance cutover is authorized. Story 9.2 and AD-12 assurance remain separate completion requirements, and Story 6.4/sprint remain in progress until all gates pass.
+
+
+## Fresh qualification result, 2026-11-06
+
+The authorized finite queue has ended. All 41 implementation tasks remain checked; this record does not reclassify historical cohorts or close Story 6.4. Native logs, XML, commands and source/runtime snapshots remain local in `/tmp/story64-qualification-20261106-iuWEtW` (frames 01–28) and `/tmp/story64-qualification-continuation-20261106-hyapg861` (frames 29–63). The original entry was `8863d63864a8ca9d69fd27431719d4a5a707f6fa`, Release entry was `0f22b3ed86a2ecc4a98f09b4cc76bc5a9bba38c9`, and continuation entry/Debug full frame was `10a335307e417ba339afeda6ad3e2a40bfe1f092`. Later isolated producers record external HEAD `101448e3ddc705be4b4793fc3d02f03ea694a784`; actual captured working inputs, effective restored assets and consumed binaries remain the authority for each frame. No complete cohort was repeated.
+
+| Native frame | Outcome, attached only to its own producer/runtime |
+| --- | --- |
+| 02 Server focused; 05 Domain focused | 728/728 and 257/257 passed |
+| 03/20 full Server, Debug/Release | Each selected 7,945: passed 7,919, failed 1, skipped 25, errors 0 |
+| 06/22 full DomainService, Debug/Release | Each passed 1,381, declared skip 1, failures/errors 0 |
+| 12/24 full Client, Debug/Release | Each passed 2,392, declared skips 2, failures/errors 0 |
+| 18/26 full Contracts, Debug/Release | Each passed 1,539/1,539 |
+| 09/31 focused Live, Debug/Release | Each passed 40/40; earlier frame 28 has no terminal result and remains interrupted/unknown |
+| 10/54 Current R4096, Debug/isolated Release | Each passed 5/5, including fifteen Current observations per frame |
+| 33/39 fixture/parser/affected Live classes, Debug/isolated Release | Each passed 32/32; includes all twelve new port-configuration regressions |
+| 40/50 public CLI preflight, plain/mapped isolated Release | Each passed 1/1 against its own producer; the earlier plain result is not a mapped-producer pass |
+| 53 mapped OQ8 production matrix | Passed 1/1, 23.559 seconds |
+| 56 first complete isolated Release Live | Selected 334, passed 330, declared skips 4, failures/errors/not-run 0, native exit 0, 3,877.707 seconds |
+| 60 private authentic-public-fixture ABI/materialization | Passed 3/3, failures/errors/skips 0, native exit 0, 0.883 seconds |
+
+The existing Debug/source and Release/package producer commands are retained in their numbered `.command` files: `dotnet build tests/<suite>/<suite>.csproj -c Debug -p:UseHexalithProjectReferences=true -p:GeneratePackageOnBuild=false -m:1`, or the corresponding Release command with `-p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -p:Version=999.0.0-ci-test`. Full native commands run `dotnet tests/<suite>/bin/<configuration>/net10.0/<suite>.dll [-longRunning 60] -result-xml <frame>.xml`; frame 03 omits `-longRunning`. Release solution restore/build, `python3 scripts/pack-release-packages.py <private-packages> 0.0.0-ci-test`, and `python3 scripts/validate-nuget-packages.py <private-packages>` exited 0. Fourteen archives were produced and validated; their identities still match the original validation snapshot. These are pass-bound build/package results, not a new latest-checkout aggregate.
+
+The demonstrated isolation defect was in `RouteCatalogDevelopmentSidecar`: its constructor hardcoded placement/scheduler ports while other owning fixtures already accepted explicit environment ports. It now calls the existing `DaprTestInfrastructurePorts.Read` for `EVENTSTORE_TEST_PLACEMENT_PORT`/`EVENTSTORE_TEST_SCHEDULER_PORT` before allocating sockets, keeps defaults 50005/50006 and uses invariant formatting for the emitted native arguments. No second parser, topology, transport profile, assertion or budget changed. `RouteCatalogDevelopmentSidecarTests.cs` and its serialized `RouteCatalogSidecarConfigurationCollection.cs` cover actual emitted arguments, defaults, partial overrides, DisableControlPlane and malformed explicit values. Parent inspected this exact patch. All three files match the copied producer snapshot, current working bytes and external committed bytes.
+
+Frame 34 is the single complete Debug Live invocation: its original 2,700-second outer guard expired; SIGTERM did not drain within 30 seconds, so its recorded group was killed. There is no final native XML/count, and the whole Debug gate remains unproven. Five source inputs and eighteen entry-host runtime files changed through external arrivals during that invocation. Its unchanged test-directory bytes and passing stage receipts cannot establish coherent current-source acceptance. The earlier frame 28 interruption and this frame 34 outcome are retained without a cohort retry.
+
+For Release, fresh producer 35 and plain-copy preflights were retained. Frame 37 failed at task-owned scheduler loopback forwarding and its exact partial containers were removed. Frame 41 OQ8 failed the existing diagnostic sanitizer because PDBs exposed the original private source path; no sanitizer was weakened. Parent authorized a fresh compiler diagnostic/PDB mapping, `-p:PathMap=/home/administrator/projects/hexalith/eventstore=/_/eventstore`. Producer 42 used:
+
+```text
+dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Release --artifacts-path /tmp/story64-qualification-continuation-20261106-hyapg861/release-artifacts-mapped -p:PathMap=/home/administrator/projects/hexalith/eventstore=/_/eventstore -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -p:GeneratePackageOnBuild=false -p:Version=999.0.0-ci-test -m:1
+```
+
+That producer exited 0 with zero warnings/errors and stable captured inputs. Frame 43 copied sources/configuration/runtime-lock plus complete test and both host output trees into `release-mapped-mirror`, retaining supported relative paths and the slnx root marker. All 10,278 source/configuration entries and 932 runtime files were byte-verified, with distinct inodes and no Git metadata. Frame 56 launched `dotnet <mirror>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -longRunning 60 -result-xml <capture>/56-release-mapped-live-full.xml`. Its `.command` and `-env.json` retain every expanded private control setting: Redis 62881, placement 62882, scheduler 43073, explicit R=256, private HotReload=false, and supported OQ8/admission/evidence overrides. Its fixed outer guard was 5,400 seconds plus a 30-second drain; every existing child-phase timeout, including twenty minutes, workload and normative numerical ceiling remained unchanged. This operational guard is not a latency acceptance target.
+
+The mapped frame 44 CLI failure was a missing exact Sentry image, diagnosed from its private custody receipt before any native transport process/credential startup. Frame 46 OQ8 initialization failed because its PostgreSQL image had also vanished; the failed prerequisite inspection had not been gated before that attempt. Original failures remain retained. Whole-set prerequisite gating was then enforced before further native preflights. The following existing immutable prerequisites were restored with `docker pull <reference>` (each exit 0), without selecting a new version:
+
+```text
+ghcr.io/dapr/sentry@sha256:b9fc166085289661f516150dc1c47ac3495b9e6d1e666079cb71cd2374ca7256
+ghcr.io/dapr/placement@sha256:c9da106eddcbb625c94baea31af4ed576d32750741b442c99f51518c420e76cc
+ghcr.io/dapr/scheduler@sha256:2cc2da2f7c4ece604041e6a420de04a297afb24cea8b3c9394bd0e126a334444
+postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+redis@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
+```
+
+The last digest is the previously observed identity of the already-required `redis:7-alpine` alias. Only while that alias remained absent was it restored with `docker tag redis@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f redis:7-alpine`; no existing alias was overwritten. All required RepoDigests/config identities, including catalog Redis `c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf`, were verified before the successful mapped CLI/OQ8/R4096/full executions. Frame 48's missing-alias gate and frame 49's stopped-cache-retainer creation failure (`no command specified`, no container created) remain preserved. No images were pruned and no shared host setting/service changed.
+
+Frame 56 source and runtime snapshots are identical before/after. Actual admission-host loaded-image receipts independently match copied/produced binaries or unchanged platform .NET runtime files. Its exact four skips are the standalone `ProjectionBoundedIdentityProcessWorkerTests`, `ProjectionWatermarkProcessWorkerTests`, `ProjectionScratchProcessWorkerTests` and `ProjectionRetiredInstallerProcessWorkerTests` helpers; their owning controllers ran. Parent independently verified native enrollment and passing Current 5, tail 7, fallback 4, duplicate 1, gap 1, replica crash/resume 1, touched-empty 1, erase 4 and new port regressions 12. Child and parent audits confirm all fifteen default-R=256 Current rows and all fifteen separate frame-54 R4096 rows: C=H, two source inspections, exactly eleven metadata/proof/marker reads, zero envelopes/handlers/batches/mutations/proof writes/scheduler cleanup, and the original byte/proof-visit bounds. All seven frame-56 live-cost rows independently satisfy their existing read/effect/byte/proof ceilings. Focused R4096 remains separate from complete-cohort counts.
+
+The original full Server failures are a local fixture/cache mismatch: the copied unsigned Tenants.Contracts 7.0.0 archive hashes to `81a33bb7562507004d4dfb8da2365cdea1fb874ff53798787bff110c0d9573ef`, and shared `.nupkg.metadata` records `/tmp/story-2-14-packages`, rather than the authentic public signed archive. The unchanged owning assertion expects `e21f5ac7b5f332f1921f70a249ab2032b9978d56ffdd6641a0a4b94d04850bdc`. Frame 57 retrieved `https://api.nuget.org/v3-flatcontainer/hexalith.tenants.contracts/7.0.0/hexalith.tenants.contracts.7.0.0.nupkg` (HTTP 200), verified that exact SHA and its 12,983-byte signature. Fresh frames 58/59 restored/built only into ignored task-private packages/HTTP/plugin caches and SDK artifacts below this owning repository, preserving the real slnx/Tenants-source layout. Restore exited 0; build exited 0, zero warnings/errors. Exact commands use `dotnet restore tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --artifacts-path <private>/artifacts --packages <private>/packages -p:Configuration=Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -p:GeneratePackageOnBuild=false -p:Version=999.0.0-ci-test -m:1`, then the matching `dotnet build ... -c Release --no-restore --artifacts-path <private>/artifacts -p:RestorePackagesPath=<private>/packages` with the same mode/version properties. Frame 60 ran `dotnet <private>/artifacts/bin/Hexalith.EventStore.Server.Tests/release/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Routing.PublishedTenantQuerySelectorAbiTests -result-xml <capture>/60-private-server-abi-focused.xml`. Its three unchanged cases, including both materialization modes, passed with stable source/runtime. The shared archive and source metadata are byte-identical before/after. This focused authentic-fixture result does not rewrite the two earlier failed full cohorts.
+
+Physical cleanup verifies the eight exact owned control/cache-retainer containers, their recorded anonymous volumes, recorded native process identities, private component/failed-CLI scratch and all three full-run listeners absent. A cleanup precheck's shell-argument self-match was retained and corrected to compare exact argv path fields; original failed CLI custody receipts were copied intact before removing their scratch. External services and other tasks' containers were preserved. Native evidence, immutable mirrors, private ABI outputs and recovered image cache intentionally remain local; no historical receipt was rewritten as successful.
+
+At closing, HEAD is still `101448e3ddc705be4b4793fc3d02f03ea694a784`; external mutable `deferred-work.md` and `spec-2-16-bounded-signalr-detail-metadata.md` differ from the mapped producer snapshot and remain preserved. The approved normative digest stays `78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711`, prior wrapper bytes/frozen intent are preserved, and `git diff --check` passes. No current-candidate CI run/link was obtained. The complete Debug Live gate is unproven, the original full Server frames remain failed, and latest complete Debug/source plus Release/package whole-checkout qualification is not supplied by combining these separate frames. Authenticated exact-candidate CI, Story 9.2, subject-bound owner assurance with required time separation and AD-12/NFR8 acceptance remain open. Story 6.4 and sprint remain **in progress**. This pass authorizes no further complete cohort, Git/publication/deployment mutation or maintenance cutover.
+
+### Parent closing audit
+
+Parent independently read the native XML and confirmed the exact four declared helper skips, passing matrix cases, all thirty Release Current observations across R=256/4096, identical source/runtime snapshots, and the authentic-fixture 3/3 result. The following exact remaining failed/interrupted commands ran from the owning repository root with their recorded frame environments; their original outcomes are preserved despite the later focused cache recovery.
+
+```bash
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -result-xml /tmp/story64-qualification-20261106-iuWEtW/03-debug-server-full.xml
+```
+
+Exit 1: 7,919 passed, 1 failed, 25 skipped; unsigned cached public-ABI fixture.
+
+```bash
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -longRunning 60 -result-xml /tmp/story64-qualification-20261106-iuWEtW/20-release-server-full.xml
+```
+
+Exit 1: 7,919 passed, 1 failed, 25 skipped; the same cache/fixture failure.
+
+```bash
+dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -longRunning 60 -result-xml /tmp/story64-qualification-continuation-20261106-hyapg861/34-debug-live-full.xml
+```
+
+Native exit -9 after the 2,700-second outer deadline and 30-second drain; no final XML/counts. Concurrent host-output drift also leaves this complete cohort unproven.
