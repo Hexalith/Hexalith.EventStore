@@ -135,7 +135,7 @@ execution inputs. Existing independent jobs and consumer/coverage gates remain.
 
 The active package profile records genuine Builds4.44.11 source
 `567604b616613ba429be0609636d805db776a709` and Platform source
-`01e5b6530af96ad6eaa69cc1867d43def56c43ca`. The exact module-tool pin,
+`ed991837945571a12743214fc18a87fbd323fc30`. The exact module-tool pin,
 shared CI caller and producer catalog agree. Builds normal release
 [42252030945](https://github.com/Hexalith/Hexalith.Builds/actions/runs/42252030945)
 published the signed tool after its successful source CI. The catalog selects
@@ -144,6 +144,8 @@ EventStore4.1.0 and genuine Tenants7.0.5, whose corrected owner source is
 
 Platform admits this six-DLL/two-image combination only through its separate
 private EventStore `platform-package` test purpose and authenticated owner proof.
+The released production model supplies the exact signed Tenants.Server body;
+its current-owner Memories container reuses the actual Dapr endpoint provider.
 Public version selection and full-Parties launch admission remain unchanged.
 The caller retains both declared integration facts, real gateway persistence,
 all isolated unit projects, original deadlines and unconditional owned cleanup.
