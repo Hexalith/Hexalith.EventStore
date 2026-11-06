@@ -119,8 +119,23 @@ public sealed class PackageOwnershipGovernanceTests
             "Hexalith.Tenants",
             "Hexalith.Tenants.csproj"));
 
+        // The optional owner-source read proof is a Debug-only test edge, not a
+        // runtime package/source pair. Validate every fence before excluding it.
+        XElement[] privateTestReferences = host.Descendants()
+            .Where(element => element.Name.LocalName == "ProjectReference"
+                && ProjectReferencePackageId(GetAttributeValue(element, "Include")) == "Hexalith.EventStore.Testing")
+            .ToArray();
+        privateTestReferences.Length.ShouldBeLessThanOrEqualTo(1);
+        foreach (XElement reference in privateTestReferences)
+        {
+            reference.Parent.ShouldNotBeNull().Name.LocalName.ShouldBe("ItemGroup");
+            GetAttributeValue(reference.Parent!, "Condition").ShouldBe(
+                "'$(Configuration)' == 'Debug' and '$(HexalithEventStoreFromSource)' == 'true' and '$(EnablePrivateOwnerSourceReadProof)' == 'true'");
+        }
+
         IGrouping<string, XElement>[] projectReferences = host
             .Descendants()
+            .Where(element => !privateTestReferences.Contains(element))
             .Where(element => element.Name.LocalName == "ProjectReference")
             .Select(element => (
                 Element: element,
