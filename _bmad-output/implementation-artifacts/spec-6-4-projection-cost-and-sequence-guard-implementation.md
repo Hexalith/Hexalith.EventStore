@@ -10,7 +10,7 @@ story_key: '6-4-projection-cost-and-sequence-guard-implementation'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md'
   - '{project-root}/_bmad-output/project-context.md'
-  - '{project-root}/_bmad-output/implementation-artifacts/evidence/story-6-4/implementation-checkpoint.md'
+  - '{project-root}/_bmad-output/planning-artifacts/architecture.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -376,3 +376,21 @@ Recorded task processes, containers, known control volumes, listeners and scratc
 
 
 Parent independently verified this OQ8 continuation’s native result, exact original enrollment/skip, complete Current/tail budgets, producer/runtime identities, physical cleanup and preservation with external-arrival accounting; see the [parent OQ8 handoff](evidence/story-6-4/oq8-correction-20261017/parent-handoff.md). The stable produced/runtime frame passes. The externally advanced latest-source candidate and separate formal gates remain unqualified/open; story and sprint remain in progress.
+
+## Current resumption verification, 2026-11-06
+
+Entry HEAD is `8863d63864a8ca9d69fd27431719d4a5a707f6fa` (`git rev-parse HEAD`, exit 0). The normative preflight passes with the unchanged approved SHA-256 `78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711`; the detached approval remains unchanged. This resumption corrects only the stale context reference and adds this note. All 41 implementation tasks remain recorded as complete; their historical aggregate is not newly reviewed or qualified here. Runtime builds/tests run: **0**. No current-candidate CI run or CI link was obtained.
+
+The [AD-12 evidence-storage decision](../planning-artifacts/architecture.md) dated 2026-10-23 and [evidence-storage simplification](spec-evidence-storage-simplification.md) supersede requirements to restore deleted committed evidence and its removed validation machinery. Proof is the owning story/spec Verification record plus repository tests and CI; evidence folders are ignored local scratch. The absent historical checkpoint context entry now points to the authoritative architecture policy. Historical body text and linked-result descriptions above remain dated records, subject to the recorded authority withdrawal, and supply no fresh current-candidate pass. No deleted evidence is reconstructed.
+
+Current sprint tracking records Story 9.1 **done**, Story 9.2 **backlog**, and Story 6.4 **in progress**. Remaining Story 6.4 gates are current-source qualification of the complete affected Debug/source and Release/package cohorts, including the owning persisted-equivalence and W0–W6 cost assertions, and authenticated exact-candidate CI. The dedicated Story 9.2 transition seal, subject-bound owner assurance with the required time separation, and AD-12/NFR8 acceptance remain separate open requirements. Historical failures are not reclassified as current failures, and historical focused or full passes do not establish those current gates.
+
+Proposed next step, requiring a new bounded authorization: one fresh current-checkout qualification using the existing section 10 Debug/source and Release/package individual suites, plus owning Live/W0–W6/R4096 coverage as applicable, with no full-cohort retries. Preserve dependencies, policies and existing assertions/budgets; perform no Git, publication, deployment or maintenance-cutover mutation. This proposal starts no queue and does not extend the exhausted finite-pass authorization. Even a green local qualification would leave Story 9.2 and AD-12 assurance/transition requirements open.
+
+Documentation checks: all **3/3** frontmatter context paths exist; normative digest and exact preservation of the pre-existing body/frozen intent pass; `git diff --check` passes (exit 0). These checks qualify only this documentation correction. The baseline, frozen specification, story status and sprint status are unchanged.
+
+## Authorized fresh qualification, 2026-11-06
+
+The user replied **“yes”** to the proposed fresh section 10 qualification pass covering Debug/source, Release/package and live tests. This authorizes one fresh finite pass for the current checkout, superseding the exhausted historical-pass limits solely for this queue. Run the existing focused and complete affected suites sequentially, once per complete cohort with no full-cohort retries, and include the owning Live/W0–W6/R4096 checks as applicable. Use fresh coherent outputs; never substitute a stale assembly after a producer fails. Apply the repository's focused/serialized fallback validation ladder for build or environment blockers and retain each exact command/result separately.
+
+Preserve approved normative bytes, assertions, budgets, dependency declarations, policies, historical records and unrelated working changes. Use task-owned live resources and clean them up. Record commands, counts, source revision and any CI link in this spec under the current evidence-storage policy; native output may remain local scratch or CI artifacts. No staging, commit, push, publication, deployment or maintenance cutover is authorized. Story 9.2 and AD-12 assurance remain separate completion requirements, and Story 6.4/sprint remain in progress until all gates pass.
