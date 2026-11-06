@@ -37,7 +37,7 @@ public class SignalRDetailMetadataConformanceTests
     [InlineData(17)]
     public async Task DefaultEntryBoundaryPreservesOpaqueKeysAndClipsOrdinalPrefix(int entryCount)
     {
-        var (broadcaster, client, _) = CreateBroadcaster();
+        var (broadcaster, client, logger) = CreateBroadcaster();
         // Insert in reverse order: clipping follows ordinal keys, not insertion order or a key allow-list.
         var metadata = Enumerable.Range(0, entryCount).Reverse()
             .ToDictionary(index => $"opaque:{index:D2}/?\"é", index => $"value-{index}", StringComparer.Ordinal);
@@ -47,9 +47,10 @@ public class SignalRDetailMetadataConformanceTests
 
         IReadOnlyDictionary<string, string> sent = SentMetadata(client);
         sent.Count.ShouldBe(16);
-        sent.ToArray().ShouldBe(metadata.OrderBy(entry => entry.Key, StringComparer.Ordinal).Take(16).ToArray());
+        OrdinalEntries(sent).ShouldBe(OrdinalEntries(metadata).Take(16).ToArray());
         JsonSerializer.SerializeToUtf8Bytes(sent).Length.ShouldBeLessThanOrEqualTo(2_048);
         metadata.Count.ShouldBe(entryCount);
+        ShouldLogClip(logger, originalCount: entryCount, boundedCount: 16);
     }
 
     [Theory]
@@ -57,7 +58,7 @@ public class SignalRDetailMetadataConformanceTests
     [InlineData(2_049, 15)]
     public async Task DefaultByteBoundaryIncludesEscapingAndClipsWholeEntries(int serializedBytes, int retainedEntries)
     {
-        var (broadcaster, client, _) = CreateBroadcaster();
+        var (broadcaster, client, logger) = CreateBroadcaster();
         var metadata = Enumerable.Range(0, 16)
             .ToDictionary(index => $"opaque:{index:D2}/?\"é", _ => "value", StringComparer.Ordinal);
         string lastKey = metadata.Keys.Order(StringComparer.Ordinal).Last();
@@ -69,12 +70,14 @@ public class SignalRDetailMetadataConformanceTests
 
         IReadOnlyDictionary<string, string> sent = SentMetadata(client);
         sent.Count.ShouldBe(retainedEntries);
-        sent.ToArray().ShouldBe(metadata.OrderBy(entry => entry.Key, StringComparer.Ordinal).Take(retainedEntries).ToArray());
+        OrdinalEntries(sent).ShouldBe(OrdinalEntries(metadata).Take(retainedEntries).ToArray());
         JsonSerializer.SerializeToUtf8Bytes(sent).Length.ShouldBeLessThanOrEqualTo(2_048);
         if (serializedBytes == 2_048)
         {
             JsonSerializer.SerializeToUtf8Bytes(sent).Length.ShouldBe(2_048);
         }
+
+        ShouldLogClip(logger, originalCount: 16, boundedCount: retainedEntries);
     }
 
     [Fact]
@@ -179,10 +182,19 @@ public class SignalRDetailMetadataConformanceTests
         var outcome = logs.Single(entry => entry.EventId.Id == outcomeEvent);
         if (failDelivery)
         {
+            outcome.Level.ShouldBe(LogLevel.Warning);
             outcome.Message.ShouldContain(nameof(InvalidOperationException));
             outcome.Message.ShouldContain("FailOpenFailure");
+            // The call passes six positional strings; pin each preserved field by key so a swap cannot pass.
+            Field(outcome.State, "ProjectionType").ShouldBe("order-list");
+            Field(outcome.State, "TenantId").ShouldBe("acme");
+            Field(outcome.State, "GroupName").ShouldBe("order-list:acme:scope");
+            Field(outcome.State, "Result").ShouldBe("FailOpenFailure");
+            Field(outcome.State, "ExceptionType").ShouldBe(nameof(InvalidOperationException));
+            _ = Field(outcome.State, "ElapsedMilliseconds").ShouldBeOfType<double>();
         }
 
+        ShouldLogClip(logger, originalCount: metadata.Count, boundedCount: clipMetadata ? 16 : 1);
         SentMetadata(client).Count.ShouldBe(clipMetadata ? 16 : 1);
     }
 
@@ -202,4 +214,26 @@ public class SignalRDetailMetadataConformanceTests
     private static IReadOnlyDictionary<string, string> SentMetadata(IProjectionChangedClient client)
         => client.ReceivedCalls().Single(call => call.GetMethodInfo().Name == nameof(IProjectionChangedClient.ProjectionChangedDetail))
             .GetArguments()[3].ShouldBeAssignableTo<IReadOnlyDictionary<string, string>>()!;
+
+    // The contract fixes which entries are retained, not the enumeration order of the returned map.
+    private static KeyValuePair<string, string>[] OrdinalEntries(IEnumerable<KeyValuePair<string, string>> metadata)
+        => [.. metadata.OrderBy(entry => entry.Key, StringComparer.Ordinal)];
+
+    private static object? Field(KeyValuePair<string, object?>[] state, string name)
+        => state.Single(field => field.Key == name).Value;
+
+    private static void ShouldLogClip(SignalRDetailLogCapture<SignalRProjectionChangedBroadcaster> logger, int originalCount, int boundedCount)
+    {
+        var clips = logger.Entries.Where(entry => entry.EventId.Id == 1096).ToArray();
+        if (originalCount == boundedCount)
+        {
+            clips.ShouldBeEmpty();
+            return;
+        }
+
+        var clip = clips.ShouldHaveSingleItem();
+        clip.Level.ShouldBe(LogLevel.Warning);
+        Field(clip.State, "OriginalCount").ShouldBe(originalCount);
+        Field(clip.State, "BoundedCount").ShouldBe(boundedCount);
+    }
 }
