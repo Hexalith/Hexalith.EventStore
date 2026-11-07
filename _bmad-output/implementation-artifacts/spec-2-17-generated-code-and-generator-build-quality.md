@@ -2,7 +2,7 @@
 title: 'Story 2.17: Generated-Code And Source-Generator Build Quality'
 type: 'chore'
 created: '2026-11-07'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '37f0b65efc0453d60f0cb6da5ca6ef2b2d370e0c'
@@ -163,9 +163,11 @@ Pass 1 (2026-11-07): Blind Hunter, Edge Case Hunter and Verification Gap layers 
   - The conformance project compiled both copied REST-generator files: `…CounterRestController.Controller.g.cs` and `HexalithEventStoreRestApiGeneratorManifest.g.cs`.
   - A binlog check confirmed that its Csc call receives the repository `.editorconfig`, the project `.editorconfig` and the SDK CodeStyle and .NET analyzers.
   - The call receives neither the generator nor a Sample.Api reference, and NuGet keeps Sample.Api out of its restore graph.
-- `dotnet tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll`: **149/149 passed**.
-  - That is 137 existing tests plus 12 new ones: 8 clean-rule cases over the happy-path and bound-query fixtures, and 4 seeded-violation tests.
-  - The main tree gave the same 149/149 after `dotnet build tests/Hexalith.EventStore.RestApi.Generators.Tests -c Release -p:NuGetAudit=false`.
+- `dotnet tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll`: **158/158 passed** in the main tree after `dotnet build tests/Hexalith.EventStore.RestApi.Generators.Tests -c Release -p:NuGetAudit=false` (after the review fixes).
+  - That is 137 existing tests plus 21 new ones.
+  - 12 are clean-rule cases: four rules over the happy-path, bound-query and route-tenant fixtures.
+  - 9 are seeded-violation cases: unused local, missing `#nullable`, missing `ConfigureAwait`, three analyzer-blinding seeds (`#pragma warning`, `[GeneratedCode]`, `[SuppressMessage]`) and three Guid seeds (`Guid.TryParse`, `new Guid(string)`, target-typed `new(string)`).
+  - Before the review fixes, 149/149 passed in both the clone and the main tree.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll`: **1,539 total, 0 failed, 2 skipped**, with no allowlist changes.
   - The two skips are `PackagedReminderApiTests.PackagedReminderApiRunsWithoutWorksTypes` and `TrustedEffectPackageContractTests.NamedPackagesExposeTrustedEffectContracts`. Both report that `EVENTSTORE_PACKAGE_CONTRACT_DIR` is not set.
 - Text audits that scan `samples/` or `tests/`:
@@ -181,9 +183,26 @@ Pass 1 (2026-11-07): Blind Hunter, Edge Case Hunter and Verification Gap layers 
 | --- | --- |
 | Generator `RestApiMetadataNames.cs` gets a block-scoped namespace | exit 1, `IDE0161` at `RestApiMetadataNames.cs(1,11)`. Before the `AnalysisLevelStyle` fix this seed built with 0 warnings (see Spec Change Log). |
 | Generator `RestApiManifestEmitter.cs` gets `using System.Text;` moved inside the namespace | exit 1, `IDE0065` at `RestApiManifestEmitter.cs(8,1)` |
+| Generator `RestApiMetadataNames.cs` gets `async Task SeedAsync() => await Task.Delay(1);`; generator project built alone (`EnableNETAnalyzers=true`) | exit 1, `CA2007` at `RestApiMetadataNames.cs(12,76)`; exit 0, 0 warnings once reverted |
 | Emitter drops the command-action `.ConfigureAwait(false)` (`RestApiControllerEmitter.cs:281`) | exit 1, 4 × `CA2007` in the conformance copy of `CounterRestController.Controller.g.cs` (lines 96, 167, 238, 309). The conformance test class failed 2/12: `GeneratedSources_ConfigureEveryAwaitWithFalse(happy-path)` and `SeededMissingConfigureAwait_IsReportedWithItsMember`. |
 | Emitter writes `using System.Text;` after the file-scoped namespace | exit 1, `IDE0065` at line 26 of the conformance copy of `CounterRestController.Controller.g.cs` |
 | All seeds reverted | exit 0, 0 warnings, 0 errors |
 | Sample.Api's generated directory hidden; conformance project built with `-p:BuildProjectReferences=false` | exit 1, MSBuild error: `Sample.Api produced no REST-generator *.g.cs files in '…/generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/'`. Exit 0 once the directory was restored. |
+
+**Review fixes (2026-11-07):** this round re-ran only the checks covering the edited files:
+- `Generators.Tests`: 158/158.
+- Generator build (`Release`, `-warnaserror`, `--no-incremental`): 0 warnings.
+- Conformance build (`--no-incremental`, fresh `bin`): 0 warnings.
+  - The bin no longer holds Sample.Api's apphost, runtimeconfig, deps.json or appsettings files, thanks to `Private="false"`.
+  - The assembly still contains `CounterRestController` and `RestApiGeneratorManifest`.
+- The generator CA2007 seed above.
+
+The solution-build and `Contracts.Tests` figures above predate these fixes.
+
+**Post-review full run (2026-11-07, main tree at `f11a18c92` plus this round's test file):** that commit swept the other 2.17 files in, and no 8.7 files were uncommitted, so no clone was needed.
+- `dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release`, then `dotnet build Hexalith.EventStore.slnx --no-restore --no-incremental -c Release -warnaserror -p:NuGetAudit=false`: **0 warnings, 0 errors**. The conformance `bin` holds no Sample.Api files.
+- `dotnet tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll`: **158/158 passed**.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll`: **1,569 total, 0 failed, 2 skipped**. These are the same two `EVENTSTORE_PACKAGE_CONTRACT_DIR` skips; the higher total comes from the 8.7 commit's tests.
+- `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*ProtectedIdentifierGuidParserAuditTests'`: **1/1**, which includes the new `new Guid(messageId)` seed text.
 
 **CI:** not run, because nothing was pushed. CI binds the same build: Builds `domain-ci-v2` runs `dotnet build "$SOLUTION" --no-restore --configuration Release -warnaserror`, and `Generators.Tests` is a blocking unit project in `ci.yml`. No workflow changed.

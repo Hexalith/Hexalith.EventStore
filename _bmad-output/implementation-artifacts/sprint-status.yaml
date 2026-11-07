@@ -98,10 +98,10 @@ development_status:
   # CI green on run 42288133749 (23252aef5). Code review 2026-11-06: 3 test patches applied, 178/178 locally.
   # Commands/results: spec-2-16-bounded-signalr-detail-metadata.md.
   2-16-bounded-signalr-detail-metadata: done
-  # 2026-11-07: gates implemented, UNCOMMITTED on 37f0b65ef; verified in an isolated clone (8.7 WIP breaks the main-tree build):
-  # Release -warnaserror solution 0 warnings/0 errors; Generators.Tests 149/149; Contracts.Tests 1,539 (0 failed, 2 env skips).
-  # Seeded IDE0161/IDE0065 (generator), CA2007/IDE0065 (emitter) and missing-files runs fail; no CI run yet. Results: spec-2-17-*.md.
-  2-17-generated-code-and-generator-build-quality: in-progress
+  # 2026-11-07: NFR13 gates built; review pass 1 applied 7 patches, deferred 2 (IDE1006/IDE0055 repo-wide, Windows path).
+  # Main tree: Release -warnaserror solution 0 warnings/0 errors; Generators.Tests 158/158; Contracts.Tests 1,569 (0 failed, 2 env skips).
+  # Seeded generator/emitter/missing-files runs fail as required; no CI run yet. Results: spec-2-17-*.md.
+  2-17-generated-code-and-generator-build-quality: review
   epic-2-retrospective: done
 
   epic-3: in-progress

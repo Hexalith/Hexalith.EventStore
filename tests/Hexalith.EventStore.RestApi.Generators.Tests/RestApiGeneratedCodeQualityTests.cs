@@ -16,7 +16,9 @@ public sealed class RestApiGeneratedCodeQualityTests
 {
     private const string HappyPathFixture = "happy-path";
     private const string BoundQueryFixture = "bound-query";
+    private const string RouteTenantFixture = "route-tenant";
     private const string ControllerHintSuffix = ".Controller.g.cs";
+    private const string ControllerAttributeAnchor = "[ApiController]";
     private const string SubmitCommandAnchor = "var __hexalithRequest = new SubmitCommandRequest(";
 
     private static readonly string[] GuidParsingMethodNames =
@@ -27,9 +29,17 @@ public sealed class RestApiGeneratedCodeQualityTests
         nameof(Guid.TryParseExact),
     ];
 
+    // Attributes that make compilers or analyzers skip the code they decorate.
+    private static readonly string[] AnalyzerBlindingAttributeTypeNames =
+    [
+        "System.CodeDom.Compiler.GeneratedCodeAttribute",
+        "System.Diagnostics.CodeAnalysis.SuppressMessageAttribute",
+    ];
+
     [Theory]
     [InlineData(HappyPathFixture)]
     [InlineData(BoundQueryFixture)]
+    [InlineData(RouteTenantFixture)]
     public void GeneratedSources_ReportNoWarningUnderWarningsAsErrors(string fixture)
     {
         (CSharpCompilation compilation, ImmutableArray<SyntaxTree> generatedTrees) = Generate(fixture);
@@ -42,6 +52,7 @@ public sealed class RestApiGeneratedCodeQualityTests
     [Theory]
     [InlineData(HappyPathFixture)]
     [InlineData(BoundQueryFixture)]
+    [InlineData(RouteTenantFixture)]
     public void GeneratedSources_DeclareNullableEnable(string fixture)
     {
         (_, ImmutableArray<SyntaxTree> generatedTrees) = Generate(fixture);
@@ -54,6 +65,7 @@ public sealed class RestApiGeneratedCodeQualityTests
     [Theory]
     [InlineData(HappyPathFixture)]
     [InlineData(BoundQueryFixture)]
+    [InlineData(RouteTenantFixture)]
     public void GeneratedSources_ConfigureEveryAwaitWithFalse(string fixture)
     {
         (_, ImmutableArray<SyntaxTree> generatedTrees) = Generate(fixture);
@@ -67,6 +79,7 @@ public sealed class RestApiGeneratedCodeQualityTests
     [Theory]
     [InlineData(HappyPathFixture)]
     [InlineData(BoundQueryFixture)]
+    [InlineData(RouteTenantFixture)]
     public void GeneratedSources_NeverBindToGuidParsing(string fixture)
     {
         (CSharpCompilation compilation, ImmutableArray<SyntaxTree> generatedTrees) = Generate(fixture);
@@ -131,19 +144,37 @@ public sealed class RestApiGeneratedCodeQualityTests
         violations.ShouldHaveSingleItem().ShouldContain("'" + expectedMember + "'");
     }
 
-    [Fact]
-    public void SeededGuidTryParse_IsReportedWithTheCall()
+    [Theory]
+    [InlineData("#pragma warning disable\n", "'#pragma warning'")]
+    [InlineData("[System.CodeDom.Compiler.GeneratedCode(\"seed\", \"1.0\")] ", "System.CodeDom.Compiler.GeneratedCodeAttribute")]
+    [InlineData("[System.Diagnostics.CodeAnalysis.SuppressMessage(\"Reliability\", \"CA2007\")] ", "System.Diagnostics.CodeAnalysis.SuppressMessageAttribute")]
+    public void SeededAnalyzerBlinding_IsReportedByTheWarningCheck(string seed, string expectedViolation)
     {
-        // The parse call is assembled with nameof so this test source never reads as a Guid validator.
-        string seededCall = "Guid." + nameof(Guid.TryParse) + "(messageId, out _)";
+        (CSharpCompilation compilation, ImmutableArray<SyntaxTree> generatedTrees) = SeedController(
+            Generate(HappyPathFixture),
+            ControllerAttributeAnchor,
+            seed + ControllerAttributeAnchor);
+
+        string[] violations = FindWarningViolations(compilation, generatedTrees);
+
+        violations.ShouldHaveSingleItem().ShouldContain(expectedViolation);
+    }
+
+    // The parse call is assembled with nameof so this test source never reads as a Guid validator.
+    [Theory]
+    [InlineData("_ = Guid." + nameof(Guid.TryParse) + "(messageId, out _);", "Guid." + nameof(Guid.TryParse) + "(messageId, out _)")]
+    [InlineData("_ = new Guid(messageId);", "new Guid(messageId)")]
+    [InlineData("Guid __hexalithSeededGuid = new(messageId);", "new(messageId)")]
+    public void SeededGuidParsing_IsReportedWithTheCall(string seededStatement, string expectedCall)
+    {
         (CSharpCompilation compilation, ImmutableArray<SyntaxTree> generatedTrees) = SeedController(
             Generate(HappyPathFixture),
             SubmitCommandAnchor,
-            "string messageId = UniqueIdHelper.GenerateSortableUniqueStringId(); _ = " + seededCall + "; " + SubmitCommandAnchor);
+            "string messageId = UniqueIdHelper.GenerateSortableUniqueStringId(); " + seededStatement + " " + SubmitCommandAnchor);
 
         string[] violations = FindGuidParsingViolations(compilation, generatedTrees, out _);
 
-        violations.ShouldHaveSingleItem().ShouldContain(seededCall);
+        violations.ShouldHaveSingleItem().ShouldContain(expectedCall);
     }
 
     private static (CSharpCompilation Compilation, ImmutableArray<SyntaxTree> GeneratedTrees) Generate(string fixture)
@@ -156,13 +187,21 @@ public sealed class RestApiGeneratedCodeQualityTests
                 [RestApiGeneratorTestHarness.EmitToMetadataReference(
                     RestApiGeneratorTestHarness.CreateCompilation(RestApiControllerGenerationTests.ReferencedBoundTenantsQuerySource))],
                 RestApiControllerGenerationTests.ReferencedTenantsContractHostSource),
+            RouteTenantFixture => RestApiGeneratorTestHarness.CreateCompilation(
+                RestApiControllerGenerationTests.RouteTenantSource),
             _ => throw new ArgumentOutOfRangeException(nameof(fixture), fixture, "Unknown generated-code fixture."),
         };
 
         CSharpCompilation output = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
             input,
             out GeneratorDriverRunResult runResult,
-            out _);
+            out ImmutableArray<Diagnostic> generatorDiagnostics);
+        Diagnostic[] generatorWarnings = generatorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning)
+            .ToArray();
+        generatorWarnings.ShouldBeEmpty(
+            $"Fixture '{fixture}' must generate without Warning+ generator diagnostics: "
+            + string.Join(Environment.NewLine, generatorWarnings.Select(static diagnostic => diagnostic.ToString())));
         HashSet<string> generatedPaths = runResult.GeneratedTrees
             .Select(static tree => tree.FilePath)
             .ToHashSet(StringComparer.Ordinal);
@@ -223,17 +262,37 @@ public sealed class RestApiGeneratedCodeQualityTests
             .Select(static diagnostic => diagnostic.ToString())
             .ToList();
 
-        // A pragma in generated text would hide warnings from the check above.
+        // A pragma or a blinding attribute in generated text would hide it from the compiler or the analyzers.
         foreach (SyntaxTree tree in generatedTrees)
         {
-            if (tree.GetRoot(cancellationToken).DescendantTrivia().Any(static trivia => trivia.IsKind(SyntaxKind.PragmaWarningDirectiveTrivia)))
+            SyntaxNode root = tree.GetRoot(cancellationToken);
+            if (root.DescendantTrivia().Any(static trivia => trivia.IsKind(SyntaxKind.PragmaWarningDirectiveTrivia)))
             {
                 violations.Add(Path.GetFileName(tree.FilePath) + ": generated code must not contain '#pragma warning' directives.");
+            }
+
+            SemanticModel model = strict.GetSemanticModel(tree);
+            foreach (AttributeSyntax attribute in root.DescendantNodes().OfType<AttributeSyntax>())
+            {
+                string? blindingType = GetBoundSymbols(model.GetSymbolInfo(attribute, cancellationToken))
+                    .Select(static symbol => symbol.ContainingType?.ToDisplayString())
+                    .FirstOrDefault(static typeName => typeName is not null
+                        && AnalyzerBlindingAttributeTypeNames.Contains(typeName, StringComparer.Ordinal));
+                if (blindingType is not null)
+                {
+                    int line = tree.GetLineSpan(attribute.Span, cancellationToken).StartLinePosition.Line + 1;
+                    violations.Add(
+                        Path.GetFileName(tree.FilePath) + ":" + line + ": attribute '" + attribute + "' binds to "
+                        + blindingType + ", which hides generated code from analyzers.");
+                }
             }
         }
 
         return [.. violations];
     }
+
+    private static ImmutableArray<ISymbol> GetBoundSymbols(SymbolInfo symbolInfo)
+        => symbolInfo.Symbol is { } symbol ? [symbol] : symbolInfo.CandidateSymbols;
 
     private static string[] FindNullableDirectiveViolations(ImmutableArray<SyntaxTree> generatedTrees)
     {
@@ -345,14 +404,14 @@ public sealed class RestApiGeneratedCodeQualityTests
         {
             SemanticModel model = compilation.GetSemanticModel(tree);
             SyntaxNode root = tree.GetRoot(cancellationToken);
-            scannedInvocations += root.DescendantNodes().OfType<InvocationExpressionSyntax>().Count();
+            scannedInvocations += root.DescendantNodes()
+                .OfType<InvocationExpressionSyntax>()
+                .Count(invocation => model.GetSymbolInfo(invocation, cancellationToken).Symbol is IMethodSymbol);
 
             // Names cover invocations, method groups and using-static calls alike.
             foreach (SimpleNameSyntax name in root.DescendantNodes().OfType<SimpleNameSyntax>())
             {
-                SymbolInfo symbolInfo = model.GetSymbolInfo(name, cancellationToken);
-                IEnumerable<ISymbol> symbols = symbolInfo.Symbol is { } symbol ? [symbol] : symbolInfo.CandidateSymbols;
-                IMethodSymbol? parsingMethod = symbols
+                IMethodSymbol? parsingMethod = GetBoundSymbols(model.GetSymbolInfo(name, cancellationToken))
                     .OfType<IMethodSymbol>()
                     .FirstOrDefault(method => SymbolEqualityComparer.Default.Equals(method.ContainingType, guidType)
                         && GuidParsingMethodNames.Contains(method.Name, StringComparer.Ordinal));
@@ -367,10 +426,32 @@ public sealed class RestApiGeneratedCodeQualityTests
                     Path.GetFileName(tree.FilePath) + ":" + line + ": '" + call + "' binds to System.Guid."
                     + parsingMethod.Name + "; EventStore identifiers are ULIDs.");
             }
+
+            // The Guid(string) and Guid(ReadOnlySpan<char>) constructors parse their argument too.
+            foreach (BaseObjectCreationExpressionSyntax creation in root.DescendantNodes().OfType<BaseObjectCreationExpressionSyntax>())
+            {
+                bool parsesText = GetBoundSymbols(model.GetSymbolInfo(creation, cancellationToken))
+                    .OfType<IMethodSymbol>()
+                    .Any(constructor => SymbolEqualityComparer.Default.Equals(constructor.ContainingType, guidType)
+                        && constructor.Parameters.Length > 0
+                        && IsTextType(constructor.Parameters[0].Type));
+                if (parsesText)
+                {
+                    int line = tree.GetLineSpan(creation.Span, cancellationToken).StartLinePosition.Line + 1;
+                    violations.Add(
+                        Path.GetFileName(tree.FilePath) + ":" + line + ": '" + creation
+                        + "' parses text into System.Guid; EventStore identifiers are ULIDs.");
+                }
+            }
         }
 
         return [.. violations];
     }
+
+    private static bool IsTextType(ITypeSymbol type)
+        => type.SpecialType == SpecialType.System_String
+        || (type is INamedTypeSymbol { Name: "ReadOnlySpan", TypeArguments: [{ SpecialType: SpecialType.System_Char }] } span
+            && span.ContainingNamespace.ToDisplayString() == "System");
 
     private static string DescribeMember(SyntaxNode node)
         => node.AncestorsAndSelf()
