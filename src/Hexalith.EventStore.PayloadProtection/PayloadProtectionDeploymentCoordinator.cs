@@ -1,3 +1,4 @@
+// Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 13; amendment sections 2-3.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
@@ -6,8 +7,9 @@ namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Closes fleet generations, waits the full capability interval and preserves irreversible write watermarks.</summary>
 internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionStateStore store, PayloadProtectionScopeRegistry roots,
-    TimeProvider? timeProvider = null, Func<TimeSpan, CancellationToken, ValueTask>? delay = null)
+    TimeProvider? timeProvider = null, Func<TimeSpan, CancellationToken, ValueTask>? delay = null, PayloadProtectionAuthorityProfile? authorityProfile = null)
 {
+    private readonly PayloadProtectionAuthorityProfile _authority = authorityProfile ?? PayloadProtectionAuthorityProfile.Predecessor;
     private readonly TimeProvider _clock = timeProvider ?? TimeProvider.System;
 
     /// <summary>Closes an exact approved generation; successor admission starts its full wait only after strong confirmation.</summary>
@@ -16,9 +18,10 @@ internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionS
         string root = roots.Require(identity);
         PayloadProtectionStateValue<DeploymentGenerationV1> current = await RequiredAsync<DeploymentGenerationV1>(PayloadProtectionStateKeys.Deployment(root), token).ConfigureAwait(false);
         ValidateIdentity(current.Value, identity);
+        if (current.Value.ApprovedSpecDigest != _authority.Digest) { throw Mismatch(); }
         if (current.Value.Generation != expectedGeneration) { throw Mismatch(); }
         if (current.Value.Status == "Closed") { return; }
-        RequireCommit(await store.CommitAsync([PayloadProtectionStateMutation.Put(current.Value with { Status = "Closed" }, current.ETag)], token).ConfigureAwait(false));
+        RequireCommit(await store.CommitAsync([PayloadProtectionStateMutation.Put(current.Value with { Status = "Closed" }, current.ETag, _authority)], token).ConfigureAwait(false));
     }
 
     /// <summary>Opens a greater explicitly approved generation only after the confirmed full wait and exact indexed old-lease checks.</summary>
@@ -26,9 +29,10 @@ internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionS
     {
         string root = roots.Require(identity);
         ValidateIdentity(successor, identity);
-        if (successor.Status != "Open" || successor.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest) { throw Mismatch(); }
+        if (successor.Status != "Open" || successor.ApprovedSpecDigest != _authority.Digest) { throw Mismatch(); }
         PayloadProtectionStateValue<DeploymentGenerationV1> closed = await RequiredAsync<DeploymentGenerationV1>(PayloadProtectionStateKeys.Deployment(root), token).ConfigureAwait(false);
         ValidateIdentity(closed.Value, identity);
+        if (closed.Value.ApprovedSpecDigest != _authority.Digest) { throw Mismatch(); }
         if (closed.Value == successor) { return; }
         if (closed.Value.Status != "Closed" || successor.Generation <= closed.Value.Generation) { throw Mismatch(); }
         await PayloadMonotonicDrain.WaitAsync(_clock, delay, token).ConfigureAwait(false);
@@ -39,7 +43,7 @@ internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionS
         {
             if (await PayloadOperationBudget.ReadAsync<CapabilityLeaseV1>(store, PayloadProtectionStateKeys.Capability(root, member.Generation, member.InstanceId), token).ConfigureAwait(false) is not null) { throw Mismatch(); }
         }
-        RequireCommit(await store.CommitAsync([PayloadProtectionStateMutation.Put(successor, closed.ETag), PayloadProtectionStateMutation.Compare(members.Head)], token).ConfigureAwait(false));
+        RequireCommit(await store.CommitAsync([PayloadProtectionStateMutation.Put(successor, closed.ETag, _authority), PayloadProtectionStateMutation.Compare(members.Head)], token).ConfigureAwait(false));
     }
 
     /// <summary>Advances explicit operator authorization while keeping the highest-written observation unchanged.</summary>
@@ -47,13 +51,14 @@ internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionS
     {
         string root = roots.Require(identity);
         PayloadProtectionStateValue<FenceV1> current = await RequiredAsync<FenceV1>(PayloadProtectionStateKeys.Fence(root), token).ConfigureAwait(false);
+        if (current.Value.ApprovedSpecDigest != _authority.Digest) { throw Mismatch(); }
         if (current.Value == approved) { return; }
         PayloadProtectionStateValue<DeploymentGenerationV1> generation = await RequiredAsync<DeploymentGenerationV1>(PayloadProtectionStateKeys.Deployment(root), token).ConfigureAwait(false);
         ValidateIdentity(generation.Value, identity);
-        if (generation.Value.Status != "Open" || generation.Value.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest
+        if (generation.Value.Status != "Open" || generation.Value.ApprovedSpecDigest != _authority.Digest
             || approved.TenantId != identity.TenantId || approved.Domain != identity.Domain || approved.TenantDomainDigest != root
             || current.Value.TenantId != identity.TenantId || current.Value.Domain != identity.Domain
-            || approved.DeploymentGeneration != generation.Value.Generation || approved.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest
+            || approved.DeploymentGeneration != generation.Value.Generation || approved.ApprovedSpecDigest != _authority.Digest
             || approved.ApprovalEpoch <= current.Value.ApprovalEpoch || approved.ApprovalId == current.Value.ApprovalId
             || approved.HighestWrittenFormat != current.Value.HighestWrittenFormat || approved.HighestWrittenEpoch != current.Value.HighestWrittenEpoch
             || (current.Value.HighestWrittenFormat == "V2" && approved.ApprovedWriteMode is "Disabled" or "CompatibilityLegacy")) { throw Mismatch(); }
@@ -69,7 +74,7 @@ internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionS
                 || PayloadProtectionStateCodec.ParseTimestamp(capability.ExpiresAtUtc) <= _clock.GetUtcNow()) { throw Mismatch(); }
         }
         RequireCommit(await store.CommitAsync([PayloadProtectionStateMutation.Compare(generation), PayloadProtectionStateMutation.Compare(members.Head),
-            .. members.Pages.Select(PayloadProtectionStateMutation.Compare), PayloadProtectionStateMutation.Put(approved, current.ETag)], token).ConfigureAwait(false));
+            .. members.Pages.Select(PayloadProtectionStateMutation.Compare), PayloadProtectionStateMutation.Put(approved, current.ETag, _authority)], token).ConfigureAwait(false));
     }
     private static void ValidateIdentity(DeploymentGenerationV1 value, AggregateIdentity identity)
     {

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-06
+last_updated: 2026-11-07
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -98,7 +98,10 @@ development_status:
   # CI green on run 42288133749 (23252aef5). Code review 2026-11-06: 3 test patches applied, 178/178 locally.
   # Commands/results: spec-2-16-bounded-signalr-detail-metadata.md.
   2-16-bounded-signalr-detail-metadata: done
-  2-17-generated-code-and-generator-build-quality: backlog
+  # 2026-11-07: gates implemented, UNCOMMITTED on 37f0b65ef; verified in an isolated clone (8.7 WIP breaks the main-tree build):
+  # Release -warnaserror solution 0 warnings/0 errors; Generators.Tests 149/149; Contracts.Tests 1,539 (0 failed, 2 env skips).
+  # Seeded IDE0161/IDE0065 (generator), CA2007/IDE0065 (emitter) and missing-files runs fail; no CI run yet. Results: spec-2-17-*.md.
+  2-17-generated-code-and-generator-build-quality: in-progress
   epic-2-retrospective: done
 
   epic-3: in-progress
@@ -267,9 +270,9 @@ development_status:
   # MVP target: on-premises Kubernetes 192.168.1.30; Hexalith.Platform owns infrastructure.
   # in-progress preserves incomplete conformance; execution_disposition is in the story spec.
   8-6-azure-key-vault-production-adapter-conformance: in-progress
-  # Approved and stopped 2026-11-07: on-premises OpenBao software-key plan.
-  # EventStore contract/backend phase ready; Platform/capacity gates precede host wiring.
-  8-7-server-persistence-and-snapshot-integration: ready-for-dev
+  # Resumed 2026-11-07: approved on-premises OpenBao software-key plan.
+  # EventStore contract/backend phase implemented; Platform/capacity gates precede host wiring.
+  8-7-server-persistence-and-snapshot-integration: in-progress
   8-8-package-and-release-integration: backlog
   8-9-parties-dual-provider-parity: backlog
   8-10-post-v2-write-rollback-rehearsal: backlog

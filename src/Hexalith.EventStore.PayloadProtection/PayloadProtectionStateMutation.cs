@@ -1,3 +1,4 @@
+// Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 10.2; amendment sections 2-4.
 namespace Hexalith.EventStore.PayloadProtection;
 
@@ -9,7 +10,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal sealed record PayloadProtectionStateMutation(string Key, byte[]? Bytes, string? ExpectedETag, int? TtlSeconds = null)
 {
     /// <summary>Creates a bounded validated upsert; caller must use the state record's exact key.</summary>
-    internal static PayloadProtectionStateMutation Put<T>(T value, string? expectedETag = null) where T : class
+    internal static PayloadProtectionStateMutation Put<T>(T value, string? expectedETag = null, PayloadProtectionAuthorityProfile? authorityProfile = null) where T : class
     {
         int? ttl = value switch
         {
@@ -19,7 +20,7 @@ internal sealed record PayloadProtectionStateMutation(string Key, byte[]? Bytes,
                 - PayloadProtectionStateCodec.ParseTimestamp(lease.IssuedAtUtc)).TotalSeconds)),
             _ => null,
         };
-        return new(PayloadProtectionStateCodec.KeyFor(value), PayloadProtectionStateCodec.Encode(value), expectedETag, ttl);
+        return new(PayloadProtectionStateCodec.KeyFor(value), PayloadProtectionStateCodec.Encode(value, authorityProfile), expectedETag, ttl);
     }
 
     /// <summary>Creates an unchanged-value CAS using exact strong-read bytes.</summary>

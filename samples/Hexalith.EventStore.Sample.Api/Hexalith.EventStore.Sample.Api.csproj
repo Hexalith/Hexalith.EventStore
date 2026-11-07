@@ -5,6 +5,9 @@
     <IsPublishable>true</IsPublishable>
     <EnableContainer>true</EnableContainer>
     <ContainerRepository>sample-api</ContainerRepository>
+    <!-- Writes the generated REST controllers to obj/ so Sample.Api.GeneratedCodeQuality can compile
+         copies of them as ordinary code under the repository analyzers and .editorconfig. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
   <ItemGroup>

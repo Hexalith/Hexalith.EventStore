@@ -1,3 +1,4 @@
+// Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 10; amendment sections 1-4 and 7.
 using Dapr.Client;
 using Grpc.Core;
@@ -6,8 +7,9 @@ using Hexalith.EventStore.Contracts.Security;
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Issues strong byte reads and qualified ETag transactions without scanning keys or retrying mutations.</summary>
-internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string storeName = "statestore") : IPayloadProtectionStateStore
+internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string storeName = "statestore", PayloadProtectionAuthorityProfile? authorityProfile = null) : IPayloadProtectionStateStore
 {
+    private readonly PayloadProtectionAuthorityProfile _authority = authorityProfile ?? PayloadProtectionAuthorityProfile.Predecessor;
     private bool _qualified;
     private readonly PayloadStateReadExecutor _reads = new();
 
@@ -48,7 +50,7 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
             if (bytes.Length > PayloadProtectionStateCodec.MaximumBytes) { throw new PayloadProtectionFormatException(); }
             if (bytes.IsEmpty && string.IsNullOrEmpty(etag)) { return null; }
             if (bytes.IsEmpty || string.IsNullOrWhiteSpace(etag)) { throw new PayloadProtectionFormatException(); }
-            T record = PayloadProtectionStateCodec.Decode<T>(bytes);
+            T record = PayloadProtectionStateCodec.Decode<T>(bytes, _authority);
             if (PayloadProtectionStateCodec.KeyFor(record) != key) { throw new PayloadProtectionFormatException(); }
             return new(record, etag, bytes.ToArray());
         }
@@ -145,7 +147,7 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
         if (!Volatile.Read(ref _qualified)) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }
     }
 
-    private static void ValidateMutation(PayloadProtectionStateMutation mutation)
+    private void ValidateMutation(PayloadProtectionStateMutation mutation)
     {
         // Raw mutations exist for unchanged bytes and delete CAS. They must not bypass the closed schemas.
         if (!mutation.Key.StartsWith("eventstore:pp:v2:", StringComparison.Ordinal)) { throw new PayloadProtectionFormatException(); }
@@ -170,26 +172,26 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
 
         object value = parts[0] switch
         {
-            "key" => PayloadProtectionStateCodec.Decode<WrappedDekV1>(mutation.Bytes),
-            "index-head" => PayloadProtectionStateCodec.Decode<ScopeIndexHeadV1>(mutation.Bytes),
-            "index" => PayloadProtectionStateCodec.Decode<ScopeIndexPageV1>(mutation.Bytes),
-            "kek-index-head" => PayloadProtectionStateCodec.Decode<KekInventoryHeadV1>(mutation.Bytes),
-            "kek-index" => PayloadProtectionStateCodec.Decode<KekInventoryPageV1>(mutation.Bytes),
-            "lifecycle" => PayloadProtectionStateCodec.Decode<LifecycleV1>(mutation.Bytes),
-            "fence" => PayloadProtectionStateCodec.Decode<FenceV1>(mutation.Bytes),
-            "deployment" => PayloadProtectionStateCodec.Decode<DeploymentGenerationV1>(mutation.Bytes),
-            "capability" => PayloadProtectionStateCodec.Decode<CapabilityLeaseV1>(mutation.Bytes),
-            "operation" => PayloadProtectionStateCodec.Decode<OperationV1>(mutation.Bytes),
-            "lease" => PayloadProtectionStateCodec.Decode<ReadLeaseV1>(mutation.Bytes),
-            "completion" => PayloadProtectionStateCodec.Decode<CompletionLeaseV1>(mutation.Bytes),
-            "reconcile" => PayloadProtectionStateCodec.Decode<ReconciliationV1>(mutation.Bytes),
-            "audit" => PayloadProtectionStateCodec.Decode<PayloadProtectionAuditRecord>(mutation.Bytes),
-            "member-head" => PayloadProtectionStateCodec.Decode<MemberHeadV1>(mutation.Bytes),
-            "members" => PayloadProtectionStateCodec.Decode<MemberPageV1>(mutation.Bytes),
-            "work-head" => PayloadProtectionStateCodec.Decode<WorkHeadV1>(mutation.Bytes),
-            "work" => PayloadProtectionStateCodec.Decode<WorkPageV1>(mutation.Bytes),
-            "drain" => PayloadProtectionStateCodec.Decode<InvalidationDrainV1>(mutation.Bytes),
-            "clear-ack" => PayloadProtectionStateCodec.Decode<CacheClearAckV1>(mutation.Bytes),
+            "key" => PayloadProtectionStateCodec.Decode<WrappedDekV1>(mutation.Bytes, _authority),
+            "index-head" => PayloadProtectionStateCodec.Decode<ScopeIndexHeadV1>(mutation.Bytes, _authority),
+            "index" => PayloadProtectionStateCodec.Decode<ScopeIndexPageV1>(mutation.Bytes, _authority),
+            "kek-index-head" => PayloadProtectionStateCodec.Decode<KekInventoryHeadV1>(mutation.Bytes, _authority),
+            "kek-index" => PayloadProtectionStateCodec.Decode<KekInventoryPageV1>(mutation.Bytes, _authority),
+            "lifecycle" => PayloadProtectionStateCodec.Decode<LifecycleV1>(mutation.Bytes, _authority),
+            "fence" => PayloadProtectionStateCodec.Decode<FenceV1>(mutation.Bytes, _authority),
+            "deployment" => PayloadProtectionStateCodec.Decode<DeploymentGenerationV1>(mutation.Bytes, _authority),
+            "capability" => PayloadProtectionStateCodec.Decode<CapabilityLeaseV1>(mutation.Bytes, _authority),
+            "operation" => PayloadProtectionStateCodec.Decode<OperationV1>(mutation.Bytes, _authority),
+            "lease" => PayloadProtectionStateCodec.Decode<ReadLeaseV1>(mutation.Bytes, _authority),
+            "completion" => PayloadProtectionStateCodec.Decode<CompletionLeaseV1>(mutation.Bytes, _authority),
+            "reconcile" => PayloadProtectionStateCodec.Decode<ReconciliationV1>(mutation.Bytes, _authority),
+            "audit" => PayloadProtectionStateCodec.Decode<PayloadProtectionAuditRecord>(mutation.Bytes, _authority),
+            "member-head" => PayloadProtectionStateCodec.Decode<MemberHeadV1>(mutation.Bytes, _authority),
+            "members" => PayloadProtectionStateCodec.Decode<MemberPageV1>(mutation.Bytes, _authority),
+            "work-head" => PayloadProtectionStateCodec.Decode<WorkHeadV1>(mutation.Bytes, _authority),
+            "work" => PayloadProtectionStateCodec.Decode<WorkPageV1>(mutation.Bytes, _authority),
+            "drain" => PayloadProtectionStateCodec.Decode<InvalidationDrainV1>(mutation.Bytes, _authority),
+            "clear-ack" => PayloadProtectionStateCodec.Decode<CacheClearAckV1>(mutation.Bytes, _authority),
             _ => throw new PayloadProtectionFormatException(),
         };
         if (value is CacheClearAckV1 && mutation.ExpectedETag is not null) { throw new PayloadProtectionFormatException(); }

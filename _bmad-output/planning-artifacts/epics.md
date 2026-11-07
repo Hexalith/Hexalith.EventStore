@@ -7342,15 +7342,15 @@ So that protection is opt-in, tenant-safe, durable, and reversible without priva
 
 **UX coverage:** No primary UX implementation. Streams/Admin endpoints and diagnostics retain authorization plus support-safe bounded readability outcomes; they never expose protected/plaintext-on-failure data, key/provider detail, or a false completion/readiness state.
 
-**Dependencies:** Story 8.6 must be complete with exact predecessor chain, real-backend conformance evidence, and explicit authorization for Story 8.7. Any use of the isolated Azure environment for persisted integration remains under its recorded Security/Operations authority.
+**Dependencies:** The approved [Story 8.7 on-premises supplement](../implementation-artifacts/spec-8-7-on-premises-backend-amendment.md) replaces the Azure-specific prerequisite for this path only. Its normative digest is `43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3`; its effective authority is `835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180`. EventStore neutral Contracts/backend work is authorized independently. Server host wiring requires the compatible Story 8.1–8.5 evidence chain, a separately scoped Platform RSA/OpenBao component, real OpenBao + Dapr conformance, completed index-capacity/erasure-memory work, and current state/fleet/fence admission. Story 8.6 remains incomplete and deferred; its Azure design and separate environment authority are retained.
 
-**Current reconciliation:** Story 8.7 is backlog and dependency-blocked. Server already registers `NoOpEventPayloadProtectionService` by default and calls typed protection/readability seams from event persistence, snapshots, aggregate rehydrate, publication, projections, Streams, and Admin. It lacks Story 8.2 v2 occurrence context, Story 8.5 reservation/completion/fence mechanics, Story 8.4 shared routing, and Story 8.6 backend registration; no v2 format has been written by the current implementation.
+**Current reconciliation (2026-11-07):** Story 8.7 is in progress. The approved EventStore first phase adds neutral bounded wire contracts, a Dapr binding backend, explicit authority profiles and closed registration/options validation. Enabled registration refuses activation before hosted services; Disabled retains Server's concrete no-op. Existing interaction-specific persistence/recovery behavior remains in place. Generic Server occurrence/completion/read integration and real-backend qualification remain pending; unit fakes do not establish deployed custody or persisted Server integration.
 
 **Acceptance Criteria:**
 
 **Given** Story 8.7 activation is requested
 **When** predecessor and environment preflight runs
-**Then** Story 8.1 digest, Story 8.2–8.6 source/evidence hashes, real-backend profile, state capabilities, current Server-hook inventory, authorization receipt, and permitted Azure evidence scope all match
+**Then** Story 8.1 digest, Story 8.2–8.5 source/evidence hashes, the approved supplement and effective authority, selected real-backend profile/conformance, completed capacity prerequisites, state capabilities, current Server-hook inventory, authorization receipt, and permitted environment scope all match before host wiring; neutral EventStore contract/backend implementation may proceed independently
 **And** stale/missing evidence, an incompatible Server path, unapproved provider access, incomplete 8.4/8.5 behavior, or unresolved persistence atomicity ambiguity blocks integration.
 
 **Given** payload protection registration is omitted or configured `Mode=Disabled`
@@ -7360,7 +7360,7 @@ So that protection is opt-in, tenant-safe, durable, and reversible without priva
 
 **Given** `AddEventStorePayloadProtection` is called
 **When** closed top-level options and environment mode are validated
-**Then** exact `Mode`, `Backend`, `WriteMode`, `LegacyWriterId`, value/cache/operation bounds and Disabled/Enabled, LocalDevelopment/AzureKeyVault, ReadOnly/CompatibilityLegacy/V2/RollbackLegacy matrix apply; explicit valid Enabled registration replaces the no-op with exactly one engine descriptor only after all startup validators succeed
+**Then** exact `Mode`, `Backend`, `WriteMode`, `LegacyWriterId`, value/cache/operation bounds and Disabled/Enabled, LocalDevelopment/AzureKeyVault/PlatformCustody, ReadOnly/CompatibilityLegacy/V2/RollbackLegacy matrix apply; explicit valid Enabled registration replaces the no-op with exactly one engine descriptor only after all startup validators and prerequisite gates succeed; the first implementation phase deliberately refuses every Enabled registration before host startup
 **And** missing/unknown fields, multiple services, registration-order selection, non-exact Development, LocalDevelopment outside Development, absent adapter/legacy writer, unsupported mode, or failed backend/state/fence probe fails startup before traffic with no downgrade.
 
 **Given** a typed command produces one or more events
@@ -7409,7 +7409,7 @@ So that protection is opt-in, tenant-safe, durable, and reversible without priva
 **And** tests cannot globally replace the no-op, inject fake Azure as production proof, bypass DAPR/state/actor boundaries, or weaken existing protection/readability assertions to accommodate v2.
 
 **Given** Story 8.7 completion is requested
-**When** mode/startup matrices, event multi-write/cancellation/crash faults, reservation/completion/restart/reconciliation, snapshot create/load/fallback, every mixed-history Server path, tenant/authorization denials, fleet/fence/watermark changes, provider outages, restore admission, no-op preservation, and real persisted Azure-backed v2 evidence run
+**When** mode/startup matrices, event multi-write/cancellation/crash faults, reservation/completion/restart/reconciliation, snapshot create/load/fallback, every mixed-history Server path, tenant/authorization denials, fleet/fence/watermark changes, provider outages, restore admission, no-op preservation, and real persisted v2 evidence against the qualified on-premises backend run
 **Then** an immutable packet binds source/spec/predecessor identities, topology/configuration, exact stored event/snapshot/key/fence/checkpoint/audit/provider evidence, commands/results, limitations, and named EventStore/Security/Operations/Test approvals
 **And** only Story 8.8 may be explicitly authorized; both new projects remain non-packable, the manifest remains 14, and no external release, production enablement, Parties mutation, rollback deletion, or G5 claim occurs.
 
@@ -7426,6 +7426,8 @@ So that optional security capability is reproducible and cannot partially publis
 **UX coverage:** No direct UX requirement applies. Package documentation describes configuration and proven operational states without moving Parties UX/copy or representing package installation as protection/readiness/G5.
 
 **Dependencies:** Story 8.7 must be complete with exact persisted Server/Azure evidence and explicit authorization for Story 8.8. Registry publication, release-environment use, signing/attestation, and any externally visible tag/package mutation additionally require the release owner's separately bound authority.
+
+**On-premises successor gate (2026-11-07):** Story 8.7's approved supplement does not approve this story's existing engine/Azure pair-release assumptions. Reconcile the on-premises package/release path in separately scoped Story 8.8 planning before publication. Both existing future projects remain non-packable and the release manifest remains 14; completing only the EventStore contract/backend phase cannot authorize this successor.
 
 **Current reconciliation:** Story 8.8 is backlog and dependency-blocked. `tools/release-packages.json` currently lists 14 packages, release workflows/scripts/tests/docs treat it as authoritative, and several tracked assertions name that exact count. The two future projects do not exist yet and, through Story 8.7, must remain `IsPackable=false`; no approved engine/adapter package bytes or release evidence exists.
 

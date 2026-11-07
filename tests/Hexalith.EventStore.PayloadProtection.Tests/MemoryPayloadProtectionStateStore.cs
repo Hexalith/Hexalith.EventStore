@@ -3,7 +3,7 @@ using System.Globalization;
 namespace Hexalith.EventStore.PayloadProtection.Tests;
 
 /// <summary>A deterministic CAS fault fixture only; it is never PF-02 evidence.</summary>
-internal sealed class MemoryPayloadProtectionStateStore(TimeProvider? timeProvider = null) : IPayloadProtectionStateStore
+internal sealed class MemoryPayloadProtectionStateStore(TimeProvider? timeProvider = null, PayloadProtectionAuthorityProfile? authorityProfile = null) : IPayloadProtectionStateStore
 {
     private readonly object _gate = new();
     private readonly Dictionary<string, (byte[] Bytes, string ETag, DateTimeOffset? Expires)> _values = new(StringComparer.Ordinal);
@@ -33,7 +33,7 @@ internal sealed class MemoryPayloadProtectionStateStore(TimeProvider? timeProvid
         {
             Expire();
             if (!_values.TryGetValue(key, out var value)) { return ValueTask.FromResult<PayloadProtectionStateValue<T>?>(null); }
-            T record = PayloadProtectionStateCodec.Decode<T>(value.Bytes);
+            T record = PayloadProtectionStateCodec.Decode<T>(value.Bytes, authorityProfile);
             PayloadProtectionStateCodec.KeyFor(record).ShouldBe(key);
             return ValueTask.FromResult<PayloadProtectionStateValue<T>?>(new(record, value.ETag, value.Bytes.ToArray()));
         }

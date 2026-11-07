@@ -1,3 +1,4 @@
+// Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10.4, 13.5 and 15; approved review correction section 8.
 using System.Security.Cryptography;
 using Hexalith.EventStore.Contracts.Identity;
@@ -36,7 +37,7 @@ internal sealed class PayloadRestoreAdmission(IPayloadProtectionStateStore store
             RestoredBackupAdmissionState state = RestoredBackupAdmissionState.Accepted;
             try
             {
-                _ = PayloadProtectionStateCodec.Encode(backupFence);
+                _ = PayloadProtectionStateCodec.Encode(backupFence, leases.AuthorityProfile);
                 _ = PayloadProtectionStateCodec.Encode(backupLifecycle);
                 PayloadProtectionStateValue<FenceV1> liveFence = await RequiredAsync<FenceV1>(PayloadProtectionStateKeys.Fence(root), token).ConfigureAwait(false);
                 PayloadProtectionStateValue<LifecycleV1> liveLifecycle = await RequiredAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(scope), token).ConfigureAwait(false);

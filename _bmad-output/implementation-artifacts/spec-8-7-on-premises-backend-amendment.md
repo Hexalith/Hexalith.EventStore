@@ -4,7 +4,7 @@ type: 'architecture-amendment-candidate'
 created: '2026-11-07'
 status: 'approved-authorized'
 implementation_authorized: true
-execution_disposition: 'approved-not-started'
+execution_disposition: 'eventstore-contract-backend-phase-implemented-host-wiring-gated'
 approval_date: '2026-11-07'
 approval_source: 'Interactive project owner: approve and stop'
 approval_assurance: 'single-maintainer-attested'
@@ -151,3 +151,7 @@ Self-review: product choices are resolved. The proposed first phase changes loca
 After the finalized spec and complete supplement were presented, the interactive project owner answered **“approve and stop.”** This approval binds normative SHA-256 `43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3` and proposed effective authority SHA-256 `835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180`. The associated spec's frozen-intent SHA-256 is `da45c41e7994a306295cb5bf1f3d0d6d55fb0861c5d72156173a5940ae316f55`; approval was recorded at EventStore revision `18011dc30de568d865458d85bfa8ff762c5ea258`.
 
 The spec is now `ready-for-dev`; implementation is authorized only within the supplement's existing scope on a later explicit resume. This run stops before implementation. Platform edits, provisioning, live cluster/key operations, capacity-authority changes, conformance closure and Server host wiring retain their stated separate conditions. This is one interactive owner's decision, not independent role reviews or production acceptance.
+
+## Implementation resume — 2026-11-07
+
+The owner's later `$bmad-build 8.7` invocation resumed the authorized EventStore Contracts/backend phase. Neutral wire contracts/codecs, Dapr transport, closed options/authority profiles and first-phase tests are implemented. Enabled registration deliberately refuses activation before hosted services until the separately scoped prerequisites are satisfied. The [owning spec](spec-8-7-server-persistence-and-snapshot-integration.md) records exact commands and results; the story remains `in-progress`. Platform implementation/conformance, capacity work and Server host wiring remain pending. The normative supplement, frozen intent and derived authority digests were reverified unchanged; this progress note grants no new authority.

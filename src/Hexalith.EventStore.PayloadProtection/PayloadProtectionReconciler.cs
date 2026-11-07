@@ -1,3 +1,4 @@
+// Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10.3-10.8 and 15; amendment sections 1-4 and 7; approved review correction section 8.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
@@ -24,14 +25,16 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
     private readonly PayloadPersistenceEvidenceSource? _persistence;
     private readonly PayloadProtectionBackend? _backendProvider;
     private readonly PayloadBackendExecutor _executor;
+    private readonly PayloadProtectionAuthorityProfile _authority;
 
     /// <summary>Creates the sole bounded hosted worker; registration in the production host belongs to Story 8.7.</summary>
     internal PayloadProtectionReconciler(IPayloadProtectionStateStore store, PayloadProtectionScopeRegistry roots,
         KeyLifecycleCoordinator lifecycle, string backendId, Func<AggregateIdentity, bool> allowAuditScope,
         string decisionActor, TimeProvider? timeProvider = null, PayloadKeyRotationCoordinator? rotation = null,
         PayloadPersistenceEvidenceSource? persistence = null, PayloadProtectionBackend? backend = null,
-        PayloadBackendExecutor? executor = null)
+        PayloadBackendExecutor? executor = null, PayloadProtectionAuthorityProfile? authorityProfile = null)
     {
+        _authority = authorityProfile ?? PayloadProtectionAuthorityProfile.Predecessor;
         _store = store; _roots = roots; _lifecycle = lifecycle; _clock = timeProvider ?? TimeProvider.System;
         _catalogs = new(store, _clock); _claims = new(store, _clock); _pages = new uint[roots.Roots.Count];
         _allowAudit = allowAuditScope ?? throw new PayloadProtectionFormatException();
@@ -216,7 +219,7 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
         if (lifecycle.Value.State is not ("Active" or "Pending" or "Invalidating") || lifecycle.Value.Epoch < key.Value.LifecycleEpoch
             || fence.Value.TenantId != identity.TenantId || fence.Value.Domain != identity.Domain
             || fence.Value.ApprovalEpoch < key.Value.FenceApprovalEpoch || fence.Value.HighestWrittenEpoch < key.Value.HighestWrittenEpoch
-            || fence.Value.HighestWrittenFormat != "V2" || fence.Value.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest) { throw Mismatch(); }
+            || fence.Value.HighestWrittenFormat != "V2" || fence.Value.ApprovedSpecDigest != _authority.Digest) { throw Mismatch(); }
         var indexes = new PayloadKeyIndexes(_store, _clock);
         ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(claim.ScopeDigest, token).ConfigureAwait(false);
         KekKeyIndexSnapshot inventory = await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.Value.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId), token).ConfigureAwait(false);

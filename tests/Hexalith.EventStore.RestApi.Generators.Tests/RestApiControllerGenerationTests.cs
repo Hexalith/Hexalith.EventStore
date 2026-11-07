@@ -615,7 +615,7 @@ public sealed class RestApiControllerGenerationTests
         return count;
     }
 
-    private const string HappyPathControllerSource = """
+    internal const string HappyPathControllerSource = """
         using Hexalith.EventStore.Contracts.Commands;
         using Hexalith.EventStore.Contracts.Queries;
         using Hexalith.EventStore.Contracts.Rest;
@@ -697,7 +697,7 @@ public sealed class RestApiControllerGenerationTests
         }
         """;
 
-    private const string RouteTenantSource = """
+    internal const string RouteTenantSource = """
         using Hexalith.EventStore.Contracts.Commands;
         using Hexalith.EventStore.Contracts.Rest;
 
@@ -925,7 +925,7 @@ public sealed class RestApiControllerGenerationTests
         }
         """;
 
-    private const string ReferencedBoundTenantsQuerySource = """
+    internal const string ReferencedBoundTenantsQuerySource = """
         using Hexalith.EventStore.Contracts.Queries;
         using Hexalith.EventStore.Contracts.Rest;
 
@@ -1051,7 +1051,7 @@ public sealed class RestApiControllerGenerationTests
         public sealed class HostMarker;
         """;
 
-    private const string ReferencedTenantsContractHostSource = """
+    internal const string ReferencedTenantsContractHostSource = """
         using Hexalith.EventStore.Contracts.Rest;
 
         [assembly: RestApi("api/tenants", "tenants", RestTenantSource.Claims)]

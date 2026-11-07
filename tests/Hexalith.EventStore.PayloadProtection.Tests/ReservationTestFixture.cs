@@ -25,20 +25,21 @@ internal sealed class ReservationTestFixture
     internal string Scope => PayloadProtectionStateKeys.ScopeDigest(Identity);
 
     /// <summary>Creates explicit catalogs, lifecycle, deployment and operator fence before registration.</summary>
-    internal static async ValueTask<ReservationTestFixture> CreateAsync(bool allowAudit = true)
+    internal static async ValueTask<ReservationTestFixture> CreateAsync(bool allowAudit = true, PayloadProtectionAuthorityProfile? authorityProfile = null)
     {
+        authorityProfile ??= PayloadProtectionAuthorityProfile.Predecessor;
         var fixture = new ReservationTestFixture();
-        fixture.Store = new(fixture.Clock);
+        fixture.Store = new(fixture.Clock, authorityProfile);
         var roots = new PayloadProtectionScopeRegistry([new("tenant-a", "parties")]);
         var profile = new PayloadProtectionInstanceProfile(new('b', 40), new('c', 64), fixture.Backend.BackendId, ["json", "json+pdenc-v2"], ["V2"]);
         string now = PayloadProtectionStateCodec.Timestamp(fixture.Clock.GetUtcNow());
         await new PayloadProtectionCatalogs(fixture.Store, fixture.Clock).InitializeAsync(fixture.Root);
         await fixture.Store.CommitAsync([PayloadProtectionStateMutation.Put(new DeploymentGenerationV1("tenant-a", "parties", fixture.Root, 1,
-            PayloadProtectionStateKeys.AuthorityDigest, profile.SourceSha, profile.PackageSetSha256, "Open", now)),
+            authorityProfile.Digest, profile.SourceSha, profile.PackageSetSha256, "Open", now), authorityProfile: authorityProfile),
             PayloadProtectionStateMutation.Put(new LifecycleV1("tenant-a", "parties", "party-01", fixture.Scope, "Active", 1, "none", "01J00000000000000000000001", now)),
             PayloadProtectionStateMutation.Put(new FenceV1("tenant-a", "parties", fixture.Root, "V2", 7, "01J00000000000000000000002",
-                PayloadProtectionStateKeys.AuthorityDigest, 1, "Legacy", 0, now))]);
-        fixture.Leases = new(fixture.Store, roots, profile, fixture.Clock);
+                authorityProfile.Digest, 1, "Legacy", 0, now), authorityProfile: authorityProfile)]);
+        fixture.Leases = new(fixture.Store, roots, profile, fixture.Clock, authorityProfile: authorityProfile);
         await fixture.Leases.RegisterAsync(fixture.Identity);
         fixture.Reservations = new(fixture.Store, roots, fixture.Leases, new(roots, [new("parties", fixture.Erasure)]), fixture.Backend,
             new(fixture.Clock), _ => allowAudit, "fixture-actor", timeProvider: fixture.Clock);

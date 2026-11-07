@@ -1,3 +1,4 @@
+// Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; amendment sections 1-6; approved review correction section 8.
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -329,7 +330,7 @@ internal sealed class KeyReservationCoordinator
                 KekKeyIndexSnapshot inventory = await _indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(_backend.BackendId),
                     PayloadProtectionStateKeys.Digest(response.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false);
                 PayloadStateCommitResult reservationResult = await _store.CommitAsync([.. authority.Conditions, PayloadProtectionStateMutation.Compare(authority.Lifecycle),
-                    PayloadProtectionStateMutation.Put(advancedFence, authority.Fence.ETag), PayloadProtectionStateMutation.Put(key),
+                    PayloadProtectionStateMutation.Put(advancedFence, authority.Fence.ETag, _leases.AuthorityProfile), PayloadProtectionStateMutation.Put(key),
                     .. _indexes.SetScopeEntry(scopeIndex, new(key.KeyRef, key.DekVersion, inventory.ProviderDigest, "Reserved"), true),
                     .. _indexes.SetInventoryEntry(inventory, new(scope, key.KeyRef, key.DekVersion), true),
                     PayloadProtectionStateMutation.Put(operation with { Phase = "Reserved", Attempt = backendAttempts, UpdatedAtUtc = Now() }, current.ETag),
@@ -419,9 +420,9 @@ internal sealed class KeyReservationCoordinator
         if (lifecycle.Value.Epoch != erasure.LifecycleEpoch || lifecycle.Value.State != "Active") { throw Mismatch(); }
         IReadOnlyList<PayloadProtectionStateMutation> conditions = await _leases.AdmissionAsync(identity, lifecycle.Value, true, cancellationToken).ConfigureAwait(false);
         PayloadProtectionStateValue<FenceV1> fence = await RequiredAsync<FenceV1>(PayloadProtectionStateKeys.Fence(root), cancellationToken).ConfigureAwait(false);
-        DeploymentGenerationV1 generation = PayloadProtectionStateCodec.Decode<DeploymentGenerationV1>(conditions[0].Bytes!);
+        DeploymentGenerationV1 generation = PayloadProtectionStateCodec.Decode<DeploymentGenerationV1>(conditions[0].Bytes!, _leases.AuthorityProfile);
         if (fence.Value.TenantId != identity.TenantId || fence.Value.Domain != identity.Domain || fence.Value.ApprovedWriteMode != "V2"
-            || fence.Value.DeploymentGeneration != generation.Generation || fence.Value.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest) { throw Mismatch(); }
+            || fence.Value.DeploymentGeneration != generation.Generation || fence.Value.ApprovedSpecDigest != _leases.AuthorityProfile.Digest) { throw Mismatch(); }
         return new(lifecycle, fence, conditions);
     }
     private PayloadProtectionCompletionReceipt Receipt(PayloadProtectionCompletionContext completion)

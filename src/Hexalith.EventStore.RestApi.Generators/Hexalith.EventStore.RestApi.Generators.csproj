@@ -8,6 +8,15 @@
     <DevelopmentDependency>true</DevelopmentDependency>
     <LangVersion>latest</LangVersion>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <!-- Package-side code-style gate (NFR13/OR26): IDE rules from the repository .editorconfig run in
+         the build, so the Release -warnaserror solution build fails on a style regression here.
+         The SDK derives no analysis level for netstandard2.0, and without one the build ignores the
+         `option = value:warning` severities in .editorconfig; AnalysisLevelStyle restores them. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevelStyle>latest</AnalysisLevelStyle>
+    <!-- netstandard2.0 leaves the .NET (CA) analyzers off; run them so CA2007 and the other
+         .editorconfig CA severities also gate the generator package. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <Description>Roslyn source generator for Hexalith EventStore REST API manifests</Description>
   </PropertyGroup>
 

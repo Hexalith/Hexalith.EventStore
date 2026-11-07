@@ -1,3 +1,4 @@
+// Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 10.2; amendment sections 1-2 and 5-6; approved review correction section 8.
 using System.Buffers.Binary;
 using System.Collections.Frozen;
@@ -31,16 +32,16 @@ internal static class PayloadProtectionStateCodec
     };
 
     /// <summary>Writes schemaVersion first, ordered camelCase members and no insignificant whitespace.</summary>
-    internal static byte[] Encode<T>(T record) where T : class
+    internal static byte[] Encode<T>(T record, PayloadProtectionAuthorityProfile? authorityProfile = null) where T : class
     {
         ArgumentNullException.ThrowIfNull(record);
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(record, Metadata<T>());
-        _ = Decode<T>(bytes);
+        _ = Decode<T>(bytes, authorityProfile);
         return bytes;
     }
 
     /// <summary>Validates every member before deserializing, accepting legal JSON member reordering.</summary>
-    internal static T Decode<T>(ReadOnlyMemory<byte> bytes) where T : class
+    internal static T Decode<T>(ReadOnlyMemory<byte> bytes, PayloadProtectionAuthorityProfile? authorityProfile = null) where T : class
     {
         try
         {
@@ -53,7 +54,7 @@ internal static class PayloadProtectionStateCodec
             using JsonDocument document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
             ValidateObject(document.RootElement, typeof(T), root: true);
             T record = JsonSerializer.Deserialize(bytes.Span, Metadata<T>()) ?? throw new PayloadProtectionFormatException();
-            ValidateSemantics(record);
+            ValidateSemantics(record, authorityProfile ?? PayloadProtectionAuthorityProfile.Predecessor);
             return record;
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException or OverflowException)
@@ -254,7 +255,7 @@ internal static class PayloadProtectionStateCodec
         return bytes;
     }
 
-    private static void ValidateSemantics<T>(T value)
+    private static void ValidateSemantics<T>(T value, PayloadProtectionAuthorityProfile authorityProfile)
     {
         switch (value)
         {
@@ -271,15 +272,15 @@ internal static class PayloadProtectionStateCodec
                 break;
             case FenceV1 fence:
                 ValidateRoot(fence.TenantId, fence.Domain, fence.TenantDomainDigest);
-                if (fence.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest) { throw new PayloadProtectionFormatException(); }
+                if (fence.ApprovedSpecDigest != authorityProfile.Digest) { throw new PayloadProtectionFormatException(); }
                 break;
             case DeploymentGenerationV1 deployment:
                 ValidateRoot(deployment.TenantId, deployment.Domain, deployment.TenantDomainDigest);
-                if (deployment.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest) { throw new PayloadProtectionFormatException(); }
+                if (deployment.ApprovedSpecDigest != authorityProfile.Digest) { throw new PayloadProtectionFormatException(); }
                 break;
             case CapabilityLeaseV1 lease:
                 ValidateInterval(lease.IssuedAtUtc, lease.ExpiresAtUtc, TimeSpan.FromSeconds(60), exact: true);
-                if (lease.SpecDigest != PayloadProtectionStateKeys.AuthorityDigest || lease.ReadFormats.Length == 0 || lease.WriteModes.Length == 0) { throw new PayloadProtectionFormatException(); }
+                if (lease.SpecDigest != authorityProfile.Digest || lease.ReadFormats.Length == 0 || lease.WriteModes.Length == 0) { throw new PayloadProtectionFormatException(); }
                 break;
             case ReconciliationV1 work:
                 if ((work.Kind == "Rewrap") != (work.TargetProviderVersionDigest.Length != 0)) { throw new PayloadProtectionFormatException(); }

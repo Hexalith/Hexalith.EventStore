@@ -12,6 +12,7 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj" />
+    <Project Path="samples/Hexalith.EventStore.Sample.Api.GeneratedCodeQuality/Hexalith.EventStore.Sample.Api.GeneratedCodeQuality.csproj" />
     <Project Path="samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj" />
     <Project Path="samples/Hexalith.EventStore.Sample.Contracts/Hexalith.EventStore.Sample.Contracts.csproj" />
     <Project Path="samples/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj" />

@@ -1,3 +1,4 @@
+// Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13 and 15; amendment sections 1-4.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
@@ -19,8 +20,9 @@ internal sealed class PayloadProtectionLeaseCoordinator
     /// <summary>Creates a fresh process-incarnation identity. Restarted coordinators never inherit another process's membership.</summary>
     internal PayloadProtectionLeaseCoordinator(IPayloadProtectionStateStore store, PayloadProtectionScopeRegistry roots,
         PayloadProtectionInstanceProfile profile, TimeProvider? timeProvider = null, IPayloadProtectionEntropy? entropy = null,
-        Func<TimeSpan, CancellationToken, ValueTask>? delay = null)
+        Func<TimeSpan, CancellationToken, ValueTask>? delay = null, PayloadProtectionAuthorityProfile? authorityProfile = null)
     {
+        AuthorityProfile = authorityProfile ?? PayloadProtectionAuthorityProfile.Predecessor;
         _store = store;
         _roots = roots;
         _profile = profile with { ReadFormats = profile.ReadFormats.ToArray(), WriteModes = profile.WriteModes.ToArray() };
@@ -30,6 +32,9 @@ internal sealed class PayloadProtectionLeaseCoordinator
         InstanceId = (entropy ?? new CryptographicPayloadProtectionEntropy()).CreateKeyReference();
         if (!CanonicalUlid.IsValid(InstanceId)) { throw Mismatch(); }
     }
+
+    /// <summary>Gets the explicit closed authority selected for this process.</summary>
+    internal PayloadProtectionAuthorityProfile AuthorityProfile { get; }
 
     /// <summary>Gets the fresh per-incarnation canonical member identity, confined to state coordination.</summary>
     internal string InstanceId { get; }
@@ -50,7 +55,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
         if (existing is not null) { throw Mismatch(); }
         CapabilityLeaseV1 capability = Capability(root, generation.Value.Generation);
         List<PayloadProtectionStateMutation> mutations = [.. _catalogs.AppendMember(members, generation.Value.Generation, InstanceId),
-            PayloadProtectionStateMutation.Compare(generation), PayloadProtectionStateMutation.Put(capability)];
+            PayloadProtectionStateMutation.Compare(generation), PayloadProtectionStateMutation.Put(capability, authorityProfile: AuthorityProfile)];
         PayloadStateCommitResult result = await _store.CommitAsync(mutations, cancellationToken).ConfigureAwait(false);
         // The same stable instance identity reconciles an unobserved atomic registration.
         if (result == PayloadStateCommitResult.Unknown)
@@ -59,7 +64,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
             existing = members.Pages.SelectMany(p => p.Value.Entries).SingleOrDefault(e => e.InstanceId == InstanceId);
             PayloadProtectionStateValue<CapabilityLeaseV1>? found = await PayloadOperationBudget.ReadAsync<CapabilityLeaseV1>(_store, PayloadProtectionStateCodec.KeyFor(capability), cancellationToken).ConfigureAwait(false);
             if (existing?.State != "Serving" || existing.Generation != generation.Value.Generation || found is null
-                || !PayloadProtectionStateCodec.Encode(found.Value).AsSpan().SequenceEqual(PayloadProtectionStateCodec.Encode(capability))) { throw Unavailable(); }
+                || !PayloadProtectionStateCodec.Encode(found.Value, AuthorityProfile).AsSpan().SequenceEqual(PayloadProtectionStateCodec.Encode(capability, AuthorityProfile))) { throw Unavailable(); }
         }
         else { RequireCommit(result); }
         if (_clock.GetElapsedTime(started) >= TimeSpan.FromSeconds(40)) { throw Unavailable(); }
@@ -80,12 +85,12 @@ internal sealed class PayloadProtectionLeaseCoordinator
             ValidateCapability(previous.Value, generation.Value);
             CapabilityLeaseV1 renewed = Capability(root, generation.Value.Generation);
             PayloadStateCommitResult result = await _store.CommitAsync([PayloadProtectionStateMutation.Compare(generation),
-                PayloadProtectionStateMutation.Compare(member), PayloadProtectionStateMutation.Put(renewed, previous.ETag)], cancellationToken).ConfigureAwait(false);
+                PayloadProtectionStateMutation.Compare(member), PayloadProtectionStateMutation.Put(renewed, previous.ETag, AuthorityProfile)], cancellationToken).ConfigureAwait(false);
             if (result == PayloadStateCommitResult.Unknown)
             {
                 PayloadProtectionStateValue<CapabilityLeaseV1>? confirmed = await PayloadOperationBudget.ReadAsync<CapabilityLeaseV1>(_store, PayloadProtectionStateCodec.KeyFor(renewed), cancellationToken).ConfigureAwait(false);
                 if (confirmed is not null && confirmed.ETag != previous.ETag
-                    && PayloadProtectionStateCodec.Encode(confirmed.Value).AsSpan().SequenceEqual(PayloadProtectionStateCodec.Encode(renewed))) { break; }
+                    && PayloadProtectionStateCodec.Encode(confirmed.Value, AuthorityProfile).AsSpan().SequenceEqual(PayloadProtectionStateCodec.Encode(renewed, AuthorityProfile))) { break; }
                 await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue;
             }
             if (result == PayloadStateCommitResult.Conflict) { await PayloadStateCasRetry.PauseAsync(attempt, cancellationToken).ConfigureAwait(false); continue; }
@@ -229,7 +234,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
         string root = _roots.Require(identity);
         PayloadProtectionStateValue<DeploymentGenerationV1> value = await RequiredAsync<DeploymentGenerationV1>(PayloadProtectionStateKeys.Deployment(root), cancellationToken).ConfigureAwait(false);
         if (value.Value.TenantId != identity.TenantId || value.Value.Domain != identity.Domain || value.Value.TenantDomainDigest != root
-            || value.Value.Status != "Open" || value.Value.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest
+            || value.Value.Status != "Open" || value.Value.ApprovedSpecDigest != AuthorityProfile.Digest
             || value.Value.ApprovedSourceSha != _profile.SourceSha || value.Value.PackageSetSha256 != _profile.PackageSetSha256) { throw Mismatch(); }
         return value;
     }
@@ -245,13 +250,13 @@ internal sealed class PayloadProtectionLeaseCoordinator
     private CapabilityLeaseV1 Capability(string root, ulong generation)
     {
         DateTimeOffset now = _clock.GetUtcNow();
-        return new(root, generation, InstanceId, _profile.SourceSha, _profile.PackageSetSha256, PayloadProtectionStateKeys.AuthorityDigest,
+        return new(root, generation, InstanceId, _profile.SourceSha, _profile.PackageSetSha256, AuthorityProfile.Digest,
             _profile.BackendId, _profile.ReadFormats.ToArray(), _profile.WriteModes.ToArray(), PayloadProtectionStateCodec.Timestamp(now), PayloadProtectionStateCodec.Timestamp(now.AddSeconds(60)));
     }
     private void ValidateCapability(CapabilityLeaseV1 value, DeploymentGenerationV1 generation)
     {
         if (value.TenantDomainDigest != generation.TenantDomainDigest || value.Generation != generation.Generation || value.InstanceId != InstanceId
-            || value.SourceSha != _profile.SourceSha || value.PackageSetSha256 != _profile.PackageSetSha256 || value.SpecDigest != PayloadProtectionStateKeys.AuthorityDigest
+            || value.SourceSha != _profile.SourceSha || value.PackageSetSha256 != _profile.PackageSetSha256 || value.SpecDigest != AuthorityProfile.Digest
             || value.BackendId != _profile.BackendId || !value.ReadFormats.SequenceEqual(_profile.ReadFormats) || !value.WriteModes.SequenceEqual(_profile.WriteModes)
             || PayloadProtectionStateCodec.ParseTimestamp(value.ExpiresAtUtc) <= _clock.GetUtcNow()) { throw Mismatch(); }
     }
