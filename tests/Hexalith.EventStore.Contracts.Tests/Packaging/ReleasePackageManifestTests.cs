@@ -559,7 +559,7 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(workflow, "ci");
         string tenantsSourceModeJob = ExtractTopLevelWorkflowJobBlock(workflow, "tenants-source-mode");
 
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@567604b616613ba429be0609636d805db776a709");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@b4703ec2247321f867f14cd9caca43fa00190feb");
         ciJob.ShouldContain("build-timeout-minutes: 180");
         ciJob.ShouldContain("test-platform: microsoft-testing-platform");
         ciJob.ShouldContain("run-consumer-validation: true");
@@ -594,7 +594,7 @@ public sealed class ReleasePackageManifestTests
 
         using JsonDocument tools = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".config", "dotnet-tools.json")));
         JsonElement tool = tools.RootElement.GetProperty("tools").GetProperty("hexalith.builds.module.cli");
-        tool.GetProperty("version").GetString().ShouldBe("4.44.11");
+        tool.GetProperty("version").GetString().ShouldBe("4.44.12");
         tool.GetProperty("rollForward").GetBoolean().ShouldBeFalse();
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "module", "hexalith.module-manifest.v2.json")));
         JsonElement suite = manifest.RootElement.GetProperty("modules")[0].GetProperty("tests").EnumerateArray()
@@ -821,7 +821,7 @@ public sealed class ReleasePackageManifestTests
         liveSidecarJob.ShouldNotContain("set +e");
 
         string ciJob = ExtractTopLevelWorkflowJobBlock(ci, "ci");
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@567604b616613ba429be0609636d805db776a709");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@b4703ec2247321f867f14cd9caca43fa00190feb");
         ciJob.ShouldContain("unit-test-projects: |");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Contracts.Tests");
         ciJob.ShouldNotContain("continue-on-error");
