@@ -2,9 +2,12 @@
 title: 'Story 8.7: Server Persistence And Snapshot Integration'
 type: 'feature'
 created: '2026-11-06'
-status: 'draft'
+status: 'ready-for-dev'
 route: 'dispatch'
-execution_disposition: 'awaiting-on-premises-custody-decision'
+execution_disposition: 'approved-not-started'
+approval_date: '2026-11-07'
+approval_source: 'Interactive project owner: approve and stop'
+approved_intent_sha256: 'da45c41e7994a306295cb5bf1f3d0d6d55fb0861c5d72156173a5940ae316f55'
 review_loop_iteration: 0
 baseline_commit: 'fd77eb18b548ca9c1f13b97014441a26d6179ee7'
 planning_revision: '6ef8dcd4fc75e9bf20e403f2baf326e882a05d69'
@@ -21,9 +24,9 @@ context:
 
 **Problem:** Server has typed hooks and an interaction-specific engine, but lacks shared-engine registration, compatibility routing and lifecycle integration. Its Azure prerequisite conflicts with the owner's selected on-premises path; no replacement backend is qualified yet.
 
-**Approach:** Qualify a Platform-owned on-premises backend, then connect shared-engine integration through existing actor hooks. The detached OpenBao proposal awaits a custody decision.
+**Approach:** Qualify a Platform-owned OpenBao software-key backend, then connect shared-engine integration through existing actor hooks. Start with neutral Contracts/Dapr backend work; qualify the component and complete capacity work before Server host wiring.
 
-**Owner decision (2026-11-07):** Option 2 selects planning an on-premises backend with Hexalith.Platform and revising the Azure dependency. This does not select software custody, authorize deployment or change Epic 8's post-MVP scheduling.
+**Owner decisions (2026-11-07):** Option 2 selects the on-premises Platform path; subsequent option 1 accepts software-managed OpenBao keys in place of hardware protection for qualification. Final plan approval, deployment and post-MVP scheduling are distinct.
 
 ## Boundaries & Constraints
 
@@ -44,10 +47,6 @@ context:
 
 </frozen-after-approval>
 
-## Open Questions
-
-1. Which key-custody guarantee should govern this path? **Qualify OpenBao software custody** accepts the proposed change from hardware-protected to software-managed keys. **Preserve hardware custody** requires Platform to identify and qualify a hardware key service. Auto-unseal hardware alone is insufficient. Neither choice deploys infrastructure; the final spec/amendment still needs approval.
-
 ## Code Map
 
 Paths below are relative to `src/` unless prefixed with `tests/`.
@@ -56,29 +55,32 @@ Paths below are relative to `src/` unless prefixed with `tests/`.
 - `Hexalith.EventStore.Server/Events/EventPersister.cs`, `SnapshotManager.cs`: existing preparation and typed interaction hooks; preserve atomic staging and advisory snapshot semantics.
 - `Hexalith.EventStore.Server/Actors/AggregateActor.PayloadProtection.cs`: existing completion journal, reminders and exact-source recovery; reuse with `AggregateActor.cs`.
 - `Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs`: read seam; preserve publication, projections, Streams and Admin authorization.
-- `Hexalith.EventStore.PayloadProtection/`: reuse the generic compatibility router, reservation/deployment coordinators, key resolver and capability probe. `PayloadProtectionBackend.cs` and `PayloadBackendResult.cs` provide the internal SPI and 512-byte cap; use Dapr without a Platform assembly dependency.
+- `Hexalith.EventStore.PayloadProtection/`: reuse router, coordinators, resolver and capability probe. `PayloadProtectionBackend.cs`/`PayloadBackendResult.cs` own the SPI/512-byte cap; existing authority checks require explicit profile selection.
 
 ## Tasks & Acceptance
 
-**Execution, conditional on custody decision and exact supplement approval:**
+**Execution after exact specification/supplement approval:**
 
-- [ ] `_bmad-output/implementation-artifacts/spec-8-7-on-premises-backend-amendment.md` — finalize custody, transport, authority and conformance scope; bind exact approval before changing effective policy.
+- [x] `_bmad-output/implementation-artifacts/spec-8-7-on-premises-backend-amendment.md` — bind final approval to normative/effective digests before changing effective policy.
 - [ ] `_bmad-output/planning-artifacts/epics.md` — reconcile 8.7's dependency to qualified on-premises conformance after approval; preserve Azure 8.6 deferral and reconcile the later 8.8 release assumptions separately.
 - [ ] `_bmad-output/implementation-artifacts/deferred-work.md` — verify capacity/erasure-memory prerequisites; carry enrollment, shared namespace, restore identity and legacy-history obligations. Preserve entries. Platform qualifies its component in separately scoped work.
-- [ ] `src/Hexalith.EventStore.PayloadProtection/` — implement the approved neutral Dapr backend and bounded exact-version/result checks using the existing SPI; qualify real-service behavior before host wiring.
-- [ ] `src/Hexalith.EventStore.Server/Configuration/` — add closed shared-engine registration/startup validation without replacing interaction authority semantics.
+- [ ] `src/Hexalith.EventStore.Contracts/Security/` — add the amendment's bounded neutral request/response/profile, closed operations/outcomes and JSON context.
+- [ ] `src/Hexalith.EventStore.PayloadProtection/DaprPayloadProtectionBackend.cs`, `PayloadProtectionAuthorityProfile.cs` — implement neutral transport and closed authority selection; preserve existing/Azure authority and qualify real-service behavior before host wiring.
+- [ ] `src/Hexalith.EventStore.PayloadProtection/PayloadProtectionServiceCollectionExtensions.cs` — implement the amendment's explicit options/startup matrix; preserve Server's default registration and interaction semantics.
 - [ ] `src/Hexalith.EventStore.Server/Events/`, `src/Hexalith.EventStore.Server/Actors/AggregateActor.PayloadProtection.cs` — connect generic occurrence, reservation/completion and typed reads through existing atomic boundaries; cover every owning Server/Admin read path before completion.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/`, `tests/Hexalith.EventStore.PayloadProtection.Tests/` — extend existing hook, compatibility and lifecycle tests for the matrix and registration ordering.
+- [ ] `tests/Hexalith.EventStore.Contracts.Tests/`, `tests/Hexalith.EventStore.PayloadProtection.Tests/`, `tests/Hexalith.EventStore.Server.Tests/` — cover wire/mode matrices and existing compatibility, lifecycle and persistence hooks; exact first-phase test files are in the amendment.
 - [ ] `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/`, `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/` — prove the approved real backend, then persisted events/snapshots, reservations, recovery and checkpoints through real Dapr.
 
 **Acceptance Criteria:**
 
-- Given unresolved custody or missing approved backend/capacity evidence, when activation is evaluated, then runtime integration remains blocked.
+- Given missing backend/capacity evidence, when host activation is evaluated, then it remains blocked; neutral contract/backend work can proceed independently.
 - Given authorized integration, when startup and fault matrices execute, then default behavior and all existing interaction guarantees survive.
 - Given failed reads or writes, when durable state is inspected, then no partial staging, unsafe replay, plaintext fallback or false completion occurs.
 - Given full 8.7 completion, when assessed against the reconciled criteria, then exact supplement, predecessor, source, real persisted backend and named approval evidence exists; Azure deferral is not Azure completion.
 
 ## Implementation Notes
+
+- 2026-11-07: The interactive owner answered “approve and stop,” approving this spec and the amendment's exact recorded normative/effective digests. The frozen intent is locked; its SHA-256 covers the opening tag through the closing tag, excluding the following newline. No implementation started. A later resume may begin EventStore contract/backend work; Platform qualification, capacity work and Server host-wiring gates remain.
 
 ## Spec Change Log
 
@@ -86,4 +88,4 @@ Paths below are relative to `src/` unless prefixed with `tests/`.
 
 ## Verification
 
-Planning checks: paths, detached/base digests, draft structure and `git diff --check`. Runtime/CI/cluster checks remain pending. Final commands/files follow the custody decision. Preserve concurrent changes.
+Run the amendment's exact source-mode build/unit/golden commands; then qualified real-Dapr/backend and Server lanes at their dependency gates. Require persisted end-state assertions and zero selected live skips. Planning checks cover links, digests and whitespace. Runtime/CI/cluster checks remain pending.

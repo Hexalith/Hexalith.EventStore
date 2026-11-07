@@ -2,12 +2,18 @@
 title: 'Story 8.7 on-premises backend amendment candidate'
 type: 'architecture-amendment-candidate'
 created: '2026-11-07'
-status: 'draft'
-implementation_authorized: false
+status: 'approved-authorized'
+implementation_authorized: true
+execution_disposition: 'approved-not-started'
+approval_date: '2026-11-07'
+approval_source: 'Interactive project owner: approve and stop'
+approval_assurance: 'single-maintainer-attested'
 selected_custody_model: 'openbao-software-rsa3072'
 custody_model_decision: 'accepted-for-qualification'
 custody_model_decision_date: '2026-11-07'
-candidate_normative_sha256: '6b4801d7829f6f51e34b496e5b9822ccebce53286c05b84cbc36941ea026f16d'
+candidate_normative_sha256: '43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3'
+proposed_effective_authority_sha256: '835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180'
+planning_finalization_revision: '12279c2429ddd9b0f044a0608fcd928fae6327fa'
 eventstore_revision: '6ef8dcd4fc75e9bf20e403f2baf326e882a05d69'
 platform_recorded_gitlink: 'ed991837945571a12743214fc18a87fbd323fc30'
 platform_observed_revision: '019f593544ad157036b7d12173ff89a16464f3cc'
@@ -15,13 +21,13 @@ platform_observed_revision: '019f593544ad157036b7d12173ff89a16464f3cc'
 
 # Proposed on-premises payload-key backend
 
-The owner selected option 2, “On-premises backend — revise the Azure dependency with Hexalith.Platform,” on 2026-11-07. The owner subsequently selected option 1, “Qualify OpenBao software keys; accept changing the hardware-custody requirement.” The software-key policy decision is resolved. Final specification approval remains pending; no infrastructure changes were authorized. Epic 8 remains post-MVP unless separately rescheduled.
+The owner selected option 2, “On-premises backend — revise the Azure dependency with Hexalith.Platform,” on 2026-11-07. The owner subsequently selected option 1, “Qualify OpenBao software keys; accept changing the hardware-custody requirement,” then approved the finalized specification and supplement with “approve and stop.” The software-key policy and implementation-plan decisions are recorded below. No infrastructure changes were authorized. Epic 8 remains post-MVP unless separately rescheduled.
 
 ## Recorded custody decision
 
 The original approved profile requires non-exportable **hardware-protected** RSA-3072 keys. The owner accepted qualifying **software-managed OpenBao keys** for the new on-premises path, including the broader recovery boundary of an OpenBao host/storage administrator. This decision does not attest a deployed provider, hardware equivalence or completed conformance.
 
-The following complete supplement is presented for implementation-plan approval. The policy decision above is not being requested again.
+The following complete supplement is approved for the scoped EventStore work on a later resume. Its exact normative bytes remain unchanged by recording approval.
 
 <!-- HX-PP-ONPREM-CANDIDATE-BEGIN -->
 
@@ -41,6 +47,8 @@ Preserve Story 8.1's normative bytes, v2 envelope/AAD/goldens and Story 8.4 comp
 | Base 16 and Epic 8 successor gates | Qualified on-premises conformance replaces the Azure prerequisite for this path only. Azure 8.6 remains incomplete/deferred; release/G5 and capacity gates remain. |
 
 Let `E` be the predecessor effective lifecycle digest `eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9` and `P` this supplement's normative digest. The proposed on-premises authority is SHA-256 of ASCII `HXPA`, byte `02`, decoded 32-byte `E`, then decoded 32-byte `P`. The final approval must bind both `P` and this derived digest. Do not stamp existing records with it or claim predecessor approval covers the new profile. Existing generic-authority state requires a separately approved generation transition; until then, admission fails closed. Existing interaction histories retain their own authority and read behavior.
+
+Represent selection with an internal closed `PayloadProtectionAuthorityProfile`: preserve the predecessor preset for existing/Azure paths; only explicit approved PlatformCustody selection uses the new digest. Thread that profile through the state codec, lease/deployment/reservation coordinators and reconciler instead of globally replacing `PayloadProtectionStateKeys.AuthorityDigest`. Configuration cannot supply an arbitrary authority digest. Refuse a root already bound to an incompatible authority; do not silently rewrite or migrate it.
 
 ## 2. Ownership and transport
 
@@ -62,9 +70,9 @@ Do not adopt the prepared erasure-root store's `DurabilityPolicy.None` or no-bac
 
 ## 4. Operations and persisted identities
 
-Add versioned request/response/profile contracts under `Hexalith.EventStore.Contracts/Security`, with one type per file and a source-generated JSON context. The closed operation set is `Profile`, `Wrap`, `WrapExact`, `Unwrap`, `Lookup`. Requests bind protocol version 1, canonical ULID operation/request IDs, installed identity/profile digest, optional exact provider version, and operation-specific owned bytes. Requests/responses are bounded to 16 KiB decoded JSON; wrap inputs/unwrap outputs are exactly 32 bytes, wrapped RSA bytes exactly 384. Reject extra fields, unknown operations/outcomes, mismatched request/installation/profile identities and unexpected byte fields before consuming output.
+Add versioned request/response/profile contracts under `Hexalith.EventStore.Contracts/Security`, with one type per file and a source-generated JSON context. The closed operation set is `Profile`, `Wrap`, `WrapExact`, `Unwrap`, `Lookup`. Requests bind protocol version 1, canonical ULID operation/request IDs, installed identity/profile digest, optional exact provider version (at most 1,024 UTF-8 bytes), and operation-specific owned bytes. Requests/responses are bounded to 16 KiB decoded JSON; wrap inputs/unwrap outputs are exactly 32 bytes, wrapped RSA bytes exactly 384. Reject extra fields, unknown operations/outcomes, mismatched request/installation/profile identities and unexpected byte fields before consuming output. Profile/Lookup carry no key bytes; WrapExact/Unwrap require an exact version; Wrap selects its version through the fresh Profile operation.
 
-Responses bind the same request and its SHA-256, carry only the seven existing backend outcome equivalents, optional exact version/owned bytes, and bounded retry delay. A successful Profile response additionally states software RSA-3072, export/backup/import flags, the current exact version and supported operations. It is a fresh authenticated observation, never an authority grant or cached readiness claim. Request/response formatting must not expose byte or provider fields.
+Responses bind the same request and the SHA-256 of its exact encoded bytes, carry only the seven existing backend outcome equivalents, optional exact version/owned bytes, and bounded retry delay. A successful Profile response additionally states software RSA-3072, export/backup/import/derivation/convergence flags, the current exact version and supported operations. It is a fresh authenticated observation, never an authority grant or cached readiness claim. Request/response formatting must not expose byte or provider fields.
 
 Reuse Platform's installed current-authorization/transport metadata and admission primitives; do not invent substitute signatures or treat transport receipt as native completion. Validate provider/key identity and current lifecycle/fleet authority before native admission. Caller-provided provider paths never select a key.
 
@@ -97,6 +105,21 @@ Keep the 14-package release manifest and both existing future projects non-packa
 
 Specification approval can start the independent EventStore contract/backend phase. Backend qualification, capacity completion and separately scoped Platform work remain explicit conditions before Server host wiring. Do not mark Story 8.7 done after only this first phase.
 
+### Verification commands after implementation
+
+Run these commands from the EventStore root, with source-mode Debug assets. Each built test assembly runs independently. Add contract coverage in `tests/Hexalith.EventStore.Contracts.Tests/Security/PayloadKeyBackendContractTests.cs` and transport/mode coverage in `tests/Hexalith.EventStore.PayloadProtection.Tests/DaprPayloadProtectionBackendTests.cs`; run the full owning unit projects, preserving all existing coverage.
+
+```bash
+dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1
+dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll
+dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1
+dotnet tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll
+node scripts/payload-protection/verify-golden-vectors.mjs
+python3 scripts/payload-protection/verify-golden-vectors.py
+```
+
+After the Platform prerequisite is available, add `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/OpenBaoBackendConformanceTests.cs`, using a dedicated disposable OpenBao store and real Dapr component; require all selected conformance cases to execute with zero skips. After capacity/backend acceptance, rebuild and run Server.Tests and Server.LiveSidecar.Tests individually, including existing persistence/snapshot/readability regressions and the new integration cases. Record exact live commands and qualified component identities when the component exists; no simulated command or current success is asserted here.
+
 <!-- HX-PP-ONPREM-CANDIDATE-END -->
 
 ## Existing Platform seams and limits
@@ -120,3 +143,11 @@ PKCS#11 auto-unseal protects OpenBao's root-key unsealing mechanism. It does not
 ## Planning validation — 2026-11-07
 
 Document links and context paths resolve; draft/pending states and marker uniqueness pass. Whitespace checks pass for both planning files. The unchanged base normative digest is `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`. The candidate digest above covers exact UTF-8/LF bytes between its begin/end marker lines, excluding those lines. No runtime test, CI, cluster access or remote mutation ran. Concurrent changes outside these two documents were preserved.
+
+Self-review: product choices are resolved. The proposed first phase changes local EventStore Contracts/core code, tests and planning documents; it introduces public neutral wire DTOs and an internal Dapr backend/authority profile. No migration, data deletion, external key operation, Platform edit or deployment is authorized by that phase. Provider/capacity qualifications are explicit later dependencies, not inferred successes. The main build spec stays `draft` until Checkpoint 1 approval.
+
+## Checkpoint 1 approval — 2026-11-07
+
+After the finalized spec and complete supplement were presented, the interactive project owner answered **“approve and stop.”** This approval binds normative SHA-256 `43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3` and proposed effective authority SHA-256 `835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180`. The associated spec's frozen-intent SHA-256 is `da45c41e7994a306295cb5bf1f3d0d6d55fb0861c5d72156173a5940ae316f55`; approval was recorded at EventStore revision `18011dc30de568d865458d85bfa8ff762c5ea258`.
+
+The spec is now `ready-for-dev`; implementation is authorized only within the supplement's existing scope on a later explicit resume. This run stops before implementation. Platform edits, provisioning, live cluster/key operations, capacity-authority changes, conformance closure and Server host wiring retain their stated separate conditions. This is one interactive owner's decision, not independent role reviews or production acceptance.

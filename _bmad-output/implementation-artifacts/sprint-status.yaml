@@ -267,8 +267,9 @@ development_status:
   # MVP target: on-premises Kubernetes 192.168.1.30; Hexalith.Platform owns infrastructure.
   # in-progress preserves incomplete conformance; execution_disposition is in the story spec.
   8-6-azure-key-vault-production-adapter-conformance: in-progress
-  # Azure not MVP
-  8-7-server-persistence-and-snapshot-integration: backlog
+  # Approved and stopped 2026-11-07: on-premises OpenBao software-key plan.
+  # EventStore contract/backend phase ready; Platform/capacity gates precede host wiring.
+  8-7-server-persistence-and-snapshot-integration: ready-for-dev
   8-8-package-and-release-integration: backlog
   8-9-parties-dual-provider-parity: backlog
   8-10-post-v2-write-rollback-rehearsal: backlog
