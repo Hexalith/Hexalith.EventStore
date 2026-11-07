@@ -69,15 +69,17 @@ internal sealed class RouteCatalogPortReservations : IDisposable
 
     private static (int Port, Action Release) ReserveLoopback()
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0) { ExclusiveAddressUse = true };
+        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         try
         {
-            listener.Start();
-            return (((IPEndPoint)listener.LocalEndpoint).Port, listener.Stop);
+            socket.ExclusiveAddressUse = true;
+            // Own the port without satisfying daprd's TCP probe before the real application starts.
+            socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            return (((IPEndPoint)socket.LocalEndPoint!).Port, socket.Dispose);
         }
         catch
         {
-            try { listener.Stop(); } catch { /* Preserve the original bind failure. */ }
+            try { socket.Dispose(); } catch { /* Preserve the original reservation failure. */ }
             throw;
         }
     }

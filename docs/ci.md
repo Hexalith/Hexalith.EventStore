@@ -286,8 +286,12 @@ deterministic. Live-sidecar coverage belongs in the live-sidecar project and
 workflow so the deterministic release gate can remain unfiltered. Do not run
 `dotnet test tests/Hexalith.EventStore.Server.Tests/` as the live lane.
 
-The route-catalog Development fixture holds six exclusive loopback reservations
-through setup. Each application hands off only its own app port immediately at
+The route-catalog Development fixture holds six exclusive bound, non-listening
+loopback sockets through setup. A reservation must not satisfy the pinned
+[daprd app-channel TCP readiness probe](https://github.com/dapr/dapr/blob/b32a815fa2260983e181b95272ea555fe17d3895/pkg/runtime/runtime.go#L1560-L1610)
+before the real application serves its actor configuration. Outbound sidecar
+readiness and empty-store writer-protocol activation still precede app startup.
+Each application hands off only its own app port immediately at
 startup; the sidecar hands off its other five ports immediately before launching
 the checksum-verified runtime. Other fixtures and app startup cannot select those
 still-reserved ports. A daemon cannot inherit these sockets, so a brief release to
