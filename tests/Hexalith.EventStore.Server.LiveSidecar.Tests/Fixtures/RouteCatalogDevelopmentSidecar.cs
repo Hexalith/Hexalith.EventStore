@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
-using System.Net.Sockets;
+using System.Runtime.ExceptionServices;
 
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 
@@ -9,6 +9,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
 {
     private readonly ProcessStartInfo _start;
+    private readonly RouteCatalogPortReservations _ports;
     private Process? _process;
     private Task<string>? _stdout;
     private Task<string>? _stderr;
@@ -30,13 +31,6 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
         AppId = appId;
         int placementPort = DaprTestInfrastructurePorts.Read("EVENTSTORE_TEST_PLACEMENT_PORT", 50005);
         int schedulerPort = DaprTestInfrastructurePorts.Read("EVENTSTORE_TEST_SCHEDULER_PORT", 50006);
-        var reservations = Enumerable.Range(0, 6).Select(_ => new TcpListener(IPAddress.Loopback, 0)).ToArray();
-        foreach (TcpListener listener in reservations) listener.Start();
-        int[] ports = [.. reservations.Select(listener => ((IPEndPoint)listener.LocalEndpoint).Port)];
-        foreach (TcpListener listener in reservations) listener.Stop();
-        HttpEndpoint = $"http://127.0.0.1:{ports[0]}";
-        GrpcEndpoint = $"http://127.0.0.1:{ports[1]}";
-        AppPort = ports[5];
         string daprd = Environment.GetEnvironmentVariable("EVENTSTORE_ROUTE_CATALOG_DAPRD")
             ?? Environment.GetEnvironmentVariable("DAPR_BIN")
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", OperatingSystem.IsWindows() ? "daprd.exe" : "daprd");
@@ -47,20 +41,35 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
         using var runtimeLock = System.Text.Json.JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repository.FullName, "deploy/dapr/qualification/runtime-lock.json")));
         if (RuntimeFingerprint != runtimeLock.RootElement.GetProperty("runtime").GetProperty("binarySha256").GetString())
             throw new InvalidOperationException("Catalog fixture daprd must match runtime-lock.json. Set EVENTSTORE_ROUTE_CATALOG_DAPRD to that checksum-verified binary.");
-        _start = new(daprd) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
-        string[] arguments = ["--app-id", appId, "--dapr-http-port", ports[0].ToString(), "--dapr-grpc-port", ports[1].ToString(),
-            "--dapr-internal-grpc-port", ports[2].ToString(), "--metrics-port", ports[3].ToString(), "--profile-port", ports[4].ToString(),
-            "--resources-path", resources, "--config", configuration, "--dapr-listen-addresses", "127.0.0.1", "--log-level", "warn",
-            "--placement-host-address", "localhost:" + placementPort.ToString(CultureInfo.InvariantCulture),
-            "--scheduler-host-address", "localhost:" + schedulerPort.ToString(CultureInfo.InvariantCulture)];
-        foreach (string argument in arguments) _start.ArgumentList.Add(argument);
-        if (appToken is not null)
+        _ports = new RouteCatalogPortReservations();
+        try
         {
-            _start.ArgumentList.Add("--app-port");
-            _start.ArgumentList.Add(AppPort.ToString());
-            _start.Environment["APP_API_TOKEN"] = appToken;
+            HttpEndpoint = $"http://127.0.0.1:{_ports[0]}";
+            GrpcEndpoint = $"http://127.0.0.1:{_ports[1]}";
+            AppPort = _ports[5];
+            _start = new(daprd) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+            string[] arguments = ["--app-id", appId, "--dapr-http-port", _ports[0].ToString(), "--dapr-grpc-port", _ports[1].ToString(),
+                "--dapr-internal-grpc-port", _ports[2].ToString(), "--metrics-port", _ports[3].ToString(), "--profile-port", _ports[4].ToString(),
+                "--resources-path", resources, "--config", configuration, "--dapr-listen-addresses", "127.0.0.1", "--log-level", "warn",
+                "--placement-host-address", "localhost:" + placementPort.ToString(CultureInfo.InvariantCulture),
+                "--scheduler-host-address", "localhost:" + schedulerPort.ToString(CultureInfo.InvariantCulture)];
+            foreach (string argument in arguments) _start.ArgumentList.Add(argument);
+            if (appToken is not null)
+            {
+                _start.ArgumentList.Add("--app-port");
+                _start.ArgumentList.Add(AppPort.ToString());
+                _start.Environment["APP_API_TOKEN"] = appToken;
+            }
+        }
+        catch
+        {
+            try { _ports.Dispose(); } catch { /* Preserve the original constructor failure. */ }
+            throw;
         }
     }
+
+    /// <summary>Hands only the app reservation to its actual application startup.</summary>
+    internal Task StartApplicationAsync(Func<Task> start) => _ports.StartApplicationAsync(start);
 
     /// <summary>Isolates real native actors in this fixture's bounded placement/scheduler namespace.</summary>
     internal void ConfigureNativeActorNamespace(string value)
@@ -72,26 +81,36 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
 
     public async Task StartAsync()
     {
-        _process = Process.Start(_start) ?? throw new InvalidOperationException("Cannot start the owned catalog fixture sidecar.");
-        _stdout = _process.StandardOutput.ReadToEndAsync();
-        _stderr = _process.StandardError.ReadToEndAsync();
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(1) };
-        for (int attempt = 0; attempt < 300; attempt++)
+        if (_process is not null) throw new InvalidOperationException("The owned catalog fixture sidecar is already started.");
+        try
         {
-            if (_process.HasExited) throw new InvalidOperationException("Catalog fixture sidecar exited: "
-                + await _stdout.ConfigureAwait(false) + await _stderr.ConfigureAwait(false));
-            try
+            _ports.StartSidecar(() => _process = Process.Start(_start) ?? throw new InvalidOperationException("Cannot start the owned catalog fixture sidecar."));
+            Process owned = _process ?? throw new InvalidOperationException("The owned catalog fixture sidecar did not start.");
+            _stdout = owned.StandardOutput.ReadToEndAsync();
+            _stderr = owned.StandardError.ReadToEndAsync();
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(1) };
+            for (int attempt = 0; attempt < 300; attempt++)
             {
-                using var response = await client.GetAsync(HttpEndpoint + "/v1.0/healthz/outbound").ConfigureAwait(false);
-                if (response.StatusCode == HttpStatusCode.NoContent) return;
+                if (owned.HasExited) throw new InvalidOperationException("Catalog fixture sidecar exited: "
+                    + await _stdout.ConfigureAwait(false) + await _stderr.ConfigureAwait(false));
+                try
+                {
+                    using var response = await client.GetAsync(HttpEndpoint + "/v1.0/healthz/outbound").ConfigureAwait(false);
+                    if (response.StatusCode == HttpStatusCode.NoContent) return;
+                }
+                catch (HttpRequestException) { }
+                catch (TaskCanceledException) { }
+                await Task.Delay(100).ConfigureAwait(false);
             }
-            catch (HttpRequestException) { }
-            catch (TaskCanceledException) { }
-            await Task.Delay(100).ConfigureAwait(false);
+            string diagnostics = (_stdout?.IsCompletedSuccessfully == true ? _stdout.Result : "")
+                + (_stderr?.IsCompletedSuccessfully == true ? _stderr.Result : "");
+            throw new InvalidOperationException("Catalog fixture sidecar did not become ready: " + diagnostics[^Math.Min(4000, diagnostics.Length)..]);
         }
-        await StopAsync().ConfigureAwait(false);
-        string diagnostics = (_stdout?.Result ?? "") + (_stderr?.Result ?? "");
-        throw new InvalidOperationException("Catalog fixture sidecar did not become ready: " + diagnostics[^Math.Min(4000, diagnostics.Length)..]);
+        catch
+        {
+            try { await StopAsync().ConfigureAwait(false); } catch { /* Preserve the first startup failure. */ }
+            throw;
+        }
     }
 
     public void RequireRunning()
@@ -145,14 +164,34 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
 
     public async Task StopAsync()
     {
-        if (_process is null) return;
-        if (!_process.HasExited) _process.Kill(entireProcessTree: true);
-        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await _process.WaitForExitAsync(cleanup.Token).ConfigureAwait(false);
-        if (_stdout is not null) Diagnostics += await _stdout.WaitAsync(cleanup.Token).ConfigureAwait(false);
-        if (_stderr is not null) Diagnostics += await _stderr.WaitAsync(cleanup.Token).ConfigureAwait(false);
-        _process.Dispose();
-        _process = null;
+        Exception? first = null;
+        try
+        {
+            if (_process is not null)
+            {
+                if (!_process.HasExited) _process.Kill(entireProcessTree: true);
+                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await _process.WaitForExitAsync(cleanup.Token).ConfigureAwait(false);
+                if (_stdout is not null) Diagnostics += await _stdout.WaitAsync(cleanup.Token).ConfigureAwait(false);
+                if (_stderr is not null) Diagnostics += await _stderr.WaitAsync(cleanup.Token).ConfigureAwait(false);
+            }
+        }
+        catch (Exception exception) { first = exception; }
+        finally
+        {
+            try { _ports.Dispose(); }
+            catch (Exception exception) { first ??= exception; }
+            try
+            {
+                if (_process is not null && _process.HasExited)
+                {
+                    _process.Dispose();
+                    _process = null;
+                }
+            }
+            catch (Exception exception) { first ??= exception; }
+        }
+        if (first is not null) ExceptionDispatchInfo.Capture(first).Throw();
     }
 
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
