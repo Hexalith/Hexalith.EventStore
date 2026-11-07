@@ -65,10 +65,10 @@ public sealed partial class RouteCatalogHostedLiveTests
         }));
         await using var transport = await DevelopmentRouteCatalogTransport.StartAsync(new(custody, runtime), "Development", TestContext.Current.CancellationToken);
         string temporary = transport.Directory;
-        var sidecar = new RouteCatalogDevelopmentSidecar(receiver, resources, configuration, "owned-channel-" + id);
-        var peer = new RouteCatalogDevelopmentSidecar(caller, resources, configuration);
-        var wrongApp = new RouteCatalogDevelopmentSidecar("wrong-" + id, resources, configuration);
-        var wrongNamespace = new RouteCatalogDevelopmentSidecar(caller, resources, configuration);
+        await using var sidecar = new RouteCatalogDevelopmentSidecar(receiver, resources, configuration, "owned-channel-" + id);
+        await using var peer = new RouteCatalogDevelopmentSidecar(caller, resources, configuration);
+        await using var wrongApp = new RouteCatalogDevelopmentSidecar("wrong-" + id, resources, configuration);
+        await using var wrongNamespace = new RouteCatalogDevelopmentSidecar(caller, resources, configuration);
         foreach (var selected in new[] { sidecar, peer, wrongApp, wrongNamespace }) selected.ConfigureOwnedTransport(transport);
         wrongNamespace.ConfigureNativeActorNamespace("wrong-namespace");
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
@@ -89,9 +89,10 @@ public sealed partial class RouteCatalogHostedLiveTests
             return Results.NoContent();
         }).RequireEventStoreChannel();
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        Exception? firstFailure = null;
         try
         {
-            await app.StartAsync(TestContext.Current.CancellationToken);
+            await sidecar.StartApplicationAsync(() => app.StartAsync(TestContext.Current.CancellationToken));
             foreach (var selected in new[] { sidecar, peer, wrongApp, wrongNamespace })
             {
                 await selected.StartAsync();
@@ -174,6 +175,11 @@ public sealed partial class RouteCatalogHostedLiveTests
                 trustAnchorSha256 = transport.TrustAnchorSha256, peerDelivery = true, applicationDenial = true,
                 wrongAppDenied = true, wrongNamespaceDenied = true, actorPersisted = true, nativeRestartReadback = true, schedulerDelivered = true }));
         }
+        catch (Exception exception)
+        {
+            firstFailure = exception;
+            throw;
+        }
         finally
         {
             List<Exception> cleanupFailures = [];
@@ -189,7 +195,7 @@ public sealed partial class RouteCatalogHostedLiveTests
             catch (Exception exception) { cleanupFailures.Add(exception); }
             try { await transport.DisposeAsync(); }
             catch (Exception exception) { cleanupFailures.Add(exception); }
-            if (cleanupFailures.Count > 0) throw new AggregateException("Owned transport qualification cleanup did not complete.", cleanupFailures);
+            if (firstFailure is null && cleanupFailures.Count > 0) throw new AggregateException("Owned transport qualification cleanup did not complete.", cleanupFailures);
         }
         System.IO.Directory.Exists(temporary).ShouldBeFalse();
         using var cleanup = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(custody, "cleanup.json")));

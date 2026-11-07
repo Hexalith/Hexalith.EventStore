@@ -286,6 +286,17 @@ deterministic. Live-sidecar coverage belongs in the live-sidecar project and
 workflow so the deterministic release gate can remain unfiltered. Do not run
 `dotnet test tests/Hexalith.EventStore.Server.Tests/` as the live lane.
 
+The route-catalog Development fixture holds six exclusive loopback reservations
+through setup. Each application hands off only its own app port immediately at
+startup; the sidecar hands off its other five ports immediately before launching
+the checksum-verified runtime. Other fixtures and app startup cannot select those
+still-reserved ports. A daemon cannot inherit these sockets, so a brief release to
+bind interval remains at the actual launch; port retries and larger startup
+budgets are not used. Constructor/startup failure and disposal release all
+remaining owned reservations while retaining the first failure. Pure ownership
+controls live in `Server.Tests` and link only the fixture reservation helper;
+they never initialize the live-sidecar assembly or bind sockets.
+
 ### PostgreSQL image rotation
 
 The live-sidecar workflow and `Oq8PostgresqlFixture` use the same reviewed
