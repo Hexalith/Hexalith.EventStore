@@ -496,3 +496,57 @@ All matrix rows have executed passing controls: official identity/architecture/c
 The final parent execution passed 103 packet/runtime, 11 admission, 6 catalog and 3 C# materialization tests; the unchanged AppHost/profile code retains the earlier independent 23/23 result (146 focused tests across the final verified sources). PublishedCompatibility and LiveSidecar Debug/source builds were refreshed successfully after the C# patches; the earlier AppHost and IntegrationTests builds remain unchanged evidence. Both workflow lint and final whitespace/preservation/input-hash checks pass. Every third-review finding has a recorded local resolution; no findings were deferred. The final code diff is retained locally at `/tmp/story-3-21-build-final.diff`.
 
 The older parent audit immediately above predates the R3 patches; its 93-test and 13-file equality statements are historical and are superseded by the final R3 verification table and this disposition. No live matrix was executed on accepted infrastructure. The spec and parent sprint row stay `in-progress`; the generic workflow done/review transition and commit are not applied because the approved story still requires live qualification and forbids Git mutations. No commit, push, publication, production action or CI dispatch was performed.
+
+### Current-HEAD verification and allocation inspection — 2026-11-08
+
+At HEAD `07f5ef132deb17d45d7209357f8ac89ef39bc557`, the existing implementation
+already contains the specified R3 corrections. No implementation, workflow or lock
+change was needed. This append preserves the frozen intent and earlier evidence.
+Exact commands, exit codes, fresh logs and blocked packets are retained externally
+under `/tmp/story-3-21-current-head-verification-ncjqjuwq/` (`verification.json`
+and `commands.json`). CI was not dispatched; no new CI run link exists.
+
+| Command / check | Current result |
+| --- | --- |
+| `python3 -B -m unittest discover -s tools/tests -p 'test_dapr*qualification.py'` | 103/103 PASS in 20.576 seconds |
+| `python3 -B -m unittest discover -s tools/tests -p test_qualify_internal_actor_admission.py` | 11/11 PASS |
+| `python3 -B -m unittest discover -s tools/tests -p test_route_catalog_ci_tools.py` | 6/6 PASS |
+| `dotnet build tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false -m:1 --no-restore` | PASS, zero warnings/errors |
+| `dotnet tests/Hexalith.EventStore.AppHost.Tests/bin/Debug/net10.0/Hexalith.EventStore.AppHost.Tests.dll -class '*DevelopmentRouteCatalogRuntimeProfileTests' -class '*DevelopmentRouteCatalogAspireTests'` | 23/23 PASS, zero skipped/not-run, 80.898 seconds |
+| `dotnet tests/Hexalith.EventStore.PublishedCompatibility.Tests/bin/Debug/net10.0/Hexalith.EventStore.PublishedCompatibility.Tests.dll -class '*QualificationSelectedRuntimeTests'` | 3/3 PASS, zero skipped/not-run |
+| `actionlint .github/workflows/dapr-broker-qualification.yml .github/workflows/dapr-runtime-qualification.yml`; `git diff --check` | PASS |
+| Original/candidate input audit; protected-subject comparison with frozen `f14d56ea917dd33a552742226d6d7ee65f5e1236` | All 19 original and 75 candidate hashes match; original lock, `ci.yml`, `integration.yml` and `docs/ci.md` unchanged |
+
+Read-only inspection found `QUALIFICATION_EXCLUSIVE_WORKER` unset,
+`/tmp/qualification-worker.json` absent, no configured qualification/Docker selector
+variables and no GitHub-hosted runner environment. Docker context `default`
+resolves to canonical local socket `unix:///run/docker.sock`, daemon
+`afcd365d-1578-410b-af0b-98550207ef1c`. These observations do not establish exclusive
+worker ownership; no allocation document was created and no shared resource was
+mutated. The isolated runtime and CLI executable hashes match the candidate lock.
+
+With `QUALIFICATION_EXCLUSIVE_WORKER` unset,
+`QUALIFICATION_DAPRD=/tmp/eventstore-dapr1191-tools/runtime/daprd` and
+`PATH="/tmp/eventstore-dapr1191-tools/cli:$PATH"`, fresh commands were:
+
+```bash
+python3 -B tools/qualify-dapr-brokers.py --profile deploy/dapr/qualification/runtime-lock-1.19.1.json --output /tmp/story-3-21-current-head-verification-ncjqjuwq/broker
+python3 -B tools/qualify-dapr-runtime.py --profile deploy/dapr/qualification/runtime-lock-1.19.1.json --output /tmp/story-3-21-current-head-verification-ncjqjuwq/runtime --assembly tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll --class '*RouteCatalogHostedLiveTests'
+python3 -B tools/qualify-internal-actor-admission.py --profile deploy/dapr/qualification/runtime-lock-1.19.1.json --evidence /tmp/story-3-21-current-head-verification-ncjqjuwq/admission
+```
+
+All three exit 1 for `exclusive disposable-worker allocation is required before
+mutation`. The producer retains all 24 blocked vectors; runtime/admission execute
+zero selected checks. Independent broker validation exits 0 with
+`--allow-failures` (integrity PASS, technical qualification FAIL), 1 without flags
+and 1 with `--require-production-authority`. Broker/runtime Docker receipts contain
+only context inspection and pinned daemon-ID reads. All three cleanup results pass;
+no owned resources remain and private material is removed.
+
+Accepted exclusive-worker execution and CI remain the acceptance gap. Existing
+Builds/Platform, Kubernetes rehearsal/restore, independent sharding/PF-02/Azure and
+Story 4.16 handoffs remain pending. Candidate qualification stays incomplete,
+production eligibility stays FAIL, selected broker stays null and Story 3.21 stays
+`in-progress`. Only this verification record changed; no Git mutation, publication,
+production/shared-AppHost start, dependency/catalog/submodule update or shared
+Docker resource mutation was performed.
