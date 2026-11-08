@@ -12,7 +12,9 @@ namespace Hexalith.EventStore.Server.Extensions;
 public static class EventStoreExtensionServiceCollectionExtensions
 {
     /// <summary>The configuration section holding the declared packages, one indexed entry per package.</summary>
-    /// <remarks>Each entry supplies <c>PackageId</c>, <c>ExtensionId</c> and <c>ApiMajor</c>.</remarks>
+    /// <remarks>Each entry supplies <c>PackageId</c>, <c>ExtensionId</c> and <c>ApiMajor</c>, with optional
+    /// <c>ModuleId</c> metadata identifying the declaring module in refusal diagnostics. Omission is accepted;
+    /// supplied metadata must be scalar, nonblank and trimmed. It grants no registration or provider authority.</remarks>
     public const string ConfigurationSection = "EventStore:Extensions:Packages";
 
     /// <summary>The readiness check that lists the loaded extension identities and majors.</summary>
