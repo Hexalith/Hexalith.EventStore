@@ -605,3 +605,61 @@ null and Story 3.21 `in-progress`.
 The user subsequently authorized committing/pushing these local setup corrections
 and rerunning both qualification workflows. This scoped Git/CI authorization does
 not authorize production changes, broker selection or story completion.
+
+### Pushed setup fixes and completed hosted reruns — 2026-11-08
+
+The approved fixes were committed and pushed as
+`af9735b2e6fbcfc868051eee8d88ce40110cfefc`. Both commands above were rerun after
+`main` advanced to `cab8363c2b6e2c0588efc8ca9c2e09fab0006841`, which includes the
+fixes; that latter SHA is the actual tested source. The candidate lock remains
+`7e8ce8383dfd942b185b8faa0b53e6d197c557492f3b143858e18ef40a29135b`.
+
+| Completed CI run / lane | Observed result |
+| --- | --- |
+| [Standalone broker qualification](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42519692881) | Capture/integrity PASS; Kafka 12/12 and RabbitMQ 9/12, **21/24** scenarios PASS. Technical qualification FAIL for RabbitMQ rotation, cancellation/backpressure and missing bindings. |
+| [Runtime qualification](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42519695111): routing/actors/snapshots | PASS: routing/security 8, actor concurrency 3, tenant isolation 2, reminder recovery 1, snapshot reload 1; **15/15**, zero skipped/not-run. |
+| Same runtime run: actor admission | PASS: **1/1** live process-replacement test, zero skipped/not-run; selected runtime and placement/scheduler identities observed. |
+| Same runtime run: compatibility/security/restore | PASS: **2/2**, zero skipped/not-run. Downloaded bounded compatibility witnesses pass independent retained-byte/inventory validation. |
+| Same runtime run: durable broker fixture | C# capture **1/1 PASS**, zero skipped/not-run. Its independent broker packet has Kafka 10/12 and RabbitMQ 9/12, **19/24** scenarios PASS. Technical qualification FAIL also includes Kafka rotation and cancellation/backpressure, so the lane and overall runtime workflow FAIL. |
+| Preliminary checks | Standalone 105/105 packet/runtime controls PASS; each runtime job passes 105 packet/runtime + 11 admission + 6 catalog controls. All four package/Release builds PASS. |
+
+Every completed lane reports successful owned process/resource cleanup, private
+material removal and complete initial-inventory preservation. Both downloaded
+broker packets now retain their hidden inputs and independently validate with:
+
+```bash
+python3 -B tools/validate-dapr-broker-qualification.py /tmp/story-3-21-ci-20261108-f35zYG/rerun/broker-artifacts/story-3-21-sanitized-non-authorizing-receipts --allow-failures
+python3 -B tools/validate-dapr-broker-qualification.py /tmp/story-3-21-ci-20261108-f35zYG/rerun/runtime-broker/packet --allow-failures
+```
+
+Both exit 0 for integrity while retaining technical qualification FAIL. The
+standalone validator without flags and with `--require-production-authority`
+each exits 1. Capture acceptance never converts these failures into qualification.
+
+The retained failures require further diagnosis and owner action:
+
+- RabbitMQ rotation: new credentials work, but the stale connection times out
+  with synthetic status 599; affirmative denial remains unproven.
+- RabbitMQ pressure: eight publishes return 204, but four acknowledged IDs are
+  absent from final readback. The test policy incorrectly targets
+  `^qualification[.].*backpressure.*`, which does not match the actual
+  `qualification-consumer-qualification.backpressure` queue. Correct and measure
+  effective policy before requalification. The pinned component also logs failed
+  negative confirmations before returning `nil`; this is an additional source
+  concern, not proof of the rejected-confirm path in this capture.
+- RabbitMQ missing bindings: the configured missing-binding publish returns
+  204. The pinned component uses `mandatory=false`; physical binding absence was
+  not independently measured, so retain that diagnostic gap and the FAIL.
+- Kafka rotation differs between runs: standalone returns an explicit 500
+  authorization denial with no stale effect, while the C# fixture returns 204
+  and its stale message later persists once despite successful deny-ACL commands.
+- Kafka pressure differs too: the fixture's two acknowledged IDs remain absent
+  through final readback, while its six HTTP-500 IDs and canceled ID eventually
+  persist. Standalone retains both acknowledged IDs. Effective principal/ACL,
+  acknowledgment and message-to-offset/consumer-commit histories need exact-ID
+  reconciliation; timeout or HTTP 500 never establishes absence.
+
+Raw rerun output remains under `/tmp/story-3-21-ci-20261108-f35zYG/rerun/` and in
+the linked CI artifacts. Historical failures remain unchanged. The shared local
+daemon was not mutated. Broker qualification is incomplete; no broker is selected,
+production eligibility remains FAIL, and Story 3.21 remains `in-progress`.
