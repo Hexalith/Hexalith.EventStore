@@ -29,8 +29,8 @@ public sealed partial class RouteCatalogHostedLiveTests
             ?? Environment.GetEnvironmentVariable("PATH")!.Split(Path.PathSeparator)
                 .Select(path => Path.Combine(path, "dapr")).First(File.Exists);
         Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(cli, TestContext.Current.CancellationToken)))
-            .ShouldBe("43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5");
-        await using var transport = await DevelopmentRouteCatalogTransport.StartAsync(new(Path.Combine(scratch, "custody"), runtime), "Development", TestContext.Current.CancellationToken);
+            .ShouldBe(SelectedRuntimeProfile.CliSha256);
+        await using var transport = await DevelopmentRouteCatalogTransport.StartAsync(new DevelopmentRouteCatalogTransportOptions(Path.Combine(scratch, "custody"), runtime) { RuntimeProfile = SelectedRuntimeProfile }, "Development", TestContext.Current.CancellationToken);
         string config = Path.Combine(scratch, "receiver.yaml");
         await File.WriteAllTextAsync(config, "apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: owned-cli-probe\nspec:\n  accessControl:\n    defaultAction: deny\n    trustDomain: public\n", TestContext.Current.CancellationToken);
         string resources = Directory.CreateDirectory(Path.Combine(scratch, "components")).FullName;

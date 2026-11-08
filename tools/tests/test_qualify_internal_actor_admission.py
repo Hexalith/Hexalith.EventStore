@@ -175,6 +175,36 @@ class ActorAdmissionRunnerTests(unittest.TestCase):
                     owner.terminate()
                 owner.wait(timeout=5)
 
+    def test_selected_baseline_inspection_never_persists_unrelated_credentials(self):
+        from types import SimpleNamespace
+        self.run.docker_owner = SimpleNamespace(endpoint='unix:///synthetic.sock', verify=lambda: None)
+        self.run.profile = {'runtime': {'version': '1.19.1'}}
+        secret = 'synthetic-unrelated-baseline-private-credential'
+        def invoke(argv, **kwargs):
+            args = list(argv)[3:]
+            if args[:1] == ['ps'] or args[:2] in (['network', 'ls'], ['volume', 'ls']):
+                return subprocess.CompletedProcess(argv, 0, 'synthetic-resource', '')
+            self.assertEqual('inspect', args[0])
+            kind = args[args.index('--type') + 1]
+            value = {'Id': 'synthetic-resource', 'Name': 'sentinel', 'Config': {'Env': ['PRIVATE=' + secret]}, 'HostConfig': {}, 'Mounts': [], 'Options': {'password': secret}}
+            return subprocess.CompletedProcess(argv, 0, json.dumps([value]), secret)
+        with patch.object(RUNNER.subprocess, 'run', side_effect=invoke):
+            before = self.run.shared_specs()
+            after = self.run.shared_specs()
+        self.assertEqual(before, after)
+        self.assertEqual({'container:synthetic-resource', 'network:synthetic-resource', 'volume:synthetic-resource'}, set(before))
+        retained = ''.join(path.read_text() for path in self.run.out.rglob('*') if path.is_file())
+        self.assertNotIn(secret, retained)
+        self.assertEqual(6, sum('inspect' in receipt['argv'] for receipt in self.run.receipts))
+
+    def test_renamed_original_profile_is_rejected_before_output_creation(self):
+        profile = self.root / 'runtime-lock-1.19.1.json'
+        shutil.copyfile(SCRIPT.parents[1] / 'deploy/dapr/qualification/runtime-lock.json', profile)
+        output = self.root / 'rejected-selected'
+        with self.assertRaisesRegex(ValueError, 'approved candidate tuple'):
+            RUNNER.Qualification(RUNNER.parse_args(['--evidence', str(output), '--profile', str(profile)]))
+        self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -39,7 +39,8 @@ internal sealed class RouteCatalogDevelopmentSidecar : IAsyncDisposable
         while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "deploy/dapr/qualification/runtime-lock.json"))) repository = repository.Parent;
         if (repository is null) throw new InvalidOperationException("The catalog fixture requires its checked-in runtime lock.");
         using var runtimeLock = System.Text.Json.JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repository.FullName, "deploy/dapr/qualification/runtime-lock.json")));
-        if (RuntimeFingerprint != runtimeLock.RootElement.GetProperty("runtime").GetProperty("binarySha256").GetString())
+        if (RuntimeFingerprint != Hexalith.EventStore.Aspire.DevelopmentRouteCatalogRuntimeProfile.Select(
+            Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE")).RuntimeSha256)
             throw new InvalidOperationException("Catalog fixture daprd must match runtime-lock.json. Set EVENTSTORE_ROUTE_CATALOG_DAPRD to that checksum-verified binary.");
         _ports = new RouteCatalogPortReservations();
         try

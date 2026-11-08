@@ -1,0 +1,95 @@
+name: Dapr 1.19.1 affected runtime qualification (non-promoting)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  affected-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: durable-broker-fixture
+            project: Hexalith.EventStore.IntegrationTests
+            classes: -class '*DurableBrokerQualificationTests'
+          - lane: routing-actors-snapshots
+            project: Hexalith.EventStore.Server.LiveSidecar.Tests
+            classes: >-
+              -class '*RouteCatalogHostedLiveTests'
+              -class '*ActorConcurrencyConflictTests'
+              -class '*ActorTenantIsolationTests'
+              -class '*ReminderRecoveryLiveSidecarTests'
+              -class '*FoldedSnapshotReloadLiveSidecarTests'
+          - lane: actor-admission-process
+            project: Hexalith.EventStore.Server.LiveSidecar.Tests
+            classes: -class '*ActorCallbackAdmissionProcessTests'
+          - lane: compatibility-security-restore
+            project: Hexalith.EventStore.PublishedCompatibility.Tests
+            classes: >-
+              -class '*PublishedSecurityAndCrossBoundaryTests'
+              -class '*PublishedRestoreBoundaryTests'
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      QUALIFICATION_PROFILE: deploy/dapr/qualification/runtime-lock-1.19.1.json
+      QUALIFICATION_EXCLUSIVE_WORKER: /tmp/qualification-worker.json
+      QUALIFICATION_OUTPUT: /tmp/runtime-regression
+      QUALIFICATION_LANE: ${{ matrix.lane }}
+      QUALIFICATION_PROJECT: ${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: true
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Bind exclusive disposable worker allocation
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          import json, os, pathlib, subprocess
+          assert os.environ['RUNNER_ENVIRONMENT'] == 'github-hosted', 'exclusive hosted worker required'
+          endpoint = 'unix://' + str(pathlib.Path('/var/run/docker.sock').resolve())
+          daemon = subprocess.check_output(['docker', '--host', endpoint, 'info', '--format', '{{.ID}}'], text=True).strip()
+          pathlib.Path(os.environ['QUALIFICATION_EXCLUSIVE_WORKER']).write_text(json.dumps({
+              'exclusive': True, 'endpoint': endpoint, 'daemonId': daemon,
+              'workerId': os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_JOB'] + '-' + os.environ['GITHUB_RUN_ATTEMPT']}))
+          PY
+      - name: Install isolated verified tools
+        run: python3 -B tools/install-dapr-qualification-tools.py --profile "$QUALIFICATION_PROFILE" --destination /tmp/runtime-tools
+      - name: Verify tools and retained catalog CI controls
+        run: |
+          python3 -B -m unittest discover -s tools/tests -p 'test_dapr*qualification.py'
+          python3 -B -m unittest discover -s tools/tests -p test_route_catalog_ci_tools.py
+          python3 -B -m unittest discover -s tools/tests -p test_qualify_internal_actor_admission.py
+      - name: Prepare exact historical compatibility source objects
+        if: matrix.lane == 'compatibility-security-restore'
+        run: python3 -B tools/run-dapr-runtime-lane.py --lane "$QUALIFICATION_LANE" --prepare-compatibility
+      - name: Build affected test project in package Release mode
+        run: dotnet build "tests/$QUALIFICATION_PROJECT/$QUALIFICATION_PROJECT.csproj" -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -m:1
+      - name: Execute selected classes with zero live skips
+        id: regressions
+        continue-on-error: true
+        shell: bash
+        run: python3 -B tools/run-dapr-runtime-lane.py --lane "$QUALIFICATION_LANE"
+      - name: Record runtime outcome separately from eligibility
+        if: always()
+        env:
+          REGRESSION_OUTCOME: ${{ steps.regressions.outcome }}
+        run: |
+          printf 'Affected regressions: %s; production eligibility: FAIL; selected broker: null. Broker matrix is the separate durable-broker workflow.\n' "$REGRESSION_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          test "$REGRESSION_OUTCOME" = success
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: dapr-1.19.1-${{ matrix.lane }}
+          path: ${{ env.QUALIFICATION_OUTPUT }}
+          if-no-files-found: error
+          retention-days: 30

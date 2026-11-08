@@ -12,7 +12,7 @@ public sealed class DurableBrokerQualificationFixture : IAsyncDisposable
     private Process? _process;
 
     /// <summary>Gets the retained evidence directory, including failures.</summary>
-    public string EvidenceDirectory { get; } = Path.Combine(
+    public string EvidenceDirectory { get; } = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_QUALIFICATION_OUTPUT") ?? Path.Combine(
         Path.GetTempPath(), $"story-3-21-integration-{Guid.NewGuid():N}");
 
     /// <summary>Exercises both immutable candidates and all bounded fault scenarios.</summary>
@@ -22,7 +22,7 @@ public sealed class DurableBrokerQualificationFixture : IAsyncDisposable
     {
         string root = FindRepositoryRoot();
         int executionCode = await RunAsync(root,
-            ["tools/qualify-dapr-brokers.py", "--profile", "deploy/dapr/qualification/runtime-lock.json",
+            ["tools/qualify-dapr-brokers.py", "--profile", Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_QUALIFICATION_PROFILE") ?? "deploy/dapr/qualification/runtime-lock.json",
                 "--brokers", "rabbitmq,kafka", "--output", EvidenceDirectory],
             cancellationToken).ConfigureAwait(false);
 
@@ -71,6 +71,7 @@ public sealed class DurableBrokerQualificationFixture : IAsyncDisposable
             RedirectStandardError = true,
             UseShellExecute = false,
         };
+        start.ArgumentList.Add("-B");
         foreach (string argument in arguments)
         {
             start.ArgumentList.Add(argument);

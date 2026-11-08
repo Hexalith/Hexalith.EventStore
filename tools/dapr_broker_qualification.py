@@ -1,6 +1,8 @@
 """Fail-closed, non-authorizing Story 3.21 evidence contract (stdlib only)."""
 from __future__ import annotations
 
+import io
+import tarfile
 import hashlib
 import json
 import re
@@ -42,7 +44,9 @@ def validate_profile(profile: dict, root: Path) -> None:
     version = runtime["version"]
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) or tuple(map(int, version.split("."))) < (1, 18, 3):
         raise ValueError("runtime.version: production floor is 1.18.3")
-    if version != "1.18.7" or runtime["cliVersion"] != "1.18.2" or runtime["componentsVersion"] != "1.18.6":
+    from dapr_runtime_qualification import APPROVED, source_input
+    selected = (version, runtime["cliVersion"], runtime["componentsVersion"])
+    if selected not in APPROVED:
         raise ValueError("runtime: changed candidates require requalification")
     for key in ("binarySha256", "cliSha256"):
         if not SHA.fullmatch(runtime[key]):
@@ -71,15 +75,47 @@ def validate_profile(profile: dict, root: Path) -> None:
             raise ValueError(f"images.{name}: missing linux/amd64 child")
     if not IMAGE.fullmatch(profile["openbao"]["reference"]):
         raise ValueError("openbao.reference: mutable image")
-    if len(runtime["sources"]) != 2 or any(not re.fullmatch(r"[a-f0-9]{40}", x["commit"]) for x in runtime["sources"]):
-        raise ValueError("runtime.sources: missing pinned runtime/components source")
-    if {(x["repository"], x["tag"], x["commit"]) for x in runtime["sources"]} != {
-        ("dapr/dapr", "v1.18.7", "b32a815fa2260983e181b95272ea555fe17d3895"),
-        ("dapr/components-contrib", "v1.18.6", "eac9e31dd14cd798c9996aae30818b572aa12c59"),
-    }:
+    if {(x["repository"], x["tag"], x["commit"]) for x in runtime["sources"]} != APPROVED[selected] or len(runtime["sources"]) != len(APPROVED[selected]):
         raise ValueError("runtime.sources: candidate source identity mismatch")
+    if version == "1.19.1":
+        from dapr_runtime_qualification import CANDIDATE_IDENTITIES, CANDIDATE_PROFILE
+        trusted = json.loads((Path(__file__).resolve().parents[1] / CANDIDATE_PROFILE).read_text())
+        if profile.get('inputs') != trusted['inputs']:
+            raise ValueError('inputs: complete source inventory differs from trusted owning checkout')
+        for field in ("binarySha256", "cliSha256", "archives"):
+            if runtime.get(field) != CANDIDATE_IDENTITIES[field]:
+                raise ValueError(f"runtime.{field}: official identity mismatch")
+        if {name: identity["reference"] for name, identity in profile["images"].items()} != CANDIDATE_IDENTITIES["images"] or profile.get("chart") != CANDIDATE_IDENTITIES["chart"]:
+            raise ValueError("images/chart: official identity mismatch")
+        for name, identity in profile["images"].items():
+            manifests = json.loads(safe_file(root, identity["manifest"]["path"]).read_text())["manifests"]
+            for architecture in ("amd64", "arm64"):
+                matches = [x for x in manifests if x.get("platform", {}).get("os") == "linux" and x["platform"].get("architecture") == architecture]
+                if len(matches) != 1 or not re.fullmatch(r"sha256:[a-f0-9]{64}", matches[0].get("digest", "")):
+                    raise ValueError(f"images.{name}: missing/ambiguous linux/{architecture} child")
+                if name not in BROKERS:
+                    child = identity["children"][architecture]
+                    if child["digest"] != matches[0]["digest"] or "sha256:" + digest(safe_file(root, child["path"])) != child["digest"]:
+                        raise ValueError(f"images.{name}: child digest mismatch")
+        chart = profile["chart"]
+        data = safe_file(root, chart["path"]).read_bytes()
+        if hashlib.sha256(data).hexdigest() != chart["sha256"]:
+            raise ValueError("chart: archive hash mismatch")
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+            metadata = archive.extractfile("dapr/Chart.yaml").read().decode()
+        for field in ("version", "appVersion"):
+            match = re.search(r"^" + field + r":\s*[\"']?([^\s\"']+)", metadata, re.M)
+            if not match or match[1] != version or chart[field] != version:
+                raise ValueError(f"chart.{field}: runtime mismatch")
+        gomod = next((name for name in profile["inputs"] if name.endswith("/1.19.1/dapr-dapr-go.mod")), None)
+        if not gomod or "github.com/dapr/components-contrib v1.19.0" not in safe_file(root, gomod).read_text():
+            raise ValueError("runtime: embedded components source mismatch")
+        for binary, archive in runtime["archives"].items():
+            checksum = safe_file(root, archive["checksumPath"]).read_text().split()[0]
+            if checksum != archive["sha256"] or not SHA.fullmatch(checksum):
+                raise ValueError(f"runtime.{binary}: release checksum mismatch")
     for name, expected_hash in profile["inputs"].items():
-        if digest(safe_file(root, name)) != expected_hash:
+        if digest(source_input(profile, root, name, expected_hash)) != expected_hash:
             raise ValueError(f"inputs.{name}: source/component bytes drifted")
     if not profile["inputs"]:
         raise ValueError("inputs: source/component inventory is empty")
@@ -225,9 +261,113 @@ def validate_observations(scenario: str, observation: dict, readback: dict, diag
             raise ValueError("retention-expiry: native Kafka evidence contradicts claim")
 
 
+def validate_candidate_custody(identities: dict, commands: list) -> None:
+    """Bind accepted custody to observed allocation, socket and every Docker call."""
+    custody = identities.get("dockerCustody", {})
+    operations = [(index, row) for index, row in enumerate(commands)
+                  if row.get("argv", [""])[0] == "docker" and row["argv"][1:3] != ["context", "inspect"]
+                  and row["argv"][-3:] != ["info", "--format", "{{.ID}}"]]
+    if not identities.get("preflightPassed") and not operations:
+        return  # rejected infrastructure has no resource operations or accepted custody
+    if (custody.get("exclusive") is not True or not custody.get("workerId") or not custody.get("daemonId")
+            or not custody.get("endpoint", "").startswith("unix:///")
+            or not isinstance(custody.get("socketIdentity"), list) or len(custody["socketIdentity"]) != 2):
+        raise ValueError("execution-identities: exclusive daemon custody is absent")
+    admissions = [(index, row) for index, row in enumerate(commands) if row.get("argv") == ["WORKER", "exclusive-allocation"]]
+    if len(admissions) != 1:
+        raise ValueError("custody: missing observed exclusive worker allocation")
+    admission_index, admission = admissions[0]
+    if admission.get("leaseLocked") is not True or json.loads(admission["output"]) != custody:
+        raise ValueError("custody: unrelated worker allocation")
+    def daemon(index):
+        if not isinstance(index, int) or not 0 <= index < len(commands):
+            raise ValueError("custody: missing observed daemon binding")
+        row = commands[index]
+        if (row.get("argv") != ["docker", "--host", custody["endpoint"], "info", "--format", "{{.ID}}"]
+                or row.get("exitCode") != 0 or row.get("output", "").strip() != custody["daemonId"]
+                or row.get("socketIdentity") != custody["socketIdentity"]):
+            raise ValueError("custody: unrelated socket/endpoint/daemon observation")
+        return index
+    if daemon(admission.get("daemonObservation")) >= admission_index:
+        raise ValueError("custody: allocation precedes daemon observation")
+    for index, row in operations:
+        if (row.get("dockerCustody") != custody or row.get("workerAdmission") != admission_index
+                or row.get("executedArgv") != ["docker", "--host", custody["endpoint"], *row["argv"][1:]]
+                or not admission_index < daemon(row.get("daemonObservation")) < index):
+            raise ValueError("custody: Docker operation lacks accepted observed custody")
+
+
+def validate_inventory(snapshot, phase, identities, commands):
+    """Bind every kind, including empty lists, to its own complete observations."""
+    index = identities.get('workspaceInventories', {}).get(phase)
+    if not isinstance(index, int) or not 0 <= index < len(commands):
+        raise ValueError('cleanup: complete inventory observation is absent')
+    receipt = commands[index]
+    if receipt.get('argv') != ['WORKSPACE', 'inventory', phase] or receipt.get('exitCode') != 0 or json.loads(receipt['output']) != snapshot:
+        raise ValueError('cleanup: complete inventory contradicts snapshot')
+    observations = receipt.get('resourceObservations', {})
+    if set(observations) != {'container', 'network', 'volume'}:
+        raise ValueError('cleanup: inventory resource denominator is incomplete')
+    bound = {}
+    lower = identities.get('workspaceInventories', {}).get('before', -1) if phase == 'after' else -1
+    for kind, listing in (('container', ['ps', '-aq', '--no-trunc']), ('network', ['network', 'ls', '-q', '--no-trunc']), ('volume', ['volume', 'ls', '-q'])):
+        row = observations[kind]
+        ref = row.get('listingReceipt')
+        if not isinstance(ref, int) or not max(lower + 1, 0) <= ref < index:
+            raise ValueError('cleanup: inventory listing command is absent')
+        command = commands[ref]
+        if command.get('argv') != ['docker', *listing] or command.get('exitCode') != 0:
+            raise ValueError('cleanup: unrelated inventory listing command')
+        names = command['output'].split()
+        if len(set(names)) != len(names): raise ValueError('cleanup: duplicate inventory resource')
+        inspect = row.get('inspectionReceipt')
+        if not names:
+            if inspect is not None: raise ValueError('cleanup: empty inventory has contradictory inspection')
+            continue
+        if not isinstance(inspect, int) or not ref < inspect < index:
+            raise ValueError('cleanup: inventory inspection command is absent')
+        command = commands[inspect]
+        if command.get('argv') != ['docker', 'inspect', '--type', kind, *names] or command.get('exitCode') != 0:
+            raise ValueError('cleanup: unrelated inventory inspection command')
+        values = json.loads(command['output'])
+        if not isinstance(values, dict) or set(values) != {kind + ':' + name for name in names} or any(not SHA.fullmatch(value) for value in values.values()):
+            raise ValueError('cleanup: incomplete inventory specification hashes')
+        bound.update(values)
+    if bound != snapshot:
+        raise ValueError('cleanup: complete inventory specification hashes contradict snapshot')
+    return index
+
+
+def validate_control_observations(identities, profile, commands, executed):
+    """Require an observed extraction, measured file and native launch chain."""
+    for name, identity in identities.get('controlPlane', {}).items():
+        def command(field):
+            index = identity.get(field)
+            if not isinstance(index, int) or not 0 <= index < len(commands):
+                raise ValueError('controlPlane: missing ' + field + ' command binding')
+            row = commands[index]
+            if row.get('exitCode') != 0: raise ValueError('controlPlane: unsuccessful identity observation')
+            return index, row
+        created, creation = command('creationReceipt')
+        copied, extraction = command('extractionReceipt')
+        measured, measurement = command('hashReceipt')
+        if (creation['argv'][:2] != ['docker', 'create'] or profile['images'][name]['reference'] not in creation['argv']
+                or extraction['argv'][:2] != ['docker', 'cp'] or not extraction['argv'][2].endswith(':/' + name)
+                or not SHA.fullmatch(creation.get('output', '').strip())
+                or extraction['argv'][2] != creation['output'].strip() + ':/' + name
+                or measurement['argv'] != ['SHA256', extraction['argv'][3]] or measurement.get('output') != identity['binarySha256']
+                or not created < copied < measured):
+            raise ValueError('controlPlane: extraction/hash command chain differs')
+        if identity.get('launchReceipt') is not None or executed:
+            launched, launch = command('launchReceipt')
+            if (launch.get('event') != 'native-launch' or launch.get('processId', 0) <= 0
+                    or launch['argv'][0] != measurement['argv'][1] or launched <= measured):
+                raise ValueError('controlPlane: native launch differs from measured executable')
+
+
 def validate_packet(directory: Path, *, allow_failures: bool = False, require_authority: bool = False) -> dict:
     packet = json.loads(safe_file(directory, "packet.json").read_text())
-    if packet.get("schemaVersion") != 1 or packet.get("productionEligible") is not False or packet.get("selectedBroker") is not None:
+    if packet.get("schemaVersion") not in (1, 2) or packet.get("productionEligible") is not False or packet.get("selectedBroker") is not None:
         raise ValueError("packet: unsupported schema or fabricated production authority")
     artifacts = packet["artifacts"]
     if not artifacts:
@@ -238,8 +378,16 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
     actual_files = {str(x.relative_to(directory)) for x in directory.rglob("*") if x.is_file() and x != directory / "packet.json"}
     if actual_files != set(artifacts):
         raise ValueError("artifacts: unlisted or missing retained files")
-    profile = json.loads(safe_file(directory, "inputs/deploy/dapr/qualification/runtime-lock.json").read_text())
+    from dapr_runtime_qualification import LEGACY_PROFILE, CANDIDATE_PROFILE, profile_path
+    selected_profile = packet.get("profile", LEGACY_PROFILE)
+    if selected_profile not in (LEGACY_PROFILE, CANDIDATE_PROFILE):
+        raise ValueError("packet: unsupported selected profile")
+    profile = json.loads(safe_file(directory, "inputs/" + selected_profile).read_text())
     validate_profile(profile, directory / "inputs")
+    if selected_profile != profile_path(profile):
+        raise ValueError("packet: selected profile does not match loaded runtime tuple")
+    if profile["runtime"]["version"] == "1.19.1" and packet.get("schemaVersion") != 2:
+        raise ValueError("candidate packets require schema 2")
     for name, expected in profile["inputs"].items():
         if artifacts.get("inputs/" + name) != expected:
             raise ValueError(f"inputs.{name}: not bound by packet")
@@ -261,6 +409,18 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
     for name, identity in identities.get("controlPlane", {}).items():
         if name not in ("placement", "scheduler") or identity.get("image") != profile["images"][name]["reference"] or not SHA.fullmatch(identity.get("binarySha256", "")):
             raise ValueError(f"controlPlane.{name}: wrong control-plane identity")
+    if profile["runtime"]["version"] == "1.19.1":
+        from dapr_runtime_qualification import CONTROL_BINARIES
+        for name, identity in identities.get("controlPlane", {}).items():
+            if identity.get("binarySha256") != CONTROL_BINARIES[name]:
+                raise ValueError("controlPlane: official executable identity mismatch")
+    if profile["runtime"]["version"] == "1.19.1":
+        executed = any(not json.loads(safe_file(directory, row["observation"]).read_text()).get("blockedBy")
+                       for outcomes in packet["brokers"].values() for row in outcomes.values())
+        if executed and set(identities.get("controlPlane", {})) != {"placement", "scheduler"}:
+            raise ValueError("controlPlane: executed candidate requires placement and scheduler observations")
+        validate_candidate_custody(identities, commands)
+        validate_control_observations(identities, profile, commands, executed)
     # Metadata are captured from the actual live sidecar. Source templates alone
     # do not establish which component was loaded, even if all hashes are valid.
     for broker in BROKERS:
@@ -310,11 +470,41 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
     after = json.loads(safe_file(directory, "workspace-after.json").read_text())
     if any(after.get(key) != value for key, value in before.items()):
         raise ValueError("cleanup: unrelated container specifications changed")
+    if packet.get('schemaVersion') == 2 and profile['runtime']['version'] == '1.19.1' and identities.get('dockerCustody'):
+        before_index = validate_inventory(before, 'before', identities, commands)
+        after_index = validate_inventory(after, 'after', identities, commands)
+        if before_index >= after_index: raise ValueError('cleanup: before/after inventories are not independent observations')
     for snapshot in (before, after):
-        if snapshot and not any(receipt.get("argv", [])[:2] == ["docker", "inspect"] and receipt.get("output") == json.dumps(snapshot, sort_keys=True) for receipt in commands):
+        if packet.get("schemaVersion") == 1:
+            if snapshot and not any(receipt.get("argv", [])[:2] == ["docker", "inspect"] and receipt.get("output") == json.dumps(snapshot, sort_keys=True) for receipt in commands):
+                raise ValueError("cleanup: specification hashes lack command receipt binding")
+            continue
+        bound = {}
+        for receipt in commands:
+            if receipt.get("argv", [])[:2] == ["docker", "inspect"]:
+                try:
+                    output = json.loads(receipt.get("output", ""))
+                    if isinstance(output, dict): bound.update(output)
+                except json.JSONDecodeError:
+                    pass
+        if any(bound.get(key) != value for key, value in snapshot.items()):
             raise ValueError("cleanup: specification hashes lack command receipt binding")
     if cleanup.get("ownedResourcesRemaining") != [] or cleanup.get("unrelatedContainersUnchanged") is not True:
         raise ValueError("cleanup: remaining owned resources or changed unrelated containers")
+    if packet.get("schemaVersion") == 2:
+        if profile["runtime"]["version"] == "1.19.1":
+            trusted_profile = json.loads((Path(__file__).resolve().parents[1] / CANDIDATE_PROFILE).read_text())
+            for path, expected in trusted_profile['inputs'].items():
+                trusted = digest(Path(__file__).resolve().parents[1] / path)
+                if profile['inputs'].get(path) != trusted or trusted != expected:
+                    raise ValueError('inputs: complete source binding mismatch with trusted owning checkout')
+                if path.startswith('tools/') and path.endswith('.py') and artifacts.get('execution-tools/' + path.removeprefix('tools/')) != trusted:
+                    raise ValueError("execution-tools: current capture source binding mismatch with trusted owning checkout")
+        custody = identities.get("dockerCustody", {})
+        if identities.get("preflightPassed") and (custody.get("exclusive") is not True or not custody.get("daemonId") or not custody.get("endpoint", "").startswith("unix:///")):
+            raise ValueError("execution-identities: exclusive daemon custody is absent")
+        if cleanup.get("complete") is not True:
+            raise ValueError("cleanup: incomplete baseline comparison or owned cleanup")
     if require_authority:
         raise ValueError("production eligibility FAIL: authenticated AD-26 Architecture/Platform records, Story 3.19 publication/profile binding, Kubernetes rehearsal, restore and Story 4.16 envelope proof are absent; this lane never issues authority")
     if failures and not allow_failures:

@@ -12,6 +12,8 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dapr_broker_qualification import BROKERS, SCENARIOS, digest, validate_packet, write_json
 
+from dapr_runtime_qualification import source_input
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -25,7 +27,7 @@ class BrokerQualificationTests(unittest.TestCase):
         for name in files:
             destination = self.directory / "inputs" / name
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, destination)
+            shutil.copyfile(source_input(profile, ROOT, name, profile["inputs"][name]) if name in profile["inputs"] else ROOT / name, destination)
         self.profile = profile
         self.packet = {"schemaVersion": 1, "productionEligible": False, "selectedBroker": None, "brokers": {}}
         self.commands = [{"argv": ["synthetic-fixture"], "startedUtc": "2026-10-20T00:00:00+00:00", "endedUtc": "2026-10-20T00:00:01+00:00", "exitCode": 0, "output": "synthetic only"}]
