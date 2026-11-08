@@ -47,9 +47,20 @@ jobs:
         uses: ./references/Hexalith.Builds/Github/initialize-dotnet
         with:
           global-json-file: global.json
+      - name: Verify private runtime input preparation controls
+        run: python3 -m unittest discover -s tools/tests -p 'test_published_runtime_archives.py'
+      - name: Prepare the original pinned private runtime archives
+        timeout-minutes: 10
+        shell: bash
+        env:
+          P1R_DAPR_RUNTIME_ARCHIVE_CACHE: ${{ runner.temp }}/published-runtime-1.18.4-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python3 tools/published_runtime_archives.py prepare --destination "$P1R_DAPR_RUNTIME_ARCHIVE_CACHE"
+          printf 'P1R_DAPR_RUNTIME_ARCHIVE_CACHE=%s\n' "$P1R_DAPR_RUNTIME_ARCHIVE_CACHE" >> "$GITHUB_ENV"
       - name: Pull the original qualified Redis profile
         run: docker pull redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf
-      # The suite downloads checksum-verified 1.18.4 binaries into invocation scratch.
+      # One blocking preparation authenticates the original six public 1.18.4 inputs.
+      # Each invocation verifies and copies them into its own scratch before extraction.
       # It never runs dapr init or changes another job's installed runtime/backend.
       # The runner materializes and builds these consumer projects inside the lane:
       # tests/Hexalith.EventStore.PublishedCompatibility.Tests/Consumers/Domain

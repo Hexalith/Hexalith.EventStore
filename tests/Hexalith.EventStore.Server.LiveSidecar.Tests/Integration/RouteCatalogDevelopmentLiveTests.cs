@@ -54,12 +54,14 @@ public sealed class RouteCatalogDevelopmentLiveTests
             apiVersion = "dapr.io/v1alpha1", kind = "Configuration", metadata = new { name = "route-catalog-development-fixture" },
             spec = new { accessControl = new { defaultAction = "deny", trustDomain = "public" } },
         }));
-        RouteCatalogDevelopmentSidecar[] sidecars = [.. apps.Select(a => new RouteCatalogDevelopmentSidecar(a, resources, config))];
+        List<RouteCatalogDevelopmentSidecar> sidecars = [];
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         IHttpClientFactory clients = Substitute.For<IHttpClientFactory>();
         clients.CreateClient(Arg.Any<string>()).Returns(http);
+        Exception? firstFailure = null;
         try
         {
+            foreach (var sidecar in apps.Select(a => new RouteCatalogDevelopmentSidecar(a, resources, config))) sidecars.Add(sidecar);
             foreach (var sidecar in sidecars) await sidecar.StartAsync();
             DaprRouteCatalogStateStore[] Stores(string key) => [.. sidecars.Select(sidecar => new DaprRouteCatalogStateStore(clients,
                 new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["DAPR_HTTP_ENDPOINT"] = sidecar.HttpEndpoint }).Build(),
@@ -188,10 +190,23 @@ public sealed class RouteCatalogDevelopmentLiveTests
                 persisted.Leases.ShouldBeEmpty();
             }
         }
+        catch (Exception exception)
+        {
+            firstFailure = exception;
+            throw;
+        }
         finally
         {
-            foreach (var sidecar in sidecars) await sidecar.DisposeAsync();
-            Directory.Delete(scratch, recursive: true);
+            Exception? cleanupFailure = null;
+            foreach (var sidecar in sidecars)
+            {
+                try { await sidecar.DisposeAsync(); }
+                catch (Exception exception) { cleanupFailure ??= exception; }
+            }
+            try { Directory.Delete(scratch, recursive: true); }
+            catch (Exception exception) { cleanupFailure ??= exception; }
+            if (firstFailure is null && cleanupFailure is not null)
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cleanupFailure).Throw();
         }
     }
 }

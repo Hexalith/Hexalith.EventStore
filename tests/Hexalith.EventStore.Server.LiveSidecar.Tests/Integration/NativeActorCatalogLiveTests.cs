@@ -224,7 +224,7 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
             cutover.ShouldBe(ProjectionDeliveryCutoverStatus.Activated);
             var writerProtocol = (await deliveryStore.ReadWriterProtocolAsync(TestContext.Current.CancellationToken)).ShouldNotBeNull();
             writerProtocol.IsCurrent.ShouldBeTrue(); writerProtocol.CutoverCommit.ShouldBe(sourceCommit);
-            await app.StartAsync(TestContext.Current.CancellationToken);
+            await sidecar.StartApplicationAsync(() => app.StartAsync(TestContext.Current.CancellationToken));
             using var direct = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{sidecar.AppPort}") };
             // The native health mapper admits only GET, and evaluates the actual registered
             // readiness checks. Writer activation alone cannot make an uncommitted catalog ready.

@@ -37,9 +37,38 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
     private CancellationToken _operationCancellation;
     private CancellationToken OperationCancellation => _operationCancellation.CanBeCanceled ? _operationCancellation : TestContext.Current.CancellationToken;
 
-    /// <summary>Downloads private pinned binaries without touching the installed Dapr runtime.</summary>
+    /// <summary>Authenticates private binaries before provisioning an independent runtime.</summary>
     internal async Task InitializeAsync()
     {
+        _binaries = Path.Combine(runtime.Root, "dapr-1.18.4");
+        string archiveTool = Path.Combine(PublishedScenarioTests.FindRepository(), "tools", "published_runtime_archives.py");
+        string? archiveCache = Environment.GetEnvironmentVariable("P1R_DAPR_RUNTIME_ARCHIVE_CACHE");
+        if (archiveCache is not null)
+        {
+            // The selector supplies no authority: the helper verifies every pinned
+            // byte, upstream checksum and receipt before making private copies.
+            await runtime.RequireAsync("python3", [archiveTool, "materialize", "--cache", archiveCache, "--destination", _binaries]);
+        }
+        else
+        {
+            if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+                throw new InvalidOperationException("Hosted compatibility requires prepared private runtime inputs.");
+            // Explicitly unprepared local runs retain the original download path
+            // and request bound, with fixed public-byte authentication added.
+            Directory.CreateDirectory(_binaries);
+            using var download = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
+            foreach (string binary in new[] { "daprd", "placement", "scheduler" })
+            {
+                string name = binary + "_linux_amd64.tar.gz";
+                byte[] bytes = await download.GetByteArrayAsync("https://github.com/dapr/dapr/releases/download/v1.18.4/" + name);
+                byte[] checksumBytes = await download.GetByteArrayAsync("https://github.com/dapr/dapr/releases/download/v1.18.4/" + name + ".sha256");
+                string checksum = Encoding.ASCII.GetString(checksumBytes).Split([' ', '\n'], StringSplitOptions.RemoveEmptyEntries)[0];
+                if (!string.Equals(QualificationRuntime.Hash(bytes), checksum, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Dapr archive checksum mismatch.");
+                await File.WriteAllBytesAsync(Path.Combine(_binaries, name), bytes);
+                await File.WriteAllBytesAsync(Path.Combine(_binaries, name + ".sha256"), checksumBytes);
+            }
+            await runtime.RequireAsync("python3", [archiveTool, "verify-local", "--directory", _binaries]);
+        }
         await runtime.CaptureSharedContainersAsync();
         using (RSA queryKey = RSA.Create(2048))
         {
@@ -52,18 +81,9 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
                 await writer.WriteAsync(queryKey.ExportRSAPrivateKeyPem());
             _queryVerificationKey = Convert.ToBase64String(Encoding.UTF8.GetBytes(queryKey.ExportRSAPublicKeyPem()));
         }
-        _binaries = Path.Combine(runtime.Root, "dapr-1.18.4");
-        Directory.CreateDirectory(_binaries);
-        using var download = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
         foreach (string binary in new[] { "daprd", "placement", "scheduler" })
         {
-            string name = binary + "_linux_amd64.tar.gz";
-            byte[] bytes = await download.GetByteArrayAsync("https://github.com/dapr/dapr/releases/download/v1.18.4/" + name);
-            string checksum = (await download.GetStringAsync("https://github.com/dapr/dapr/releases/download/v1.18.4/" + name + ".sha256"))
-                .Split([' ', '\n'], StringSplitOptions.RemoveEmptyEntries)[0];
-            if (!string.Equals(QualificationRuntime.Hash(bytes), checksum, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Dapr archive checksum mismatch.");
-            string archive = Path.Combine(_binaries, name);
-            await File.WriteAllBytesAsync(archive, bytes);
+            string archive = Path.Combine(_binaries, binary + "_linux_amd64.tar.gz");
             await runtime.RequireAsync("tar", ["-xf", archive, "-C", _binaries]);
         }
         string version = await runtime.RequireAsync(Path.Combine(_binaries, "daprd"), ["--version"]);

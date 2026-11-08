@@ -60,7 +60,7 @@ jobs:
         run: python3 scripts/verify-process-packages.py
 
   ci:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@567604b616613ba429be0609636d805db776a709
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@b4703ec2247321f867f14cd9caca43fa00190feb
     with:
       solution: Hexalith.EventStore.slnx
       module-manifest: module/hexalith.module-manifest.v2.json
