@@ -8,6 +8,36 @@ import unittest
 
 
 class PublishedCompatibilityWorkflowTests(unittest.TestCase):
+    def preparation_command(self, block):
+        source = block.split("run: ", 1)[1].strip()
+        if source.startswith("|\n"):
+            source = "\n".join(line[10:] for line in source.splitlines()[1:] if line.strip())
+        return source
+
+    def test_successful_preparation_exports_the_same_private_cache_to_later_steps(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / ".github/workflows/integration.yml").read_text()
+        block = workflow.split("- name: Prepare the original pinned private runtime archives", 1)[1]
+        block = block.split("- name: Pull the original qualified Redis profile", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="published-cache-export-") as scratch:
+            path = Path(scratch)
+            tool = path / "python3"
+            tool.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$P1R_CONTROL_PREPARATION_ARGUMENTS"\n')
+            tool.chmod(0o700)
+            cache = path / "private cache inputs"
+            exports, arguments = path / "step-exports", path / "preparation-arguments"
+            # This is a command-file fixture, not a positive GitHub/CI identity.
+            environment = dict(os.environ, PATH=str(path) + os.pathsep + os.environ["PATH"],
+                               P1R_DAPR_RUNTIME_ARCHIVE_CACHE=str(cache), GITHUB_ENV=str(exports),
+                               P1R_CONTROL_PREPARATION_ARGUMENTS=str(arguments))
+            result = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c",
+                                     self.preparation_command(block)], cwd=root, env=environment,
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(arguments.read_text().splitlines(),
+                             ["tools/published_runtime_archives.py", "prepare", "--destination", str(cache)])
+            self.assertEqual(exports.read_text(), "P1R_DAPR_RUNTIME_ARCHIVE_CACHE=" + str(cache) + "\n")
+
     def test_failed_actual_preparation_blocks_following_provisioning_and_test_commands(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / ".github/workflows/integration.yml").read_text()
@@ -16,7 +46,7 @@ class PublishedCompatibilityWorkflowTests(unittest.TestCase):
         self.assertNotIn("continue-on-error", prefix)
         self.assertIn("timeout-minutes: 90", before)
         self.assertIn("Run isolated published qualification and ownership regressions", following)
-        command = prefix.split("run: ", 1)[1].strip()
+        command = self.preparation_command(prefix)
         with tempfile.TemporaryDirectory(prefix="published-ci-prerequisite-") as scratch:
             path = Path(scratch)
             # Exercise the actual CLI and committed pins through a failed transport,
@@ -25,13 +55,15 @@ class PublishedCompatibilityWorkflowTests(unittest.TestCase):
             tool.write_text("#!/bin/sh\nexit 23\n")
             tool.chmod(0o700)
             environment = dict(os.environ, PATH=str(path) + os.pathsep + os.environ["PATH"],
-                               P1R_DAPR_RUNTIME_ARCHIVE_CACHE=str(path / "inputs"))
+                               P1R_DAPR_RUNTIME_ARCHIVE_CACHE=str(path / "inputs"),
+                               GITHUB_ENV=str(path / "step-exports"))
             result = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c",
                                      command + "\nprintf provisioned > \"$P1R_DAPR_RUNTIME_ARCHIVE_CACHE\""],
                                     cwd=root, env=environment, text=True, capture_output=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("curl exit 23", result.stderr)
             self.assertFalse((path / "inputs").exists())
+            self.assertFalse((path / "step-exports").exists())
             self.assertFalse(list(path.glob(".published-runtime-*")))
 
     def test_exact_qualification_branch_can_run_normal_checks_without_merging_main(self):

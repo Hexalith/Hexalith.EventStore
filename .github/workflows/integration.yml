@@ -34,7 +34,6 @@ jobs:
       DAPR_RUNTIME_VERSION: '1.18.4'
       P1R_QUALIFICATION_OUTPUT_ROOT: /var/tmp/hexalith-eventstore-qualification/ci-${{ github.run_id }}-${{ github.run_attempt }}
       P1R_QUALIFICATION_SCRATCH_ROOT: /var/tmp/hexalith-eventstore-qualification/ci-${{ github.run_id }}-${{ github.run_attempt }}/invocations
-      P1R_DAPR_RUNTIME_ARCHIVE_CACHE: ${{ runner.temp }}/published-runtime-1.18.4-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout exact executor and comparison tags
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -53,7 +52,11 @@ jobs:
       - name: Prepare the original pinned private runtime archives
         timeout-minutes: 10
         shell: bash
-        run: python3 tools/published_runtime_archives.py prepare --destination "$P1R_DAPR_RUNTIME_ARCHIVE_CACHE"
+        env:
+          P1R_DAPR_RUNTIME_ARCHIVE_CACHE: ${{ runner.temp }}/published-runtime-1.18.4-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python3 tools/published_runtime_archives.py prepare --destination "$P1R_DAPR_RUNTIME_ARCHIVE_CACHE"
+          printf 'P1R_DAPR_RUNTIME_ARCHIVE_CACHE=%s\n' "$P1R_DAPR_RUNTIME_ARCHIVE_CACHE" >> "$GITHUB_ENV"
       - name: Pull the original qualified Redis profile
         run: docker pull redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf
       # One blocking preparation authenticates the original six public 1.18.4 inputs.
