@@ -2,7 +2,9 @@
 title: 'Story 3.21 local broker failure diagnosis and Docker preservation'
 type: 'test'
 created: '2026-10-20'
-status: 'intent-approved-awaiting-corrective-authorization'
+status: 'superseded'
+superseded_by: 'spec-3-21-latest-stable-dapr-runtime-refresh.md'
+superseded_on: '2026-11-09'
 intent_approved: true
 intent_approval_record: 'evidence/story-3-21-platform-host-reconciliation-2026-10-20/approval/approval.json'
 parent_story: '3-21-production-dapr-runtime-pin-and-durable-broker-qualification'
@@ -21,6 +23,18 @@ context:
 ---
 
 # Story 3.21 follow-up: local evidence and preservation
+
+> **Superseded 2026-11-09 — do not resume.** This slice was never implemented.
+> Its status was `intent-approved-awaiting-corrective-authorization`.
+> The [Dapr 1.19.1 refresh slice](spec-3-21-latest-stable-dapr-runtime-refresh.md)
+> covered its goal. That slice ran all 24 broker vectors on exclusive hosted
+> workers, and cleanup and unrelated-resource preservation passed. The runs were
+> [42532773702](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42532773702)
+> and [42532776864](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42532776864)
+> on `0a6725d51bb17a9eae28a24a53f3636bab9d48d7`. The owner closed that slice on
+> 2026-11-09. The five rejected guarantees it records are tracked in
+> `deferred-work.md` as optional broker remediation. The text below is
+> historical.
 
 This is a separately bounded follow-up slice, approved through the
 [course correction](../planning-artifacts/sprint-change-proposal-2026-10-20.md).

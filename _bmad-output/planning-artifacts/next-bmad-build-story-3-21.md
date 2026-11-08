@@ -1,5 +1,14 @@
 # Next bmad-build prompt: Story 3.21 local failure diagnosis
 
+> **Superseded 2026-11-09 — do not run this prompt.** ES-DIAG was superseded by
+> the closed [Dapr 1.19.1 refresh slice](../implementation-artifacts/spec-3-21-latest-stable-dapr-runtime-refresh.md)
+> and was never implemented. The parent
+> [Story 3.21 spec](../implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md)
+> records the current state. No EventStore build slice is open. The parent waits
+> on Platform, Builds, AD-26 and Story 4.16. Broker remediation is an optional
+> `deferred-work.md` item that needs an explicit owner go-ahead. The text below
+> is historical.
+
 **2026-10-23 evidence policy:** do not write under `evidence/`; record commands, pass/fail counts, commit SHA and CI run link in the story (architecture AD-12).
 
 The conversation user approved the proposal and this slice's exact intent on

@@ -85,6 +85,8 @@ Actual broker failures and preservation blockers are retained rather than repair
 
 ## Spec Change Log
 
+- 2026-11-09: Marked ES-DIAG superseded by the closed 1.19.1 refresh slice. Pointed the follow-up and verification sections at the hosted 1.19.1 results and the deferred broker remediation. Frozen intent, tasks, acceptance criteria and `in-progress` status are unchanged.
+
 - 2026-11-01: Applied the owner-approved Story 4.16 capability dependency and append/conflict-protection re-proof handoff; candidate pins, full broker matrix, historical observations and in-progress lifecycle remain unchanged.
 
 - 2026-10-20: implemented the disposable local stage and tightened evidence checks against native receipts. Clarified that the C# capture test accepts observed rejected guarantees while the qualification validator and non-promoting workflow still fail them. Frozen intent and acceptance expectations are unchanged.
@@ -94,9 +96,9 @@ Actual broker failures and preservation blockers are retained rather than repair
 
 ## Approved follow-up and current integrity limitation
 
-The next bounded build specification is [ES-DIAG](spec-3-21-local-broker-failure-diagnosis.md). It addresses exclusive local Docker execution, both credential rotations, RabbitMQ backpressure and absent bindings without weakening guarantees. Parent status remains `in-progress`. Platform/Builds work remains owner-routed.
+**Current (2026-11-09):** No EventStore build slice is open. The [Dapr 1.19.1 refresh slice](spec-3-21-latest-stable-dapr-runtime-refresh.md) superseded [ES-DIAG](spec-3-21-local-broker-failure-diagnosis.md) before ES-DIAG was implemented, and the owner closed the refresh slice on 2026-11-09. Hosted runs [42532773702](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42532773702) and [42532776864](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42532776864) on `0a6725d51bb17a9eae28a24a53f3636bab9d48d7` executed all 24 vectors. Capture, integrity, cleanup and unrelated-resource preservation passed. Kafka passed 10/12 and RabbitMQ 9/12. Five guarantees remain rejected: RabbitMQ rotation, pressure and missing binding, and Kafka rotation and pressure. No broker can be selected until each one is remediated or accepted as an owner exception. That remediation is an optional `deferred-work.md` item and needs an explicit owner go-ahead. Parent status remains `in-progress`. It waits on Platform's Kubernetes rehearsal, the Builds pin adoption, AD-26 ratification and the Story 4.16 handoff.
 
-The course-correction read-only packet recheck exits 1 with `FAIL: artifacts: unlisted or missing retained files`, before the preservation comparison: `packet/inputs/tools/__pycache__/dapr_broker_qualification.cpython-314.pyc` was already present at task start and remains untouched. Preserve this distinct failure and the reported Docker failure; prevent caches/output inside new closed packets without filtering inventory or resealing old bytes.
+**Historical (2026-10-20, 1.18.7 packet):** ES-DIAG was the next bounded slice, covering exclusive local Docker execution, both credential rotations, RabbitMQ backpressure and absent bindings. The course-correction read-only packet recheck exits 1 with `FAIL: artifacts: unlisted or missing retained files`, before the preservation comparison: `packet/inputs/tools/__pycache__/dapr_broker_qualification.cpython-314.pyc` was already present at task start and remains untouched. Preserve this distinct failure and the reported Docker failure; prevent caches/output inside new closed packets without filtering inventory or resealing old bytes.
 
 ## Design Notes
 
@@ -104,7 +106,9 @@ RabbitMQ backlog durability and Kafka replay are separate claims. Production ret
 
 ## Verification
 
-Current results and exact receipts: [retained qualification report](evidence/story-3-21/verification-2026-10-20/report.md). Verifier tests: 25 passed. Debug package-mode build, workflow lint and whitespace checks pass. The latest explicit C# live test executes all 24 vectors but fails preservation because unrelated containers disappear during the run. Four vectors remain rejected/unresolved: both credential rotations, RabbitMQ pressure and RabbitMQ missing bindings. The live-test and final evidence tasks stay unchecked; no formal review or completion is claimed.
+Current results are the 1.19.1 hosted runs in the follow-up section above. Their full record is in the closed [refresh slice](spec-3-21-latest-stable-dapr-runtime-refresh.md). The rest of this section is historical 2026-10-20 1.18.7 evidence. Its linked report was removed by the 2026-10-23 evidence-storage simplification.
+
+Historical results and exact receipts: [retained qualification report](evidence/story-3-21/verification-2026-10-20/report.md). Verifier tests: 25 passed. Debug package-mode build, workflow lint and whitespace checks pass. The latest explicit C# live test executes all 24 vectors but fails preservation because unrelated containers disappear during the run. Four vectors remain rejected/unresolved: both credential rotations, RabbitMQ pressure and RabbitMQ missing bindings. The live-test and final evidence tasks stay unchecked; no formal review or completion is claimed.
 
 - `python3 -m unittest discover -s tools/tests -p test_dapr_broker_qualification.py` — positive packet and mutation cases pass.
 - `python3 tools/qualify-dapr-brokers.py --profile deploy/dapr/qualification/runtime-lock.json --brokers rabbitmq,kafka --output /tmp/story-3-21-qualification` — owned local execution only, complete receipts and cleanup.
