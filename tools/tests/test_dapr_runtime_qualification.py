@@ -161,6 +161,28 @@ class CandidatePacketTests(unittest.TestCase):
         from dapr_broker_qualification import validate_packet
         self.assertEqual('PASS', validate_packet(self.fixture.directory)['technicalQualification'])
 
+    def testQualificationUploadsPreserveHiddenInputsForIndependentValidation(self):
+        import re
+        from dapr_broker_qualification import validate_packet
+        for workflow in ('dapr-broker-qualification.yml', 'dapr-runtime-qualification.yml'):
+            with self.subTest(workflow=workflow), tempfile.TemporaryDirectory() as directory:
+                source = (ROOT / '.github/workflows' / workflow).read_text()
+                upload = source.split('- uses: actions/upload-artifact@', 1)[1]
+                paths = re.findall(r'^\s+path:\s*(.+)$', upload, re.M)
+                self.assertEqual(['${{ env.QUALIFICATION_OUTPUT }}'], paths)
+                include_hidden = bool(re.search(r'^\s+include-hidden-files:\s*true\s*$', upload, re.M))
+                destination = Path(directory) / 'downloaded-artifact'
+                # Model the action's hidden-file selection, then use the actual
+                # independent validator on the transported bytes, without resealing.
+                ignore = None if include_hidden else shutil.ignore_patterns('.*')
+                shutil.copytree(self.fixture.directory, destination, ignore=ignore)
+                self.assertEqual('PASS', validate_packet(destination)['integrity'])
+                hidden = destination / 'inputs/.github/workflows/dapr-broker-qualification.yml'
+                self.assertTrue(hidden.is_file())
+                hidden.unlink()
+                with self.assertRaisesRegex(ValueError, 'missing retained file'):
+                    validate_packet(destination)
+
     def testMissingWorkerCustodyCannotPass(self):
         from dapr_broker_qualification import validate_packet
         f = self.fixture
@@ -800,7 +822,7 @@ class OrchestrationWitnessTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
 
 
-FAKE_DOCKER = r'''import json,os,sys,re
+FAKE_DOCKER = r'''import json,os,sys,re,subprocess
 from pathlib import Path
 args=sys.argv[1:]
 if args[:1]==['--host']: args=args[2:]
@@ -814,7 +836,7 @@ elif args[:1]==['pull']:
  state.setdefault('images',[]).append(args[1]);state_path.write_text(json.dumps(state));print(args[1])
 elif args[:2]==['image','inspect']:
  if state.get('coldCache') and args[-1] not in state.get('images',[]): sys.exit(1)
- print(json.dumps([{'Config':{'Volumes':state.get('imageVolumes',{})}}]))
+ print(json.dumps([{'Config':{'User':state.get('imageUser',''),'Volumes':state.get('imageVolumes',{})}}]))
 elif args[:1] in (['create'],['run']) or args[:2] in (['volume','create'],['network','create']):
  kind='container' if args[0] in ('create','run') else args[0]
  state['counter']=state.get('counter',0)+1
@@ -823,12 +845,24 @@ elif args[:1] in (['create'],['run']) or args[:2] in (['volume','create'],['netw
  labels=dict(args[index+1].split('=',1) for index,value in enumerate(args) if value=='--label')
  if kind=='volume': identity=name
  value={'kind':kind,'Id':identity,'Name':name,'Config':{'Labels':labels},'Labels':labels,'CreatedAt':'2026-11-08T00:00:00Z','Driver':'local','HostConfig':{},'Mounts':[]}
+ if kind=='container' and state.get('entrypoint') and name.endswith('-openbao'):
+  environment=dict(os.environ);environment.pop('SKIP_CHOWN',None)
+  for index,argument in enumerate(args):
+   if argument in ('-e','--env'):
+    key,separator,item=args[index+1].partition('=')
+    if separator:environment[key]=item
+  result=subprocess.run(['/bin/sh',state['entrypoint']],env=environment,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+  value.update(Running=result.returncode==0,EntrypointExitCode=result.returncode,EntrypointLog=result.stdout)
  if kind=='volume': value.pop('Id')
  state['resources'][identity]=value
  state_path.write_text(json.dumps(state))
  if '--cidfile' in args: Path(args[args.index('--cidfile')+1]).write_text(identity)
  print(identity)
 elif args[:1]==['inspect']:
+ if args[1:2]==['--format'] and state.get('entrypoint'):
+  value=state['resources'][args[-1]]
+  if not value['Running']:print(value['EntrypointLog']);sys.exit(1)
+  print('38200');sys.exit(0)
  names=args[3:] if args[1:2]==['--type'] else args[1:]
  values=[]
  for name in names:
@@ -1068,6 +1102,66 @@ class ResultEntrypointTests(unittest.TestCase):
 
 class FollowupRegressionTests(unittest.TestCase):
     setUp = InstalledDockerAdapterTests.setUp
+
+    def testOpenBaoNonrootEntrypointFailureAndSupportedSetup(self):
+        spec = importlib.util.spec_from_file_location('openbao_startup', ROOT / 'tools/qualify-dapr-brokers.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        commands = self.root / 'entrypoint-commands'; commands.mkdir()
+        # Model the pinned image's nonroot ownership gate with a real shell:
+        # tmpfs hides the image-owned directory, stat sees root, and chown fails.
+        # Source: openbao/openbao dd9c19c37a878cf4a81b18efb8d6f0599c7da923,
+        # scripts/docker/docker-entrypoint.sh. No daemon or privilege is used.
+        for name, body in (('stat', 'echo 0'), ('id', 'echo 100'),
+                           ('chown', 'echo "chown: /openbao/logs: Operation not permitted" >&2; exit 1')):
+            executable = commands / name; executable.write_text('#!/bin/sh\n' + body + '\n'); executable.chmod(0o755)
+        entrypoint = self.root / 'openbao-entrypoint.sh'
+        entrypoint.write_text('set -e\nif [ -z "${SKIP_CHOWN:-}" ]; then\n'
+            ' for directory in /openbao/logs /openbao/file; do\n'
+            '  if [ "$(stat -c %u "$directory")" != "$(id -u openbao)" ]; then\n'
+            '   chown -R openbao:openbao "$directory"\n  fi\n done\nfi\necho server-started\n')
+        environment = {**self.environment, 'PATH': str(commands) + os.pathsep + str(self.root) + os.pathsep + os.environ['PATH']}
+        for remove_switch in (True, False):
+            with self.subTest(remove_switch=remove_switch), mock.patch.dict(os.environ, environment):
+                write_json(self.state, {'daemon': self.daemon, 'resources': {}, 'imageUser': 'openbao',
+                    'imageVolumes': {'/openbao/logs': {}, '/openbao/file': {}}, 'entrypoint': str(entrypoint)})
+                run = module.Run(types.SimpleNamespace(profile=ROOT / CANDIDATE_PROFILE,
+                    output=self.root / ('openbao-negative' if remove_switch else 'openbao-positive'), exclusive_worker=self.lease))
+                self.addCleanup(lambda path=run.private_parent: shutil.rmtree(path, ignore_errors=True))
+                run.ssl = object()
+                run.docker_owner = ExclusiveDocker(run.command, self.lease)
+                try:
+                    run.docker_owner.capture()
+                    # Exercise the actual container, volume admission and durable
+                    # journal paths; only the negative removes the proposed switch.
+                    original = run.docker
+                    def docker(*args, **kwargs):
+                        args = list(args)
+                        if remove_switch and args[0] == 'run':
+                            index = args.index('SKIP_CHOWN=1'); del args[index - 1:index + 1]
+                        return original(*args, **kwargs)
+                    run.docker = docker
+                    initialized = {'root_token': 'synthetic-root', 'keys': ['synthetic-key'], 'keys_base64': ['synthetic-key64']}
+                    run.request = mock.Mock(side_effect=lambda url, *args, **kwargs:
+                        (501, {}) if url.endswith('/sys/health') else (200, initialized) if url.endswith('/sys/init') else
+                        (200, {'auth': {'client_token': 'synthetic-read-token'}}))
+                    if remove_switch:
+                        with self.assertRaisesRegex(RuntimeError, 'Operation not permitted'): run.openbao()
+                        run.request.assert_not_called()
+                    else:
+                        run.openbao()
+                        self.assertEqual('synthetic-read-token', (run.private / 'bao.token').read_text())
+                        self.assertEqual('https://127.0.0.1:38200', run.bao_url)
+                    value = next(iter(json.loads(self.state.read_text())['resources'].values()))
+                    self.assertEqual(not remove_switch, value['Running'])
+                    self.assertIn('Operation not permitted' if remove_switch else 'server-started', value['EntrypointLog'])
+                    creation = next(row['argv'] for row in run.receipts if row['argv'][:2] == ['docker', 'run'])
+                    self.assertFalse(any(option in creation for option in ('--user', '--privileged', '--entrypoint')))
+                    self.assertIn('/openbao/logs', creation); self.assertIn('/openbao/file', creation)
+                    self.assertIn(str(run.private / 'bao-data') + ':/data', creation)
+                    self.assertTrue(cleanup_child_resources(run, run.resource_journal)['complete'])
+                    self.assertEqual({}, json.loads(self.state.read_text())['resources'])
+                finally:
+                    run.docker_owner.close()
 
     def testActualLoadedProfileBytesRetainedForAdmittedTopicsAndOpenBaoVariants(self):
         spec = importlib.util.spec_from_file_location('retained_profile_runner', ROOT / 'tools/qualify-dapr-brokers.py')

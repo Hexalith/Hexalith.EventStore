@@ -91,5 +91,6 @@ jobs:
         with:
           name: dapr-1.19.1-${{ matrix.lane }}
           path: ${{ env.QUALIFICATION_OUTPUT }}
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30

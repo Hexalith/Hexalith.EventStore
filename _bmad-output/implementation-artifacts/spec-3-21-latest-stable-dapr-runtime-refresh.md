@@ -550,3 +550,58 @@ production eligibility stays FAIL, selected broker stays null and Story 3.21 sta
 `in-progress`. Only this verification record changed; no Git mutation, publication,
 production/shared-AppHost start, dependency/catalog/submodule update or shared
 Docker resource mutation was performed.
+
+### GitHub-hosted qualification and local setup corrections — 2026-11-08
+
+The user authorized the existing qualification workflows. Both ran against
+`e967e4b8209c429f796d2708f4188f9f44d299eb` on exclusive GitHub-hosted Ubuntu
+workers, which generated their allocation files and bound their local Docker
+socket/daemon identities. This supersedes the missing-worker blocker for these
+CI executions; the shared local environment remains unallocated.
+
+```bash
+gh workflow run dapr-broker-qualification.yml --repo Hexalith/Hexalith.EventStore --ref main -f profile=1.19.1
+gh workflow run dapr-runtime-qualification.yml --repo Hexalith/Hexalith.EventStore --ref main
+```
+
+| CI run / lane | Observed result |
+| --- | --- |
+| [Broker qualification](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42518713706) | Workflow FAIL. Preliminary controls 103/103 PASS; all 24 broker vectors blocked during OpenBao startup. Producer-directory integrity PASS; technical qualification FAIL and production eligibility FAIL. |
+| [Runtime qualification](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42518724040): actor admission | Live selected test 1/1 PASS, zero skipped/not-run. Process/Docker cleanup and complete initial-inventory preservation PASS. |
+| Same runtime run: durable broker fixture | Selected C# capture test 0/1, zero skipped/not-run; OpenBao startup blocks all broker observations. Independent parent process/Docker cleanup and preservation PASS. |
+| Same runtime run: routing/actors/snapshots and compatibility/security/restore | Both FAIL during OpenBao setup; zero selected classes execute. Cleanup and preservation PASS. |
+| All four runtime jobs | Preliminary controls 103 packet/runtime + 11 admission + 6 catalog PASS per job. Each package/Release project build passes with zero warnings/errors. |
+
+The pinned OpenBao image runs as `openbao`. The adapter covers its unused image
+volumes with root-owned tmpfs; its entrypoint then exits with
+`chown: /openbao/logs: Operation not permitted`. Port inspection consequently
+fails. All owned resources and private material were removed, and every reported
+baseline specification was preserved. The downloaded broker artifact also omits
+its two manifest-bound `inputs/.github/workflows/` files: independent validation
+with `--allow-failures` exits 1 with `missing retained file:
+inputs/.github/workflows/dapr-broker-qualification.yml`. Passing validation in the
+producer directory does not establish integrity of that incomplete upload.
+
+Local corrections use the pinned image's supported `SKIP_CHOWN=1` while retaining
+its default nonroot user, entrypoint, tmpfs and existing `/data` bind. Both uploads
+include hidden files within their existing sanitized `QUALIFICATION_OUTPUT` scope.
+Two regression controls execute the ownership-gate failure beside successful
+initialization/owned cleanup, and transport a packet through the configured
+hidden-file selection before independent validation and missing-file rejection.
+Only the four changed candidate input hashes were refreshed; original subjects
+and all other lock fields are preserved.
+
+- `python3 -B -m unittest discover -s tools/tests -p 'test_dapr*qualification.py'`: **105/105 PASS**, 23.111 seconds.
+- `actionlint .github/workflows/dapr-broker-qualification.yml .github/workflows/dapr-runtime-qualification.yml` and `git diff --check`: PASS.
+- All 19 historical and 75 candidate input hashes match; protected inputs match the frozen baseline. Candidate lock SHA-256: `7e8ce8383dfd942b185b8faa0b53e6d197c557492f3b143858e18ef40a29135b`.
+
+Raw CI logs/downloads remain outside the repository at
+`/tmp/story-3-21-ci-20261108-f35zYG/`. The local corrections have not run in CI;
+publication requires overriding the frozen Git-mutation prohibition. No commit,
+push, production/shared-AppHost action or shared Docker mutation was performed.
+Qualification remains incomplete, production eligibility FAIL, selected broker
+null and Story 3.21 `in-progress`.
+
+The user subsequently authorized committing/pushing these local setup corrections
+and rerunning both qualification workflows. This scoped Git/CI authorization does
+not authorize production changes, broker selection or story completion.

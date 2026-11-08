@@ -340,9 +340,11 @@ class Run:
         data = self.private / "bao-data"
         data.mkdir(mode=0o777)
         data.chmod(0o777)
+        # The image runs as openbao; unused image volumes become root-owned tmpfs.
+        # Its supported switch avoids chown there while /data remains our bind.
         container = self.container("openbao", self.profile["openbao"]["reference"],
                        ["server", "-config=/work/bao.hcl"],
-                       ["--cap-add=IPC_LOCK", "-p", "127.0.0.1::8200", "-v", f"{self.private}:/work:ro", "-v", f"{data}:/data"])
+                       ["--cap-add=IPC_LOCK", "-e", "SKIP_CHOWN=1", "-p", "127.0.0.1::8200", "-v", f"{self.private}:/work:ro", "-v", f"{data}:/data"])
         self.bao_url = f"https://127.0.0.1:{self.published_port(container, 8200)}"
         self.wait(lambda: self.request(self.bao_url + "/v1/sys/health", context=self.ssl)[0] == 501)
         status, initialized = self.request(self.bao_url + "/v1/sys/init", {"secret_shares": 1, "secret_threshold": 1}, context=self.ssl, method="PUT")
