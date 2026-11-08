@@ -4,6 +4,7 @@ using System.Runtime.Loader;
 using Dapr.Actors.Runtime;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Extensions;
 using Hexalith.EventStore.Server.Queries;
 using Microsoft.Extensions.Options;
 
@@ -43,6 +44,7 @@ public static class RunScopedRouteCatalogGateway
         };
     }
     /// <summary>Loads mapped owner adapter factories and independently captures installed operations and policies.</summary>
+    /// <remarks>Register declared packages with AddEventStoreExtensions before calling this method.</remarks>
     public static IServiceCollection AddEventStoreRunScopedCatalogGateway(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -60,13 +62,7 @@ public static class RunScopedRouteCatalogGateway
         var owners = Load(section.GetSection("OwnerAssemblies").Get<string[]>() ?? []);
         var adapters = Load(section.GetSection("AdapterAssemblies").Get<string[]>() ?? []);
         if (owners.Length == 0 || adapters.Length == 0) throw new RouteCatalogUnavailableException("Mapped owner schemas and adapter assemblies are required.");
-        foreach (var factory in adapters.SelectMany(a => a.GetCustomAttributes<RouteCatalogAdapterSourceAttribute>()))
-        {
-            if (factory.SourceType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null)
-                is not IEnumerable<IDeclaredIdempotencyIntentAdapter> declared)
-                throw new RouteCatalogUnavailableException($"The owner adapter factory {factory.SourceType.FullName} is unavailable.");
-            foreach (var adapter in declared) services.AddSingleton<IIdempotencyIntentAdapter>(adapter);
-        }
+        RegisterLegacyAdapters(services, adapters);
         // As in the domain host, compiled declarations belong to these exact loaded
         // assemblies. Each capture below still observes current runtime registrations,
         // receiver policies, executable images, configuration, component and ACL inputs.
@@ -96,6 +92,25 @@ public static class RunScopedRouteCatalogGateway
                 DevelopmentTechnicalHttpTransport.Auxiliary(receiver, appId, "gateway"), token).ConfigureAwait(false);
             return actual with { ReceiverSurface = receiver, Operations = operations };
         }, _ => RouteCatalogCodec.Decode(File.ReadAllBytes(section["CatalogPath"]!), section["RootDigest"]));
+    }
+
+    /// <summary>Registers bootstrap packages that have not already been verified and registered by the extension loader.</summary>
+    /// <param name="services">The gateway service registrations.</param>
+    /// <param name="assemblies">The mapped bootstrap adapter assemblies.</param>
+    internal static void RegisterLegacyAdapters(IServiceCollection services, IReadOnlyList<Assembly> assemblies)
+    {
+        var extensions = services.SingleOrDefault(descriptor => descriptor.ServiceType == typeof(EventStoreExtensionCatalog))
+            ?.ImplementationInstance as EventStoreExtensionCatalog;
+        foreach (var factory in assemblies
+            .Where(assembly => extensions?.Extensions.Any(extension =>
+                string.Equals(extension.PackageId, assembly.GetName().Name, StringComparison.OrdinalIgnoreCase)) != true)
+            .SelectMany(assembly => assembly.GetCustomAttributes<RouteCatalogAdapterSourceAttribute>()))
+        {
+            if (factory.SourceType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null)
+                is not IEnumerable<IDeclaredIdempotencyIntentAdapter> declared)
+                throw new RouteCatalogUnavailableException($"The owner adapter factory {factory.SourceType.FullName} is unavailable.");
+            foreach (var adapter in declared) services.AddSingleton<IIdempotencyIntentAdapter>(adapter);
+        }
     }
 
     /// <summary>Claims only the real installed canonical projection actor and its production invocation path.</summary>

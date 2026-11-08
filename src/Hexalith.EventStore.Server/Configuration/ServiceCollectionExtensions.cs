@@ -83,6 +83,8 @@ public static class EventStoreServerServiceCollectionExtensions {
     /// <summary>
     /// Registers EventStore Server services including command routing and DAPR actor infrastructure.
     /// </summary>
+    /// <remarks>For a gateway with declared extension packages, call AddEventStoreExtensions first. Catalog bootstrap
+    /// registration can run inside this method and must reuse the verified extension registrations.</remarks>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The service collection for fluent chaining.</returns>

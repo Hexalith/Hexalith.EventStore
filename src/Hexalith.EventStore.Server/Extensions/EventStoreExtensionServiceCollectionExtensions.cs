@@ -22,7 +22,8 @@ public static class EventStoreExtensionServiceCollectionExtensions
     /// Loads every declared extension assembly, verifies its identity attribute against its declaration, refuses
     /// unsupported or duplicate extensions, and registers its adapters through the trusted adapter registry.
     /// </summary>
-    /// <remarks>With no declared extension the services are unchanged.</remarks>
+    /// <remarks>Register extensions before AddEventStoreServer or AddEventStoreRunScopedCatalogGateway so the catalog
+    /// bootstrap reuses their adapters. With no declared extension the services are unchanged.</remarks>
     /// <param name="services">The gateway services.</param>
     /// <param name="configuration">The gateway configuration carrying <see cref="ConfigurationSection"/>.</param>
     /// <returns>The services for chaining.</returns>
