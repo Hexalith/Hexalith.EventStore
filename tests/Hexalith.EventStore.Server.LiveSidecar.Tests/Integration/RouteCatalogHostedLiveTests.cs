@@ -102,7 +102,7 @@ public sealed partial class RouteCatalogHostedLiveTests
             }) : await File.ReadAllBytesAsync(configuration);
             await File.WriteAllBytesAsync(hostConfigurations[index], acl);
         }
-        RouteCatalogDevelopmentSidecar[] sidecars = [.. names.Select((name, index) => new RouteCatalogDevelopmentSidecar(name, resources, hostConfigurations[index], channelTokens[index]))];
+        List<RouteCatalogDevelopmentSidecar> sidecars = [];
         await using var sentry = new RouteCatalogDevelopmentSentry();
         WebApplication?[] applications = new WebApplication?[3];
         var settings = names.Select(_ => new RouteCatalogHostOptions { Profile = "Development", DevelopmentFixture = true, StateKey = "hosted-catalog-" + id, ControlPlaneAppIds = names }).ToArray();
@@ -166,8 +166,10 @@ public sealed partial class RouteCatalogHostedLiveTests
                 : [new Claim("azp", audience), new Claim("eventstore:operation", operation)]),
         });
 
+        Exception? firstFailure = null;
         try
         {
+            foreach (var sidecar in names.Select((name, index) => new RouteCatalogDevelopmentSidecar(name, resources, hostConfigurations[index], channelTokens[index]))) sidecars.Add(sidecar);
             if (mutualTls)
             {
                 await sentry.StartAsync(scratch, redis.Docker);
@@ -268,7 +270,7 @@ public sealed partial class RouteCatalogHostedLiveTests
                         return Microsoft.AspNetCore.Http.Results.NoContent();
                     }).RequireAuthorization(EventStoreWorkloadAuthenticationDefaults.OperationPolicy(RouteCatalogEndpointExtensions.WorkloadScheme,
                         EventStoreOperationIdentifiers.RouteCatalogActivate));
-                await app.StartAsync();
+                await sidecars[index].StartApplicationAsync(() => app.StartAsync());
             }
             foreach (var sidecar in sidecars) await sidecar.StartAsync();
             var observations = await Task.WhenAll(Enumerable.Range(0, 3).Select(Observe));
@@ -457,13 +459,31 @@ public sealed partial class RouteCatalogHostedLiveTests
                 persisted.Committed!.RootDigest.ShouldBe(first.RootDigest); persisted.Epoch.ShouldBe(3); persisted.Leases.ShouldBeEmpty();
             }
         }
+        catch (Exception exception)
+        {
+            firstFailure = exception;
+            throw;
+        }
         finally
         {
             releaseHeld.TrySetResult();
-            foreach (var sidecar in sidecars) await sidecar.DisposeAsync();
-            foreach (var app in applications.Where(a => a is not null)) await app!.DisposeAsync();
-            await sentry.DisposeAsync();
-            Directory.Delete(scratch, recursive: true);
+            Exception? cleanupFailure = null;
+            foreach (var sidecar in sidecars)
+            {
+                try { await sidecar.DisposeAsync(); }
+                catch (Exception exception) { cleanupFailure ??= exception; }
+            }
+            foreach (var app in applications.Where(a => a is not null))
+            {
+                try { await app!.DisposeAsync(); }
+                catch (Exception exception) { cleanupFailure ??= exception; }
+            }
+            try { await sentry.DisposeAsync(); }
+            catch (Exception exception) { cleanupFailure ??= exception; }
+            try { Directory.Delete(scratch, recursive: true); }
+            catch (Exception exception) { cleanupFailure ??= exception; }
+            if (firstFailure is null && cleanupFailure is not null)
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cleanupFailure).Throw();
         }
     }
 }

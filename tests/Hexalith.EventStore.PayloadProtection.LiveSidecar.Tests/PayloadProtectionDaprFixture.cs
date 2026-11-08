@@ -11,14 +11,17 @@ namespace Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests;
 /// <summary>Owns an isolated PostgreSQL container, independent Dapr process, unique namespace and temporary credentials.</summary>
 public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
 {
-    private const string PostgresImage = "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636";
+    internal const string PostgresImage = "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636";
     private readonly string _identity = "pp-lifecycle-" + Guid.NewGuid().ToString("N");
     private Process? _sidecar;
     private Task<string>? _stdout;
     private Task<string>? _stderr;
     private string? _directory;
-    private bool _containerStarted;
+    private readonly OwnedPostgresContainer _container;
     private DaprClient? _client;
+
+    /// <summary>Creates the fixture-owned container boundary without allocating resources.</summary>
+    public PayloadProtectionDaprFixture() => _container = new(_identity);
 
     /// <summary>Gets the exact Dapr-backed state primitive, initially unqualified.</summary>
     internal DaprPayloadProtectionStateStore Store { get; private set; } = null!;
@@ -28,11 +31,10 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
     {
         try
         {
-            int[] ports = Ports(5);
             string password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
             _ = await RunAsync("docker", ["image", "inspect", "--format", "{{.RepoDigests}}", PostgresImage]).ConfigureAwait(false);
-            await RunAsync("docker", ["run", "--detach", "--rm", "--name", _identity, "--publish", $"127.0.0.1:{ports[0]}:5432", "--env", "POSTGRES_PASSWORD", PostgresImage], password).ConfigureAwait(false);
-            _containerStarted = true;
+            int postgresPort = await _container.StartAsync(password).ConfigureAwait(false);
+            int[] ports = Ports(4);
             _directory = Path.Combine(Path.GetTempPath(), _identity);
             Directory.CreateDirectory(_directory);
             string component = $"""
@@ -45,7 +47,7 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
                   version: v2
                   metadata:
                     - name: connectionString
-                      value: "host=127.0.0.1 port={ports[0]} user=postgres password={password} dbname=postgres sslmode=disable"
+                      value: "host=127.0.0.1 port={postgresPort} user=postgres password={password} dbname=postgres sslmode=disable"
                     - name: timeout
                       value: "10s"
                     - name: keyPrefix
@@ -57,8 +59,8 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
             string version = await RunAsync(daprd, ["--version"]).ConfigureAwait(false);
             if (version.Trim() != "1.18.7") { throw new InvalidOperationException("PF-02 requires the selected Dapr runtime 1.18.7."); }
             _sidecar = Start(daprd, ["--app-id", _identity, "--resources-path", _directory,
-                "--dapr-http-port", ports[1].ToString(), "--dapr-grpc-port", ports[2].ToString(),
-                "--dapr-internal-grpc-port", ports[3].ToString(), "--metrics-port", ports[4].ToString(), "--log-level", "warn"]);
+                "--dapr-http-port", ports[0].ToString(), "--dapr-grpc-port", ports[1].ToString(),
+                "--dapr-internal-grpc-port", ports[2].ToString(), "--metrics-port", ports[3].ToString(), "--log-level", "warn"]);
             _stdout = _sidecar.StandardOutput.ReadToEndAsync();
             _stderr = _sidecar.StandardError.ReadToEndAsync();
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -69,14 +71,14 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
                 if (_sidecar.HasExited) { throw new InvalidOperationException("The isolated PF-02 sidecar exited before readiness."); }
                 try
                 {
-                    using HttpResponseMessage response = await http.GetAsync($"http://127.0.0.1:{ports[1]}/v1.0/healthz/outbound", deadline.Token).ConfigureAwait(false);
+                    using HttpResponseMessage response = await http.GetAsync($"http://127.0.0.1:{ports[0]}/v1.0/healthz/outbound", deadline.Token).ConfigureAwait(false);
                     if (response.IsSuccessStatusCode) { break; }
                 }
                 catch (HttpRequestException) { }
                 await Task.Delay(200, deadline.Token).ConfigureAwait(false);
             }
 
-            _client = new DaprClientBuilder().UseGrpcEndpoint($"http://127.0.0.1:{ports[2]}").Build();
+            _client = new DaprClientBuilder().UseGrpcEndpoint($"http://127.0.0.1:{ports[1]}").Build();
             Store = new(_client);
         }
         catch
@@ -114,14 +116,7 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
                 }
                 finally { sidecar.Dispose(); _sidecar = null; }
             },
-            async () =>
-            {
-                if (_containerStarted)
-                {
-                    await RunAsync("docker", ["rm", "--force", _identity]).ConfigureAwait(false);
-                    _containerStarted = false;
-                }
-            },
+            () => _container.CleanupAsync(),
             () =>
             {
                 if (_directory is not null && Directory.Exists(_directory)) { Directory.Delete(_directory, recursive: true); }
@@ -155,7 +150,7 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
         }
     }
 
-    private static Process Start(string command, string[] arguments, string? postgresPassword = null)
+    internal static Process Start(string command, string[] arguments, string? postgresPassword = null)
     {
         var start = new ProcessStartInfo(command) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         foreach (string argument in arguments) { start.ArgumentList.Add(argument); }
