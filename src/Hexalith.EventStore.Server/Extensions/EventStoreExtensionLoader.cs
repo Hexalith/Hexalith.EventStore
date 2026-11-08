@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.Server.Extensions;
 /// <summary>Reads composer declarations and verifies each loaded extension assembly against them.</summary>
 internal static partial class EventStoreExtensionLoader
 {
-    private static readonly string[] _entryKeys = ["PackageId", "ExtensionId", "ApiMajor"];
+    private static readonly string[] _entryKeys = ["PackageId", "ExtensionId", "ApiMajor", "ModuleId"];
 
     /// <summary>Reads the composer-supplied declarations without loading any assembly.</summary>
     /// <param name="configuration">The gateway configuration.</param>
@@ -26,17 +26,24 @@ internal static partial class EventStoreExtensionLoader
             bool unknown = entry.GetChildren().Any(child => !_entryKeys.Contains(child.Key, StringComparer.OrdinalIgnoreCase));
             string? packageId = entry["PackageId"];
             string? extensionId = entry["ExtensionId"];
+            IConfigurationSection module = entry.GetSection("ModuleId");
+            string? moduleId = module.Value;
+            bool structuredModule = module.GetChildren().Any();
             if (unknown
                 || string.IsNullOrWhiteSpace(packageId) || !PackageIdPattern().IsMatch(packageId)
                 || string.IsNullOrWhiteSpace(extensionId) || extensionId.Trim() != extensionId
+                || structuredModule || (moduleId is not null && (string.IsNullOrWhiteSpace(moduleId) || moduleId.Trim() != moduleId))
                 || !int.TryParse(entry["ApiMajor"], NumberStyles.None, CultureInfo.InvariantCulture, out int apiMajor) || apiMajor <= 0)
             {
+                string reason = $"Extension entry '{entry.Path}' must supply only an assembly-name PackageId, a nonblank ExtensionId and a positive ApiMajor.";
+                if (moduleId is not null || structuredModule)
+                    reason = ModulePrefix(moduleId) + $"Extension entry '{entry.Path}' (package '{packageId}', ApiMajor '{entry["ApiMajor"]}') must supply only an assembly-name PackageId, a nonblank ExtensionId, a positive ApiMajor and optional scalar ModuleId metadata that is nonblank and trimmed.";
                 throw new EventStoreExtensionException(
                     EventStoreExtensionConditions.InvalidDeclaration,
-                    $"Extension entry '{entry.Path}' must supply only an assembly-name PackageId, a nonblank ExtensionId and a positive ApiMajor.");
+                    reason);
             }
 
-            declarations.Add(new EventStoreExtensionDeclaration(packageId, extensionId, apiMajor));
+            declarations.Add(new EventStoreExtensionDeclaration(packageId, extensionId, apiMajor) { ModuleId = moduleId });
         }
 
         return declarations.AsReadOnly();
@@ -72,7 +79,7 @@ internal static partial class EventStoreExtensionLoader
             {
                 throw new EventStoreExtensionException(
                     EventStoreExtensionConditions.UnsupportedMajor,
-                    $"Extension package '{declaration.PackageId}' ('{declaration.ExtensionId}') declares extension-API major {Major(declaration.ApiMajor)}; this gateway supports majors {SupportedMajors()}.");
+                    ModulePrefix(declaration.ModuleId) + $"Extension package '{declaration.PackageId}' ('{declaration.ExtensionId}') declares extension-API major {Major(declaration.ApiMajor)}; this gateway supports majors {SupportedMajors()}.");
             }
         }
 
@@ -84,12 +91,12 @@ internal static partial class EventStoreExtensionLoader
             EventStoreExtensionAttribute attribute = assembly.GetCustomAttribute<EventStoreExtensionAttribute>()
                 ?? throw new EventStoreExtensionException(
                     EventStoreExtensionConditions.AttributeMissing,
-                    $"Extension package '{declaration.PackageId}' carries no [assembly: EventStoreExtension] identity; declared '{declaration.ExtensionId}' major {Major(declaration.ApiMajor)}.");
+                    ModulePrefix(declaration.ModuleId) + $"Extension package '{declaration.PackageId}' carries no [assembly: EventStoreExtension] identity; declared '{declaration.ExtensionId}' major {Major(declaration.ApiMajor)}.");
             if (!string.Equals(attribute.Id, declaration.ExtensionId, StringComparison.Ordinal) || attribute.Major != declaration.ApiMajor)
             {
                 throw new EventStoreExtensionException(
                     EventStoreExtensionConditions.DeclarationDrift,
-                    $"Extension package '{declaration.PackageId}' is declared as '{declaration.ExtensionId}' major {Major(declaration.ApiMajor)}, but its assembly declares '{attribute.Id}' major {Major(attribute.Major)}.");
+                    ModulePrefix(declaration.ModuleId) + $"Extension package '{declaration.PackageId}' is declared as '{declaration.ExtensionId}' major {Major(declaration.ApiMajor)}, but its assembly declares '{attribute.Id}' major {Major(attribute.Major)}.");
             }
 
             int count = 0;
@@ -116,7 +123,7 @@ internal static partial class EventStoreExtensionLoader
         {
             throw new EventStoreExtensionException(
                 EventStoreExtensionConditions.Unavailable,
-                $"Extension package '{declaration.PackageId}' ('{declaration.ExtensionId}') cannot be loaded into the composed gateway; reference it through the composed host bindings.",
+                ModulePrefix(declaration.ModuleId) + $"Extension package '{declaration.PackageId}' ('{declaration.ExtensionId}') cannot be loaded into the composed gateway; reference it through the composed host bindings.",
                 exception);
         }
 
@@ -124,7 +131,7 @@ internal static partial class EventStoreExtensionLoader
             ? assembly
             : throw new EventStoreExtensionException(
                 EventStoreExtensionConditions.Unavailable,
-                $"Extension package '{declaration.PackageId}' ('{declaration.ExtensionId}') did not resolve to an assembly of the same name.");
+                ModulePrefix(declaration.ModuleId) + $"Extension package '{declaration.PackageId}' ('{declaration.ExtensionId}') did not resolve to an assembly of the same name.");
     }
 
     private static IEnumerable<IDeclaredIdempotencyIntentAdapter> CreateAdapters(EventStoreExtensionDeclaration declaration, Assembly assembly)
@@ -162,13 +169,17 @@ internal static partial class EventStoreExtensionLoader
     private static EventStoreExtensionException SourceUnavailable(EventStoreExtensionDeclaration declaration, RouteCatalogAdapterSourceAttribute source, Exception? innerException)
         => new(
             EventStoreExtensionConditions.AdapterSourceUnavailable,
-            $"Extension package '{declaration.PackageId}' names adapter source '{source.SourceType?.FullName}', which is outside the package or returns no complete adapter inventory.",
+            ModulePrefix(declaration.ModuleId) + $"Extension package '{declaration.PackageId}' names adapter source '{source.SourceType?.FullName}', which is outside the package or returns no complete adapter inventory.",
             innerException);
 
     private static EventStoreExtensionException Duplicate(string kind, string value, EventStoreExtensionDeclaration first, EventStoreExtensionDeclaration second)
         => new(
             EventStoreExtensionConditions.Duplicate,
-            $"Extension {kind} '{value}' is declared twice, by package '{first.PackageId}' ('{first.ExtensionId}') and package '{second.PackageId}' ('{second.ExtensionId}').");
+            $"Extension {kind} '{value}' is declared twice, by package '{first.PackageId}' ('{first.ExtensionId}'){ModuleSuffix(first.ModuleId)} and package '{second.PackageId}' ('{second.ExtensionId}'){ModuleSuffix(second.ModuleId)}.");
+
+    private static string ModulePrefix(string? moduleId) => moduleId is null ? string.Empty : $"Module '{moduleId}': ";
+
+    private static string ModuleSuffix(string? moduleId) => moduleId is null ? string.Empty : $" from module '{moduleId}'";
 
     private static string Major(int major) => major.ToString(CultureInfo.InvariantCulture);
 

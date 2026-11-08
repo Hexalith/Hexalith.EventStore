@@ -3,6 +3,7 @@ using System.Reflection;
 using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Extensions;
+using Hexalith.EventStore.Server.Routing;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,6 +58,42 @@ public sealed class EventStoreExtensionRegistrationTests
         ServiceCollection services = new();
         _ = services.AddEventStoreExtensions(new ConfigurationBuilder().Build());
         services.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BootstrapRegistersAnUndeclaredPackageAndReusesADeclaredPackage(bool declared)
+    {
+        string package = UniqueName();
+        Assembly assembly = ExtensionProbeAssembly.Create(package, "probe", 1);
+        ServiceCollection services = new();
+        int before = ExtensionProbeAdapters.CreationCount;
+        if (declared) services.AddEventStoreExtensions([new EventStoreExtensionDeclaration(package, "probe", 1)], Resolver(assembly));
+        IIdempotencyIntentAdapter? first = services.Select(descriptor => descriptor.ImplementationInstance)
+            .OfType<IIdempotencyIntentAdapter>().SingleOrDefault();
+        RunScopedRouteCatalogGateway.RegisterLegacyAdapters(services, [assembly]);
+        ExtensionProbeAdapters.CreationCount.ShouldBe(before + 1);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IIdempotencyIntentAdapter adapter = provider.GetServices<IIdempotencyIntentAdapter>().ShouldHaveSingleItem();
+        if (declared) adapter.ShouldBeSameAs(first);
+        _ = new IdempotencyIntentAdapterRegistry([adapter], new CanonicalIdempotencyIntentEncoder());
+    }
+
+    [Fact]
+    public void AConflictingLegacyPackageStillFailsTheRegistryAlongsideADeclaredPackage()
+    {
+        string package = UniqueName();
+        Assembly declared = ExtensionProbeAssembly.Create(package, "probe", 1);
+        Assembly legacy = ExtensionProbeAssembly.Create(UniqueName(), null, 1);
+        ServiceCollection services = new();
+        services.AddEventStoreExtensions([new EventStoreExtensionDeclaration(package, "probe", 1)], Resolver(declared));
+        RunScopedRouteCatalogGateway.RegisterLegacyAdapters(services, [declared, legacy]);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IIdempotencyIntentAdapter[] adapters = [.. provider.GetServices<IIdempotencyIntentAdapter>()];
+        adapters.Length.ShouldBe(2);
+        Should.Throw<InvalidOperationException>(() => new IdempotencyIntentAdapterRegistry(adapters, new CanonicalIdempotencyIntentEncoder()))
+            .Message.ShouldContain("Multiple trusted idempotency adapters");
     }
 
     [Theory]

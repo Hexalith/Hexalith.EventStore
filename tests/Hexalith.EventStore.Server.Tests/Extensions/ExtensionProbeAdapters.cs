@@ -8,10 +8,16 @@ namespace Hexalith.EventStore.Server.Tests.Extensions;
 /// <summary>Creates the one declared probe adapter that emitted extension assemblies return from their adapter source.</summary>
 public static class ExtensionProbeAdapters
 {
+    private static int _creationCount;
+
+    /// <summary>Gets how often a probe adapter inventory was created.</summary>
+    public static int CreationCount => Volatile.Read(ref _creationCount);
+
     /// <summary>Creates a fresh declared adapter for <see cref="ExtensionProbeCommand"/>.</summary>
     /// <returns>The complete probe adapter inventory.</returns>
     public static IReadOnlyList<IDeclaredIdempotencyIntentAdapter> Create()
     {
+        Interlocked.Increment(ref _creationCount);
         RouteContractDeclaration route = new("extension-probe-record", "command", "extension-probe", nameof(ExtensionProbeCommand), null,
             "v1", 1, "workload", EventStoreOperationIdentifiers.DomainServiceProcess, null, [],
             new(typeof(ExtensionProbeCommand).FullName!, "clr-short-name-v1", [nameof(ExtensionProbeCommand)], "domain-service", null, []));
