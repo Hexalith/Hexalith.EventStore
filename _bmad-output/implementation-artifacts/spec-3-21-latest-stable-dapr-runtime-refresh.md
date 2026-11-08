@@ -2,7 +2,7 @@
 title: 'Story 3.21 Dapr 1.19.1 runtime refresh and qualification'
 type: 'chore'
 created: '2026-11-08'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 story_key: '3-21-production-dapr-runtime-pin-and-durable-broker-qualification'
 baseline_commit: 'f14d56ea917dd33a552742226d6d7ee65f5e1236'
@@ -896,3 +896,29 @@ update occurred. Story 3.21 and its sprint row remain `in-progress`, selected
 broker stays null and production eligibility remains FAIL. Remaining runtime
 remedies/owner decisions and Platform/Builds, Kubernetes/restore, cold-credential,
 principal/session, exact-offset and Story 4.16 handoffs are not closed by these runs.
+
+### Owner closure of the refresh slice — 2026-11-09
+
+The owner chose to close this refresh slice instead of starting another
+implementation or requalification pass. Every task was already complete, and no
+code changed after the hosted runs on `0a6725d51bb17a9eae28a24a53f3636bab9d48d7`;
+`034c3b0f9801047d7122819e6883c5b459e273b3` adds only this spec's verification text.
+
+Acceptance against the hosted runs above:
+
+- Original consumers: locks, defaults and sealed subjects are unchanged, and
+  compatibility/security/restore passes 2/2.
+- New identities: every selected lane executed on observed 1.19.1 identities.
+  Routing/actors/snapshots passed 15/15, admission 1/1 and compatibility 2/2.
+  The broker matrix ran all 24 vectors (Kafka 10/12, RabbitMQ 9/12).
+- Failed checks: the five rejected guarantees are recorded as explicit
+  observations, as the epic allows. They are RabbitMQ rotation, pressure and
+  missing binding, and Kafka rotation and pressure. **Broker qualification for
+  1.19.1 is therefore incomplete.** Selected broker stays null and production
+  eligibility stays FAIL.
+
+This closes the 1.19.1 refresh slice only. The parent Story 3.21 sprint row
+stays `in-progress`. It still waits on Platform's Kubernetes rehearsal, the
+Builds pin adoption, AD-26 ratification and the Story 4.16 handoff. Broker
+remediation is routed to `deferred-work.md` as an optional follow-up. No new CI
+dispatch, push, production change or shared Docker mutation was performed.
