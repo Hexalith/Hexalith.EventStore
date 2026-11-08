@@ -826,3 +826,73 @@ the Git/remote-operation prohibition only for those concrete changes and runs.
 It grants no broker selection, production change, new publication authority,
 Platform/Builds change or story-completion claim. The candidate lock remains
 `23fd18e0303e38eaf3b7eeeafe0dd8954fa669d4def69a85f0f1864e17d7d5c9`.
+
+
+### Approved hosted diagnostic reruns — 2026-11-09
+
+The reviewed follow-up was committed, validated with pinned commitlint 21.2.4,
+and pushed as `0a6725d51bb17a9eae28a24a53f3636bab9d48d7`. Both authorized
+qualification workflows ran against that exact source on exclusive GitHub-hosted
+workers. Candidate lock SHA-256 remained
+`23fd18e0303e38eaf3b7eeeafe0dd8954fa669d4def69a85f0f1864e17d7d5c9`.
+
+```bash
+gh workflow run dapr-broker-qualification.yml --repo Hexalith/Hexalith.EventStore --ref main -f profile=1.19.1
+gh workflow run dapr-runtime-qualification.yml --repo Hexalith/Hexalith.EventStore --ref main
+```
+
+| Completed CI run / lane | Observed result |
+| --- | --- |
+| [Standalone broker qualification](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42532773702) | Capture/integrity PASS, Kafka 10/12 and RabbitMQ 9/12: **19/24** vectors PASS. Workflow and technical qualification FAIL on the five rejected guarantees. |
+| [Runtime qualification](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/42532776864): routing/actors/snapshots | **15/15 PASS**: routing/security 8, actor concurrency 3, tenant isolation 2, reminder recovery 1, snapshot reload 1; zero skipped/not-run. |
+| Same runtime run: actor admission/process replacement | **1/1 PASS**, zero skipped/not-run. Independent parent process/Docker cleanup, complete preservation and private cleanup PASS. |
+| Same runtime run: compatibility/security/restore | **2/2 PASS**, zero skipped/not-run. Downloaded compatibility witnesses independently verify all retained bytes/inventory: 965 files, 1,774,492 bytes. |
+| Same runtime run: durable broker fixture | C# capture **1/1 PASS**, zero skipped/not-run. Its independent broker packet also has Kafka 10/12 and RabbitMQ 9/12: **19/24**. The lane and overall runtime workflow remain FAIL on technical broker qualification. |
+| Preliminary checks / builds | Standalone 128/128 packet/runtime controls PASS. Each runtime job passes 128 packet/runtime + 11 admission + 6 catalog controls; all four package/Release builds PASS with zero warnings/errors. |
+
+Every completed lane retains successful owned process/resource cleanup, private
+material removal and complete unrelated-resource preservation. Both downloaded
+broker packets independently validate using the current owning checkout:
+
+```bash
+python3 -B tools/validate-dapr-broker-qualification.py /tmp/story-3-21-approved-hosted-ya90jqp1/broker-artifact --allow-failures
+python3 -B tools/validate-dapr-broker-qualification.py /tmp/story-3-21-approved-hosted-ya90jqp1/runtime-broker-artifact/packet --allow-failures
+```
+
+Both integrity commands exit 0. Each validator without flags exits 1 for technical
+qualification; each `--require-production-authority` invocation exits 1 for
+production eligibility. Complete observed capture never converts rejected
+technical guarantees into PASS.
+
+Both runs reproduce the same five failed vectors:
+
+- RabbitMQ rotation: new-generation control works; the stale request returns 599
+  with no observed effect in the bounded readback. Timeout remains unknown, not
+  attributable denial. Cold old-generation restart remains unproved.
+- RabbitMQ pressure: the exact queue's effective reject-publish/max-length-4 policy
+  is measured. All eight requests return 204; three exact acknowledged IDs remain
+  absent at the readback bound in each run. Standalone native Dapr logs contain
+  three failed publisher confirmations, matching the retained source concern that
+  publishSync logs failed confirmation but returns nil. Canceled requests later
+  persist once. These observations establish the rejected bounded guarantee,
+  not universal proof of permanent loss.
+- RabbitMQ missing binding: physical absence is independently measured before and
+  after publication beside the bound positive control. The unbound publication
+  still returns 204; the rejection guarantee fails.
+- Kafka rotation: the old session returns 204 and its exact stale ID persists once
+  despite administrative deny-ACL state. Actual principal/session and cold
+  old-generation evidence remain outstanding.
+- Kafka pressure: each run has two acknowledged IDs absent at the retained bound.
+  Generic deadline errors do not establish broker rejection; several failed HTTP
+  requests and the canceled request later persist. Native offset/group snapshots
+  and exact-ID Dapr reconciliation are retained; exact ID-to-offset causality
+  remains unproved.
+
+Raw logs, downloaded artifacts and independent validator results remain outside
+Git under `/tmp/story-3-21-approved-hosted-ya90jqp1/`; `verified-hosted-summary.json`
+binds the observed results. Historical packets remain unchanged. No shared local
+Docker mutation, production change, broker selection, publication or cross-repo
+update occurred. Story 3.21 and its sprint row remain `in-progress`, selected
+broker stays null and production eligibility remains FAIL. Remaining runtime
+remedies/owner decisions and Platform/Builds, Kubernetes/restore, cold-credential,
+principal/session, exact-offset and Story 4.16 handoffs are not closed by these runs.
