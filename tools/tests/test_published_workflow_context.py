@@ -13,7 +13,6 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-ORIGINAL = "debdaaa596661c26a765ce5c1ae702385f38b852"
 WORKFLOW = ".github/workflows/integration.yml"
 
 
@@ -31,9 +30,19 @@ class PublishedWorkflowContextTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, (result.stdout + result.stderr).decode())
 
     def test_original_committed_job_env_selector_is_rejected_by_the_real_parser(self):
-        original = subprocess.run(["git", "--no-optional-locks", "cat-file", "blob", ORIGINAL + ":" + WORKFLOW],
-                                  cwd=ROOT, capture_output=True, check=True, timeout=10).stdout
-        result = self.parse(original)
+        # Reconstruct the rejected context without depending on temporary PR
+        # history, so normal squash checkouts and source exports can run it.
+        invalid = b"""name: Invalid private runtime cache context
+on: push
+jobs:
+  published-compatibility:
+    runs-on: ubuntu-latest
+    env:
+      P1R_DAPR_RUNTIME_ARCHIVE_CACHE: ${{ runner.temp }}/published-runtime-1.18.4-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - run: ':'
+"""
+        result = self.parse(invalid)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'context "runner" is not allowed here', result.stdout + result.stderr)
         self.assertIn(b"[expression]", result.stdout + result.stderr)
