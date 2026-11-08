@@ -51,7 +51,10 @@ def main():
         source = Path(__file__).with_name('qualification-docker.py').read_text()
         executable.write_text('#!' + sys.executable + '\n' + '\n'.join(source.splitlines()[1:]) + '\n')
         executable.chmod(0o755)
+        child_temporary = owner.private_parent / 'child-tmp'
+        child_temporary.mkdir(mode=0o700)
         env = {**os.environ,
+            'TMPDIR': str(child_temporary), 'TMP': str(child_temporary), 'TEMP': str(child_temporary),
             'QUALIFICATION_REAL_DOCKER': shutil.which('docker') or '/missing-docker',
             'QUALIFICATION_PINNED_ENDPOINT': owner.docker_owner.endpoint,
             'QUALIFICATION_PINNED_DAEMON': owner.docker_owner.daemon_id,

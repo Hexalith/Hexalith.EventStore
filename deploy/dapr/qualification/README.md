@@ -199,3 +199,17 @@ extraction, measured-file and native-launch command references. Compatibility
 witness limits use the exact sanitized bytes written, with separate original and
 retained SHA-256/size commitments verified against the retained files. Partial
 xUnit XML is replaced by a digest-only failed-report witness before upload.
+
+New selected broker captures use versioned scenario diagnostics. RabbitMQ pressure
+requires the exact `qualification-consumer-qualification.backpressure` queue's
+measured effective reject-publish policy before publication. Missing-binding checks
+retain physical binding/topic inventories before and after publication, beside an
+existing positive control. Rotation retains administrative user/ACL state and a
+typed broker authorization response; generic HTTP failures and timeouts cannot pass
+as denial. Rotation and pressure reconcile every exact publication ID, including
+rejected and timed-out requests, against one bounded persisted Dapr readback. Kafka
+also retains offset/consumer-commit snapshots around pressure. These administrative
+snapshots do not establish the authenticated principal/session, exact message-to-offset
+mapping or a cold stale-credential restart. Missing readback effects remain bounded
+non-observations, never proof of absence. Original packet interpretation is retained;
+changed capture sources require fresh hosted qualification.

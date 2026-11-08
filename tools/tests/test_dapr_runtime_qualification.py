@@ -84,7 +84,8 @@ class RuntimeIdentityTests(unittest.TestCase):
 class CandidatePacketTests(unittest.TestCase):
     def setUp(self):
         from test_dapr_broker_qualification import BrokerQualificationTests
-        self.fixture = BrokerQualificationTests(); self.fixture.setUp(); self.addCleanup(self.fixture.tearDown)
+        self.fixture = BrokerQualificationTests(); self.fixture.candidate_diagnostics = True
+        self.fixture.setUp(); self.addCleanup(self.fixture.tearDown)
         f = self.fixture
         profile = json.loads((ROOT / CANDIDATE_PROFILE).read_text())
         files = set(profile['inputs']) | {CANDIDATE_PROFILE} | {row['manifest']['path'] for row in profile['images'].values()}
@@ -100,6 +101,8 @@ class CandidatePacketTests(unittest.TestCase):
         for command in f.commands:
             if command.get('argv', [''])[0] == 'HTTP' and command['argv'][-1].endswith('/v1.0/metadata'):
                 data = json.loads(command['output']); data['runtimeVersion'] = '1.19.1'; command['output'] = json.dumps(data)
+            if '--app-id' in command['argv'] or '--resources-path' in command['argv']:
+                command['argv'] += ['--placement-host-address', '127.0.0.1:12345', '--scheduler-host-address', '127.0.0.1:12345']
         custody = {'exclusive': True, 'endpoint': 'unix:///synthetic.sock', 'daemonId': 'synthetic-exclusive-daemon', 'workerId': 'synthetic-worker', 'socketIdentity': [1, 123]}
         template = {'startedUtc': '2026-11-08T00:00:00+00:00', 'endedUtc': '2026-11-08T00:00:00+00:00', 'exitCode': 0}
         def daemon():
@@ -116,8 +119,9 @@ class CandidatePacketTests(unittest.TestCase):
         def reindex(data):
             if isinstance(data, dict):
                 for key, value in data.items():
-                    if key in ('commandReceipt', 'restartReceipt', 'quotaReceipt'): data[key] = offsets[value]
-                    elif key == 'offsetReceipts': data[key] = [offsets[item] for item in value]
+                    if key.endswith('Receipt') and value is not None: data[key] = offsets[value]
+                    elif key in ('offsetReceipts', 'revocationReceipts', 'rejectedConfirmReceipts'): data[key] = [offsets[item] for item in value]
+                    elif key == 'brokerStateReceipts': data[key] = {phase: [offsets[item] for item in indexes] for phase, indexes in value.items()}
                     else: reindex(value)
             elif isinstance(data, list):
                 for value in data: reindex(value)
@@ -154,12 +158,152 @@ class CandidatePacketTests(unittest.TestCase):
         write_json(f.directory / 'execution-identities.json', {'stage': 'local-docker-first-stage', 'targetProof': False, 'preflightPassed': True,
             'daprdSha256': profile['runtime']['binarySha256'], 'cliSha256': profile['runtime']['cliSha256'],
             'dockerCustody': custody, 'controlPlane': controls, 'workspaceInventories': inventories})
-        write_json(f.directory / 'cleanup.json', {'ownedResourcesRemaining': [], 'unrelatedContainersUnchanged': True, 'complete': True})
+        write_json(f.directory / 'cleanup.json', {'ownedResourcesRemaining': [], 'unrelatedContainersUnchanged': True, 'complete': True, 'privateMaterialRemoved': True})
         f.packet.update(schemaVersion=2, profile=CANDIDATE_PROFILE); f.seal()
 
     def testSelectedCandidatePacketPositiveControl(self):
         from dapr_broker_qualification import validate_packet
         self.assertEqual('PASS', validate_packet(self.fixture.directory)['technicalQualification'])
+
+    def testSelectedDiagnosticsCannotBeOmittedOrRelabeledAsLegacy(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture
+        f.change('rabbitmq/missing-bindings/observation.json', lambda row: row.pop('diagnosticVersion'))
+        with self.assertRaisesRegex(ValueError, 'missing versioned broker diagnostics'): validate_packet(f.directory)
+
+    def testResealedWrongQueuePolicyCannotEstablishBackpressure(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture
+        observation = json.loads((f.directory / 'rabbitmq/cancellation-backpressure/observation.json').read_text())
+        row = f.commands[observation['policyObservation']['queueReceipt']]
+        queue = json.loads(row['output']); queue[0]['effective_policy_definition']['overflow'] = 'drop-head'; row['output'] = json.dumps(queue)
+        write_json(f.directory / 'commands.json', f.commands); f.seal()
+        with self.assertRaisesRegex(ValueError, 'exact queue policy'): validate_packet(f.directory)
+
+    def testResealedPhysicalBindingPresenceCannotBeClaimedAbsent(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture
+        path = 'rabbitmq/missing-bindings/observation.json'
+        observation = json.loads((f.directory / path).read_text())
+        row = f.commands[observation['bindingObservation']['afterReceipt']]
+        row['output'] = json.dumps([{'source_name': 'qualification.events'}, {'source_name': 'qualification.missing-binding'}])
+        write_json(f.directory / 'commands.json', f.commands); f.seal()
+        with self.assertRaisesRegex(ValueError, 'physical absence'): validate_packet(f.directory)
+        f.change(path, lambda row: row.update(bindingAbsent=False))
+        f.packet['brokers']['rabbitmq']['missing-bindings']['result'] = 'FAIL'; f.seal()
+        self.assertEqual('FAIL', validate_packet(f.directory, allow_failures=True)['technicalQualification'])
+
+    def testGenericHttpFailureCannotBecomeSelectedRotationDenial(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture; path = 'kafka/secret-rotation/observation.json'
+        observation = json.loads((f.directory / path).read_text())
+        f.commands[observation['denialObservation']['publicationReceipt']]['output'] = '{"errorCode":"ERR_PUBSUB_PUBLISH_MESSAGE","message":"request timed out"}'
+        write_json(f.directory / 'commands.json', f.commands); f.seal()
+        with self.assertRaisesRegex(ValueError, 'old-generation denial'): validate_packet(f.directory)
+        f.change(path, lambda row: row.update(oldGenerationDenied=False))
+        f.packet['brokers']['kafka']['secret-rotation']['result'] = 'FAIL'; f.seal()
+        self.assertEqual('FAIL', validate_packet(f.directory, allow_failures=True)['technicalQualification'])
+
+    def testRevocationStateMustBeObservedOnTheSameBroker(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture
+        observation = json.loads((f.directory / 'kafka/secret-rotation/observation.json').read_text())
+        f.commands[observation['denialObservation']['stateReceipt']]['output'] = '(principal=User:CN=client, host=*, operation=ALL, permissionType=ALLOW)'
+        write_json(f.directory / 'commands.json', f.commands); f.seal()
+        with self.assertRaisesRegex(ValueError, 'revocation state is unobserved'): validate_packet(f.directory)
+
+    def testCancelledAndRejectedIdsCannotBeDroppedFromReconciliation(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture
+        f.change('kafka/cancellation-backpressure/observation.json', lambda row: row['publicationReconciliation'].pop())
+        with self.assertRaisesRegex(ValueError, 'exact-ID reconciliation'): validate_packet(f.directory)
+
+    def testNativeSnapshotPhasesCannotBeReorderedAfterResealing(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture
+        def swap(row):
+            states = row['brokerStateReceipts']; states['before'], states['afterPublish'] = states['afterPublish'], states['before']
+        f.change('kafka/cancellation-backpressure/observation.json', swap)
+        with self.assertRaisesRegex(ValueError, 'do not bracket'): validate_packet(f.directory)
+
+    def testSelectedPrivateCleanupMustBePresentAndTrue(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture; path = f.directory / 'cleanup.json'; original = path.read_bytes()
+        for value in (False, None):
+            data = json.loads(original)
+            if value is None: data.pop('privateMaterialRemoved')
+            else: data['privateMaterialRemoved'] = value
+            write_json(path, data); f.seal()
+            with self.assertRaisesRegex(ValueError, 'private material removal'): validate_packet(f.directory)
+
+    def testCreatedExtractionContainerCannotRemainInCompleteFinalInventory(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture
+        identities = json.loads((f.directory / 'execution-identities.json').read_text())
+        created = f.commands[identities['controlPlane']['placement']['creationReceipt']]['output']
+        inventory = f.commands[identities['workspaceInventories']['after']]
+        observation = inventory['resourceObservations']['container']
+        f.commands[observation['listingReceipt']]['output'] += '\n' + created
+        specs = json.loads(f.commands[observation['inspectionReceipt']]['output']); specs['container:' + created] = 'c' * 64
+        f.commands[observation['inspectionReceipt']]['output'] = json.dumps(specs)
+        f.commands[observation['inspectionReceipt']]['argv'].append(created)
+        f.commands[observation['inspectionReceipt']]['executedArgv'].append(created)
+        after = json.loads((f.directory / 'workspace-after.json').read_text()); after['container:' + created] = 'c' * 64
+        inventory['output'] = json.dumps(after); write_json(f.directory / 'workspace-after.json', after)
+        write_json(f.directory / 'commands.json', f.commands); f.seal()
+        with self.assertRaisesRegex(ValueError, 'created owned container remains'): validate_packet(f.directory)
+
+    def testSelectedSidecarControlEndpointsCannotBeSubstitutedOrOmitted(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture; original = copy.deepcopy(f.commands)
+        for flag in ('--placement-host-address', '--scheduler-host-address'):
+            for mode in ('substitute', 'omit'):
+                f.commands = copy.deepcopy(original)
+                row = next(row for row in f.commands if '--app-id' in row['argv'])
+                position = row['argv'].index(flag)
+                if mode == 'substitute': row['argv'][position + 1] = '127.0.0.1:65432'
+                else: del row['argv'][position:position + 2]
+                write_json(f.directory / 'commands.json', f.commands); f.seal()
+                with self.assertRaisesRegex(ValueError, 'sidecar endpoint differs'): validate_packet(f.directory)
+
+    def testTypedDeadlineIsUncertainRatherThanBrokerPressureRejection(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture; path = 'kafka/cancellation-backpressure/observation.json'
+        observation = json.loads((f.directory / path).read_text())
+        row = f.commands[observation['rejectedConfirmReceipts'][0]]
+        payload = json.loads(row['output']); payload['details'][0]['metadata']['error'] = 'context deadline exceeded'; row['output'] = json.dumps(payload)
+        write_json(f.directory / 'commands.json', f.commands); f.seal()
+        with self.assertRaisesRegex(ValueError, 'loss/cancellation contradicts'): validate_packet(f.directory)
+        f.change(path, lambda row: row.update(negativeConfirmRejected=False, rejectedConfirmReceipts=[]))
+        f.packet['brokers']['kafka']['cancellation-backpressure']['result'] = 'FAIL'; f.seal()
+        self.assertEqual('FAIL', validate_packet(f.directory, allow_failures=True)['technicalQualification'])
+
+    def testCancellationBoundRequiresFiniteNonnegativeMatchingExecution(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture; path = f.directory / 'kafka/cancellation-backpressure/observation.json'; original = path.read_bytes()
+        for value in (-1, float('nan'), float('inf'), -float('inf'), 0, 60):
+            data = json.loads(original); data['boundedSeconds'] = value; write_json(path, data); f.seal()
+            with self.assertRaisesRegex(ValueError, 'cancellation bound'): validate_packet(f.directory)
+        path.write_bytes(original)
+        data = json.loads(original)
+        row = next(row for row in f.commands if row.get('input', {}).get('id') == data['cancelledMessageId'])
+        row['endedUtc'] = '2026-10-20T00:01:00+00:00'
+        write_json(f.directory / 'commands.json', f.commands); f.seal()
+        with self.assertRaisesRegex(ValueError, 'cancellation bound'): validate_packet(f.directory)
+
+    def testNativeKafkaOffsetsMustBeNonemptyExpectedTopicPartitions(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture; data = json.loads((f.directory / 'kafka/cancellation-backpressure/observation.json').read_text())
+        row = f.commands[data['brokerStateReceipts']['before'][0]]
+        for output in ('', 'other.topic:0:1', 'qualification.backpressure:no-partition:1', 'qualification.backpressure:99:1', 'qualification.backpressure:0:-1', 'qualification.backpressure:0:1\nqualification.backpressure:0:2'):
+            row['output'] = output; write_json(f.directory / 'commands.json', f.commands); f.seal()
+            with self.assertRaisesRegex(ValueError, 'native.*offsets'): validate_packet(f.directory)
+
+    def testUnavailableConsumerGroupStateCannotBeReportedAsAvailable(self):
+        from dapr_broker_qualification import validate_packet
+        f = self.fixture
+        f.change('kafka/cancellation-backpressure/observation.json', lambda row: row['consumerGroupStates'].update(before=True))
+        with self.assertRaisesRegex(ValueError, 'unavailable consumer-group state'): validate_packet(f.directory)
 
     def testQualificationUploadsPreserveHiddenInputsForIndependentValidation(self):
         import re
@@ -330,6 +474,18 @@ class WorkerCustodyTests(unittest.TestCase):
         self.assertEqual(self.endpoint, owner.endpoint)
         self.assertEqual('synthetic-daemon', owner.daemon_id)
         self.assertEqual(['docker', '--host', self.endpoint, 'ps', '-aq'], self.calls[-1][0])
+
+    def testCustomDockerConfigSelectsAndPreservesTheOwnedContext(self):
+        owner = self.owner(env={'DOCKER_CONFIG': str(self.root / 'custom-config'), 'DOCKER_CONTEXT': 'owned-context', 'DOCKER_API_VERSION': '1.45'})
+        command = owner.command
+        def configured(argv, **kwargs):
+            self.assertEqual(str(self.root / 'custom-config'), kwargs['env']['DOCKER_CONFIG'])
+            self.assertEqual('1.45', kwargs['env']['DOCKER_API_VERSION'])
+            return command(argv, **kwargs)
+        owner.command = configured
+        owner.capture(); owner.run('ps', '-aq')
+        self.assertEqual(['docker', 'context', 'inspect', 'owned-context'], self.calls[0][0])
+        self.assertEqual(self.endpoint, owner.endpoint)
 
     def testMissingExclusivityCannotMutate(self):
         with self.assertRaisesRegex(ValueError, 'exclusive disposable-worker'): self.owner(False).capture()
@@ -625,6 +781,31 @@ class ChildDockerTests(unittest.TestCase):
     def docker(self, *args, **kwargs):
         result = self.invoke(list(args))
         return result.returncode, result.stdout
+
+    def testMutationsUseVerifiedIdsAfterContainerOrNetworkNameReplacement(self):
+        from dapr_runtime_qualification import owned_docker_operation
+        for kind, arguments, position in [('container', ['rm', '-f', 'friendly'], 2),
+                ('container', ['exec', 'friendly', '/bin/sh', '-c', 'true'], 1),
+                ('container', ['cp', 'friendly:/data', '/tmp/destination'], 1),
+                ('container', ['cp', '/tmp/source', 'friendly:/data'], 2),
+                ('network', ['network', 'rm', 'friendly'], 2)]:
+            with self.subTest(arguments=arguments):
+                identity = 'a' * 64; replacement = 'b' * 64; calls = []
+                labels = {'hexalith.qualification': 'owner', 'hexalith.qualification.resource': 'token'}
+                resource = {'Id': identity, 'Name': 'friendly', 'Config': {'Labels': labels}, 'Labels': labels}
+                state = {'resources': [{'kind': kind, 'id': identity, 'name': 'friendly', 'owner': 'owner', 'resourceToken': 'token'}]}
+                names = {'friendly': identity}
+                def invoke(argv):
+                    calls.append(list(argv))
+                    if argv[0] == 'inspect':
+                        names['friendly'] = replacement
+                        return subprocess.CompletedProcess(argv, 0, json.dumps([resource]), '')
+                    target = argv[position].split(':', 1)[0]
+                    self.assertEqual(identity, names.get(target, target))
+                    return subprocess.CompletedProcess(argv, 0, '', '')
+                owned_docker_operation(list(arguments), invoke, state, 'owner')
+                self.assertEqual(identity + (':/data' if arguments[0] == 'cp' else ''), calls[-1][position])
+                self.assertEqual(replacement, names['friendly'])
 
     def testChildContainerNetworkAndVolumeAreTrackedAndCleaned(self):
         for arguments in (['create', '--name', 'child-container', 'synthetic-image'], ['network', 'create', 'child-network'], ['volume', 'create', 'child-volume']):
@@ -1100,8 +1281,213 @@ class ResultEntrypointTests(unittest.TestCase):
                     self.assertEqual({},json.loads(self.state.read_text())['resources'])
 
 
+class BrokerDiagnosticExecutionTests(unittest.TestCase):
+    """Execute the producer's scenario/readback/record path with isolated broker commands."""
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(); self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        spec = importlib.util.spec_from_file_location('broker_diagnostic_runner', ROOT / 'tools/qualify-dapr-brokers.py')
+        self.module = importlib.util.module_from_spec(spec); spec.loader.exec_module(self.module)
+
+    def runner(self, broker, scenario, *, effective=True):
+        from dapr_broker_qualification import PRESSURE_QUEUE, PRESSURE_POLICY, PRESSURE_PATTERN, PRESSURE_DEFINITION
+        run = self.module.Run.__new__(self.module.Run)
+        run.output = self.root / (broker + '-' + scenario); run.output.mkdir()
+        run.private = run.output / 'private'; run.private.mkdir()
+        run.retained_inputs = ROOT
+        for name in ('rotated.crt', 'rotated.key', 'client.crt', 'client.key', 'ca.crt'):
+            (run.private / name).write_text('synthetic-public-or-disposable-fixture')
+        run.profile = json.loads((ROOT / CANDIDATE_PROFILE).read_text())
+        run.broker = broker; run.broker_container = 'a' * 64; run.broker_port = 1234
+        run.redactions = []; run.receipts = []; run.broker_secret = {}; run.packet = {'brokers': {}}; run.app = object(); run.identities = {}
+        run.stop = mock.Mock(); run.start_broker = mock.Mock(); run.start_app = mock.Mock(); run.bao = mock.Mock()
+        run.recover = mock.Mock(side_effect=AssertionError('unexpected scenario failure'))
+        sequence = iter(range(1, 100)); effects = []; events = []
+        def record(argv, output='', code=0, **fields):
+            run.receipts.append({'argv': argv, 'exitCode': code, 'output': output, 'startedUtc': '2026-11-08T00:00:00+00:00', 'endedUtc': '2026-11-08T00:00:01+00:00', **fields})
+            return code, output
+        def docker(*argv, **kwargs):
+            output = ''
+            if 'list_queues' in argv:
+                output = json.dumps([{'name': PRESSURE_QUEUE, 'policy': PRESSURE_POLICY if effective else '', 'effective_policy_definition': PRESSURE_DEFINITION if effective else {}}])
+            elif 'list_bindings' in argv: output = '[{"source_name":"qualification.events"}]'
+            elif 'list_users' in argv: output = '[{"user":"qualification-v2"}]'
+            elif 'kafka-topics.sh' in ' '.join(map(str, argv)): output = 'qualification.events\nqualification.backpressure\n'
+            elif 'kafka-acls.sh' in ' '.join(map(str, argv)) and '--list' in argv: output = '(principal=User:CN=client, host=*, operation=ALL, permissionType=DENY)'
+            elif 'kafka-get-offsets.sh' in ' '.join(map(str, argv)): output = 'qualification.backpressure:0:4'
+            return record(['docker', *map(str, argv)], output)
+        run.docker = docker
+        if broker == 'rabbitmq':
+            docker('exec', run.broker_container, 'rabbitmqctl', 'set_policy', PRESSURE_POLICY, PRESSURE_PATTERN, json.dumps(PRESSURE_DEFINITION), '--apply-to', 'queues')
+            run.pressure_policy_receipt = len(run.receipts) - 1
+        run.sidecar = mock.Mock(side_effect=lambda *args, **kwargs: (object(), 'http://synthetic/' + str(next(sequence))))
+        def publish(topic='events', event_id=None, data=None, endpoint=None, ttl=None, timeout=5):
+            event_id = 'id-' + str(next(sequence))
+            if endpoint:
+                status = 500
+            elif scenario == 'cancellation-backpressure':
+                status = (204 if len(events) < 4 else 500) if topic == 'backpressure' else 599
+            else: status = 204
+            output = json.dumps({'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'domain': 'dapr.io', 'reason': 'DAPR_PUBSUB_PUBLISH_MESSAGE', 'metadata': {'topic': 'qualification.events', 'error': 'kafka server: The client is not authorized to access this topic' if broker == 'kafka' else 'Exception (403) Reason: "ACCESS_REFUSED"'}}]}) if endpoint else ''
+            if scenario == 'cancellation-backpressure' and status == 500:
+                output = json.dumps({'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'domain': 'dapr.io', 'reason': 'DAPR_PUBSUB_PUBLISH_MESSAGE', 'metadata': {'topic': 'qualification.backpressure', 'error': 'did not receive confirmation of publishing' if broker == 'rabbitmq' else 'kafka server: The throttling quota has been exceeded'}}]})
+            timing = {'elapsedSeconds': .5, 'endedUtc': '2026-11-08T00:00:00.500000+00:00'} if status == 599 else {}
+            record(['HTTP', 'POST', 'http://synthetic/v1.0/publish/pubsub/qualification.' + topic], output, httpStatus=status, input={'id': event_id}, **timing)
+            events.append(event_id)
+            if status < 300 and topic != 'missing-binding': effects.append({'id': event_id, 'messageId': event_id, 'kind': 'effect', 'route': '/events'})
+            return event_id, status
+        run.publish = publish
+        def readback():
+            body = {'kind': 'persisted-application-http-readback', 'stateComponent': 'qualification-state', 'stateReadback': {'status': 200, 'value': list(effects)}, 'ledger': list(effects)}
+            record(['HTTP', 'GET', 'http://synthetic/readback'], json.dumps(body), httpStatus=200)
+            return {**body, 'commandReceipt': len(run.receipts) - 1}
+        run.readback = readback
+        return run
+
+    def testActualScenarioReadbackRecordAndIndependentValidation(self):
+        from dapr_broker_qualification import validate_observations
+        for broker in ('rabbitmq', 'kafka'):
+            for scenario in ('secret-rotation', 'cancellation-backpressure', 'missing-bindings'):
+                with self.subTest(broker=broker, scenario=scenario):
+                    run = self.runner(broker, scenario)
+                    clock = iter(index / 2 for index in range(10000))
+                    with mock.patch.object(self.module, 'SCENARIOS', (scenario,)), mock.patch.object(self.module.time, 'monotonic', side_effect=lambda: next(clock)), mock.patch.object(self.module.time, 'sleep'), mock.patch('builtins.print'):
+                        run.run_broker(broker)
+                    path = run.output / broker / scenario
+                    observation = json.loads((path / 'observation.json').read_text())
+                    self.assertNotIn('blockedBy', observation)
+                    self.assertEqual('FAIL' if scenario == 'missing-bindings' else 'PASS', run.packet['brokers'][broker][scenario]['result'])
+                    validate_observations(scenario, observation, json.loads((path / 'application-readback.json').read_text()), json.loads((path / 'broker-diagnostics.json').read_text()), run.receipts, require_diagnostics=True)
+                    if scenario == 'cancellation-backpressure':
+                        self.assertEqual(9, len(observation['publicationReconciliation']))
+                        self.assertTrue(any(row['httpStatus'] == 599 for row in observation['publicationReconciliation']))
+
+    def testIneffectiveExactQueuePolicyStopsPressureBeforePublishing(self):
+        run = self.runner('rabbitmq', 'cancellation-backpressure', effective=False)
+        run.consumer = object(); run.publisher_url = 'http://synthetic'
+        with self.assertRaisesRegex(RuntimeError, 'not effective on the exact consumer queue'):
+            run.scenario('cancellation-backpressure')
+        self.assertFalse(any(row.get('input') for row in run.receipts))
+
+    def testUnrelatedInspectionCredentialsNeverEnterReceiptsOrFailureText(self):
+        secret = 'unrelated-synthetic-disposable-credential'
+        for mode in ('success', 'failed', 'malformed', 'interrupted'):
+            with self.subTest(mode=mode):
+                run = self.runner('rabbitmq', 'inspection-' + mode); run.receipts = []
+                raw = json.dumps([{'Id': 'c' * 64, 'Name': '/sentinel', 'Config': {'Env': ['PASSWORD=' + secret]}, 'HostConfig': {}, 'Mounts': []}])
+                if mode == 'malformed': raw = '{"credential":"' + secret + '"}'
+                original_loads = json.loads
+                def loads(value, *args, **kwargs):
+                    if mode == 'interrupted' and value == raw: raise KeyboardInterrupt()
+                    return original_loads(value, *args, **kwargs)
+                def execute(argv, **kwargs):
+                    output = raw if argv[1] == 'inspect' else 'c' * 64 if argv[1] == 'ps' else ''
+                    return subprocess.CompletedProcess(argv, 1 if mode == 'failed' and argv[1] == 'inspect' else 0, output)
+                run.docker = lambda *args, **kwargs: run.command(['docker', *args], **kwargs)
+                failure = ''
+                with mock.patch.object(self.module.subprocess, 'run', side_effect=execute), mock.patch.object(self.module.json, 'loads', side_effect=loads):
+                    try: run.inventory()
+                    except (RuntimeError, KeyboardInterrupt) as error: failure = str(error)
+                self.assertNotIn(secret, json.dumps(run.receipts) + failure)
+                inspection = next(row for row in run.receipts if row['argv'][1] == 'inspect')
+                self.assertTrue(inspection['output'].startswith('inspection-sha256:') or 'container:' + 'c' * 64 in inspection['output'])
+                self.assertEqual(0 if mode == 'success' else 1, int(inspection['exitCode'] != 0))
+
+    def testPolicyPatternTargetsOnlyTheMeasuredConsumerQueue(self):
+        import re
+        from dapr_broker_qualification import PRESSURE_QUEUE, PRESSURE_PATTERN
+        self.assertIsNotNone(re.fullmatch(PRESSURE_PATTERN, PRESSURE_QUEUE))
+        for name in ('qualification.backpressure', PRESSURE_QUEUE + '.other', 'unrelated-' + PRESSURE_QUEUE):
+            self.assertIsNone(re.fullmatch(PRESSURE_PATTERN, name))
+
+    def testActualBrokerStartupSelectsTheCorrectCandidatePolicy(self):
+        import re
+        from dapr_broker_qualification import PRESSURE_QUEUE
+        run = self.runner('rabbitmq', 'startup')
+        del run.start_broker
+        run.container = mock.Mock(return_value=run.broker_container); run.broker_ready = mock.Mock()
+        run.refresh_forwarder = mock.Mock(return_value=run.private / 'forwarder')
+        run.process = mock.Mock(return_value=types.SimpleNamespace(poll=lambda: None))
+        run.tcp_ready = mock.Mock(return_value=True)
+        original = run.docker
+        def docker(*args, **kwargs):
+            if args[0] == 'inspect':
+                return 0, json.dumps([{'Id': run.broker_container, 'Image': 'synthetic-image', 'Config': {'Image': run.profile['images']['rabbitmq']['reference']}}])
+            return original(*args, **kwargs)
+        run.docker = docker
+        self.module.Run.start_broker(run, 'rabbitmq')
+        policy = run.receipts[run.pressure_policy_receipt]['argv']
+        self.assertEqual('set_policy', policy[4])
+        self.assertIsNotNone(re.fullmatch(policy[6], PRESSURE_QUEUE))
+
+
 class FollowupRegressionTests(unittest.TestCase):
     setUp = InstalledDockerAdapterTests.setUp
+
+    def testRepeatedSigintAndSigtermCannotInterruptBrokerFinalReconciliation(self):
+        ready = self.root / 'broker-cleanup-ready'; output = self.root / 'broker-signal-output'
+        program = self.root / 'broker-cleanup-signals.py'
+        program.write_text("import importlib.util,os,sys,time,types\nfrom pathlib import Path\n"
+            f"sys.path.insert(0,{str(ROOT / 'tools')!r})\n"
+            f"s=importlib.util.spec_from_file_location('broker',{str(ROOT / 'tools/qualify-dapr-brokers.py')!r});m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
+            "r=m.Run(types.SimpleNamespace(profile=Path(os.environ['QUALIFICATION_PROFILE']),output=Path(os.environ['QUALIFICATION_OUTPUT']),exclusive_worker=None))\n"
+            "r.context='synthetic-only';r.before={'sentinel':'unchanged'};r.docker=lambda *args,**kwargs:(0,'')\n"
+            "def inventory():\n Path(os.environ['CLEANUP_READY']).write_text(str(r.private_parent))\n time.sleep(1)\n return dict(r.before)\n"
+            "r.inventory=inventory\nr.finish()\nraise SystemExit(1)\n")
+        env = {**self.environment, 'QUALIFICATION_PROFILE': str(ROOT / CANDIDATE_PROFILE), 'QUALIFICATION_OUTPUT': str(output), 'CLEANUP_READY': str(ready)}
+        process = subprocess.Popen([sys.executable, '-B', str(program)], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            deadline = time.monotonic() + 10
+            while not ready.exists() and process.poll() is None and time.monotonic() < deadline: time.sleep(.02)
+            self.assertTrue(ready.exists())
+            for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGINT):
+                process.send_signal(signum); time.sleep(.05)
+            stdout, stderr = process.communicate(timeout=10)
+            self.assertEqual(1, process.returncode, stdout + stderr)
+            cleanup = json.loads((output / 'cleanup.json').read_text())
+            self.assertTrue(cleanup['complete']); self.assertTrue(cleanup['privateMaterialRemoved'])
+            self.assertEqual({'sentinel': 'unchanged'}, json.loads((output / 'workspace-after.json').read_text()))
+            self.assertFalse(Path(ready.read_text()).exists())
+        finally:
+            if process.poll() is None: process.kill(); process.wait(timeout=5)
+            process.stdout.close(); process.stderr.close()
+
+    def testForcedRuntimeDescendantsUseAndRemoveParentOwnedTemporaryRoot(self):
+        ready = self.root / 'fixture-temporary-ready'; output = self.root / 'forced-runtime'
+        child = self.root / 'dotnet'
+        child.write_text('#!' + sys.executable + '\nimport json,os,signal,subprocess,sys,tempfile,time\nfrom pathlib import Path\n'
+            "signal.signal(signal.SIGTERM,signal.SIG_IGN)\nwork=Path(tempfile.mkdtemp(prefix='escaped-fixture-'));(work/'fixture-file').write_text('synthetic')\n"
+            "code='import signal,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);time.sleep(60)'\n"
+            "descendant=subprocess.Popen([sys.executable,'-c',code],start_new_session=True)\ntime.sleep(.2)\n"
+            "Path(os.environ['FIXTURE_READY']).write_text(json.dumps({'path':str(work),'descendant':descendant.pid,'temp':{name:os.environ[name] for name in ('TMPDIR','TMP','TEMP')}}))\ntime.sleep(60)\n")
+        child.chmod(0o755)
+        harness = self.root / 'forced-runtime.py'
+        harness.write_text("import importlib.util,os,sys\nfrom pathlib import Path\n"
+            f"sys.path.insert(0,{str(ROOT / 'tools')!r})\n"
+            "from dapr_runtime_qualification import ExclusiveDocker\nfrom dapr_broker_qualification import write_json\n"
+            f"s=importlib.util.spec_from_file_location('runtime',{str(ROOT / 'tools/qualify-dapr-runtime.py')!r});m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
+            "original=importlib.util.spec_from_file_location\n"
+            "def prepare(self):\n self.docker_owner=ExclusiveDocker(self.command,self.args.exclusive_worker);self.docker_owner.capture();self.context=self.docker_owner.endpoint\n self.before=self.inventory();write_json(self.output/'workspace-before.json',self.before)\n self.docker('pull',self.profile['openbao']['reference'])\n self.daprd=self.private/'synthetic-daprd';self.daprd.write_text('synthetic')\n self.placement='127.0.0.1:12345';self.scheduler='127.0.0.1:12346'\n for name in ('placement','scheduler'):(self.private/name).write_text('synthetic')\n"
+            "def spec(*args,**kwargs):\n value=original(*args,**kwargs);execute=value.loader.exec_module\n def load(module):\n  execute(module);module.Run.prepare=prepare;module.Run.published_port=lambda *args:1234;module.Run.wait=lambda *args,**kwargs:None\n value.loader.exec_module=load\n return value\n"
+            "importlib.util.spec_from_file_location=spec\nsys.argv=['runtime','--profile',os.environ['QUALIFICATION_PROFILE'],'--exclusive-worker',os.environ['QUALIFICATION_EXCLUSIVE_WORKER'],'--output',os.environ['QUALIFICATION_OUTPUT'],'--assembly','synthetic.dll','--class','*Fixture']\nraise SystemExit(m.main())\n")
+        env = {**self.environment, 'PATH': str(self.root) + os.pathsep + os.environ['PATH'], 'QUALIFICATION_PROFILE': str(ROOT / CANDIDATE_PROFILE), 'QUALIFICATION_EXCLUSIVE_WORKER': str(self.lease), 'QUALIFICATION_OUTPUT': str(output), 'FIXTURE_READY': str(ready)}
+        process = subprocess.Popen([sys.executable, '-B', str(harness)], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            deadline = time.monotonic() + 10
+            while not ready.exists() and process.poll() is None and time.monotonic() < deadline: time.sleep(.02)
+            self.assertTrue(ready.exists())
+            fixture = json.loads(ready.read_text()); temporary = Path(fixture['path']); private = temporary.parent.parent
+            self.assertTrue(temporary.is_relative_to(private / 'child-tmp')); self.assertTrue(temporary.is_dir())
+            self.assertEqual({str(private / 'child-tmp')}, set(fixture['temp'].values()))
+            process.terminate(); stdout, stderr = process.communicate(timeout=15)
+            self.assertEqual(1, process.returncode, stdout + stderr)
+            result = json.loads((output / 'regression-results.json').read_text())
+            self.assertTrue(result['cleanupComplete'], result)
+            self.assertFalse(private.exists()); self.assertFalse(Path('/proc/' + str(fixture['descendant'])).exists())
+            self.assertEqual({}, json.loads(self.state.read_text())['resources'])
+        finally:
+            if process.poll() is None: process.kill(); process.wait(timeout=5)
+            process.stdout.close(); process.stderr.close()
 
     def testOpenBaoNonrootEntrypointFailureAndSupportedSetup(self):
         spec = importlib.util.spec_from_file_location('openbao_startup', ROOT / 'tools/qualify-dapr-brokers.py')

@@ -51,6 +51,7 @@ class BrokerQualificationTests(unittest.TestCase):
         self.temporary.cleanup()
 
     def scenario(self, broker, scenario):
+        candidate = getattr(self, "candidate_diagnostics", False)
         event_id = broker + "-" + scenario
         observation = {
             "broker": broker, "scenario": scenario, "messageId": event_id,
@@ -85,10 +86,48 @@ class BrokerQualificationTests(unittest.TestCase):
             self.commands.append({"argv": argv, "startedUtc": "2026-10-20T00:00:00+00:00", "endedUtc": "2026-10-20T00:00:01+00:00", "exitCode": 0, "output": "", **fields})
             return len(self.commands) - 1
         def publish(message_id, status):
-            receipt(["HTTP", "POST", "http://127.0.0.1:1234/v1.0/publish/pubsub/qualification.events"], httpStatus=status, input={"id": message_id})
+            return receipt(["HTTP", "POST", "http://127.0.0.1:1234/v1.0/publish/pubsub/qualification.events"], httpStatus=status, input={"id": message_id})
+        def docker(*arguments, output=""):
+            return receipt(["docker", "exec", "owned-synthetic", *arguments], output=output)
+        def state():
+            return [docker("/opt/kafka/bin/kafka-get-offsets.sh", "--topic", "qualification.backpressure", "--time", when, output="qualification.backpressure:0:1") for when in ("earliest", "latest")] + [docker("/opt/kafka/bin/kafka-consumer-groups.sh", "--describe", "--group", "qualification-consumer")]
+        def bindings():
+            return docker("rabbitmqctl", "list_bindings", "source_name", "--formatter=json", output='[{"source_name":"qualification.events"}]') if broker == "rabbitmq" else docker("/opt/kafka/bin/kafka-topics.sh", "--list", output="qualification.events\nqualification.backpressure\n")
+        if candidate and scenario == "cancellation-backpressure":
+            from dapr_broker_qualification import PRESSURE_QUEUE, PRESSURE_POLICY, PRESSURE_PATTERN, PRESSURE_DEFINITION
+            observation.update(diagnosticVersion=1, brokerStateReceipts={}, consumerGroupStates={}, rejectedConfirmReceipts=[])
+            if broker == "rabbitmq":
+                observation["policyObservation"] = {"policyReceipt": docker("rabbitmqctl", "set_policy", PRESSURE_POLICY, PRESSURE_PATTERN, json.dumps(PRESSURE_DEFINITION), "--apply-to", "queues"),
+                    "queueReceipt": docker("rabbitmqctl", "list_queues", "name", "policy", "effective_policy_definition", "--formatter=json", output=json.dumps([{"name": PRESSURE_QUEUE, "policy": PRESSURE_POLICY, "effective_policy_definition": PRESSURE_DEFINITION}]))}
+            else:
+                observation["brokerStateReceipts"]["before"] = state()
+        if candidate and scenario == "missing-bindings":
+            observation.update(diagnosticVersion=1, bindingObservation={"beforeReceipt": bindings()})
         publish(event_id, 200)
-        for suffix, status in (("stale", 500), ("app", 403), ("topic", 403), ("unbound", 500), ("cancelled", 599), ("rejected", 500)):
-            publish(event_id + "-" + suffix, status)
+        if candidate and scenario == "secret-rotation":
+            if broker == "rabbitmq":
+                revocations = [docker("rabbitmqctl", "delete_user", "qualification")]
+                state_receipt = docker("rabbitmqctl", "list_users", "--formatter=json", output='[{"user":"qualification-v2"}]')
+            else:
+                revocations = [docker("/opt/kafka/bin/kafka-acls.sh", "--add", "--deny-principal", "User:CN=client", "--operation", "All", "--topic", "qualification.events")]
+                state_receipt = docker("/opt/kafka/bin/kafka-acls.sh", "--list", "--topic", "qualification.events", output="(principal=User:CN=client, host=*, operation=ALL, permissionType=DENY)")
+            observation.update(diagnosticVersion=1, newPublishStatus=200, denialObservation={"revocationReceipts": revocations, "stateReceipt": state_receipt})
+        for suffix, status in (("stale", 500), ("app", 403), ("topic", 403), ("unbound", 500), ("rejected", 500), ("cancelled", 599)):
+            index = publish(event_id + "-" + suffix, status)
+            if candidate and scenario == "cancellation-backpressure":
+                if suffix == "cancelled": self.commands[index]["elapsedSeconds"] = 1
+                if suffix == "rejected":
+                    self.commands[index]["output"] = json.dumps({"details": [{"@type": "type.googleapis.com/google.rpc.ErrorInfo", "domain": "dapr.io", "reason": "DAPR_PUBSUB_PUBLISH_MESSAGE", "metadata": {"topic": "qualification.backpressure", "error": "did not receive confirmation of publishing" if broker == "rabbitmq" else "kafka server: The throttling quota has been exceeded"}}]})
+                    observation["rejectedConfirmReceipts"].append(index)
+            if candidate and scenario == "secret-rotation" and suffix == "stale":
+                observation["denialObservation"]["publicationReceipt"] = index
+                self.commands[index]["output"] = json.dumps({"details": [{"@type": "type.googleapis.com/google.rpc.ErrorInfo", "domain": "dapr.io", "reason": "DAPR_PUBSUB_PUBLISH_MESSAGE", "metadata": {"topic": "qualification.events", "error": "kafka server: The client is not authorized to access this topic" if broker == "kafka" else 'Exception (403) Reason: "ACCESS_REFUSED"'}}]})
+            if candidate and scenario == "cancellation-backpressure" and broker == "kafka" and suffix in ("rejected", "cancelled"):
+                observation["brokerStateReceipts"]["afterPublish" if suffix == "rejected" else "afterReadback"] = state()
+        if candidate and scenario == "missing-bindings":
+            observation["bindingObservation"]["afterReceipt"] = bindings()
+        if candidate and scenario == "cancellation-backpressure":
+            observation["consumerGroupStates"] = {phase: False for phase in observation["brokerStateReceipts"]}
         observation["restartReceipt"] = receipt(["docker", "restart", "owned-synthetic"])
         observation["offsetReceipts"] = [receipt(["docker", "exec", "owned-synthetic", "kafka-get-offsets.sh"], output="qualification.expiry:0:1")]
         observation["quotaReceipt"] = receipt(["docker", "exec", "owned-synthetic", "kafka-configs.sh", "--entity-name", "qualification", "--add-config", "producer_byte_rate=1024"])
@@ -96,6 +135,10 @@ class BrokerQualificationTests(unittest.TestCase):
         receipt(["daprd", "--app-id", "qualification-consumer"], output="not allowed qualification.quarantine-denied")
         receipt(["daprd", "--resources-path", observation["negativeResourceDirectory"]], exitCode=1, output="certificate rejected")
         body = {"kind": "persisted-application-http-readback", "stateComponent": "qualification-state", "stateReadback": {"status": 200, "value": effects, "etag": "synthetic"}, "ledger": receipts + effects}
+        if candidate and scenario in ("secret-rotation", "cancellation-backpressure"):
+            from dapr_broker_qualification import reconcile_publications
+            publications = [{"id": event_id, "status": 200}, {"id": observation["staleMessageId"], "status": 500}] if scenario == "secret-rotation" else [*observation["publishResults"], {"id": observation["cancelledMessageId"], "status": 599}]
+            observation.update(boundedObservationOnly=True, publicationReconciliation=reconcile_publications(publications, body))
         readback = {**body, "commandReceipt": len(self.commands)}
         self.commands.append({"argv": ["HTTP", "GET", "http://127.0.0.1:1234/readback"], "startedUtc": "2026-10-20T00:00:00+00:00", "endedUtc": "2026-10-20T00:00:01+00:00", "exitCode": 0, "httpStatus": 200, "output": json.dumps(body)})
         diagnostic = {"kind": "broker-administration-diagnostic", "exitCode": 0, "output": "synthetic diagnostic", "commandReceipt": len(self.commands)}

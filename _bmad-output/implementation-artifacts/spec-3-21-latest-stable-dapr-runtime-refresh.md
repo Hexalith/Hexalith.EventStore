@@ -120,6 +120,32 @@ qualification or parent-story completion. Status remains `in-progress`.
 
 ## Review Triage Log
 
+Local broker follow-up review (2026-11-08): all three required layers completed;
+verification-gap reported no findings and independently passed 116 tests. Each
+finding below was checked against the actual producer/validator and existing
+triage; none repeats a previously resolved claim at the same location.
+
+| Finding | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| F-B1 | high | patch | Run.command stores raw inventory inspection output before Run.inventory hashes it; interrupted or malformed inspection can seal unrelated environment credentials. Transform inspection output before receipt persistence. |
+| F-B2 | high | patch | owned_docker_operation validates the journal ID but invokes the original supplied name; a replacement name can redirect the mutation. Execute verified immutable container/network IDs. |
+| F-B3 | high | patch | The runtime wrapper does not constrain child temporary directories; forced fixture termination can leave transport credentials outside its reconciled private tree. Place child temporary roots inside parent-owned private custody. |
+| F-B4 | high | patch | Run.finish ignores SIGTERM only; a real SIGINT aborts reconciliation before cleanup.json and may retain credentials/resources. Suppress repeated cancellation throughout cleanup. |
+| F-B5 | medium | patch | Candidate cleanup validation accepts an explicitly false privateMaterialRemoved field while returning technical PASS. Require completed private cleanup in candidate receipts. |
+| F-B6 | medium | patch | A newly created extraction container can appear in the command-bound final inventory while an empty ownedResourcesRemaining claim is accepted. Cross-check successful creation IDs against final observed resources. |
+| F-B7 | medium | patch | Selected control-plane binaries and launch ports are measured but sidecar endpoint flags are not cross-checked; the positive fixture omits sidecar launches entirely. Bind selected sidecar endpoints to measured control launches. |
+| F-B8 | medium | patch | Any HTTP 4xx/5xx pressure response currently establishes negativeConfirmRejected, including an unrelated generic failure. Require attributable pressure/rejected-confirm evidence for selected diagnostics; timeout remains uncertain. |
+| F-B9 | medium | patch | boundedSeconds is trusted despite a contradictory 60-second cancellation publication receipt. Cross-check the actual cancellation execution window and reject invalid bounds. |
+| F-B10 | medium | patch | Kafka native pressure receipts accept empty earliest/latest output as complete snapshots. Parse expected topic/partition offsets and explicitly retain unavailable group state. |
+| F-E1 | high | patch | Independent synthetic reproduction confirms F-B4: SIGINT exits standalone cleanup with code -2, private material remaining and no cleanup receipt. Same root cause as F-B4. |
+| F-E2 | medium | patch | ExclusiveDocker.capture strips DOCKER_CONFIG when resolving context, rejecting an otherwise valid lease selected through a custom config. Preserve non-selector Docker configuration while removing endpoint overrides. |
+
+All surviving findings use existing private custody, command observations and
+selected-candidate contracts; no intent change or public surface is required.
+F-B4/F-E1 share one correction. Frozen intent, historical interpretation and
+explicitly unresolved live qualification remain unchanged.
+
+
 | Finding | Verdict | Route | Evidence |
 | --- | --- | --- | --- |
 | R3-B1 | high | patch | Runtime Redis is created without an explicit pull although local image inspection is now required; selected admission also lacks image preparation. Fresh worker launch is blocked. |
@@ -663,3 +689,140 @@ Raw rerun output remains under `/tmp/story-3-21-ci-20261108-f35zYG/rerun/` and i
 the linked CI artifacts. Historical failures remain unchanged. The shared local
 daemon was not mutated. Broker qualification is incomplete; no broker is selected,
 production eligibility remains FAIL, and Story 3.21 remains `in-progress`.
+
+### Local broker diagnostic follow-up — 2026-11-08
+
+At HEAD `7e71da06f7eab737b92217c6e941fed47bad49f1`, corrected the selected
+RabbitMQ pressure policy to the exact
+`qualification-consumer-qualification.backpressure` queue. A new capture requires
+the queue's measured effective reject-publish/max-length policy before pressure.
+Selected missing-binding checks now measure physical RabbitMQ bindings or Kafka
+topics before and after publication, beside a known positive control. They no
+longer set physical absence unconditionally.
+
+Versioned selected rotation diagnostics bind administrative user/ACL readback and
+revocation commands to the stale publication. Only an attributable typed broker
+authorization response can establish denial; generic HTTP 500 and timeout remain
+failures. Rotation and pressure reconcile every exact publication ID, including
+rejected and canceled requests, against the same retained bounded Dapr readback.
+Kafka pressure also retains command-bound native offset/consumer-commit snapshots
+before publication, after publication and after the readback window. The independent
+validator recomputes these observations and rejects omitted, substituted or reordered
+diagnostics. Original schema-1 interpretation and default runtime selection remain
+unchanged; the corrected policy and new diagnostic requirements apply to the
+explicitly selected candidate.
+
+| Local command / check | Result |
+| --- | --- |
+| `python3 -B -m unittest discover -s tools/tests -p 'test_dapr*qualification.py'` | **116/116 PASS**, 23.307 seconds; includes real producer scenario/readback/record execution for all three changed scenarios on both fake brokers, ineffective-policy refusal, and resealed diagnostic-corruption controls |
+| `python3 -B -m unittest discover -s tools/tests -p test_qualify_internal_actor_admission.py` | **11/11 PASS** |
+| `python3 -B -m unittest discover -s tools/tests -p test_route_catalog_ci_tools.py` | **6/6 PASS** |
+| `actionlint .github/workflows/dapr-broker-qualification.yml .github/workflows/dapr-runtime-qualification.yml`; `git diff --check` | PASS |
+| Original/candidate source and protected-subject audit | All **19 historical / 75 candidate** hashes match; original lock, sealed files, frozen intent and gitlinks preserved. Only the five changed candidate input hashes were refreshed; all other candidate lock fields remain unchanged. Candidate lock SHA-256: `f5248675a6aa73dab5ba3ebefd1708a28eb3d1d4b7e4f28858fa743d6994fadf`. |
+
+With the isolated verified tools and `QUALIFICATION_EXCLUSIVE_WORKER` unset, the
+fresh candidate producer at `/tmp/story-3-21-broker-followup-o2xe_2qy/blocked`
+exits 1 and retains all 24 infrastructure-blocked vectors. Independent validation
+exits 0 with `--allow-failures`, 1 without flags and 1 with
+`--require-production-authority`: integrity PASS, technical qualification FAIL,
+production eligibility FAIL. Cleanup completes with no owned resources remaining;
+only Docker context/daemon identity reads execute. Commands and raw local output
+remain outside the repository under `/tmp/story-3-21-broker-followup-o2xe_2qy/`.
+No C# source changed, so this slice did not rerun unchanged C# builds/tests.
+
+These changes have not run on an accepted live worker or in hosted CI. The prior
+21/24 standalone and 19/24 fixture results remain historical failures on their
+original subjects. Remaining rotation gaps include a cold stale-credential sidecar
+and actual Kafka authenticated-principal/session evidence; administrative ACL/user
+snapshots alone do not prove these. Native aggregate offsets/commits do not yet map
+every exact ID to its broker offset. Delayed effects, RabbitMQ negative-confirm
+behavior and missing-binding rejection still need fresh live diagnosis; a bounded
+missing effect never proves absence. Builds/Platform, Kubernetes/restore,
+independent sharding/PF-02/Azure and Story 4.16 handoffs remain pending. No remote
+operation, Git mutation, publication, shared-AppHost start or shared Docker mutation
+was performed. Qualification remains incomplete, selected broker null, production
+eligibility FAIL and Story 3.21 `in-progress`.
+
+
+### Final parent verification after follow-up review — 2026-11-08
+
+All three review layers completed. Every F-B1–F-B10/F-E1–F-E2 finding above
+was resolved locally; F-B4/F-E1 share one correction. Nothing was deferred.
+The parent read the corrective diff and independently checked the patched
+producer, validator, custody helper, wrapper and new regression controls.
+
+- Inspection output and error text are transformed before receipt persistence,
+  including failed, malformed and interrupted inventory capture. Container/network
+  mutations use verified immutable IDs. `DOCKER_CONFIG` is preserved when resolving
+  context, while endpoint overrides remain removed.
+- Child temporary directories live inside parent private custody. Repeated
+  SIGINT/SIGTERM cannot interrupt broker cleanup. Candidate verification rejects
+  private material remaining, created containers in the final inventory, missing
+  sidecar launches and control endpoints that differ from measured native launches.
+- Selected pressure proof requires attributable typed broker rejection; a generic
+  error or `context deadline exceeded` remains uncertain. Cancellation bounds are
+  checked against monotonic and UTC publication measurements. Kafka snapshots
+  require valid partition-0 offsets and explicitly record unavailable group state.
+  The exact Kafka error string was checked against the pinned
+  [Sarama v1.60.0 primary source](https://github.com/IBM/sarama/blob/v1.60.0/errors.go#L435-L436).
+
+The final parent commands and results at unchanged HEAD
+`7e71da06f7eab737b92217c6e941fed47bad49f1` are:
+
+| Command / audit | Final result |
+| --- | --- |
+| `python3 -B -m unittest discover -s tools/tests -p 'test_dapr*qualification.py'` | **128/128 PASS**, 29.742 seconds; zero skipped |
+| `python3 -B -m unittest discover -s tools/tests -p test_qualify_internal_actor_admission.py` | **11/11 PASS** |
+| `python3 -B -m unittest discover -s tools/tests -p test_route_catalog_ci_tools.py` | **6/6 PASS** |
+| `actionlint .github/workflows/dapr-broker-qualification.yml .github/workflows/dapr-runtime-qualification.yml`; `git diff --check` | PASS |
+| Hash/protected-subject audit | All **19 historical / 75 candidate** inputs match. Original lock, frozen intent, sealed files, gitlinks and non-input candidate fields remain unchanged. Seven changed candidate input hashes were refreshed. |
+
+Candidate lock SHA-256 is
+`23fd18e0303e38eaf3b7eeeafe0dd8954fa669d4def69a85f0f1864e17d7d5c9`.
+Parent logs/audits are external at `/tmp/story-3-21-parent-review-oohwua0a/`;
+implementation-side targeted review tests passed 87/87 and are retained under
+`/tmp/story-3-21-broker-followup-o2xe_2qy/review-fixes/`.
+
+Matrix audit: the executed suite covers approved/corrupt candidate identities;
+original locks/schema/default interpretation; worker/context/endpoint/socket/daemon
+custody; startup, actual repeated cancellation, escaped descendants, private
+cleanup, immutable mutation targets and full sentinel preservation; and blocked,
+rejected, empty/skipped/failed/passing result adjudication. New controls also exercise
+the producer scenario/readback/record path for all three changed scenarios on both
+fake brokers. These are deterministic controls, never live broker proof. C# sources
+are unchanged, so earlier C# build/live receipts remain historical and were not rerun.
+
+With the isolated verified tools and `QUALIFICATION_EXCLUSIVE_WORKER` unset:
+
+```bash
+python3 -B tools/qualify-dapr-brokers.py --profile deploy/dapr/qualification/runtime-lock-1.19.1.json --output /tmp/story-3-21-parent-review-oohwua0a/final-blocked
+python3 -B tools/validate-dapr-broker-qualification.py /tmp/story-3-21-parent-review-oohwua0a/final-blocked --allow-failures
+python3 -B tools/validate-dapr-broker-qualification.py /tmp/story-3-21-parent-review-oohwua0a/final-blocked
+python3 -B tools/validate-dapr-broker-qualification.py /tmp/story-3-21-parent-review-oohwua0a/final-blocked --require-production-authority
+```
+
+Exit codes are respectively **1, 0, 1, 1**. All 24 vectors retain the missing
+exclusive-worker blocker. Integrity passes; technical qualification and production
+eligibility fail. Only context/daemon reads execute; cleanup is complete, no owned
+resources remain, private material is removed and unrelated specifications are
+preserved. No new CI run exists for the final source/lock.
+
+The earlier live failures and remaining cold-old-generation, authenticated
+principal/session, exact-ID-to-offset, Platform/Builds/Kubernetes/restore and
+Story 4.16 gaps remain open. The approved constraints forbid Git mutations and
+shared-worker execution, so the generic done/commit transition is not applied.
+The spec and parent sprint row remain `in-progress`, selected broker stays null,
+and production eligibility stays FAIL. The concrete local fixes are ready for a
+separately authorized commit/push and fresh hosted qualification. No Git mutation,
+CI dispatch, publication, shared-AppHost start or shared Docker resource
+mutation was performed in this run.
+
+
+### Authorization for the reviewed follow-up commit and hosted rerun
+
+The user explicitly authorized committing/pushing the reviewed local diagnostic
+fixes and rerunning both existing qualification workflows (`yes`). This overrides
+the Git/remote-operation prohibition only for those concrete changes and runs.
+It grants no broker selection, production change, new publication authority,
+Platform/Builds change or story-completion claim. The candidate lock remains
+`23fd18e0303e38eaf3b7eeeafe0dd8954fa669d4def69a85f0f1864e17d7d5c9`.

@@ -5,6 +5,7 @@ import io
 import tarfile
 import hashlib
 import json
+import math
 import re
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,88 @@ SCENARIOS = (
 BROKERS = ("rabbitmq", "kafka")
 SHA = re.compile(r"^[a-f0-9]{64}$")
 IMAGE = re.compile(r"^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$")
+PRESSURE_QUEUE = "qualification-consumer-qualification.backpressure"
+PRESSURE_POLICY = "qualification-bounded"
+PRESSURE_PATTERN = "^" + re.escape(PRESSURE_QUEUE) + "$"
+PRESSURE_DEFINITION = {"overflow": "reject-publish", "max-length": 4}
+
+
+def rabbitmq_pressure_effective(output: str) -> bool:
+    """Require the actual queue's effective policy, rather than a policy command success."""
+    rows = [row for row in json.loads(output) if row.get("name") == PRESSURE_QUEUE]
+    if len(rows) != 1:
+        return False
+    definition = rows[0].get("effective_policy_definition", {})
+    if isinstance(definition, list):
+        definition = dict(definition)
+    return isinstance(definition, dict) and rows[0].get("policy") == PRESSURE_POLICY and all(definition.get(key) == value for key, value in PRESSURE_DEFINITION.items())
+
+
+def missing_binding_absent(broker: str, output: str) -> bool:
+    """Observe physical absence beside a positive existing topic/binding control."""
+    if broker == "rabbitmq":
+        rows = json.loads(output)
+        if not isinstance(rows, list) or not all(isinstance(row, dict) and "source_name" in row for row in rows):
+            raise ValueError("missing-bindings: invalid RabbitMQ binding inventory")
+        topics = {row["source_name"] for row in rows}
+    else:
+        topics = set(output.splitlines())
+    if "qualification.events" not in topics:
+        raise ValueError("missing-bindings: positive physical binding/topic control is absent")
+    return "qualification.missing-binding" not in topics
+
+
+def attributable_denial(broker: str, publication: dict) -> bool:
+    """A transport failure or generic HTTP 500 never establishes broker authorization denial."""
+    if not 400 <= publication["httpStatus"] < 599:
+        return False
+    try:
+        response = json.loads(publication["output"])
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(response, dict) or not isinstance(response.get("details"), list):
+        return False
+    for detail in response.get("details", []):
+        if (detail.get("@type") != "type.googleapis.com/google.rpc.ErrorInfo" or detail.get("domain") != "dapr.io"
+                or detail.get("reason") != "DAPR_PUBSUB_PUBLISH_MESSAGE" or detail.get("metadata", {}).get("topic") != "qualification.events"):
+            continue
+        error = detail["metadata"].get("error", "")
+        if broker == "kafka" and error == "kafka server: The client is not authorized to access this topic":
+            return True
+        if broker == "rabbitmq" and re.search(r"Exception \(403\).*ACCESS_REFUSED", error):
+            return True
+    return False
+
+
+def pressure_rejection(broker: str, publication: dict) -> bool:
+    """Only explicit broker pressure/negative-confirm errors count; timeouts stay uncertain."""
+    if not 400 <= publication.get("httpStatus", 599) < 599:
+        return False
+    try:
+        response = json.loads(publication.get("output", ""))
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(response, dict) or not isinstance(response.get("details"), list):
+        return False
+    expected = "did not receive confirmation of publishing" if broker == "rabbitmq" else "kafka server: The throttling quota has been exceeded"
+    return any(isinstance(detail, dict) and detail.get("@type") == "type.googleapis.com/google.rpc.ErrorInfo"
+        and detail.get("domain") == "dapr.io" and detail.get("reason") == "DAPR_PUBSUB_PUBLISH_MESSAGE"
+        and detail.get("metadata", {}).get("topic") == "qualification.backpressure"
+        and detail["metadata"].get("error") == expected for detail in response["details"])
+
+
+def kafka_group_available(command: dict) -> bool:
+    """An empty/missing group response is recorded explicitly as unavailable."""
+    output = command.get("output", "")
+    return command.get("exitCode") == 0 and "CURRENT-OFFSET" in output and "LOG-END-OFFSET" in output and bool(re.search(
+        r"^qualification-consumer\s+qualification[.]backpressure\s+[0-9]+\s+[0-9]+\s+[0-9]+\s+", output, re.M))
+
+
+def reconcile_publications(publications: list, readback: dict) -> list:
+    """Retain exact IDs, including uncertain/rejected requests, against one bounded Dapr readback."""
+    return [{"id": row["id"], "httpStatus": row["status"],
+             "receiptCount": sum(item["id"] == row["id"] and item["kind"] == "receipt" for item in readback["ledger"]),
+             "effectCount": sum(item["id"] == row["id"] and item["kind"] == "effect" for item in readback["ledger"])} for row in publications]
 
 
 def digest(path: Path) -> str:
@@ -151,7 +234,7 @@ def evaluate(scenario: str, observation: dict) -> bool:
     raise ValueError(f"unknown scenario: {scenario}")
 
 
-def validate_observations(scenario: str, observation: dict, readback: dict, diagnostic: dict, commands: list) -> None:
+def validate_observations(scenario: str, observation: dict, readback: dict, diagnostic: dict, commands: list, *, require_diagnostics: bool = False) -> None:
     """Bind producer counters to retained HTTP/Dapr state bytes and broker commands."""
     if observation.get("blockedBy"):
         return
@@ -233,7 +316,8 @@ def validate_observations(scenario: str, observation: dict, readback: dict, diag
     if scenario == "secret-rotation":
         stale_id = observation["staleMessageId"]
         status = publication(stale_id)["httpStatus"]
-        denied = 400 <= status < 599 and not any(row["id"] == stale_id and row["kind"] == "effect" for row in ledger)
+        rejection = attributable_denial(observation["broker"], publication(stale_id)) if observation.get("diagnosticVersion") == 1 else 400 <= status < 599
+        denied = rejection and not any(row["id"] == stale_id and row["kind"] == "effect" for row in ledger)
         if observation["oldGenerationDenied"] != denied or observation["stalePublishStatus"] != status:
             raise ValueError("secret-rotation: old-generation denial contradicts receipts")
     if scenario == "cancellation-backpressure":
@@ -242,7 +326,7 @@ def validate_observations(scenario: str, observation: dict, readback: dict, diag
             raise ValueError("cancellation-backpressure: status contradicts HTTP receipt")
         loss = sum(row["status"] < 300 and not any(effect["id"] == row["id"] for effect in effects) for row in results)
         cancelled = publication(observation["cancelledMessageId"])["httpStatus"] == 599
-        rejected = any(400 <= row["status"] < 599 for row in results)
+        rejected = any(pressure_rejection(observation["broker"], publication(row["id"])) for row in results) if observation.get("diagnosticVersion") == 1 else any(400 <= row["status"] < 599 for row in results)
         if observation["acknowledgedLoss"] != loss or observation["cancelled"] != cancelled or observation["negativeConfirmRejected"] != rejected:
             raise ValueError("cancellation-backpressure: loss/cancellation contradicts receipts")
         if observation["broker"] == "kafka":
@@ -259,6 +343,115 @@ def validate_observations(scenario: str, observation: dict, readback: dict, diag
         replay = sum(row["kind"] == "receipt" for row in rows) > observation["beforeReplayReceiptCount"]
         if observation["brokerRetentionObserved"] != (native_expiry and replay):
             raise ValueError("retention-expiry: native Kafka evidence contradicts claim")
+    if require_diagnostics or "diagnosticVersion" in observation:
+        validate_scenario_diagnostics(scenario, observation, readback, diagnostic, commands)
+
+
+def validate_scenario_diagnostics(scenario: str, observation: dict, readback: dict, diagnostic: dict, commands: list) -> None:
+    """Versioned candidate diagnostics never change original packet interpretation."""
+    if scenario not in ("secret-rotation", "cancellation-backpressure", "missing-bindings"):
+        return
+    if observation.get("diagnosticVersion") != 1:
+        raise ValueError(f"{scenario}: missing versioned broker diagnostics")
+    broker = observation["broker"]
+    target = commands[diagnostic["commandReceipt"]]["argv"][:3]
+
+    def command(index, *arguments, successful=True):
+        if type(index) is not int or not 0 <= index < len(commands):
+            raise ValueError(f"{scenario}: missing diagnostic command binding")
+        row = commands[index]
+        if row["argv"][:3] != target or target[:2] != ["docker", "exec"] or any(item not in row["argv"][3:] for item in arguments) or (successful and row["exitCode"] != 0):
+            raise ValueError(f"{scenario}: wrong broker diagnostic command")
+        return row
+
+    def publish_index(event_id):
+        matches = [index for index, row in enumerate(commands) if row.get("argv", [""])[0] == "HTTP" and "/publish/" in row["argv"][-1] and row.get("input", {}).get("id") == event_id]
+        if len(matches) != 1:
+            raise ValueError(f"{scenario}: ambiguous diagnostic publication binding")
+        return matches[0]
+
+    if scenario == "missing-bindings":
+        evidence = observation["bindingObservation"]
+        indexes = [evidence["beforeReceipt"], evidence["afterReceipt"]]
+        arguments = ("rabbitmqctl", "list_bindings", "source_name", "--formatter=json") if broker == "rabbitmq" else ("/opt/kafka/bin/kafka-topics.sh", "--list")
+        absent = [missing_binding_absent(broker, command(index, *arguments)["output"]) for index in indexes]
+        if not indexes[0] < publish_index(observation["unboundMessageId"]) < indexes[1] or observation["bindingAbsent"] != all(absent):
+            raise ValueError("missing-bindings: physical absence contradicts observed inventories")
+        return
+    if scenario == "secret-rotation":
+        evidence = observation["denialObservation"]
+        index = publish_index(observation["staleMessageId"])
+        if evidence["publicationReceipt"] != index:
+            raise ValueError("secret-rotation: stale denial publication binding differs")
+        revocations = evidence["revocationReceipts"]
+        if not revocations or not all(type(item) is int and item < evidence["stateReceipt"] < index for item in revocations):
+            raise ValueError("secret-rotation: revocation command order is absent")
+        if broker == "rabbitmq":
+            for item in revocations:
+                command(item, "rabbitmqctl", "delete_user", "qualification")
+            state = command(evidence["stateReceipt"], "rabbitmqctl", "list_users", "--formatter=json")
+            users = {row["user"] for row in json.loads(state["output"])}
+            revoked = "qualification" not in users and "qualification-v2" in users
+        else:
+            for item in revocations:
+                command(item, "/opt/kafka/bin/kafka-acls.sh", "--add", "--deny-principal", "User:CN=client", "--operation", "All", "--topic")
+            state = command(evidence["stateReceipt"], "/opt/kafka/bin/kafka-acls.sh", "--list", "--topic", "qualification.events")
+            revoked = bool(re.search(r"principal=User:CN=client,\s*host=\*,\s*operation=ALL,\s*permissionType=DENY", state["output"]))
+        if not revoked:
+            raise ValueError("secret-rotation: broker revocation state is unobserved")
+        publications = [{"id": observation["messageId"], "status": observation["newPublishStatus"]},
+                        {"id": observation["staleMessageId"], "status": observation["stalePublishStatus"]}]
+    else:
+        publications = [*observation["publishResults"], {"id": observation["cancelledMessageId"], "status": commands[publish_index(observation["cancelledMessageId"])]["httpStatus"]}]
+        cancellation = commands[publish_index(observation["cancelledMessageId"])]
+        elapsed = cancellation.get("elapsedSeconds")
+        bound = observation.get("boundedSeconds")
+        wall = (datetime.fromisoformat(cancellation["endedUtc"]) - datetime.fromisoformat(cancellation["startedUtc"])).total_seconds()
+        if (any(type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 10 for value in (elapsed, bound, wall))
+                or abs(bound - elapsed) > .25 or abs(bound - wall) > .25):
+            raise ValueError("cancellation-backpressure: cancellation bound contradicts actual publication execution")
+        rejected = [publish_index(row["id"]) for row in observation["publishResults"] if pressure_rejection(broker, commands[publish_index(row["id"])])]
+        if observation.get("rejectedConfirmReceipts") != rejected:
+            raise ValueError("cancellation-backpressure: broker rejected-confirm evidence differs")
+        if broker == "rabbitmq":
+            evidence = observation["policyObservation"]
+            policy = command(evidence["policyReceipt"], "rabbitmqctl", "set_policy", PRESSURE_POLICY, PRESSURE_PATTERN, "--apply-to", "queues")
+            position = policy["argv"].index(PRESSURE_PATTERN) + 1
+            queue = command(evidence["queueReceipt"], "rabbitmqctl", "list_queues", "name", "policy", "effective_policy_definition", "--formatter=json")
+            if (json.loads(policy["argv"][position]) != PRESSURE_DEFINITION or not rabbitmq_pressure_effective(queue["output"])
+                    or not evidence["policyReceipt"] < evidence["queueReceipt"] < publish_index(publications[0]["id"])):
+                raise ValueError("cancellation-backpressure: exact queue policy was not observed before pressure")
+        else:
+            states = observation["brokerStateReceipts"]
+            if set(states) != {"before", "afterPublish", "afterReadback"}:
+                raise ValueError("cancellation-backpressure: incomplete native offset/commit snapshots")
+            for phase in ("before", "afterPublish", "afterReadback"):
+                indexes = states[phase]
+                if len(indexes) != 3:
+                    raise ValueError("cancellation-backpressure: incomplete native offset/commit snapshots")
+                offsets = []
+                for index, when in zip(indexes[:2], ("earliest", "latest")):
+                    snapshot = command(index, "/opt/kafka/bin/kafka-get-offsets.sh", "--topic", "qualification.backpressure", "--time", when)
+                    lines = snapshot["output"].splitlines()
+                    if not lines or any(not re.fullmatch(r"qualification[.]backpressure:[0-9]+:[0-9]+", line) for line in lines):
+                        raise ValueError("cancellation-backpressure: invalid or empty native topic/partition offsets")
+                    values = {int(line.split(':')[1]): int(line.split(':')[2]) for line in lines}
+                    if len(values) != len(lines): raise ValueError("cancellation-backpressure: duplicate native partition offsets")
+                    offsets.append(values)
+                if set(offsets[0]) != {0} or set(offsets[1]) != {0} or any(offsets[1][partition] < value for partition, value in offsets[0].items()):
+                    raise ValueError("cancellation-backpressure: contradictory native partition offsets")
+                group = command(indexes[2], "/opt/kafka/bin/kafka-consumer-groups.sh", "--describe", "--group", "qualification-consumer", successful=False)
+                if observation.get("consumerGroupStates", {}).get(phase) is not kafka_group_available(group):
+                    raise ValueError("cancellation-backpressure: unavailable consumer-group state is not distinguished")
+            if not (max(states["before"]) < publish_index(publications[0]["id"])
+                    and publish_index(publications[-2]["id"]) < min(states["afterPublish"])
+                    and max(states["afterPublish"]) < publish_index(publications[-1]["id"]) < min(states["afterReadback"])):
+                raise ValueError("cancellation-backpressure: native snapshots do not bracket publications")
+    for row in publications:
+        if commands[publish_index(row["id"])]["httpStatus"] != row["status"]:
+            raise ValueError(f"{scenario}: reconciliation status contradicts HTTP publication")
+    if observation.get("boundedObservationOnly") is not True or observation.get("publicationReconciliation") != reconcile_publications(publications, readback):
+        raise ValueError(f"{scenario}: exact-ID reconciliation contradicts bounded persisted readback")
 
 
 def validate_candidate_custody(identities: dict, commands: list) -> None:
@@ -340,6 +533,7 @@ def validate_inventory(snapshot, phase, identities, commands):
 
 def validate_control_observations(identities, profile, commands, executed):
     """Require an observed extraction, measured file and native launch chain."""
+    endpoints = {}
     for name, identity in identities.get('controlPlane', {}).items():
         def command(field):
             index = identity.get(field)
@@ -363,6 +557,21 @@ def validate_control_observations(identities, profile, commands, executed):
             if (launch.get('event') != 'native-launch' or launch.get('processId', 0) <= 0
                     or launch['argv'][0] != measurement['argv'][1] or launched <= measured):
                 raise ValueError('controlPlane: native launch differs from measured executable')
+            argv = launch['argv']
+            if argv.count('--port') != 1 or argv.index('--port') + 1 >= len(argv):
+                raise ValueError('controlPlane: observed native port is absent')
+            port = argv[argv.index('--port') + 1]
+            if not re.fullmatch(r'[0-9]+', port) or not 1 <= int(port) <= 65535:
+                raise ValueError('controlPlane: invalid native port')
+            endpoints[name] = '127.0.0.1:' + port
+    if executed:
+        sidecars = [row for row in commands if '--app-id' in row['argv'] or '--resources-path' in row['argv']]
+        if not sidecars: raise ValueError('controlPlane: selected sidecar launch observations are absent')
+        for sidecar in sidecars:
+            for name, flag in (('placement', '--placement-host-address'), ('scheduler', '--scheduler-host-address')):
+                argv = sidecar['argv']
+                if argv.count(flag) != 1 or argv.index(flag) + 1 >= len(argv) or argv[argv.index(flag) + 1] != endpoints.get(name):
+                    raise ValueError('controlPlane: selected sidecar endpoint differs from measured ' + name)
 
 
 def validate_packet(directory: Path, *, allow_failures: bool = False, require_authority: bool = False) -> dict:
@@ -453,7 +662,7 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
                 raise ValueError(f"{broker}/{scenario}: wrong observation identity")
             if not readback or not diagnostic or outcome["applicationReadback"] == outcome["brokerDiagnostics"]:
                 raise ValueError(f"{broker}/{scenario}: independent readback/diagnostics missing")
-            validate_observations(scenario, observation, readback, diagnostic, commands)
+            validate_observations(scenario, observation, readback, diagnostic, commands, require_diagnostics=profile["runtime"]["version"] == "1.19.1")
             passed = evaluate(scenario, observation)
             if outcome["result"] != ("PASS" if passed else "FAIL"):
                 raise ValueError(f"{broker}/{scenario}: false result")
@@ -474,6 +683,11 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
         before_index = validate_inventory(before, 'before', identities, commands)
         after_index = validate_inventory(after, 'after', identities, commands)
         if before_index >= after_index: raise ValueError('cleanup: before/after inventories are not independent observations')
+        for row in commands:
+            if row.get('exitCode') == 0 and row['argv'][:2] in (['docker', 'create'], ['docker', 'run']):
+                identity = row.get('output', '').strip()
+                if SHA.fullmatch(identity) and 'container:' + identity in after:
+                    raise ValueError('cleanup: successfully created owned container remains in final inventory')
     for snapshot in (before, after):
         if packet.get("schemaVersion") == 1:
             if snapshot and not any(receipt.get("argv", [])[:2] == ["docker", "inspect"] and receipt.get("output") == json.dumps(snapshot, sort_keys=True) for receipt in commands):
@@ -493,6 +707,8 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
         raise ValueError("cleanup: remaining owned resources or changed unrelated containers")
     if packet.get("schemaVersion") == 2:
         if profile["runtime"]["version"] == "1.19.1":
+            if cleanup.get('privateMaterialRemoved') is not True:
+                raise ValueError('cleanup: selected private material removal is incomplete')
             trusted_profile = json.loads((Path(__file__).resolve().parents[1] / CANDIDATE_PROFILE).read_text())
             for path, expected in trusted_profile['inputs'].items():
                 trusted = digest(Path(__file__).resolve().parents[1] / path)

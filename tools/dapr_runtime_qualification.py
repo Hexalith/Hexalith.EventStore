@@ -76,7 +76,7 @@ class ExclusiveDocker:
     def capture(self):
         import fcntl
         context, host = self.environment.get('DOCKER_CONTEXT'), self.environment.get('DOCKER_HOST')
-        env = {k: v for k, v in self.environment.items() if not k.startswith('DOCKER_')}
+        env = {k: v for k, v in self.environment.items() if k not in ('DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH')}
         _, output = self.command(['docker', 'context', 'inspect', *([context] if context else [])], env=env)
         selected = json.loads(output)[0]['Endpoints']['docker']['Host']
         if context and host and host != selected:
@@ -385,12 +385,12 @@ def owned_docker_operation(args, invoke, state, owner):
             elif name in flags: index += 1
             else: raise ValueError('unsupported child mutation option')
             continue
-        targets.append(value); index += 1
+        targets.append((index, value)); index += 1
         if operation == 'exec': break  # the remaining argv belongs to the payload
     if operation == 'cp':
-        targets = [target.split(':', 1)[0] for target in targets if ':' in target]
+        targets = [(index, target.split(':', 1)[0]) for index, target in targets if ':' in target]
     if not targets: raise ValueError('child mutation has no exact owned target')
-    for target in targets:
+    for position, target in targets:
         rows = [row for row in state['resources'] if row['kind'] == kind and target in (row.get('id'), row['name']) and row.get('id') and not row.get('pending') and row.get('owner') == owner]
         if len(rows) != 1: raise ValueError('child mutation target is not a journaled owned identity')
         row = rows[0]
@@ -402,6 +402,9 @@ def owned_docker_operation(args, invoke, state, owner):
                 or labels.get('hexalith.qualification.resource') != row['resourceToken']
                 or kind == 'volume' and volume_identity(actual) != row.get('volumeIdentity')):
             raise ValueError('child mutation target identity/ownership changed')
+        # Names can be reassigned after inspection. Invoke only the independently
+        # verified immutable ID, including either container operand of docker cp.
+        args[position] = row['id'] + (':' + args[position].split(':', 1)[1] if operation == 'cp' else '')
     return invoke(args)
 
 

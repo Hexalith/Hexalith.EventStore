@@ -26,7 +26,9 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
-from dapr_broker_qualification import BROKERS, SCENARIOS, digest, evaluate, validate_profile, write_json
+from dapr_broker_qualification import (BROKERS, SCENARIOS, PRESSURE_POLICY, PRESSURE_PATTERN, PRESSURE_DEFINITION,
+    attributable_denial, pressure_rejection, kafka_group_available, digest, evaluate, missing_binding_absent, rabbitmq_pressure_effective,
+    reconcile_publications, validate_profile, write_json)
 
 from dapr_runtime_qualification import CustodyError, ExclusiveDocker, profile_path, source_input, child_docker, cleanup_child_resources, resource_journal, register_private_custody
 
@@ -101,16 +103,33 @@ class Run:
         text = re.sub(r"-----BEGIN [^-]*PRIVATE KEY-----.*?-----END [^-]*PRIVATE KEY-----", "<redacted-key>", text, flags=re.S)
         return text
 
-    def command(self, argv, *, check=True, timeout=60, env=None):
+    def command(self, argv, *, check=True, timeout=60, env=None, retain_transform=None):
         started = utc()
+        interrupted = None
         try:
             result = subprocess.run(list(map(str, argv)), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=timeout, env=env)
             code, output = result.returncode, result.stdout
         except (subprocess.TimeoutExpired, OSError) as error:
             code, output = 124, str(error)
-        self.receipts.append({"argv": [self.redact(str(x)) for x in argv], "startedUtc": started, "endedUtc": utc(), "exitCode": code, "output": self.redact(output)})
+        except KeyboardInterrupt as error:
+            code, output, interrupted = 130, "", error
+        retained = output
+        if retain_transform:
+            # Raw unrelated specifications never enter receipts or exception text,
+            # including unsuccessful, malformed and interrupted inspections.
+            retained = "inspection-sha256:" + hashlib.sha256(output.encode()).hexdigest()
+            if code == 0:
+                try:
+                    retained = retain_transform(output)
+                except KeyboardInterrupt as error:
+                    code, interrupted = 130, error
+                except Exception:
+                    code = 65
+        self.receipts.append({"argv": [self.redact(str(x)) for x in argv], "startedUtc": started, "endedUtc": utc(), "exitCode": code, "output": self.redact(retained)})
+        if interrupted is not None:
+            raise interrupted
         if check and code != 0:
-            raise RuntimeError(f"command {argv[0]} exited {code}: {self.redact(output)[-800:]}")
+            raise RuntimeError(f"command {argv[0]} exited {code}: {self.redact(retained)[-800:]}")
         return code, output
 
     def request(self, url, data=None, *, token=None, timeout=3, context=None, method=None):
@@ -119,6 +138,7 @@ class Run:
             headers["X-Vault-Token"] = token
         req = urllib.request.Request(url, data=None if data is None else json.dumps(data).encode(), headers=headers, method=method)
         started = utc()
+        elapsed_start = time.monotonic()
         try:
             with urllib.request.urlopen(req, timeout=timeout, context=context) as response:
                 status, body = response.status, response.read().decode()
@@ -127,7 +147,7 @@ class Run:
         except (OSError, TimeoutError) as error:
             status, body = 599, self.redact(str(error))
         confidential = token or "/sys/init" in url or "/sys/unseal" in url
-        receipt = {"argv": ["HTTP", method or ("POST" if data is not None else "GET"), url], "startedUtc": started, "endedUtc": utc(), "exitCode": 0 if status < 400 else 1, "httpStatus": status, "output": self.redact(body) if not confidential else "<secret-administration-response-omitted>"}
+        receipt = {"argv": ["HTTP", method or ("POST" if data is not None else "GET"), url], "startedUtc": started, "endedUtc": utc(), "elapsedSeconds": time.monotonic() - elapsed_start, "exitCode": 0 if status < 400 else 1, "httpStatus": status, "output": self.redact(body) if not confidential else "<secret-administration-response-omitted>"}
         if "/publish/" in url:
             receipt["input"] = data
         self.receipts.append(receipt)
@@ -201,16 +221,18 @@ class Run:
             observations[kind] = {'listingReceipt': len(self.receipts) - 1, 'inspectionReceipt': None}
             ids = output.split()
             if not ids: continue
-            _, output = self.docker("inspect", "--type", kind, *ids)
-            rows = {}
-            for value in json.loads(output):
-                identity = value.get("Id", value["Name"])
-                if kind == "container":
-                    specification = {key: value[key] for key in ("Name", "Config", "HostConfig", "Mounts")}
-                else:
-                    specification = {key: item for key, item in value.items() if key not in ("Containers", "UsageData", "Status")}
-                rows[kind + ":" + identity] = hashlib.sha256(json.dumps(specification, sort_keys=True).encode()).hexdigest()
-            self.receipts[-1]["output"] = json.dumps(rows, sort_keys=True)
+            def hashed(raw):
+                rows = {}
+                for value in json.loads(raw):
+                    identity = value.get("Id", value["Name"])
+                    if kind == "container":
+                        specification = {key: value[key] for key in ("Name", "Config", "HostConfig", "Mounts")}
+                    else:
+                        specification = {key: item for key, item in value.items() if key not in ("Containers", "UsageData", "Status")}
+                    rows[kind + ":" + identity] = hashlib.sha256(json.dumps(specification, sort_keys=True).encode()).hexdigest()
+                return json.dumps(rows, sort_keys=True)
+            _, output = self.docker("inspect", "--type", kind, *ids, retain_transform=hashed)
+            rows = json.loads(hashed(output))
             observations[kind]['inspectionReceipt'] = len(self.receipts) - 1
             result.update(rows)
         phase = 'after' if getattr(self, '_inventory_captured', False) else 'before'
@@ -381,7 +403,10 @@ class Run:
             exact_resources = self.profile["topics"] + ["qualification-consumer-" + topic for topic in self.profile["topics"]]
             grant = "^(" + "|".join(re.escape(name) for name in exact_resources) + ")$"
             self.docker("exec", self.broker_container, "rabbitmqctl", "set_permissions", "qualification", grant, grant, grant)
-            self.docker("exec", self.broker_container, "rabbitmqctl", "set_policy", "qualification-bounded", "^qualification[.].*backpressure.*", '{"overflow":"reject-publish","max-length":4}', "--apply-to", "queues")
+            pattern = PRESSURE_PATTERN if self.profile["runtime"]["version"] == "1.19.1" else "^qualification[.].*backpressure.*"
+            self.docker("exec", self.broker_container, "rabbitmqctl", "set_policy", PRESSURE_POLICY, pattern,
+                        json.dumps(PRESSURE_DEFINITION), "--apply-to", "queues")
+            self.pressure_policy_receipt = len(self.receipts) - 1
             self.broker_secret = {"connectionString": f"amqps://qualification:{self.password}@127.0.0.1:{self.broker_port}/%2F"}
         else:
             self.broker_internal_port = self.broker_port
@@ -507,6 +532,47 @@ class Run:
             code, output = self.kafka("kafka-consumer-groups.sh", "--describe", "--all-groups", check=False)
         return {"kind": "broker-administration-diagnostic", "exitCode": code, "output": self.redact(output), "commandReceipt": len(self.receipts) - 1}
 
+    def binding_inventory(self):
+        if self.broker == "rabbitmq":
+            _, output = self.docker("exec", self.broker_container, "rabbitmqctl", "list_bindings",
+                                    "source_name", "destination_name", "destination_kind", "routing_key", "--formatter=json")
+        else:
+            _, output = self.kafka("kafka-topics.sh", "--list")
+        return len(self.receipts) - 1, missing_binding_absent(self.broker, output)
+
+    def pressure_state(self):
+        """Bound native offset/commit snapshots to each phase; these are diagnostics, not Dapr readback."""
+        indexes = []
+        if self.broker == "kafka":
+            for when in ("earliest", "latest"):
+                self.kafka("kafka-get-offsets.sh", "--topic", "qualification.backpressure", "--time", when)
+                indexes.append(len(self.receipts) - 1)
+            self.kafka("kafka-consumer-groups.sh", "--describe", "--group", "qualification-consumer", check=False)
+            indexes.append(len(self.receipts) - 1)
+        return indexes
+
+    def reconcile(self, scenario, observation, readback):
+        """Use the exact retained readback for all new diagnostic counts and conclusions."""
+        if observation.get("diagnosticVersion") != 1 or scenario not in ("secret-rotation", "cancellation-backpressure"):
+            return
+        if scenario == "secret-rotation":
+            request = self.receipts[observation["denialObservation"]["publicationReceipt"]]
+            observation["oldGenerationDenied"] = attributable_denial(self.broker, request) and not any(
+                row["id"] == observation["staleMessageId"] and row["kind"] == "effect" for row in readback["ledger"])
+            observation["newGenerationEffects"] = sum(row["id"] == observation["messageId"] and row["kind"] == "effect" for row in readback["ledger"])
+            publications = [{"id": observation["messageId"], "status": observation["newPublishStatus"]},
+                            {"id": observation["staleMessageId"], "status": observation["stalePublishStatus"]}]
+        else:
+            publications = [*observation["publishResults"], {"id": observation["cancelledMessageId"], "status": 599}]
+            observation["acknowledgedLoss"] = sum(row["status"] < 300 and not any(
+                item["id"] == row["id"] and item["kind"] == "effect" for item in readback["ledger"]) for row in observation["publishResults"])
+            observation["cancelledEffects"] = sum(row["id"] == observation["cancelledMessageId"] and row["kind"] == "effect" for row in readback["ledger"])
+            rejected = [index for index, row in enumerate(self.receipts) if row.get("input", {}).get("id") in {item["id"] for item in observation["publishResults"]} and pressure_rejection(self.broker, row)]
+            observation.update(negativeConfirmRejected=bool(rejected), rejectedConfirmReceipts=rejected)
+            publications[-1]["status"] = next(row["httpStatus"] for row in reversed(self.receipts) if row.get("input", {}).get("id") == observation["cancelledMessageId"])
+        observation["publicationReconciliation"] = reconcile_publications(publications, readback)
+        observation["boundedObservationOnly"] = True
+
     def record(self, broker, scenario, observation, readback=None, diagnostics=None):
         observation.update({"broker": broker, "scenario": scenario})
         path = self.output / broker / scenario
@@ -529,7 +595,9 @@ class Run:
         for scenario in SCENARIOS:
             try:
                 observation = self.scenario(scenario)
-                self.record(broker, scenario, observation, self.readback(), self.diagnostics())
+                readback = self.readback()
+                self.reconcile(scenario, observation, readback)
+                self.record(broker, scenario, observation, readback, self.diagnostics())
             except (RuntimeError, TimeoutError, OSError, ValueError, KeyError) as error:
                 readback, diagnostic = None, None
                 try:
@@ -544,6 +612,7 @@ class Run:
         self.stop(self.app)
 
     def scenario(self, scenario):
+        selected = self.profile["runtime"]["version"] == "1.19.1"
         if scenario == "crash-redelivery":
             event_id, _ = self.publish(data={"crashOnce": True})
             self.wait(lambda: self.app.poll() is not None)
@@ -661,21 +730,51 @@ class Run:
             self.stop(self.consumer)
             self.consumer, self.consumer_url = self.sidecar("qualification-consumer", self.app_port)
             self.publisher, self.publisher_url = self.sidecar("qualification-publisher", self.app_port)
-            event_id, _ = self.publish()
+            event_id, new_status = self.publish()
             self.wait(lambda: self.count(event_id) == 1)
+            revocations = []
             if self.broker == "rabbitmq":
                 self.docker("exec", self.broker_container, "rabbitmqctl", "delete_user", "qualification")
+                revocations.append(len(self.receipts) - 1)
             else:
                 for topic in self.profile["topics"]:
                     if topic != "qualification.missing-binding":
                         self.kafka("kafka-acls.sh", "--add", "--deny-principal", "User:CN=client", "--operation", "All", "--topic", topic)
+                        revocations.append(len(self.receipts) - 1)
+            if selected:
+                if self.broker == "rabbitmq":
+                    self.docker("exec", self.broker_container, "rabbitmqctl", "list_users", "--formatter=json")
+                else:
+                    self.kafka("kafka-acls.sh", "--list", "--topic", "qualification.events")
+                state_receipt = len(self.receipts) - 1
             stale_id, stale_status = self.publish(endpoint=old_endpoint)
-            denied = 400 <= stale_status < 599 and self.count(stale_id) == 0
+            stale_receipt = len(self.receipts) - 1
+            # Retain a bounded observation window for delayed effects. Even an
+            # explicit denial never proves that every uncertain request is absent.
+            if selected:
+                deadline = time.monotonic() + 3
+                while time.monotonic() < deadline and self.count(stale_id) == 0:
+                    time.sleep(.2)
+            denied = (attributable_denial(self.broker, self.receipts[stale_receipt]) if selected else 400 <= stale_status < 599) and self.count(stale_id) == 0
             self.stop(old_publisher)
-            return {"messageId": event_id, "oldGenerationDenied": denied, "newGenerationEffects": self.count(event_id), "controlledRestart": True, "staleMessageId": stale_id, "stalePublishStatus": stale_status}
+            observation = {"messageId": event_id, "oldGenerationDenied": denied, "newGenerationEffects": self.count(event_id), "controlledRestart": True, "staleMessageId": stale_id, "stalePublishStatus": stale_status}
+            if selected:
+                observation.update(diagnosticVersion=1, newPublishStatus=new_status,
+                    denialObservation={"publicationReceipt": stale_receipt, "revocationReceipts": revocations, "stateReceipt": state_receipt})
+            return observation
         if scenario == "cancellation-backpressure":
             self.stop(self.consumer)
             quota_receipt = None
+            policy = None
+            states = {}
+            if selected:
+                if self.broker == "rabbitmq":
+                    _, output = self.docker("exec", self.broker_container, "rabbitmqctl", "list_queues", "name", "policy", "effective_policy_definition", "--formatter=json")
+                    policy = {"policyReceipt": self.pressure_policy_receipt, "queueReceipt": len(self.receipts) - 1}
+                    if not rabbitmq_pressure_effective(output):
+                        raise RuntimeError("RabbitMQ backpressure policy is not effective on the exact consumer queue")
+                else:
+                    states["before"] = self.pressure_state()
             if self.broker == "kafka":
                 self.kafka("kafka-configs.sh", "--alter", "--entity-type", "clients", "--entity-name", "qualification", "--add-config", "producer_byte_rate=1024")
                 quota_receipt = len(self.receipts) - 1
@@ -685,6 +784,8 @@ class Run:
             finally:
                 if self.broker == "kafka":
                     self.kafka("kafka-configs.sh", "--alter", "--entity-type", "clients", "--entity-name", "qualification", "--delete-config", "producer_byte_rate")
+            if selected and self.broker == "kafka":
+                states["afterPublish"] = self.pressure_state()
             self.docker("pause", self.broker_container)
             started = time.monotonic()
             try:
@@ -697,12 +798,25 @@ class Run:
             while time.monotonic() < deadline and any(code < 300 and self.count(event_id) == 0 for event_id, code in results):
                 time.sleep(0.2)
             loss = sum(code < 300 and self.count(event_id) == 0 for event_id, code in results)
-            return {"cancelled": status == 599, "cancelledMessageId": cancelled_id, "cancelledEffects": self.count(cancelled_id), "boundedSeconds": bounded, "negativeConfirmRejected": any(400 <= code < 599 for _, code in results), "acknowledgedLoss": loss, "publishResults": [{"id": event_id, "status": code} for event_id, code in results], "quotaReceipt": quota_receipt}
+            observation = {"cancelled": status == 599, "cancelledMessageId": cancelled_id, "cancelledEffects": self.count(cancelled_id), "boundedSeconds": bounded, "negativeConfirmRejected": any(400 <= code < 599 for _, code in results), "acknowledgedLoss": loss, "publishResults": [{"id": event_id, "status": code} for event_id, code in results], "quotaReceipt": quota_receipt}
+            if selected:
+                if self.broker == "kafka":
+                    states["afterReadback"] = self.pressure_state()
+                observation.update(diagnosticVersion=1, policyObservation=policy, brokerStateReceipts=states,
+                    consumerGroupStates={phase: kafka_group_available(self.receipts[indexes[2]]) for phase, indexes in states.items()})
+            return observation
         if scenario == "missing-bindings":
             event_id, _ = self.publish()
             self.wait(lambda: self.count(event_id) == 1)
+            if selected:
+                before_receipt, absent_before = self.binding_inventory()
             missing_id, status = self.publish("missing-binding")
-            return {"messageId": event_id, "unboundPublishStatus": status, "allowedEffects": self.count(event_id), "bindingAbsent": True, "unboundMessageId": missing_id}
+            observation = {"messageId": event_id, "unboundPublishStatus": status, "allowedEffects": self.count(event_id), "bindingAbsent": True, "unboundMessageId": missing_id}
+            if selected:
+                after_receipt, absent_after = self.binding_inventory()
+                observation.update(diagnosticVersion=1, bindingAbsent=absent_before and absent_after,
+                    bindingObservation={"beforeReceipt": before_receipt, "afterReceipt": after_receipt})
+            return observation
         raise ValueError(scenario)
 
     def kafka_retention(self):
@@ -756,6 +870,7 @@ class Run:
     def finish(self):
         # Cleanup continues across independent failures and always seals its outcome.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         for process, argv, started, log in self.processes:
             try:
                 self.stop(process)
