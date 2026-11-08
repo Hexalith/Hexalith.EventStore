@@ -139,3 +139,20 @@ Local scratch logs are `/tmp/story87-{contract,core,server,azure}-build.log`, `/
 - Event batch, crash/cancellation recovery, snapshot, and mixed Server reads: existing core unit coverage ran; the frozen matrix's full Server persisted-state assertions remain pending. A unit-store reservation/completion result does not satisfy those Server/live matrix rows.
 
 No real OpenBao component/conformance, cluster/key operation, capacity completion, generic Server host activation, CI run or full-story matrix success is claimed.
+
+### Resume verification and prerequisite audit — 2026-11-07
+
+Rechecked the approved scope at EventStore HEAD `2bd75f6b26a41cc58fc69e991ebf87b106ce7eb1`. The original baseline, frozen intent, base normative bytes, supplement and derived authority are unchanged. The existing first phase remains implemented; no runtime implementation changed during this resume. All unchecked tasks remain gated and the story stays `in-progress`.
+
+- Repeated all four source-mode Debug build commands above: zero warnings and errors. PayloadProtection passed 1,061/1,061 (26.228 s), retained Azure units passed 192/192 (2.920 s), and actual Server omitted/Disabled registration passed 2/2 (0.117 s), all with zero skips. These are unit results, not real-service qualification.
+- The full Contracts command above returned exit 1: 1,569 total, 1,566 passed, one failed, two existing package-artifact skips (195.289 s). `CorrectiveOciProvenanceReleaseTests.RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs` encountered `NETSDK1047`: shared assets lacked `net10.0/linux-musl-x64` for Admin.Abstractions and `net10.0/linux-musl-arm64` for the EventStore host. Other project builds overlapped this first run. The isolated rerun below, after all other builds/tests stopped, passed 1/1 with zero skips (26.158 s); this supports build-output interference but does not replace the recorded full-run failure. The focused neutral wire contracts passed 30/30 with zero skips (0.148 s).
+- Node and Python again passed V001–V003 with the unchanged envelope/wrapper hashes; their 135 future vectors remain unexecuted. All four approved digests were recomputed and matched the preceding evidence. The release manifest still contains 14 packages and both future projects remain non-packable.
+
+```bash
+dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests.RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs
+dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Security.PayloadKeyBackendContractTests
+```
+
+The prerequisite inspection command `rg -n 'PayloadKeyBackend|rsa-3072|payload-key-v1|PlatformCustody' references/Hexalith.Platform/infrastructure/Hexalith.Platform.Custody.Dapr references/Hexalith.Platform/infrastructure/Hexalith.Platform.Custody.Dapr.Tests` returned exit 1 with no matches. The checked-out component still lacks the neutral RSA backend required for the real OpenBao/Dapr lane. `PayloadKeyIndexes.SetScopeEntry` and `SetInventoryEntry` still rewrite every page; `ErasureStateRegistry._observations` remains a lifetime dictionary without eviction. The separately scoped Platform qualification and capacity work therefore remain necessary before Server admission or wiring can proceed. No Platform changes, live provider/cluster operations, stored-history scan or full Server/live matrix ran. This audit supplies no new authority and closes no prerequisite.
+
+Fresh local logs are `/tmp/story87-resume-{contract,core,server,azure}-build.log`, `/tmp/story87-resume-{contract,core,azure}-tests.log`, `/tmp/story87-resume-server-focused.log`, `/tmp/story87-resume-contract-oci-isolated.log`, `/tmp/story87-resume-contract-focused.log` and `/tmp/story87-resume-{node,python}-goldens.log`. They are local scratch output, not CI artifacts or immutable qualification evidence.
