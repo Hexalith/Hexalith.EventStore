@@ -50,6 +50,13 @@ def expected_files(pins):
                                        (archive + ".sha256", check_size, check_digest))}
 
 
+def verify_checksum_record(name, digest, record):
+    # The original release uses GNU sha256sum binary records. Bind the exact
+    # marker, filename and digest; neither whitespace nor paths are normalized.
+    if record != (digest + " *" + name + "\n").encode("ascii"):
+        raise InputError("Upstream archive checksum disagreement: " + name)
+
+
 def verify_bodies(bodies, pins):
     expected = expected_files(pins)
     if set(bodies) != set(expected):
@@ -59,9 +66,7 @@ def verify_bodies(bodies, pins):
         if len(body) != size or hashlib.sha256(body).hexdigest() != digest:
             raise InputError("Pinned runtime input mismatch: " + name)
     for name, _, digest, _, _ in pins:
-        # The original records use GNU sha256sum's hash + filename format.
-        if bodies[name + ".sha256"].decode("ascii").split() != [digest, name]:
-            raise InputError("Upstream archive checksum disagreement: " + name)
+        verify_checksum_record(name, digest, bodies[name + ".sha256"])
 
 
 @contextlib.contextmanager

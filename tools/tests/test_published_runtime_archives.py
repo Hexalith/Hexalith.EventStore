@@ -29,7 +29,7 @@ class PublishedRuntimeArchiveTests(unittest.TestCase):
         for name, *_ in runtime.PINS:
             body = ("resource-free control " + name).encode()
             digest = hashlib.sha256(body).hexdigest()
-            checksum = (digest + "  " + name + "\n").encode()
+            checksum = (digest + " *" + name + "\n").encode()
             self.bodies[name] = body
             self.bodies[name + ".sha256"] = checksum
             pins.append((name, len(body), digest, len(checksum), hashlib.sha256(checksum).hexdigest()))
@@ -45,6 +45,47 @@ class PublishedRuntimeArchiveTests(unittest.TestCase):
 
     def prepare(self):
         runtime.prepare(str(self.cache), transport=self.fetch, pins=self.pins)
+
+    def assert_semantic_refusal_with_rebound_record_pin(self, record):
+        # Rebind only this synthetic record's whole-body pin, so refusal must
+        # come from the semantic guard after the ordinary size/hash checks pass.
+        name, size, digest, _, _ = self.pins[0]
+        bodies = {**self.bodies, name + ".sha256": record}
+        pins = ((name, size, digest, len(record), hashlib.sha256(record).hexdigest()), *self.pins[1:])
+        with self.assertRaisesRegex(runtime.InputError, "Upstream archive checksum disagreement"):
+            runtime.verify_bodies(bodies, pins)
+
+    def test_actual_three_published_binary_records_match_pins_and_semantic_guard(self):
+        # Exact small original public records, with no private paths or archives.
+        records = {
+            "daprd_linux_amd64.tar.gz": b"d679a47789cddacc8cd38d96d0da7a75514475146ca3da3e5b02bff1ad259dfb *daprd_linux_amd64.tar.gz\n",
+            "placement_linux_amd64.tar.gz": b"81e515f5ef14ee8534696edc614593d3cf500f5b02d054c44339b297ff4277b5 *placement_linux_amd64.tar.gz\n",
+            "scheduler_linux_amd64.tar.gz": b"7a206972e0066da1508def6f18fbe92324a89b9cb50cc5c0b0c44f5397da7eff *scheduler_linux_amd64.tar.gz\n",
+        }
+        self.assertEqual(set(records), {pin[0] for pin in runtime.PINS})
+        for name, _, digest, size, record_digest in runtime.PINS:
+            with self.subTest(name=name):
+                record = records[name]
+                self.assertEqual(len(record), size)
+                self.assertEqual(hashlib.sha256(record).hexdigest(), record_digest)
+                runtime.verify_checksum_record(name, digest, record)
+
+    def test_semantic_guard_refuses_wrong_filename_even_with_rebound_record_pin(self):
+        name, _, digest, _, _ = self.pins[0]
+        for filename in ("foreign.tar.gz", "./" + name, "directory/" + name, name + " extra"):
+            with self.subTest(filename=filename):
+                self.assert_semantic_refusal_with_rebound_record_pin((digest + " *" + filename + "\n").encode())
+
+    def test_semantic_guard_refuses_wrong_digest_even_with_rebound_record_pin(self):
+        name, _, digest, _, _ = self.pins[0]
+        wrong = ("0" if digest[0] != "0" else "1") + digest[1:]
+        self.assert_semantic_refusal_with_rebound_record_pin((wrong + " *" + name + "\n").encode())
+
+    def test_semantic_guard_refuses_text_or_unknown_marker_even_with_rebound_record_pin(self):
+        name, _, digest, _, _ = self.pins[0]
+        for marker in ("  ", " ?", " **", "*"):
+            with self.subTest(marker=marker):
+                self.assert_semantic_refusal_with_rebound_record_pin((digest + marker + name + "\n").encode())
 
     def refuse_cache(self):
         destination = self.root / "private"
@@ -105,7 +146,7 @@ class PublishedRuntimeArchiveTests(unittest.TestCase):
                     runtime.prepare(str(self.cache), transport=altered, pins=self.pins)
                 self.assertFalse(self.cache.exists())
         bodies = dict(self.bodies)
-        bodies[archive + ".sha256"] = b"0" * 64 + b"  " + archive.encode() + b"\n"
+        bodies[archive + ".sha256"] = b"0" * 64 + b" *" + archive.encode() + b"\n"
         pins = list(self.pins)
         name, size, digest, check_size, _ = pins[0]
         pins[0] = (name, size, digest, check_size, hashlib.sha256(bodies[archive + ".sha256"]).hexdigest())
