@@ -8,6 +8,32 @@ import unittest
 
 
 class PublishedCompatibilityWorkflowTests(unittest.TestCase):
+    def test_failed_actual_preparation_blocks_following_provisioning_and_test_commands(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / ".github/workflows/integration.yml").read_text()
+        before, block = workflow.split("- name: Prepare the original pinned private runtime archives", 1)
+        prefix, following = block.split("- name: Pull the original qualified Redis profile", 1)
+        self.assertNotIn("continue-on-error", prefix)
+        self.assertIn("timeout-minutes: 90", before)
+        self.assertIn("Run isolated published qualification and ownership regressions", following)
+        command = prefix.split("run: ", 1)[1].strip()
+        with tempfile.TemporaryDirectory(prefix="published-ci-prerequisite-") as scratch:
+            path = Path(scratch)
+            # Exercise the actual CLI and committed pins through a failed transport,
+            # never a real request, runtime or positive fake CI environment.
+            tool = path / "curl"
+            tool.write_text("#!/bin/sh\nexit 23\n")
+            tool.chmod(0o700)
+            environment = dict(os.environ, PATH=str(path) + os.pathsep + os.environ["PATH"],
+                               P1R_DAPR_RUNTIME_ARCHIVE_CACHE=str(path / "inputs"))
+            result = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c",
+                                     command + "\nprintf provisioned > \"$P1R_DAPR_RUNTIME_ARCHIVE_CACHE\""],
+                                    cwd=root, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("curl exit 23", result.stderr)
+            self.assertFalse((path / "inputs").exists())
+            self.assertFalse(list(path.glob(".published-runtime-*")))
+
     def test_exact_qualification_branch_can_run_normal_checks_without_merging_main(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / ".github/workflows/ci.yml").read_text()
