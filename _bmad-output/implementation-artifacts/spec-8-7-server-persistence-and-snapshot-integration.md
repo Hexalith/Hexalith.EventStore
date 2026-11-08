@@ -4,7 +4,14 @@ type: 'feature'
 created: '2026-11-06'
 status: 'in-progress'
 route: 'dispatch'
-execution_disposition: 'eventstore-contract-backend-phase-implemented-host-wiring-gated'
+execution_disposition: 'dapr-kubernetes-successor-selected-8-12-runtime-capacity-gated'
+planning_change_approval_date: '2026-11-08'
+planning_change_approval_source: 'Interactive project owner: continue and approve'
+planning_change_proposal_sha256: '4b618adbca7c6802e41b6da40dac6b8d085ab81875921d6bb1293d9ec3dccd68'
+successor_planning_intent_id: 'S87-DAPR-K8S-20261108'
+successor_planning_intent_sha256: '16e9e8b72f48725d41737da860e7a92a3e8ac236549e4cd7cd132bfe87a88c81'
+successor_normative_status: 'pending-story-8-12-exact-spec-approval'
+predecessor_frozen_intent_disposition: 'historical-openbao-phase-retained'
 approval_date: '2026-11-07'
 approval_source: 'Interactive project owner: approve and stop'
 approved_intent_sha256: 'da45c41e7994a306295cb5bf1f3d0d6d55fb0861c5d72156173a5940ae316f55'
@@ -16,7 +23,10 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-8-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-7-on-premises-backend-amendment.md'
+  - '{project-root}/_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-08.md'
 ---
+
+**Authority precedence (approved planning change, 2026-11-08).** The owner said “continue and approve” for P1–P7 in the [Dapr/Kubernetes course correction](../planning-artifacts/sprint-change-proposal-2026-11-08.md). The frozen block below, its original digest/approval fields and OpenBao supplement are preserved as historical authority for the already-implemented first phase. The selected on-premises successor intent is `S87-DAPR-K8S-20261108` below; it replaces the OpenBao qualification approach only for subsequent planning. No new crypto schema/authority bytes or enabled Server wiring are authorized until Story 8.12's exact supplement/spec and real Kubernetes/gRPC qualification, latest-runtime, capacity and state/fleet/restore prerequisites pass. Do not resume the superseded OpenBao backend qualification merely because its frozen predecessor text is retained.
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
@@ -47,6 +57,14 @@ context:
 
 </frozen-after-approval>
 
+## Approved successor intent — S87-DAPR-K8S-20261108
+
+Consume the qualified Dapr Kubernetes cryptography backend and versioned key records from Story 8.12, then connect shared-engine integration through existing actor hooks. Preserve actor-owned atomic staging, trusted occurrence identity, durable reservation/completion, every typed read route and the capacity/state/fleet gates.
+
+The SHA-256 above covers only the exact UTF-8 intent paragraph, without its trailing newline. It identifies the planning text accepted in proposal P5; it is not an effective lifecycle authority digest. Current targets are stock Dapr runtime/CLI 1.19.1, SDK 1.19.0, `crypto.dapr.kubernetes.secrets/v1` and supported gRPC Encrypt/Decrypt for DEKs. Event/snapshot pdenc-v2 and AAD remain unchanged; new versioned wrapped-key storage, software-KEK custody, Alpha support posture and the proposed successor size bound require 8.12 approval/conformance. V1 records retain their exact schema and 512-byte bound.
+
+Existing binding DTOs, backend/tests and interaction-specific authority/recovery behavior remain retained. Platform's new owning-repository handoff is dedicated immutable/versioned Kubernetes key Secrets, provisioning/rotation RBAC, custody/backup/restore and rehearsal; the custom RSA/OpenBao payload binding is no longer this path's prerequisite. Ordinary OpenBao operational/application secrets remain in scope of their existing stories. Azure 8.6 remains incomplete/deferred.
+
 ## Code Map
 
 Paths below are relative to `src/` unless prefixed with `tests/`.
@@ -71,6 +89,9 @@ Paths below are relative to `src/` unless prefixed with `tests/`.
 - [x] `src/Hexalith.EventStore.Contracts/Security/` — add the amendment's bounded neutral request/response/profile, closed operations/outcomes and JSON context.
 - [x] `src/Hexalith.EventStore.PayloadProtection/DaprPayloadProtectionBackend.cs`, `PayloadProtectionAuthorityProfile.cs` — implement neutral transport and closed authority selection; preserve existing/Azure authority. Thread the preset through state, leases, reservation, deployment, reconciliation and restore-fence validation without migrating existing roots.
 - [x] `src/Hexalith.EventStore.PayloadProtection/PayloadProtectionServiceCollectionExtensions.cs` — implement first-phase closed options/startup validation; preserve Server's default registration and interaction semantics. Enabled registration deliberately fails before hosted services while prerequisite admission is unavailable.
+- [x] `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-08.md` — apply the approved Dapr/Kubernetes planning direction and record the separately identified successor intent while preserving original frozen bytes, baseline and first-phase evidence.
+- [ ] Story 8.12 — approve its exact successor spec/supplement and qualify the built-in Kubernetes/gRPC backend plus versioned wrapped-key records before any new Server host admission/wiring. Prior approval digests do not authorize the new profile.
+- [ ] Story 3.21 / Builds — accept the qualified runtime/CLI 1.19.1 input, retaining SDK 1.19.0 and the required runtime-minor regressions/reseal boundaries; complete existing capacity/index/erasure-memory and state/fleet/restore prerequisites independently.
 - [ ] `src/Hexalith.EventStore.PayloadProtection/PayloadProtectionServiceCollectionExtensions.cs`, `src/Hexalith.EventStore.Server/Configuration/` — after qualified backend/capacity/state/fleet evidence exists, finish enabled host admission and exactly-one engine replacement for each approved write mode.
 - [ ] `src/Hexalith.EventStore.Server/Events/`, `src/Hexalith.EventStore.Server/Actors/AggregateActor.PayloadProtection.cs` — connect generic occurrence, reservation/completion and typed reads through existing atomic boundaries; cover every owning Server/Admin read path before completion.
 - [x] `tests/Hexalith.EventStore.Contracts.Tests/`, `tests/Hexalith.EventStore.PayloadProtection.Tests/`, `tests/Hexalith.EventStore.Server.Tests/Configuration/PayloadProtectionRegistrationTests.cs` — verify first-phase wire/options/refusal, authority, compatibility/lifecycle unit behavior and the actual Server no-op; retain existing coverage and the two environment-dependent package-artifact skips.
@@ -92,6 +113,8 @@ Paths below are relative to `src/` unless prefixed with `tests/`.
 - Source inspection confirmed that index setters still rewrite all pages and erasure observations remain an unbounded lifetime dictionary. The separately approved capacity work is incomplete. Existing shared-namespace, enrollment, host-incarnation, restore-identity and retained-history obligations were carried forward without closing their ledger entries.
 
 ## Spec Change Log
+
+- 2026-11-08: Owner “continue and approve” accepts all P1–P7 at proposal SHA-256 `4b618adbca7c6802e41b6da40dac6b8d085ab81875921d6bb1293d9ec3dccd68`. Applied the planning-only Dapr/Kubernetes successor and `S87-DAPR-K8S-20261108` intent. OpenBao frozen block, supplement, old approval digests and original baseline remain unchanged; Story 8.12's exact normative authority and real qualification plus runtime/capacity/state/fleet gates precede further host wiring. No runtime implementation, key-record migration or status advancement follows from this record.
 
 - 2026-11-07: Reconciled Story 8.7's on-premises dependency and recorded the separate Story 8.8 release reconciliation gate. Split implementation tasks into completed first-phase work and pending qualification/host integration. The frozen intent and normative supplement remain byte-identical to approval; no authority transition or predecessor-record rewrite was added.
 
@@ -156,3 +179,35 @@ dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.Even
 The prerequisite inspection command `rg -n 'PayloadKeyBackend|rsa-3072|payload-key-v1|PlatformCustody' references/Hexalith.Platform/infrastructure/Hexalith.Platform.Custody.Dapr references/Hexalith.Platform/infrastructure/Hexalith.Platform.Custody.Dapr.Tests` returned exit 1 with no matches. The checked-out component still lacks the neutral RSA backend required for the real OpenBao/Dapr lane. `PayloadKeyIndexes.SetScopeEntry` and `SetInventoryEntry` still rewrite every page; `ErasureStateRegistry._observations` remains a lifetime dictionary without eviction. The separately scoped Platform qualification and capacity work therefore remain necessary before Server admission or wiring can proceed. No Platform changes, live provider/cluster operations, stored-history scan or full Server/live matrix ran. This audit supplies no new authority and closes no prerequisite.
 
 Fresh local logs are `/tmp/story87-resume-{contract,core,server,azure}-build.log`, `/tmp/story87-resume-{contract,core,azure}-tests.log`, `/tmp/story87-resume-server-focused.log`, `/tmp/story87-resume-contract-oci-isolated.log`, `/tmp/story87-resume-contract-focused.log` and `/tmp/story87-resume-{node,python}-goldens.log`. They are local scratch output, not CI artifacts or immutable qualification evidence.
+
+### Focused resume verification and prerequisite audit — 2026-11-08
+
+Loaded this specification and all three frontmatter context files at EventStore HEAD `e1980560934736688a05a53a0aadc9397277afae`. The checked-out Platform revision remains `019f593544ad157036b7d12173ff89a16464f3cc`. The approved first phase is already implemented; all remaining implementation tasks require the separately scoped prerequisites. No runtime source changed during this resume, and Story 8.7 remains `in-progress`.
+
+The prerequisite command below returned exit 1 with no matches:
+
+```bash
+rg -n 'PayloadKeyBackend|rsa-3072|payload-key-v1|PlatformCustody' references/Hexalith.Platform/infrastructure/Hexalith.Platform.Custody.Dapr references/Hexalith.Platform/infrastructure/Hexalith.Platform.Custody.Dapr.Tests
+```
+
+The checked-out component therefore still lacks the approved neutral RSA backend. Source inspection also confirms that `PayloadKeyIndexes.SetScopeEntry` and `SetInventoryEntry` rewrite every addressed page, while `ErasureStateRegistry._observations` remains a lifetime dictionary without eviction. Their existing capacity entries and the retained host/state/fleet/restore/history obligations remain open. The amendment's separately scoped Platform conformance and capacity conditions still prevent Server admission and wiring; this resume supplies no replacement evidence or new authority.
+
+Narrow verification exercised the existing first phase without repeating the unrelated full Contracts packaging suite:
+
+```bash
+dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1
+dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Security.PayloadKeyBackendContractTests
+dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1
+dotnet tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll -class Hexalith.EventStore.PayloadProtection.Tests.DaprPayloadProtectionBackendTests
+dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Configuration.PayloadProtectionRegistrationTests
+node scripts/payload-protection/verify-golden-vectors.mjs
+python3 scripts/payload-protection/verify-golden-vectors.py
+```
+
+- All three source-mode Debug builds passed with zero warnings/errors.
+- Neutral wire contracts passed 30/30 (0.150 s), Dapr backend/options/authority cases passed 40/40 (0.451 s), and actual Server omitted/Disabled registration passed 2/2 (0.116 s), all with zero failures/skips. These cover first-phase identity/bounds/ownership, explicit authority, Enabled refusal before service resolution and real Server no-op preservation. They do not cover successful qualified Server activation or the full persisted-state matrix.
+- Node and Python independently passed V001–V003 with the unchanged envelope and wrapper hashes; their 135 future vectors remain unexecuted. Recomputed frozen intent, base normative, supplement and derived effective-authority digests match the approved values recorded above. The release manifest still has 14 packages and both future projects remain non-packable.
+- No full unit suite, real OpenBao/Dapr conformance, persisted Server/live matrix, stored-history scan, CI, Platform edit, cluster/key operation or infrastructure mutation ran. Azure 8.6 remains incomplete/deferred. The original `baseline_commit`, all frozen/approved bytes, unchecked tasks and predecessor obligations are unchanged.
+
+Local scratch logs are `/tmp/story87-20261108-{contract,core,server}-build.log`, `/tmp/story87-20261108-{contract,core,server}-focused.log` and `/tmp/story87-20261108-{node,python}-goldens.log`. These are local verification output, not CI artifacts or immutable qualification evidence.

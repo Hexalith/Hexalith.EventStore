@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-11-06
+# last_updated: 2026-11-08
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -270,13 +270,16 @@ development_status:
   # MVP target: on-premises Kubernetes 192.168.1.30; Hexalith.Platform owns infrastructure.
   # in-progress preserves incomplete conformance; execution_disposition is in the story spec.
   8-6-azure-key-vault-production-adapter-conformance: in-progress
-  # Resumed 2026-11-07: approved on-premises OpenBao software-key plan.
-  # EventStore contract/backend phase implemented; Platform/capacity gates precede host wiring.
+  # 2026-11-07 OpenBao binding first phase retained with its original approvals/evidence.
+  # Approved 2026-11-08: Dapr Kubernetes crypto successor; 8.12 and capacity precede 8.7 wiring.
+  # 3.21/Builds qualify runtime/CLI 1.19.1; SDK remains 1.19.0. No status advance or activation.
   8-7-server-persistence-and-snapshot-integration: in-progress
   8-8-package-and-release-integration: backlog
   8-9-parties-dual-provider-parity: backlog
   8-10-post-v2-write-rollback-rehearsal: backlog
   8-11-g5-evidence-and-approval-closure: backlog
+  # Added by approved 2026-11-08 course correction; prerequisite of 8.7 despite numbering.
+  8-12-dapr-kubernetes-cryptography-and-wrapped-key-conformance: backlog
   epic-8-retrospective: optional
 
   epic-9: in-progress

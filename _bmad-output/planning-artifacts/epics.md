@@ -5,6 +5,7 @@ stepsCompleted:
   - step-03-create-stories
   - step-04-final-validation
 inputDocuments:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-11-08.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-21.md
   - _bmad-output/planning-artifacts/prd.md
@@ -101,7 +102,7 @@ FR32: Runtime topology remediation must make the AppHost-loaded DAPR pub/sub, AC
 
 FR33: Cost and evolution remediation must introduce folded snapshots, reduce projection replay cost, add projection sequence guards, support event schema versioning/upcasting, validate event metadata identity components, and add cancellation-token seams to published processing/query/projection interfaces.
 
-FR34: Delivery, admin, and deployment remediation must document at-least-once unordered delivery, add poison/dead-letter handling, bound in-memory deduplication, normalize admin claims, audit every state-mutating admin action, hide deferred admin operations, add OpenBao-backed DAPR secret-store configuration for production operational and application secrets, require application retrieval through the DAPR Secrets API, restrict Kubernetes Secrets to documented bootstrap credentials only when no approved mounted or projected credential mechanism is available, add readiness/app-health checks, and restore meaningful IntegrationTests CI coverage.
+FR34: Delivery, admin, and deployment remediation must document at-least-once unordered delivery, add poison/dead-letter handling, bound in-memory deduplication, normalize admin claims, audit every state-mutating admin action, hide deferred admin operations, add OpenBao-backed DAPR secret-store configuration for production operational and application secrets, require application retrieval through the DAPR Secrets API, restrict Kubernetes Secrets to documented bootstrap credentials when no approved mounted or projected credential mechanism is available, plus the separately approved FR37 Dapr/Kubernetes payload-KEK profile; the latter permits only operator-owned versioned crypto-key Secrets consumed by the scoped Dapr cryptography component and grants no application-secret retrieval exception, add readiness/app-health checks, and restore meaningful IntegrationTests CI coverage.
 
 FR35: Backlog capabilities must be tracked for GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, an aggregate test kit, and REST generator hardening.
 
@@ -143,7 +144,7 @@ NFR15: Admin UX must not present deferred backup, restore, import, compaction, o
 
 NFR16: Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. Durable-admission evidence must inspect production-path state and prove restart survival, multi-host serialization, inclusive expiry boundaries, atomic tombstone compaction, leakage constraints, and zero downstream execution for replay, conflict, expired, corrupt, and unsafe legacy outcomes.
 
-NFR17: Operational hardening must use the canonical DAPR `openbao` component for production operational and application secrets. Dependent DAPR components must use `secretKeyRef` with `auth.secretStore: openbao`; application code must use the DAPR Secrets API; and per-application access must be default-deny. OpenBao bootstrap credentials are platform inputs and may use Kubernetes Secrets only when no approved mounted or projected mechanism is available. Operational hardening must also support DAPR app-health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries.
+NFR17: Operational hardening must use the canonical DAPR `openbao` component for production operational and application secrets. Dependent DAPR components must use `secretKeyRef` with `auth.secretStore: openbao`; application code must use the DAPR Secrets API; and per-application access must be default-deny. OpenBao bootstrap credentials are platform inputs and may use Kubernetes Secrets only when no approved mounted or projected mechanism is available. A separately approved FR37 payload-protection profile may use dedicated, versioned Kubernetes Secrets through crypto.dapr.kubernetes.secrets/v1 for software KEK custody. Application code accesses cryptographic operations through Dapr and never retrieves those private keys. This exception does not move ordinary operational/application secrets, tokens or unrelated internal-proof keys out of OpenBao. Operational hardening must also support DAPR app-health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries.
 
 NFR18: AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented.
 
@@ -151,7 +152,7 @@ NFR19: Payload protection must fail closed and preserve byte-stable, versioned c
 
 ### Additional Requirements
 
-- Apply PRD §8.4 to every EventStore runtime infrastructure operation: qualified Dapr API/component first, evidence-backed exact-operation/path exception only after architecture-owner decision, unknown suitability unresolved, and no direct-provider fallback after Dapr failure. Story 3.17 owns final inventory/guard; 2.13 owns notification qualification; 8.6 owns crypto qualification behind the detached draft amendment. Actor ownership, 6.6’s stricter prohibition, credentials/scopes, tenant isolation, compatibility, and readiness gates remain unchanged.
+- Apply PRD §8.4 to every EventStore runtime infrastructure operation: qualified Dapr API/component first, evidence-backed exact-operation/path exception only after architecture-owner decision, unknown suitability unresolved, and no direct-provider fallback after Dapr failure. Story 3.17 owns final inventory/guard; 2.13 owns notification qualification; 8.12 owns qualification of the selected Dapr/Kubernetes successor under its exact approved supplement; 8.6 retains the separately approved Azure exception and incomplete/deferred conformance. Actor ownership, 6.6’s stricter prohibition, credentials/scopes, tenant isolation, compatibility, and readiness gates remain unchanged.
 
 - This is a brownfield architecture; no starter-template or greenfield scaffold is specified. Stories must evolve the existing structural seed and `src/Hexalith.EventStore.Admin.UI` rather than create parallel platform or UI hosts.
 - Preserve CQRS, DDD, and event sourcing on DAPR state, actors, pub/sub, and service invocation, with Aspire as the local orchestration and deployable-topology seed.
@@ -3267,7 +3268,7 @@ So that the AD-26 owner decision and canonical production profile bind exactly w
 **Given** a candidate runtime of at least `1.18.3` and its independently compatible CLI
 **When** runtime, CLI, embedded component, placement, scheduler and catalog/tool pins in CI, AppHosts and profile inputs are inventoried
 **Then** exact immutable identities and loaded configuration bind the live qualification evidence
-**And** below-floor or mutable production inputs fail; guide drift goes to Story 5.9. The retained comparison is Dapr `1.18.7`, CLI `1.18.2`, components-contrib `1.18.6`, RabbitMQ `4.3.6-management` and Kafka `4.3.1`, not a production selection or newest-release claim.
+**And** below-floor or mutable production inputs fail; guide drift goes to Story 5.9. The owner-approved 2026-11-08 refresh target is Dapr runtime/control-plane `1.19.1`, CLI `1.19.1` and embedded components-contrib `1.19.0`; retain Dapr .NET SDK `1.19.0` while latest-stable evidence agrees. The earlier Dapr `1.18.7` / CLI `1.18.2` / components `1.18.6` and RabbitMQ/Kafka observations remain historical comparison, not new-runtime conformance or production selection.
 
 **Given** `pubsub.kafka/v1` and `pubsub.rabbitmq/v1` self-hosted candidates
 **When** the complete 12-scenario matrix per broker executes in exclusively allocated disposable local infrastructure
@@ -3294,7 +3295,24 @@ So that the AD-26 owner decision and canonical production profile bind exactly w
 **Then** Story 3.21 remains in progress and production eligibility is truthful FAIL
 **And** completion never waits for already-issued Story 3.19 records, which consume these upstream inputs; their issuance and all production actions retain their separate gates.
 
-**Current reconciliation (2026-10-20):** In progress. The retained report has four rejected/unresolved broker checks and a failed latest Docker preservation capture; the current read-only verifier stops earlier on pre-existing unlisted bytecode. No broker is selected. The user approved the [shared-host course correction](sprint-change-proposal-2026-10-20.md) and [ES-DIAG intent](../implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md); current-subject corrective authorization remains a build preflight. Builds/CI development pins remain runtime `1.18.2` / CLI `1.18.0`; no protected inputs were changed.
+**Approved runtime refresh (2026-11-08):** [Course correction P3](sprint-change-proposal-2026-11-08.md#p3--story-321-latest-stable-dapr-refresh) assigns the following bounded refresh; this extends the in-progress story without completing it. The native stock 1.19.1 subtle APIs returned 501, so the optional payload backend is qualified by 8.12 using supported streaming APIs. No crypto or append capability follows from a version number.
+
+**Given** the owner-selected 1.19.1 release targets
+**When** active locks, tool declarations, images, charts and fixtures are refreshed
+**Then** exact source commits, release checksums, Linux amd64/arm64 image and chart identities match the downloaded artifacts, all active owners are inventoried, and previous evidence retains its original identities
+**And** Builds owns shared tool/runtime pins, the .NET SDK remains at current latest stable 1.19.0, and no unrelated dependency/gitlink or Platform cluster update is included.
+
+**Given** a runtime minor upgrade
+**When** acceptance runs
+**Then** affected broker, routing/app-token/access-control, actor persistence/reminder, scheduler/placement, snapshot/restore and compatibility lanes execute on the new subject
+**And** a pin change or old green result passes none of those guarantees; Story 4.16 retains its required append/conflict-protection re-proof.
+
+**Given** sealed OQ8 and original-runtime lanes
+**When** current CI inputs are refreshed
+**Then** their historical subjects remain intact until their exact planned reseal; a separately bound qualification lane may exercise the latest runtime independently
+**And** results are not relabelled as sealed-lane equivalence or production eligibility.
+
+**Historical reconciliation (2026-10-20):** In progress. The retained report has four rejected/unresolved broker checks and a failed latest Docker preservation capture; the current read-only verifier stops earlier on pre-existing unlisted bytecode. No broker is selected. The user approved the [shared-host course correction](sprint-change-proposal-2026-10-20.md) and [ES-DIAG intent](../implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md); current-subject corrective authorization remains a build preflight. Builds/CI development pins remain runtime `1.18.2` / CLI `1.18.0`; no protected inputs were changed.
 
 ### Story 3.22: Bounded Qualification Evidence Production And Admission
 
@@ -6896,11 +6914,13 @@ Domain modules can opt into an EventStore-owned, provider-neutral payload-protec
 
 - **8A — Authority and frozen contracts:** Stories 8.1–8.2 establish the content-bound security authority, additive public contracts, and independently reproducible golden vectors. Story 8.1 authorizes only Story 8.2 for its exact approved digest.
 - **8B — Provider-neutral implementation:** Stories 8.3–8.5 implement the non-packable core, historical/mixed readers, and policy/key-lifecycle mechanics. Stories 8.4 and 8.5 may proceed in parallel only after Story 8.3 closes.
-- **8C — Production conformance and Server path:** Stories 8.6–8.7 require both 8.4 and 8.5, prove a real Azure Key Vault boundary, and then integrate the engine into EventStore persistence/snapshot/read paths.
-- **8D — Release, consumer parity, and rollback:** Stories 8.8–8.10 atomically release both packages, obtain separate Parties authority for dual-provider proof, and rehearse rollback after real `pdenc-v2` writes.
+- **8C — Selected-backend conformance and Server path:** Story 8.12 follows compatible 8.4/8.5 evidence and the accepted latest-runtime input, qualifies stock Dapr Cryptography with Kubernetes software KEKs and versioned key records, and precedes 8.7 Server integration. Azure 8.6 remains incomplete/deferred under its retained profile; it is not a prerequisite for this selected on-premises path.
+- **8D — Release, consumer parity, and rollback:** Stories 8.8–8.10 release the selected Dapr-path engine through the atomic 14-to-15 inventory gate, obtain separate Parties authority for dual-provider proof, and rehearse rollback after real `pdenc-v2` writes with every written key-record schema supported. The Azure companion stays non-packable and deferred.
 - **8E — G5 closure:** Story 8.11 alone assembles the immutable evidence packet and may close G5 after every preceding technical, release, consumer, rollback, and approval gate passes.
 
 The epic remains additive, opt-in, post-MVP, and disabled by default. No story may start from epic approval alone: it must validate the exact approved normative digest and every dependency shown above. Production credentials/resources, external publication, Parties mutations, and G5 approval each require their separately bound authority.
+
+**Approved course correction (2026-11-08).** The owner approved P1–P7 in [the Dapr/Kubernetes proposal](sprint-change-proposal-2026-11-08.md). Stock runtime/CLI 1.19.1 and SDK 1.19.0 are the qualification targets. The existing base security specification, frozen 8.7 OpenBao intent, supplements and completed 8.1–8.5 evidence remain byte-bound to their original scopes. The selected successor requires a new exact schema/custody/authority supplement in 8.12; no old Azure/OpenBao approval is transferred. Profile-specific predecessor obligations are reconciled explicitly there, preserving event/snapshot pdenc-v2/AAD, typed outcomes, actor transactions, capacity, erasure, historical reads, restore and rollback. Planning approval neither qualifies the Alpha crypto component nor starts a custom runtime, infrastructure operation, release or G5 closure. Story execution order is 8.12 before 8.7 despite numbering.
 
 ### Story 8.1: Shared Payload-Protection Security Spec And ADR
 
@@ -7342,9 +7362,9 @@ So that protection is opt-in, tenant-safe, durable, and reversible without priva
 
 **UX coverage:** No primary UX implementation. Streams/Admin endpoints and diagnostics retain authorization plus support-safe bounded readability outcomes; they never expose protected/plaintext-on-failure data, key/provider detail, or a false completion/readiness state.
 
-**Dependencies:** The approved [Story 8.7 on-premises supplement](../implementation-artifacts/spec-8-7-on-premises-backend-amendment.md) replaces the Azure-specific prerequisite for this path only. Its normative digest is `43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3`; its effective authority is `835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180`. EventStore neutral Contracts/backend work is authorized independently. Server host wiring requires the compatible Story 8.1–8.5 evidence chain, a separately scoped Platform RSA/OpenBao component, real OpenBao + Dapr conformance, completed index-capacity/erasure-memory work, and current state/fleet/fence admission. Story 8.6 remains incomplete and deferred; its Azure design and separate environment authority are retained.
+**Dependencies (approved successor planning, 2026-11-08):** Completed Story 8.12 with the approved Dapr/Kubernetes software-key and wrapped-record profile, real Kubernetes/gRPC conformance, the accepted latest-runtime input from 3.21/Builds, completed index-capacity/erasure-memory work, compatible 8.1–8.5 evidence, and current shared-state/fleet/fence/restore admission. The [approved course correction](sprint-change-proposal-2026-11-08.md) replaces the custom RSA/OpenBao binding prerequisite for this selected path. Azure 8.6 remains incomplete/deferred. The earlier [OpenBao supplement](../implementation-artifacts/spec-8-7-on-premises-backend-amendment.md) and authority `835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180` remain historical first-phase authority; they do not approve the new key-record/profile bytes. Story 8.12 must bind its separately approved successor authority before affected implementation.
 
-**Current reconciliation (2026-11-07):** Story 8.7 is in progress. The approved EventStore first phase adds neutral bounded wire contracts, a Dapr binding backend, explicit authority profiles and closed registration/options validation. Enabled registration refuses activation before hosted services; Disabled retains Server's concrete no-op. Existing interaction-specific persistence/recovery behavior remains in place. Generic Server occurrence/completion/read integration and real-backend qualification remain pending; unit fakes do not establish deployed custody or persisted Server integration.
+**Current reconciliation (2026-11-08):** In progress. The neutral bounded wire contracts, binding backend, explicit authority profiles and closed registration/options validation from the first phase are retained with their original tests. Disabled preserves Server's concrete no-op; Enabled still refuses before hosted services. The approved revised intent consumes 8.12 and then integrates through existing actor hooks, preserving trusted occurrences, atomic append, reservation/completion and every typed read path. The frozen predecessor block and original baseline in the owning spec remain intact; no unseen schema, authority transition or Server activation is approved by planning.
 
 **Acceptance Criteria:**
 
@@ -7360,8 +7380,13 @@ So that protection is opt-in, tenant-safe, durable, and reversible without priva
 
 **Given** `AddEventStorePayloadProtection` is called
 **When** closed top-level options and environment mode are validated
-**Then** exact `Mode`, `Backend`, `WriteMode`, `LegacyWriterId`, value/cache/operation bounds and Disabled/Enabled, LocalDevelopment/AzureKeyVault/PlatformCustody, ReadOnly/CompatibilityLegacy/V2/RollbackLegacy matrix apply; explicit valid Enabled registration replaces the no-op with exactly one engine descriptor only after all startup validators and prerequisite gates succeed; the first implementation phase deliberately refuses every Enabled registration before host startup
+**Then** exact `Mode`, `Backend`, `WriteMode`, `LegacyWriterId`, value/cache/operation bounds and approved environment/write-mode matrix apply, including the Dapr/Kubernetes selection and key-record reader capability defined by the approved 8.12 supplement; explicit valid Enabled registration replaces the no-op with exactly one engine descriptor only after all startup validators and prerequisite gates succeed; the existing first phase deliberately refuses every Enabled registration before host startup
 **And** missing/unknown fields, multiple services, registration-order selection, non-exact Development, LocalDevelopment outside Development, absent adapter/legacy writer, unsupported mode, or failed backend/state/fence probe fails startup before traffic with no downgrade.
+
+**Given** a root contains successor wrapped-key records or its authority generation changes
+**When** startup, fleet admission or rollback eligibility is evaluated
+**Then** every admitted reader supports the exact written key-record schemas and historical key versions under the approved successor authority
+**And** event V2 support alone, a prior profile approval, silent root conversion or an older key-record reader cannot authorize that generation.
 
 **Given** a typed command produces one or more events
 **When** `EventPersister` serializes and protects them
@@ -7416,62 +7441,62 @@ So that protection is opt-in, tenant-safe, durable, and reversible without priva
 ### Story 8.8: Package And Release Integration
 
 As an EventStore release owner,
-I want the approved engine and Azure adapter released as one governed package-set transition,
+I want the approved Dapr-path engine released through one governed package-set transition,
 So that optional security capability is reproducible and cannot partially publish.
 
 **Requirements coverage:** Primary ownership of FR37's package/release-provenance slice; supporting NFR9–NFR11 build/release determinism, isolation, and completeness plus NFR16 package-only evidence.
 
-**Architecture constraints:** AD-11, AD-12, and AD-23. `tools/release-packages.json` is the sole release inventory, both packages transition atomically under one version/provenance chain, dependency versions remain centralized, and external publication requires separate durable authority.
+**Architecture constraints:** AD-11, AD-12, and AD-23. `tools/release-packages.json` is the sole release inventory, the selected engine addition and full manifest transition atomically under one version/provenance chain; the retained Azure companion remains non-packable; dependency versions remain centralized, and external publication requires separate durable authority.
 
 **UX coverage:** No direct UX requirement applies. Package documentation describes configuration and proven operational states without moving Parties UX/copy or representing package installation as protection/readiness/G5.
 
-**Dependencies:** Story 8.7 must be complete with exact persisted Server/Azure evidence and explicit authorization for Story 8.8. Registry publication, release-environment use, signing/attestation, and any externally visible tag/package mutation additionally require the release owner's separately bound authority.
+**Dependencies:** Stories 8.12 and 8.7 must be complete with exact persisted Server/Dapr/Kubernetes evidence and explicit authorization for Story 8.8. Registry publication, release-environment use, signing/attestation, and any externally visible tag/package mutation additionally require the release owner's separately bound authority.
 
-**On-premises successor gate (2026-11-07):** Story 8.7's approved supplement does not approve this story's existing engine/Azure pair-release assumptions. Reconcile the on-premises package/release path in separately scoped Story 8.8 planning before publication. Both existing future projects remain non-packable and the release manifest remains 14; completing only the EventStore contract/backend phase cannot authorize this successor.
+**Approved on-premises release scope (2026-11-08):** [Course correction P6](sprint-change-proposal-2026-11-08.md) replaces mandatory engine/Azure pair publication for the selected Dapr/Kubernetes path. Story 8.8's exact release spec must qualify an atomic 14-to-15 transition adding only `Hexalith.EventStore.PayloadProtection`, using the built-in backend and existing Dapr dependency. The Azure companion remains non-packable/deferred; its eventual addition requires separate Azure conformance and release approval. No third Dapr adapter package is created.
 
-**Current reconciliation:** Story 8.8 is backlog and dependency-blocked. `tools/release-packages.json` currently lists 14 packages, release workflows/scripts/tests/docs treat it as authoritative, and several tracked assertions name that exact count. The two future projects do not exist yet and, through Story 8.7, must remain `IsPackable=false`; no approved engine/adapter package bytes or release evidence exists.
+**Current reconciliation (2026-11-08):** Backlog and dependency-blocked. Both future projects exist and remain non-packable, while `tools/release-packages.json` still lists 14 packages. Existing guards retain that current count until the separately implemented 8.8 transition. No future engine package, real packaged Kubernetes path or release proof exists; planning does not change package bytes, versions or inventory.
 
 **Acceptance Criteria:**
 
 **Given** Story 8.8 activation is requested
 **When** predecessor and release-authority preflight runs
-**Then** it verifies the Story 8.1 digest, complete Story 8.2–8.7 evidence chain, exact source/working-tree baseline, current 14-package manifest hash, selected central dependencies, release tooling identity, and explicit Story 8.8 authorization; any planned external mutation additionally binds its destination/version/commit/workflow credentials and owner receipt
-**And** missing/stale evidence, uncommitted package inputs, one absent project, a failed real-backend/Server path, version ambiguity, or generic story approval blocks the package transition/publication respectively.
+**Then** it verifies the Story 8.1 digest, compatible Story 8.2–8.5, 8.12 and 8.7 evidence chain, exact source/working-tree baseline, current 14-package manifest hash, selected central dependencies, release tooling identity, and explicit Story 8.8 authorization; any planned external mutation additionally binds its destination/version/commit/workflow credentials and owner receipt
+**And** missing/stale evidence, uncommitted package inputs, an absent required engine project, a failed real-backend/Server path, version ambiguity, or generic story approval blocks the package transition/publication respectively.
 
-**Given** the two approved projects are ready
+**Given** the approved engine project and Dapr/Kubernetes conformance are ready
 **When** the atomic inventory change is applied
-**Then** both `Hexalith.EventStore.PayloadProtection` and `Hexalith.EventStore.PayloadProtection.AzureKeyVault` set `IsPackable=true`, join `Hexalith.EventStore.slnx`, and are added exactly once to `tools/release-packages.json` with canonical ids/paths so the manifest changes directly from 14 to exactly 16
-**And** a 15-package intermediate state, adapter hidden in another package, engine without adapter, duplicate/renamed id, stale path, extra package, or independently versioned initial pair fails repository validation.
+**Then** `Hexalith.EventStore.PayloadProtection` sets `IsPackable=true`, remains correctly included in `Hexalith.EventStore.slnx`, and is added exactly once to `tools/release-packages.json` with canonical id/path so the manifest changes directly from 14 to exactly 15
+**And** the Azure companion remains `IsPackable=false` and outside the manifest; an extra adapter package, duplicate/renamed id, stale path, unqualified backend or inconsistent package set fails repository validation.
 
 **Given** package and dependency metadata are inspected
-**When** the two projects pack
+**When** the engine and manifest-governed set pack
 **Then** IDs, common semantic version, descriptions, license/repository/readme/icon/source-link/symbol settings, target framework, nullable/AOT/trimming declarations where applicable, and inward dependency graph match approved contracts; all Azure/Microsoft/Hexalith versions remain in the central catalog and `.csproj` references are versionless
 **And** no Server implementation, domain/Parties/UI assembly, development secret/configuration, local source path, project-reference artifact, preview/unapproved dependency, credential, test vault identity, or transitive adapter dependency leaks into the provider-neutral package.
 
 **Given** every manifest package is built and packed from the exact source revision
 **When** manifest-driven pack and validation tools run
-**Then** expected `.nupkg`/`.snupkg` files exist exactly once at one version, archive paths/metadata/dependencies are canonical, symbols/source link map to the source SHA, package contents match allowlists, and raw-byte SHA-256 values are recorded for all 16 packages
+**Then** expected `.nupkg`/`.snupkg` files exist exactly once at one version, archive paths/metadata/dependencies are canonical, symbols/source link map to the source SHA, package contents match allowlists, and raw-byte SHA-256 values are recorded for all 15 packages
 **And** missing/extra/renamed/duplicate/mixed-version archives, local/project metadata, unsafe archive traversal, untracked generated bytes, warning, non-deterministic rebuild, or package hash mismatch fails the entire set.
 
 **Given** release inventory authorities and documentation are scanned
 **When** the manifest count and package list change
-**Then** release workflow inputs, validators, governance tests, solution/project inventory, CI/package commands, central-version guidance, architecture/brownfield/reference/upgrade documentation, generated inventory/readme, and release notes all derive from or agree with the 16-package manifest
+**Then** release workflow inputs, validators, governance tests, solution/project inventory, CI/package commands, central-version guidance, architecture/brownfield/reference/upgrade documentation, generated inventory/readme, and release notes all derive from or agree with the 15-package manifest
 **And** no stale “14 packages,” hard-coded expected count, manual list, consumer-local version authority, or assistant entry point (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) is edited or used as package inventory.
 
 **Given** clean package-only consumers validate the new packages
 **When** restore/build/runtime checks use only a staged feed with project/source references disabled and network sources constrained
-**Then** consumers prove engine-only and engine-plus-adapter graphs, public API/contract compatibility, registration omitted/Disabled/invalid Enabled matrices, LocalDevelopment restrictions, exact package versions/hashes, G-001 compatibility, and one authorized real Azure wrap/persist/restart/read path using packaged assemblies
-**And** a local project edge, build output probe, source fallback, cached unverified package, fake Azure, one-package install pretending to be production capable, or runtime requiring credentials while disabled cannot satisfy package proof.
+**Then** consumers prove the engine graph in omitted/Disabled mode and explicitly configured Dapr/Kubernetes mode, public API/contract compatibility, registration omitted/Disabled/invalid Enabled matrices, LocalDevelopment restrictions, exact package versions/hashes, G-001 compatibility, and one authorized real Dapr/Kubernetes DEK encrypt/persist/restart/decrypt path using packaged assemblies
+**And** a local project edge, build output probe, source fallback, cached unverified package, fake crypto, package installation alone pretending to be production capable, or runtime requiring credentials while disabled cannot satisfy package proof.
 
 **Given** supply-chain evidence is generated
 **When** licenses, vulnerabilities, locks, SBOMs, provenance/attestations, signatures where repository policy requires them, and build identities are verified
-**Then** each package and the 16-package set bind repository/source SHA, normative digest, version, workflow/build authority, dependency graph, hashes, build time, and staged/published destination with no unresolved policy violation
+**Then** each package and the 15-package set bind repository/source SHA, normative digest, version, workflow/build authority, dependency graph, hashes, build time, and staged/published destination with no unresolved policy violation
 **And** missing/stale/mismatched SBOM/provenance, unapproved vulnerability/license exception, unsigned artifact where required, mutable ref, or evidence copied from source-mode output blocks release authority.
 
 **Given** one package or release phase fails
 **When** orchestration evaluates restore/build/test/pack/validate/sign/attest/publish/read-back
 **Then** the set fails closed before later irreversible publication where possible, records exact per-package/phase disposition, and never reports a partial set as the EventStore release
-**And** retry cannot repack different bytes under the same version, skip the adapter, overwrite an immutable artifact, publish NuGet after a failed prerequisite, or infer registry success without authenticated hash/read-back evidence.
+**And** retry cannot repack different bytes under the same version, omit the required engine or backend qualification, overwrite an immutable artifact, publish NuGet after a failed prerequisite, or infer registry success without authenticated hash/read-back evidence.
 
 **Given** an external release is not separately authorized or has not occurred
 **When** Story 8.8 evidence is described
@@ -7480,12 +7505,12 @@ So that optional security capability is reproducible and cannot partially publis
 
 **Given** separately authorized publication executes
 **When** immutable provider read-back completes
-**Then** all 16 exact package ids/versions/hashes plus symbols/provenance are present at the approved destination, the release/tag/source/workflow identities agree, no partial/foreign output exists, and any failure remains non-authorizing for consumer migration
+**Then** all 15 exact package ids/versions/hashes plus symbols/provenance are present at the approved destination, the release/tag/source/workflow identities agree, no partial/foreign output exists, and any failure remains non-authorizing for consumer migration
 **And** credentials, provider private responses, or signing material are not retained in evidence; a successful push command without immutable authenticated read-back is insufficient.
 
 **Given** Story 8.8 completion is requested
-**When** manifest/solution/inventory guards, Release build/test, deterministic two-pass pack, package validator, API/dependency/security scans, package-only consumers, real packaged Azure path, SBOM/provenance checks, and applicable external-publication read-back run
-**Then** an immutable packet binds source SHA, normative/predecessor identities, 16-package manifest hash, package/version/raw hashes, tool/workflow identities, commands/results, destination/authorization state, limitations, and named Release/Security/EventStore/Test approvals
+**When** manifest/solution/inventory guards, Release build/test, deterministic two-pass pack, package validator, API/dependency/security scans, package-only consumers, real packaged Dapr/Kubernetes path, SBOM/provenance checks, and applicable external-publication read-back run
+**Then** an immutable packet binds source SHA, normative/predecessor identities, 15-package manifest hash, package/version/raw hashes, tool/workflow identities, commands/results, destination/authorization state, limitations, and named Release/Security/EventStore/Test approvals
 **And** Story 8.9 remains blocked until that exact packet explicitly authorizes consumer parity and the Parties maintainer separately authorizes its repository scope; no Parties edit, provider deletion, rollback-path removal, production enablement, or G5 claim occurs here.
 
 ### Story 8.9: Parties Dual-Provider Parity
@@ -7502,13 +7527,15 @@ So that migration does not transfer legal policy or erase the rollback path prem
 
 **Dependencies:** Story 8.8 must be complete with an exact approved package-set packet and explicit Story 8.9 authorization. Before any Parties read/change, its maintainer must separately authorize the exact repository, baseline SHA, files, test environment, branch/PR/mutation scope, and retained rollback boundary.
 
+**Selected shared backend (approved planning, 2026-11-08):** Dapr Cryptography with the 8.12-qualified Kubernetes key/record profile. Dual-provider parity compares the retained Parties legacy provider with the shared engine, not two new custody services. Exact historical key versions, all written key-record schemas and their new authority/capability requirements join the existing mixed-history and rollback matrix; separately scoped Parties authority remains mandatory. Azure 8.6 is retained/deferred and is not substituted as evidence for this path.
+
 **Current reconciliation:** Story 8.9 is backlog and dependency-blocked. Parties is not a root-declared submodule and no checkout is authorized or modified here. Story 8.1 records historical consumer evidence at SHA `4378dede55d92e489caf7aad63d6c2892e6f856d`: a local `json+pdenc-v1` provider/reader, local `PersonalDataAttribute`, graph inspector, erasure/certificate state, and no production Key Vault SDK. That baseline must be reverified under fresh maintainer authority; it is not current mutation permission.
 
 **Acceptance Criteria:**
 
 **Given** Story 8.9 activation is requested
 **When** EventStore and consumer authority preflight runs
-**Then** it verifies the Story 8.1 digest, Story 8.2–8.8 evidence/package ids/versions/hashes/provenance, exact current Parties source SHA and clean scoped baseline, maintainer identity/authorization receipt, environment/data/provider permissions, intended branch/PR, and rollback retention agreement
+**Then** it verifies the Story 8.1 digest, the selected-path Story 8.2–8.5, 8.12, 8.7 and 8.8 evidence/package ids/versions/hashes/provenance, exact current Parties source SHA and clean scoped baseline, maintainer identity/authorization receipt, environment/data/provider permissions, intended branch/PR, and rollback retention agreement
 **And** a historical SHA, EventStore approval, package availability, planning story, local checkout, contributor access, or inferred ownership cannot authorize Parties changes or test data/provider mutations.
 
 **Given** Parties current protection, policy, erasure, export, and certificate paths are inventoried
@@ -7575,13 +7602,13 @@ So that rollback evidence proves history safety rather than only a pre-write DI 
 
 **Dependencies:** Story 8.9 must be complete with exact EventStore package and separately authorized Parties dual-provider evidence that explicitly authorizes Story 8.10. Operations, Parties, Security, provider/IaC, deployment, test-data, and cleanup actions require exact environment/scope authority before execution.
 
-**Current reconciliation:** Story 8.10 is backlog and dependency-blocked. No shared engine/adapter package, real v2 event/snapshot history, dual-provider Parties proof, v2 watermark, or approved rollback deployment exists in the current repository state. The Story 8.1 procedure is normative planning authority only; mock data or switching registration before any v2 write cannot satisfy this story.
+**Current reconciliation (2026-11-08):** Story 8.10 is backlog and dependency-blocked. The selected shared engine release and Dapr/Kubernetes key-record profile, real v2 event/snapshot history, dual-provider Parties proof, v2 watermark and approved rollback deployment remain unproven. Event V2 readability alone cannot qualify a target that lacks the successor wrapped-key reader. The Story 8.1 procedure is normative planning authority only; mock data or switching registration before any v2 write cannot satisfy this story.
 
 **Acceptance Criteria:**
 
 **Given** Story 8.10 activation is requested
 **When** predecessor and rehearsal-authority preflight runs
-**Then** it verifies the full Story 8.1–8.9 digest/evidence/package/consumer chain, exact EventStore and Parties SHAs, approved isolated environment and tenant/domain scope, provider/key/data/backup permissions, deployment identities, maintenance window, rollback/abort/cleanup plan, and named Operations/Parties/Security authorization receipts
+**Then** it verifies the applicable Story 8.1–8.5, 8.12 and 8.7–8.9 digest/evidence/package/consumer chain, exact EventStore and Parties SHAs, approved isolated environment and tenant/domain scope, provider/key/data/backup permissions, deployment identities, maintenance window, rollback/abort/cleanup plan, and named Operations/Parties/Security authorization receipts
 **And** a plan, historical evidence, generic deployment access, unbound environment, production data/key, or story completion cannot authorize the rehearsal.
 
 **Given** the pre-rollback baseline is prepared
@@ -7596,7 +7623,7 @@ So that rollback evidence proves history safety rather than only a pre-write DI 
 
 **Given** the rollback target is selected
 **When** compatibility and custody are verified
-**Then** the exact last-known-good v2-capable reader release, approved spec/fixture/package hashes, Azure read backend/identity, all required v2 wrapped records/KEK versions/lifecycle state, and exact retained `parties-pdenc-v1` writer/reader/fixtures are present and healthy
+**Then** the exact last-known-good reader release supporting both event V2 and every written wrapped-key schema, approved spec/fixture/package hashes, qualified Dapr/Kubernetes component/profile and exact historical key Secrets, all required wrapped records/KEK versions/lifecycle state, and exact retained `parties-pdenc-v1` writer/reader/fixtures are present and healthy
 **And** a v1-only/no-op binary, missing key/version, disabled reader, alternate package bytes, unavailable backend, removed local path, or unverified backup dependency makes rollback blocked rather than selecting plaintext/read omission.
 
 **Given** a rollback deployment generation is authorized
@@ -7607,7 +7634,7 @@ So that rollback evidence proves history safety rather than only a pre-write DI 
 **Given** rollback mode is live
 **When** retained mixed history is exercised
 **Then** a stream containing legacy, v1, redacted where applicable, and real v2 events rehydrates in sequence; a new command writes the exact approved v1 format; persistence, publication/recovery, live/rebuild projection, query, authorized Admin/read path, audit, and restart/re-read all produce the expected domain state and exact stored formats/checkpoints
-**And** v2 history remains authenticated through the Azure backend, no event is rewritten/re-encrypted/skipped, no projection checkpoint jumps unreadable data, and new plaintext/v2/unknown writer output is forbidden in RollbackLegacy.
+**And** v2 history remains authenticated through the qualified Dapr/Kubernetes backend using the recorded key versions, no event is rewritten/re-encrypted/skipped, no projection checkpoint jumps unreadable data, and new plaintext/v2/unknown writer output is forbidden in RollbackLegacy.
 
 **Given** a real protected v2 snapshot exists before rollback
 **When** snapshot load and replay behavior are tested after rollback
@@ -7646,19 +7673,19 @@ So that Parties migration can proceed only against a proven shared capability.
 
 **UX coverage:** No EventStore UI implementation applies. Documentation and consumer/operator wording must truthfully distinguish disabled, configured, conformant, experimental, available/G5, unreadable, rollback, and erasure states while Parties retains legal-policy and user-facing UX/copy.
 
-**Dependencies:** Story 8.10 and every prior Story 8.1–8.9 evidence packet must be complete, mutually consistent, and explicitly authorize Story 8.11. The named EventStore, Security, Release, Operations, Parties, and Test/Vector roles must approve the exact final packet under the PRD Assurance Control; missing authority is a valid non-closure result. **Assurance (2026-09-26 owner decision):** while the owner-role registry names one human, that authenticated person may hold every role, as in Story 8.1 approvals `AR-20260801-01`, `AR-20260913-01`, and `AR-20260914-01`. Each role decision is recorded separately, and the G5 verdict is labelled `single-maintainer-attested`, never `independent`. In this story's evidence criteria, "independent" means re-derived from retained raw evidence and, for cryptography, reproduced by separate toolchains (normative §16.4 and §18), not a second person. The normative Story 8.1 digest is unchanged.
+**Dependencies:** Story 8.10 and every applicable Story 8.1–8.5, 8.12 and 8.7–8.9 evidence packet must be complete, mutually consistent, and explicitly authorize Story 8.11. The named EventStore, Security, Release, Operations, Parties, and Test/Vector roles must approve the exact final packet under the PRD Assurance Control; missing authority is a valid non-closure result. **Assurance (2026-09-26 owner decision):** while the owner-role registry names one human, that authenticated person may hold every role, as in Story 8.1 approvals `AR-20260801-01`, `AR-20260913-01`, and `AR-20260914-01`. Each role decision is recorded separately, and the G5 verdict is labelled `single-maintainer-attested`, never `independent`. In this story's evidence criteria, "independent" means re-derived from retained raw evidence and, for cryptography, reproduced by separate toolchains (normative §16.4 and §18), not a second person. The normative Story 8.1 digest is unchanged.
 
-**Current reconciliation:** Story 8.11 is backlog and dependency-blocked. The current guide correctly describes only provider-neutral hooks/no-op behavior and states that the shared engine, `pdenc-v2`, production backend, and G5 are unavailable. No implementation/package/provider/Parties/rollback evidence exists today, and sprint status cannot change that. The required future output is `_bmad-output/implementation-artifacts/8-11-g5-evidence-and-approval-closure.md`.
+**Current reconciliation:** Story 8.11 is backlog and dependency-blocked. The current guide correctly describes only provider-neutral hooks/no-op behavior and states that the shared engine, `pdenc-v2`, production backend, and G5 are unavailable. Original core, compatibility, lifecycle and neutral-binding evidence retains its recorded scope; it does not prove the selected Dapr/Kubernetes successor, packaged Server path, Parties parity or post-v2 rollback. Sprint status cannot substitute for that proof. The required future output is `_bmad-output/implementation-artifacts/8-11-g5-evidence-and-approval-closure.md`.
 
 **Acceptance Criteria:**
 
 **Given** Story 8.11 activation is requested
 **When** predecessor and evidence-root preflight runs
-**Then** it verifies the unchanged approved Story 8.1 normative digest/authorization history plus exact immutable Story 8.2–8.10 packets, EventStore and Parties source SHAs, package/version/raw hashes/provenance, Azure/backend/environment identities, test-data scope, rollback transcript, and explicit Story 8.11 authorization
+**Then** it verifies the unchanged approved Story 8.1 normative digest/authorization history plus exact immutable selected-path Story 8.2–8.5, 8.12 and 8.7–8.10 packets, EventStore and Parties source SHAs, package/version/raw hashes/provenance, Dapr runtime/component/key-profile/environment identities, test-data scope, rollback transcript, and explicit Story 8.11 authorization
 **And** missing, mutable, stale, rejected, superseded, path-escaping, digest-mismatched, untrusted, or incompatible evidence blocks closure before a packet can claim G5.
 
 **Given** normative completeness is crosswalked
-**When** Story 8.1 sections 2–16, appendices, accepted decisions/limitations, FR37/NFR19, AD-23, package/consumer/rollback gates, and V001–V138 are mapped
+**When** Story 8.1 sections 2–16, appendices, the approved 8.12 successor supplement with explicit profile-specific obligation/vector mappings, accepted decisions/limitations, FR37/NFR19, AD-23, package/consumer/rollback gates, and every applicable original V001–V138 and successor vector are mapped
 **Then** every obligation has exactly one owning story, exact artifact/hash, command/result/count, test tier/environment, disposition, reviewer, limitation, and retained evidence path; shared evidence links rather than duplicating or laundering ownership
 **And** an unowned vector, open material finding, skipped/empty/quarantined required test, “not applicable” without normative basis, screenshot/status/mock/interface-only proof, or evidence from another source/package/provider identity prevents closure.
 
@@ -7672,15 +7699,15 @@ So that Parties migration can proceed only against a proven shared capability.
 **Then** exact stored event/snapshot/key/index/lifecycle/fence/generation/lease/operation/audit/checkpoint records prove successful and failure outcomes through production code with tenant isolation and no silent loss
 **And** an HTTP result, log, metric, mock call, configuration, one state row, or UI display cannot substitute for coordinated persisted/provider end-state evidence.
 
-**Given** Azure production-backend evidence is independently inspected
-**When** service/profile/custody, key attributes/version, managed identity/RBAC, private networking, SDK/API/packages, state capabilities, wrap/unwrap/restart/rotation/rewrap, fault classifications, cache invalidation, provider audit, resource retention/cleanup, and no-leak artifacts are validated
-**Then** they bind to the same source/spec/package/environment/test interval using redacted immutable resource identities and prove the selected ordinary Premium RSA-HSM-3072 profile
-**And** a mock/emulator/LocalDevelopment/software key/public endpoint, broad or unverifiable permission, production data/key, unresolved retained resource, or provider state inferred from configuration/status blocks production-conformant/G5 wording.
+**Given** selected Dapr/Kubernetes backend evidence is independently inspected
+**When** exact runtime/component/profile, Alpha support-posture acceptance, key/Secret version identities, workload RBAC, component/API scopes, software-key custody, at-rest protection, backup/restore/old-key retention, gRPC Encrypt/Decrypt/restart/rotation/rewrap, state capabilities, fault classifications, buffer/cache handling, sidecar diagnostics and no-leak artifacts are validated
+**Then** they bind to the same approved successor spec/source/package/environment/test interval and prove the selected software-KEK profile and every written key-record schema, with explicit Kubernetes/etcd/sidecar-memory and recoverable-copy limitations
+**And** a mock/localstorage fixture, package/configuration presence, broad or unverifiable permission, missing key-version/copy evidence, or unaccepted Alpha/custody limitation blocks production-conformant/G5 wording; software custody never implies hardware isolation or all-copy destruction.
 
 **Given** package and release evidence is independently inspected
-**When** the 16-package manifest, solution/inventory, common version, `.nupkg`/`.snupkg` hashes, dependency graph/locks, package-only consumers, SBOM, license/vulnerability results, provenance/attestation/signature policy, and applicable immutable provider read-back are compared
-**Then** both new packages and the full set bind to the same approved source/workflow/release identity with no project/source fallback or partial publication
-**And** staged/evidence-ready artifacts are not described as externally available, a 15-package/one-package/mixed-version release fails, and missing external release authority/read-back remains an explicit availability blocker rather than inferred success.
+**When** the 15-package manifest, solution/inventory, common version, `.nupkg`/`.snupkg` hashes, dependency graph/locks, package-only consumers, SBOM, license/vulnerability results, provenance/attestation/signature policy, and applicable immutable provider read-back are compared
+**Then** the new engine package and full 15-package set, with the Azure companion retained non-packable/deferred, bind to the same approved source/workflow/release identity with no project/source fallback or partial publication
+**And** staged/evidence-ready artifacts are not described as externally available, an incomplete or extra-package/mixed-version release fails, and missing external release authority/read-back remains an explicit availability blocker rather than inferred success.
 
 **Given** Parties consumer evidence is independently inspected
 **When** exact repository/SHA/package hashes, maintainer authority, policy/field parity, erasure adapter, retained v1 reader/writer/fixtures, dual-provider selection/fences, mixed event/snapshot/domain flows, Art.20/Art.30 and certificate/report truthfulness, tenant isolation, failure/no-leak, and retained rollback path are validated
@@ -7698,7 +7725,7 @@ So that Parties migration can proceed only against a proven shared capability.
 **And** stale “unavailable” wording is updated only if availability proof passes, while docs never call package presence/configuration, online invalidation, Azure soft-delete, or G5 complete erasure/legal compliance or permission to remove retained readers.
 
 **Given** known limitations and residual risks are reviewed
-**When** value/field bounds, whole-snapshot protection, v1 no-AAD history, shared-KEK blast radius, Azure latency/cost/quota/outage, managed-memory zeroing limits, retained backups/copies, no full downgrade after v2, and experimental/unavailable states are dispositioned
+**When** value/field bounds, whole-snapshot protection, v1 no-AAD history, shared-KEK blast radius, Dapr/Kubernetes latency, API availability and key-custody outage, managed-memory zeroing limits, retained backups/copies, no full downgrade after v2, and experimental/unavailable states are dispositioned
 **Then** each has an accountable owner, accepted/rejected decision, operating control, monitoring/review trigger, and exact effect on availability/G5
 **And** open material risk, unaccepted limitation, unknown protected copy, expired approval, or a qualification omitted from docs/packet keeps the decision non-authorized.
 
@@ -7709,7 +7736,7 @@ So that Parties migration can proceed only against a proven shared capability.
 
 **Given** final approval is requested
 **When** the EventStore owner, named Security Reviewer, Release owner, Operations owner, Parties maintainer, and Test/Vector reviewer roles each record an authenticated `Approved` or `Rejected` decision for the same packet hash with UTC timestamp, evidence reference, scope, and bounded conditions, made at least 24 hours after the last authored change to the packet (PRD Assurance Control)
-**Then** unanimous required approval with no open blocker yields `G5 available`, labelled with its achieved assurance level (`single-maintainer-attested` while the registry names one human), and permits Epic 8 closure/Parties G5 status transition under the exact recorded scope; any other state yields a deterministic non-authorized verdict naming blockers
+**Then** unanimous required approval with no open blocker yields `G5 available`, labelled with its achieved assurance level (`single-maintainer-attested` while the registry names one human), and permits the selected-path Parties G5 status transition under the exact recorded scope; Epic 8 rollup still requires every tracked story to complete, including retained/in-progress Azure 8.6; any other state yields a deterministic non-authorized verdict naming blockers
 **And** group aliases, an implementing agent's or other tool persona's approval, one role decision counted for another role, a decision inside the separation window, self-approval labelled `independent`, implied silence, issue/story status, approval of an earlier hash, majority vote, or an approval conditioned on missing future evidence cannot close G5.
 
 **Given** the G5 decision is recorded
@@ -7718,11 +7745,58 @@ So that Parties migration can proceed only against a proven shared capability.
 **And** the decision itself performs or authorizes no package publication, registry mutation, Azure provisioning/key deletion, deployment/production enablement, Parties merge/edit, local-provider/reader removal, backup destruction, erasure certificate, or other external mutation without its separate owner-bound workflow.
 
 **Given** Story 8.11 completion is requested
-**When** independent crosswalk, cryptographic, persisted Server, Azure, release/package-only, Parties, post-v2 rollback, documentation, limitation, no-leak, immutable-packet, and approval validation all pass
-**Then** the packet records the reproducible final verdict; only a fully approved `G5 available` verdict closes FR37/NFR19 and Epic 8, while a non-authorized verdict leaves exact blockers open without weakening prior evidence
+**When** independent crosswalk, cryptographic, persisted Server, real Dapr/Kubernetes, release/package-only, Parties, post-v2 rollback, documentation, limitation, no-leak, immutable-packet, and approval validation all pass
+**Then** the packet records the reproducible final verdict; only a fully approved `G5 available` verdict closes FR37/NFR19 for the selected on-premises capability, while Epic 8 remains open until every tracked story is complete and a non-authorized verdict leaves exact blockers open without weakening prior evidence
 **And** no hidden exclusion, stale identity, skipped required proof, ambiguous approval, overclaim, legacy-path deletion, or unbound external action is accepted.
 
-<!-- Epic 8 story set confirmed complete for planning. -->
+### Story 8.12: Dapr Kubernetes Cryptography And Wrapped-Key Conformance
+
+As an EventStore maintainer,
+I want a qualified stock-Dapr Kubernetes cryptography backend and versioned wrapped-key storage,
+So that on-premises payload protection uses the built-in component with exact historical reads and lifecycle safety.
+
+**Requirements coverage:** Supporting FR37, NFR12, NFR16, NFR17 and NFR19. Primary ownership and whole-capability closure remain with existing slices and 8.11; this is post-MVP work.
+
+**Architecture constraints:** AD-5, AD-12, AD-13, AD-23 and AD-24, plus PRD §8.4. Preserve actor ownership, pdenc-v2 event/snapshot bytes and AAD, old key-record interpretation, typed failures, owned-buffer clearing, durable reservation/completion, monotonic authority and rollback. No custom runtime, direct provider/Kubernetes application client, new custody service, third adapter package or evidence subsystem is selected.
+
+**Dependencies:** Compatible 8.1–8.5 evidence; the accepted P1/P2 policy direction in [the 2026-11-08 proposal](sprint-change-proposal-2026-11-08.md); an approved exact successor supplement; and the qualified latest-runtime input from 3.21/Builds. Platform owns key provisioning/custody and real target rehearsal; EventStore owns runtime semantics and tests. Existing capacity work remains a separate 8.7 prerequisite. Execution order is **8.12 before 8.7**, followed by 8.8–8.11; Azure 8.6 stays retained/incomplete/deferred.
+
+**Current reconciliation (2026-11-08):** Backlog. The official 1.19.1 runtime returned 501 for subtle get-key/wrap/unwrap. Its supported streaming APIs round-tripped a synthetic 32-byte DEK using localstorage and RSA-3072, producing 689 bytes; this is HTTP/local diagnostic evidence only. The selected production component is `crypto.dapr.kubernetes.secrets/v1` with gRPC Encrypt/Decrypt. Its Alpha support posture, versioned wrapped-DEK schema and proposed 2,048-byte successor bound require exact-spec acceptance and real qualification. The old V1 512-byte limit remains unchanged. Planning approval supplies no crypto authority transition or Server activation.
+
+**Acceptance Criteria:**
+
+**Given** the frozen base
+**When** the successor is specified
+**Then** its exact key-record schema, wrapper bound/algorithm, logical key inventory, failure mapping, options, authority/generation transition and downgrade rules are approved without rewriting predecessor approvals.
+
+**Given** `crypto.dapr.kubernetes.secrets/v1` and the approved source graph
+**When** production gRPC Encrypt/Decrypt protects a fresh 32-byte DEK
+**Then** exact versioned key selection, bounded complete output and restart/rotation historical recovery pass
+**And** unsupported or malformed output produces no plaintext/fallback, event/snapshot pdenc-v2 and AAD remain byte-identical, and no unimplemented subtle API or private runtime is required.
+
+**Given** V1 records, new key records and mixed event history
+**When** readers, reservation/completion, rewrap, erasure and restore run
+**Then** old records retain their exact interpretation, new records require the new capability, and persisted key/lifecycle/fence/index end-state proves each transition
+**And** new-schema roots reject older readers/writers; immutable version addresses and current-write-generation authority prevent alias substitution or silent root conversion.
+
+**Given** cancellation, outage, missing/denied keys, corruption, loss of response or authority change
+**When** a real operation fails
+**Then** bounded typed outcomes, current authorization, ownership/clearing and monotonic state remain correct
+**And** uncertainty is retained without fabricated absence or deletion; one combined budget bounds all client/sidecar/component work and diagnostic sentinels cover those channels.
+
+**Given** real Kubernetes qualification
+**When** app/component scopes, workload RBAC, sidecar/API authentication, immutable version discipline, key rotation, old-key retention, backup/restore and diagnostics are inspected
+**Then** the selected component/profile and remaining custody limitations are proven or explicitly blocked
+**And** localstorage/mocks cannot substitute; private KEKs stay outside application code, while sidecar/Kubernetes/etcd/recovery copies and Alpha limitations remain explicit without all-copy-erasure claims.
+
+**Given** completion is requested
+**When** affected unit/golden/compatibility and real-Dapr/Kubernetes tests execute
+**Then** every selected case passes with zero live skips, evidence is retained in the owning spec plus CI, and only the bounded 8.7 handoff can be authorized
+**And** no release, deployment, Azure completion or G5 follows; both future projects remain non-packable and the current manifest stays at 14 until the 8.8 gate.
+
+**Implementation handoff:** First draft and approve `_bmad-output/implementation-artifacts/spec-8-12-dapr-kubernetes-cryptography.md` and its separately identified normative amendment. After that approval, extend the existing core/state codecs/coordinators, `PayloadProtection.Tests` and `PayloadProtection.LiveSidecar.Tests`. Platform's scoped versioned-Secret provisioning, custody/recovery and rehearsal task stays in its owning repository.
+
+<!-- Epic 8 story set confirmed complete for planning, including prerequisite Story 8.12. -->
 
 ## Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Approved At A Declared Assurance Level
 
