@@ -26,6 +26,7 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
     private readonly Dictionary<string, string> _credentialHashes = new(StringComparer.Ordinal);
     private readonly string _custody;
     private readonly string _runtime;
+    private readonly DevelopmentRouteCatalogRuntimeProfile _profile;
     private readonly Action<DevelopmentRouteCatalogTransport, string>? _startupCheckpoint;
     private bool _disposed;
     private bool _ready;
@@ -36,6 +37,7 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
         Directory = directory;
         _custody = Path.GetFullPath(options.CustodyDirectory);
         _runtime = Path.GetFullPath(options.RuntimeExecutable);
+        _profile = options.RuntimeProfile;
         _startupCheckpoint = startupCheckpoint;
         SentryAddress = SelectAddress(null);
         PlacementAddress = SelectAddress(options.PlacementAddress);
@@ -72,7 +74,8 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(options);
         if (!OperatingSystem.IsLinux() || environmentName != "Development")
             throw new InvalidOperationException("Development transport requires Linux, Development and the checksum-pinned native runtime.");
-        await ValidatePrerequisitesAsync(options.RuntimeExecutable, "/usr/bin/python3", cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(options.RuntimeProfile);
+        await ValidatePrerequisitesAsync(options.RuntimeExecutable, "/usr/bin/python3", options.RuntimeProfile, cancellationToken).ConfigureAwait(false);
         options = options with { PlacementAddress = SelectAddress(options.PlacementAddress), SchedulerAddress = SelectAddress(options.SchedulerAddress) };
         if (options.PlacementAddress == options.SchedulerAddress) throw new InvalidOperationException("Owned control-plane endpoints must be distinct.");
         string custody = Path.GetFullPath(options.CustodyDirectory);
@@ -90,7 +93,7 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
             transport = new(directory, options, startupCheckpoint);
             WritePrivate(Path.Combine(custody, "startup.json"), JsonSerializer.SerializeToUtf8Bytes(new
             {
-                schemaVersion = 1, directory, runtimeExecutable = transport._runtime, runtimeSha256 = RuntimeSha256,
+                schemaVersion = 1, directory, runtimeExecutable = transport._runtime, runtimeSha256 = transport._profile.RuntimeSha256,
                 sentryAddress = transport.SentryAddress, placementAddress = transport.PlacementAddress,
                 schedulerAddress = transport.SchedulerAddress, environment = "Development", trustDomain = "public", @namespace = "default",
             }));
@@ -109,7 +112,7 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(start);
         RequireReady();
-        if (Path.GetFullPath(start.FileName) != _runtime || Hash(start.FileName) != RuntimeSha256)
+        if (Path.GetFullPath(start.FileName) != _runtime || Hash(start.FileName) != _profile.RuntimeSha256)
             throw new InvalidOperationException("Development transport refuses an unpinned sidecar executable.");
         SetFlag(start, "--enable-mtls", null);
         SetFlag(start, "--sentry-address", SentryAddress);
@@ -166,7 +169,7 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
     private async Task StartCoreAsync(CancellationToken cancellationToken)
     {
         var docker = await DevelopmentRouteCatalogTransportDocker.CaptureAsync(cancellationToken).ConfigureAwait(false);
-        foreach (var (name, image) in new[] { ("sentry", SentryImage), ("placement", PlacementImage), ("scheduler", SchedulerImage) })
+        foreach (var (name, image) in new[] { ("sentry", _profile.SentryImage), ("placement", _profile.PlacementImage), ("scheduler", _profile.SchedulerImage) })
             await docker.ExtractAsync(image, name, Directory, cancellationToken).ConfigureAwait(false);
         System.IO.Directory.CreateDirectory(Path.Combine(Directory, "credentials"), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         string configuration = Path.Combine(Directory, "sentry.json");
@@ -199,9 +202,9 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
         WritePrivate(Path.Combine(_custody, "ready.json"), JsonSerializer.SerializeToUtf8Bytes(new
         {
             schemaVersion = 1, ready = true, environment = "Development", trustDomain = "public", @namespace = "default",
-            directory = Directory, runtimeSha256 = RuntimeSha256, trustAnchorSha256 = TrustAnchorSha256,
+            directory = Directory, runtimeSha256 = _profile.RuntimeSha256, trustAnchorSha256 = TrustAnchorSha256,
             sentryAddress = SentryAddress, placementAddress = PlacementAddress, schedulerAddress = SchedulerAddress,
-            images = new { sentry = SentryImage, placement = PlacementImage, scheduler = SchedulerImage },
+            images = new { sentry = _profile.SentryImage, placement = _profile.PlacementImage, scheduler = _profile.SchedulerImage },
             processes = _processes.Select(process => new { pid = process.Id, startTimeUtc = process.StartTime, start = process.NativeStart }).ToArray(),
             binaries = new[] { "sentry", "placement", "scheduler" }.ToDictionary(name => name, name => Hash(Path.Combine(Directory, name))),
             adapterSha256 = Hash(RuntimeAdapterPath),
@@ -257,7 +260,7 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
             + "target = " + JsonSerializer.Serialize(SentryAddress) + "\n"
             + "args = sys.argv[1:]\n"
             + "def refuse():\n    sys.exit('Owned Development sidecar identity is incomplete; launch refused')\n"
-            + "if hashlib.sha256(open(runtime, 'rb').read()).hexdigest() != '" + RuntimeSha256 + "': refuse()\n"
+            + "if hashlib.sha256(open(runtime, 'rb').read()).hexdigest() != '" + _profile.RuntimeSha256 + "': refuse()\n"
             + "if args == ['--version']: os.execv(runtime, [runtime] + args)\n"
             + "if args.count('--sentry-address') != 1 or args.count('--enable-mtls') != 1: refuse()\n"
             + "index = args.index('--sentry-address')\n"
@@ -406,7 +409,11 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
     }
 
     /// <summary>Refuses noncanonical native paths or an unavailable Python 3 adapter prerequisite before creating custody/resources.</summary>
-    internal static async Task ValidatePrerequisitesAsync(string runtime, string interpreter, CancellationToken cancellationToken)
+    internal static Task ValidatePrerequisitesAsync(string runtime, string interpreter, CancellationToken cancellationToken)
+        => ValidatePrerequisitesAsync(runtime, interpreter, DevelopmentRouteCatalogRuntimeProfile.Original, cancellationToken);
+
+    private static async Task ValidatePrerequisitesAsync(string runtime, string interpreter,
+        DevelopmentRouteCatalogRuntimeProfile profile, CancellationToken cancellationToken)
     {
         if (!Path.IsPathFullyQualified(runtime) || Path.GetFullPath(runtime) != runtime || !File.Exists(runtime))
             throw new InvalidOperationException("Development transport requires a canonical native runtime executable.");
@@ -414,7 +421,7 @@ public sealed class DevelopmentRouteCatalogTransport : IAsyncDisposable
             path = path is FileInfo file ? file.Directory : ((DirectoryInfo)path).Parent)
             if (path.LinkTarget is not null || (path.Attributes & FileAttributes.ReparsePoint) != 0)
                 throw new InvalidOperationException("Development transport refuses linked native runtime paths.");
-        if (Hash(runtime) != RuntimeSha256 || (File.GetUnixFileMode(runtime) & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) == 0)
+        if (Hash(runtime) != profile.RuntimeSha256 || (File.GetUnixFileMode(runtime) & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) == 0)
             throw new InvalidOperationException("Development transport requires the checksum-pinned executable runtime.");
         if (!File.Exists(interpreter) || (File.GetUnixFileMode(interpreter) & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) == 0)
             throw new InvalidOperationException("Development transport requires executable Python 3 at /usr/bin/python3.");

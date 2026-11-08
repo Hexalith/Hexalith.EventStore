@@ -1031,8 +1031,17 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
         {
             if (!Path.IsPathFullyQualified(configured) || !File.Exists(configured))
                 throw new InvalidOperationException("EVENTSTORE_TEST_DAPRD_PATH must identify an existing absolute binary path.");
+            string? selected = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE");
+            if (selected is not null)
+            {
+                var profile = Hexalith.EventStore.Aspire.DevelopmentRouteCatalogRuntimeProfile.Select(selected);
+                string observed = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(configured)));
+                if (observed != profile.RuntimeSha256) throw new InvalidOperationException("Selected fixture runtime checksum mismatch.");
+            }
             return configured;
         }
+        if (Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE") is not null)
+            throw new InvalidOperationException("Selected qualification requires explicit EVENTSTORE_TEST_DAPRD_PATH.");
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string candidate = Path.Combine(home, ".dapr", "bin", "daprd" + (OperatingSystem.IsWindows() ? ".exe" : string.Empty));
 

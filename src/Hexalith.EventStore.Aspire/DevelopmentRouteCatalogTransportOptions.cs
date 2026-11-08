@@ -9,4 +9,8 @@ public sealed record DevelopmentRouteCatalogTransportOptions(
     string CustodyDirectory,
     string RuntimeExecutable,
     string? PlacementAddress = null,
-    string? SchedulerAddress = null);
+    string? SchedulerAddress = null)
+{
+    /// <summary>The matched native/runtime profile, explicitly opted into by candidate callers.</summary>
+    public DevelopmentRouteCatalogRuntimeProfile RuntimeProfile { get; init; } = DevelopmentRouteCatalogRuntimeProfile.Original;
+}

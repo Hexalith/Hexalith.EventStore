@@ -28,6 +28,8 @@ from datetime import datetime, timezone
 
 from dapr_broker_qualification import BROKERS, SCENARIOS, digest, evaluate, validate_profile, write_json
 
+from dapr_runtime_qualification import CustodyError, ExclusiveDocker, profile_path, source_input, child_docker, cleanup_child_resources, resource_journal, register_private_custody
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -45,7 +47,8 @@ class Run:
     def __init__(self, args):
         self.args = args
         self.output = args.output.resolve()
-        self.profile = json.loads(args.profile.read_text())
+        self.profile_bytes = args.profile.read_bytes()
+        self.profile = json.loads(self.profile_bytes)
         # Validate every retained path before copying bytes or creating any
         # output/private directory. A rejected profile has no side effects.
         validate_profile(self.profile, ROOT)
@@ -53,25 +56,43 @@ class Run:
         self.receipts = []
         self.containers = []
         self.processes = []
+        self.run_id = "story-3-21-" + secrets.token_hex(8)
         self.private_parent = Path(tempfile.mkdtemp(prefix="story-3-21-private-"))
         self.private_parent.chmod(0o700)
+        register_private_custody(self)
         # Container service users need traversal of the mount root. The host
         # parent remains 0700 and is never mounted or retained.
         self.private = self.private_parent / "work"
         self.private.mkdir(mode=0o755)
-        self.run_id = "story-3-21-" + secrets.token_hex(8)
         self.redactions = []
-        self.packet = {"schemaVersion": 1, "productionEligible": False, "selectedBroker": None, "brokers": {}}
+        self.packet = {"schemaVersion": 2, "profile": profile_path(self.profile), "productionEligible": False, "selectedBroker": None, "brokers": {}}
         self.identities = {"stage": "local-docker-first-stage", "targetProof": False, "preflightPassed": False}
         self.before = {}
         self.context = None
+        self.docker_owner = None
+        self.cleanup_complete = True
+        self.cleanup_errors = []
         self.retained_inputs = self.output / "inputs"
-        all_inputs = set(self.profile["inputs"]) | {"deploy/dapr/qualification/runtime-lock.json"}
+        all_inputs = set(self.profile["inputs"]) | {profile_path(self.profile)}
         all_inputs.update(x["manifest"]["path"] for x in self.profile["images"].values())
+        if self.profile["runtime"]["version"] == "1.19.1":
+            all_inputs.add(self.profile["chart"]["path"])
+            for image in self.profile["images"].values():
+                all_inputs.update(child["path"] for child in image.get("children", {}).values())
         for name in all_inputs:
             destination = self.retained_inputs / name
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, destination)
+            if name == profile_path(self.profile):
+                destination.write_bytes(self.profile_bytes)
+            else:
+                source = source_input(self.profile, ROOT, name, self.profile["inputs"][name]) if name in self.profile["inputs"] else ROOT / name
+                shutil.copyfile(source, destination)
+        # Current capture code is distinct from the original lock's historical input subject.
+        tools = [name.removeprefix('tools/') for name in self.profile['inputs'] if name.startswith('tools/') and name.endswith('.py')] if self.profile['runtime']['version'] == '1.19.1' else ("qualify-dapr-brokers.py", "dapr_broker_qualification.py", "dapr_runtime_qualification.py")
+        for name in tools:
+            destination = self.output / "execution-tools" / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / "tools" / name, destination)
 
     def redact(self, text):
         for value in sorted(self.redactions, key=len, reverse=True):
@@ -126,14 +147,26 @@ class Run:
         raise TimeoutError("bounded readiness/readback condition not met")
 
     def docker(self, *argv, **kwargs):
-        return self.command(["docker", *argv], **kwargs)
+        if self.docker_owner is None:
+            raise ValueError("Docker custody is unavailable; resource operations refused")
+        if list(argv[:1]) in (['create'], ['run']) or list(argv[:2]) in (['container', 'create'], ['container', 'run'], ['volume', 'create'], ['network', 'create']):
+            journal, token = resource_journal(self, self.private / 'owner-resources.json')
+            self.resource_journal = journal
+            def invoke(arguments):
+                code, output = self.docker_owner.run(*arguments, check=False, **{key: value for key, value in kwargs.items() if key != 'check'})
+                return subprocess.CompletedProcess(arguments, code, output, '')
+            result = child_docker(argv, invoke, journal, self.run_id, internal=True, custody=self.docker_owner.custody(), supervisor_token=token)
+            if kwargs.get('check', True) and result.returncode: raise RuntimeError('owned Docker creation failed')
+            return result.returncode, result.stdout
+        return self.docker_owner.run(*argv, **kwargs)
 
     def container(self, suffix, image, arguments=(), options=(), env=None):
         name = self.run_id + "-" + suffix
-        self.containers.append(name)
-        self.docker("run", "-d", "--name", name, "--label", "hexalith.qualification=" + self.run_id,
+        cidfile = self.private / (suffix + ".cid")
+        self.containers.append(cidfile)
+        self.docker("run", "-d", "--cidfile", cidfile, "--name", name, "--label", "hexalith.qualification=" + self.run_id,
                     *options, image, *arguments, env=env, timeout=180)
-        return name
+        return cidfile.read_text().strip()
 
     def process(self, argv, env=None):
         started = utc()
@@ -141,6 +174,11 @@ class Run:
         with log.open("w") as stream:
             process = subprocess.Popen(list(map(str, argv)), stdout=stream, stderr=subprocess.STDOUT, env=env)
         self.processes.append((process, argv, started, log))
+        name = Path(argv[0]).name
+        if name in self.identities.get('controlPlane', {}):
+            self.receipts.append({'argv': [self.redact(str(value)) for value in argv], 'startedUtc': started,
+                'endedUtc': utc(), 'exitCode': 0, 'output': '', 'processId': process.pid, 'event': 'native-launch'})
+            self.identities['controlPlane'][name]['launchReceipt'] = len(self.receipts) - 1
         return process
 
     def stop(self, process):
@@ -153,26 +191,53 @@ class Run:
                 process.wait(timeout=5)
 
     def inventory(self):
-        _, output = self.docker("ps", "-aq", "--no-trunc")
-        ids = output.split()
-        if not ids:
-            return {}
-        # Retain only specification hashes for unrelated workloads, never their
-        # environment values or provider/bootstrap credentials.
-        _, output = self.docker("inspect", *ids)
-        result = {x["Id"]: hashlib.sha256(json.dumps({"Name": x["Name"], "Config": x["Config"], "HostConfig": x["HostConfig"], "Mounts": x["Mounts"]}, sort_keys=True).encode()).hexdigest() for x in json.loads(output)}
-        self.receipts[-1]["output"] = json.dumps(result, sort_keys=True)
+        # Capture every pre-existing container, network and volume specification.
+        # Raw credentials stay private; retained receipts contain only hashes.
+        result, observations = {}, {}
+        for kind, listing in (("container", ("ps", "-aq", "--no-trunc")),
+                              ("network", ("network", "ls", "-q", "--no-trunc")),
+                              ("volume", ("volume", "ls", "-q"))):
+            _, output = self.docker(*listing)
+            observations[kind] = {'listingReceipt': len(self.receipts) - 1, 'inspectionReceipt': None}
+            ids = output.split()
+            if not ids: continue
+            _, output = self.docker("inspect", "--type", kind, *ids)
+            rows = {}
+            for value in json.loads(output):
+                identity = value.get("Id", value["Name"])
+                if kind == "container":
+                    specification = {key: value[key] for key in ("Name", "Config", "HostConfig", "Mounts")}
+                else:
+                    specification = {key: item for key, item in value.items() if key not in ("Containers", "UsageData", "Status")}
+                rows[kind + ":" + identity] = hashlib.sha256(json.dumps(specification, sort_keys=True).encode()).hexdigest()
+            self.receipts[-1]["output"] = json.dumps(rows, sort_keys=True)
+            observations[kind]['inspectionReceipt'] = len(self.receipts) - 1
+            result.update(rows)
+        phase = 'after' if getattr(self, '_inventory_captured', False) else 'before'
+        self._inventory_captured = True
+        self.receipts.append({'argv': ['WORKSPACE', 'inventory', phase], 'startedUtc': utc(), 'endedUtc': utc(),
+            'exitCode': 0, 'output': json.dumps(result, sort_keys=True), 'resourceObservations': observations})
+        self.identities.setdefault('workspaceInventories', {})[phase] = len(self.receipts) - 1
         return result
 
     def extract_control(self, name):
         container = self.run_id + "-" + name
-        self.containers.append(container)
+        cidfile = self.private / (name + "-extract.cid")
+        self.containers.append(cidfile)
         image = self.profile["images"][name]["reference"]
-        self.docker("create", "--name", container, "--label", "hexalith.qualification=" + self.run_id, image, "./" + name)
+        self.docker("create", "--cidfile", cidfile, "--name", container, "--label", "hexalith.qualification=" + self.run_id, image, "./" + name)
+        creation = next(index for index in reversed(range(len(self.receipts))) if self.receipts[index]['argv'][:2] == ['docker', 'create'])
         binary = self.private / name
-        self.docker("cp", container + ":/" + name, str(binary))
+        self.docker("cp", cidfile.read_text().strip() + ":/" + name, str(binary))
+        extraction = len(self.receipts) - 1
         binary.chmod(0o755)
-        self.identities.setdefault("controlPlane", {})[name] = {"image": image, "binarySha256": digest(binary)}
+        if self.profile["runtime"]["version"] == "1.19.1":
+            from dapr_runtime_qualification import CONTROL_BINARIES
+            if digest(binary) != CONTROL_BINARIES[name]:
+                raise ValueError("extracted control-plane executable identity mismatch")
+        self.receipts.append({'argv': ['SHA256', str(binary)], 'startedUtc': utc(), 'endedUtc': utc(), 'exitCode': 0, 'output': digest(binary)})
+        self.identities.setdefault("controlPlane", {})[name] = {"image": image, "binarySha256": digest(binary),
+            'creationReceipt': creation, 'extractionReceipt': extraction, 'hashReceipt': len(self.receipts) - 1}
         return binary
 
     def published_port(self, container, internal_port):
@@ -215,16 +280,16 @@ class Run:
 
     def prepare(self):
         validate_profile(self.profile, ROOT)
-        # A remote Docker daemon can operate production; context names alone are insufficient.
-        endpoint = os.environ.get("DOCKER_HOST", "")
-        _, raw_context = self.docker("context", "inspect")
-        context = json.loads(raw_context)[0]
-        endpoint = endpoint or context["Endpoints"]["docker"]["Host"]
-        if not endpoint.startswith("unix://") or "192.168.1.30" in endpoint:
-            raise ValueError("Docker endpoint must be a local Unix socket; remote/production endpoints are forbidden")
-        self.context = context["Name"]
+        owner = ExclusiveDocker(self.command, self.args.exclusive_worker)
+        self.docker_owner = owner
+        owner.capture()
+        self.context = owner.endpoint
+        self.identities["dockerCustody"] = {"exclusive": True, "endpoint": owner.endpoint,
+            "daemonId": owner.daemon_id, "socketIdentity": owner.socket_identity, "workerId": owner.worker_id}
         self.before = self.inventory()
         write_json(self.output / "workspace-before.json", self.before)
+        write_json(self.output / 'commands.json', self.receipts)
+        write_json(self.output / 'execution-identities.json', self.identities)
         daprd = Path(os.environ.get("QUALIFICATION_DAPRD", str(Path.home() / ".dapr/bin/daprd"))).resolve()
         cli = Path(shutil.which("dapr") or "/missing-dapr")
         if digest(daprd) != self.profile["runtime"]["binarySha256"] or digest(cli) != self.profile["runtime"]["cliSha256"]:
@@ -232,7 +297,7 @@ class Run:
         self.daprd = daprd
         self.command([str(daprd), "--version"])
         self.command([str(cli), "--version"])
-        self.identities.update({"preflightPassed": True, "daprdSha256": digest(daprd), "cliSha256": digest(cli), "dockerEndpoint": endpoint})
+        self.identities.update({"preflightPassed": True, "daprdSha256": digest(daprd), "cliSha256": digest(cli), "dockerEndpoint": owner.endpoint})
         for name in ["placement", "scheduler", *BROKERS]:
             self.docker("pull", self.profile["images"][name]["reference"], timeout=180)
         self.docker("pull", self.profile["openbao"]["reference"], timeout=180)
@@ -687,41 +752,95 @@ class Run:
                 "offsetReceipts": offset_receipts}
 
     def finish(self):
+        # Cleanup continues across independent failures and always seals its outcome.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
         for process, argv, started, log in self.processes:
-            self.stop(process)
-            self.receipts.append({"argv": [str(x) for x in argv], "startedUtc": started, "endedUtc": utc(), "exitCode": process.returncode, "output": self.redact(log.read_text())})
-        if self.context is None:
-            # Endpoint rejection must not invoke even an owned cleanup helper
-            # on an unapproved daemon. No Docker mutation has occurred here.
-            shutil.rmtree(self.private_parent)
-            self.finalize_receipts("", {})
-            return
-        for name in reversed(self.containers):
-            code, output = self.docker("inspect", name, check=False)
-            if code == 0:
-                identity = json.loads(output)[0]
-                if identity["Config"].get("Labels", {}).get("hexalith.qualification") != self.run_id:
-                    raise RuntimeError("refusing cleanup of unowned container " + name)
-                self.docker("logs", "--tail", "150", name, check=False)
-                self.docker("unpause", name, check=False)
-                self.docker("rm", "-f", "-v", name, check=False)
-        # Service-owned files can be 0700 under another UID. A one-shot helper
-        # sees only this run's private mount; it receives no host socket/network.
-        self.docker("run", "--rm", "--name", self.run_id + "-private-cleanup", "--label", "hexalith.qualification=" + self.run_id,
-                    "--network", "none", "--user", "0", "-v", f"{self.private_parent}:/cleanup", "--entrypoint", "/bin/sh",
-                    self.profile["openbao"]["reference"], "-ec", f"chown -R {os.getuid()}:{os.getgid()} /cleanup\nchmod -R u+rwX /cleanup", check=False)
-        shutil.rmtree(self.private_parent)
-        _, remaining = self.docker("ps", "-aq", "--filter", "label=hexalith.qualification=" + self.run_id)
-        after = self.inventory()
+            try:
+                self.stop(process)
+                self.receipts.append({"argv": [str(x) for x in argv], "startedUtc": started, "endedUtc": utc(), "exitCode": process.returncode, "output": self.redact(log.read_text())})
+            except Exception as error:
+                self.cleanup_errors.append(str(error))
+        remaining, after = [], {}
+        if self.context is not None:
+            custody_valid = True
+            unresolved = set()
+            for cidfile in reversed(self.containers):
+                if not cidfile.exists():
+                    continue
+                identity = cidfile.read_text().strip()
+                unresolved.add(identity)
+                if not custody_valid:
+                    continue
+                try:
+                    if not re.fullmatch(r"[a-f0-9]{64}", identity):
+                        raise ValueError("invalid owned container ID")
+                    code, output = self.docker("inspect", identity, check=False)
+                    if code == 0:
+                        owned = json.loads(output)[0]
+                        if owned["Id"] != identity or owned["Config"].get("Labels", {}).get("hexalith.qualification") != self.run_id:
+                            raise ValueError("refusing cleanup of unowned container ID")
+                        self.docker("logs", "--tail", "150", identity, check=False)
+                        self.docker("unpause", identity, check=False)
+                        self.docker("rm", "-f", "-v", identity)
+                    # A failed inspect is not proof of absence. Inventory independently.
+                    code, present = self.docker("ps", "-aq", "--no-trunc")
+                    if code == 0 and identity not in present.split():
+                        unresolved.discard(identity)
+                except Exception as error:
+                    self.cleanup_errors.append(identity + ": " + str(error))
+                    if isinstance(error, CustodyError):
+                        custody_valid = False
+            if custody_valid:
+                try:
+                    # Cleanup the private mounted tree only after independent ID cleanup.
+                    if self.containers and not unresolved:
+                        helper = self.container("private-cleanup", self.profile["openbao"]["reference"],
+                            ["-ec", f"chown -R {os.getuid()}:{os.getgid()} /cleanup\nchmod -R u+rwX /cleanup"],
+                            ["--network", "none", "--user", "0", "-v", f"{self.private_parent}:/cleanup", "--entrypoint", "/bin/sh"])
+                        unresolved.add(helper)
+                        self.docker("wait", helper)
+                        self.docker("rm", "-v", helper)
+                        unresolved.discard(helper)
+                    _, output = self.docker("ps", "-aq", "--no-trunc", "--filter", "label=hexalith.qualification=" + self.run_id)
+                    unresolved.update(output.split())
+                except Exception as error:
+                    self.cleanup_errors.append(str(error))
+                    for cidfile in self.containers:
+                        if cidfile.exists(): unresolved.add(cidfile.read_text().strip())
+            remaining = sorted(unresolved)
+            try:
+                after = self.inventory()
+            except Exception as error:
+                self.cleanup_errors.append("baseline comparison unavailable: " + str(error))
+        remaining = sorted(set(remaining + getattr(self, "child_remaining", [])))
+        journal = getattr(self, 'resource_journal', None)
+        if journal is not None:
+            try:
+                reconciled = cleanup_child_resources(self, journal)
+                remaining += [row.get('id') or row['name'] for row in reconciled['resources'] if not row['absent']]
+                if not reconciled['complete']: self.cleanup_errors.append('owned resource journal reconciliation incomplete')
+            except Exception as failure:
+                self.cleanup_errors.append('owned resource journal reconciliation: ' + str(failure))
+                remaining.append('unresolved-owner-journal')
+        if not remaining:
+            try:
+                shutil.rmtree(self.private_parent)
+            except OSError as error:
+                self.cleanup_errors.append("private cleanup: " + str(error))
+        self.cleanup_complete = not self.cleanup_errors and not remaining and all(after.get(key) == value for key, value in self.before.items())
         self.finalize_receipts(remaining, after)
+        if self.docker_owner is not None:
+            self.docker_owner.close()
 
     def finalize_receipts(self, remaining, after):
         write_json(self.output / "workspace-after.json", after)
         if not (self.output / "workspace-before.json").exists():
             write_json(self.output / "workspace-before.json", self.before)
-        write_json(self.output / "cleanup.json", {"ownedResourcesRemaining": remaining.split(), "unrelatedContainersUnchanged": all(after.get(key) == value for key, value in self.before.items()), "ownershipLabel": self.run_id, "privateMaterialRemoved": True})
+        write_json(self.output / "cleanup.json", {"ownedResourcesRemaining": remaining, "complete": self.cleanup_complete, "errors": self.cleanup_errors, "unrelatedContainersUnchanged": all(after.get(key) == value for key, value in self.before.items()), "ownershipLabel": self.run_id, "privateMaterialRemoved": not self.private_parent.exists()})
         write_json(self.output / "execution-identities.json", self.identities)
         write_json(self.output / "commands.json", self.receipts)
+        if getattr(self, "regression", False):
+            return
         self.packet["artifacts"] = {str(p.relative_to(self.output)): digest(p) for p in sorted(self.output.rglob("*")) if p.is_file()}
         write_json(self.output / "packet.json", self.packet)
 
@@ -729,6 +848,7 @@ class Run:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, required=True)
+    parser.add_argument("--exclusive-worker", type=Path, default=os.environ.get("QUALIFICATION_EXCLUSIVE_WORKER"), help="exclusive disposable worker allocation JSON; required before Docker mutation")
     parser.add_argument("--brokers", default="rabbitmq,kafka")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -761,7 +881,7 @@ def main():
         run.finish()
     failures = [f"{b}/{s}" for b, outcomes in run.packet["brokers"].items() for s, row in outcomes.items() if row["result"] != "PASS"]
     print(json.dumps({"packet": str(run.output), "technicalQualification": "FAIL" if failures else "PASS", "failedScenarios": failures, "productionEligibility": "FAIL", "selectedBroker": None}, indent=2))
-    return 1 if failures else 0
+    return 1 if failures or not run.cleanup_complete else 0
 
 
 if __name__ == "__main__":

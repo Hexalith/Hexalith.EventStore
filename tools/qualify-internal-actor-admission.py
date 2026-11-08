@@ -23,6 +23,11 @@ import tempfile
 import threading
 import time
 import traceback
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dapr_runtime_qualification import ExclusiveDocker, require_candidate, child_docker, resource_journal, register_private_custody, REDIS_IMAGE
+from dapr_broker_qualification import validate_profile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -52,11 +57,17 @@ def port():
 class Qualification:
     def __init__(self, args):
         self.args = args
+        self.docker_owner = None
+        self.profile = require_candidate(Path(args.profile), Path(__file__).resolve().parents[1]) if args.profile else None
+        self.runtime_observations = []
+        self.control_observations = {}
+        self.daprd = Path.home() / ".dapr/bin/daprd"
         self.root = Path(__file__).resolve().parents[1]
         self.out = Path(args.evidence).resolve()
         self.out.mkdir(parents=True, exist_ok=False)
         self.runtime = Path(tempfile.mkdtemp(prefix="eventstore-actor-admission-"))
         self.run_id = "admission-" + secrets.token_hex(6)
+        register_private_custody(self)
         self.containers = []
         self.processes = []
         self.logs = []
@@ -82,12 +93,28 @@ class Qualification:
         if not condition:
             raise AssertionError(name + ": " + json.dumps(observed))
 
-    def run(self, *argv, check=True, timeout=60):
+    def run(self, *argv, check=True, timeout=60, retain_transform=None, journaled=False):
+        if self.docker_owner is not None and argv[0] == 'docker' and not journaled and (list(argv[1:2]) in (['create'], ['run']) or list(argv[1:3]) in (['container', 'create'], ['container', 'run'], ['volume', 'create'], ['network', 'create'])):
+            journal, token = resource_journal(self, self.runtime / 'owner-resources.json')
+            self.resource_journal = journal
+            result = child_docker(argv[1:], lambda arguments: self.run('docker', *arguments, check=False, timeout=timeout, journaled=True),
+                journal, self.run_id, internal=True, custody=self.docker_owner.custody(), supervisor_token=token)
+            if check:
+                result.check_returncode()
+                return result.stdout.strip()
+            return result
         start = time.monotonic()
-        result = subprocess.run(argv, text=True, capture_output=True, timeout=timeout)
+        environment = None
+        if self.docker_owner is not None and argv[0] == "docker":
+            self.docker_owner.verify()
+            argv = ("docker", "--host", self.docker_owner.endpoint, *argv[1:])
+            environment = {k: v for k, v in os.environ.items() if k not in ("DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_TLS_VERIFY", "DOCKER_CERT_PATH")}
+        result = subprocess.run(argv, text=True, capture_output=True, timeout=timeout, env=environment)
+        retained_stdout = retain_transform(result.stdout) if retain_transform else result.stdout
+        retained_stderr = hashlib.sha256(result.stderr.encode()).hexdigest() if retain_transform else result.stderr
         self.receipts.append({"argv": argv, "exit_code": result.returncode,
                               "elapsed_seconds": time.monotonic() - start,
-                              "stdout": result.stdout, "stderr": result.stderr})
+                              "stdout": retained_stdout, "stderr": retained_stderr})
         self.save("infrastructure-commands.json", self.receipts)
         if check:
             result.check_returncode()
@@ -140,7 +167,14 @@ class Qualification:
                 self.containers[index] = (name, cidfile.read_text().strip())
         identity = self.containers[index][1]
         published = self.run("docker", "port", identity, str(internal_port)).split(":")[-1]
-        self.save(kind + "-image.json", json.loads(self.run("docker", "image", "inspect", image)))
+        image_info = json.loads(self.run("docker", "image", "inspect", image))
+        self.save(kind + "-image.json", image_info)
+        if self.profile and kind in ("placement", "scheduler"):
+            observed = json.loads(self.run("docker", "inspect", identity))[0]
+            if observed["Id"] != identity or observed["Config"]["Image"] != image or image not in image_info[0].get("RepoDigests", []):
+                raise ValueError("Selected admission control image observation mismatch")
+            self.control_observations[kind] = {"containerId": identity, "image": observed["Config"]["Image"], "imageId": observed["Image"]}
+            self.save("selected-identities.json", {"runtimeSha256": sha(self.daprd), "runtimeVersion": self.profile["runtime"]["version"], "controlPlane": self.control_observations})
         return identity, int(published)
 
     def launch(self, label, argv, env, cwd):
@@ -152,11 +186,50 @@ class Qualification:
         self.save("processes.json", [{"pid": p.pid, "argv": p.args} for p in self.processes])
         return process
 
+    def guard_command(self, argv, *, env=None, **kwargs):
+        started = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        result = subprocess.run(argv, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30, env=env)
+        self.receipts.append({'argv': list(argv), 'startedUtc': started,
+            'endedUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'exitCode': result.returncode, 'output': result.stdout})
+        result.check_returncode()
+        return result.returncode, result.stdout
+
+    def shared_specs(self):
+        result = {}
+        for kind, listing in (("container", ("ps", "-aq", "--no-trunc")),
+                              ("network", ("network", "ls", "-q", "--no-trunc")),
+                              ("volume", ("volume", "ls", "-q"))):
+            ids = self.run("docker", *listing).split()
+            if not ids: continue
+            def hashed(raw):
+                hashes = {}
+                for row in json.loads(raw):
+                    fields = {key: row[key] for key in ("Name", "Config", "HostConfig", "Mounts")} if kind == "container" else {key: value for key, value in row.items() if key not in ("Containers", "UsageData", "Status")}
+                    identity = row.get("Id", row.get("Name"))
+                    hashes[kind + ":" + identity] = hashlib.sha256(json.dumps(fields, sort_keys=True).encode()).hexdigest()
+                return json.dumps(hashes, sort_keys=True)
+            # Projection happens inside run before any receipt is saved.
+            raw = self.run("docker", "inspect", "--type", kind, *ids, retain_transform=hashed)
+            result.update(json.loads(hashed(raw)))
+        return result
+
     def setup(self):
-        self.redis_id, redis_port = self.launch_container("redis", "redis:7-alpine", 6379)
-        _, placement_port = self.launch_container("placement", "daprio/dapr:1.18.7", 50005, "--port", "50005")
+        if self.profile:
+            validate_profile(self.profile, self.root)
+            self.daprd = Path(os.environ.get("QUALIFICATION_DAPRD", "/missing-selected-daprd"))
+            if sha(self.daprd) != self.profile["runtime"]["binarySha256"]:
+                raise ValueError("Selected internal-admission runtime checksum mismatch")
+            owner = ExclusiveDocker(self.guard_command, self.args.exclusive_worker)
+            owner.capture()
+            self.docker_owner = owner
+            self.before = self.shared_specs()
+            self.save("workspace-before.json", self.before)
+            for image in (REDIS_IMAGE, *(self.profile['images'][name]['reference'] for name in ('placement', 'scheduler'))):
+                self.run('docker', 'pull', image, timeout=180)
+        self.redis_id, redis_port = self.launch_container("redis", REDIS_IMAGE if self.profile else "redis:7-alpine", 6379)
+        _, placement_port = self.launch_container("placement", self.profile["images"]["placement"]["reference"] if self.profile else "daprio/dapr:1.18.7", 50005, "--port", "50005")
         scheduler_port = port()
-        self.launch_container("scheduler", "daprio/dapr:1.18.7", 50006,
+        self.launch_container("scheduler", self.profile["images"]["scheduler"]["reference"] if self.profile else "daprio/dapr:1.18.7", 50006,
                               "--etcd-data-dir=/tmp/admission-etcd",
                               "--override-broadcast-host-port=127.0.0.1:" + str(scheduler_port),
                               "--etcd-client-listen-address=0.0.0.0", host_port=scheduler_port)
@@ -173,8 +246,8 @@ class Qualification:
         self.clock.write_text(str(621355968000000000 + int(time.time()) * 10000000))
         self.save("infrastructure.json", {"runtime": str(self.runtime), "namespace": self.run_id,
                   "redis_port": redis_port, "placement_port": placement_port, "scheduler_port": scheduler_port,
-                  "daprd": str(Path.home() / ".dapr/bin/daprd"),
-                  "daprd_sha256": sha(Path.home() / ".dapr/bin/daprd"),
+                  "daprd": str(self.daprd),
+                  "daprd_sha256": sha(self.daprd),
                   "components": {p.name: p.read_text() for p in components.iterdir()}, "discovery": config.read_text()})
         for label, source, dll in [
             ("sample", self.sample_output, "Hexalith.EventStore.Sample.dll"),
@@ -236,7 +309,7 @@ class Qualification:
                     env["EventStore__DomainServices__Registrations__system|" + domain + "|v1__AppId"] = "sample"
             app_argv = ["dotnet", "exec", "--additional-deps", str(self.test_output / "Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json"),
                         "--additionalprobingpath", str(self.test_output), "--additionalprobingpath", str(Path.home() / ".nuget/packages"), str(dest / dll)]
-            sidecar_argv = [str(Path.home() / ".dapr/bin/daprd"), "--app-id", label, "--app-port", str(app_port),
+            sidecar_argv = [str(self.daprd), "--app-id", label, "--app-port", str(app_port),
                             "--app-protocol", "http", "--app-channel-address", "127.0.0.1",
                             "--dapr-http-port", str(http_port), "--dapr-grpc-port", str(grpc_port),
                             "--dapr-internal-grpc-port", str(internal_port), "--metrics-port", str(metrics_port),
@@ -259,6 +332,13 @@ class Qualification:
         self.wait(n["sidecar_url"] + "/v1.0/healthz/outbound", lambda s, b: s in (200, 204))
         if label == "eventstore":
             self.wait(n["sidecar_url"] + "/v1.0/metadata", lambda s, b: s == 200 and json.loads(b).get("actorRuntime", {}).get("runtimeStatus") == "RUNNING")
+        if self.profile:
+            status, _, body = self.request(n["sidecar_url"] + "/v1.0/metadata")
+            observed = json.loads(body)
+            self.check(suffix + "_selected_runtime_observed", status == 200 and observed.get("runtimeVersion") == self.profile["runtime"]["version"])
+            self.runtime_observations.append({"node": label, "generation": n["generation"], "pid": n["sidecar"].pid,
+                "runtimeVersion": observed.get("runtimeVersion"), "binarySha256": sha(self.daprd)})
+            self.save("runtime-observations.json", self.runtime_observations)
         mapped = {}
         for line in Path("/proc/" + str(n["app"].pid) + "/maps").read_text().splitlines():
             fields = line.split(maxsplit=5)
@@ -506,7 +586,7 @@ class Qualification:
                     if ((identity is not None and container["Id"] != identity)
                             or container["Config"].get("Labels", {}).get("hexalith.qualification.run-id") != self.run_id):
                         raise RuntimeError("Refusing cleanup of a container with a different ownership identity")
-                    removed = self.run("docker", "rm", "-f", container["Id"], check=False, timeout=10)
+                    removed = self.run("docker", "rm", "-f", *( ['-v'] if self.profile else []), container["Id"], check=False, timeout=10)
                     outcome["remove_exit_code"] = removed.returncode
                 # --rm may have removed it already. A successful independent inventory proves absence;
                 # neither a failed inspect nor a failed rm by itself is accepted as evidence of absence.
@@ -526,8 +606,23 @@ class Qualification:
                 outcome["error"] = repr(error)
             outcome["closed"] = log.closed
             outcomes["logs"].append(outcome)
+        journal_complete = True
+        if getattr(self, 'resource_journal', None) is not None:
+            from dapr_runtime_qualification import cleanup_child_resources
+            def docker(*arguments, **kwargs):
+                result = self.run('docker', *arguments, check=False, **{key: value for key, value in kwargs.items() if key != 'check'})
+                return result.returncode, result.stdout
+            import types
+            owner = types.SimpleNamespace(run_id=self.run_id, output=self.out, docker=docker, docker_owner=self.docker_owner)
+            try:
+                reconciliation = cleanup_child_resources(owner, self.resource_journal)
+                journal_complete = reconciliation['complete']
+            except Exception as error:
+                journal_complete = False
+                outcomes['journalError'] = repr(error)
         try:
-            shutil.rmtree(self.runtime)
+            if journal_complete:
+                shutil.rmtree(self.runtime)
         except FileNotFoundError:
             pass
         except Exception as error:
@@ -535,13 +630,22 @@ class Qualification:
         outcomes["runtime"] = str(self.runtime)
         outcomes["runtime_absent"] = not self.runtime.exists()
         outcomes["passed"] = (all(item["absent"] for item in outcomes["processes"] + outcomes["containers"])
-                              and all(item["closed"] for item in outcomes["logs"]) and outcomes["runtime_absent"])
+                              and all(item["closed"] for item in outcomes["logs"]) and outcomes["runtime_absent"] and journal_complete)
         self.save("cleanup.json", outcomes)
+        if self.docker_owner is not None:
+            after = self.shared_specs()
+            self.save("workspace-after.json", after)
+            outcomes["unrelatedSpecificationsUnchanged"] = all(after.get(key) == value for key, value in self.before.items())
+            outcomes["passed"] = outcomes["passed"] and outcomes["unrelatedSpecificationsUnchanged"]
+            self.save("cleanup.json", outcomes)
+            self.docker_owner.close()
         return outcomes["passed"]
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", help="Explicit qualification runtime lock; absent selection retains original invocations")
+    parser.add_argument("--exclusive-worker", type=Path, default=os.environ.get("QUALIFICATION_EXCLUSIVE_WORKER"))
     parser.add_argument("--evidence", required=True)
     parser.add_argument("--configuration", choices=("Debug", "Release"), default="Debug",
                         help="Build configuration shared by test, Sample and EventStore outputs (default: Debug)")

@@ -40,10 +40,14 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
     /// <summary>Authenticates private binaries before provisioning an independent runtime.</summary>
     internal async Task InitializeAsync()
     {
-        _binaries = Path.Combine(runtime.Root, "dapr-1.18.4");
+        _binaries = Path.Combine(runtime.Root, "dapr-" + runtime.SelectedDaprVersion);
         string archiveTool = Path.Combine(PublishedScenarioTests.FindRepository(), "tools", "published_runtime_archives.py");
         string? archiveCache = Environment.GetEnvironmentVariable("P1R_DAPR_RUNTIME_ARCHIVE_CACHE");
-        if (archiveCache is not null)
+        if (runtime.SelectedDaprVersion == "1.19.1")
+        {
+            await runtime.MaterializeSelectedDaprAsync(_binaries);
+        }
+        else if (archiveCache is not null)
         {
             // The selector supplies no authority: the helper verifies every pinned
             // byte, upstream checksum and receipt before making private copies.
@@ -83,11 +87,12 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         }
         foreach (string binary in new[] { "daprd", "placement", "scheduler" })
         {
+            if (runtime.SelectedDaprVersion == "1.19.1") continue;
             string archive = Path.Combine(_binaries, binary + "_linux_amd64.tar.gz");
             await runtime.RequireAsync("tar", ["-xf", archive, "-C", _binaries]);
         }
         string version = await runtime.RequireAsync(Path.Combine(_binaries, "daprd"), ["--version"]);
-        if (version.Trim() != "1.18.4") throw new InvalidOperationException("Wrong private daprd runtime version: " + version);
+        if (version.Trim() != runtime.SelectedDaprVersion) throw new InvalidOperationException("Wrong private daprd runtime version: " + version);
         await runtime.RequireAsync("docker", ["image", "inspect", RedisImage]);
         _placementPort = Port();
         int raft = Port();
@@ -977,7 +982,7 @@ internal sealed class PublishedCluster(QualificationRuntime runtime, IReadOnlyLi
         PublishedScenarioTests.ActiveAssertions?.Record("runtime-profile", JsonSerializer.Serialize(new
         {
             profileId = _profileId, owner = runtime.Id, root = runtime.Root, observedAt = DateTimeOffset.UtcNow,
-            appId = _appId, runtime = "1.18.4", redisImage = RedisImage, redisContainer = _redis, redisVolume = _redisVolume,
+            appId = _appId, runtime = runtime.SelectedDaprVersion, redisImage = RedisImage, redisContainer = _redis, redisVolume = _redisVolume,
             sidecarAddress = "http://127.0.0.1:" + _sidecarPort, redisAddress = "127.0.0.1:" + _redisPort,
             daprdPath = daprdInput.Path, componentPath = componentInput.Path,
             hostAddress = "http://127.0.0.1:" + _hostPort, domainAddress = "http://127.0.0.1:" + domainPort,

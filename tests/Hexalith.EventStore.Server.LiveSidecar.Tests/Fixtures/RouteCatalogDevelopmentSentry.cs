@@ -7,7 +7,8 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// <summary>Owns a pinned Development Sentry and temporary credentials, without touching global Dapr certificates.</summary>
 internal sealed class RouteCatalogDevelopmentSentry : IAsyncDisposable
 {
-    private const string Image = "ghcr.io/dapr/sentry@sha256:b9fc166085289661f516150dc1c47ac3495b9e6d1e666079cb71cd2374ca7256";
+    private static string Image => Hexalith.EventStore.Aspire.DevelopmentRouteCatalogRuntimeProfile.Select(
+        Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE")).SentryImage;
     private Process? _process;
     private Task<string>? _output;
     private Task<string>? _errors;

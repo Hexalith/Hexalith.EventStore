@@ -22,8 +22,10 @@ internal sealed class RouteCatalogDevelopmentRedis : IAsyncDisposable
     public async Task StartAsync()
     {
         _docker = await RouteCatalogDocker.CaptureAsync();
+        string[] storage = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE") == "1.19.1"
+            ? ["--tmpfs", "/data"] : [];
         _containerId = (await RunAsync(["run", "--detach", "--rm", "--pull", "never", "--name", "catalog-redis-" + _owner,
-            "--label", OwnerLabel + "=" + _owner, "--publish", "127.0.0.1::6379", Image, "redis-server", "--save", "", "--appendonly", "no"])).Trim();
+            "--label", OwnerLabel + "=" + _owner, "--publish", "127.0.0.1::6379", .. storage, Image, "redis-server", "--save", "", "--appendonly", "no"])).Trim();
         using var inspection = JsonDocument.Parse(await RunAsync(["inspect", _containerId]));
         JsonElement owned = inspection.RootElement[0];
         RequireOwnership(owned);

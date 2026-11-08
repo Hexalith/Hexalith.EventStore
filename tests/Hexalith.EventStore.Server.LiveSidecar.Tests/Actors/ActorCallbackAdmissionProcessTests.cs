@@ -30,7 +30,19 @@ public sealed class ActorCallbackAdmissionProcessTests
             RedirectStandardError = true,
             UseShellExecute = false,
         };
+        start.ArgumentList.Add("-B");
         start.ArgumentList.Add(Path.Combine(repository, "tools", "qualify-internal-actor-admission.py"));
+        string? selected = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE");
+        if (!string.IsNullOrEmpty(selected))
+        {
+            selected.ShouldBe("1.19.1");
+            start.ArgumentList.Add("--profile");
+            start.ArgumentList.Add(Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_QUALIFICATION_PROFILE")
+                ?? throw new InvalidOperationException("Selected actor admission requires an explicit profile."));
+            start.ArgumentList.Add("--exclusive-worker");
+            start.ArgumentList.Add(Environment.GetEnvironmentVariable("QUALIFICATION_EXCLUSIVE_WORKER")
+                ?? throw new InvalidOperationException("Selected actor admission requires its own worker allocation."));
+        }
         start.ArgumentList.Add("--evidence");
         start.ArgumentList.Add(evidence);
         string? configuration = typeof(ActorCallbackAdmissionProcessTests).Assembly
@@ -74,5 +86,21 @@ public sealed class ActorCallbackAdmissionProcessTests
         result.RootElement.GetProperty("qualification_passed").GetBoolean().ShouldBeTrue(diagnostics);
         result.RootElement.GetProperty("cleanup_passed").GetBoolean().ShouldBeTrue(diagnostics);
         result.RootElement.GetProperty("passed").GetBoolean().ShouldBeTrue(diagnostics);
+        if (selected == "1.19.1")
+        {
+            using JsonDocument identities = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(evidence, "selected-identities.json"), CancellationToken.None));
+            identities.RootElement.GetProperty("runtimeVersion").GetString().ShouldBe("1.19.1");
+            identities.RootElement.GetProperty("runtimeSha256").GetString().ShouldBe("b1ece5da76674bf6e15126aeb019fa58e444b5b8edf4d0ac59e32df895ae8fd2");
+            identities.RootElement.GetProperty("controlPlane").GetProperty("placement").GetProperty("image").GetString()
+                .ShouldBe("ghcr.io/dapr/placement@sha256:6dcfbcd606482976c5f4b821d0d0755e88db796bdfcafc395090708ebdba6c66");
+            identities.RootElement.GetProperty("controlPlane").GetProperty("scheduler").GetProperty("image").GetString()
+                .ShouldBe("ghcr.io/dapr/scheduler@sha256:ae0f1e04a0c657cb5a7c67ca4f520cac54c939a01e5810923e9d0b48a63ab739");
+            using JsonDocument observations = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(evidence, "runtime-observations.json"), CancellationToken.None));
+            JsonElement[] runs = observations.RootElement.EnumerateArray().ToArray();
+            runs.Length.ShouldBeGreaterThan(2);
+            runs.ShouldAllBe(row => row.GetProperty("runtimeVersion").GetString() == "1.19.1"
+                && row.GetProperty("binarySha256").GetString() == "b1ece5da76674bf6e15126aeb019fa58e444b5b8edf4d0ac59e32df895ae8fd2");
+        }
+
     }
 }

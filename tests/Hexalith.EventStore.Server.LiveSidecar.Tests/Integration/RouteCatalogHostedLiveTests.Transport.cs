@@ -28,6 +28,8 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 
 public sealed partial class RouteCatalogHostedLiveTests
 {
+    private static DevelopmentRouteCatalogRuntimeProfile SelectedRuntimeProfile => DevelopmentRouteCatalogRuntimeProfile.Select(
+        Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE"));
     /// <summary>Qualifies public owned transport with authenticated peers, real persisted actors, scheduler delivery and a native restart.</summary>
     [Fact(Timeout = 180000)]
     public async Task PublicDevelopmentTransportAuthenticatesPeersAndPersistsActorsAcrossNativeRestart()
@@ -63,7 +65,7 @@ public sealed partial class RouteCatalogHostedLiveTests
                         new { name = "transport/marker", httpVerb = new[] { "POST" }, action = "allow" } } },
             } } },
         }));
-        await using var transport = await DevelopmentRouteCatalogTransport.StartAsync(new(custody, runtime), "Development", TestContext.Current.CancellationToken);
+        await using var transport = await DevelopmentRouteCatalogTransport.StartAsync(new DevelopmentRouteCatalogTransportOptions(custody, runtime) { RuntimeProfile = SelectedRuntimeProfile }, "Development", TestContext.Current.CancellationToken);
         string temporary = transport.Directory;
         await using var sidecar = new RouteCatalogDevelopmentSidecar(receiver, resources, configuration, "owned-channel-" + id);
         await using var peer = new RouteCatalogDevelopmentSidecar(caller, resources, configuration);
@@ -145,7 +147,7 @@ public sealed partial class RouteCatalogHostedLiveTests
                 (await denied.Content.ReadAsStringAsync()).ShouldContain("ERR_DIRECT_INVOKE");
                 await AssertPersistedMarkerAsync();
             }
-            await using (var foreign = await DevelopmentRouteCatalogTransport.StartAsync(new(Path.Combine(scratch, "foreign-custody"), runtime), "Development"))
+            await using (var foreign = await DevelopmentRouteCatalogTransport.StartAsync(new DevelopmentRouteCatalogTransportOptions(Path.Combine(scratch, "foreign-custody"), runtime) { RuntimeProfile = SelectedRuntimeProfile }, "Development"))
             {
                 await using var untrusted = new RouteCatalogDevelopmentSidecar(caller, resources, configuration);
                 untrusted.ConfigureOwnedTransport(foreign);
@@ -212,7 +214,7 @@ public sealed partial class RouteCatalogHostedLiveTests
         string scratch = System.IO.Directory.CreateTempSubdirectory("eventstore-transport-negative-").FullName;
         string runtime = Environment.GetEnvironmentVariable("EVENTSTORE_ROUTE_CATALOG_DAPRD")
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr/bin/daprd");
-        await using var transport = await DevelopmentRouteCatalogTransport.StartAsync(new(Path.Combine(scratch, "custody"), runtime), "Development", TestContext.Current.CancellationToken);
+        await using var transport = await DevelopmentRouteCatalogTransport.StartAsync(new DevelopmentRouteCatalogTransportOptions(Path.Combine(scratch, "custody"), runtime) { RuntimeProfile = SelectedRuntimeProfile }, "Development", TestContext.Current.CancellationToken);
         try
         {
             foreach (string[] arguments in new[]
@@ -278,7 +280,7 @@ public sealed partial class RouteCatalogHostedLiveTests
         await Should.ThrowAsync<InvalidOperationException>(async () =>
         {
             if (OperatingSystem.IsLinux()) await DevelopmentRouteCatalogTransport.StartAsync(
-                new(Path.Combine(scratch, "custody"), runtime, SchedulerAddress: "127.0.0.1:" + port),
+                new DevelopmentRouteCatalogTransportOptions(Path.Combine(scratch, "custody"), runtime, SchedulerAddress: "127.0.0.1:" + port) { RuntimeProfile = SelectedRuntimeProfile },
                 "Development", (transport, checkpoint) =>
                 {
                     if (checkpoint != "scheduler-started") return;
@@ -351,7 +353,7 @@ public sealed partial class RouteCatalogHostedLiveTests
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr/bin/daprd");
         await Should.ThrowAsync<InvalidOperationException>(async () =>
         {
-            if (OperatingSystem.IsLinux()) await DevelopmentRouteCatalogTransport.StartAsync(new(custody, runtime), "Development",
+            if (OperatingSystem.IsLinux()) await DevelopmentRouteCatalogTransport.StartAsync(new DevelopmentRouteCatalogTransportOptions(custody, runtime) { RuntimeProfile = SelectedRuntimeProfile }, "Development",
                 (_, checkpoint) => { if (checkpoint == "publish-ready") System.IO.Directory.CreateDirectory(Path.Combine(custody, "ready.json")); },
                 TestContext.Current.CancellationToken);
         });

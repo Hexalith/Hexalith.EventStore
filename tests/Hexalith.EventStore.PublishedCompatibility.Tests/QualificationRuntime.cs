@@ -136,6 +136,52 @@ internal sealed class QualificationRuntime : IAsyncDisposable
         else Directory.CreateDirectory(Root, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
+    /// <summary>The independently selected runtime; original invocations retain their original 1.18.4 subject.</summary>
+    private readonly string? _selectedRuntime = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE");
+
+    internal string SelectedDaprVersion => _selectedRuntime switch
+    {
+        null or "" => "1.18.4",
+        "1.19.1" => "1.19.1",
+        _ => throw new InvalidOperationException("Unsupported compatibility runtime selection."),
+    };
+
+    /// <summary>Copies explicitly prepared candidate binaries after verifying their observed immutable identities.</summary>
+    internal Task MaterializeSelectedDaprAsync(string destination)
+    {
+        string source = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_BINARIES")
+            ?? throw new InvalidOperationException("Selected compatibility runtime requires owned prepared binaries.");
+        return MaterializeSelectedDaprAsync(source, destination, SelectedDaprVersion);
+    }
+
+    /// <summary>Validates the selected receipt and executable bytes before materializing each executable.</summary>
+    /// <param name="source">The owned prepared-binary directory.</param>
+    /// <param name="destination">The invocation-owned destination.</param>
+    /// <param name="selectedVersion">The explicitly selected runtime version.</param>
+    internal static async Task MaterializeSelectedDaprAsync(string source, string destination, string selectedVersion)
+    {
+        using var identity = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(source, "selected-runtime.json")));
+        if (identity.RootElement.GetProperty("version").GetString() != selectedVersion)
+            throw new InvalidOperationException("Selected compatibility runtime receipt mismatch.");
+        Directory.CreateDirectory(destination);
+        foreach (string name in new[] { "daprd", "placement", "scheduler" })
+        {
+            byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(source, name));
+            string expected = identity.RootElement.GetProperty("binaries").GetProperty(name).GetString()!;
+            string approved = name switch
+            {
+                "placement" => "09dacec2acfdc6c41ab08e05032c619f6500199f8687b54bb54c22b1ce9734c4",
+                "scheduler" => "f67e6948556e40ef6cf816296a24ad0608d22863d578987643d697ce3ff11944",
+                _ => "b1ece5da76674bf6e15126aeb019fa58e444b5b8edf4d0ac59e32df895ae8fd2",
+            };
+            if (expected != approved || Hash(bytes) != expected || (name == "daprd" && expected != "b1ece5da76674bf6e15126aeb019fa58e444b5b8edf4d0ac59e32df895ae8fd2"))
+                throw new InvalidOperationException("Selected compatibility binary checksum mismatch.");
+            string path = Path.Combine(destination, name);
+            await File.WriteAllBytesAsync(path, bytes);
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+    }
+
     /// <summary>Computes a stable lowercase SHA-256 identity.</summary>
     internal static string Hash(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 
