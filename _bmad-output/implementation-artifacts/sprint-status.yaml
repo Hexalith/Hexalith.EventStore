@@ -130,6 +130,7 @@ development_status:
   # row grants no release, promotion, deployment, readiness, or consumer-removal authority.
   3-15-corrected-deployed-runtime-parity-closure: done
   3-16-latest-compatible-dependency-and-root-submodule-refresh: backlog
+  # 2026-11-09: module Dapr inventory/guard consumes Platform qualification; existing scoped exceptions remain unchanged.
   3-17-dapr-boundary-inventory-and-enforcement: backlog
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-COMPAT, FR36-C3 publication
   # authority, and FR36-C4/C5 consumer-removal authority owners.
@@ -138,6 +139,7 @@ development_status:
   3-20-consumer-removal-authority-manifest-and-validator: backlog
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07-architecture-routing): runtime pin and
   # durable-broker qualification for the AD-26 profile; a Story 3.19 issue-step prerequisite.
+  # 2026-11-09: EventStore supplies requirements/assertions; Platform owns concrete profile execution; prior 1.19.1 results remain historical.
   3-21-production-dapr-runtime-pin-and-durable-broker-qualification: in-progress
   # 2026-10-23: both superseded by spec-evidence-storage-simplification (proof = tests
   # + CI recorded in the story/spec; committed evidence and its machinery removed).
@@ -173,6 +175,8 @@ development_status:
   # Owner “approve and accept” (2026-11-01): atomic conflict-protection scope, supported-Dapr dependency and erasure-verifier custody extension accepted.
   # Scope: ../planning-artifacts/sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md
   # Final proof waits for qualified capability, 5.6/5.7 isolation/migration and ratified AD-26; lifecycle stays backlog.
+  # 2026-11-09 scope/ownership: ../planning-artifacts/sprint-change-proposal-2026-11-09.md
+  # Backend-neutral Dapr tests consume Platform profiles; missing mandatory primitive keeps G-APPEND FAIL/BLOCKED.
   4-16-append-write-once-conformance-through-enforced-envelope: backlog
   4-17-oq8-governing-design-authority-import: backlog
   epic-4-retrospective: optional
@@ -187,6 +191,7 @@ development_status:
   5-3-production-authentication-guards-and-secret-stripping: done
   5-4-admin-surface-safety-hygiene: done
   5-5-internal-and-domain-service-trust-boundary: in-progress
+  # 2026-11-09: 5.6-5.9 retain module contracts/readers/parity/docs; concrete infrastructure execution belongs to Platform.
   5-6-apphost-component-loading-and-sidecar-argument-parity: backlog
   5-7-production-dapr-component-and-acl-parity: backlog
   5-8-runtime-topology-drift-tests: backlog
@@ -233,6 +238,7 @@ development_status:
   7-8-dapr-resiliency: backlog
   7-9-immutable-production-images: backlog
   7-10-integration-ci-recovery: backlog
+  # 2026-11-09: Dapr/owning-actor helpers and gateway persistence repair; 3.18 compatibility and Platform descriptor inputs precede code.
   7-11-persisted-state-evidence-and-read-back-helpers: backlog
   7-12-fake-and-integration-test-reclassification: backlog
   7-13-advisory-and-performance-workflow-hygiene: backlog

@@ -1,6 +1,6 @@
 # Deployment Configuration
 
-Production DAPR component configurations for deploying Hexalith.EventStore to different environments. Swap these YAML files to change backends with **zero application code changes, zero recompilation, zero redeployment** of application containers (NFR29).
+This directory retains EventStore Dapr requirements, component templates and historical provider examples. Hexalith.Platform owns concrete backend/component selection within the approved profile, shared infrastructure composition and lifecycle, provisioning, and deployment/backup/restore execution. EventStore owns backend-neutral module semantics and Dapr-path acceptance assertions. A backend/runtime/component change requires the applicable compatibility, qualification and separately authorized migration work; exchanging YAML does not establish equivalent guarantees or a zero-redeployment result. The compatibility tables and commands below describe template/example coverage, not current production eligibility or deployment authority. Story 5.9 reconciles them against Platform's accepted rendered/loaded profile; AD-26 and the existing release/deployment gates remain binding.
 
 ## Directory Structure
 

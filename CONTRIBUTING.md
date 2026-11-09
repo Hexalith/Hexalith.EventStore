@@ -128,18 +128,15 @@ Run and debug EventStore as a module from the
 direct submodule `references/Hexalith.EventStore`. Prerequisites:
 
 - The Platform-pinned `hexalith-module` tool, restored with `dotnet tool restore` in the Platform root.
-- Aspire CLI `13.6.1` exactly; the tool refuses any other version with `HXR015`.
+- The exact Aspire CLI selected by the current Platform checkout's pinned tool/catalog instructions; use its README rather than a copied EventStore version.
 - A running Docker engine.
-- `HEXALITH_DAPR_HOME` set to an absolute, isolated Dapr home: Dapr CLI `1.18.0` at `tools/dapr` and runtime
-  `1.18.2` at `.dapr/bin/{daprd,placement,scheduler}`. The Platform README shows how to prepare one from the
-  official release assets.
+- `HEXALITH_DAPR_HOME` set to the absolute, isolated home prepared from the current Platform README's exact CLI/runtime inputs and layout. A candidate qualification lock in EventStore does not change Platform's selected development runtime.
 - The Platform workspace's direct `references/Hexalith.Builds`, `references/Hexalith.EventStore`,
   `references/Hexalith.Tenants` and `references/Hexalith.Memories` checkouts, initialized without `--recursive`.
   The tool reads all three declaration owners even for EventStore alone. Each `HEAD` must equal its gitlink
   staged in Platform. After a local commit here, run `git add references/Hexalith.EventStore` in Platform
   before starting a run.
-- The local Aspire orchestration and dashboard packages at `13.6.1`: run `dotnet restore apphost.cs` from
-  Platform once before the first `debug` run. Tool restore alone does not install these SDK packages.
+- The local orchestration/dashboard packages declared by Platform's `apphost.cs`: restore them from the Platform root as its README directs before the first run. Tool restore alone does not install these SDK packages.
   If NuGet uses a custom `globalPackagesFolder`, set `NUGET_PACKAGES` to that absolute folder for both
   restore and `debug`; otherwise the tool checks `~/.nuget/packages` and reports `HXR016` when packages
   are missing.
@@ -147,13 +144,12 @@ direct submodule `references/Hexalith.EventStore`. Prerequisites:
 From the Platform root:
 
 ```bash
-export HEXALITH_DAPR_HOME="$HOME/.hexalith/dapr/1.18.2"
+: "${HEXALITH_DAPR_HOME:?Set HEXALITH_DAPR_HOME to the isolated home prepared from the Platform README}"
 dotnet tool run hexalith-module -- debug --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
 ```
 
 Pass the owner manifest under `references/`, never the Platform's copy in
-`src/Hexalith.Platform.Composition/Declarations/`. `debug` builds this checkout in Debug, starts only the
-`eventstore` gateway with its Dapr sidecar, the Dapr control plane and Redis, waits for the declared `/ready`
+`src/Hexalith.Platform.Composition/Declarations/`. `debug` builds this checkout in Debug, starts the declared module within Platform's selected development topology, waits for the declared `/ready`
 endpoint, and reports the process id of the `dotnet run` launcher. The gateway is the launcher's child process:
 
 ```bash
