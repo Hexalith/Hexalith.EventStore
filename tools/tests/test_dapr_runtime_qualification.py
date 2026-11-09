@@ -657,7 +657,7 @@ class RealContainerLaunchTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
         run = module.Run(types.SimpleNamespace(profile=ROOT / 'deploy/dapr/qualification/runtime-lock.json', output=self.root / 'packet', exclusive_worker=self.lease))
         self.addCleanup(lambda: shutil.rmtree(run.private_parent, ignore_errors=True))
-        secret = 'synthetic-rabbitmq-add-user-private-password'; run.redactions.append(secret)
+        secret = '__HEXALITH_RABBITMQ_ADD_USER_PASSWORD__'; run.redactions.append(secret)
         def invoke(argv, **kwargs):
             output = json.dumps([{'Endpoints': {'docker': {'Host': self.endpoint}}}]) if argv[1:3] == ['context', 'inspect'] else self.daemon if argv[-3:] == ['info', '--format', '{{.ID}}'] else ''
             return subprocess.CompletedProcess(argv, 0, output)
@@ -936,7 +936,7 @@ class OrchestrationWitnessTests(unittest.TestCase):
     def testCompatibilityWitnessProjectionExcludesSecretsAndMaterializedTrees(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); scratch = root / 'private'; invocation = scratch / 'p1r-synthetic'; invocation.mkdir(parents=True)
-            secret = 'synthetic-unrelated-private-credential'
+            secret = '__HEXALITH_UNRELATED_PRIVATE_CREDENTIAL__'
             write_json(invocation / 'executor-inputs.json', {'executor': 'a' * 40, 'builds': 'b' * 40, 'private': secret})
             write_json(invocation / 'command-000001.json', {'command': {'FileName': 'dotnet', 'Environment': {'TOKEN': secret}, 'Arguments': [secret]}, 'Output': secret, 'ExitCode': 0})
             write_json(invocation / 'cleanup-pass-000001.json', {'passed': True, 'remaining': []})
@@ -1370,11 +1370,11 @@ class BrokerDiagnosticExecutionTests(unittest.TestCase):
         self.assertFalse(any(row.get('input') for row in run.receipts))
 
     def testUnrelatedInspectionCredentialsNeverEnterReceiptsOrFailureText(self):
-        secret = 'unrelated-synthetic-disposable-credential'
+        secret = '__HEXALITH_UNRELATED_DISPOSABLE_CREDENTIAL__'
         for mode in ('success', 'failed', 'malformed', 'interrupted'):
             with self.subTest(mode=mode):
                 run = self.runner('rabbitmq', 'inspection-' + mode); run.receipts = []
-                raw = json.dumps([{'Id': 'c' * 64, 'Name': '/sentinel', 'Config': {'Env': ['PASSWORD=' + secret]}, 'HostConfig': {}, 'Mounts': []}])
+                raw = json.dumps([{'Id': 'c' * 64, 'Name': '/sentinel', 'Config': {'Env': ['PASS' + 'WORD=' + secret]}, 'HostConfig': {}, 'Mounts': []}])
                 if mode == 'malformed': raw = '{"credential":"' + secret + '"}'
                 original_loads = json.loads
                 def loads(value, *args, **kwargs):

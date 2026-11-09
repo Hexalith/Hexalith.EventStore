@@ -174,11 +174,42 @@ public sealed partial class SecretsProtectionTests
         string line = content[start..end];
         Group name = assignment.Groups["name"];
         int local = name.Index - start;
-        if (!path.EndsWith(".go", StringComparison.OrdinalIgnoreCase)) return false;
+        if (!path.EndsWith(".go", StringComparison.OrdinalIgnoreCase) || !IsGoCodePosition(content, name.Index)) return false;
+        int valueLine = 1 + content.AsSpan(0, assignment.Groups["value"].Index).Count('\n');
+        int nameLine = 1 + content.AsSpan(0, name.Index).Count('\n');
+        if (valueLine != nameLine && line.Contains("case", StringComparison.Ordinal) && line.TrimEnd().EndsWith(':'))
+        {
+            return true;
+        }
         Match field = Regex.Match(line, @"\A\s*(?<name>[A-Za-z_][A-Za-z0-9_]*):[\t ]*(?<runtime>[A-Za-z_][A-Za-z0-9_.]*),\s*\z", RegexOptions.CultureInvariant);
-        return field.Success && field.Groups["name"].Index == local
-            && IsGoCodePosition(content, name.Index)
-            && field.Groups["runtime"].Value is not ("true" or "false");
+        if (field.Success && field.Groups["name"].Index == local
+            && field.Groups["runtime"].Value is not ("true" or "false"))
+        {
+            return true;
+        }
+
+        // `:=` is parsed as a colon separator, so the captured value is "=".
+        // Accept a quote-free short declaration or composite-literal field.
+        if (line.Contains('"') || line.Contains('\'') || line.Contains('`'))
+        {
+            return false;
+        }
+
+        Match declaration = Regex.Match(
+            line,
+            @"\A\s*(?<names>[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s*:=\s*(?<runtime>\S.*?)\s*\z",
+            RegexOptions.CultureInvariant);
+        if (declaration.Success
+            && declaration.Groups["names"].Value.Split(',').Any(declared => declared.Trim() == name.Value))
+        {
+            return true;
+        }
+
+        Match composite = Regex.Match(
+            line,
+            @"\b(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?<runtime>[A-Za-z_][A-Za-z0-9_]*(?:\([^)\r\n]*\))?)",
+            RegexOptions.CultureInvariant);
+        return composite.Success && composite.Groups["name"].Index == local;
     }
 
     private static bool IsGoCodePosition(string content, int target)

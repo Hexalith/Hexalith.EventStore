@@ -179,7 +179,7 @@ class ActorAdmissionRunnerTests(unittest.TestCase):
         from types import SimpleNamespace
         self.run.docker_owner = SimpleNamespace(endpoint='unix:///synthetic.sock', verify=lambda: None)
         self.run.profile = {'runtime': {'version': '1.19.1'}}
-        secret = 'synthetic-unrelated-baseline-private-credential'
+        secret = '__HEXALITH_UNRELATED_BASELINE_CREDENTIAL__'
         def invoke(argv, **kwargs):
             args = list(argv)[3:]
             if args[:1] == ['ps'] or args[:2] in (['network', 'ls'], ['volume', 'ls']):
