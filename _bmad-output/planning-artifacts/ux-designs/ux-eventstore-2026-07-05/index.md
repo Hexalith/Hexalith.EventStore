@@ -1,7 +1,7 @@
 # Hexalith.EventStore UX Index
 
 Status: final
-Updated: 2026-10-07
+Updated: 2026-11-09
 
 This folder is the canonical UX source for Hexalith.EventStore. It is updated
 against repository revision `c60503c13069fde13f329f2166ff39c90c3661c4`
@@ -27,7 +27,7 @@ authorizes implementation or readiness; the current PRD remains `blocked` /
 
 ## Reconciliation And Validation
 
-The current update is recorded in [Current-source reconciliation](reconcile-current-sources-2026-10-07.md). It preserves the inherited visual direction and approved mock set while aligning the detailed contracts with current source authority. Upstream `/types` route-manifest repair, the NFR1 architecture conflict, OR14 acceptance, and Story 9.3 digest renewal remain open; detailed document finality does not close them.
+The October 7 source update is recorded in [Current-source reconciliation](reconcile-current-sources-2026-10-07.md); its revision and input hashes are retained as historical observations. The [approved 2026-11-09 correction](../../sprint-change-proposal-2026-11-09-readiness-recovery.md) updates planning handoffs without a visual or behavioral redesign. AD-16 and Story 5.14 now reflect PRD NFR1's enumerated UI-host exception class; this is a planning-contract alignment, not tested UI conformance or production eligibility. Story 7.14's acceptance list includes /types and the existing Type Catalog tab/default policy; the route-manifest implementation and tests remain pending. OR14 and Story 9.3 still own substantive source reconciliation, lifecycle agreement, final input renewal and approval. Document finality confers no readiness or release authority.
 
 Prior lens reviews are historical evidence; superseded bodies are recoverable from Git history.
 

@@ -1,7 +1,7 @@
 # UX Handoff — Hexalith.EventStore Phase 4
 
 Status: final
-Updated: 2026-10-07
+Updated: 2026-11-09
 
 This is the canonical top-level UX handoff expected by `prd.md`,
 `architecture.md`, and `epics.md`. The detailed source is the sharded artifact
@@ -32,7 +32,7 @@ The [2026-10-07 reconciliation](ux-designs/ux-eventstore-2026-07-05/reconcile-cu
 
 `/projections`, `/dapr`, `/services`, and `/health` retain their evidence-based behavior, including `Unknown` fail-safe handling. Reconnect/rejoin fetches authoritative typed evidence; notification delivery, absence, loss, duplicates, or ordering never establishes freshness or completion. Story 2.13 retains cross-replica authorization and group-isolation evidence. See [PRD §8.4](prd.md#84-dapr-infrastructure-boundary) and the [boundary guide](../../docs/concepts/dapr-infrastructure-boundary.md).
 
-The `/types` manifest omission and PRD/architecture NFR1 exemption conflict remain upstream reconciliation items. Existing epics UX digests are historical bindings; this update does not repin them. OR14 acceptance and Story 9.3 renew those bindings after substantive reconciliation and approval. No release, production UI eligibility, or readiness gate is closed by UX document finality.
+AD-16 and Story 5.14 now reflect PRD NFR1's enumerated UI-host exception class; this is a planning-contract alignment, not tested UI conformance or production eligibility. Story 7.14's acceptance list includes /types and the existing Type Catalog tab/default policy; the route-manifest implementation and tests remain pending. OR14 and Story 9.3 still own substantive source reconciliation, lifecycle agreement, final input renewal and approval. Document finality confers no readiness or release authority. The [approved 2026-11-09 correction](sprint-change-proposal-2026-11-09-readiness-recovery.md) records this planning alignment. Existing epics UX digests remain historical bindings and are not repinned; the October 7 source snapshot is retained.
 
 The brownfield target is `src/Hexalith.EventStore.Admin.UI`, evolved in place
 under service/resource/DAPR/container identity `eventstore-admin-ui` and

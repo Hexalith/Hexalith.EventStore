@@ -2,7 +2,7 @@
 name: Hexalith.EventStore Admin
 status: final
 created: 2026-07-05
-updated: 2026-10-07
+updated: 2026-11-09
 reviewed_repository_revision: c60503c13069fde13f329f2166ff39c90c3661c4
 sources:
   - docs/brownfield/architecture.md
@@ -46,17 +46,19 @@ Authority flows one way: the PRD defines product intent and current readiness st
 
 The reviewed source-snapshot base is `c60503c13069fde13f329f2166ff39c90c3661c4`; the digests identify the exact working-tree source bytes examined. Later source-byte changes reopen reconciliation; a later commit with unchanged inputs does not alter their captured identity or establish approval. PRD implementation readiness remains `blocked` / `reject`, and architecture remains `draft`. This UX update neither repins epics nor closes planning-source drift: OR14 and Story 9.3 own upstream baseline renewal and approval.
 
+The [owner-approved 2026-11-09 planning alignment](../../sprint-change-proposal-2026-11-09-readiness-recovery.md) updates the security and route handoffs only. The October 7 source-snapshot revision and hashes above remain historical observations; this is no new full-source UX validation or baseline approval.
+
 ### Client and credential boundary
 
 Admin UI remains a typed-client consumer. A request made for an authenticated human forwards that human's bearer or approved bounded delegation through the platform handler and carries no workload assertion. Mixed credential kinds fail before work; a workload credential never grants human-policy authority. Authentication failure clears protected state and offers only configured recovery with a safe same-origin canonical return route. JWT/profile conformance belongs to Story 5.11; the UI does not invent a credential protocol.
 
-PRD NFR1 permits explicitly enumerated, data-free static framework assets and authentication-protocol callbacks on interactive UI hosts, each pinned `AllowAnonymous` and covered by endpoint-metadata tests; authenticated fallback remains fail closed. These exceptions expose no tenant, operational, or user data and do not create an anonymous Admin dashboard. PRD §9.2 excludes interactive UI hosts from the canonical MVP production profile until human login exists; interactive OIDC remains backlog in Story 7.16. The older probes-only architecture wording needs upstream reconciliation, recorded under **Handoff Boundaries**.
+PRD NFR1 permits explicitly enumerated, data-free static framework assets and authentication-protocol callbacks on interactive UI hosts, each pinned `AllowAnonymous` and covered by endpoint-metadata tests; authenticated fallback remains fail closed. These exceptions expose no tenant, operational, or user data and do not create an anonymous Admin dashboard. PRD §9.2 excludes interactive UI hosts from the canonical MVP production profile until human login exists; interactive OIDC remains backlog in Story 7.16. AD-16 now reflects this exception class; exact UI-host inventories, real-host conformance and human login remain pending, as recorded under **Handoff Boundaries**.
 
 `Hexalith.McpCli` is the sole target Hexalith-owned CLI/MCP surface under AD-35. EventStore keeps Admin semantics and server-side checks, while its legacy Admin CLI/MCP packages remain migration sources until approved replacement or withdrawal and parity evidence permit removal. This ownership change does not replace the Admin UI typed client or create a new UI control.
 
 ### Finalization decisions
 
-- The live `/types` catalog, including `events`, `commands`, and `aggregates` inner tabs, stays under Streams & Events. Story 7.14's current machine-validated route-manifest acceptance list omits `/types`; that source gap must be corrected without creating a second route implementation.
+- The live `/types` catalog, including `events`, `commands`, and `aggregates` inner tabs, stays under Streams & Events. Story 7.14's route-manifest acceptance now includes `/types` and its existing inner-tab/default policy; implementation and tests remain pending, without a second route implementation.
 - The UX does not invent a numeric freshness horizon. Story 7.5 must bind the authoritative horizon and clock basis from the typed contract or configuration before dependent mutations can become available.
 - Recovery mutation affordances exist only when the specific capability is delivered and the active environment has passed its required readiness, topology, authorization, audit, and evidence gates. Otherwise they are hidden or presented as read-only unavailable context; route or DTO presence is not delivery evidence.
 - Restore and import remain hidden; Stories 7.4 and 7.14 own removal or honest migration of legacy affordances. Backup and compaction retain their existing read-only routes. Story 7.22's production restore contract creates no restore UI.
@@ -70,7 +72,7 @@ The host exposes one `event-store-admin` module. Its dashboard owns ten ordered 
 |---|---|---|---|
 | Overview | `/` | Authorized health summary, activity, freshness, and recent evidence | Mocked: `mockups/dashboard-overview.html` |
 | Commands | `/commands` | Command lifecycle, accepted versus terminal evidence, and investigation | Mocked: `mockups/command-investigation.html` |
-| Streams & Events | `/streams`, `/streams/{tenant}/{domain}/{aggregate}`, `/events`, `/types` | Stream/event evidence, protected outcomes, and type catalog; `/types` retains its UX placement despite the Story 7.14 manifest gap | Spine-only |
+| Streams & Events | `/streams`, `/streams/{tenant}/{domain}/{aggregate}`, `/events`, `/types` | Stream/event evidence, protected outcomes, and type catalog; `/types` has matching Story 7.14 route-manifest acceptance; implementation remains pending | Spine-only |
 | Projections | `/projections` | Operational status, authoritative lifecycle, lag, freshness, and rebuild evidence | Spine-only |
 | Tenants & Access | `/tenants` | Tenant-visible access state, gated Create Tenant, and role mutation | Spine-only |
 | Topology | `/dapr`, `/dapr/actors`, `/dapr/pubsub`, `/dapr/resiliency`, `/dapr/health-history`, `/services` | DAPR/service operations, safe catalog readiness, and approved release identity where supplied | Spine-only |
@@ -94,7 +96,7 @@ The router is the source of truth. On arrival, it selects the owning module, tab
 | `/streams` | Streams & Events / streams | Safe tenant/domain filters and opaque paging | Cross-tenant or malformed scope fails closed. |
 | `/streams/{tenant}/{domain}/{aggregate}` | Streams & Events / stream detail | Typed, encoded path identities; tenant is explicit canonical lowercase, 1–64 characters; no raw payload in URL | Invalid, reserved `system`, wildcard, or conflicting tenant input fails closed before routing; denial does not confirm the stream. |
 | `/events` | Streams & Events / events | Allow-listed safe filters and opaque paging | Invalid filter performs no query. |
-| `/types` | Streams & Events / Type Catalog | `tab=events`, `tab=commands`, or `tab=aggregates`; omitted means the catalog default | Unknown tab falls back to the catalog default with a bounded notice. Story 7.14 must add this route to its manifest. |
+| `/types` | Streams & Events / Type Catalog | `tab=events`, `tab=commands`, or `tab=aggregates`; omitted means the catalog default | Unknown tab falls back to the catalog default with a bounded notice. Story 7.14 owns the pending manifest implementation and validation. |
 | `/projections` | Projections | Safe status/filter state; opaque paging | Missing authoritative provenance renders `Unknown`. |
 | `/tenants` | Tenants & Access | Exactly one explicit canonical lowercase tenant filter where tenant scope is required; gated Create Tenant and role change | Missing, duplicate, conflicting, invalid, reserved `system`, or wildcard tenant input fails before lookup; Create Tenant gives associated inline validation and focuses tenant ID without submission or existence disclosure. |
 | `/dapr` | Topology / summary | Safe activated route/idempotency catalog generation and readiness may render; no raw catalog bytes, configuration, digest, key, fence, token, or secret state | Unavailable, partial, mismatched, unknown, corrupt, or ambiguous activation is not empty, healthy, or ready. |
@@ -114,7 +116,7 @@ The router is the source of truth. On arrival, it selects the owning module, tab
 
 AD-27 binds every tenant-bearing route, filter, dialog, and request to exactly one explicit tenant normalized to lowercase using 1–64 characters and `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`. Whitespace and invalid characters are not trimmed or repaired. Missing, duplicate, conflicting, invalid, reserved `system`, and wildcard-inferred tenant values fail before routing, state access, autocomplete, or existence disclosure. Internal cataloged platform scope is not a selectable managed tenant.
 
-Story 7.14 must eventually supply the machine-validated route manifest, exact parameter policy, redirects, and single-owner implementation. Its current acceptance list omits the live `/types` route, so the manifest is not yet complete. The current tenant/domain navigator becomes a Streams & Events filter/drill-in; **Topology** is reserved for DAPR and service operations.
+Story 7.14 must eventually supply the machine-validated route manifest, exact parameter policy, redirects, and single-owner implementation. Its acceptance list now includes the live `/types` route and the inner-tab/default policy above; manifest implementation and tests remain pending. The current tenant/domain navigator becomes a Streams & Events filter/drill-in; **Topology** is reserved for DAPR and service operations.
 
 The eleven journeys below cover the information architecture: every tab has a journey or is a named waypoint with an explicit action boundary, and the Sample and Tenants consumer surfaces retain separate journeys. The PRD's UI-facing UJ3 and UJ4 keep their exact names and roles. UJ1 SDK adoption, UJ2 generated API hosting, and UJ5 release/consumer-removal authorization are non-UI journeys governed by their source contracts; they do not add Admin screens.
 
@@ -394,7 +396,7 @@ Existing decisions reject a custom EventStore palette or type ramp, duplicate sh
 | AD-27 / NFR2 — canonical tenant boundary | Explicit lowercase 1–64 tenant grammar, reserved `system` rejection, no wildcard or credential-derived scope | 2.14 / G-TENANT; shared boundary contract and all tenant-bearing adapters |
 | Story 5.10 — managed-tenant provisioning guard | Gated Create Tenant within `/tenants`; inline zero-request reserved-input validation | 5.10 with 5.2 prerequisite; 7.5 typed transport and 7.19 presentation |
 | AD-29 / AD-31 — audit and recovery readiness | Bounded attribution, phase state, audit fail-closed, recovery action gating | 7.3 and Operations production-wiring evidence before 7.19 actionability |
-| AD-10 / AD-16 / AD-36 — human relay and host authentication | Credential-kind separation; explicit NFR1 UI-host exception class; honest login/unavailable boundary | 5.5 / 5.11 JWT and trust closure; 5.14 ingress; 7.16 human login; upstream AD-16 reconciliation |
+| AD-10 / AD-16 / AD-36 — human relay and host authentication | Credential-kind separation; explicit NFR1 UI-host exception class; honest login/unavailable boundary | 5.5 / 5.11 JWT and trust closure; 5.14 ingress; 7.16 human login; AD-16 aligned, UI conformance pending |
 | AD-13 / AD-34 — evolution and ambiguous saves | Immutable retained payload, typed refusal/capability loss, status-only Dapr reconciliation | 6.6 current amendments; 3.17 infrastructure qualification; 7.5/7.19 presentation |
 | AD-11 / AD-26 — release identity and authority | Approved OCI identity; five distinct publication states; assurance-preserving read-only display | 7.9 display; 3.19 authority schema/validator and owner records; production-profile gates remain open |
 | AD-35 — McpCli ownership | Sole target CLI/MCP, preserved Admin semantics and UI client boundary | Approved McpCli contract/inventory/parity before legacy removal |
@@ -408,8 +410,7 @@ Existing decisions reject a custom EventStore palette or type ramp, duplicate sh
 
 ## Handoff Boundaries
 
-- Story 7.14's exhaustive route list still omits `/types`; its retained Streams & Events ownership and inner-tab policy require upstream manifest correction. This UX update does not close the route-manifest gate.
-- PRD NFR1 settles the explicit UI-host static-asset/callback exception class and §9.2 settles the MVP production-profile exclusion. Architecture AD-16 and Implementation Status still describe the earlier probes-only/pending posture; reconcile them upstream rather than inventing a new product-owner choice.
+- AD-16 and Story 5.14 now reflect PRD NFR1's enumerated UI-host exception class; this is a planning-contract alignment, not tested UI conformance or production eligibility. Story 7.14's acceptance list includes /types and the existing Type Catalog tab/default policy; the route-manifest implementation and tests remain pending. OR14 and Story 9.3 still own substantive source reconciliation, lifecycle agreement, final input renewal and approval. Document finality confers no readiness or release authority.
 - OR14 and Story 9.3 own atomic source reconciliation, drift validation, digest renewal, and approval. Fresh snapshot hashes here are observation evidence; epics pins remain stale and are not repinned by UX finalization.
 - The typed freshness horizon, capability availability, and production-profile/issuer qualification remain implementation prerequisites. No local horizon, performance budget, RTO/RPO, provider guarantee, or gate result is invented. Document finality does not satisfy implementation readiness, which remains blocked/reject.
 

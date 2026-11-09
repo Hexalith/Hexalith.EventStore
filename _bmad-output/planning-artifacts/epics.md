@@ -5,6 +5,7 @@ stepsCompleted:
   - step-03-create-stories
   - step-04-final-validation
 inputDocuments:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-11-09-readiness-recovery.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-11-08.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-21.md
@@ -4189,6 +4190,8 @@ So that committed events and their coupled state cannot be silently overwritten 
 
 **Dependencies:** A supported Dapr SDK/runtime/component capability with mandatory semantics is a blocking delivery dependency; the inspected combination does not supply it. Stories 3.17/3.21 define the required Dapr operations and versions and evaluate Platform-executed qualification, including raw-call bypass and existing erasure-authority enforcement; Platform supplies the concrete profile environment and EventStore supplies logical application assertions. Disposable feasibility may precede ratification. Only a credible mechanism proceeds to the separately owned 5.6/5.7 isolation, reader/default/data migration, guarded initialization and rollback work. Final conformance consumes those deliveries, exact Platform rehearsal, ratified AD-26, 3.18 compatibility and existing AD-12/9.2 assurance. Runtime-minor or bound-input changes require re-proof; no unqualified provider or mixed old/new writer is silently supported.
 
+**Delivery intake (2026-11-09 readiness correction).** Delivery remains blocked on a supported released Dapr SDK/runtime/component combination implementing the complete approved contract. EventStore's persistence owner coordinates 3.17/3.21's capability intake and logical acceptance suite. Platform acceptance of concrete qualification execution is pending and is distinct from capability availability. Record the accepting owner, owning work reference, exact supported profile and contract version, prerequisites, supplied controls and acceptance command before execution. An unaccepted intake, missing control, unsupported primitive or unqualified erasure verifier leaves the affected lane blocked. Planning approval neither supplies owner acceptance nor permits migration around an assumed feature. Private runtime builds, provider exceptions and new activation fencing require separate exact-scope decisions. The owning spec records the complete prepared Platform/Builds request from the [approved readiness proposal](sprint-change-proposal-2026-11-09-readiness-recovery.md#p1--story-416-concrete-delivery-intake-and-stop-conditions).
+
 **Execution ownership (2026-11-09 course correction).** EventStore's contract tests are backend neutral and use supported Dapr APIs and owning-actor readback against each explicitly supported Platform-supplied profile. Platform owns infrastructure lifecycle, concrete component configuration and bounded host/fault controls. Existing PostgreSQL/Redis fixtures and earlier observations remain historical inputs; future infrastructure execution follows Platform's accepted scope. A missing mandatory primitive remains a blocker, and a pass on one concrete profile proves no other profile. The owning spec's Current Qualification Ownership section governs this handoff without changing the production, migration, private-build or provider-exception gates.
 
 **Owner decision (2026-11-01):** “approve and accept” accepts the [sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md](sprint-change-proposal-2026-11-01-story-4-16-atomic-conflicting-writes.md) scope, supported-Dapr dependency strategy and the proposed existing-erasure-capability transport/HMAC-verifier custody extension. It renegotiates the prior envelope-only intent while retaining the full no-loss requirement and 5.6/5.7 ownership. Scope acceptance is not delivery, production profile selection, a private-runtime-build decision or authenticated per-role AD-26 ratification. No runtime implementation, key distribution, migration or deployment occurs in this planning application.
@@ -4213,7 +4216,7 @@ All prevention oracles use fresh logical reads through the owning Dapr actor bou
 | AC10 Falsification | Remove the mandatory check or create-once rule on a disposable candidate; repeat its exact adversary | The corresponding prevention test fails while the intact lawful control passes. Separately removing revision CAS must expose stale metadata-only commits; removing create-once must expose replacement even with a fresh revision. A startup failure proves neither. Platform executes separately authorized disposable mutation/fault setup under the existing conventions; EventStore supplies the corresponding Dapr assertions. No production bypass switch is shipped, and this criterion selects no private runtime build or provider exception. |
 | AC11 Final gate | Exact qualified SDK/runtime/component, complete writer inventory, delivered prerequisites and ratified canonical profile | Every applicable prevention/erasure/failover/compatibility test passes on the production path with existing AD-12/9.2 assurance. Unknown capability, unavailable lane or an unguarded writer keeps G-APPEND FAIL/BLOCKED. Runtime-minor or bound-input changes require re-proof. |
 
-**Current reconciliation (2026-11-01):** Backlog, with approved scope and amended planning only. The coarse API-group policy is rejected; this does not prove every possible envelope impossible. Mandatory Dapr conflict capability, erasure enforcement, prerequisite delivery and final conformance remain undelivered. Keep the existing story key/path and lifecycle values. Historical 4.5 observations and 4.9–4.15 authority boundaries are unchanged; deleted evidence machinery stays deleted.
+**Current reconciliation (2026-11-09):** Backlog, with approved scope and amended planning only. The coarse API-group policy is rejected; this does not prove every possible envelope impossible. Mandatory Dapr conflict capability, erasure enforcement, prerequisite delivery and final conformance remain undelivered. Keep the existing story key/path and lifecycle values. Historical 4.5 observations and 4.9–4.15 authority boundaries are unchanged; deleted evidence machinery stays deleted. The approved delivery intake is recorded outside frozen intent; Platform acceptance and execution remain pending.
 
 ### Story 4.17: OQ8 Governing-Design Authority Import
 
@@ -4977,13 +4980,13 @@ So that endpoint mapping order, peer invocation, or a forged caller header can n
 
 **Architecture constraints:** AD-16, AD-28, AD-10, AD-29, and AD-31.
 
-**Dependencies:** Story 5.3 (probe anonymity); Story 5.5 (sidecar-channel policy and workload assertions); a Story 9.1 authorization record for gate G-AUTH-HOSTS. Tenants hosts land in the Tenants repository under its owner, as in Story 5.11. Interactive UI hosts wait for the product-owner decision on static assets and login callbacks (`sprint-change-proposal-2026-10-07-architecture-routing.md`, item 7.2). Story 7.1 keeps Operations delivery, capture, and acknowledgement semantics; this story owns only the authentication and authorization of the Operations endpoints.
+**Dependencies:** Story 5.3 (probe anonymity); Story 5.5 (sidecar-channel policy and workload assertions); a Story 9.1 authorization record for gate G-AUTH-HOSTS. Tenants hosts land in the Tenants repository under its owner, as in Story 5.11. PRD NFR1 already permits the explicitly enumerated, data-free UI-host asset/callback exception class; AD-16 is reconciled to it in the same planning change. Interactive UI-host conformance requires exact endpoint inventories and real-host tests under that contract. These hosts remain outside the canonical MVP production profile until human login exists. Tenants changes remain with its repository owner. Story 7.1 keeps Operations delivery, capture, and acknowledgement semantics; this story owns only the authentication and authorization of the Operations endpoints.
 
 **Acceptance Criteria:**
 
 **Given** the EventStore gateway, Admin Server Host, Sample API and generated-host fixtures, Operations, DomainService SDK hosts, and the Tenants hosts
 **When** endpoint metadata is enumerated
-**Then** each host configures an authenticated fallback that denies any endpoint without a named policy, every endpoint names its policy and authentication scheme, and only `/health`, `/alive`, and `/ready` carry `AllowAnonymous`
+**Then** each host configures an authenticated fallback that denies any endpoint without a named policy, every endpoint names its policy and authentication scheme, and `AllowAnonymous` is limited to the exact NFR1/AD-16 exceptions for that host type: support-safe probes, plus explicitly enumerated data-free static framework assets and authentication-protocol callbacks on interactive UI hosts only
 **And** the sidecar-channel scheme never satisfies the fallback, and an endpoint-metadata test fails on any unexpected anonymous or unnamed endpoint, including endpoints added later.
 
 **Given** the gateway and Operations map `MapSubscribeHandler` and `MapActorsHandlers`
@@ -4996,17 +4999,17 @@ So that endpoint mapping order, peer invocation, or a forged caller header can n
 **Then** authorization validates the credential the route admits (the human bearer relayed by Admin Server, validated through the shared JWT contract, or a workload assertion) and preserves AD-29 attribution
 **And** the caller app ID can only deny, and a missing, unvalidated, or mismatched credential is rejected before any list, replay, or skip effect.
 
-**Given** the interactive UI hosts (Admin UI, Sample Blazor UI)
-**When** the product-owner decision on static assets and login callbacks is still pending
-**Then** they are reported as failing conformance, with the conflict named
-**And** this story adds no exemption.
+**Given** the interactive UI hosts
+**When** endpoint metadata and real host pipelines are evaluated
+**Then** only explicitly enumerated NFR1-compliant probe, static-framework-asset and authentication-protocol-callback endpoints may be anonymous; all protected UI, API and tenant/operational/user-data surfaces retain authorization
+**And** unexpected anonymous metadata, unnamed policies, prefix/wildcard exemptions and cross-host leakage fail conformance; valid lawful controls remain functional, and missing human login or unqualified exception inventories cannot confer UI production eligibility or parent-story completion.
 
 **Given** completion is requested
 **When** forged-header, peer-invocation, missing-credential, and wrong-credential suites run against real host pipelines
 **Then** every denial shows zero downstream execution and unchanged persisted state
 **And** valid sidecar deliveries, actor callbacks, and probes still work.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 3). Only the DomainService SDK configures a fallback policy. The gateway (`Program.cs:47-48`) and Operations (`Program.cs:43-44`) map framework routes without a policy, and Operations authorizes dead-letter calls by caller app ID plus an unvalidated bearer (`DeadLetterOperationsEndpointExtensions.cs:227-234`).
+**Current reconciliation (2026-11-09):** In progress, matching the owning spec and tracker. The EventStore-owned host-security milestone is recorded as implemented; parent completion, actor-context/protocol qualification, resumable audit, cross-owner and UI conformance remain pending. Earlier descriptions are historical and do not negate the implemented milestone or establish a new test result.
 
 <!-- Epic 5 story set confirmed complete for planning. -->
 
@@ -6450,13 +6453,15 @@ So that operational navigation and legacy deep links remain coherent without cre
 
 **Given** route migration begins
 **When** the machine-validated route manifest is inspected
-**Then** it assigns exactly one canonical tab/detail target and parameter/query/fragment policy to `/`, `/commands`, `/streams`, `/streams/{tenant}/{domain}/{aggregate}`, `/events`, `/projections`, `/tenants`, `/dapr`, `/dapr/actors`, `/dapr/pubsub`, `/dapr/resiliency`, `/dapr/health-history`, `/services`, `/storage`, `/snapshots`, `/health`, `/health/dead-letters`, `/consistency`, `/backups`, `/compaction`, and `/settings`
+**Then** it assigns exactly one canonical tab/detail target and parameter/query/fragment policy to `/`, `/commands`, `/streams`, `/streams/{tenant}/{domain}/{aggregate}`, `/events`, `/types`, `/projections`, `/tenants`, `/dapr`, `/dapr/actors`, `/dapr/pubsub`, `/dapr/resiliency`, `/dapr/health-history`, `/services`, `/storage`, `/snapshots`, `/health`, `/health/dead-letters`, `/consistency`, `/backups`, `/compaction`, and `/settings`
 **And** every existing route is either the one canonical implementation or an explicit compatibility redirect; `/backups` resolves to Deferred & Backlog or the exact unsupported state established by Story 7.4.
+
+`/types` belongs to Streams & Events / Type Catalog. The manifest preserves `tab=events`, `tab=commands`, and `tab=aggregates`; omission selects the catalog default, and an unknown tab falls back to that default with a bounded notice. Reload, bookmarks, browser history and any compatibility redirect preserve authorized safe state and resolve to one canonical implementation. The route and every permitted/default/unknown-tab case are included in completion tests.
 
 **Given** a canonical or compatibility URL is requested
 **When** routing resolves it
 **Then** the owning dashboard tab or detail surface renders under the selected `event-store-admin` module, authorized tenant/domain/aggregate and safe filters are preserved according to the manifest, and browser history reaches the canonical URL without a redirect loop
-**And** malformed, unknown, denied, or cross-tenant parameters fail closed without disclosing resource existence, raw values, or a stale legacy page.
+**And** malformed, unknown, denied, or cross-tenant parameters fail closed without disclosing resource existence, raw values, or a stale legacy page; the sole declared unknown-selector fallback is `/types` with an unknown `tab`, which follows the catalog-default behavior above and grants no tenant or authorization exception.
 
 **Given** legacy page components contain reusable feature content
 **When** they are migrated behind the dashboard
@@ -7950,7 +7955,9 @@ So that the PRD, architecture, UX, epics, tracker, and story records cannot sile
 
 **Architecture constraints:** None new.
 
-**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-BASELINE. Minting an approved manifest also requires OR14 completion (architecture reviewer closure and AD-26 ratification, resolved detailed-UX assumptions and final statuses, renewed epics); building the validator and guards does not wait for it.
+**Dependencies:** Owner-approved scoped corrective work under the current AD-12 evidence policy. The owning story/spec records its authorization and applicable approval provenance; deleted Story 9.1 tooling is not a prerequisite to restore. Final baseline approval requires OR14 completion: architecture reviewer closure and AD-26 ratification or an approved replacement, final UX with substantive source reconciliation, lifecycle agreement, validated renewed epics and approval of the same source set. Building the scoped drift checks does not wait for that final approval.
+
+**Execution clarification (approved 2026-11-09):** Detailed UX finality is satisfied for the current pair; substantive source reconciliation, architecture closure and ratification, lifecycle agreement, validation and baseline approval remain open. Schedule 9.3 under AD-12's current story/spec-plus-CI policy. Re-specify any deleted validator when scheduling its actual guard work; do not restore deleted evidence packets, registries, manifests, seals or workflows merely because older text names them. Record input identities, commands, results, source SHA and CI link in the owning story/spec. Preserve required text/ownership/status/lifecycle drift checks and truthful initial FAIL behavior. Approval of this proposal does not deliver those checks or an approved baseline. References below to older manifest, registry or validator paths are governed by that policy; they are not instructions to recreate deleted evidence machinery. Reconciliation compares FR/NFR text, stable-clause and primary ownership, affected AD constraints, UX route/security contracts, wrapper/frontmatter and tracker lifecycle accounts, and applicable approval provenance. Story 5.14 is reconciled to in progress; verify the remaining OR15 accounts against their current evidence rather than choosing the most advanced label.
 
 **Acceptance Criteria:**
 
@@ -7984,7 +7991,7 @@ So that the PRD, architecture, UX, epics, tracker, and story records cannot sile
 **Then** each rejection is proven by a checked-in negative fixture observed failing, alongside a positive control, and no guard is green by construction
 **And** the workflow follows the Epic 9 truthful-FAIL CI rule.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md`. Extended 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 5): the repin change carries the staged AD-ID propagation.
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md`. Extended 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 5): the repin change carries the staged AD-ID propagation. Approved 2026-11-09 clarification: detailed UX is final; no digest is repinned by this correction. Substantive reconciliation, architecture closure/ratification, actual checks and final baseline approval remain pending under AD-12; Story 9.3 remains backlog.
 
 ### Story 9.4: Stable Clause Ledger And All-Clauses Validator
 

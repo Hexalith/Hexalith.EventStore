@@ -44,6 +44,16 @@ context:
 
 </frozen-after-approval>
 
+## Approved Planning Alignment — 2026-11-09
+
+The owner approved the [readiness-recovery proposal](../planning-artifacts/sprint-change-proposal-2026-11-09-readiness-recovery.md) with “approve”. This dated parent-story alignment leaves the frozen milestone intent, its implementation and recorded test results unchanged.
+
+PRD NFR1 already permits the explicitly enumerated, data-free UI-host asset/callback exception class; AD-16 is reconciled to it in the same planning change. Interactive UI-host conformance requires exact endpoint inventories and real-host tests under that contract. These hosts remain outside the canonical MVP production profile until human login exists. Tenants changes remain with its repository owner.
+
+Given the interactive UI hosts, when endpoint metadata and real host pipelines are evaluated, then only explicitly enumerated NFR1-compliant probe, static-framework-asset and authentication-protocol-callback endpoints may be anonymous; all protected UI, API and tenant/operational/user-data surfaces retain authorization. Unexpected anonymous metadata, unnamed policies, prefix/wildcard exemptions and cross-host leakage fail conformance. Valid lawful controls remain functional. Missing human login or unqualified exception inventories cannot confer UI production eligibility or parent-story completion.
+
+The parent-story metadata criterion now follows the exact NFR1/AD-16 exceptions by host type; non-UI hosts retain probes only. This plans future UI conformance work and implements no exception. The probes-only acceptance and results below describe the delivered non-UI milestone. Parent completion, actor-context/protocol qualification, resumable audit and cross-owner/UI conformance remain pending. Spec and tracker remain in progress; no new test result or production eligibility is claimed.
+
 ## Code Map
 
 Prefixes: `S=src/Hexalith.EventStore`, `D=S.ServiceDefaults`, `O=S.Operations`, `SDK=S.DomainService`; suffixes expand the project name.
