@@ -4,6 +4,9 @@
 # `git status` and breaks source-inspection tests that match newline-bearing markers.
 *.cs text eol=lf
 *.md text eol=lf
+# Imported OQ8 authority and owner permission retain their exact source Git-object bytes.
+docs/architecture/oq8/oq8-idempotency-design.md -text
+docs/architecture/oq8/LICENSE -text
 *.sh text eol=lf
 *.py text eol=lf
 # Dapr broker qualification inputs are bound by SHA-256 in runtime-lock.json.

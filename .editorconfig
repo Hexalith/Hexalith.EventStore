@@ -15,6 +15,13 @@ insert_final_newline = true
 [*.py]
 end_of_line = lf
 
+# Immutable OQ8 imports retain their source Git-object LF bytes on editor saves.
+[/docs/architecture/oq8/oq8-idempotency-design.md]
+end_of_line = lf
+
+[/docs/architecture/oq8/LICENSE]
+end_of_line = lf
+
 # C# files
 [*.cs]
 # Naming conventions

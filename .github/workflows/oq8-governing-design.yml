@@ -1,0 +1,57 @@
+name: OQ8 governing-design availability
+
+on:
+  push:
+    branches: [main, release/parties-sdk-3.130.2]
+  pull_request:
+    branches: [main, release/parties-sdk-3.130.2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# oq8-governing-design:begin
+env:
+  OQ8_SOURCE_REPOSITORY: github.com/Hexalith/Hexalith.Folders
+  OQ8_SOURCE_PATH: docs/exit-criteria/oq8-idempotency-design.md
+  OQ8_SOURCE_COMMIT: a9cfea91c8a987ef7a836c216e633a92321fc3c2
+  OQ8_DESIGN_VERSION: 1.0.0
+  OQ8_DESIGN_SHA256: 1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8
+  OQ8_LOCAL_DESIGN: docs/architecture/oq8/oq8-idempotency-design.md
+# oq8-governing-design:end
+
+jobs:
+  fixtures:
+    name: OQ8 governing-design fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Test exact identity and rejection paths
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_oq8_governing_design.py'
+
+  live-evaluation:
+    name: OQ8 governing-design live evaluation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Evaluate and report current authority availability
+        shell: bash
+        run: |
+          status=0
+          python3 -B tools/validate-oq8-governing-design.py || status=$?
+          source_sha="$(git rev-parse HEAD)"
+          workflow_digest="$(sha256sum .github/workflows/oq8-governing-design.yml | cut -d ' ' -f 1)"
+          result=FAIL
+          if [ "$status" -eq 0 ]; then
+            result=PASS
+          fi
+          printf 'OQ8 governing-design availability: %s\nSource SHA: %s\nWorkflow SHA-256: %s\n' "$result" "$source_sha" "$workflow_digest" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$status"

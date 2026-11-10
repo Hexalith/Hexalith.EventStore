@@ -4221,33 +4221,48 @@ All prevention oracles use fresh logical reads through the owning Dapr actor bou
 ### Story 4.17: OQ8 Governing-Design Authority Import
 
 As an architecture owner,
-I want the OQ8 governing design reproducible inside EventStore's evidence boundary,
-So that OQ8 authority no longer depends on bytes that EventStore cannot verify.
+I want the OQ8 governing design reproducible inside EventStore,
+So that governing-design availability can be verified offline with its owner's copying permission.
 
-**Requirements coverage:** Primary OR11 and gate G-OQ8. Supporting FR27, NFR7, and NFR16. Story 4.15 is not reopened.
+**Requirements coverage:** Primary OR11 and the authority-availability part of G-OQ8. Supporting FR27, NFR7 and NFR16. Story 4.14/4.15 historical results remain bounded and are not reopened.
 
-**Architecture constraints:** PRD §1.1 governing design identity.
+**Architecture constraints:** PRD §1.1 and AD-25 bind this complete identity; AD-12 governs proof.
 
-**Dependencies:** A Story 9.1 authorization record for gate G-OQ8. Sealed OQ8 v3 inputs are not edited outside a planned Story 4.15 reseal.
+<!-- oq8-governing-design:begin -->
+```text
+source-repository: github.com/Hexalith/Hexalith.Folders
+source-path: docs/exit-criteria/oq8-idempotency-design.md
+source-commit: a9cfea91c8a987ef7a836c216e633a92321fc3c2
+design-version: 1.0.0
+design-sha256: 1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8
+local-design: docs/architecture/oq8/oq8-idempotency-design.md
+```
+<!-- oq8-governing-design:end -->
+
+**Dependencies and current proof policy:** The exact source design and pinned MIT license are retained as immutable Git-object bytes with [owner-permission provenance](../../docs/architecture/oq8/README.md). The historical `4-8-eventstore-oq8-platform-evidence.yaml` remains tracked and unchanged. Under the October evidence simplification, this story/spec plus separate fixture/live CI outcomes supersede its validation requirements and replace deleted Story 9.1/default-validator machinery. Its referenced evidence tree remains removed; none of that machinery is recreated. Preserve remaining assurance and transition controls; no runtime or dependency change is authorized.
 
 **Acceptance Criteria:**
 
-**Given** the design `docs/exit-criteria/oq8-idempotency-design.md` in `github.com/Hexalith/Hexalith.Folders` at commit `a9cfea91c8a987ef7a836c216e633a92321fc3c2` with SHA-256 `1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`
-**When** it is imported
-**Then** EventStore retains one permitted form: an immutable copy with a recorded owner permission, a complete approved normative projection, or a signed or content-addressed Folders attestation
-**And** the retained bytes re-verify to that SHA-256 from inside the repository.
+**Given** the complete pinned design identity above and `LICENSE` from the same commit, SHA-256 `6af66baf053023d456706de321e3cea6a6edbb288ffec10f673186b1befe7ac2`
+**When** the standalone EventStore check runs offline
+**Then** it verifies the exact retained design and license bytes plus the explicit copying-permission basis without Folders, network access or submodule initialization.
 
-**Given** the imported authority
-**When** the identity is propagated
-**Then** the PRD, architecture, epics, the OQ8 evidence packet, the validator, and CI bind the full repository, path, commit, and SHA-256
-**And** a mismatch or absence fails G-OQ8.
+**Given** provenance, PRD, architecture, epics, Story 4.17 and the new workflow
+**When** any governed repository, path, commit, version, digest or local-design binding is missing or differs
+**Then** fixed validator pins reject the mismatch with its file and field named, including coordinated provenance/document drift
+**And** mutation tests prove missing, edited, truncated and newline-normalized design/license rejection and nonzero CLI exit codes.
 
-**Given** the sealed OQ8 v3 inputs, including `v3.py`, `.github/workflows/ci.yml`, and `docs/ci.md`
-**When** this story changes validators or CI
-**Then** it does so in a new validator version or a new workflow file
-**And** it does not edit sealed inputs unless a Story 4.15 reseal is planned, and the Story 4.15 v4 source-only packet still passes default validation.
+**Given** the current AD-12 policy
+**When** `.github/workflows/oq8-governing-design.yml` runs tests and default validation on pushes/PRs to existing CI target branches or manual dispatch
+**Then** independent fixture and live-evaluation jobs check availability with read-only permissions, SHA-pinned credential-free checkout and no submodules, path filters or promotion; fixture failure cannot suppress the live PASS/FAIL report bound to source SHA and workflow digest
+**And** proof remains in this spec plus CI, with historical Story 4.14/4.15 records, `.github/workflows/ci.yml` and `docs/ci.md` untouched.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-OQ8 owner required by OR11.
+**Given** passing authority-availability validation
+**When** its result is recorded
+**Then** only the verified availability gap closes, conditional on a passing dedicated CI run on delivered source
+**And** runtime conformance, G-BASELINE, G-HIGH-RISK and other gates retain their dispositions; no readiness, release, deployment, consumer migration or Folders closure authority is granted.
+
+**Current reconciliation (2026-11-10):** Story 4.17 implements the approved immutable-copy path; availability is locally verified, with CI confirmation pending a separately authorized push. The spec records actual commands and counts. Completion of this bounded import does not advance Epic 4 or any broader authority gate.
 
 <!-- Epic 4 story set confirmed complete for planning. -->
 

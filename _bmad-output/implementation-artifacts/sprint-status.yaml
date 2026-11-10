@@ -178,7 +178,10 @@ development_status:
   # 2026-11-09 scope/ownership: ../planning-artifacts/sprint-change-proposal-2026-11-09.md
   # Backend-neutral Dapr tests consume Platform profiles; missing mandatory primitive keeps G-APPEND FAIL/BLOCKED.
   4-16-append-write-once-conformance-through-enforced-envelope: backlog
-  4-17-oq8-governing-design-authority-import: backlog
+  # 2026-11-10: local immutable authority import verified; 111 focused tests + offline check + actionlint pass.
+  # Source baseline b2cab541ee3227e1e7a1600cb1d3da83f407dbf0; uncommitted implementation; dedicated CI pending authorized push.
+  # Proof/limits: spec-4-17-oq8-governing-design-authority-import.md. Three review passes resolved; bounded implementation complete, other gates unchanged.
+  4-17-oq8-governing-design-authority-import: review
   epic-4-retrospective: optional
 
   epic-5: in-progress
