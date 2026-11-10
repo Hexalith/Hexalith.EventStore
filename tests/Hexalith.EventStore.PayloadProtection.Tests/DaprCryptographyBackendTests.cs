@@ -82,6 +82,7 @@ public sealed class DaprCryptographyBackendTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
+    [InlineData(4)]
     public async Task MalformedTruncatedOrUnverifiableWrapOutputIsConsistencyMismatchAndReturnsNoBytes(int fault)
     {
         var sidecar = new DaprCryptoTestSidecar(Current);
@@ -92,6 +93,8 @@ public sealed class DaprCryptographyBackendTests
             2 when encrypt => "dapr.io/enc/v2\nxxxxxxxx"u8.ToArray(),
             // The SDK returns whatever arrived before a stream failure: a prefix-valid but incomplete envelope fails verification.
             3 when !encrypt => [],
+            // A correctly sized decrypt-back that is not the wrapped DEK (which is all zeros here) must never admit the envelope.
+            4 when !encrypt => Enumerable.Repeat((byte)1, 32).ToArray(),
             _ => null,
         });
         using PayloadBackendResult result = await Backend(sidecar).WrapAsync(Operation, new byte[32], default);
@@ -99,6 +102,27 @@ public sealed class DaprCryptographyBackendTests
         Should.Throw<PayloadProtectionFormatException>(() => result.TakeBytes());
         sidecar.Inputs.ShouldAllBe(buffer => buffer.All(b => b == 0));
         sidecar.Outputs.ShouldAllBe(buffer => buffer.All(b => b == 0));
+    }
+
+    [Fact]
+    public async Task ConstructorValidatesAndOwnsAPrivateCopyOfTheInventory()
+    {
+        var sidecar = new DaprCryptoTestSidecar(Current, Retained, Foreign);
+        foreach (string[]? invalid in new string[]?[] { null, [Retained, Retained], [Current], ["pp-keys/kek-v1"] })
+        {
+            Should.Throw<PayloadProtectionFormatException>(() => new DaprCryptographyPayloadProtectionBackend(sidecar.Client, new("kubernetes-crypto", Current, invalid!)));
+        }
+
+        string[] retained = [Retained];
+        var backend = new DaprCryptographyPayloadProtectionBackend(sidecar.Client, new("kubernetes-crypto", Current, retained));
+        // Changing the caller's array after construction cannot widen the admitted inventory.
+        retained[0] = Foreign;
+        byte[] dek = RandomNumberGenerator.GetBytes(32);
+        using (PayloadBackendResult outside = await backend.UnwrapAsync(Operation, Foreign, sidecar.Seal(Foreign, dek), default)) { outside.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch); }
+        sidecar.Calls.ShouldBeEmpty();
+        using (PayloadBackendResult kept = await backend.UnwrapAsync(Operation, Retained, sidecar.Seal(Retained, dek), default)) { kept.Failure.ShouldBe(PayloadBackendFailure.None); }
+        sidecar.Calls.ShouldBe([(false, Retained)]);
+        CryptographicOperations.ZeroMemory(dek);
     }
 
     [Theory]
@@ -229,10 +253,17 @@ public sealed class DaprCryptographyBackendTests
     }
 
     [Fact]
-    public async Task MissingReconcileRecordsNoProviderFailureMeasurement()
+    public async Task TransportBackedMissingReconcileIsStillObservedByTheBreakerAndMeasured()
     {
-        var sidecar = new DaprCryptoTestSidecar(Current) { Fault = (_, _, _, _) => Task.FromResult<byte[]?>([]) };
-        var backend = Backend(sidecar);
+        var clock = new LifecycleTestClock();
+        var executor = new PayloadBackendExecutor(clock);
+        var backend = new IdentityTestBackend("transport-backed", new('a', 64));
+        backend.ReconcilesWithoutTransport.ShouldBeFalse();
+        int calls = 0;
+        ValueTask<PayloadBackendResult> Fail(CancellationToken _) { calls++; return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Unavailable)); }
+        ValueTask<PayloadBackendResult> Absent(CancellationToken _) { calls++; return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Missing)); }
+        for (int i = 0; i < 5; i++) { using PayloadBackendResult _ = await executor.ExecuteAsync(backend, Fail, allowRetry: false); }
+        clock.Advance(TimeSpan.FromSeconds(30));
         int failures = 0;
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, current) =>
@@ -241,10 +272,45 @@ public sealed class DaprCryptographyBackendTests
         };
         listener.SetMeasurementEventCallback<long>((_, _, _, _) => Interlocked.Increment(ref failures));
         listener.Start();
+        using (PayloadBackendResult reconcile = await executor.ExecuteAsync(backend, Absent, allowRetry: false, operation: PayloadProtectionOperation.Reconcile))
+        { reconcile.Failure.ShouldBe(PayloadBackendFailure.Missing); }
+        calls.ShouldBe(6);
+        failures.ShouldBe(1);
+        // The probe's provider answer is observed exactly as before Story 8.12: the breaker reopens, so the next request is rejected without transport.
+        using (PayloadBackendResult rejected = await executor.ExecuteAsync(backend, Fail, allowRetry: false)) { rejected.Failure.ShouldBe(PayloadBackendFailure.Unavailable); }
+        calls.ShouldBe(6);
+    }
+
+    [Fact]
+    public async Task MissingReconcileRecordsNoProviderFailureMeasurementAndCompletesSuccessfully()
+    {
+        var sidecar = new DaprCryptoTestSidecar(Current) { Fault = (_, _, _, _) => Task.FromResult<byte[]?>([]) };
+        var backend = Backend(sidecar);
+        backend.ReconcilesWithoutTransport.ShouldBeTrue();
+        int failures = 0;
+        var reconcileResults = new List<string?>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        {
+            if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name
+                && instrument.Name is "eventstore.payload_protection.provider_failures" or "eventstore.payload_protection.operations") { current.EnableMeasurementEvents(instrument); }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, _, tags, _) =>
+        {
+            if (instrument.Name == "eventstore.payload_protection.provider_failures") { Interlocked.Increment(ref failures); return; }
+            KeyValuePair<string, object?>[] values = tags.ToArray();
+            if (values.Any(static tag => tag.Key == "operation" && tag.Value as string == "reconcile"))
+            {
+                lock (reconcileResults) { reconcileResults.Add(values.Single(static tag => tag.Key == "result").Value as string); }
+            }
+        });
+        listener.Start();
         var executor = new PayloadBackendExecutor();
         using (PayloadBackendResult reconcile = await executor.ExecuteAsync(backend, ct => backend.ReconcileAsync(Operation, ct),
             allowRetry: false, operation: PayloadProtectionOperation.Reconcile)) { reconcile.Failure.ShouldBe(PayloadBackendFailure.Missing); }
         failures.ShouldBe(0);
+        // An affirmed transport-free absence is a completed operation, never an unavailable one.
+        lock (reconcileResults) { reconcileResults.ShouldBe(["success"]); }
         // Control: a real provider failure on the same listener is measured.
         using (PayloadBackendResult wrap = await executor.ExecuteAsync(backend, ct => backend.WrapAsync(Operation, new byte[32], ct), allowRetry: false))
         { wrap.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch); }

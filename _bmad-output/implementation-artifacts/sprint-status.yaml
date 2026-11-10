@@ -285,7 +285,7 @@ development_status:
   8-10-post-v2-write-rollback-rehearsal: backlog
   8-11-g5-evidence-and-approval-closure: backlog
   # Added by approved 2026-11-08 course correction; prerequisite of 8.7 despite numbering.
-  8-12-dapr-kubernetes-cryptography-and-wrapped-key-conformance: review
+  8-12-dapr-kubernetes-cryptography-and-wrapped-key-conformance: done
   epic-8-retrospective: optional
 
   epic-9: in-progress

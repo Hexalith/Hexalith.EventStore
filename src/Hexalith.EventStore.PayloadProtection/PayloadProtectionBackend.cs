@@ -13,6 +13,9 @@ internal abstract class PayloadProtectionBackend
     internal virtual string WrapAlgorithmId => "RSA-OAEP-256";
     /// <summary>Gets the closed wrapped-key record schema this backend writes; only the Dapr Kubernetes backend writes V2.</summary>
     internal virtual int KeyRecordSchemaVersion => 1;
+    /// <summary>Gets whether Reconcile answers without provider transport because this backend keeps no provider-side mutation state.</summary>
+    /// <remarks>Only such a backend's Missing answer leaves the breaker and provider-failure measurement untouched; every other answer is observed.</remarks>
+    internal virtual bool ReconcilesWithoutTransport => false;
     /// <summary>Wraps a fresh owned DEK after its durable intent has been confirmed.</summary>
     internal abstract ValueTask<PayloadBackendResult> WrapAsync(string operationId, ReadOnlyMemory<byte> dek, CancellationToken cancellationToken);
     /// <summary>Wraps the existing DEK under the exact retained Rewrap target, independently of the provider's current version.</summary>

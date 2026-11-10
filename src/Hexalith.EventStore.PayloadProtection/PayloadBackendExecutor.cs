@@ -62,14 +62,16 @@ internal sealed class PayloadBackendExecutor(TimeProvider? timeProvider = null,
                 Observe(backend, PayloadBackendFailure.Unavailable, probe);
                 return operation == PayloadProtectionOperation.Wrap ? new(PayloadBackendFailure.Ambiguous) : Unavailable();
             }
-            // A transport-free Reconcile affirming Missing observed no provider: release a held probe without changing breaker state or recording a failure.
-            bool affirmedAbsence = operation == PayloadProtectionOperation.Reconcile && result.Failure == PayloadBackendFailure.Missing;
+            // A transport-free Reconcile affirming Missing observed no provider: release a held probe without changing breaker state or recording a
+            // failure, and complete the operation. A transport-backed Missing is a provider answer and is observed like any other result.
+            bool affirmedAbsence = operation == PayloadProtectionOperation.Reconcile && result.Failure == PayloadBackendFailure.Missing
+                && backend.ReconcilesWithoutTransport;
             if (affirmedAbsence) { ReleaseCancelledProbe(backend, probe); }
             else { Observe(backend, result.Failure, probe); }
             if (result.Failure != PayloadBackendFailure.None && !affirmedAbsence) { PayloadProtectionDiagnostics.ProviderFailure(backend.BackendId, result.Failure); }
             if (result.Failure != PayloadBackendFailure.Unavailable || attempt == 2 || !allowRetry || probe)
             {
-                diagnostic.Complete(result.Failure == PayloadBackendFailure.None ? PayloadProtectionDiagnosticResult.Success
+                diagnostic.Complete(result.Failure == PayloadBackendFailure.None || affirmedAbsence ? PayloadProtectionDiagnosticResult.Success
                     : result.Failure == PayloadBackendFailure.Denied ? PayloadProtectionDiagnosticResult.Denied : PayloadProtectionDiagnosticResult.Unavailable);
                 return result;
             }

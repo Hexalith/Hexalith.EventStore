@@ -46,6 +46,8 @@ internal sealed class DaprCryptographyPayloadProtectionBackend : PayloadProtecti
     internal override string WrapAlgorithmId => WrappedDekV2.ClosedWrapAlgorithmId;
     /// <summary>Gets the closed WrappedDekV2 record schema.</summary>
     internal override int KeyRecordSchemaVersion => 2;
+    /// <summary>Gets that Reconcile uses no transport: Encrypt and Decrypt create no provider-side mutation state.</summary>
+    internal override bool ReconcilesWithoutTransport => true;
 
     /// <summary>Wraps a fresh DEK under the current write address only.</summary>
     internal override ValueTask<PayloadBackendResult> WrapAsync(string operationId, ReadOnlyMemory<byte> dek, CancellationToken cancellationToken)

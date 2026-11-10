@@ -248,3 +248,62 @@ Planning decisions (the amendment carries the exact bytes):
 **Platform-owned limitations, explicitly blocked and not proven:** in-cluster sidecar injection and API-token authentication; component scopes; production workload identity and RBAC separation; encryption at rest; Secret and etcd backup and restore; the target-cluster rotation rehearsal; the old-key retention policy. The Alpha posture remains a recorded limitation for this profile only.
 
 **Authorization:** passing authorizes only the bounded Story 8.7 handoff. Server wiring, Enabled activation, packaging, release, deployment, Azure 8.6 and G5 remain outside this story.
+
+### Review Findings (code review pass 3, 2026-11-10)
+
+Code review pass 3 (2026-11-10) reviewed the pushed implementation commit `adc2c2032` against `baseline_commit` `aa16227bd`. The diff covered 25 files, +2,583/−33, 3,032 diff lines and 216,469 bytes. The five `_bmad-output/` tracking files were excluded; the spec and amendment went to the Acceptance Auditor as context. HEAD `a940fb616` differs from `adc2c2032` only in the AI.Tools pointer. Only the edge-case layer received the claims, which were the commit message. Layers: Blind Hunter (BH), Edge Case Hunter (ECH), Verification Gap (VG), Acceptance Auditor (AA). None failed. Of 34 findings, 8 form 5 patch entries and 26 were rejected; there were no decisions and no deferrals. Re-raised items that passes 1 and 2 had already settled are rejected as duplicates.
+
+- [x] [Review][Patch] Limit the executor's Missing-Reconcile exception to backends whose Reconcile uses no transport. Review pass 2 (R2-1) treats any `Reconcile` that returns `Missing` as transport-free: it releases a held probe without touching the breaker and records no `provider_failures` measurement. `DaprPayloadProtectionBackend.ReconcileAsync`, the unchanged 8.7 first-phase PlatformCustody backend, returns `Missing` only after a real Lookup and `ConfirmsOriginalMutationAbsentAsync`. For that approved profile, a half-open probe that gets a provider answer is now released instead of being observed, and the Missing measurement disappears. No PlatformCustody test covers either change. Fix: add an internal SPI flag, overridden to `true` only by `DaprCryptographyPayloadProtectionBackend`, and require it in `affirmedAbsence`. That restores the exact pre-8.12 executor behavior for every other backend. Add a regression test showing that a transport-backed Missing on a probe is still observed [PayloadBackendExecutor.cs:65-69; PayloadProtectionBackend.cs:13-15] (medium; BH1, AA1, ECH1)
+- [x] [Review][Patch] Test the wrap round-trip check against a wrong 32-byte decrypt-back. `EncryptCoreAsync` accepts a wrap only if `verified` is exactly the original DEK. The only wrap-path decrypt fault returns `[]`, which already fails the length check. If the check were reduced to `verified.Length != 32`, every unit and live test would still pass, and an envelope that does not open to its DEK could be persisted as the reservation's key. Reservation does not unwrap again; rewrap does (`PayloadKeyRotationCoordinator.cs:123-131`). Fix: add a theory row in which the verification decrypt returns 32 non-zero bytes, for example `4 when !encrypt => Enumerable.Repeat((byte)1, 32).ToArray()`. Assert `ConsistencyMismatch`, that no bytes are returned and that the buffers are cleared [DaprCryptographyPayloadProtectionBackend.cs:117; DaprCryptographyBackendTests.cs:94] (medium; VG1)
+- [x] [Review][Patch] Report a transport-free Missing Reconcile as a completed operation in diagnostics. `diagnostic.Complete` still maps every result other than `None` and `Denied` to `Unavailable`. Under this backend every Reconcile returns `Missing`, so each recovery reconcile emits an error-status activity and a `result="unavailable"` operation measurement. `MissingReconcileRecordsNoProviderFailureMeasurement` listens only to `provider_failures`. Fix: when `affirmedAbsence` is true (behind the patch-1 flag), complete with `Success`. Pin this in the existing executor test [PayloadBackendExecutor.cs:72-73] (low; VG3, ECH2)
+- [x] [Review][Patch] Test the backend constructor's copy-then-validate inventory (pass-1 fix B15). No test constructs the backend with an invalid `RetainedKeys` (duplicate, malformed or null), and none changes the caller's array after construction. Removing `_options.Validate()` or the `with` copy would leave every test green. Fix: add one `DaprCryptographyBackendTests` case. Construction with an invalid inventory must throw `PayloadProtectionFormatException`. After construction, setting `retained[0] = Foreign` must still make `UnwrapAsync(…, Foreign, …)` return `ConsistencyMismatch` with no sidecar call [DaprCryptographyPayloadProtectionBackend.cs:34-35] (low; VG2)
+- [x] [Review][Patch] Correct the `docs/ci.md` Kubernetes crypto row. It says "a restricted ServiceAccount", but the lane creates two: `pp-crypto`, restricted to named Secrets, and `pp-denied`, with no grant. The row also omits the accepted limitation: with Dapr.Client 1.19.0, denied, missing-Secret and stopped-sidecar failures all report `ConsistencyMismatch`. A reader could take a green run as proof that `Denied` and `Unavailable` are mapped. Fix: name both accounts and add one sentence about the limitation that points to the deferred-work entry [docs/ci.md:15] (low; BH15)
+
+Rejected (pass 3):
+
+- BH2 / ECH7 (`low`): `Encode` picks the Dapr profile from the runtime type when no profile is passed. The store re-decodes every key `Put` under the process authority (`DaprPayloadProtectionStateStore.cs:175`), so this pre-check is never the last guard. In restore admission, a foreign-schema backup is still quarantined on the backend-id comparison. Passing the authority explicitly would touch every key `Put` caller.
+- BH3 (`low`): KEK strength and type are not enforced in code. Amendment §3 makes RSA-3072 a provisioning rule, and provisioning is Platform-owned. Enforcing it would mean parsing the Dapr envelope header, and an operator is unlikely to provision a weaker key.
+- BH4 (`false`): the maximum-length-address test cannot fail on the bound because envelope size does not depend on the address. That is true, but the test measures AC2 as written, amendment §3 fixes the KEK at RSA-3072, and a larger envelope fails closed at `IsEnvelope` and at the 2,048-byte `PayloadBackendResult` bound.
+- BH5 (`low`): the denied case has no RBAC positive control. The SDK collapses every failure into the same outcome, so the case can prove only fail-closed, the owner-accepted claim, and it does. The denied kubeconfig is built by the same fixture loop as the working restricted one. A `kubectl auth can-i` control would add fixture steps.
+- BH6 (`low`): the live lane never runs recovery. Duplicate of R2-21.
+- BH7 (`false`): the no-leak test skips the failed reservation's durable records. The codec admits only typed fields and the closed `Reasons` set (`PayloadProtectionStateCodec.cs:119-122`), so a durable record cannot hold exception text.
+- BH8 / VG4 (`low`): the new workflow has never run on GitHub. Duplicate of R2-22. Now that `adc2c2032` is pushed, the first dispatch is the recorded next step; no code change is needed.
+- BH9 (`low`): the fixture's failure messages and artifacts are hard to diagnose. Duplicate of B6.
+- BH10 / ECH8 (`low`): a cleanup failure masks the start failure. Duplicate of E7.
+- BH11 / ECH5 (`low`): the grammar admits `.` and `..` data keys and hyphen-edged component names. Duplicate of B14+E4. `ComponentName` follows amendment §4 exactly, and the fix needs a normative change.
+- BH12 (`low`): `SchemaVersion` is a settable `init` property. No caller sets it, it was already settable on V1, and a mismatched record fails decode loudly.
+- BH13 (`low`): the unknown-field predicate is duplicated in two loaders. Drift would fail loudly at `Load`, and the fix is a refactor.
+- BH14 (`false`): the scalar refusal breaks existing profiles. Approved configurations use sections at these keys. Only a meaningless stray scalar is refused, which is the base closed-configuration rule.
+- ECH3 (`low`): an open breaker also blocks the transport-free Reconcile. Recovery then waits at most 300 s and only while the breaker is open, which is rare because only budget expiry counts. The fix adds a branch to the shared executor.
+- ECH4 (`low`, already tracked): SDK-hidden outages surface as `ConsistencyMismatch`. The owner chose "Accept + track", and the deferred-work entry exists.
+- ECH6 (`false`): a null `backend` or `leases` would cause a NullReferenceException. No caller can pass null, and either exception fails loudly at construction.
+- ECH9 (`low`): a failed restart can leave a dead sidecar in the shared fixture. That cascade follows only a real failure that already fails the lane, and the fix adds fixture `try`/`finally` paths.
+- ECH10 (`low`): the unwrap leg can pass on key mismatch alone. The wrap and exact-wrap legs under the same addresses would succeed on any over-grant, so the denial is already proven. Aliasing the key bytes would need fixture changes.
+- AA2 (rejected because the fix would edit the spec under review): test files suppress `DAPR_CRYPTOGRAPHY`. A test double or test against the experimental API cannot compile without that under `TreatWarningsAsErrors`. The only production suppression stays in the backend file, and the Implementation Notes disclose this. The fix would be to renegotiate the normative §2 sentence.
+- AA3 (`false`): a non-canonical operation id throws, and the throw counts against the breaker. Reconcile operation ids come only from codec-validated ULID claims, and the Azure backend has the identical guard.
+- AA4 (`false`): the fence-advancement check for the reader token cannot be reached. It is redundant defense in depth: the codec's capability-lease check is the effective gate and is tested (`KeyRecordAuthorityTests.cs:189`, `WrappedDekV2CodecTests`).
+- AA5 (rejected because the fix would edit the spec under review): Verification still says "pre-commit tree" and "Hosted CI: Pending" and does not record `adc2c2032`. This is closure bookkeeping for the owner.
+
+Pass-3 disposition (2026-11-10): the owner chose to apply every patch. All five are applied on HEAD `a940fb616` and are uncommitted. `PayloadProtectionBackend` gains `internal virtual bool ReconcilesWithoutTransport => false`, and only `DaprCryptographyPayloadProtectionBackend` overrides it to `true`. The executor's `affirmedAbsence` now requires that flag, so PlatformCustody, Azure and the test backends get their exact pre-8.12 handling of a Missing Reconcile, and an affirmed transport-free absence completes its diagnostic scope as `Success`. The test changes are:
+- a new `TransportBackedMissingReconcileIsStillObservedByTheBreakerAndMeasured`;
+- `MissingReconcileRecordsNoProviderFailureMeasurement`, renamed `…AndCompletesSuccessfully`, which now asserts the reconcile operation result is `success`;
+- a fifth wrap-fault row that returns a wrong 32-byte decrypt-back;
+- a new `ConstructorValidatesAndOwnsAPrivateCopyOfTheInventory`.
+
+The `docs/ci.md` row now names both ServiceAccounts and states the accepted `ConsistencyMismatch` limitation.
+
+Mutation check, in a scratch copy rather than the tree. Each new test failed against its mutation, and the restored control passed the four new tests 8/8 (rows included):
+- M1 removed the flag from `affirmedAbsence`;
+- M2 removed `|| affirmedAbsence` from the diagnostic mapping;
+- M3 reduced the wrap check to `verified.Length != 32`;
+- M4 deleted `_options.Validate()`;
+- M5 replaced the `with` copy with `_options = options`.
+
+Verification (Debug, source mode):
+- `PayloadProtection.Tests` with `--fail-skips on --minimum-expected-tests 324`: 1,145/1,145, 0 skipped.
+- Azure Key Vault unit: 192/192.
+- `PayloadProtection.LiveSidecar.Tests`, `PayloadProtection.AzureKeyVault.Tests` and `Hexalith.EventStore.Server` build with 0 warnings and 0 errors.
+- `PayloadProtection.Tests` Release `-warnaserror` `UseHexalithProjectReferences=false`: 0 warnings, 0 errors.
+- `git diff --check` is clean.
+
+The Kubernetes and lifecycle live lanes were not re-run. The change touches only executor bookkeeping for Missing Reconciles, so the Dapr lane keeps its pass-2 behavior and the lifecycle backend returns to its pre-8.12 behavior. The pushed lifecycle CI lane will cover the latter. With no high or medium finding left unresolved, the spec stays `done` and sprint tracking moves to `done`.
