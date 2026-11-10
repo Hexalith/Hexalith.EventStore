@@ -1,13 +1,12 @@
-// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; sections 2-4 and 7.
-// Test-only use of the Alpha cryptography API; the production suppression stays confined to the backend source file.
-#pragma warning disable DAPR_CRYPTOGRAPHY
+// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 2-4 and 7.
 using System.Diagnostics.Metrics;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using Dapr;
 using Dapr.Client;
+using Dapr.Client.Autogen.Grpc.v1;
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
-using NSubstitute;
 
 namespace Hexalith.EventStore.PayloadProtection.Tests;
 
@@ -44,6 +43,10 @@ public sealed class DaprCryptographyBackendTests
         backend.KeyRecordSchemaVersion.ShouldBe(2);
         PayloadProtectionStateKeys.IsHex(backend.EndpointFingerprint, 64).ShouldBeTrue();
         CryptographicOperations.ZeroMemory(envelope);
+        result.Dispose();
+        // The transport's encrypt output and decrypt-back buffers are cleared by the backend once the envelope is copied and verified.
+        sidecar.Allocated.Count.ShouldBe(2);
+        sidecar.Allocated.ShouldAllBe(buffer => buffer.All(b => b == 0));
     }
 
     [Fact]
@@ -58,6 +61,9 @@ public sealed class DaprCryptographyBackendTests
             read.Failure.ShouldBe(PayloadBackendFailure.None); read.ProviderKeyVersionId.ShouldBe(Retained);
             byte[] plaintext = read.TakeBytes(); plaintext.ShouldBe(dek); CryptographicOperations.ZeroMemory(plaintext);
         }
+        // The transport's decrypt output buffer is cleared by the backend once the DEK is copied into the result.
+        sidecar.Allocated.Count.ShouldBe(1);
+        sidecar.Allocated.ShouldAllBe(buffer => buffer.All(b => b == 0));
         sidecar.Calls.ShouldBe([(false, Retained)]);
         byte[] header = historical.ToArray(); header[WrappedDekV2.SchemePrefix.Length + 1] ^= 0x01;
         using (PayloadBackendResult tampered = await backend.UnwrapAsync(Operation, Retained, header, default)) { tampered.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch); }
@@ -91,7 +97,7 @@ public sealed class DaprCryptographyBackendTests
             0 when encrypt => [],
             1 when encrypt => Prefixed(2049),
             2 when encrypt => "dapr.io/enc/v2\nxxxxxxxx"u8.ToArray(),
-            // The SDK returns whatever arrived before a stream failure: a prefix-valid but incomplete envelope fails verification.
+            // An envelope that is prefix-valid but cannot be decrypted back fails verification.
             3 when !encrypt => [],
             // A correctly sized decrypt-back that is not the wrapped DEK (which is all zeros here) must never admit the envelope.
             4 when !encrypt => Enumerable.Repeat((byte)1, 32).ToArray(),
@@ -110,11 +116,11 @@ public sealed class DaprCryptographyBackendTests
         var sidecar = new DaprCryptoTestSidecar(Current, Retained, Foreign);
         foreach (string[]? invalid in new string[]?[] { null, [Retained, Retained], [Current], ["pp-keys/kek-v1"] })
         {
-            Should.Throw<PayloadProtectionFormatException>(() => new DaprCryptographyPayloadProtectionBackend(sidecar.Client, new("kubernetes-crypto", Current, invalid!)));
+            Should.Throw<PayloadProtectionFormatException>(() => new DaprCryptographyPayloadProtectionBackend(sidecar.Transport, new("kubernetes-crypto", Current, invalid!)));
         }
 
         string[] retained = [Retained];
-        var backend = new DaprCryptographyPayloadProtectionBackend(sidecar.Client, new("kubernetes-crypto", Current, retained));
+        var backend = new DaprCryptographyPayloadProtectionBackend(sidecar.Transport, new("kubernetes-crypto", Current, retained));
         // Changing the caller's array after construction cannot widen the admitted inventory.
         retained[0] = Foreign;
         byte[] dek = RandomNumberGenerator.GetBytes(32);
@@ -136,29 +142,193 @@ public sealed class DaprCryptographyBackendTests
         result.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch);
     }
 
+    /// <summary>Gets every amendment section 7 status, each ending a call at write, at read, mid-stream after partial output and locally.</summary>
+    public static TheoryData<StatusCode, int, int> StatusMatrix()
+    {
+        (StatusCode Status, PayloadBackendFailure Failure)[] mapping =
+        [
+            (StatusCode.PermissionDenied, PayloadBackendFailure.Denied), (StatusCode.Unauthenticated, PayloadBackendFailure.Denied),
+            (StatusCode.Unavailable, PayloadBackendFailure.Unavailable), (StatusCode.DeadlineExceeded, PayloadBackendFailure.Unavailable),
+            (StatusCode.ResourceExhausted, PayloadBackendFailure.Unavailable), (StatusCode.Aborted, PayloadBackendFailure.Unavailable),
+            (StatusCode.Cancelled, PayloadBackendFailure.Unavailable), (StatusCode.NotFound, PayloadBackendFailure.ConsistencyMismatch),
+            (StatusCode.Internal, PayloadBackendFailure.ConsistencyMismatch), (StatusCode.Unknown, PayloadBackendFailure.ConsistencyMismatch),
+            (StatusCode.InvalidArgument, PayloadBackendFailure.ConsistencyMismatch), (StatusCode.FailedPrecondition, PayloadBackendFailure.ConsistencyMismatch),
+        ];
+        var data = new TheoryData<StatusCode, int, int>();
+        foreach (int phase in new[] { DaprCryptoTestSidecar.AtWrite, DaprCryptoTestSidecar.AtRead, DaprCryptoTestSidecar.MidStream, DaprCryptoTestSidecar.Interrupted })
+        {
+            foreach ((StatusCode status, PayloadBackendFailure failure) in mapping) { data.Add(status, (int)failure, phase); }
+        }
+
+        return data;
+    }
+
     [Theory]
-    [InlineData(StatusCode.PermissionDenied, (int)PayloadBackendFailure.Denied, false)]
-    [InlineData(StatusCode.Unauthenticated, (int)PayloadBackendFailure.Denied, true)]
-    [InlineData(StatusCode.Unavailable, (int)PayloadBackendFailure.Unavailable, false)]
-    [InlineData(StatusCode.DeadlineExceeded, (int)PayloadBackendFailure.Unavailable, true)]
-    [InlineData(StatusCode.ResourceExhausted, (int)PayloadBackendFailure.Unavailable, false)]
-    [InlineData(StatusCode.Aborted, (int)PayloadBackendFailure.Unavailable, false)]
-    [InlineData(StatusCode.Cancelled, (int)PayloadBackendFailure.Unavailable, true)]
-    [InlineData(StatusCode.NotFound, (int)PayloadBackendFailure.ConsistencyMismatch, false)]
-    [InlineData(StatusCode.Internal, (int)PayloadBackendFailure.ConsistencyMismatch, true)]
-    [InlineData(StatusCode.Unknown, (int)PayloadBackendFailure.ConsistencyMismatch, false)]
-    [InlineData(StatusCode.InvalidArgument, (int)PayloadBackendFailure.ConsistencyMismatch, false)]
-    public async Task StructuralStatusAloneClassifiesDirectAndSdkWrappedFailuresWithoutMessageText(StatusCode status, int failure, bool wrapped)
+    [MemberData(nameof(StatusMatrix))]
+    public async Task EachCallsOwnGrpcStatusAloneClassifiesItAtWriteAtReadMidStreamOrLocallyAndPartialOutputIsCleared(StatusCode status, int failure, int phase)
     {
         var expected = (PayloadBackendFailure)failure;
-        var rpc = new RpcException(new Status(status, Canary), Canary);
-        var sidecar = new DaprCryptoTestSidecar(Current) { Fault = (_, _, _, _) => throw (wrapped ? new DaprException(Canary, rpc) : rpc) };
+        var sidecar = new DaprCryptoTestSidecar(Current) { End = (phase, status), Detail = Canary };
         var backend = Backend(sidecar);
         using PayloadBackendResult wrap = await backend.WrapAsync(Operation, new byte[32], default);
         using PayloadBackendResult unwrap = await backend.UnwrapAsync(Operation, Current, Prefixed(64), default);
         wrap.Failure.ShouldBe(expected); unwrap.Failure.ShouldBe(expected);
-        wrap.ToString().ShouldBe(nameof(PayloadBackendResult)); wrap.ProviderKeyVersionId.ShouldBeNull();
+        wrap.ToString().ShouldBe(nameof(PayloadBackendResult)); wrap.ProviderKeyVersionId.ShouldBeNull(); unwrap.ProviderKeyVersionId.ShouldBeNull();
+        Should.Throw<PayloadProtectionFormatException>(() => wrap.TakeBytes()); Should.Throw<PayloadProtectionFormatException>(() => unwrap.TakeBytes());
+        // One attempt per call, and no wrap verification after a failed encrypt.
+        sidecar.Calls.ShouldBe([(true, Current), (false, Current)]);
         sidecar.Inputs.ShouldAllBe(buffer => buffer.All(b => b == 0));
+        // Output received before the non-OK status was delivered, then discarded and cleared.
+        sidecar.Outputs.Count.ShouldBe(phase == DaprCryptoTestSidecar.MidStream ? 2 : 0);
+        sidecar.Outputs.ShouldAllBe(buffer => buffer.All(b => b == 0));
+        // The transport's own buffers, which hold the partial output in the mid-stream rows, are zeroed when the call fails.
+        sidecar.Allocated.Count.ShouldBe(2);
+        sidecar.Allocated.ShouldAllBe(buffer => buffer.All(b => b == 0));
+    }
+
+    [Fact]
+    public async Task AStatusInsideAWrappingExceptionIsStillClassifiedStructurally()
+    {
+        var rpc = new RpcException(new Status(StatusCode.PermissionDenied, Canary), Canary);
+        var sidecar = new DaprCryptoTestSidecar(Current) { Fault = (_, _, _, _) => throw new DaprException(Canary, rpc) };
+        using PayloadBackendResult wrap = await Backend(sidecar).WrapAsync(Operation, new byte[32], default);
+        wrap.Failure.ShouldBe(PayloadBackendFailure.Denied);
+    }
+
+    [Fact]
+    public async Task AWriteFailureFollowedByAnOkStatusIsNeverTrusted()
+    {
+        // The write fails, yet the call ends OK with honest output: a request that was never delivered cannot have produced it.
+        var sidecar = new DaprCryptoTestSidecar(Current, Retained) { End = (DaprCryptoTestSidecar.AtWrite, StatusCode.OK) };
+        var backend = Backend(sidecar);
+        using PayloadBackendResult wrap = await backend.WrapAsync(Operation, new byte[32], default);
+        wrap.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch);
+        byte[] dek = RandomNumberGenerator.GetBytes(32);
+        using PayloadBackendResult unwrap = await backend.UnwrapAsync(Operation, Retained, sidecar.Seal(Retained, dek), default);
+        unwrap.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch);
+        Should.Throw<PayloadProtectionFormatException>(() => unwrap.TakeBytes());
+        sidecar.Outputs.Count.ShouldBe(2);
+        sidecar.Outputs.ShouldAllBe(buffer => buffer.All(b => b == 0));
+        sidecar.Allocated.Count.ShouldBe(2);
+        sidecar.Allocated.ShouldAllBe(buffer => buffer.All(b => b == 0));
+        CryptographicOperations.ZeroMemory(dek);
+    }
+
+    [Fact]
+    public async Task EachCallSendsTheExactDaprClientRequestAsOneCompletedSequenceZeroMessageAndJoinsChunkedOutput()
+    {
+        var sidecar = new DaprCryptoTestSidecar(Current) { ChunkSize = 100 };
+        byte[] dek = RandomNumberGenerator.GetBytes(32);
+        using PayloadBackendResult result = await Backend(sidecar).WrapAsync(Operation, dek, default);
+        result.Failure.ShouldBe(PayloadBackendFailure.None);
+        byte[] envelope = result.TakeBytes();
+        envelope.Length.ShouldBe(666);
+        // The 666-byte envelope arrived as seven chunks and decrypted back to the DEK, so the chunks were joined in order.
+        sidecar.Outputs.Count.ShouldBe(8);
+        sidecar.Requests.Count.ShouldBe(2);
+        EncryptRequest encrypt = sidecar.Requests[0].ShouldBeOfType<EncryptRequest>();
+        encrypt.Options.ShouldBe(new EncryptRequestOptions
+        {
+            ComponentName = "kubernetes-crypto", KeyName = Current, KeyWrapAlgorithm = "RSA-OAEP-256", DataEncryptionCipher = "aes-gcm", OmitDecryptionKeyName = true,
+        });
+        encrypt.Payload.Seq.ShouldBe(0ul);
+        encrypt.Payload.Data.Length.ShouldBe(32);
+        DecryptRequest decrypt = sidecar.Requests[1].ShouldBeOfType<DecryptRequest>();
+        decrypt.Options.ShouldBe(new DecryptRequestOptions { ComponentName = "kubernetes-crypto", KeyName = Current });
+        decrypt.Payload.Seq.ShouldBe(0ul);
+        sidecar.Inputs[1].ShouldBeSameAs(envelope);
+        CryptographicOperations.ZeroMemory(dek); CryptographicOperations.ZeroMemory(envelope);
+    }
+
+    [Fact]
+    public async Task OutputBeyondTheCapStopsReadingAndIsDiscardedAndCleared()
+    {
+        // 4,096 bytes arrive in 16-byte chunks; the 33-byte decrypt cap is crossed by the third chunk, so the rest is never read.
+        var sidecar = new DaprCryptoTestSidecar(Current) { ChunkSize = 16, Fault = (encrypt, _, _, _) => Task.FromResult<byte[]?>(encrypt ? null : Enumerable.Repeat((byte)0x5A, 4096).ToArray()) };
+        using PayloadBackendResult unwrap = await Backend(sidecar).UnwrapAsync(Operation, Current, Prefixed(64), default);
+        unwrap.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch);
+        sidecar.Outputs.Count.ShouldBe(3);
+        sidecar.Outputs.ShouldAllBe(buffer => buffer.All(b => b == 0));
+        // The 2,048-byte encrypt cap is crossed by the 129th chunk of a 4,096-byte encrypt output.
+        sidecar.Fault = (encrypt, _, _, _) => Task.FromResult<byte[]?>(encrypt ? [.. WrappedDekV2.SchemePrefix, .. Enumerable.Repeat((byte)'e', 4081)] : null);
+        sidecar.Outputs.Clear();
+        using PayloadBackendResult wrap = await Backend(sidecar).WrapAsync(Operation, new byte[32], default);
+        wrap.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch);
+        sidecar.Outputs.Count.ShouldBe(129);
+        sidecar.Outputs.ShouldAllBe(buffer => buffer.All(b => b == 0));
+        // Both discarded accumulation buffers held copied output before the cap was crossed; both are zeroed.
+        sidecar.Allocated.Count.ShouldBe(2);
+        sidecar.Allocated.ShouldAllBe(buffer => buffer.All(b => b == 0));
+        DaprCryptographyGrpcTransport.MaximumEncryptOutputBytes.ShouldBe(WrappedDekV2.MaximumEnvelopeBytes);
+        DaprCryptographyGrpcTransport.MaximumDecryptOutputBytes.ShouldBe(33);
+    }
+
+    [Theory]
+    [InlineData("per-run-token", "per-run-token")]
+    [InlineData(null, null)]
+    [InlineData(" ", null)]
+    public async Task TheApiTokenHeaderIsSentOnEveryCallOnlyWhenATokenIsConfigured(string? token, string? header)
+    {
+        var sidecar = new DaprCryptoTestSidecar(Current) { ApiToken = token };
+        using PayloadBackendResult result = await Backend(sidecar).WrapAsync(Operation, new byte[32], default);
+        result.Failure.ShouldBe(PayloadBackendFailure.None);
+        sidecar.Tokens.ShouldBe([header, header]);
+    }
+
+    [Fact]
+    public void CreateResolvesTheEndpointAndApiTokenFromConfigurationAsDaprClientDoes()
+    {
+        using (DaprCryptographyGrpcTransport endpoint = DaprCryptographyGrpcTransport.Create(Settings(("DAPR_GRPC_ENDPOINT", "https://sidecar.example:50443"),
+            ("DAPR_GRPC_PORT", "50001"), ("DAPR_API_TOKEN", "per-run-token"))))
+        {
+            endpoint.Target.ShouldBe("sidecar.example:50443");
+            endpoint.Options(default).Headers!.GetValue(DaprCryptographyGrpcTransport.ApiTokenHeader).ShouldBe("per-run-token");
+        }
+
+        // With no endpoint, the port selects http://localhost; with no token, no header is sent.
+        using (DaprCryptographyGrpcTransport port = DaprCryptographyGrpcTransport.Create(Settings(("DAPR_GRPC_ENDPOINT", ""), ("DAPR_GRPC_PORT", "50777"), ("DAPR_API_TOKEN", ""))))
+        {
+            port.Target.ShouldBe("localhost:50777");
+            port.Options(default).Headers.ShouldBeNull();
+        }
+
+        Should.Throw<InvalidOperationException>(() => DaprCryptographyGrpcTransport.Create(Settings(("DAPR_GRPC_ENDPOINT", "ftp://127.0.0.1:50001"), ("DAPR_API_TOKEN", ""))));
+        new DaprCryptoTestSidecar(Current).Transport.Target.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task NoFailureReachesTheUnobservedTaskExceptionChannel()
+    {
+        const string Control = "UNOBSERVED_TASK_CONTROL";
+        int leaked = 0, control = 0;
+        void Listen(object? sender, UnobservedTaskExceptionEventArgs args)
+        {
+            string text = args.Exception.ToString();
+            if (text.Contains(Canary, StringComparison.Ordinal)) { Interlocked.Increment(ref leaked); }
+            if (text.Contains(Control, StringComparison.Ordinal)) { Interlocked.Increment(ref control); }
+        }
+
+        TaskScheduler.UnobservedTaskException += Listen;
+        try
+        {
+            foreach (int phase in new[] { DaprCryptoTestSidecar.AtWrite, DaprCryptoTestSidecar.AtRead, DaprCryptoTestSidecar.MidStream, DaprCryptoTestSidecar.Interrupted })
+            {
+                foreach (StatusCode status in new[] { StatusCode.PermissionDenied, StatusCode.Unavailable, StatusCode.Internal })
+                {
+                    var sidecar = new DaprCryptoTestSidecar(Current) { End = (phase, status), Detail = Canary };
+                    using PayloadBackendResult wrap = await Backend(sidecar).WrapAsync(Operation, new byte[32], default);
+                    using PayloadBackendResult unwrap = await Backend(sidecar).UnwrapAsync(Operation, Current, Prefixed(64), default);
+                    wrap.Failure.ShouldNotBe(PayloadBackendFailure.None); unwrap.Failure.ShouldNotBe(PayloadBackendFailure.None);
+                }
+            }
+
+            // Control: an abandoned faulted task does reach the listener, so the zero count below is not vacuous.
+            AbandonFaultedTask(Control);
+            await CollectAsync();
+            control.ShouldBe(1);
+            leaked.ShouldBe(0);
+        }
+        finally { TaskScheduler.UnobservedTaskException -= Listen; }
     }
 
     [Fact]
@@ -177,7 +347,7 @@ public sealed class DaprCryptographyBackendTests
         var clock = new LifecycleTestClock();
         var sidecar = new DaprCryptoTestSidecar(Current);
         sidecar.Fault = (encrypt, _, _, _) => { if (!encrypt) { clock.Advance(TimeSpan.FromSeconds(11)); } return Task.FromResult<byte[]?>(null); };
-        using PayloadBackendResult result = await new DaprCryptographyPayloadProtectionBackend(sidecar.Client, Options(), clock).WrapAsync(Operation, new byte[32], default);
+        using PayloadBackendResult result = await new DaprCryptographyPayloadProtectionBackend(sidecar.Transport, Options(), clock).WrapAsync(Operation, new byte[32], default);
         result.Failure.ShouldBe(PayloadBackendFailure.Unavailable);
         Should.Throw<PayloadProtectionFormatException>(() => result.TakeBytes());
         sidecar.Calls.Count.ShouldBe(2);
@@ -185,7 +355,7 @@ public sealed class DaprCryptographyBackendTests
     }
 
     [Fact]
-    public async Task CallerCancellationWaitsForTheSdkCallThenClearsOwnedBuffersBeforeRaisingCancellation()
+    public async Task CallerCancellationWaitsForTheTransportCallThenClearsOwnedBuffersBeforeRaisingCancellation()
     {
         using var cancellation = new CancellationTokenSource();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -194,9 +364,9 @@ public sealed class DaprCryptographyBackendTests
         sidecar.Fault = async (_, _, _, _) => { entered.SetResult(); await release.Task; return null; };
         byte[] caller = Enumerable.Repeat((byte)0x42, 32).ToArray();
         Task<PayloadBackendResult> pending = Backend(sidecar).WrapAsync(Operation, caller, cancellation.Token).AsTask();
-        await entered.Task; cancellation.Cancel();
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(30)); cancellation.Cancel();
         pending.IsCompleted.ShouldBeFalse();
-        // The owned DEK copy handed to the SDK is not cleared while the SDK call is still in flight.
+        // The owned DEK copy handed to the transport is not cleared while the call is still in flight.
         sidecar.Inputs.Single().ShouldAllBe(b => b == 0x42);
         release.SetResult();
         await Should.ThrowAsync<OperationCanceledException>(() => pending);
@@ -363,7 +533,7 @@ public sealed class DaprCryptographyBackendTests
     [InlineData("DaprKubernetesCrypto:RetainedKeys", "pp-keys/kek-v0/key.pem")]
     [InlineData("Backend", "DaprKubernetes")]
     [InlineData("AzureKeyVault", Canary)]
-    [InlineData("AuthorityDigest", "2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d")]
+    [InlineData("AuthorityDigest", "29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44")]
     public void ClosedOptionsRejectUnknownProviderPrivateAndNoncanonicalSettings(string field, string value)
     {
         Should.Throw<InvalidOperationException>(() => PayloadProtectionOptions.Load(Configuration((field, value)))).Message
@@ -426,7 +596,22 @@ public sealed class DaprCryptographyBackendTests
         services.ShouldNotContain(d => d.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService)); resolved.ShouldBeFalse();
     }
 
-    private static DaprCryptographyPayloadProtectionBackend Backend(DaprCryptoTestSidecar sidecar) => new(sidecar.Client, Options());
+    private static DaprCryptographyPayloadProtectionBackend Backend(DaprCryptoTestSidecar sidecar) => new(sidecar.Transport, Options());
+
+    private static PayloadProtectionTestConfiguration Settings(params (string Key, string? Value)[] values) => new(values.ToDictionary(v => v.Key, v => v.Value));
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void AbandonFaultedTask(string marker) => _ = Task.FromException(new InvalidOperationException(marker));
+
+    private static async Task CollectAsync()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            await Task.Yield();
+        }
+    }
     private static DaprCryptographyPayloadProtectionOptions Options() => new("kubernetes-crypto", Current, [Retained]);
     private static byte[] Prefixed(int length)
     {

@@ -1,14 +1,16 @@
-// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 8.
-// Profile authority: 2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d.
+// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; section 8.
+// Profile authority: 29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44.
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Dapr.Client;
+using Microsoft.Extensions.Configuration;
 
 namespace Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests;
 
@@ -17,6 +19,8 @@ namespace Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests;
 /// Nothing is allocated until an explicit Kubernetes lane test calls <see cref="StartAsync"/>, so other lanes never touch Docker or kind.
 /// The process's ambient kube context is never read: kind writes only the lane kubeconfig, kubectl runs inside the owned node, and the
 /// component reads ServiceAccount kubeconfigs from the lane directory. Key material is generated per run and is never written to disk.
+/// The sidecar requires a per-run API token, which the state client and the crypto transport send; once started, the fixture records
+/// every unobserved task exception by type name only.
 /// </remarks>
 public sealed class KubernetesCryptoFixture : IAsyncLifetime
 {
@@ -25,10 +29,14 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     internal const string Component = "kubernetes-crypto";
     internal const string DeniedComponent = "kubernetes-crypto-denied";
     private const string DataKey = "key.pem";
+    // Exception.Data key that marks the listener's positive control; no message text is ever recorded.
+    private const string UnobservedControl = "pp-k8s-unobserved-control";
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _identity = "pp-lifecycle-" + Guid.NewGuid().ToString("N");
     private readonly string _cluster = "pp-k8s-" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
     private readonly ConcurrentQueue<string> _sidecarLog = new();
+    private readonly ConcurrentQueue<string> _unobserved = new();
+    private readonly string _apiToken = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
     private OwnedPostgresContainer? _postgres;
     private Process? _sidecar;
     private string? _directory;
@@ -36,6 +44,8 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     private int[] _ports = [];
     private bool _clusterAttempted;
     private bool _started;
+    private bool _listening;
+    private int _controls;
 
     /// <summary>Creates resource-free identities only.</summary>
     public KubernetesCryptoFixture()
@@ -83,8 +93,10 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     internal string Erasure { get; }
     /// <summary>Gets the 256-character maximum address.</summary>
     internal string Maximum { get; }
-    /// <summary>Gets the current client to the owned sidecar.</summary>
+    /// <summary>Gets the current SDK client to the owned sidecar, used for state and test-only legacy envelopes.</summary>
     internal DaprClient Client { get; private set; } = null!;
+    /// <summary>Gets the current generated-client crypto transport, created as production creates it, with the per-run API token.</summary>
+    internal DaprCryptographyGrpcTransport Transport { get; private set; } = null!;
     /// <summary>Gets the qualified-on-demand state primitive bound to the Dapr Kubernetes authority.</summary>
     internal DaprPayloadProtectionStateStore Store { get; private set; } = null!;
     /// <summary>Gets the lane-owned admin kubeconfig path.</summary>
@@ -107,6 +119,7 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
         {
             if (_started) { return; }
             if (_directory is not null) { throw new InvalidOperationException("The Kubernetes cryptography lane failed to start earlier."); }
+            if (!_listening) { TaskScheduler.UnobservedTaskException += OnUnobservedTaskException; _listening = true; }
             _directory = Path.Combine(Path.GetTempPath(), "pp-k8s-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_directory);
             await VerifyToolsAsync(token);
@@ -153,6 +166,7 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
         foreach (string argument in new[] { "--app-id", _identity, "--resources-path", _directory!, "--dapr-http-port", Port(0), "--dapr-grpc-port", Port(1),
             "--dapr-internal-grpc-port", Port(2), "--metrics-port", Port(3), "--log-level", "warn" }) { start.ArgumentList.Add(argument); }
         start.Environment.Remove("KUBECONFIG");
+        start.Environment["DAPR_API_TOKEN"] = _apiToken;
         _sidecar = Process.Start(start) ?? throw new InvalidOperationException("The lane sidecar could not start.");
         _sidecar.OutputDataReceived += (_, e) => { if (e.Data is not null && _sidecarLog.Count < 10_000) { _sidecarLog.Enqueue(e.Data); } };
         _sidecar.ErrorDataReceived += (_, e) => { if (e.Data is not null && _sidecarLog.Count < 10_000) { _sidecarLog.Enqueue(e.Data); } };
@@ -166,7 +180,9 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
             if (_sidecar.HasExited) { throw new InvalidOperationException("The lane sidecar exited before readiness."); }
             try
             {
-                using HttpResponseMessage response = await http.GetAsync($"http://127.0.0.1:{Port(0)}/v1.0/healthz/outbound", deadline.Token);
+                using var probe = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{Port(0)}/v1.0/healthz/outbound");
+                probe.Headers.Add(DaprCryptographyGrpcTransport.ApiTokenHeader, _apiToken);
+                using HttpResponseMessage response = await http.SendAsync(probe, deadline.Token);
                 if (response.IsSuccessStatusCode) { break; }
             }
             catch (HttpRequestException) { }
@@ -174,8 +190,45 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
         }
 
         Client?.Dispose();
-        Client = new DaprClientBuilder().UseGrpcEndpoint($"http://127.0.0.1:{Port(1)}").Build();
+        Client = new DaprClientBuilder().UseGrpcEndpoint($"http://127.0.0.1:{Port(1)}").UseDaprApiToken(_apiToken).Build();
         Store = new DaprPayloadProtectionStateStore(Client, authorityProfile: PayloadProtectionAuthorityProfile.DaprKubernetesCrypto);
+        Transport?.Dispose();
+        Transport = CreateTransport(_apiToken);
+    }
+
+    /// <summary>Creates a transport to the owned sidecar through configuration, as production resolves it; a null token sends none.</summary>
+    internal DaprCryptographyGrpcTransport CreateTransport(string? apiToken)
+        => DaprCryptographyGrpcTransport.Create(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["DAPR_GRPC_ENDPOINT"] = $"http://127.0.0.1:{Port(1)}",
+            ["DAPR_GRPC_PORT"] = Port(1),
+            // An explicit empty value keeps any ambient DAPR_API_TOKEN out of the lane.
+            ["DAPR_API_TOKEN"] = apiToken ?? "",
+        }).Build());
+
+    /// <summary>Collects garbage until pending finalizers have run, then requires that no task exception went unobserved.</summary>
+    /// <remarks>A marked, abandoned faulted task is the positive control: the listener must see it, so the empty check is not vacuous.</remarks>
+    internal async ValueTask AssertNoUnobservedTaskExceptionAsync()
+    {
+        int controls = Volatile.Read(ref _controls);
+        AbandonFaultedControlTask();
+        for (int i = 0; i < 3; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            await Task.Yield();
+        }
+
+        Volatile.Read(ref _controls).ShouldBe(controls + 1);
+        _unobserved.ShouldBeEmpty();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void AbandonFaultedControlTask()
+    {
+        var control = new InvalidOperationException();
+        control.Data[UnobservedControl] = true;
+        _ = Task.FromException(control);
     }
 
     /// <summary>Stops the owned sidecar; the old client remains for stopped-sidecar assertions until the next start.</summary>
@@ -197,8 +250,12 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        await CleanupAsync();
-        _gate.Dispose();
+        try { await CleanupAsync(); }
+        finally
+        {
+            if (_listening) { TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException; }
+            _gate.Dispose();
+        }
     }
 
     private async ValueTask CleanupAsync()
@@ -206,7 +263,7 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
         var failed = new List<int>();
         Func<ValueTask>[] steps =
         [
-            () => { Client?.Dispose(); return ValueTask.CompletedTask; },
+            () => { Client?.Dispose(); Transport?.Dispose(); return ValueTask.CompletedTask; },
             StopSidecarAsync,
             async () => { if (_clusterAttempted) { _ = await RunAsync(Kind(), ["delete", "cluster", "--name", _cluster, "--kubeconfig", AdminKubeconfig], kind: true); } },
             async () => { if (_postgres is not null) { await _postgres.CleanupAsync(); } },
@@ -416,6 +473,16 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
         }
 
         throw new DirectoryNotFoundException("The repository root was not found.");
+    }
+
+    // Only exception type names are kept: an unobserved gRPC exception may carry key addresses or sidecar error text.
+    private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs args)
+    {
+        foreach (Exception exception in args.Exception.Flatten().InnerExceptions)
+        {
+            if (exception.Data.Contains(UnobservedControl)) { Interlocked.Increment(ref _controls); }
+            else { _unobserved.Enqueue(exception.GetType().FullName ?? "unknown"); }
+        }
     }
 
     private static string Address(string space, string secret) => space + "/" + secret + "/" + DataKey;

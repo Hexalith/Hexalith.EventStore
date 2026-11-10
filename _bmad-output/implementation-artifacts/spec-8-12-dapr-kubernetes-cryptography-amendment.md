@@ -5,18 +5,21 @@ created: '2026-11-10'
 status: 'approved-authorized'
 implementation_authorized: true
 approval_date: '2026-11-10'
-approval_source: 'Interactive project owner: Approve revision 2'
-revision: 2
-revision_reason: 'Review pass 1 intent gap: Reconcile returns Missing (owner decision 2026-11-10)'
-previous_approval_source: 'Interactive project owner: Approve and continue (revision 1)'
-previous_normative_sha256: '2289212dd2076ebd4a7a6b155f59d2bc05d3da14bff49430c1877c83ea1f0fb0'
-previous_effective_authority_sha256: 'b11cf7679867f7ab383cb007420ee3e55c22401c1b57452dc81ed5ea8899103f'
+approval_source: 'Interactive project owner: Option A, approve revision 3 as drafted'
+revision: 3
+revision_reason: 'Story 8.7 gate 2: call the generated Dapr.Protos 1.19.0 client so gRPC failure statuses reach the section 7 mapping (owner decision 2026-11-10)'
+previous_approval_source: 'Interactive project owner: Approve revision 2'
+previous_normative_sha256: 'e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034'
+previous_effective_authority_sha256: '2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d'
+revision_1_approval_source: 'Interactive project owner: Approve and continue (revision 1)'
+revision_1_normative_sha256: '2289212dd2076ebd4a7a6b155f59d2bc05d3da14bff49430c1877c83ea1f0fb0'
+revision_1_effective_authority_sha256: 'b11cf7679867f7ab383cb007420ee3e55c22401c1b57452dc81ed5ea8899103f'
 approval_assurance: 'single-maintainer-attested'
 alpha_posture_decision: 'accepted-for-this-profile-only'
 alpha_posture_decision_date: '2026-11-10'
 predecessor_effective_authority_sha256: 'eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9'
-candidate_normative_sha256: 'e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034'
-proposed_effective_authority_sha256: '2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d'
+candidate_normative_sha256: '14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881'
+proposed_effective_authority_sha256: '29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44'
 paired_spec_frozen_intent_sha256: 'b36bbe08191d0db7bf319f920f8025a3c820e2f27bb0fc5dd3842207321bfee1'
 ---
 
@@ -41,10 +44,13 @@ This supplement adds one selectable backend profile, named `DaprKubernetesCrypto
 
 - **Component.** The only selected component is `crypto.dapr.kubernetes.secrets`, version `v1`, from the component-inclusive Dapr runtime **1.19.1** (components-contrib **1.19.0**). Its archives and SHA-256 values are those in `deploy/dapr/qualification/runtime-lock-1.19.1.json`. The component's `defaultNamespace` metadata must be unset, so every key name carries its namespace.
 - **Alpha posture.** The cryptography API and this component are Alpha. The owner accepted that posture on 2026-11-10 for this profile only. It is a recorded limitation, not a readiness claim.
-- **Client calls.** EventStore calls only the `Dapr.Client` **1.19.0** byte-array overloads over gRPC:
-  - `EncryptAsync(component, dek, keyName, EncryptionOptions, ct)`, with key wrap `RSA-OAEP-256` and data cipher AES-GCM;
-  - `DecryptAsync(component, envelope, keyName, ct)` (or its options overload), with the recorded key address as `keyName`.
-  - Their `DAPR_CRYPTOGRAPHY` experimental diagnostic is suppressed only in the backend source file.
+- **Client calls.** EventStore calls only the generated gRPC client of `Dapr.Protos` **1.19.0**, the package `Dapr.Client` 1.19.0 already depends on. It calls no `Dapr.Client` cryptography method and starts no background task:
+  - `EncryptAlpha1`, with the component name, the key address as key name, key wrap `RSA-OAEP-256`, data cipher `aes-gcm` and `omitDecryptionKeyName` set. This is the request that `Dapr.Client` 1.19.0 `EncryptAsync` sends.
+  - `DecryptAlpha1`, with the component name and the recorded key address as key name.
+  - Each call writes its whole input as one message with sequence 0, completes the request stream, and reads the response stream to its end on the calling task. The call's gRPC status is its outcome. Output received before a non-OK status is discarded and cleared.
+  - The sidecar gRPC endpoint and API token are resolved as `Dapr.Client` 1.19.0 resolves them: `DAPR_GRPC_ENDPOINT` or `DAPR_GRPC_PORT`, and `DAPR_API_TOKEN`, sent as `dapr-api-token`. No option field supplies them.
+  - Envelopes written through `Dapr.Client` 1.19.0 `EncryptAsync` keep their meaning and decrypt unchanged.
+  - No production source suppresses the `DAPR_CRYPTOGRAPHY` diagnostic.
 - **Excluded.** Subtle get-key/wrap/unwrap, the `Dapr.Cryptography` package, custom runtimes, provider HTTP, any application Kubernetes client and exported KEKs are excluded.
 - **No backend retries.** The backend performs one attempt per call. The existing executor's retry, breaker and budget rules remain the only retry authority.
 
@@ -204,3 +210,21 @@ Review pass 1 found that an always-`Ambiguous` Reconcile leaves interrupted rese
 The revision 1 approval does not cover the revision 2 bytes. Affected code waits for explicit approval of revision 2.
 
 The interactive project owner then answered **"Approve revision 2."** The approval binds the revision 2 normative, effective-authority and frozen-intent digests above, recorded while EventStore HEAD was `aa16227bd07f0564a3026d619a5abd973e02656f`. The approved bytes were then uncommitted; the commit that first contains them is recorded in the build spec when it exists. It is `single-maintainer-attested`. Code constants and header comments move to the revision 2 digests.
+
+## Revision 3 — 2026-11-10 (approved)
+
+Dapr.Client 1.19.0 `EncryptAsync`/`DecryptAsync` rethrow gRPC failures on a fire-and-forget task and return empty output, so every provider failure became `ConsistencyMismatch`: outages got no retry, the executor breaker almost never opened, and the rethrown `RpcException` was a latent unobserved task exception. This was gate 2 of Story 8.7 (`deferred-work.md`, "Deferred from: build of spec-8-12-dapr-kubernetes-cryptography.md"). The build spec is [spec-dapr-crypto-error-outcomes.md](spec-dapr-crypto-error-outcomes.md).
+
+The owner chose **Option A** and approved revision 3 as drafted. Only the §2 "Client calls" bullet changed inside the markers: EventStore now calls the generated `Dapr.Protos` 1.19.0 `EncryptAlpha1`/`DecryptAlpha1` client on the calling task, so each call's gRPC status reaches the unchanged §7 mapping. The wire format, key addresses, records, one attempt per call and the excluded-API list are unchanged. Option B (a newer `Dapr.Client`) is recorded only, because no fixed release exists. Option C (`Dapr.Cryptography`) was rejected: it needs a Builds change and reverses the 8.12 exclusion.
+
+| Digest | Revision 2 (superseded) | Revision 3 (approved) |
+|---|---|---|
+| Normative | `e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034` | `14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881` |
+| Effective authority | `2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d` | `29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44` |
+| Paired frozen intent | `b36bbe08191d0db7bf319f920f8025a3c820e2f27bb0fc5dd3842207321bfee1` | unchanged |
+
+The approval was recorded while EventStore HEAD was `02873c9d4d3da23a53037cb3bda811081d9cd575`. It is `single-maintainer-attested`. Code constants and header comments move to the revision 3 digests. Fences, deployments and leases bound to `2c7c5099…` are refused, as revision 2 refused revision 1 roots; they exist only in disposable lanes. Key records carry no authority.
+
+The owner also accepted one daprd limitation: daprd 1.19.1 returns gRPC `Internal` when Kubernetes refuses a Secret read (403), so a denied ServiceAccount stays `ConsistencyMismatch` under §7. The lane proves `Denied` with an unauthenticated call against a per-run API token, and `deferred-work.md` records the limitation.
+
+Under revision 3, the unchanged §7 phrases "inside the SDK exception" and "SDK-returned arrays" cover the gRPC runtime's exceptions and the buffers it returns, because no `Dapr.Client` cryptography method is called any more. The lane's per-run API token is set on a self-hosted daprd. It proves only that `Unauthenticated` maps to `Denied`. It is not the in-cluster sidecar API-token authentication that §8 keeps as platform-blocked.

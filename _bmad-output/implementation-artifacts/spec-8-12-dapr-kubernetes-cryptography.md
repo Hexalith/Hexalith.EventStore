@@ -121,6 +121,7 @@ All engine paths are under `src/Hexalith.EventStore.PayloadProtection/`.
     - The `docs/ci.md` Test Lanes row is updated.
     - Two deferrals are recorded: the Azure stuck-intent behavior, and refreshing the `epics.md` 8.12 paragraph.
 - **Out of scope, unchanged.** Server host wiring and Enabled activation (registration still refuses Enabled), packaging, release, deployment, Azure 8.6 and G5.
+- **Superseded 2026-11-10 by amendment revision 3.** The SDK finding and the "Accept + track" notes above describe revision 2. Under revision 3 (`14eb081c…`), the backend calls the generated `Dapr.Protos` client, so `Denied` and `Unavailable` are distinct outcomes. See [spec-dapr-crypto-error-outcomes.md](spec-dapr-crypto-error-outcomes.md).
 
 ## Spec Change Log
 

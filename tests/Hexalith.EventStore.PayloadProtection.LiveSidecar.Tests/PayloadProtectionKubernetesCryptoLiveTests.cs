@@ -1,5 +1,5 @@
-// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; sections 2-8.
-// Profile authority: 2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d.
+// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 2-8.
+// Profile authority: 29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44.
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Security.Cryptography;
@@ -11,7 +11,9 @@ namespace Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests;
 
 /// <summary>Owned kind + daprd 1.19.1 qualification of the stock crypto.dapr.kubernetes.secrets component, asserted through the Dapr state boundary.</summary>
 /// <remarks>Explicit tests run only in the opt-in Kubernetes cryptography lane (<c>--filter-trait Lane=KubernetesCrypto --explicit only</c>).
-/// Dapr.Client 1.19.0 surfaces sidecar, RBAC and Secret failures as empty output, so those cases classify as ConsistencyMismatch.</remarks>
+/// The generated gRPC transport surfaces each call's status: a missing or wrong API token is Denied, a stopped sidecar is Unavailable, and
+/// daprd 1.19.1 reports a Kubernetes 403 (denied ServiceAccount or ungranted Secret), a missing Secret and a tampered envelope as Internal,
+/// which amendment section 7 maps to ConsistencyMismatch.</remarks>
 [Trait("Lane", "KubernetesCrypto")]
 public sealed class PayloadProtectionKubernetesCryptoLiveTests(KubernetesCryptoFixture fixture) : IClassFixture<KubernetesCryptoFixture>
 {
@@ -180,10 +182,12 @@ public sealed class PayloadProtectionKubernetesCryptoLiveTests(KubernetesCryptoF
         byte[] dek = RandomNumberGenerator.GetBytes(32);
         using PayloadBackendResult wrapped = await granted.WrapAsync("01J00000000000000000000909", dek, token);
         byte[] envelope = wrapped.TakeBytes();
-        var denied = new DaprCryptographyPayloadProtectionBackend(fixture.Client, new(KubernetesCryptoFixture.DeniedComponent, fixture.V1, []));
-        await AssertFailureAsync(denied, envelope, fixture.V1, token);
+        var denied = new DaprCryptographyPayloadProtectionBackend(fixture.Transport, new(KubernetesCryptoFixture.DeniedComponent, fixture.V1, []));
+        // daprd 1.19.1 reports the Kubernetes 403 as Internal, so a denied ServiceAccount stays ConsistencyMismatch with one attempt per call.
+        (await AssertFailureAsync(denied, envelope, fixture.V1, PayloadBackendFailure.ConsistencyMismatch, token)).ShouldBe([1, 1, 1]);
         // The restricted ServiceAccount may get only the named Secrets: an existing but unnamed Secret is refused by RBAC.
-        await AssertFailureAsync(Backend(fixture.Ungranted, fixture.V1), envelope, fixture.Ungranted, token);
+        (await AssertFailureAsync(Backend(fixture.Ungranted, fixture.V1), envelope, fixture.Ungranted, PayloadBackendFailure.ConsistencyMismatch, token))
+            .ShouldBe([1, 1, 1]);
         await Should.ThrowAsync<PayloadProtectionCryptographicException>(() => env.Reservations(denied)
             .ProtectEventAsync(KubernetesCryptoLiveEnvironment.Plain(), ["/secret"], new(env.Identity, "qualification-event", PayloadProtectionPayloadKind.Event, 1), token).AsTask());
         (await new PayloadKeyIndexes(fixture.Store).ReadScopeAsync(env.Scope, token)).Head.ShouldBeNull();
@@ -200,7 +204,7 @@ public sealed class PayloadProtectionKubernetesCryptoLiveTests(KubernetesCryptoF
         var missing = Backend(fixture.Missing, fixture.V1);
         using PayloadBackendResult wrapped = await Backend(fixture.V1).WrapAsync("01J00000000000000000000910", new byte[32], token);
         byte[] envelope = wrapped.TakeBytes();
-        await AssertFailureAsync(missing, envelope, fixture.Missing, token);
+        (await AssertFailureAsync(missing, envelope, fixture.Missing, PayloadBackendFailure.ConsistencyMismatch, token)).ShouldBe([1, 1, 1]);
         using PayloadBackendResult reconcile = await new PayloadBackendExecutor().ExecuteAsync(missing, ct => missing.ReconcileAsync("01J00000000000000000000910", ct),
             token, allowRetry: false, operation: PayloadProtectionOperation.Reconcile);
         // Wrap and unwrap never report Missing for a missing Secret; Reconcile is Missing without transport because Dapr keeps no mutation state.
@@ -209,7 +213,7 @@ public sealed class PayloadProtectionKubernetesCryptoLiveTests(KubernetesCryptoF
     }
 
     [Fact(Explicit = true)]
-    public async Task StoppedSidecarFailsClosedAndTheRestartedSidecarServesAgain()
+    public async Task StoppedSidecarIsUnavailableRetriedUntilTheBreakerOpensAndTheRestartedSidecarServesAgain()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         CancellationToken token = timeout.Token;
@@ -218,11 +222,77 @@ public sealed class PayloadProtectionKubernetesCryptoLiveTests(KubernetesCryptoF
         byte[] envelope = wrapped.TakeBytes();
         var stale = Backend(fixture.V1);
         await fixture.StopSidecarAsync();
-        try { await AssertFailureAsync(stale, envelope, fixture.V1, token); }
+        try
+        {
+            // The executor retries Unavailable. The fifth failure within 30 s opens the breaker, so the exact wrap stops after two attempts
+            // and the unwrap that follows is refused without any transport attempt.
+            (await AssertFailureAsync(stale, envelope, fixture.V1, PayloadBackendFailure.Unavailable, token)).ShouldBe([3, 2, 0]);
+        }
         finally { await fixture.StartSidecarAsync(token); }
         using PayloadBackendResult served = await Backend(fixture.V1).UnwrapAsync("01J00000000000000000000911", fixture.V1, envelope, token);
         served.Failure.ShouldBe(PayloadBackendFailure.None);
         CryptographicOperations.ZeroMemory(served.TakeBytes());
+    }
+
+    [Fact(Explicit = true)]
+    public async Task MissingOrWrongApiTokenIsDeniedWithoutRetryAndPersistsNothing()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        CancellationToken token = timeout.Token;
+        await fixture.StartAsync(token);
+        KubernetesCryptoLiveEnvironment env = await KubernetesCryptoLiveEnvironment.CreateAsync(fixture.Store, "tenant-k8s-unauthenticated", token);
+        ulong inventoryBefore = await env.InventoryAsync(fixture.V1, token);
+        using PayloadBackendResult wrapped = await Backend(fixture.V1).WrapAsync("01J00000000000000000000918", RandomNumberGenerator.GetBytes(32), token);
+        byte[] envelope = wrapped.TakeBytes();
+        // The sidecar requires the per-run API token: a call without it or with another token is Unauthenticated, which section 7 maps to Denied.
+        foreach (string? apiToken in new[] { null, Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)) })
+        {
+            using DaprCryptographyGrpcTransport transport = fixture.CreateTransport(apiToken);
+            var unauthenticated = new DaprCryptographyPayloadProtectionBackend(transport, new(KubernetesCryptoFixture.Component, fixture.V1, []));
+            (await AssertFailureAsync(unauthenticated, envelope, fixture.V1, PayloadBackendFailure.Denied, token)).ShouldBe([1, 1, 1]);
+            if (apiToken is null)
+            {
+                await Should.ThrowAsync<PayloadProtectionCryptographicException>(() => env.Reservations(unauthenticated)
+                    .ProtectEventAsync(KubernetesCryptoLiveEnvironment.Plain(), ["/secret"], new(env.Identity, "qualification-event", PayloadProtectionPayloadKind.Event, 1), token).AsTask());
+            }
+        }
+
+        (await new PayloadKeyIndexes(fixture.Store).ReadScopeAsync(env.Scope, token)).Head.ShouldBeNull();
+        (await env.InventoryAsync(fixture.V1, token)).ShouldBe(inventoryBefore);
+        CryptographicOperations.ZeroMemory(envelope);
+    }
+
+    [Fact(Explicit = true)]
+    public async Task EnvelopesWrittenThroughDaprClientEncryptAsyncAndThroughTheTransportOpenInBothDirections()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        CancellationToken token = timeout.Token;
+        await fixture.StartAsync(token);
+        byte[] dek = RandomNumberGenerator.GetBytes(32);
+        var backend = Backend(fixture.V1);
+        // The legacy envelope is created at run time, because decrypting a committed one would need committed key material.
+#pragma warning disable DAPR_CRYPTOGRAPHY // Test-only legacy SDK calls; no production source suppresses the diagnostic.
+        ReadOnlyMemory<byte> legacy = await fixture.Client.EncryptAsync(KubernetesCryptoFixture.Component, dek, fixture.V1,
+            new EncryptionOptions(KeyWrapAlgorithm.RsaOaep256) { EncryptionCipher = DataEncryptionCipher.AesGcm }, token);
+#pragma warning restore DAPR_CRYPTOGRAPHY
+        byte[] legacyEnvelope = legacy.ToArray();
+        legacyEnvelope.Length.ShouldBe(666); Header(legacyEnvelope).ShouldNotContain("\"k\":");
+        using (PayloadBackendResult read = await backend.UnwrapAsync("01J00000000000000000000919", fixture.V1, legacyEnvelope, token))
+        {
+            read.Failure.ShouldBe(PayloadBackendFailure.None);
+            byte[] plaintext = read.TakeBytes(); plaintext.ShouldBe(dek); CryptographicOperations.ZeroMemory(plaintext);
+        }
+
+        using PayloadBackendResult wrapped = await backend.WrapAsync("01J00000000000000000000919", dek, token);
+        byte[] envelope = wrapped.TakeBytes();
+        envelope.Length.ShouldBe(legacyEnvelope.Length); Header(envelope).ShouldNotContain("\"k\":");
+#pragma warning disable DAPR_CRYPTOGRAPHY // Test-only legacy SDK call.
+        ReadOnlyMemory<byte> opened = await fixture.Client.DecryptAsync(KubernetesCryptoFixture.Component, envelope, fixture.V1, token);
+#pragma warning restore DAPR_CRYPTOGRAPHY
+        byte[] legacyPlaintext = opened.ToArray();
+        legacyPlaintext.ShouldBe(dek);
+        CryptographicOperations.ZeroMemory(legacyPlaintext); CryptographicOperations.ZeroMemory(dek);
+        CryptographicOperations.ZeroMemory(legacyEnvelope); CryptographicOperations.ZeroMemory(envelope);
     }
 
     [Fact(Explicit = true)]
@@ -277,7 +347,7 @@ public sealed class PayloadProtectionKubernetesCryptoLiveTests(KubernetesCryptoF
         await fixture.StartAsync(token);
         byte[] dek = RandomNumberGenerator.GetBytes(32);
         // Another writer may embed a key name; the SDK requests that only when a decryption key name is supplied.
-#pragma warning disable DAPR_CRYPTOGRAPHY // Test-only envelope construction; production suppression stays in the backend file.
+#pragma warning disable DAPR_CRYPTOGRAPHY // Test-only envelope construction; no production source suppresses the diagnostic.
         ReadOnlyMemory<byte> named = await fixture.Client.EncryptAsync(KubernetesCryptoFixture.Component, dek, fixture.V1,
             new EncryptionOptions(KeyWrapAlgorithm.RsaOaep256) { DecryptionKeyName = "embedded" }, token);
 #pragma warning restore DAPR_CRYPTOGRAPHY
@@ -378,22 +448,31 @@ public sealed class PayloadProtectionKubernetesCryptoLiveTests(KubernetesCryptoF
     }
 
     private DaprCryptographyPayloadProtectionBackend Backend(string current, params string[] retained)
-        => new(fixture.Client, new(KubernetesCryptoFixture.Component, current, retained));
+        => new(fixture.Transport, new(KubernetesCryptoFixture.Component, current, retained));
 
-    private static async ValueTask AssertFailureAsync(DaprCryptographyPayloadProtectionBackend backend, byte[] envelope, string address, CancellationToken token)
+    // Runs wrap, exact wrap and unwrap through one executor and returns each call's transport attempt count.
+    private async ValueTask<int[]> AssertFailureAsync(DaprCryptographyPayloadProtectionBackend backend, byte[] envelope, string address,
+        PayloadBackendFailure expected, CancellationToken token)
     {
         var executor = new PayloadBackendExecutor();
-        using PayloadBackendResult wrap = await executor.ExecuteAsync(backend, ct => backend.WrapAsync("01J00000000000000000000916", new byte[32], ct), token);
-        using PayloadBackendResult exact = await executor.ExecuteAsync(backend, ct => backend.WrapExactAsync("01J00000000000000000000916", address, new byte[32], ct), token);
+        int[] attempts = new int[3];
+        using PayloadBackendResult wrap = await executor.ExecuteAsync(backend, ct => backend.WrapAsync("01J00000000000000000000916", new byte[32], ct), token,
+            attempted: _ => attempts[0]++);
+        using PayloadBackendResult exact = await executor.ExecuteAsync(backend, ct => backend.WrapExactAsync("01J00000000000000000000916", address, new byte[32], ct),
+            token, attempted: _ => attempts[1]++);
         using PayloadBackendResult unwrap = await executor.ExecuteAsync(backend, ct => backend.UnwrapAsync("01J00000000000000000000916", address, envelope, ct), token,
-            operation: PayloadProtectionOperation.Unwrap);
+            operation: PayloadProtectionOperation.Unwrap, attempted: _ => attempts[2]++);
         foreach (PayloadBackendResult result in new[] { wrap, exact, unwrap })
         {
-            // Dapr.Client 1.19.0 reports these provider failures as empty output: never Missing, Invalidated or a deletion signal.
-            result.Failure.ShouldBe(PayloadBackendFailure.ConsistencyMismatch);
+            // Provider and transport failures are never Missing, Invalidated or a deletion signal.
+            result.Failure.ShouldBe(expected);
             result.ProviderKeyVersionId.ShouldBeNull();
             Should.Throw<PayloadProtectionFormatException>(() => result.TakeBytes());
         }
+
+        // Every failed call ended on the calling task: nothing reaches the unobserved-task-exception channel.
+        await fixture.AssertNoUnobservedTaskExceptionAsync();
+        return attempts;
     }
 
     private static string Header(byte[] envelope)

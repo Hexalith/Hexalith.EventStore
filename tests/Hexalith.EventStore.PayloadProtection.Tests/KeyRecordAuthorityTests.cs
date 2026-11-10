@@ -1,7 +1,8 @@
-// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; sections 4-6.
-// Profile authority: 2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d.
+// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 4-6.
+// Profile authority: 29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44.
 using System.Security.Cryptography;
 using System.Text;
+using Grpc.Core;
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.PayloadProtection.Tests;
@@ -22,7 +23,7 @@ public sealed class KeyRecordAuthorityTests
         normative.ShouldBe(PayloadProtectionAuthorityProfile.DaprKubernetesCryptoSupplementDigest);
         byte[] preimage = [.. "HXPA"u8, 0x03, .. Convert.FromHexString(PayloadProtectionStateKeys.AuthorityDigest), .. Convert.FromHexString(normative)];
         Convert.ToHexStringLower(SHA256.HashData(preimage)).ShouldBe(PayloadProtectionAuthorityProfile.DaprKubernetesCryptoDigest);
-        Kubernetes.Digest.ShouldBe("2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d");
+        Kubernetes.Digest.ShouldBe("29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44");
         Kubernetes.KeyRecordSchemaVersion.ShouldBe(2);
         string text = Encoding.UTF8.GetString(amendment);
         text.ShouldContain("status: 'approved-authorized'");
@@ -32,6 +33,23 @@ public sealed class KeyRecordAuthorityTests
         byte[] spec = Artifact("spec-8-12-dapr-kubernetes-cryptography.md");
         byte[] frozen = Block(spec, "<frozen-after-approval", "</frozen-after-approval>");
         text.ShouldContain("paired_spec_frozen_intent_sha256: '" + Convert.ToHexStringLower(SHA256.HashData(frozen)) + "'");
+    }
+
+    [Fact]
+    public void NoProductionSourceSuppressesTheExperimentalCryptographyDiagnostic()
+    {
+        // Revision 3 section 2: the generated Dapr.Protos client is not experimental, so no production source or build setting suppresses
+        // DAPR_CRYPTOGRAPHY: no pragma, NoWarn or diagnostic severity under src/ or in the repository-root build files (references/ excluded).
+        string[] patterns = ["*.cs", "*.csproj", "*.props", "*.targets", ".editorconfig", "*.globalconfig"];
+        string[] sources = [.. patterns.SelectMany(pattern => Directory.GetFiles(Path.Combine(Root(), "src"), pattern, SearchOption.AllDirectories))
+            .Where(path => !path.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                && !path.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar, StringComparison.Ordinal)),
+            .. patterns.SelectMany(pattern => Directory.GetFiles(Root(), pattern, SearchOption.TopDirectoryOnly))];
+        sources.ShouldContain(path => path.EndsWith("DaprCryptographyGrpcTransport.cs", StringComparison.Ordinal));
+        sources.ShouldContain(path => path.EndsWith("Hexalith.EventStore.PayloadProtection.csproj", StringComparison.Ordinal));
+        sources.ShouldContain(path => Path.GetFileName(path) == "Directory.Build.props" && Path.GetDirectoryName(path) == Root());
+        sources.ShouldContain(path => Path.GetFileName(path) == ".editorconfig" && Path.GetDirectoryName(path) == Root());
+        sources.Where(path => File.ReadAllText(path).Contains("DAPR_CRYPTOGRAPHY", StringComparison.Ordinal)).ShouldBeEmpty();
     }
 
     [Fact]
@@ -171,6 +189,20 @@ public sealed class KeyRecordAuthorityTests
     }
 
     [Fact]
+    public async Task DeniedProviderStatusDuringReservationIsAuditedAsProviderDeniedAndCreatesNoKey()
+    {
+        var sidecar = new DaprCryptoTestSidecar(V1Address) { End = (DaprCryptoTestSidecar.AtRead, StatusCode.PermissionDenied) };
+        KubernetesCryptoTestEnvironment env = await KubernetesCryptoTestEnvironment.CreateAsync();
+        await Should.ThrowAsync<PayloadProtectionCryptographicException>(() => env.Reservations(Backend(sidecar, V1Address))
+            .ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context()).AsTask());
+        PayloadProtectionAuditRecord create = env.Store.Audits.Single(a => a.Operation == "Create");
+        create.ReasonCode.ShouldBe("provider-denied");
+        OperationV1 operation = (await env.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(create.OperationId)))!.Value;
+        operation.Phase.ShouldBe("Failed"); operation.Result.ShouldBe("Failed"); operation.ReasonCode.ShouldBe("provider-denied");
+        (await new PayloadKeyIndexes(env.Store, env.Clock).ReadScopeAsync(KubernetesCryptoTestEnvironment.Scope)).Head.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task MixedProcessesAndBackendsFailClosedWithTypedOutcomesWithoutRestamping()
     {
         KubernetesCryptoTestEnvironment kubernetes = await KubernetesCryptoTestEnvironment.CreateAsync();
@@ -217,18 +249,20 @@ public sealed class KeyRecordAuthorityTests
     }
 
     private static DaprCryptographyPayloadProtectionBackend Backend(DaprCryptoTestSidecar sidecar, string current, params string[] retained)
-        => new(sidecar.Client, new(sidecar.Component, current, retained));
+        => new(sidecar.Transport, new(sidecar.Component, current, retained));
 
     private static byte[] Artifact(string name)
     {
+        byte[] bytes = File.ReadAllBytes(Path.Combine(Root(), "_bmad-output", "implementation-artifacts", name));
+        bytes.ShouldNotContain((byte)'\r'); bytes.AsSpan().StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]).ShouldBeFalse();
+        return bytes;
+    }
+
+    private static string Root()
+    {
         for (DirectoryInfo? directory = new(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx")))
-            {
-                byte[] bytes = File.ReadAllBytes(Path.Combine(directory.FullName, "_bmad-output", "implementation-artifacts", name));
-                bytes.ShouldNotContain((byte)'\r'); bytes.AsSpan().StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]).ShouldBeFalse();
-                return bytes;
-            }
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx"))) { return directory.FullName; }
         }
 
         throw new DirectoryNotFoundException("The repository root was not found.");

@@ -1,12 +1,9 @@
-// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; sections 2-5 and 7.
-// Profile authority: 2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d.
-// The owner accepted the Alpha cryptography posture for this profile only on 2026-11-10. It is a recorded limitation, not a readiness claim,
-// so the DAPR_CRYPTOGRAPHY experimental diagnostic is suppressed in this source file only.
-#pragma warning disable DAPR_CRYPTOGRAPHY
+// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 2-5 and 7.
+// Profile authority: 29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44.
+// The owner accepted the Alpha cryptography posture for this profile only on 2026-11-10. It is a recorded limitation, not a readiness claim.
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using Dapr.Client;
 using Grpc.Core;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -15,25 +12,26 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <remarks>
 /// Dapr Encrypt and Decrypt create no provider-side state, so Reconcile is always Missing without transport and durable state alone decides
 /// recovery; wrap, unwrap and transport outcomes never produce Missing. Decrypt always names the recorded
-/// trusted address; a key name embedded in an envelope never selects a key. Dapr.Client 1.19.0 completes these byte overloads with whatever output
-/// arrived before its stream failed (often none), so a wrap is accepted only after the same address decrypts it back to the exact DEK within the same
-/// attempt and budget. Retry, breaker and budget authority remain with the existing executor.
+/// trusted address; a key name embedded in an envelope never selects a key. The generated gRPC transport surfaces each call's status on the calling
+/// task, and a wrap is still accepted only after the same address decrypts it back to the exact DEK within the same attempt and budget.
+/// Retry, breaker and budget authority remain with the existing executor.
 /// </remarks>
 internal sealed class DaprCryptographyPayloadProtectionBackend : PayloadProtectionBackend
 {
-    private readonly DaprClient _client;
+    private readonly DaprCryptographyGrpcTransport _transport;
     private readonly DaprCryptographyPayloadProtectionOptions _options;
     private readonly TimeProvider _clock;
 
     /// <summary>Binds one validated component and closed address inventory; no Kubernetes client or default authority is constructed.</summary>
-    internal DaprCryptographyPayloadProtectionBackend(DaprClient client, DaprCryptographyPayloadProtectionOptions options, TimeProvider? timeProvider = null)
+    internal DaprCryptographyPayloadProtectionBackend(DaprCryptographyGrpcTransport transport, DaprCryptographyPayloadProtectionOptions options,
+        TimeProvider? timeProvider = null)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(transport);
         ArgumentNullException.ThrowIfNull(options);
         // Validate the private copy, so the admitted inventory is exactly the validated one.
         _options = options with { RetainedKeys = options.RetainedKeys?.ToArray()! };
         _options.Validate();
-        _client = client;
+        _transport = transport;
         _clock = timeProvider ?? TimeProvider.System;
         EndpointFingerprint = Convert.ToHexStringLower(SHA256.HashData(Encoding.ASCII.GetBytes(WrappedDekV2.ClosedBackendId + ":" + _options.ComponentName)));
     }
@@ -108,13 +106,12 @@ internal sealed class DaprCryptographyPayloadProtectionBackend : PayloadProtecti
         try
         {
             PayloadOperationBudget.RequireCurrent();
-            envelope = await _client.EncryptAsync(_options.ComponentName, plaintext, address,
-                new EncryptionOptions(KeyWrapAlgorithm.RsaOaep256) { EncryptionCipher = DataEncryptionCipher.AesGcm }, token).ConfigureAwait(false);
+            envelope = await _transport.EncryptAsync(_options.ComponentName, address, plaintext, token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested(); PayloadOperationBudget.RequireCurrent();
             if (!WrappedDekV2.IsEnvelope(envelope.Span)) { return new(PayloadBackendFailure.ConsistencyMismatch); }
             owned = envelope.ToArray();
             // A completed round trip under the same trusted address is the only format-agnostic proof that the envelope is whole.
-            verified = await _client.DecryptAsync(_options.ComponentName, owned, address, token).ConfigureAwait(false);
+            verified = await _transport.DecryptAsync(_options.ComponentName, address, owned, token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested(); PayloadOperationBudget.RequireCurrent();
             if (verified.Length != 32 || !CryptographicOperations.FixedTimeEquals(verified.Span, plaintext)) { return new(PayloadBackendFailure.ConsistencyMismatch); }
             var result = new PayloadBackendResult(PayloadBackendFailure.None, owned, address, keyRecordSchemaVersion: 2);
@@ -137,7 +134,7 @@ internal sealed class DaprCryptographyPayloadProtectionBackend : PayloadProtecti
         try
         {
             PayloadOperationBudget.RequireCurrent();
-            plaintext = await _client.DecryptAsync(_options.ComponentName, envelope, address, token).ConfigureAwait(false);
+            plaintext = await _transport.DecryptAsync(_options.ComponentName, address, envelope, token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested(); PayloadOperationBudget.RequireCurrent();
             if (plaintext.Length != 32) { return new(PayloadBackendFailure.ConsistencyMismatch); }
             return new(PayloadBackendFailure.None, plaintext.ToArray(), address, keyRecordSchemaVersion: 2);
@@ -170,7 +167,7 @@ internal sealed class DaprCryptographyPayloadProtectionBackend : PayloadProtecti
         return PayloadBackendFailure.ConsistencyMismatch;
     }
 
-    // SDK-returned buffers reachable as arrays are cleared before ownership is released; SDK-internal and sidecar copies are limitations.
+    // Transport-returned buffers reachable as arrays are cleared before ownership is released; gRPC-internal and sidecar copies are limitations.
     private static void Clear(ReadOnlyMemory<byte> value)
     {
         if (MemoryMarshal.TryGetArray(value, out ArraySegment<byte> segment)) { CryptographicOperations.ZeroMemory(segment.AsSpan()); }

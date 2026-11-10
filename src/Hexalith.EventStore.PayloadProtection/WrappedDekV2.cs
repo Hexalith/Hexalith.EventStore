@@ -1,5 +1,5 @@
-// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 5.
-// Profile authority: 2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d; WrappedDekV1 bytes and meaning are unchanged.
+// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; section 5.
+// Profile authority: 29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44; WrappedDekV1 bytes and meaning are unchanged.
 using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.PayloadProtection;

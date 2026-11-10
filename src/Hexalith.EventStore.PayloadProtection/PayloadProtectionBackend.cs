@@ -1,5 +1,5 @@
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 5, 10 and 15; amendment section 4; approved review correction section 8.
-// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; sections 5 and 7.
+// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 5 and 7.
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Opaque provider-neutral key wrapping SPI; it grants no provider administration or custody authority.</summary>
