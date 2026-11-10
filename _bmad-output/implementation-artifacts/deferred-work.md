@@ -437,28 +437,32 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: RestQueryBindingAttribute
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md` summary: `RestQueryBindingAttribute` runtime construction permits `EntitySource = None` with a non-null entity value even though the generator rejects that shape. evidence: The attribute stores `EntityValue` unchanged when `entitySource == RestQueryBindingSource.None`, while `RestApiControllerEmitter` treats a value with `None` as invalid metadata; the mismatch pre-dates Story 2.1 and needs generator/contract hardening rather than a contract-seam patch.
-status: open
+status: done 2026-11-10
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Runtime construction now rejects every non-null entity value with None. Roslyn parsing preserves omitted and explicit null values; runtime and source/referenced-generator regressions cover these shapes.
 
 ### DW-67: `RestQueryBindingAttribute` preserves padded route/constant binding values that can fail generator route-parameter lookup later.
 
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: RestQueryBindingAttribute
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md` summary: `RestQueryBindingAttribute` preserves padded route/constant binding values that can fail generator route-parameter lookup later. evidence: `ValidateValue` accepts and preserves values such as `" tenantId "`, while the generator route lookup compares binding route names to parsed route parameters without trimming; the issue is real but existed before this story and belongs with REST generator binding hardening.
-status: open
+status: done 2026-11-10
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Runtime attributes and HESREST012 reject leading/trailing whitespace on route and constant bindings without trimming literal identifiers. Tests cover both aggregate/entity values, runtime Unicode whitespace, referenced contracts and preserved internal spaces.
 
 ### DW-68: Undefined `RestTenantSource` values can flow through the generator as non-standard tenant-source text.
 
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: RestTenantSource
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md` summary: Undefined `RestTenantSource` values can flow through the generator as non-standard tenant-source text. evidence: `RoslynAttributeValueReader.GetEnumName` returns the numeric text for an out-of-range enum value, and generated `ResolveTenant` only handles `System` and `Route` specially before falling back to claims behavior; robust handling needs a generator diagnostic or explicit invalid-enum policy outside this contract-seam pass.
-status: open
+status: done 2026-11-10
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. HESREST014 rejects undefined assembly and route tenant-source values before controller emission. Tests preserve all five defined values and existing inheritance behavior; the separate tenant-boundary migration is unchanged.
 
 ### DW-69: Generated command endpoints do not emit the canonical 1 MiB request-body limit used by platform gateway command and query controllers.
 
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md` summary: Generated command endpoints do not emit the canonical 1 MiB request-body limit used by platform gateway command and query controllers. evidence: `CommandsController.Submit`, `QueriesController.Submit`, validation controllers, replay, and stream endpoints declare `[RequestSizeLimit(1_048_576)]`, but generated command actions in `RestApiControllerEmitter.AppendCommandAction` accept `[FromBody]` contract payloads without a generated `RequestSizeLimit` attribute. The gap existed in the prior generator and was surfaced incidentally during the Story 2.2 follow-up review; fixing it needs a deliberate generated API-host payload-size policy.
-status: open
+status: done 2026-11-10
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Generated command actions now declare RequestSizeLimit(1_048_576). An executing generated-controller fixture verifies the compiled IRequestSizeLimitMetadata limit.
 
 ### DW-70: Generated command problem mapping drops safe domain-rejection extensions such as `rejectionType` and `correctiveAction`.
 
@@ -478,7 +482,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: ArgumentException
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md` summary: Generated query actions map caught `ArgumentException` messages directly into client-facing ProblemDetails. evidence: `RestApiControllerEmitter.AppendQueryAction` catches `ArgumentException` and calls `CreateProblem(..., ex.Message)`, bypassing the support-safe display-text filtering used for gateway exceptions. The catch existed before Story 2.2 and should be hardened separately with a fixed safe message or shared sanitizer.
-status: open
+status: done 2026-11-10
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Generated query actions return a fixed safe 400 detail for ArgumentException. An executing generated-controller regression supplies credential/path-bearing exception text and verifies that only the fixed detail is returned.
 
 ### DW-73: Generated Sample API command success responses expose the generator's relative `/api/v1/commands/status/{id}` status location even though the external API host does not itself map that status route.
 

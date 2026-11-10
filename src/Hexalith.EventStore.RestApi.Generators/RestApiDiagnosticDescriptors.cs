@@ -108,6 +108,17 @@ internal static class RestApiDiagnosticDescriptors
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor UnsupportedTenantSource = new(
+        "HESREST014",
+        "REST tenant source is not supported",
+        "REST metadata on '{0}' has unsupported tenant source '{1}'",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static Diagnostic CreateUnsupportedTenantSource(string tenantSource, string owner)
+        => Diagnostic.Create(UnsupportedTenantSource, Location.None, owner, tenantSource);
+
     public static Diagnostic CreateMissingRouteTenant(RestApiMessageDescriptor message)
         => Diagnostic.Create(MissingRouteTenant, Location.None, message.TypeName);
 

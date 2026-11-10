@@ -4,6 +4,9 @@ namespace Hexalith.EventStore.RestApi.Generators;
 
 internal static class RestApiAttributeParser
 {
+    internal static bool IsSupportedTenantSource(string tenantSource)
+        => tenantSource is "Inherit" or "Claims" or "Route" or "System" or "Platform";
+
     public static RestApiOptions Parse(Compilation compilation, CancellationToken cancellationToken)
     {
         INamedTypeSymbol? attributeSymbol = compilation.GetTypeByMetadataName(RestApiMetadataNames.RestApiAttribute);
@@ -31,7 +34,7 @@ internal static class RestApiAttributeParser
                 ? RoslynAttributeValueReader.GetEnumName(attribute.ConstructorArguments[2], "Claims")
                 : "Claims";
 
-            return new RestApiOptions(true, routePrefix, tag, tenantSource);
+            return new RestApiOptions(true, routePrefix, tag, tenantSource, compilation.AssemblyName ?? string.Empty);
         }
 
         return new RestApiOptions(false, string.Empty, string.Empty, "Claims");

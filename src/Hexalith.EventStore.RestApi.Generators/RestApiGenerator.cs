@@ -59,6 +59,12 @@ public sealed class RestApiGenerator : IIncrementalGenerator
                     return;
                 }
 
+                if (!RestApiAttributeParser.IsSupportedTenantSource(options.TenantSource))
+                {
+                    sourceProductionContext.ReportDiagnostic(RestApiDiagnosticDescriptors.CreateUnsupportedTenantSource(options.TenantSource, options.AssemblyName));
+                    return;
+                }
+
                 ImmutableArray<RestApiMessageDescriptor> sourceMessages = source.Left.Right;
                 string manifest = RestApiManifestEmitter.Emit(options, sourceMessages);
                 sourceProductionContext.AddSource(

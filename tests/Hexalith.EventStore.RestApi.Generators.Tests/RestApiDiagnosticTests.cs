@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace Hexalith.EventStore.RestApi.Generators.Tests;
 
-public sealed class RestApiDiagnosticTests
+public sealed partial class RestApiDiagnosticTests
 {
     [Fact]
     public void Run_RouteTenantSourceWithoutTenantRouteParameter_ReportsStableDiagnosticAndNoController()

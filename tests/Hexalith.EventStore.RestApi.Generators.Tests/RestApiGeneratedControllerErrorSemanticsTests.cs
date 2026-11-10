@@ -8,6 +8,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -17,6 +18,33 @@ namespace Hexalith.EventStore.RestApi.Generators.Tests;
 
 public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
 {
+    [Fact]
+    public void CommandAction_CompiledMetadata_DeclaresCanonicalRequestBodyLimit()
+    {
+        RestApiGeneratedController controller = CreateController();
+        MethodInfo method = controller.Controller.GetType().GetMethod("IncrementCounterCommandAsync")!;
+
+        RequestSizeLimitAttribute limit = method.GetCustomAttribute<RequestSizeLimitAttribute>().ShouldNotBeNull();
+
+        ((IRequestSizeLimitMetadata)limit).MaxRequestBodySize.ShouldBe(1_048_576);
+    }
+
+    [Fact]
+    public async Task QueryAction_ArgumentException_ReturnsFixedSafeBadRequest()
+    {
+        RestApiGeneratedController controller = CreateController();
+        controller.Gateway.QueryHandler = static (_, _, _) => throw new ArgumentException("password=private-value /home/private/records\nAuthorization: Bearer hidden");
+
+        IActionResult result = await InvokeQueryAsync(controller).ConfigureAwait(true);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        objectResult.ContentTypes.ShouldContain("application/problem+json");
+        ProblemDetails problem = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Detail.ShouldBe("The query arguments are invalid.");
+        problem.Extensions.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task QueryAction_Success_ForwardsBoundedMetadataHeadersAndRawPayload()
     {
@@ -996,9 +1024,12 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         headers.ContainsKey("Location").ShouldBeFalse();
     }
 
-    private static RestApiGeneratedController CreateController(ICommandStatusLocationBuilder? statusLocationBuilder = null, string tenantMode = "Route")
+    private static RestApiGeneratedController CreateController(ICommandStatusLocationBuilder? statusLocationBuilder = null, string tenantMode = "Route", string routeTenantMode = "Inherit", string? queryBinding = null)
     {
-        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(ControllerExerciseSource.Replace("RestTenantSource.Route", "RestTenantSource." + tenantMode, StringComparison.Ordinal));
+        string source = ControllerExerciseSource.Replace("RestTenantSource.Route", "RestTenantSource." + tenantMode, StringComparison.Ordinal)
+            .Replace("[RestRoute(RestVerb.Get, \"{entityId}\")]", "[RestRoute(RestVerb.Get, \"{entityId}\", TenantSource = RestTenantSource." + routeTenantMode + ")]"
+                + (queryBinding is null ? string.Empty : Environment.NewLine + "[RestQueryBinding(" + queryBinding + ")]"), StringComparison.Ordinal);
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(source);
         CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
             compilation,
             out _,

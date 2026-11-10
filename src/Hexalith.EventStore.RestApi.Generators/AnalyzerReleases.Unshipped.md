@@ -15,3 +15,4 @@ HESREST010 | Hexalith.EventStore.RestApi | Error | REST payload JSON name is dup
 HESREST011 | Hexalith.EventStore.RestApi | Error | Query binding route parameter cannot be mapped deterministically.
 HESREST012 | Hexalith.EventStore.RestApi | Error | Query binding metadata is invalid.
 HESREST013 | Hexalith.EventStore.RestApi | Error | REST route parameter matches multiple properties.
+HESREST014 | Hexalith.EventStore.RestApi | Error | REST tenant source is not supported.

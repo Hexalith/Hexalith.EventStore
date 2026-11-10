@@ -49,6 +49,12 @@ internal static class RestApiControllerEmitter
         foreach (RestApiMessageDescriptor message in orderedMessages)
         {
             RestApiRouteDescriptor route = GetRoute(message);
+            if (!RestApiAttributeParser.IsSupportedTenantSource(route.TenantSource))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateUnsupportedTenantSource(route.TenantSource, message.TypeName));
+                continue;
+            }
+
             if (message.UnsupportedReason is not null)
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateUnsupportedContractShape(message));
@@ -249,6 +255,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine();
         AppendHttpAttribute(builder, route);
         builder.AppendLine("    [Consumes(\"application/json\")]");
+        builder.AppendLine("    [RequestSizeLimit(1_048_576)]");
         builder.AppendLine("    [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]");
         builder.Append("    [global::Hexalith.EventStore.Contracts.Routing.RouteCatalogEndpoint(typeof(")
             .Append(message.FullyQualifiedTypeName).AppendLine("), \"command\")]");
@@ -373,9 +380,9 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            return MapGatewayException(ex, includeCommandOnlyStatusCodes: false);");
         builder.AppendLine("        }");
-        builder.AppendLine("        catch (ArgumentException ex)");
+        builder.AppendLine("        catch (ArgumentException)");
         builder.AppendLine("        {");
-        builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", ex.Message);");
+        builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"The query arguments are invalid.\");");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }
@@ -1398,6 +1405,13 @@ internal static class RestApiControllerEmitter
         if (BindingValueIsMissing(binding.EntitySource, binding.EntityValue ?? string.Empty))
         {
             reason = "entity value is required when entity source is '" + binding.EntitySource + "'.";
+            return true;
+        }
+
+        if (!string.Equals(binding.AggregateValue, binding.AggregateValue.Trim(), StringComparison.Ordinal)
+            || (binding.EntityValue is not null && !string.Equals(binding.EntityValue, binding.EntityValue.Trim(), StringComparison.Ordinal)))
+        {
+            reason = "binding values must not contain leading or trailing whitespace.";
             return true;
         }
 

@@ -304,7 +304,7 @@ internal static class RestApiMessageParser
                 ? RoslynAttributeValueReader.GetEnumName(attribute.ConstructorArguments[2], "None")
                 : "None";
             string? entityValue = attribute.ConstructorArguments.Length > 3
-                ? RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[3])
+                ? attribute.ConstructorArguments[3].Value as string
                 : null;
 
             return new RestApiQueryBindingDescriptor(

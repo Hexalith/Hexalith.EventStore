@@ -45,6 +45,43 @@ public class RestQueryBindingAttributeTests
         attribute.EntityValue.ShouldBe("userId");
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("entity")]
+    public void Constructor_NoneEntitySourceWithValue_ThrowsArgumentException(string entityValue) => _ =
+        Should.Throw<ArgumentException>(
+            () => new RestQueryBindingAttribute(
+                RestQueryBindingSource.Constant,
+                "index",
+                RestQueryBindingSource.None,
+                entityValue));
+
+    [Theory]
+    [InlineData(RestQueryBindingSource.Constant, " index")]
+    [InlineData(RestQueryBindingSource.Constant, "index ")]
+    [InlineData(RestQueryBindingSource.Route, "\ttenantId")]
+    [InlineData(RestQueryBindingSource.Route, "tenantId\u00a0")]
+    public void Constructor_PaddedAggregateValue_ThrowsArgumentException(RestQueryBindingSource source, string value) => _ =
+        Should.Throw<ArgumentException>(() => new RestQueryBindingAttribute(source, value));
+
+    [Theory]
+    [InlineData(RestQueryBindingSource.Constant, " summary")]
+    [InlineData(RestQueryBindingSource.Constant, "summary ")]
+    [InlineData(RestQueryBindingSource.Route, "\tuserId")]
+    [InlineData(RestQueryBindingSource.Route, "userId\u00a0")]
+    public void Constructor_PaddedEntityValue_ThrowsArgumentException(RestQueryBindingSource source, string value) => _ =
+        Should.Throw<ArgumentException>(() => new RestQueryBindingAttribute(RestQueryBindingSource.Constant, "index", source, value));
+
+    [Fact]
+    public void Constructor_ConstantValuesWithInternalSpaces_PreservesValues()
+    {
+        var attribute = new RestQueryBindingAttribute(RestQueryBindingSource.Constant, "aggregate name", RestQueryBindingSource.Constant, "entity name");
+
+        attribute.AggregateValue.ShouldBe("aggregate name");
+        attribute.EntityValue.ShouldBe("entity name");
+    }
+
     [Fact]
     public void Constructor_NoneAggregateSource_ThrowsArgumentOutOfRangeException() => _ =
         Should.Throw<ArgumentOutOfRangeException>(

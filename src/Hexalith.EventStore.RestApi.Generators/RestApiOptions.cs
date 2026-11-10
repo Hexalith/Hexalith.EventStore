@@ -2,12 +2,13 @@ namespace Hexalith.EventStore.RestApi.Generators;
 
 internal readonly struct RestApiOptions : IEquatable<RestApiOptions>
 {
-    public RestApiOptions(bool found, string routePrefix, string tag, string tenantSource)
+    public RestApiOptions(bool found, string routePrefix, string tag, string tenantSource, string assemblyName = "")
     {
         Found = found;
         RoutePrefix = routePrefix;
         Tag = tag;
         TenantSource = tenantSource;
+        AssemblyName = assemblyName;
     }
 
     public bool Found { get; }
@@ -18,11 +19,14 @@ internal readonly struct RestApiOptions : IEquatable<RestApiOptions>
 
     public string TenantSource { get; }
 
+    public string AssemblyName { get; }
+
     public bool Equals(RestApiOptions other)
         => Found == other.Found
             && string.Equals(RoutePrefix, other.RoutePrefix, StringComparison.Ordinal)
             && string.Equals(Tag, other.Tag, StringComparison.Ordinal)
-            && string.Equals(TenantSource, other.TenantSource, StringComparison.Ordinal);
+            && string.Equals(TenantSource, other.TenantSource, StringComparison.Ordinal)
+            && string.Equals(AssemblyName, other.AssemblyName, StringComparison.Ordinal);
 
     public override bool Equals(object? obj) => obj is RestApiOptions other && Equals(other);
 
@@ -34,6 +38,7 @@ internal readonly struct RestApiOptions : IEquatable<RestApiOptions>
             hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(RoutePrefix);
             hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(Tag);
             hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(TenantSource);
+            hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(AssemblyName);
             return hash;
         }
     }
