@@ -280,6 +280,7 @@ development_status:
   # Approved 2026-11-08: Dapr Kubernetes crypto successor; 8.12 and capacity precede 8.7 wiring.
   # 3.21/Builds qualify runtime/CLI 1.19.1; SDK remains 1.19.0. No status advance or activation.
   8-7-server-persistence-and-snapshot-integration: in-progress
+  # requires 3.21
   8-8-package-and-release-integration: backlog
   8-9-parties-dual-provider-parity: backlog
   8-10-post-v2-write-rollback-rehearsal: backlog
