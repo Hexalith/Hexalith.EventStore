@@ -1,5 +1,6 @@
 // Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; amendment sections 1-6; approved review correction section 8.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; sections 5-6.
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using Hexalith.EventStore.Contracts.Identity;
@@ -51,6 +52,12 @@ internal sealed class KeyReservationCoordinator
         _keyReferencePolicy = keyReferencePolicy;
         _ = CanonicalText.GetByteCount(decisionActor, 1, 256);
         if (!Enum.IsDefined(keyReferencePolicy)) { throw new PayloadProtectionFormatException(); }
+        // The backend declares its record schema and algorithm; only the authority that reads that schema may write it.
+        if (backend.KeyRecordSchemaVersion != leases.AuthorityProfile.KeyRecordSchemaVersion
+            || backend.WrapAlgorithmId != (backend.KeyRecordSchemaVersion == 2 ? WrappedDekV2.ClosedWrapAlgorithmId : "RSA-OAEP-256"))
+        {
+            throw new PayloadProtectionFormatException();
+        }
     }
 
     /// <summary>Runs full core preflight before obtaining any material; zero selection creates no durable key or intent.</summary>
@@ -323,9 +330,10 @@ internal sealed class KeyReservationCoordinator
                 FenceV1 fence = authority.Fence.Value;
                 ulong watermark = fence.HighestWrittenFormat == "V2" ? fence.HighestWrittenEpoch : checked(fence.HighestWrittenEpoch + 1);
                 var advancedFence = fence with { HighestWrittenFormat = "V2", HighestWrittenEpoch = watermark, UpdatedAtUtc = Now() };
-                key = PayloadProtectionStateCodec.Seal(new(context.Identity.TenantId, context.Identity.Domain, context.Identity.AggregateId, scope,
-                    material.KeyReference, material.DekVersion, "Reserved", _backend.BackendId, response.ProviderKeyVersionId, "RSA-OAEP-256",
-                    Base64UrlCodec.Encode(wrapped), authority.Lifecycle.Value.Epoch, fence.ApprovalEpoch, watermark, operationId, now, Now(), new('0', 64), new('0', 64)));
+                key = PayloadProtectionStateCodec.Seal(PayloadProtectionStateCodec.CreateKey(_backend.KeyRecordSchemaVersion, context.Identity.TenantId,
+                    context.Identity.Domain, context.Identity.AggregateId, scope, material.KeyReference, material.DekVersion, "Reserved",
+                    _backend.BackendId, response.ProviderKeyVersionId, _backend.WrapAlgorithmId, Base64UrlCodec.Encode(wrapped),
+                    authority.Lifecycle.Value.Epoch, fence.ApprovalEpoch, watermark, operationId, now, Now()));
                 ScopeKeyIndexSnapshot scopeIndex = await _indexes.ReadScopeAsync(scope, cancellationToken).ConfigureAwait(false);
                 KekKeyIndexSnapshot inventory = await _indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(_backend.BackendId),
                     PayloadProtectionStateKeys.Digest(response.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false);

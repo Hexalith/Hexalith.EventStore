@@ -1,5 +1,6 @@
 // Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 13; amendment sections 2-3.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 6.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -70,6 +71,7 @@ internal sealed class PayloadProtectionDeploymentCoordinator(IPayloadProtectionS
             CapabilityLeaseV1 capability = (await RequiredAsync<CapabilityLeaseV1>(PayloadProtectionStateKeys.Capability(root, member.Generation, member.InstanceId), token).ConfigureAwait(false)).Value;
             if (capability.SourceSha != generation.Value.ApprovedSourceSha || capability.PackageSetSha256 != generation.Value.PackageSetSha256
                 || capability.SpecDigest != generation.Value.ApprovedSpecDigest || !capability.ReadFormats.Contains("json+pdenc-v2", StringComparer.Ordinal)
+                || (_authority.KeyRecordSchemaVersion == 2 && !capability.ReadFormats.Contains("wrapped-dek-v2", StringComparer.Ordinal))
                 || !capability.WriteModes.Contains(approved.ApprovedWriteMode, StringComparer.Ordinal)
                 || PayloadProtectionStateCodec.ParseTimestamp(capability.ExpiresAtUtc) <= _clock.GetUtcNow()) { throw Mismatch(); }
         }

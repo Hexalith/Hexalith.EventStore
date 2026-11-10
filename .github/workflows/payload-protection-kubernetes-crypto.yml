@@ -1,0 +1,102 @@
+name: Payload Protection Kubernetes Crypto
+
+# Story 8.12 opt-in qualification lane for the DaprKubernetesCrypto profile (crypto.dapr.kubernetes.secrets/v1, Alpha posture accepted
+# for this profile only). It owns a disposable kind cluster and a self-hosted daprd 1.19.1 verified against the runtime lock, with
+# runtime-generated RSA-3072 Secrets. Existing lanes and their 1.18.7 pins are unchanged. Passing authorizes only the bounded Story 8.7
+# handoff; it is not a release, deployment, readiness or G5 gate.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: payload-protection-kubernetes-crypto-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  QUALIFICATION_PROFILE: deploy/dapr/qualification/runtime-lock-1.19.1.json
+  KIND_VERSION: 'v0.31.0'
+  KIND_SHA256: 'eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa'
+  KIND_NODE_IMAGE: 'kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f'
+  UseHexalithProjectReferences: 'false'
+
+jobs:
+  payload-protection-kubernetes-crypto:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+
+      - name: Initialize root-declared submodules
+        run: git -c submodule.recurse=false submodule update --init
+
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Install lock-verified daprd 1.19.1
+        run: python3 -B tools/install-dapr-qualification-tools.py --profile "$QUALIFICATION_PROFILE" --destination "$RUNNER_TEMP/kubernetes-crypto-tools"
+
+      - name: Install pinned kind
+        run: |
+          set -euo pipefail
+          directory="$RUNNER_TEMP/kubernetes-crypto-tools/kind"
+          mkdir -p "$directory"
+          curl --fail --location --silent --show-error --output "$directory/kind" \
+            "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64"
+          echo "${KIND_SHA256}  $directory/kind" | sha256sum --check --strict
+          chmod 0755 "$directory/kind"
+          echo "HEXALITH_PP_KIND=$directory/kind" >> "$GITHUB_ENV"
+
+      - name: Pull isolated PostgreSQL and kind node images
+        run: |
+          docker pull postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+          docker pull "$KIND_NODE_IMAGE"
+
+      - name: Record source revision
+        run: git rev-parse HEAD
+
+      - name: Restore Kubernetes crypto lane
+        run: >-
+          dotnet restore tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests.csproj
+          -p:Configuration=Release
+          -p:UseHexalithProjectReferences=false
+
+      - name: Build Kubernetes crypto lane
+        run: >-
+          dotnet build tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests.csproj
+          --no-restore --configuration Release -warnaserror -m:1
+          -p:UseHexalithProjectReferences=false
+
+      - name: Run Kubernetes crypto qualification
+        run: >-
+          dotnet test --project tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests.csproj
+          --no-build --configuration Release
+          --filter-trait Lane=KubernetesCrypto --explicit only
+          --minimum-expected-tests 12 --fail-skips on
+          --results-directory TestResults/Hexalith.EventStore.PayloadProtection.KubernetesCrypto
+          --report-xunit-trx --report-xunit-trx-filename payload-protection-kubernetes-crypto-results.trx
+          -p:UseHexalithProjectReferences=false
+
+      - name: Refuse any surviving lane cluster
+        if: always()
+        run: |
+          set -euo pipefail
+          clusters="$(KUBECONFIG="$RUNNER_TEMP/kubernetes-crypto-tools/none.kubeconfig" "${HEXALITH_PP_KIND:-kind}" get clusters)"
+          surviving="$(printf '%s\n' "$clusters" | grep '^pp-k8s-' || true)"
+          if [ -n "$surviving" ]; then echo "A lane-owned kind cluster survived cleanup."; exit 1; fi
+
+      - name: Upload Kubernetes crypto test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: payload-protection-kubernetes-crypto-test-results
+          path: TestResults/Hexalith.EventStore.PayloadProtection.KubernetesCrypto/**/*.trx
+          if-no-files-found: error
+          retention-days: 7

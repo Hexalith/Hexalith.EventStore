@@ -1,4 +1,5 @@
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; lifecycle amendment sections 1-8.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 5.
 using System.Collections.Frozen;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -10,6 +11,7 @@ internal static class PayloadProtectionStateSchema
     internal static readonly FrozenDictionary<Type, string> Fields = new Dictionary<Type, string>
     {
         [typeof(WrappedDekV1)] = "tenantId:tenant domain:domain aggregateId:aggregate scopeDigest:sha keyRef:ulid dekVersion:positive state:Reserved|Active|RewrapPending|Invalidating|Invalidated|Deleted backendId:id providerKeyVersionId:provider wrapAlgorithmId:RSA-OAEP-256 wrappedDek:binary lifecycleEpoch:u64 fenceApprovalEpoch:u64 highestWrittenEpoch:u64 creatingOperationId:ulid createdAtUtc:timestamp updatedAtUtc:timestamp canonicalFieldsSha256:sha wrappedDekSha256:sha",
+        [typeof(WrappedDekV2)] = "tenantId:tenant domain:domain aggregateId:aggregate scopeDigest:sha keyRef:ulid dekVersion:positive state:Reserved|Active|RewrapPending|Invalidating|Invalidated|Deleted backendId:dapr-crypto-kubernetes-secrets-v1 providerKeyVersionId:keyAddress wrapAlgorithmId:dapr-enc-v1-rsa-oaep-256-aes-gcm wrappedDek:envelope lifecycleEpoch:u64 fenceApprovalEpoch:u64 highestWrittenEpoch:u64 creatingOperationId:ulid createdAtUtc:timestamp updatedAtUtc:timestamp canonicalFieldsSha256:sha wrappedDekSha256:sha",
         [typeof(ScopeIndexHeadV1)] = "scopeDigest:sha generation:u64 pageCount:u32 entryCount:u32 updatedAtUtc:timestamp",
         [typeof(ScopeIndexPageV1)] = "scopeDigest:sha generation:u64 page:u32 entries:[ScopeIndexEntryV1]",
         [typeof(ScopeIndexEntryV1)] = "keyRef:ulid dekVersion:positive providerVersionDigest:sha state:Reserved|Active|RewrapPending|Invalidating|Invalidated|Deleted",

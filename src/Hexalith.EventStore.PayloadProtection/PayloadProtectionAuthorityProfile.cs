@@ -1,18 +1,33 @@
 // Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // On-premises authority: 835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180; approved supplement section 1.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 6.
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Closed content-bound authority selection; configuration can never supply an arbitrary digest.</summary>
 internal sealed class PayloadProtectionAuthorityProfile
 {
-    private PayloadProtectionAuthorityProfile(string digest) => Digest = digest;
+    /// <summary>Gets the exact approved Story 8.12 supplement normative digest.</summary>
+    internal const string DaprKubernetesCryptoSupplementDigest = "e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034";
+
+    /// <summary>Gets SHA-256 of ASCII HXPA, byte 03, the predecessor effective digest and the supplement digest.</summary>
+    internal const string DaprKubernetesCryptoDigest = "2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d";
+
+    private PayloadProtectionAuthorityProfile(string digest, int keyRecordSchemaVersion)
+    {
+        Digest = digest;
+        KeyRecordSchemaVersion = keyRecordSchemaVersion;
+    }
 
     /// <summary>Gets the retained existing/Azure lifecycle authority.</summary>
-    internal static PayloadProtectionAuthorityProfile Predecessor { get; } = new(PayloadProtectionStateKeys.AuthorityDigest);
+    internal static PayloadProtectionAuthorityProfile Predecessor { get; } = new(PayloadProtectionStateKeys.AuthorityDigest, 1);
     /// <summary>Gets the separately approved on-premises authority; this does not authorize migration of an existing root.</summary>
-    internal static PayloadProtectionAuthorityProfile PlatformCustody { get; } = new("835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180");
+    internal static PayloadProtectionAuthorityProfile PlatformCustody { get; } = new("835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180", 1);
+    /// <summary>Gets the Story 8.12 profile; it does not chain from the on-premises authority and restamps no existing root.</summary>
+    internal static PayloadProtectionAuthorityProfile DaprKubernetesCrypto { get; } = new(DaprKubernetesCryptoDigest, 2);
     /// <summary>Gets the exact approved digest for state and admission comparison.</summary>
     internal string Digest { get; }
+    /// <summary>Gets the only wrapped-key record schema readable and writable under this authority.</summary>
+    internal int KeyRecordSchemaVersion { get; }
     /// <summary>Refuses any root or lease bound to another authority; no migration or rewriting occurs.</summary>
     internal void Require(string digest)
     {

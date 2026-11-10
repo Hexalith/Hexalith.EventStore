@@ -23,7 +23,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <param name="UpdatedAtUtc">The canonical updatedAtUtc field.</param>
 /// <param name="CanonicalFieldsSha256">The canonical canonicalFieldsSha256 field.</param>
 /// <param name="WrappedDekSha256">The canonical wrappedDekSha256 field.</param>
-internal sealed record WrappedDekV1(
+internal record WrappedDekV1(
     string TenantId,
     string Domain,
     string AggregateId,
@@ -44,9 +44,9 @@ internal sealed record WrappedDekV1(
     string CanonicalFieldsSha256,
     string WrappedDekSha256)
 {
-    /// <summary>Gets the closed durable schema version.</summary>
+    /// <summary>Gets the closed durable schema version; only the closed Story 8.12 V2 record overrides it.</summary>
     [JsonPropertyOrder(-1)]
-    public int SchemaVersion { get; init; } = 1;
+    public virtual int SchemaVersion { get; init; } = 1;
 
     /// <summary>Returns only a bounded schema name.</summary>
     public override string ToString() => nameof(WrappedDekV1);

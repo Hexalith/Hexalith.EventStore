@@ -1,5 +1,6 @@
 // Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Base authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e, sections 5.2-5.3; on-premises supplement sections 1-2, 6-7.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; sections 1, 4 and 6.
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 
@@ -16,11 +17,12 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <param name="KeyCacheTtl">The bounded absolute cache lifetime.</param>
 /// <param name="KeyCacheEntries">The bounded per-process cache capacity.</param>
 /// <param name="OperationTimeout">The enclosing operation deadline.</param>
+/// <param name="DaprKubernetesCrypto">The closed Dapr Kubernetes cryptography selection, if explicitly enabled.</param>
 internal sealed record PayloadProtectionOptions(bool Enabled, string? Backend, string WriteMode, bool StaleBackendConfiguration,
     PlatformCustodyPayloadProtectionOptions? PlatformCustody, string? LegacyWriterId, int MaxProtectedValueBytes,
-    TimeSpan KeyCacheTtl, int KeyCacheEntries, TimeSpan OperationTimeout)
+    TimeSpan KeyCacheTtl, int KeyCacheEntries, TimeSpan OperationTimeout, DaprCryptographyPayloadProtectionOptions? DaprKubernetesCrypto = null)
 {
-    private static readonly string[] Fields = ["Mode", "Backend", "WriteMode", "LegacyWriterId", "MaxProtectedValueBytes", "KeyCacheTtl", "KeyCacheEntries", "OperationTimeout", "AzureKeyVault", "PlatformCustody"];
+    private static readonly string[] Fields = ["Mode", "Backend", "WriteMode", "LegacyWriterId", "MaxProtectedValueBytes", "KeyCacheTtl", "KeyCacheEntries", "OperationTimeout", "AzureKeyVault", "PlatformCustody", "DaprKubernetesCrypto"];
 
     /// <summary>Loads exact names and bounded values without provider fallback or arbitrary authority configuration.</summary>
     internal static PayloadProtectionOptions Load(IConfigurationSection section)
@@ -28,30 +30,41 @@ internal sealed record PayloadProtectionOptions(bool Enabled, string? Backend, s
         try
         {
             if (section.GetChildren().Any(c => !Fields.Contains(c.Key, StringComparer.Ordinal)
-                || (c.Key is not ("AzureKeyVault" or "PlatformCustody") && c.GetChildren().Any()))) { throw Invalid(); }
+                || (c.Key is not ("AzureKeyVault" or "PlatformCustody" or "DaprKubernetesCrypto") && c.GetChildren().Any())
+                // Installed-backend keys are sections only; a scalar there is neither a selection nor unused configuration.
+                || (c.Key is ("AzureKeyVault" or "PlatformCustody" or "DaprKubernetesCrypto") && c.Value is not null))) { throw Invalid(); }
             // Unknown installed-backend fields are invalid even when stale configuration is unused.
             if (section.GetSection("PlatformCustody").GetChildren().Any(c => c.Key is not ("BindingName" or "InstallationId" or "ProfileSha256") || c.GetChildren().Any())) { throw Invalid(); }
+            if (section.GetSection("DaprKubernetesCrypto").GetChildren().Any(c => c.Key is not ("ComponentName" or "CurrentWriteKey" or "RetainedKeys")
+                || (c.Key != "RetainedKeys" && c.GetChildren().Any()))) { throw Invalid(); }
+            _ = DaprCryptographyPayloadProtectionOptions.ReadRetainedKeys(section.GetSection("DaprKubernetesCrypto:RetainedKeys"));
             string? mode = section["Mode"];
             if (mode is not ("Enabled" or "Disabled")) { throw Invalid(); }
-            bool stale = section["Backend"] is not null || section.GetSection("AzureKeyVault").GetChildren().Any() || section.GetSection("PlatformCustody").GetChildren().Any();
+            bool stale = section["Backend"] is not null || section.GetSection("AzureKeyVault").GetChildren().Any() || section.GetSection("PlatformCustody").GetChildren().Any()
+                || section.GetSection("DaprKubernetesCrypto").GetChildren().Any();
             if (mode == "Disabled") { return new(false, null, "V2", stale, null, null, 1048576, TimeSpan.FromMinutes(1), 1024, TimeSpan.FromSeconds(10)); }
             string? backend = section["Backend"];
             string write = section["WriteMode"] ?? "V2";
-            if (backend is not ("LocalDevelopment" or "AzureKeyVault" or "PlatformCustody") || write is not ("V2" or "ReadOnly" or "CompatibilityLegacy" or "RollbackLegacy")) { throw Invalid(); }
+            if (backend is not ("LocalDevelopment" or "AzureKeyVault" or "PlatformCustody" or "DaprKubernetesCrypto") || write is not ("V2" or "ReadOnly" or "CompatibilityLegacy" or "RollbackLegacy")) { throw Invalid(); }
             if (write is "CompatibilityLegacy" or "RollbackLegacy") { PersonalDataPolicyRegistry.ValidateId(section["LegacyWriterId"] ?? ""); }
             int maximum = RequireInteger(section["MaxProtectedValueBytes"], 1048576, 1048576);
             int entries = RequireInteger(section["KeyCacheEntries"], 1024, 4096);
             TimeSpan ttl = RequireDuration(section["KeyCacheTtl"], TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5));
             TimeSpan timeout = RequireDuration(section["OperationTimeout"], TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
             PlatformCustodyPayloadProtectionOptions? platform = backend == "PlatformCustody" ? PlatformCustodyPayloadProtectionOptions.Load(section.GetSection("PlatformCustody")) : null;
-            return new(true, backend, write, false, platform, section["LegacyWriterId"], maximum, ttl, entries, timeout);
+            DaprCryptographyPayloadProtectionOptions? kubernetes = backend == "DaprKubernetesCrypto" ? DaprCryptographyPayloadProtectionOptions.Load(section.GetSection("DaprKubernetesCrypto")) : null;
+            return new(true, backend, write, false, platform, section["LegacyWriterId"], maximum, ttl, entries, timeout, kubernetes);
         }
         catch { throw Invalid(); }
     }
 
     /// <summary>Gets the authority only from a closed explicit backend choice.</summary>
-    internal PayloadProtectionAuthorityProfile AuthorityProfile => Backend == "PlatformCustody"
-        ? PayloadProtectionAuthorityProfile.PlatformCustody : PayloadProtectionAuthorityProfile.Predecessor;
+    internal PayloadProtectionAuthorityProfile AuthorityProfile => Backend switch
+    {
+        "PlatformCustody" => PayloadProtectionAuthorityProfile.PlatformCustody,
+        "DaprKubernetesCrypto" => PayloadProtectionAuthorityProfile.DaprKubernetesCrypto,
+        _ => PayloadProtectionAuthorityProfile.Predecessor,
+    };
 
     /// <summary>Never formats selected providers or configuration values.</summary>
     public override string ToString() => nameof(PayloadProtectionOptions);

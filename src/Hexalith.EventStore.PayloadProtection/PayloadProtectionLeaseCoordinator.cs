@@ -1,5 +1,6 @@
 // Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13 and 15; amendment sections 1-4.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 6.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -31,6 +32,10 @@ internal sealed class PayloadProtectionLeaseCoordinator
         _delay = delay;
         InstanceId = (entropy ?? new CryptographicPayloadProtectionEntropy()).CreateKeyReference();
         if (!CanonicalUlid.IsValid(InstanceId)) { throw Mismatch(); }
+        // Supplement section 6: the V2 key reader capability is mandatory under its authority and unknown to every other authority.
+        bool readsV2Keys = _profile.ReadFormats.Contains("wrapped-dek-v2", StringComparer.Ordinal);
+        if (readsV2Keys != (AuthorityProfile.KeyRecordSchemaVersion == 2)
+            || (readsV2Keys && !_profile.ReadFormats.Contains("json+pdenc-v2", StringComparer.Ordinal))) { throw Mismatch(); }
     }
 
     /// <summary>Gets the explicit closed authority selected for this process.</summary>

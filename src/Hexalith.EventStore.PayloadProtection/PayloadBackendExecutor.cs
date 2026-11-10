@@ -1,4 +1,5 @@
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10.6-10.7 and 15; approved review correction section 8.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 7.
 using System.Security.Cryptography;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -61,8 +62,11 @@ internal sealed class PayloadBackendExecutor(TimeProvider? timeProvider = null,
                 Observe(backend, PayloadBackendFailure.Unavailable, probe);
                 return operation == PayloadProtectionOperation.Wrap ? new(PayloadBackendFailure.Ambiguous) : Unavailable();
             }
-            Observe(backend, result.Failure, probe);
-            if (result.Failure != PayloadBackendFailure.None) { PayloadProtectionDiagnostics.ProviderFailure(backend.BackendId, result.Failure); }
+            // A transport-free Reconcile affirming Missing observed no provider: release a held probe without changing breaker state or recording a failure.
+            bool affirmedAbsence = operation == PayloadProtectionOperation.Reconcile && result.Failure == PayloadBackendFailure.Missing;
+            if (affirmedAbsence) { ReleaseCancelledProbe(backend, probe); }
+            else { Observe(backend, result.Failure, probe); }
+            if (result.Failure != PayloadBackendFailure.None && !affirmedAbsence) { PayloadProtectionDiagnostics.ProviderFailure(backend.BackendId, result.Failure); }
             if (result.Failure != PayloadBackendFailure.Unavailable || attempt == 2 || !allowRetry || probe)
             {
                 diagnostic.Complete(result.Failure == PayloadBackendFailure.None ? PayloadProtectionDiagnosticResult.Success

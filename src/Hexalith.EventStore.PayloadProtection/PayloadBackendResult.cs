@@ -1,4 +1,5 @@
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10 and 15.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 5.
 using System.Security.Cryptography;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -9,11 +10,13 @@ internal sealed class PayloadBackendResult : IDisposable
     private byte[]? _bytes;
 
     /// <summary>Creates an opaque version-bound backend result, taking ownership of any supplied bytes.</summary>
+    /// <remarks>Output is bounded per wrapped-key schema: 512 bytes for V1 backends and 2,048 bytes only for the V2 Dapr envelope backend.</remarks>
     internal PayloadBackendResult(PayloadBackendFailure failure, byte[]? bytes = null, string? providerKeyVersionId = null,
-        TimeSpan? retryAfter = null)
+        TimeSpan? retryAfter = null, int keyRecordSchemaVersion = 1)
     {
         _bytes = bytes;
-        if (!Enum.IsDefined(failure) || bytes is { Length: > 512 }
+        int maximum = keyRecordSchemaVersion switch { 1 => 512, 2 => WrappedDekV2.MaximumEnvelopeBytes, _ => -1 };
+        if (!Enum.IsDefined(failure) || maximum < 0 || (bytes is not null && bytes.Length > maximum)
             || (failure == PayloadBackendFailure.None && bytes is not { Length: >= 1 }))
         {
             Dispose();

@@ -1,4 +1,5 @@
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; lifecycle amendment sections 1-8.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; section 5.
 using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -6,6 +7,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>Explicitly enrolls every durable state root and nested record for reflection-free JSON serialization.</summary>
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(WrappedDekV1))]
+[JsonSerializable(typeof(WrappedDekV2))]
 [JsonSerializable(typeof(ScopeIndexHeadV1))]
 [JsonSerializable(typeof(ScopeIndexPageV1))]
 [JsonSerializable(typeof(ScopeIndexEntryV1))]

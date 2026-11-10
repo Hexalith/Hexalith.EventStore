@@ -1,5 +1,6 @@
 // Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 10.2; amendment sections 1-2 and 5-6; approved review correction section 8.
+// Approved Dapr Kubernetes cryptography supplement: e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034; sections 5-6.
 using System.Buffers.Binary;
 using System.Collections.Frozen;
 using System.Globalization;
@@ -35,8 +36,11 @@ internal static class PayloadProtectionStateCodec
     internal static byte[] Encode<T>(T record, PayloadProtectionAuthorityProfile? authorityProfile = null) where T : class
     {
         ArgumentNullException.ThrowIfNull(record);
-        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(record, Metadata<T>());
-        _ = Decode<T>(bytes, authorityProfile);
+        // A V2 key travels through callers typed as its V1 base; its own closed metadata and profile follow its runtime schema.
+        bool v2 = record is WrappedDekV2;
+        byte[] bytes = v2 ? JsonSerializer.SerializeToUtf8Bytes(record, Metadata(typeof(WrappedDekV2)))
+            : JsonSerializer.SerializeToUtf8Bytes(record, Metadata<T>());
+        _ = Decode<T>(bytes, authorityProfile ?? (v2 ? PayloadProtectionAuthorityProfile.DaprKubernetesCrypto : null));
         return bytes;
     }
 
@@ -51,10 +55,12 @@ internal static class PayloadProtectionStateCodec
             }
 
             CanonicalText.ValidateUtf8(bytes.Span);
+            PayloadProtectionAuthorityProfile authority = authorityProfile ?? PayloadProtectionAuthorityProfile.Predecessor;
             using JsonDocument document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
-            ValidateObject(document.RootElement, typeof(T), root: true);
-            T record = JsonSerializer.Deserialize(bytes.Span, Metadata<T>()) ?? throw new PayloadProtectionFormatException();
-            ValidateSemantics(record, authorityProfile ?? PayloadProtectionAuthorityProfile.Predecessor);
+            Type schema = Schema(typeof(T), document.RootElement, authority);
+            ValidateObject(document.RootElement, schema, root: true);
+            T record = JsonSerializer.Deserialize(bytes.Span, Metadata(schema)) as T ?? throw new PayloadProtectionFormatException();
+            ValidateSemantics(record, authority);
             return record;
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException or OverflowException)
@@ -66,7 +72,7 @@ internal static class PayloadProtectionStateCodec
     /// <summary>Recomputes both corruption checks after a wrapped-key record transition.</summary>
     internal static WrappedDekV1 Seal(WrappedDekV1 record)
     {
-        byte[] wrapped = DecodeWrapped(record.WrappedDek);
+        byte[] wrapped = record is WrappedDekV2 ? DecodeEnvelope(record.WrappedDek) : DecodeWrapped(record.WrappedDek);
         try
         {
             record = record with { WrappedDekSha256 = Convert.ToHexStringLower(SHA256.HashData(wrapped)) };
@@ -77,6 +83,21 @@ internal static class PayloadProtectionStateCodec
             CryptographicOperations.ZeroMemory(wrapped);
         }
     }
+
+    /// <summary>Creates an unsealed draft of the backend-declared closed key schema; it never converts an existing record.</summary>
+    internal static WrappedDekV1 CreateKey(int schemaVersion, string tenantId, string domain, string aggregateId, string scopeDigest,
+        string keyRef, uint dekVersion, string state, string backendId, string providerKeyVersionId, string wrapAlgorithmId,
+        string wrappedDek, ulong lifecycleEpoch, ulong fenceApprovalEpoch, ulong highestWrittenEpoch, string creatingOperationId,
+        string createdAtUtc, string updatedAtUtc) => schemaVersion switch
+        {
+            1 => new WrappedDekV1(tenantId, domain, aggregateId, scopeDigest, keyRef, dekVersion, state, backendId, providerKeyVersionId,
+                wrapAlgorithmId, wrappedDek, lifecycleEpoch, fenceApprovalEpoch, highestWrittenEpoch, creatingOperationId, createdAtUtc,
+                updatedAtUtc, new('0', 64), new('0', 64)),
+            2 => new WrappedDekV2(tenantId, domain, aggregateId, scopeDigest, keyRef, dekVersion, state, backendId, providerKeyVersionId,
+                wrapAlgorithmId, wrappedDek, lifecycleEpoch, fenceApprovalEpoch, highestWrittenEpoch, creatingOperationId, createdAtUtc,
+                updatedAtUtc, new('0', 64), new('0', 64)),
+            _ => throw new PayloadProtectionFormatException(),
+        };
 
     /// <summary>Formats canonical UTC timestamps with exactly seven fractional digits.</summary>
     internal static string Timestamp(DateTimeOffset value) => value.ToUniversalTime().ToString(TimestampFormat, CultureInfo.InvariantCulture);
@@ -130,6 +151,24 @@ internal static class PayloadProtectionStateCodec
         => PayloadProtectionStateJsonContext.Default.GetTypeInfo(typeof(T)) as JsonTypeInfo<T>
             ?? throw new PayloadProtectionFormatException();
 
+    private static JsonTypeInfo Metadata(Type type)
+        => PayloadProtectionStateJsonContext.Default.GetTypeInfo(type) ?? throw new PayloadProtectionFormatException();
+
+    private static Type Schema(Type requested, JsonElement root, PayloadProtectionAuthorityProfile authority)
+    {
+        if (requested != typeof(WrappedDekV1) && requested != typeof(WrappedDekV2)) { return requested; }
+        // Supplement section 5: the closed key schema is selected by its own schemaVersion and must match the process authority.
+        // A V2 record under another profile, or a V1 record under the Dapr Kubernetes profile, is refused and never converted.
+        Type schema = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("schemaVersion", out JsonElement version)
+            && version.ValueKind == JsonValueKind.Number && version.GetRawText() == "2" ? typeof(WrappedDekV2) : typeof(WrappedDekV1);
+        if ((schema == typeof(WrappedDekV2)) != (authority.KeyRecordSchemaVersion == 2) || !requested.IsAssignableFrom(schema))
+        {
+            throw new PayloadProtectionFormatException();
+        }
+
+        return schema;
+    }
+
     private static void ValidateObject(JsonElement value, Type type, bool root)
     {
         if (value.ValueKind != JsonValueKind.Object || !FieldProfiles.TryGetValue(type, out FrozenDictionary<string, string>? fields))
@@ -143,7 +182,7 @@ internal static class PayloadProtectionStateCodec
             if (!seen.Add(property.Name)) { throw new PayloadProtectionFormatException(); }
             if (root && property.Name == "schemaVersion")
             {
-                if (property.Value.GetRawText() != "1") { throw new PayloadProtectionFormatException(); }
+                if (property.Value.GetRawText() != (type == typeof(WrappedDekV2) ? "2" : "1")) { throw new PayloadProtectionFormatException(); }
                 continue;
             }
 
@@ -199,7 +238,7 @@ internal static class PayloadProtectionStateCodec
                 }
                 else
                 {
-                    ValidateField(item, itemProfile == "format" ? "json|json-redacted|json+pdenc-v1|json+pdenc-v2" : "Disabled|ReadOnly|CompatibilityLegacy|V2|RollbackLegacy");
+                    ValidateField(item, itemProfile == "format" ? "json|json-redacted|json+pdenc-v1|json+pdenc-v2|wrapped-dek-v2" : "Disabled|ReadOnly|CompatibilityLegacy|V2|RollbackLegacy");
                     string text = item.GetString()!;
                     if (!seen.Add(text) || (previous is not null && StringComparer.Ordinal.Compare(previous, text) >= 0))
                     {
@@ -215,7 +254,7 @@ internal static class PayloadProtectionStateCodec
 
         if (value.ValueKind != JsonValueKind.String) { throw new PayloadProtectionFormatException(); }
         string textValue = value.GetString()!;
-        if (profile.Contains('|') || profile is "RSA-OAEP-256" or "v2")
+        if (profile.Contains('|') || profile is "RSA-OAEP-256" or "v2" or WrappedDekV2.ClosedBackendId or WrappedDekV2.ClosedWrapAlgorithmId)
         {
             if (!profile.Split('|').Contains(textValue, StringComparer.Ordinal)) { throw new PayloadProtectionFormatException(); }
             return;
@@ -236,6 +275,8 @@ internal static class PayloadProtectionStateCodec
             case "provider": _ = CanonicalText.GetByteCount(textValue, 1, MaximumBytes); break;
             case "timestamp": _ = ParseTimestamp(textValue); break;
             case "binary": CryptographicOperations.ZeroMemory(DecodeWrapped(textValue)); break;
+            case "envelope": CryptographicOperations.ZeroMemory(DecodeEnvelope(textValue)); break;
+            case "keyAddress": DaprCryptographyPayloadProtectionOptions.ValidateKeyAddress(textValue); break;
             case "erasure": if (!ErasureReasons.Contains(textValue)) { throw new PayloadProtectionFormatException(); } break;
             case "reason": ValidateReason(textValue); break;
             default: throw new PayloadProtectionFormatException();
@@ -247,6 +288,20 @@ internal static class PayloadProtectionStateCodec
         if (value.Length is < 2 or > 683) { throw new PayloadProtectionFormatException(); }
         byte[] bytes = Base64UrlCodec.Decode(value);
         if (bytes.Length is < 1 or > 512)
+        {
+            CryptographicOperations.ZeroMemory(bytes);
+            throw new PayloadProtectionFormatException();
+        }
+
+        return bytes;
+    }
+
+    private static byte[] DecodeEnvelope(string value)
+    {
+        // 2,048 decoded bytes are at most 2,731 canonical unpadded base64url characters.
+        if (value.Length is < 2 or > 2731) { throw new PayloadProtectionFormatException(); }
+        byte[] bytes = Base64UrlCodec.Decode(value);
+        if (!WrappedDekV2.IsEnvelope(bytes))
         {
             CryptographicOperations.ZeroMemory(bytes);
             throw new PayloadProtectionFormatException();
@@ -281,6 +336,10 @@ internal static class PayloadProtectionStateCodec
             case CapabilityLeaseV1 lease:
                 ValidateInterval(lease.IssuedAtUtc, lease.ExpiresAtUtc, TimeSpan.FromSeconds(60), exact: true);
                 if (lease.SpecDigest != authorityProfile.Digest || lease.ReadFormats.Length == 0 || lease.WriteModes.Length == 0) { throw new PayloadProtectionFormatException(); }
+                // Supplement section 6: the V2 reader token exists only under its own authority, where it and json+pdenc-v2 are mandatory.
+                bool readsV2Keys = lease.ReadFormats.Contains("wrapped-dek-v2", StringComparer.Ordinal);
+                if (readsV2Keys != (authorityProfile.KeyRecordSchemaVersion == 2)
+                    || (readsV2Keys && !lease.ReadFormats.Contains("json+pdenc-v2", StringComparer.Ordinal))) { throw new PayloadProtectionFormatException(); }
                 break;
             case ReconciliationV1 work:
                 if ((work.Kind == "Rewrap") != (work.TargetProviderVersionDigest.Length != 0)) { throw new PayloadProtectionFormatException(); }
@@ -339,7 +398,8 @@ internal static class PayloadProtectionStateCodec
     private static string FieldsHash(WrappedDekV1 record)
     {
         using var bytes = new MemoryStream();
-        bytes.Write([0x48, 0x58, 0x4b, 0x46, 0x01, 0x11, 0, 0]);
+        // HXKF, schema byte (01 for V1, 02 for V2), field count 0x11 and two zero reserved bytes; field identifiers are shared.
+        bytes.Write([0x48, 0x58, 0x4b, 0x46, record is WrappedDekV2 ? (byte)0x02 : (byte)0x01, 0x11, 0, 0]);
         Text(1, record.TenantId); Text(2, record.Domain); Text(3, record.AggregateId);
         Field(4, 4, Convert.FromHexString(record.ScopeDigest)); Text(5, record.KeyRef);
         Span<byte> number = stackalloc byte[8];
