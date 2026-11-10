@@ -6,56 +6,40 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 public sealed class LifecycleCapacityTests
 {
     [Fact]
-    public async Task CombinedReservationTransactionRejectsCapacityEvenWhenBothIndividualIndexPlansFit()
+    public async Task ReservationIntoAFullBucketPageRecordsATypedAdmissionFailureWithoutChangingEitherIndex()
     {
         var f = await ReservationTestFixture.CreateAsync();
-        const int entries = 7000;
+        const string keyRef = "01J00000000000000000009401";
+        const uint pages = 8;
         string backend = PayloadProtectionStateKeys.Digest(f.Backend.BackendId);
         string provider = PayloadProtectionStateKeys.Digest("fixture:version-01");
-        string now = PayloadProtectionStateCodec.Timestamp(f.Clock.GetUtcNow());
-        uint pageCount = (entries + 255u) / 256u;
-        var seeded = new List<PayloadProtectionStateMutation>
-        {
-            PayloadProtectionStateMutation.Put(new ScopeIndexHeadV1(f.Scope, 1, pageCount, entries, now)),
-            PayloadProtectionStateMutation.Put(new KekInventoryHeadV1(backend, provider, 1, pageCount, entries, now)),
-        };
-        // Synthetic retained index pages isolate full-transaction admission from backend capacity.
-        for (uint page = 0; page < pageCount; page++)
-        {
-            var refs = Enumerable.Range((int)page * 256, Math.Min(256, entries - (int)page * 256)).Select(i => (i + 1).ToString("D26")).ToArray();
-            seeded.Add(PayloadProtectionStateMutation.Put(new ScopeIndexPageV1(f.Scope, 1, page, refs.Select(key => new ScopeIndexEntryV1(key, 1, provider, "Reserved")).ToArray())));
-            seeded.Add(PayloadProtectionStateMutation.Put(new KekInventoryPageV1(backend, provider, 1, page, refs.Select(key => new KekInventoryEntryV1(f.Scope, key, 1)).ToArray())));
-        }
-        await f.Store.CommitAsync(seeded);
+        uint bucket = IndexPlacementTests.Bucket(new KekInventoryEntryV1(f.Scope, keyRef, 1), pages);
+        // Another scope's 256 memberships fill the reserved key's bucket; 257 entries on eight pages need no growth step.
+        KekInventoryEntryV1[] full = [.. Enumerable.Range(1, 20_000).Select(i => new KekInventoryEntryV1(new string('c', 64), IndexSeed.KeyRef(i), 1))
+            .Where(e => IndexPlacementTests.Bucket(e, pages) == bucket).Take(256)];
+        full.Length.ShouldBe(256);
+        await f.Store.CommitAsync(IndexSeed.Inventory(backend, provider, pages, full));
+        var roots = new PayloadProtectionScopeRegistry([new("tenant-a", "parties")]);
+        var entropy = new SequenceEntropy([keyRef, .. Enumerable.Range(9500, 64).Select(i => "01J" + i.ToString("D23", System.Globalization.CultureInfo.InvariantCulture))]);
+        var reservations = new KeyReservationCoordinator(f.Store, roots, f.Leases, new(roots, [new("parties", f.Erasure)]), f.Backend, new(f.Clock),
+            _ => true, "fixture-actor", timeProvider: f.Clock, entropy: entropy);
         var indexes = new PayloadKeyIndexes(f.Store, f.Clock);
-        var scopeBefore = await indexes.ReadScopeAsync(f.Scope); var inventoryBefore = await indexes.ReadKekAsync(backend, provider);
-        bool rejected = false;
-        f.Store.Committing = mutations =>
-        {
-            if (!mutations.Any(m => m.Key.StartsWith("eventstore:pp:v2:key:", StringComparison.Ordinal))) { return; }
-            f.Store.Committing = null;
-            var scopePlan = mutations.Where(m => m.Key.StartsWith("eventstore:pp:v2:index", StringComparison.Ordinal)).ToArray();
-            var inventoryPlan = mutations.Where(m => m.Key.StartsWith("eventstore:pp:v2:kek-index", StringComparison.Ordinal)).ToArray();
-            PayloadProtectionOperationalLimits.RequireTransactionCapacity(scopePlan);
-            PayloadProtectionOperationalLimits.RequireTransactionCapacity(inventoryPlan);
-            (mutations.Sum(m => (long)PayloadProtectionOperationalLimits.Charge(m)) + 1024).ShouldBeGreaterThan(PayloadProtectionOperationalLimits.TransactionBytes);
-            rejected = true;
-            // The same complete-plan admission runs in Dapr before submitting any transaction.
-            PayloadProtectionOperationalLimits.RequireTransactionCapacity(mutations);
-        };
-        await Should.ThrowAsync<PayloadProtectionCryptographicException>(() => f.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context()).AsTask());
-        rejected.ShouldBeTrue(); f.Backend.WrapCalls.ShouldBe(1);
+        var inventoryBefore = await indexes.ReadKekAsync(backend, provider);
+        int reservationCommits = 0;
+        f.Store.Committing = mutations => { if (mutations.Any(m => m.Key.StartsWith("eventstore:pp:v2:key:", StringComparison.Ordinal))) { reservationCommits++; } };
+        await Should.ThrowAsync<PayloadProtectionCryptographicException>(() => reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context()).AsTask());
+        // The full bucket is refused while planning, before any reservation transaction is submitted.
+        reservationCommits.ShouldBe(0); f.Backend.WrapCalls.ShouldBe(1);
         var work = await new PayloadProtectionCatalogs(f.Store, f.Clock).ReadWorkAsync(f.Root);
         var entry = work.Pages.Single().Value.Entries.Single();
         var operation = (await f.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(entry.OperationId)))!.Value;
-        operation.Result.ShouldBe("Failed"); operation.ReasonCode.ShouldBe("provider-unavailable");
+        operation.KeyRef.ShouldBe(keyRef); operation.Result.ShouldBe("Failed"); operation.ReasonCode.ShouldBe("provider-unavailable");
         var claim = (await f.Store.ReadAsync<ReconciliationV1>(PayloadProtectionStateKeys.Reconciliation(entry.OperationId)))!.Value;
         claim.Status.ShouldBe("Pending"); claim.ReasonCode.ShouldBe("provider-unavailable");
-        (await f.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(f.Scope, operation.KeyRef, operation.DekVersion))).ShouldBeNull();
-        var scopeAfter = await indexes.ReadScopeAsync(f.Scope); var inventoryAfter = await indexes.ReadKekAsync(backend, provider);
-        scopeAfter.Head!.ETag.ShouldBe(scopeBefore.Head!.ETag); scopeAfter.Head.Bytes.ShouldBe(scopeBefore.Head.Bytes);
+        (await f.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(f.Scope, keyRef, 1))).ShouldBeNull();
+        (await indexes.ReadScopeAsync(f.Scope)).Head.ShouldBeNull();
+        var inventoryAfter = await indexes.ReadKekAsync(backend, provider);
         inventoryAfter.Head!.ETag.ShouldBe(inventoryBefore.Head!.ETag); inventoryAfter.Head.Bytes.ShouldBe(inventoryBefore.Head.Bytes);
-        foreach (var pair in scopeBefore.Pages.Zip(scopeAfter.Pages)) { pair.First.ETag.ShouldBe(pair.Second.ETag); pair.First.Bytes.ShouldBe(pair.Second.Bytes); }
         foreach (var pair in inventoryBefore.Pages.Zip(inventoryAfter.Pages)) { pair.First.ETag.ShouldBe(pair.Second.ETag); pair.First.Bytes.ShouldBe(pair.Second.Bytes); }
     }
 
@@ -87,21 +71,18 @@ public sealed class LifecycleCapacityTests
     }
 
     [Fact]
-    public void LargeKekInventoryPlanReturnsTypedAdmissionBeforeAnOversizedTransaction()
+    public void TwentyThousandEntryInventoryPlanWritesOnlyTheHeadAndOneBucketPageWithinTransactionCapacity()
     {
         string backend = new('a', 64); string provider = new('b', 64); string scope = new('c', 64);
-        const string now = "2026-10-23T00:00:00.0000000Z";
-        var pages = Enumerable.Range(0, 80).Select(number =>
-        {
-            var value = new KekInventoryPageV1(backend, provider, 1, (uint)number,
-                Enumerable.Range(number * 256, 256).Select(i => new KekInventoryEntryV1(scope, i.ToString("D26"), 1)).ToArray());
-            return new PayloadProtectionStateValue<KekInventoryPageV1>(value, "1", PayloadProtectionStateCodec.Encode(value));
-        }).ToArray();
-        var head = new KekInventoryHeadV1(backend, provider, 1, 80, 80 * 256, now);
-        var snapshot = new KekKeyIndexSnapshot(backend, provider, new(head, "1", PayloadProtectionStateCodec.Encode(head)), pages);
-        var indexes = new PayloadKeyIndexes(new MemoryPayloadProtectionStateStore());
-        var failure = Should.Throw<PayloadProtectionStateException>(() => indexes.SetInventoryEntry(snapshot, new(scope, "01J00000000000000000009401", 1), true));
-        failure.Reason.ShouldBe(Hexalith.EventStore.Contracts.Security.UnreadableProtectedDataReason.ProviderUnavailable); failure.IsAdmissionLimit.ShouldBeTrue();
+        List<PayloadProtectionStateMutation> seed = IndexSeed.Inventory(backend, provider, 313, IndexSeed.Entries(20_000, scope));
+        // The superseded every-page rewrite of this inventory would itself exceed the qualified transaction profile.
+        (seed.Sum(m => (long)PayloadProtectionOperationalLimits.Charge(m)) + 1024).ShouldBeGreaterThan(PayloadProtectionOperationalLimits.TransactionBytes);
+        KekInventoryView snapshot = IndexSeed.InventoryView(seed);
+        var added = new KekInventoryEntryV1(scope, "01J00000000000000000009401", 1);
+        IReadOnlyList<PayloadProtectionStateMutation> plan = new PayloadKeyIndexes(new MemoryPayloadProtectionStateStore()).SetInventoryEntry(snapshot, added, true);
+        plan.Select(m => m.Key).ShouldBe([PayloadProtectionStateKeys.KekHead(backend, provider), PayloadProtectionStateKeys.KekPage(backend, provider, IndexPlacementTests.Bucket(added, 313))]);
+        PayloadProtectionOperationalLimits.RequireTransactionCapacity(plan);
+        plan.Sum(m => (long)PayloadProtectionOperationalLimits.Charge(m)).ShouldBeLessThan(64 * 1024);
         snapshot.Head!.Value.Generation.ShouldBe(1ul);
     }
 

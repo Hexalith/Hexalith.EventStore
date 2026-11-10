@@ -29,6 +29,7 @@ public sealed class ReviewRestoreTests
             async (decision, conditions, token) =>
             {
                 decision.State.ShouldBe(RestoredBackupAdmissionState.Accepted);
+                // Fence, lifecycle, the complete one-page scope index (head and page), the key, and the inventory head plus the key's bucket page.
                 conditions.Count.ShouldBe(7);
                 PayloadProtectionStateMutation stale = conditions.Single(c => c.Key.StartsWith("eventstore:pp:v2:" + changed, StringComparison.Ordinal));
                 // This boundary change is persisted before the existing workflow's attempted atomic decision.

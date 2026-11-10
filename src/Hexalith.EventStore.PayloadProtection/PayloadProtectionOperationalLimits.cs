@@ -8,6 +8,8 @@ internal static class PayloadProtectionOperationalLimits
 {
     /// <summary>Maximum permanent scope/root blocks or concurrent local operations retained by one engine registry.</summary>
     internal const int ScopeMetadata = 65_536;
+    /// <summary>Maximum most-recently-observed erasure scopes retained in memory; the least recent is evicted, never refused.</summary>
+    internal const int ErasureObservations = 65_536;
     /// <summary>Maximum charged transaction bytes, including a conservative per-operation protobuf/metadata allowance.</summary>
     internal const int TransactionBytes = 2 * 1024 * 1024;
     /// <summary>Maximum operations in one qualified transaction.</summary>

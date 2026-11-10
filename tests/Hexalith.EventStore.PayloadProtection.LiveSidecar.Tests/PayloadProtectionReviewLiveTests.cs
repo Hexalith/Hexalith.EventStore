@@ -24,6 +24,7 @@ public sealed class PayloadProtectionReviewLiveTests(PayloadProtectionDaprFixtur
         var admission = new PayloadRestoreAdmission(fixture.Store, env.Roots, env.Backend, new(), env.Leases, _ => true,
             async (decision, conditions, ct) =>
             {
+                // Fence, lifecycle, the complete one-page scope index (head and page), the key, and the inventory head plus the key's bucket page.
                 decision.State.ShouldBe(RestoredBackupAdmissionState.Accepted); conditions.Count.ShouldBe(7);
                 var changedValue = conditions.Single(c => c.Key.StartsWith("eventstore:pp:v2:" + changed, StringComparison.Ordinal));
                 // Persist a decision-boundary change to this exact supporting observation, after all verification reads.

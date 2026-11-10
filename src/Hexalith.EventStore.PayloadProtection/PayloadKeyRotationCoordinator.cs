@@ -13,12 +13,14 @@ internal sealed class PayloadKeyRotationCoordinator(IPayloadProtectionStateStore
     private readonly TimeProvider _clock = timeProvider ?? TimeProvider.System;
     private readonly IPayloadProtectionEntropy _entropy = new CryptographicPayloadProtectionEntropy();
 
-    /// <summary>Verifies every inventory entry and every reverse scope entry before any rewrap or old-version retirement claim.</summary>
+    /// <summary>Verifies every inventory entry and every reverse scope entry for rotation start and old-version retirement.</summary>
+    /// <remarks>Per-key rewrap verifies only its own bucket-page membership; this whole-inventory evidence is for Story 8.7 or an operator.</remarks>
     internal async ValueTask<KekKeyIndexSnapshot> VerifyInventoryAsync(string providerVersion, CancellationToken token = default)
     {
         using var operationBudget = new PayloadOperationBudget(_clock, token);
         var indexes = new PayloadKeyIndexes(store, _clock);
         KekKeyIndexSnapshot inventory = await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(backend.BackendId), PayloadProtectionStateKeys.Digest(providerVersion), token).ConfigureAwait(false);
+        KekInventoryView inventoryView = inventory;
         var scopes = new HashSet<string>(StringComparer.Ordinal);
         foreach (KekInventoryEntryV1 entry in inventory.Pages.SelectMany(p => p.Value.Entries))
         {
@@ -26,7 +28,7 @@ internal sealed class PayloadKeyRotationCoordinator(IPayloadProtectionStateStore
             var identity = new AggregateIdentity(key.Value.TenantId, key.Value.Domain, key.Value.AggregateId);
             _ = Admit(identity);
             ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(entry.ScopeDigest, token).ConfigureAwait(false);
-            PayloadKeyIndexes.VerifyMembership(key.Value, scope, inventory);
+            PayloadKeyIndexes.VerifyMembership(key.Value, scope, inventoryView);
             if (!scopes.Add(entry.ScopeDigest)) { continue; }
             foreach (ScopeIndexEntryV1 reverse in scope.Pages.SelectMany(p => p.Value.Entries).Where(e => e.ProviderVersionDigest == inventory.ProviderDigest))
             {
@@ -66,8 +68,8 @@ internal sealed class PayloadKeyRotationCoordinator(IPayloadProtectionStateStore
             if (existing.Value.Phase == "Completed")
             {
                 WrappedDekV1 completed = (await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(scope, keyRef, version), token).ConfigureAwait(false)).Value;
-                if (completed.ProviderKeyVersionId != selectedProviderVersion || existing.Value.Result != "Succeeded") { throw Mismatch(); }
-                PayloadKeyIndexes.VerifyMembership(completed, await indexes.ReadScopeAsync(scope, token).ConfigureAwait(false), await VerifyInventoryAsync(selectedProviderVersion, token).ConfigureAwait(false));
+                if (completed.ProviderKeyVersionId != selectedProviderVersion || completed.BackendId != backend.BackendId || existing.Value.Result != "Succeeded") { throw Mismatch(); }
+                _ = await indexes.ReadMembershipAsync(completed, token).ConfigureAwait(false);
                 diagnostic.Complete();
                 return true;
             }
@@ -86,9 +88,7 @@ internal sealed class PayloadKeyRotationCoordinator(IPayloadProtectionStateStore
             if (creatingReservation.Value.Operation != "Create" || creatingReservation.Value.ScopeDigest != scope
                 || creatingReservation.Value.KeyRef != keyRef || creatingReservation.Value.DekVersion != version || creatingReservation.Value.Result == "Pending") { throw Mismatch(); }
         }
-        KekKeyIndexSnapshot inventory = await VerifyInventoryAsync(key.Value.ProviderKeyVersionId, token).ConfigureAwait(false);
-        ScopeKeyIndexSnapshot scopeIndex = await indexes.ReadScopeAsync(scope, token).ConfigureAwait(false);
-        PayloadKeyIndexes.VerifyMembership(key.Value, scopeIndex, inventory);
+        (ScopeIndexView scopeIndex, KekInventoryView inventory) = await indexes.ReadMembershipAsync(key.Value, token).ConfigureAwait(false);
         PayloadProtectionStateValue<LifecycleV1> lifecycle = await LifecycleAsync(identity, token).ConfigureAwait(false);
         IReadOnlyList<PayloadProtectionStateMutation> authority = await leases.AdmissionAsync(identity, lifecycle.Value, false, token).ConfigureAwait(false);
         PayloadProtectionLease lease = await leases.AcquireReadAsync(identity, keyRef, version, operationId, lifecycle, token).ConfigureAwait(false);
@@ -242,9 +242,7 @@ internal sealed class PayloadKeyRotationCoordinator(IPayloadProtectionStateStore
         PayloadProtectionStateValue<OperationV1> creating = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(key.Value.CreatingOperationId), token).ConfigureAwait(false);
         if (creating.Value.Operation != "Create" || creating.Value.ScopeDigest != claim.ScopeDigest || creating.Value.KeyRef != claim.KeyRef || creating.Value.DekVersion != claim.DekVersion) { throw Mismatch(); }
         var indexes = new PayloadKeyIndexes(store, _clock);
-        ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(claim.ScopeDigest, token).ConfigureAwait(false);
-        KekKeyIndexSnapshot inventory = await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.Value.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId), token).ConfigureAwait(false);
-        PayloadKeyIndexes.VerifyMembership(key.Value, scope, inventory);
+        (ScopeIndexView scope, KekInventoryView inventory) = await indexes.ReadMembershipAsync(key.Value, token).ConfigureAwait(false);
         // Reconcile returns wrapped bytes only. Executor disposal also clears a cancellation-ignoring late result;
         // no local plaintext operation or read lease is admitted beyond this barrier.
         using PayloadBackendResult outcome = await executor.ExecuteAsync(backend, ct => backend.ReconcileAsync(claim.OperationId, ct), token,
@@ -268,24 +266,21 @@ internal sealed class PayloadKeyRotationCoordinator(IPayloadProtectionStateStore
             identity.TenantId, identity.Domain, null, "Rewrap", key.Value.State, retained, lifecycle.Value.Epoch, fence.Value.ApprovalEpoch,
             backend.BackendId, "v2", null, null, attempts, checked((ulong)Math.Max(0, Math.Floor(_clock.GetElapsedTime(started).TotalMilliseconds))), result, reason, decisionActor, now);
         List<PayloadProtectionStateMutation> mutations = [PayloadProtectionStateMutation.Compare(lifecycle), PayloadProtectionStateMutation.Compare(drain),
-            PayloadProtectionStateMutation.Compare(fence), PayloadProtectionStateMutation.Compare(creating), PayloadProtectionStateMutation.Compare(inventory.Head!),
-            .. inventory.Pages.Select(PayloadProtectionStateMutation.Compare),
+            PayloadProtectionStateMutation.Compare(fence), PayloadProtectionStateMutation.Compare(creating), .. PayloadKeyIndexes.Conditions(inventory),
             PayloadProtectionStateMutation.Put(operation.Value with { Phase = missing ? "Failed" : "Completed", Result = result, ReasonCode = reason, Attempt = attempts, UpdatedAtUtc = now }, operation.ETag),
             .. catalogs.CompleteWork(work, held, claim with { Status = "Completed", ReasonCode = reason, UpdatedAtUtc = now }), PayloadProtectionStateMutation.Put(audit)];
         if (missing)
         {
             mutations.Add(PayloadProtectionStateMutation.Put(PayloadProtectionStateCodec.Seal(key.Value with { State = retained, UpdatedAtUtc = now }), key.ETag));
-            mutations.AddRange(indexes.SetScopeEntry(scope, new(claim.KeyRef, claim.DekVersion, inventory.ProviderDigest, retained), false));
-            foreach (var page in scope.Pages)
-            {
-                if (!mutations.Any(m => m.Key == PayloadProtectionStateCodec.KeyFor(page.Value))) { mutations.Add(PayloadProtectionStateMutation.Compare(page)); }
-            }
+            IReadOnlyList<PayloadProtectionStateMutation> change = indexes.SetScopeEntry(scope, new(claim.KeyRef, claim.DekVersion, inventory.ProviderDigest, retained), false);
+            mutations.AddRange(change);
+            // The changed head binds the scope index; any read page the plan did not rewrite is still compared.
+            mutations.AddRange(PayloadKeyIndexes.Conditions(scope).Where(condition => !change.Any(m => m.Key == condition.Key)));
         }
         else
         {
             mutations.Add(PayloadProtectionStateMutation.Compare(key));
-            mutations.Add(PayloadProtectionStateMutation.Compare(scope.Head!));
-            mutations.AddRange(scope.Pages.Select(PayloadProtectionStateMutation.Compare));
+            mutations.AddRange(PayloadKeyIndexes.Conditions(scope));
         }
         token.ThrowIfCancellationRequested(); PayloadOperationBudget.RequireCurrent();
         RequireCommit(await store.CommitAsync(mutations, token).ConfigureAwait(false));
@@ -303,11 +298,11 @@ internal sealed class PayloadKeyRotationCoordinator(IPayloadProtectionStateStore
         ValidateOperation(operation.Value, claim.ScopeDigest, claim.KeyRef, claim.DekVersion);
         PayloadProtectionStateValue<WrappedDekV1> key = await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(claim.ScopeDigest, claim.KeyRef, claim.DekVersion), token).ConfigureAwait(false);
         ValidateKey(identity, key.Value);
-        if (key.Value.State != "RewrapPending" || key.Value.ProviderKeyVersionId == provider) { throw Mismatch(); }
-        ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(claim.ScopeDigest, token).ConfigureAwait(false);
-        KekKeyIndexSnapshot oldInventory = await VerifyInventoryAsync(key.Value.ProviderKeyVersionId, token).ConfigureAwait(false);
-        KekKeyIndexSnapshot newInventory = await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(backend.BackendId), PayloadProtectionStateKeys.Digest(provider), token).ConfigureAwait(false);
-        PayloadKeyIndexes.VerifyMembership(key.Value, scope, oldInventory);
+        if (key.Value.State != "RewrapPending" || key.Value.BackendId != backend.BackendId || key.Value.ProviderKeyVersionId == provider) { throw Mismatch(); }
+        // Each rewrap verifies only its own memberships; whole-inventory evidence stays with VerifyInventoryAsync.
+        (ScopeIndexView scope, KekInventoryView oldInventory) = await indexes.ReadMembershipAsync(key.Value, token).ConfigureAwait(false);
+        KekInventoryView newInventory = await indexes.ReadInventoryEntryAsync(PayloadProtectionStateKeys.Digest(backend.BackendId), PayloadProtectionStateKeys.Digest(provider),
+            new(claim.ScopeDigest, claim.KeyRef, claim.DekVersion), inserting: true, token).ConfigureAwait(false);
         PayloadProtectionStateValue<OperationV1> creating = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(key.Value.CreatingOperationId), token).ConfigureAwait(false);
         if (creating.Value.Operation != "Create" || creating.Value.ScopeDigest != claim.ScopeDigest || creating.Value.KeyRef != claim.KeyRef || creating.Value.DekVersion != claim.DekVersion) { throw Mismatch(); }
         string restoredState = creating.Value.Phase == "Completed" && creating.Value.Result == "Succeeded" ? "Active" : "Reserved";
@@ -341,9 +336,7 @@ internal sealed class PayloadKeyRotationCoordinator(IPayloadProtectionStateStore
         PayloadProtectionStateValue<OperationV1> creating = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(key.Value.CreatingOperationId), token).ConfigureAwait(false);
         if (creating.Value.Operation != "Create" || creating.Value.ScopeDigest != claim.ScopeDigest || creating.Value.KeyRef != claim.KeyRef || creating.Value.DekVersion != claim.DekVersion) { throw Mismatch(); }
         string restored = creating.Value.Phase == "Completed" && creating.Value.Result == "Succeeded" ? "Active" : "Reserved";
-        ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(claim.ScopeDigest, token).ConfigureAwait(false);
-        KekKeyIndexSnapshot inventory = await VerifyInventoryAsync(key.Value.ProviderKeyVersionId, token).ConfigureAwait(false);
-        PayloadKeyIndexes.VerifyMembership(key.Value, scope, inventory);
+        (ScopeIndexView scope, KekInventoryView inventory) = await indexes.ReadMembershipAsync(key.Value, token).ConfigureAwait(false);
         PayloadProtectionStateValue<LifecycleV1> lifecycle = await LifecycleAsync(identity, token).ConfigureAwait(false);
         IReadOnlyList<PayloadProtectionStateMutation> authority = await leases.AdmissionAsync(identity, lifecycle.Value, false, token).ConfigureAwait(false);
         WorkCatalogSnapshot work = await catalogs.ReadWorkAsync(root, token).ConfigureAwait(false);

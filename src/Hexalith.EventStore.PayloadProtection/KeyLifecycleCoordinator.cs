@@ -145,8 +145,10 @@ internal sealed class KeyLifecycleCoordinator
         if (claim.KeyRef == "" && provedDrain.OperationId != claim.OperationId) { throw Mismatch(); }
         bool cleared = await HasClearingProofAsync(drain.Value, cancellationToken).ConfigureAwait(false);
         if (!cleared || await HasUnresolvedPersistenceAsync(root, claim.ScopeDigest, claim.OperationId, claim.KeyRef == "", cancellationToken).ConfigureAwait(false)) { return false; }
-        ScopeKeyIndexSnapshot scope = await _indexes.ReadScopeAsync(claim.ScopeDigest, cancellationToken).ConfigureAwait(false);
-        ScopeIndexEntryV1[] entries = scope.Pages.SelectMany(p => p.Value.Entries).Where(e => claim.KeyRef == "" || (e.KeyRef == claim.KeyRef && e.DekVersion == claim.DekVersion)).ToArray();
+        // Scope-wide work enumerates the complete scope index; single-key work reads only its own bucket page.
+        ScopeIndexView claimed = claim.KeyRef == "" ? await _indexes.ReadScopeAsync(claim.ScopeDigest, cancellationToken).ConfigureAwait(false)
+            : await _indexes.ReadScopeEntryAsync(claim.ScopeDigest, claim.KeyRef, claim.DekVersion, cancellationToken: cancellationToken).ConfigureAwait(false);
+        ScopeIndexEntryV1[] entries = claimed.Pages.Values.SelectMany(p => p.Value.Entries).Where(e => claim.KeyRef == "" || (e.KeyRef == claim.KeyRef && e.DekVersion == claim.DekVersion)).ToArray();
         if (claim.KeyRef != "" && entries.Length == 0 && claim.Kind != "Delete") { throw Mismatch(); }
         int changed = 0;
         foreach (ScopeIndexEntryV1 entry in entries)
@@ -159,9 +161,7 @@ internal sealed class KeyLifecycleCoordinator
             if (lifecycle.Value != provedLifecycle || drain.Value != provedDrain) { throw Mismatch(); }
             PayloadProtectionStateValue<WrappedDekV1> key = await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(claim.ScopeDigest, entry.KeyRef, entry.DekVersion), cancellationToken).ConfigureAwait(false);
             ValidateKey(identity, key.Value);
-            scope = await _indexes.ReadScopeAsync(claim.ScopeDigest, cancellationToken).ConfigureAwait(false);
-            KekKeyIndexSnapshot inventory = await _indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.Value.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false);
-            PayloadKeyIndexes.VerifyMembership(key.Value, scope, inventory);
+            (ScopeIndexView scope, KekInventoryView inventory) = await _indexes.ReadMembershipAsync(key.Value, cancellationToken).ConfigureAwait(false);
             // Exact acknowledgements are immutable and Cleared tombstones are monotonic. The
             // already confirmed cutoff proof remains valid under this unchanged lifecycle/drain.
             List<PayloadProtectionStateMutation> mutations = [PayloadProtectionStateMutation.Compare(currentClaim), PayloadProtectionStateMutation.Compare(lifecycle),
@@ -181,21 +181,28 @@ internal sealed class KeyLifecycleCoordinator
             RequireCommit(await _store.CommitAsync(mutations, cancellationToken).ConfigureAwait(false));
             changed++;
         }
-        // Re-enumerate both the scope and all applicable inventories before publishing an irreversible online result.
-        scope = await _indexes.ReadScopeAsync(claim.ScopeDigest, cancellationToken).ConfigureAwait(false);
-        var finalInventories = new Dictionary<(string Backend, string Provider), KekKeyIndexSnapshot>();
-        foreach (ScopeIndexEntryV1 entry in scope.Pages.SelectMany(p => p.Value.Entries).Where(e => claim.KeyRef == "" || (e.KeyRef == claim.KeyRef && e.DekVersion == claim.DekVersion)))
+        // Re-enumerate the scope (complete for scope-wide work, the bucket page for one key) and every applicable inventory's
+        // bucket pages before publishing an irreversible online result.
+        ScopeIndexView finalScope = claim.KeyRef == "" ? await _indexes.ReadScopeAsync(claim.ScopeDigest, cancellationToken).ConfigureAwait(false)
+            : await _indexes.ReadScopeEntryAsync(claim.ScopeDigest, claim.KeyRef, claim.DekVersion, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var finalKeys = new Dictionary<(string Backend, string Provider), List<WrappedDekV1>>();
+        foreach (ScopeIndexEntryV1 entry in finalScope.Pages.Values.SelectMany(p => p.Value.Entries).Where(e => claim.KeyRef == "" || (e.KeyRef == claim.KeyRef && e.DekVersion == claim.DekVersion)))
         {
             if (claim.Kind == "Delete" || entry.State != "Invalidated") { throw Mismatch(); }
             WrappedDekV1 key = (await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(claim.ScopeDigest, entry.KeyRef, entry.DekVersion), cancellationToken).ConfigureAwait(false)).Value;
             ValidateKey(identity, key);
             var address = (PayloadProtectionStateKeys.Digest(key.BackendId), PayloadProtectionStateKeys.Digest(key.ProviderKeyVersionId));
-            if (!finalInventories.TryGetValue(address, out KekKeyIndexSnapshot? inventory))
-            {
-                inventory = await _indexes.ReadKekAsync(address.Item1, address.Item2, cancellationToken).ConfigureAwait(false);
-                finalInventories.Add(address, inventory);
-            }
-            PayloadKeyIndexes.VerifyMembership(key, scope, inventory);
+            if (!finalKeys.TryGetValue(address, out List<WrappedDekV1>? keys)) { finalKeys.Add(address, keys = []); }
+            keys.Add(key);
+        }
+        var finalInventories = new List<KekInventoryView>(finalKeys.Count);
+        foreach (((string backend, string provider), List<WrappedDekV1> keys) in finalKeys)
+        {
+            // One head-confirmed read per inventory address covers every bucket page its scope keys occupy.
+            KekInventoryView inventory = await _indexes.ReadInventoryEntriesAsync(backend, provider,
+                [.. keys.Select(k => new KekInventoryEntryV1(k.ScopeDigest, k.KeyRef, k.DekVersion))], cancellationToken: cancellationToken).ConfigureAwait(false);
+            foreach (WrappedDekV1 key in keys) { PayloadKeyIndexes.VerifyMembership(key, finalScope, inventory); }
+            finalInventories.Add(inventory);
         }
         PayloadProtectionStateValue<ReconciliationV1> finalClaim = await _claims.RequireAsync(claim, cancellationToken).ConfigureAwait(false);
         lifecycle = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
@@ -215,8 +222,8 @@ internal sealed class KeyLifecycleCoordinator
             PayloadProtectionStateMutation.Put(operation.Value with { Phase = "Completed", Result = "Succeeded", ReasonCode = "none", UpdatedAtUtc = Now() }, operation.ETag),
             .. _catalogs.CompleteWork(work, finalClaim, claim with { Status = "Completed", ReasonCode = "none", UpdatedAtUtc = Now() }),
             PayloadProtectionStateMutation.Put(Audit(identity, claim.OperationId, claim.Kind, lifecycle.Value.State, terminal, scopeWide ? checked(lifecycle.Value.Epoch + 1) : lifecycle.Value.Epoch, "Succeeded", "none", claim.Attempt, Elapsed(started), drain.Value.WorkflowId, fenceEpoch: fence.Value.ApprovalEpoch))];
-        if (scope.Head is not null) { final.Add(PayloadProtectionStateMutation.Compare(scope.Head)); }
-        final.AddRange(finalInventories.Values.Select(inventory => PayloadProtectionStateMutation.Compare(inventory.Head!)));
+        if (finalScope.Head is not null) { final.Add(PayloadProtectionStateMutation.Compare(finalScope.Head)); }
+        final.AddRange(finalInventories.Select(inventory => PayloadProtectionStateMutation.Compare(inventory.Head!)));
         RequireCommit(await _store.CommitAsync(final, cancellationToken).ConfigureAwait(false));
         PayloadProtectionDiagnostics.LifecycleTransition();
         diagnostic.Complete();

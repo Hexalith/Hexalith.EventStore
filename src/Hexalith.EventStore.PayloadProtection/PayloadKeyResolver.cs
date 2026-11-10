@@ -36,8 +36,9 @@ internal sealed class PayloadKeyResolver(IPayloadProtectionStateStore store, Pay
                 || key.Value.LifecycleEpoch > lifecycle.Value.Epoch || key.Value.BackendId != backend.BackendId
                 || key.Value.State is not ("Reserved" or "Active" or "RewrapPending")) { throw Mismatch(); }
             var indexes = new PayloadKeyIndexes(store, _clock);
-            PayloadKeyIndexes.VerifyMembership(key.Value, await indexes.ReadScopeAsync(scope, cancellationToken).ConfigureAwait(false),
-                await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(backend.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false));
+            PayloadKeyIndexes.VerifyMembership(key.Value, await indexes.ReadScopeEntryAsync(scope, keyRef, version, cancellationToken: cancellationToken).ConfigureAwait(false),
+                await indexes.ReadInventoryEntryAsync(PayloadProtectionStateKeys.Digest(backend.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId),
+                    new(scope, keyRef, version), cancellationToken: cancellationToken).ConfigureAwait(false));
             lease.AssertCurrent(cancellationToken);
             copy = await cache.GetAsync(new(scope, keyRef, version, lifecycle.Value.Epoch, key.Value.ProviderKeyVersionId),
                 token => UnwrapAsync(operationId, key.Value, token), cancellationToken, roots.Require(identity)).ConfigureAwait(false);

@@ -62,6 +62,7 @@ internal sealed class PayloadRestoreAdmission(IPayloadProtectionStateStore store
                 Add(PayloadProtectionStateMutation.Compare(liveLifecycle));
                 var indexes = new PayloadKeyIndexes(store, _clock);
                 ScopeKeyIndexSnapshot index = await indexes.ReadScopeAsync(scope, token).ConfigureAwait(false);
+                ScopeIndexView indexView = index;
                 if (index.Head is not null) { Add(PayloadProtectionStateMutation.Compare(index.Head)); }
                 else { Add(PayloadProtectionStateMutation.Put(new ScopeIndexHeadV1(scope, 0, 0, 0, PayloadProtectionStateCodec.Timestamp(_clock.GetUtcNow())))); }
                 foreach (var page in index.Pages) { Add(PayloadProtectionStateMutation.Compare(page)); }
@@ -79,11 +80,12 @@ internal sealed class PayloadRestoreAdmission(IPayloadProtectionStateStore store
                         || backup.State != live.Value.State || backup.LifecycleEpoch != live.Value.LifecycleEpoch
                         || backup.FenceApprovalEpoch != live.Value.FenceApprovalEpoch || backup.HighestWrittenEpoch != live.Value.HighestWrittenEpoch
                         || backup.WrappedDekSha256 != live.Value.WrappedDekSha256) { state = RestoredBackupAdmissionState.Quarantined; continue; }
-                    KekKeyIndexSnapshot inventory = await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(backend.BackendId), PayloadProtectionStateKeys.Digest(live.Value.ProviderKeyVersionId), token).ConfigureAwait(false);
-                    PayloadKeyIndexes.VerifyMembership(live.Value, index, inventory);
+                    // The restore count needs the complete scope index; each inventory is evidenced by its head and the key's bucket page.
+                    KekInventoryView inventory = await indexes.ReadInventoryEntryAsync(PayloadProtectionStateKeys.Digest(backend.BackendId), PayloadProtectionStateKeys.Digest(live.Value.ProviderKeyVersionId),
+                        new(scope, live.Value.KeyRef, live.Value.DekVersion), cancellationToken: token).ConfigureAwait(false);
+                    PayloadKeyIndexes.VerifyMembership(live.Value, indexView, inventory);
                     Add(PayloadProtectionStateMutation.Compare(live));
-                    Add(PayloadProtectionStateMutation.Compare(inventory.Head!));
-                    foreach (var page in inventory.Pages) { Add(PayloadProtectionStateMutation.Compare(page)); }
+                    foreach (PayloadProtectionStateMutation condition in PayloadKeyIndexes.Conditions(inventory)) { Add(condition); }
                     if (state != RestoredBackupAdmissionState.Accepted) { continue; }
                     byte[] wrapped = Base64UrlCodec.Decode(live.Value.WrappedDek);
                     try

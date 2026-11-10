@@ -5,18 +5,31 @@ using Hexalith.EventStore.Contracts.Security;
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Enforces exact domain ownership and monotonic strongly observed erasure epochs.</summary>
+/// <remarks>Observations are bounded by least-recently-observed eviction. An evicted scope loses only this in-memory
+/// regression check; every admission still requires its durable <see cref="LifecycleV1"/> epoch and state to match.</remarks>
 internal sealed class ErasureStateRegistry
 {
     private readonly Dictionary<string, IErasureStateProvider> _providers = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, PayloadErasureStateResult> _observations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, LinkedListNode<KeyValuePair<string, PayloadErasureStateResult>>> _observations = new(StringComparer.Ordinal);
+    private readonly LinkedList<KeyValuePair<string, PayloadErasureStateResult>> _recency = new();
+    private readonly int _observationLimit;
     private readonly object _gate = new();
 
     /// <summary>Freezes one explicitly keyed provider per protected domain without wildcard or default ownership.</summary>
     internal ErasureStateRegistry(PayloadProtectionScopeRegistry protectedScopes,
         IEnumerable<KeyValuePair<string, IErasureStateProvider>> registrations)
+        : this(protectedScopes, registrations, PayloadProtectionOperationalLimits.ErasureObservations)
+    {
+    }
+
+    /// <summary>Freezes the providers with an explicit observation bound; production uses the qualified operational limit.</summary>
+    internal ErasureStateRegistry(PayloadProtectionScopeRegistry protectedScopes,
+        IEnumerable<KeyValuePair<string, IErasureStateProvider>> registrations, int observationLimit)
     {
         ArgumentNullException.ThrowIfNull(protectedScopes);
         ArgumentNullException.ThrowIfNull(registrations);
+        if (observationLimit < 1) { throw new PayloadProtectionFormatException(); }
+        _observationLimit = observationLimit;
         var domains = protectedScopes.Roots.Select(scope => scope.Domain).ToHashSet(StringComparer.Ordinal);
         foreach ((string domain, IErasureStateProvider provider) in registrations)
         {
@@ -79,15 +92,32 @@ internal sealed class ErasureStateRegistry
         if (result.State == PayloadErasureState.Unknown) { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ConsistencyMismatch); }
         lock (_gate)
         {
-            if (_observations.TryGetValue(scope, out PayloadErasureStateResult? previous)
-                && (result.LifecycleEpoch < previous.LifecycleEpoch
-                    || (result.State == previous.State) != (result.LifecycleEpoch == previous.LifecycleEpoch)
-                    || (previous.State >= PayloadErasureState.Invalidating && result.State < previous.State)))
+            if (_observations.TryGetValue(scope, out LinkedListNode<KeyValuePair<string, PayloadErasureStateResult>>? node))
             {
-                throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ConsistencyMismatch);
-            }
+                PayloadErasureStateResult previous = node.Value.Value;
+                if (result.LifecycleEpoch < previous.LifecycleEpoch
+                    || (result.State == previous.State) != (result.LifecycleEpoch == previous.LifecycleEpoch)
+                    || (previous.State >= PayloadErasureState.Invalidating && result.State < previous.State))
+                {
+                    throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ConsistencyMismatch);
+                }
 
-            _observations[scope] = result;
+                node.Value = new(scope, result);
+                _recency.Remove(node);
+                _recency.AddFirst(node);
+            }
+            else
+            {
+                // A new aggregate is always admitted; the least-recently-observed scope gives up its in-memory evidence.
+                if (_observations.Count >= _observationLimit)
+                {
+                    LinkedListNode<KeyValuePair<string, PayloadErasureStateResult>> oldest = _recency.Last!;
+                    _recency.RemoveLast();
+                    _ = _observations.Remove(oldest.Value.Key);
+                }
+
+                _observations.Add(scope, _recency.AddFirst(new KeyValuePair<string, PayloadErasureStateResult>(scope, result)));
+            }
         }
 
         return result;

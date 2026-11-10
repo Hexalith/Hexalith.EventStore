@@ -183,10 +183,7 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
         {
             if ((key.Value.State != "Reserved" && !(key.Value.State == "Invalidated" && operation.Value.Result == "Failed")) || key.Value.CreatingOperationId != claim.OperationId || key.Value.ScopeDigest != claim.ScopeDigest
                 || key.Value.TenantId != identity.TenantId || key.Value.Domain != identity.Domain || key.Value.AggregateId != identity.AggregateId) { throw Mismatch(); }
-            var indexes = new PayloadKeyIndexes(_store, _clock);
-            ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(claim.ScopeDigest, token).ConfigureAwait(false);
-            KekKeyIndexSnapshot inventory = await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.Value.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId), token).ConfigureAwait(false);
-            PayloadKeyIndexes.VerifyMembership(key.Value, scope, inventory);
+            (ScopeIndexView scope, KekInventoryView inventory) = await new PayloadKeyIndexes(_store, _clock).ReadMembershipAsync(key.Value, token).ConfigureAwait(false);
             conditions.Add(PayloadProtectionStateMutation.Compare(key));
             conditions.Add(PayloadProtectionStateMutation.Compare(scope.Head!));
             conditions.Add(PayloadProtectionStateMutation.Compare(inventory.Head!));
@@ -221,9 +218,7 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
             || fence.Value.ApprovalEpoch < key.Value.FenceApprovalEpoch || fence.Value.HighestWrittenEpoch < key.Value.HighestWrittenEpoch
             || fence.Value.HighestWrittenFormat != "V2" || fence.Value.ApprovedSpecDigest != _authority.Digest) { throw Mismatch(); }
         var indexes = new PayloadKeyIndexes(_store, _clock);
-        ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(claim.ScopeDigest, token).ConfigureAwait(false);
-        KekKeyIndexSnapshot inventory = await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.Value.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId), token).ConfigureAwait(false);
-        PayloadKeyIndexes.VerifyMembership(key.Value, scope, inventory);
+        (ScopeIndexView scope, KekInventoryView inventory) = await indexes.ReadMembershipAsync(key.Value, token).ConfigureAwait(false);
         PayloadProtectionStateValue<ReconciliationV1> current = await _claims.RequireAsync(claim, token).ConfigureAwait(false);
         WorkCatalogSnapshot work = await _catalogs.ReadWorkAsync(root, token).ConfigureAwait(false);
         string leaseKey = PayloadProtectionStateKeys.Completion(claim.ScopeDigest, claim.KeyRef, claim.DekVersion, claim.OperationId);
@@ -235,16 +230,19 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
             identity.TenantId, identity.Domain, null, "Activate", "Reserved", destination, lifecycle.Value.Epoch, fence.Value.ApprovalEpoch,
             _backend, "v2", null, null, claim.Attempt, checked((ulong)Math.Max(0, Math.Floor(_clock.GetElapsedTime(started).TotalMilliseconds))), "Succeeded", "none", _actor, now);
         List<PayloadProtectionStateMutation> mutations = [PayloadProtectionStateMutation.Compare(lifecycle), PayloadProtectionStateMutation.Compare(fence),
-            PayloadProtectionStateMutation.Compare(inventory.Head!), invalidating ? PayloadProtectionStateMutation.Compare(key) : PayloadProtectionStateMutation.Put(PayloadProtectionStateCodec.Seal(key.Value with { State = "Active", UpdatedAtUtc = now }), key.ETag),
+            invalidating ? PayloadProtectionStateMutation.Compare(key) : PayloadProtectionStateMutation.Put(PayloadProtectionStateCodec.Seal(key.Value with { State = "Active", UpdatedAtUtc = now }), key.ETag),
             PayloadProtectionStateMutation.Put(operation.Value with { Phase = invalidating ? "Persisted" : "Completed", Result = "Succeeded", ReasonCode = "none", UpdatedAtUtc = now }, operation.ETag),
             .. _catalogs.CompleteWork(work, current, claim with { Status = "Completed", ReasonCode = "none", UpdatedAtUtc = now }), PayloadProtectionStateMutation.Put(audit)];
         if (invalidating)
         {
-            mutations.Add(PayloadProtectionStateMutation.Compare(scope.Head!));
-            mutations.AddRange(scope.Pages.Select(PayloadProtectionStateMutation.Compare));
-            mutations.AddRange(inventory.Pages.Select(PayloadProtectionStateMutation.Compare));
+            mutations.AddRange(PayloadKeyIndexes.Conditions(scope));
+            mutations.AddRange(PayloadKeyIndexes.Conditions(inventory));
         }
-        else { mutations.AddRange(indexes.SetScopeEntry(scope, new(claim.KeyRef, claim.DekVersion, inventory.ProviderDigest, "Active"), false)); }
+        else
+        {
+            mutations.Add(PayloadProtectionStateMutation.Compare(inventory.Head!));
+            mutations.AddRange(indexes.SetScopeEntry(scope, new(claim.KeyRef, claim.DekVersion, inventory.ProviderDigest, "Active"), false));
+        }
         if (lease is not null) { mutations.Add(new(leaseKey, null, lease.ETag)); }
         PayloadStateCommitResult result = await _store.CommitAsync(mutations, token).ConfigureAwait(false);
         if (result != PayloadStateCommitResult.Committed) { throw new PayloadProtectionStateException(result == PayloadStateCommitResult.Denied ? UnreadableProtectedDataReason.ProviderDenied : UnreadableProtectedDataReason.ProviderUnavailable); }

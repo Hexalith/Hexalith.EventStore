@@ -45,7 +45,7 @@ public sealed class PayloadProtectionOperationalLiveTests(PayloadProtectionDaprF
     }
 
     [Fact]
-    public async Task QualifiedWriterPreservesTwoPageIndexesAt257KeysAndRetainedMemberIncarnations()
+    public async Task QualifiedWriterPreservesHashPlacedIndexesAt257KeysAndRetainedMemberIncarnations()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2)); var token = timeout.Token;
         await using var env = await LifecycleQualificationEnvironment.CreateAsync(fixture.Store, "tenant-operational-writer", token);
@@ -60,9 +60,12 @@ public sealed class PayloadProtectionOperationalLiveTests(PayloadProtectionDaprF
         }
         var indexes = new PayloadKeyIndexes(fixture.Store);
         ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(env.Scope, token);
-        scope.Head!.Value.EntryCount.ShouldBe(257u); scope.Pages.Count.ShouldBe(2); scope.Pages[1].Value.Entries.Length.ShouldBe(1);
+        // Linear hashing at an average of 64 entries per page: entries 65, 129, 193 and 257 each split one bucket into a new page.
+        scope.Head!.Value.EntryCount.ShouldBe(257u); scope.Pages.Count.ShouldBe(5);
+        scope.Pages.ShouldAllBe(p => p.Value.Entries.All(e => PayloadIndexPlacement.Bucket(PayloadProtectionStateCodec.ScopeEntryIdentity(e.KeyRef, e.DekVersion), 5) == p.Value.Page));
         KekKeyIndexSnapshot inventory = await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(env.Backend.BackendId), PayloadProtectionStateKeys.Digest(env.Backend.OldVersion), token);
-        inventory.Head!.Value.EntryCount.ShouldBe(257ul); inventory.Pages.Count.ShouldBe(2);
+        inventory.Head!.Value.EntryCount.ShouldBe(257ul); inventory.Pages.Count.ShouldBe(5);
+        inventory.Pages.ShouldAllBe(p => p.Value.Entries.All(e => PayloadIndexPlacement.Bucket(PayloadProtectionStateCodec.KekEntryIdentity(e.ScopeDigest, e.KeyRef, e.DekVersion), 5) == p.Value.Page));
         foreach (ScopeIndexEntryV1 entry in scope.Pages.SelectMany(p => p.Value.Entries))
         {
             var key = (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(env.Scope, entry.KeyRef, entry.DekVersion), token))!.Value;

@@ -2,7 +2,7 @@ using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.PayloadProtection.Tests;
 
-/// <summary>V057/V058 complete scope and KEK membership with atomic generation changes.</summary>
+/// <summary>V057/V058 hash-placed scope and KEK membership with atomic head-generation changes.</summary>
 public sealed class KeyIndexTests
 {
     private static readonly string Scope = PayloadProtectionStateKeys.ScopeDigest(new("tenant-a", "parties", "party-01"));
@@ -11,30 +11,38 @@ public sealed class KeyIndexTests
     private const string Timestamp = "2026-10-23T00:00:00.0000000Z";
 
     [Fact]
-    public async Task V057_V137_TwoPageIndexesStayGenerationConsistentAndInventoryRemovalRetainsAddresses()
+    public async Task V057_V137_IndexesGrowByLinearHashingOntoPlacedPagesAndInventoryRemovalRetainsAddresses()
     {
         var store = new MemoryPayloadProtectionStateStore();
         var indexes = new PayloadKeyIndexes(store);
         for (int i = 0; i < 257; i++)
         {
-            ScopeKeyIndexSnapshot scope = await indexes.ReadScopeAsync(Scope);
-            KekKeyIndexSnapshot inventory = await indexes.ReadKekAsync(Backend, Provider);
             string key = i.ToString("D26");
+            ScopeIndexView scope = await indexes.ReadScopeEntryAsync(Scope, key, 1, inserting: true);
+            KekInventoryView inventory = await indexes.ReadInventoryEntryAsync(Backend, Provider, new(Scope, key, 1), inserting: true);
             (await store.CommitAsync([.. indexes.SetScopeEntry(scope, new(key, 1, Provider, "Reserved"), true),
                 .. indexes.SetInventoryEntry(inventory, new(Scope, key, 1), true)])).ShouldBe(PayloadStateCommitResult.Committed);
         }
         ScopeKeyIndexSnapshot finalScope = await indexes.ReadScopeAsync(Scope);
         KekKeyIndexSnapshot finalInventory = await indexes.ReadKekAsync(Backend, Provider);
+        // Page 0 holds the first 64 entries; entries 65, 129, 193 and 257 each split one bucket into a new page.
         finalScope.Head!.Value.EntryCount.ShouldBe(257u);
-        finalScope.Pages.Count.ShouldBe(2);
-        finalScope.Pages.ShouldAllBe(p => p.Value.Generation == finalScope.Head.Value.Generation);
+        finalScope.Head.Value.PageCount.ShouldBe(5u);
+        finalScope.Pages.Count.ShouldBe(5);
+        finalScope.Pages.ShouldAllBe(p => p.Value.Generation <= finalScope.Head.Value.Generation);
+        finalScope.Pages.ShouldContain(p => p.Value.Generation < finalScope.Head.Value.Generation);
+        finalScope.Pages.ShouldAllBe(p => p.Value.Entries.All(e => IndexPlacementTests.Bucket(e, 5) == p.Value.Page));
         finalInventory.Head!.Value.EntryCount.ShouldBe(257ul);
-        finalInventory.Pages.ShouldAllBe(p => p.Value.Generation == finalInventory.Head.Value.Generation);
-        (await store.CommitAsync(indexes.SetInventoryEntry(finalInventory, new(Scope, 256.ToString("D26"), 1), false))).ShouldBe(PayloadStateCommitResult.Committed);
+        finalInventory.Pages.Count.ShouldBe(5);
+        finalInventory.Pages.ShouldAllBe(p => p.Value.Generation <= finalInventory.Head.Value.Generation);
+        finalInventory.Pages.ShouldAllBe(p => p.Value.Entries.All(e => IndexPlacementTests.Bucket(e, 5) == p.Value.Page));
+        var removedEntry = new KekInventoryEntryV1(Scope, 256.ToString("D26"), 1);
+        (await store.CommitAsync(indexes.SetInventoryEntry(await indexes.ReadInventoryEntryAsync(Backend, Provider, removedEntry), removedEntry, false))).ShouldBe(PayloadStateCommitResult.Committed);
         KekKeyIndexSnapshot removed = await indexes.ReadKekAsync(Backend, Provider);
         removed.Head!.Value.EntryCount.ShouldBe(256ul);
-        removed.Pages.Count.ShouldBe(2);
-        removed.Pages[1].Value.Entries.ShouldBeEmpty();
+        removed.Head.Value.PageCount.ShouldBe(5u);
+        removed.Pages.Count.ShouldBe(5);
+        removed.Pages.SelectMany(p => p.Value.Entries).ShouldNotContain(removedEntry);
     }
 
     [Fact]
@@ -71,8 +79,17 @@ public sealed class KeyIndexTests
         PayloadKeyIndexes.VerifyMembership(key, scope, inventory);
         Should.Throw<PayloadProtectionStateException>(() => PayloadKeyIndexes.VerifyMembership(key with { State = "Active" }, scope, inventory));
         Should.Throw<PayloadProtectionStateException>(() => PayloadKeyIndexes.VerifyMembership(key with { ProviderKeyVersionId = "fixture:version-02" }, scope, inventory));
+        // An untouched page keeps the older generation of the head that last wrote it.
         await store.CommitAsync([PayloadProtectionStateMutation.Put(scope.Pages[0].Value with { Generation = 0 }, scope.Pages[0].ETag)]);
-        await Should.ThrowAsync<PayloadProtectionStateException>(() => indexes.ReadScopeAsync(Scope).AsTask());
+        PayloadKeyIndexes.VerifyMembership(key, await indexes.ReadScopeAsync(Scope), await indexes.ReadKekAsync(Backend, Provider));
+        PayloadKeyIndexes.VerifyMembership(key, await indexes.ReadScopeEntryAsync(Scope, key.KeyRef, 1), await indexes.ReadInventoryEntryAsync(Backend, Provider, new(Scope, key.KeyRef, 1)));
+        // A page newer than an unchanged head is corruption, not a concurrent commit.
+        PayloadProtectionStateValue<ScopeIndexPageV1> older = (await store.ReadAsync<ScopeIndexPageV1>(PayloadProtectionStateKeys.IndexPage(Scope, 0)))!;
+        await store.CommitAsync([PayloadProtectionStateMutation.Put(older.Value with { Generation = scope.Head!.Value.Generation + 1 }, older.ETag)]);
+        (await Should.ThrowAsync<PayloadProtectionStateException>(() => indexes.ReadScopeAsync(Scope).AsTask())).Reason.ShouldBe(UnreadableProtectedDataReason.ConsistencyMismatch);
+        (await Should.ThrowAsync<PayloadProtectionStateException>(() => indexes.ReadScopeEntryAsync(Scope, key.KeyRef, 1).AsTask())).Reason.ShouldBe(UnreadableProtectedDataReason.ConsistencyMismatch);
+        // A view that did not read the entry's bucket page proves no membership.
+        Should.Throw<PayloadProtectionStateException>(() => PayloadKeyIndexes.VerifyMembership(key, ScopeIndexView.From(scope) with { Pages = new Dictionary<uint, PayloadProtectionStateValue<ScopeIndexPageV1>>() }, inventory));
     }
 
     [Theory]

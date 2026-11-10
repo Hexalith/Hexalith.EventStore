@@ -121,6 +121,14 @@ internal static class PayloadProtectionStateCodec
         if (!Reasons.Contains(reason)) { throw new PayloadProtectionFormatException(); }
     }
 
+    /// <summary>Formats the scope-index entry identity that orders a page and seeds its hash-bucket placement.</summary>
+    internal static string ScopeEntryIdentity(string keyRef, uint dekVersion)
+        => keyRef + ":" + dekVersion.ToString("D10", CultureInfo.InvariantCulture);
+
+    /// <summary>Formats the KEK-inventory entry identity that orders a page and seeds its hash-bucket placement.</summary>
+    internal static string KekEntryIdentity(string scopeDigest, string keyRef, uint dekVersion)
+        => scopeDigest + ":" + ScopeEntryIdentity(keyRef, dekVersion);
+
     /// <summary>Derives the only legal exact address for an enrolled durable root.</summary>
     internal static string KeyFor<T>(T value) where T : class => value switch
     {
@@ -224,8 +232,8 @@ internal static class PayloadProtectionStateCodec
                     ValidateObject(item, type, root: false);
                     string identity = itemProfile switch
                     {
-                        "ScopeIndexEntryV1" => item.GetProperty("keyRef").GetString() + ":" + item.GetProperty("dekVersion").GetUInt32().ToString("D10", CultureInfo.InvariantCulture),
-                        "KekInventoryEntryV1" => item.GetProperty("scopeDigest").GetString() + ":" + item.GetProperty("keyRef").GetString() + ":" + item.GetProperty("dekVersion").GetUInt32().ToString("D10", CultureInfo.InvariantCulture),
+                        "ScopeIndexEntryV1" => ScopeEntryIdentity(item.GetProperty("keyRef").GetString()!, item.GetProperty("dekVersion").GetUInt32()),
+                        "KekInventoryEntryV1" => KekEntryIdentity(item.GetProperty("scopeDigest").GetString()!, item.GetProperty("keyRef").GetString()!, item.GetProperty("dekVersion").GetUInt32()),
                         "MemberEntryV1" => item.GetProperty("ordinal").GetUInt32().ToString("D10", CultureInfo.InvariantCulture),
                         _ => item.GetProperty("operationId").GetString()!,
                     };

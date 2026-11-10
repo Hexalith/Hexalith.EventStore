@@ -7,13 +7,19 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 public sealed class ReviewScopeMetadataTests
 {
     [Fact]
-    public async Task ErasureObservationsBeyondTheBlockLimitPreserveExistingMonotonicEvidence()
+    public async Task ErasureObservationsAtTheProductionLimitEvictTheLeastRecentScopeAndKeepRecentMonotonicEvidence()
     {
         var provider = new LifecycleTestErasureProvider();
         var registry = new ErasureStateRegistry(new([new("tenant-a", "parties")]), [new("parties", provider)]);
-        for (int index = 0; index <= PayloadProtectionOperationalLimits.ScopeMetadata; index++)
+        for (int index = 0; index < PayloadProtectionOperationalLimits.ErasureObservations; index++)
         { _ = await registry.ObserveAsync(new("tenant-a", "parties", index.ToString(System.Globalization.CultureInfo.InvariantCulture))); }
+        _ = await registry.ObserveAsync(new("tenant-a", "parties", "0"));
+        // A new aggregate is never refused at the limit; the least recently observed scope ("1") is evicted instead.
         (await registry.ObserveAsync(new("tenant-a", "parties", "overflow"))).State.ShouldBe(PayloadErasureState.Active);
+        provider.State = new(PayloadErasureState.Active, 0, PayloadErasureReasonCode.None, DateTimeOffset.UtcNow);
+        (await Should.ThrowAsync<PayloadProtectionStateException>(() => registry.ObserveAsync(new("tenant-a", "parties", "2")).AsTask()))
+            .Reason.ShouldBe(UnreadableProtectedDataReason.ConsistencyMismatch);
+        (await registry.ObserveAsync(new("tenant-a", "parties", "1"))).LifecycleEpoch.ShouldBe(0ul);
         provider.State = new(PayloadErasureState.Pending, 2, PayloadErasureReasonCode.DomainPending, DateTimeOffset.UtcNow);
         (await registry.ObserveAsync(new("tenant-a", "parties", "0"))).LifecycleEpoch.ShouldBe(2ul);
         provider.State = new(PayloadErasureState.Active, 1, PayloadErasureReasonCode.None, DateTimeOffset.UtcNow);
