@@ -157,6 +157,13 @@ Full documentation index: [Documentation](docs/index.md)
 - [GitHub Discussions](https://github.com/Hexalith/Hexalith.EventStore/discussions) — questions, ideas, and community support
 - [Issue Tracker](https://github.com/Hexalith/Hexalith.EventStore/issues) — bug reports and feature requests
 
+## Legacy compatibility surfaces
+
+These are versioned compatibility binaries. They are not retired and stay outside every Hexalith.Platform composition.
+
+- `Hexalith.EventStore.Admin.Cli` (.NET tool `eventstore-admin`): removal gate "Companion G1–G6: approved generic administration contract and destructive-operation safety evidence first" ([technical-tools inventory 1.0.2](https://github.com/Hexalith/Hexalith.McpCli/blob/c70ca9784da393cb1929741c6a6c9564717eace5/_bmad-output/implementation-artifacts/technical-tools-migration-inventory-v1.md) PS01; [EventStore Admin inventory 1.0.1](https://github.com/Hexalith/Hexalith.McpCli/blob/c70ca9784da393cb1929741c6a6c9564717eace5/_bmad-output/implementation-artifacts/eventstore-admin-migration-inventory-v1.md)).
+- `Hexalith.EventStore.Admin.Mcp` (stdio MCP server): removal gate "Companion G1–G6" ([technical-tools inventory 1.0.2](https://github.com/Hexalith/Hexalith.McpCli/blob/c70ca9784da393cb1929741c6a6c9564717eace5/_bmad-output/implementation-artifacts/technical-tools-migration-inventory-v1.md) PS02; [EventStore Admin inventory 1.0.1](https://github.com/Hexalith/Hexalith.McpCli/blob/c70ca9784da393cb1929741c6a6c9564717eace5/_bmad-output/implementation-artifacts/eventstore-admin-migration-inventory-v1.md)).
+
 ## Contributing
 
 Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before submitting a pull request.
