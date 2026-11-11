@@ -1019,7 +1019,14 @@ public sealed partial class SecretsProtectionTests
     {
         var violationLines = new SortedSet<int>();
         (HashSet<int> nullValues, HashSet<int> dependencyNames) = GetJsonNonSecretMetadata(content);
-        void Record(int index, string _) => violationLines.Add(LineNumber(content, index));
+        void Record(int index, string _)
+        {
+            int lineNumber = LineNumber(content, index);
+            if (!IsArchivedNegativeFixtureLine(relativePath, content, lineNumber))
+            {
+                violationLines.Add(lineNumber);
+            }
+        }
 
         foreach (Match match in CompactJwtPattern().Matches(content))
         {
