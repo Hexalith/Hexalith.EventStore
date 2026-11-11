@@ -668,3 +668,12 @@ Browse all published packages on [NuGet.org](https://www.nuget.org/packages?q=He
 **Next:** [Command API Reference](command-api.md) — look up write-side endpoints with request/response examples
 
 **Related:** [Query & Projection API Reference](query-api.md) | [API Reference](api/index.md) — auto-generated type documentation for all public APIs | [Architecture Overview](../concepts/architecture-overview.md) | [First Domain Service](../getting-started/first-domain-service.md) | [Quickstart](../getting-started/quickstart.md) | [Native AOT and IL Trimming Posture](aot-and-trimming-posture.md)
+
+The shared `TestEnvironmentDescriptor` fixture supports ready attached v1
+handoffs only with its exact owner/environment/run and matching active unexpired
+hold. Its existing request cancellation ends all fixture clients at the original
+expiry; reconnects cannot renew it. Expired, ended, foreign and mismatched
+snapshots refuse before clients are available. Owner fixture behavior and private
+credential checks remain unchanged. Downstream attached qualification requires a
+compatible published Testing package and Builds tool; source verification does
+not change any accepted pin or qualify a hosted run.

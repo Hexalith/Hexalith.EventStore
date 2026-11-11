@@ -9,6 +9,77 @@ namespace Hexalith.EventStore.Testing.Tests;
 
 public sealed class TestEnvironmentDescriptorReaderTests
 {
+    /// <summary>Ready attached fixtures consume only their own active, matching, finite hold.</summary>
+    /// <param name="fault">The invalid hold or snapshot mutation.</param>
+    [Theory]
+    [InlineData("none")]
+    [InlineData("expired")]
+    [InlineData("ended")]
+    [InlineData("foreign")]
+    [InlineData("missing")]
+    [InlineData("snapshot")]
+    public void AttachedFixturesRequireOriginalActiveHold(string fault)
+    {
+        using var file = new DescriptorTestFile();
+        JsonNode root = JsonNode.Parse(File.ReadAllText(file.Path))!;
+        JsonNode bindings = root["bindings"]!;
+        bindings["run"]!["runId"] = "attached-run";
+        bindings["run"]!["role"] = "attached";
+        bindings["run"]!["attachedRunId"] = "attached-run";
+        DateTimeOffset now = DateTimeOffset.UtcNow.AddSeconds(-1);
+        DateTimeOffset accepted = fault == "expired" ? now.AddMinutes(-10) : now;
+        JsonObject hold = new()
+        {
+            ["originalAttachmentRequestId"] = "request-1", ["environmentId"] = "sample-environment",
+            ["ownerRunId"] = "sample-owner-run", ["attachedRunId"] = "attached-run",
+            ["acceptedAt"] = accepted.UtcDateTime.ToString("O"), ["requestedHoldSeconds"] = 300, ["effectiveHoldSeconds"] = 300,
+            ["expiresAt"] = accepted.AddSeconds(300).UtcDateTime.ToString("O"), ["end"] = new JsonObject { ["state"] = "active" },
+        };
+        if (fault == "ended") hold["end"] = new JsonObject { ["state"] = "ended", ["endedAt"] = now.UtcDateTime.ToString("O"), ["reason"] = "terminal-outcome" };
+        if (fault == "foreign") hold["ownerRunId"] = "foreign-owner";
+        if (fault == "snapshot") bindings["run"]!["environmentId"] = "other-environment";
+        bindings["attachments"] = new JsonObject { ["state"] = "populated", ["holds"] = fault == "missing" ? new JsonArray() : new JsonArray(hold) };
+        File.WriteAllText(file.Path, root.ToJsonString());
+        if (fault == "none")
+        {
+            using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
+            descriptor.RunId.ShouldBe("attached-run");
+            descriptor.OwnerRunId.ShouldBe("sample-owner-run");
+            descriptor.AttachmentExpiresAtUtc.ShouldBe(accepted.AddSeconds(300));
+            descriptor.RequestCancellation.IsCancellationRequested.ShouldBeFalse();
+        }
+        else
+        {
+            _ = Should.Throw<TestEnvironmentDescriptorException>(() => TestEnvironmentDescriptorReader.ReadDescriptor(file.Path));
+        }
+    }
+
+    /// <summary>The original hold expiry cancels existing fixture requests and prevents new clients.</summary>
+    [Fact]
+    public async Task AttachedExpiryCancelsFixtureRequests()
+    {
+        using var file = new DescriptorTestFile();
+        JsonNode root = JsonNode.Parse(File.ReadAllText(file.Path))!;
+        JsonNode bindings = root["bindings"]!;
+        bindings["run"]!["runId"] = "attached-run";
+        bindings["run"]!["role"] = "attached";
+        bindings["run"]!["attachedRunId"] = "attached-run";
+        DateTimeOffset accepted = DateTimeOffset.UtcNow;
+        bindings["attachments"] = new JsonObject { ["state"] = "populated", ["holds"] = new JsonArray(new JsonObject
+        {
+            ["originalAttachmentRequestId"] = "request-1", ["environmentId"] = "sample-environment",
+            ["ownerRunId"] = "sample-owner-run", ["attachedRunId"] = "attached-run", ["acceptedAt"] = accepted.UtcDateTime.ToString("O"),
+            ["requestedHoldSeconds"] = 1, ["effectiveHoldSeconds"] = 1, ["expiresAt"] = accepted.AddSeconds(1).UtcDateTime.ToString("O"),
+            ["end"] = new JsonObject { ["state"] = "active" },
+        }) };
+        File.WriteAllText(file.Path, root.ToJsonString());
+        using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
+        using HttpClient client = descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(5), false);
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await Task.Delay(TimeSpan.FromSeconds(5), descriptor.RequestCancellation));
+        descriptor.RequestCancellation.IsCancellationRequested.ShouldBeTrue();
+        _ = Should.Throw<OperationCanceledException>(() => descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(5), false));
+    }
+
     /// <summary>Pins the embedded immutable contract without requiring any external checkout.</summary>
     [Fact]
     public void EmbeddedCanonicalV1SchemaMatchesIndependentlyVerifiedAuthoritativeBytes()
@@ -224,7 +295,7 @@ public sealed class TestEnvironmentDescriptorReaderTests
             case "startup-unavailable": env["startupTasks"] = JsonNode.Parse("{\"state\":\"not-yet-populated\"}"); break;
             case "startup-failed": env["startupTasks"]!["tasks"]!.AsArray().Add(JsonNode.Parse("{\"taskId\":\"setup\",\"required\":true,\"status\":\"failed\",\"diagnosticIds\":[]}")); break;
             case "attached":
-                // A schema-valid, consistent attached run with its own hold remains unqualified for fixtures.
+                // A consistent attached snapshot with an expired hold refuses fixture use.
                 bindings["run"]!["runId"] = "attached-run";
                 bindings["run"]!["role"] = "attached";
                 bindings["run"]!["attachedRunId"] = "attached-run";

@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Hexalith.EventStore.Testing;
 
-/// <summary>A validated ready owner environment. It owns only its requests and clients.</summary>
+/// <summary>A validated ready owner or active attached environment. It owns only its requests and clients.</summary>
 public sealed class TestEnvironmentDescriptor : IDisposable
 {
     private readonly JsonElement _document;
@@ -22,8 +22,7 @@ public sealed class TestEnvironmentDescriptor : IDisposable
         JsonElement readiness = environment.GetProperty("readiness");
         JsonElement resources = environment.GetProperty("resources");
         JsonElement tasks = environment.GetProperty("startupTasks");
-        if (RunBinding.GetProperty("role").GetString() != "owner"
-            || environment.GetProperty("isolation").GetProperty("state").GetString() != "populated"
+        if (environment.GetProperty("isolation").GetProperty("state").GetString() != "populated"
             || !environment.GetProperty("composition").TryGetProperty("id", out _)
             || !environment.GetProperty("catalog").TryGetProperty("commit", out _)
             || resources.ValueKind != JsonValueKind.Array || resources.GetArrayLength() == 0
@@ -36,12 +35,48 @@ public sealed class TestEnvironmentDescriptor : IDisposable
             || tasks.GetProperty("tasks").EnumerateArray().Any(task => task.GetProperty("required").GetBoolean()
                 && task.GetProperty("status").GetString() != "passed"))
         {
-            throw new TestEnvironmentDescriptorException("HXT108", "Require a ready isolated owner environment and successful required startup tasks. Attached execution remains unqualified.");
+            throw new TestEnvironmentDescriptorException("HXT108", "Require a ready isolated environment and successful required startup tasks.");
+        }
+
+        if (RunBinding.GetProperty("role").GetString() == "attached")
+        {
+            JsonElement attachments = _document.GetProperty("bindings").GetProperty("attachments");
+            JsonElement[] holds = attachments.GetProperty("state").GetString() == "populated"
+                ? [.. attachments.GetProperty("holds").EnumerateArray().Where(hold => hold.GetProperty("attachedRunId").GetString() == RunId)]
+                : [];
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            if (holds.Length != 1 || holds[0].GetProperty("ownerRunId").GetString() != OwnerRunId
+                || holds[0].GetProperty("environmentId").GetString() != EnvironmentId
+                || holds[0].GetProperty("end").GetProperty("state").GetString() != "active"
+                || holds[0].GetProperty("acceptedAt").GetDateTimeOffset() > now
+                || holds[0].GetProperty("expiresAt").GetDateTimeOffset() <= now)
+            {
+                throw new TestEnvironmentDescriptorException("HXT108", "Require the matching active unexpired attached hold in its original owner environment.");
+            }
+
+            OriginalAttachmentRequestId = holds[0].GetProperty("originalAttachmentRequestId").GetString();
+            AttachmentExpiresAtUtc = holds[0].GetProperty("expiresAt").GetDateTimeOffset();
+            TimeSpan remaining = AttachmentExpiresAtUtc.Value - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero)
+                throw new TestEnvironmentDescriptorException("HXT108", "The original attached hold expired before fixture access.");
+            _requests.CancelAfter(remaining);
         }
     }
 
     /// <summary>Gets the producing run identity.</summary>
     public string RunId => RunBinding.GetProperty("runId").GetString()!;
+
+    /// <summary>Gets the original environment owner identity.</summary>
+    public string OwnerRunId => RunBinding.GetProperty("ownerRunId").GetString()!;
+
+    /// <summary>Gets the runner-issued environment identity.</summary>
+    public string EnvironmentId => RunBinding.GetProperty("environmentId").GetString()!;
+
+    /// <summary>Gets the original attached request lineage, or null for an owner.</summary>
+    public string? OriginalAttachmentRequestId { get; }
+
+    /// <summary>Gets the immutable attached hold expiry, or null for an owner.</summary>
+    public DateTimeOffset? AttachmentExpiresAtUtc { get; }
 
     /// <summary>Gets the synthetic tenant supplied by the runner.</summary>
     public string SyntheticTenantId => EnvironmentBinding.GetProperty("isolation").GetProperty("syntheticTenantId").GetString()!;
@@ -71,6 +106,9 @@ public sealed class TestEnvironmentDescriptor : IDisposable
     public Uri GetEndpoint(string resourceId, string moduleId, string endpointName)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (AttachmentExpiresAtUtc is { } expiry && DateTimeOffset.UtcNow >= expiry)
+            _requests.Cancel();
+        _requests.Token.ThrowIfCancellationRequested();
         foreach (JsonElement resource in EnvironmentBinding.GetProperty("resources").EnumerateArray())
         {
             if (resource.GetProperty("resourceId").GetString() != resourceId || resource.GetProperty("moduleId").GetString() != moduleId)
