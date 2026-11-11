@@ -69,8 +69,16 @@ def write_consumer_project(
     package_id: str,
     version: str,
 ) -> pathlib.Path:
-    """Create a consumer with exactly one direct manifest package reference."""
+    """Create a primary package consumer and its required compiler-contract fixture."""
 
+    generator_contract_version = (
+        f'<PackageVersion Include="Hexalith.EventStore.Contracts" Version="{version}" />'
+        if package_id == "Hexalith.EventStore.RestApi.Generators" else ""
+    )
+    generator_contract_reference = (
+        '<PackageReference Include="Hexalith.EventStore.Contracts" />'
+        if package_id == "Hexalith.EventStore.RestApi.Generators" else ""
+    )
     (consumer_dir / "Directory.Packages.props").write_text(
         textwrap.dedent(f"""\
         <Project>
@@ -79,10 +87,16 @@ def write_consumer_project(
           </PropertyGroup>
           <ItemGroup>
             <PackageVersion Include="{package_id}" Version="{version}" />
+            {generator_contract_version}
           </ItemGroup>
         </Project>
         """),
         encoding="utf-8",
+    )
+    framework_reference = (
+        '<FrameworkReference Include="Microsoft.AspNetCore.App" />'
+        if package_id in {"Hexalith.EventStore.Client", "Hexalith.EventStore.DomainService", "Hexalith.EventStore.Server"}
+        else ""
     )
     project_path = consumer_dir / "PackageConsumer.csproj"
     project_path.write_text(
@@ -96,12 +110,26 @@ def write_consumer_project(
           </PropertyGroup>
           <ItemGroup>
             <PackageReference Include="{package_id}" />
+            {generator_contract_reference}
+            {framework_reference}
           </ItemGroup>
         </Project>
         """),
         encoding="utf-8",
     )
     probes = {
+        "Hexalith.EventStore.RestApi.Generators": textwrap.dedent("""\
+            using Hexalith.EventStore.Contracts.Rest;
+
+            [assembly: RestApi("api/package-probe")]
+
+            Type manifest = typeof(global::Hexalith.EventStore.RestApi.Generated.RestApiGeneratorManifest);
+            const global::System.Reflection.BindingFlags flags = global::System.Reflection.BindingFlags.Static
+                | global::System.Reflection.BindingFlags.NonPublic;
+            if (manifest.GetField("RestApiAttributeFound", flags)?.GetRawConstantValue() is not true
+                || manifest.GetField("RoutePrefix", flags)?.GetRawConstantValue() as string != "api/package-probe")
+                throw new InvalidOperationException("The packaged REST generator did not emit its manifest.");
+            """),
         "Hexalith.EventStore.Contracts": textwrap.dedent("""\
             using Hexalith.EventStore.Contracts.Streams;
             using Hexalith.EventStore.Contracts.Effects;
@@ -537,6 +565,24 @@ def write_consumer_project(
         ),
         encoding="utf-8",
     )
+    if package_id in {"Hexalith.EventStore.Client", "Hexalith.EventStore.DomainService", "Hexalith.EventStore.Server"}:
+        # Exercise the actual NuGet buildTransitive imports used by plain ASP.NET consumers.
+        # Without the packaged generator selection, the two logging providers emit CS0757.
+        (consumer_dir / "PackageLoggingProbe.cs").write_text(
+            textwrap.dedent("""\
+            using Microsoft.Extensions.Logging;
+
+            /// <summary>Exercises logging generation through the restored package targets.</summary>
+            internal static partial class PackageLoggingProbe
+            {
+                /// <summary>Emits a synthetic package consumer message.</summary>
+                /// <param name="logger">The synthetic consumer logger.</param>
+                [LoggerMessage(1, LogLevel.Information, "Package consumer logging")]
+                internal static partial void Log(ILogger logger);
+            }
+            """),
+            encoding="utf-8",
+        )
     return project_path
 
 
@@ -623,9 +669,22 @@ def validate_library_package(
             "Hexalith.EventStore.Contracts",
             "Hexalith.EventStore.Client",
             "Hexalith.EventStore.DomainService",
+            "Hexalith.EventStore.RestApi.Generators",
         }:
             run(["dotnet", "run", "--no-build", "--configuration", "Release", "--project", str(project_path)])
         assert_assets_use_packages(project_path, package.package_id, package.version)
+        if package.package_id == "Hexalith.EventStore.RestApi.Generators":
+            # Analyzer packages must still load in the supported .NET 10 compiler host.
+            # Newer Immutable metadata can build here on SDK 11 but fail consumers with CS8784.
+            (consumer_dir / "global.json").write_text(
+                json.dumps({"sdk": {"version": "10.0.403", "rollForward": "latestPatch"}}),
+                encoding="utf-8",
+            )
+            run(
+                ["dotnet", "build", str(project_path), "--no-restore", "--configuration", "Release",
+                 "-t:Rebuild", "-warnaserror", "-p:UseHexalithProjectReferences=false"],
+                cwd=consumer_dir,
+            )
 
 
 def validate_dotnet_tool_package(

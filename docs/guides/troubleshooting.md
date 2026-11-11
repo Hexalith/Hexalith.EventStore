@@ -130,7 +130,7 @@ Dapr sidecar is not responding on http://localhost:3500
 The current .NET SDK does not support targeting .NET 10.0. Either target .NET 9.0, or use a version of the .NET SDK that supports .NET 10.0.
 ```
 
-**Probable Cause:** The project requires .NET 10 SDK version 10.0.403 as specified in `global.json`. An older or incompatible SDK version is installed.
+**Probable Cause:** The project requires .NET 11 SDK version 11.0.100 as specified in `global.json`. An older or incompatible SDK version is installed. Applications and tests also require the .NET 10 ASP.NET Core runtime.
 
 **Resolution:**
 
@@ -145,19 +145,25 @@ The current .NET SDK does not support targeting .NET 10.0. Either target .NET 9.
     ```json
     {
       "sdk": {
-        "version": "10.0.403",
+        "version": "11.0.100",
         "rollForward": "latestPatch"
       }
     }
     ```
 
-3. If the required SDK is not installed, download it from the [.NET download page](https://dotnet.microsoft.com/download/dotnet/10.0).
+3. If the required SDK is not installed, download it from the [.NET download page](https://dotnet.microsoft.com/download/dotnet/11.0).
 
-4. Verify the correct SDK is active:
+4. Install the [.NET 10 ASP.NET Core runtime](https://dotnet.microsoft.com/download/dotnet/10.0) for applications and tests. Verify that both `Microsoft.NETCore.App 10.x` and `Microsoft.AspNetCore.App 10.x` appear:
+
+    ```bash
+    $ dotnet --list-runtimes
+    ```
+
+5. Verify the correct SDK is active:
 
     ```bash
     $ dotnet --version
-    # Expected: 10.0.403 or later patch in the same feature band
+    # Expected: 11.0.100 or later patch in the same feature band
     ```
 
 ### Sample Build Failure

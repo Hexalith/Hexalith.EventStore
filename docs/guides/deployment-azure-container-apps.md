@@ -4,7 +4,7 @@
 
 Deploy the Hexalith.EventStore sample application to Azure Container Apps with Azure-managed DAPR sidecars, Bicep infrastructure-as-code, and managed identity for secrets. This guide uses the .NET Aspire ACA publisher to generate Bicep modules, then adds DAPR configuration and Azure-native authentication for a production-ready cloud deployment. It is intended for operators and developers who have completed the [Docker Compose Deployment Guide](deployment-docker-compose.md) and [Kubernetes Deployment Guide](deployment-kubernetes.md) and want to run the system in Azure's serverless container platform.
 
-> **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — .NET 10 SDK, Aspire CLI, plus Azure-specific tools listed below
+> **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — .NET 11 SDK, Aspire CLI, plus Azure-specific tools listed below
 
 ## What You Already Know
 
@@ -113,7 +113,7 @@ Before starting, ensure you have the following:
 
 - **Azure subscription** — with Contributor role on the target resource group
 - **Azure CLI** — version 2.60 or later (`az --version` to check)
-- **.NET 10 SDK** — version 10.0.403 or later patch in the same feature band (`dotnet --version` to check)
+- **.NET 11 SDK** — version 11.0.100 or later patch in the same feature band, plus the .NET 10 ASP.NET Core runtime (`dotnet --version` to check)
 - **Aspire CLI** — install as a global tool if not already present:
 
     ```bash

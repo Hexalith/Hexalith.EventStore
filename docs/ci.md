@@ -632,6 +632,8 @@ checks.
 
 For package validation, run the same shared-CI entry points locally:
 
+Install SDK 11 from `global.json` and a .NET 10.0.4xx SDK (10.0.403 or a later patch) before running the full package-consumer checks. The extra SDK verifies that the published REST generator still loads and emits its manifest in the supported .NET 10 compiler host.
+
 ```bash
 python3 scripts/pack-release-packages.py /tmp/hexalith-eventstore-ci-packages 0.0.0-ci-test
 python3 scripts/validate-nuget-packages.py /tmp/hexalith-eventstore-ci-packages

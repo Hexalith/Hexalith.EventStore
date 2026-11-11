@@ -4,7 +4,7 @@
 
 Deploy the Hexalith.EventStore sample application to a Kubernetes cluster with DAPR operator-managed sidecars and Helm chart manifests. This guide uses the .NET Aspire Kubernetes publisher to generate Helm charts, then adds DAPR annotations, CRD-based components, and Kubernetes Secrets for a production-ready deployment. It is intended for operators and developers who have completed the [Docker Compose Deployment Guide](deployment-docker-compose.md) and want to run the system in a Kubernetes environment.
 
-> **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — .NET 10 SDK, DAPR CLI, Aspire CLI, plus Kubernetes-specific tools listed below
+> **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — .NET 11 SDK, DAPR CLI, Aspire CLI, plus Kubernetes-specific tools listed below
 
 ## What You Already Know
 
@@ -111,7 +111,7 @@ Before starting, ensure you have the following installed:
     - **AKS** (Azure Kubernetes Service)
     - **EKS** (Amazon Elastic Kubernetes Service)
     - **GKE** (Google Kubernetes Engine)
-- **.NET 10 SDK** — version 10.0.403 or later patch in the same feature band (`dotnet --version` to check)
+- **.NET 11 SDK** — version 11.0.100 or later patch in the same feature band, plus the .NET 10 ASP.NET Core runtime (`dotnet --version` to check)
 - **Aspire CLI** — install as a global tool if not already present:
 
     ```bash

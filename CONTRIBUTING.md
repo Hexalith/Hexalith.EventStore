@@ -93,7 +93,8 @@ For detailed installation instructions for each tool, see the [Prerequisites](do
 
 ### Required Tools
 
-- **.NET 10 SDK** (10.0.403 or later patch in the same feature band)
+- **.NET 11 SDK** (11.0.100 or later patch in the same feature band) and the .NET 10 ASP.NET Core runtime
+- **.NET 10 SDK** (10.0.403 or later patch in the 10.0.4xx feature band) for the full package-consumer compatibility checks; normal repository builds use SDK 11.
 - **Node.js** (`^22.14.0` or `>=24.10.0`) and **npm** (for repository tooling
   and Git hook installation)
 - **Docker Desktop** (for local DAPR infrastructure)

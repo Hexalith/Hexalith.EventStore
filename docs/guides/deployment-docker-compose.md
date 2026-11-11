@@ -4,7 +4,7 @@
 
 Deploy the Hexalith.EventStore sample application to Docker Compose for a production-like topology on your local machine. This guide uses the .NET Aspire publisher to generate Docker Compose manifests, then adds DAPR sidecars for full event sourcing functionality. It is intended for operators and developers who have completed the [Quickstart Guide](../getting-started/quickstart.md) and want to run the system outside the local Aspire topology.
 
-> **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — Docker Desktop, .NET 10 SDK, DAPR CLI, Aspire CLI
+> **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — Docker Desktop, .NET 11 SDK, DAPR CLI, Aspire CLI
 
 ## What You'll Deploy
 
@@ -62,7 +62,7 @@ All containers run within the Docker Compose network boundary.
 Before starting, ensure you have the following installed:
 
 - **Docker Desktop** — running with at least 4 GB of memory allocated
-- **.NET 10 SDK** — version 10.0.403 or later patch in the same feature band (`dotnet --version` to check)
+- **.NET 11 SDK** — version 11.0.100 or later patch in the same feature band, plus the .NET 10 ASP.NET Core runtime (`dotnet --version` to check)
 - **DAPR CLI** — version 1.14 or later (`dapr --version` to check)
 - **Aspire CLI** — install as a global tool if not already present:
 

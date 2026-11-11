@@ -131,4 +131,10 @@
     </ItemGroup>
   </Target>
 
+  <!-- Package consumers need the same generator selection as source-catalog builds. -->
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)buildTransitive/Hexalith.EventStore.Logging.targets"
+          Pack="true" PackagePath="buildTransitive/$(MSBuildProjectName).targets" Visible="false" />
+  </ItemGroup>
+
 </Project>
