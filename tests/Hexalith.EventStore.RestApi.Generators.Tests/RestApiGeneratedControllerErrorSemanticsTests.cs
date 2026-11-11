@@ -33,7 +33,9 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     public async Task QueryAction_ArgumentException_ReturnsFixedSafeBadRequest()
     {
         RestApiGeneratedController controller = CreateController();
-        controller.Gateway.QueryHandler = static (_, _, _) => throw new ArgumentException("password=private-value /home/private/records\nAuthorization: Bearer hidden");
+        string privateValue = Guid.NewGuid().ToString("N");
+        string privateDetail = $"password={privateValue} /home/private/records\nAuthorization: Bearer {privateValue}";
+        controller.Gateway.QueryHandler = (_, _, _) => throw new ArgumentException(privateDetail);
 
         IActionResult result = await InvokeQueryAsync(controller).ConfigureAwait(true);
 

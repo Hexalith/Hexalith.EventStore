@@ -781,6 +781,7 @@ public sealed partial class SecretsProtectionTests
     /// <summary>State-address and protocol fixtures require their exact reviewed source context.</summary>
     [Theory]
     [InlineData("tests/Hexalith.EventStore.Server.Tests/Security/GovernanceGuardFixture.cs", 42)]
+    [InlineData("tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/KubernetesCryptoFixture.cs", 56)]
     public void FixtureAssignmentRecognition_RequiresExactContext(string path, int lineNumber)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -1290,6 +1291,7 @@ public sealed partial class SecretsProtectionTests
         return (path, assignment.Groups["name"].Value, lineHash) switch
         {
             ("tests/Hexalith.EventStore.Server.Tests/Security/GovernanceGuardFixture.cs", "token", "f26481a946a1ce2f8b4dc68ded2466a055e5abf0466bea4ead8f5bb5c0a3cb03") => true,
+            ("tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/KubernetesCryptoFixture.cs", "maximumSecret", "ca3908d9e3189dfffdb03af8135ad5a34e2dfe7da5737f25de925bea35828f08") => true,
             _ => false,
         };
     }
@@ -2738,6 +2740,13 @@ public sealed partial class SecretsProtectionTests
             return true;
         }
 
+        Match emptyFallback = CSharpEmptyFallbackPattern().Match(value);
+        if (emptyFallback.Success
+            && CSharpReferenceExpressionPattern().IsMatch(emptyFallback.Groups["reference"].Value.TrimEnd()))
+        {
+            return true;
+        }
+
         if (!value.Contains('(')
             && CSharpRuntimeReferencePattern().IsMatch(CSharpLiteralPattern().Replace(value, string.Empty)))
         {
@@ -3148,6 +3157,11 @@ public sealed partial class SecretsProtectionTests
                     braceDepth++;
                     break;
                 case '}':
+                    if (parenthesisDepth == 0 && bracketDepth == 0 && braceDepth == 0)
+                    {
+                        return content[start..index].Trim();
+                    }
+
                     braceDepth = Math.Max(0, braceDepth - 1);
                     break;
                 case ';' when parenthesisDepth == 0 && bracketDepth == 0 && braceDepth == 0:
@@ -3524,6 +3538,9 @@ public sealed partial class SecretsProtectionTests
 
     [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*(?:\?*\.[A-Za-z_][A-Za-z0-9_]*)*(?:\[[^\]\r\n]+\])?$", RegexOptions.CultureInvariant)]
     private static partial Regex CSharpReferenceExpressionPattern();
+
+    [GeneratedRegex(@"\A(?<reference>.+?)\s*\?\?\s*""""\z", RegexOptions.CultureInvariant)]
+    private static partial Regex CSharpEmptyFallbackPattern();
 
     [GeneratedRegex(@"(?:RandomNumberGenerator\.GetBytes|Guid\.NewGuid|Convert\.ToBase64String\s*\(\s*RandomNumberGenerator\.GetBytes)", RegexOptions.CultureInvariant)]
     private static partial Regex CSharpCryptographicGenerationPattern();

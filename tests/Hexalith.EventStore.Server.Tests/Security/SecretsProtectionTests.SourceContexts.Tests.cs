@@ -7,6 +7,43 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>Proves source recognition cannot conceal substituted or adjacent credentials.</summary>
 public sealed partial class SecretsProtectionTests
 {
+    /// <summary>Initializer boundaries preserve runtime references without concealing literal or adjacent credentials.</summary>
+    [Fact]
+    public void SourceContexts_CSharpInitializerBoundariesRetainCredentialChecks()
+    {
+        const string path = "tests/initializer.cs";
+        string field = "Api" + "Token";
+        string credential = RandomSecret();
+        FindViolations(path, "var settings = new Options { " + field + " = suppliedToken };").ShouldBeEmpty();
+        FindViolations(path, "var settings = new Options { " + field + " = values.ApiToken };").ShouldBeEmpty();
+        foreach (string expression in new[] { JsonSerializer.Serialize(credential), "suppliedToken + " + JsonSerializer.Serialize(credential) })
+        {
+            FindViolations(path, "var settings = new Options { " + field + " = " + expression + " };")
+                .ShouldBe([path + ":1"]);
+        }
+        FindViolations(path, "var settings = new Options { " + field + " = suppliedToken };\n"
+            + Assignment("pass" + "word", JsonSerializer.Serialize(credential))).ShouldBe([path + ":2"]);
+    }
+
+    /// <summary>Only an existing runtime reference may use an empty null-coalescing fallback.</summary>
+    [Fact]
+    public void SourceContexts_CSharpEmptyFallbackCannotConcealLiteralOperands()
+    {
+        const string path = "tests/fallback.cs";
+        string field = "Api" + "Token";
+        foreach (string reference in new[] { "apiToken", "settings.ApiToken", "tokens[0]" })
+        {
+            FindViolations(path, "[\"" + field + "\"] = " + reference + " ?? \"\",").ShouldBeEmpty();
+        }
+        string credential = JsonSerializer.Serialize(RandomSecret());
+        foreach (string expression in new[] { "apiToken ?? " + credential, credential + " ?? \"\"", "apiToken + " + credential + " ?? \"\"" })
+        {
+            FindViolations(path, "[\"" + field + "\"] = " + expression + ",").ShouldBe([path + ":1"]);
+        }
+        FindViolations(path, "[\"" + field + "\"] = apiToken ?? \"\",\n"
+            + Assignment("pass" + "word", credential)).ShouldBe([path + ":2"]);
+    }
+
     /// <summary>Decoded JSON keys and content keep JSON credential semantics despite a claimed language.</summary>
     [Fact]
     public void SourceContexts_JsonCredentialMeaningSurvivesEscapedKeysAndClaimedSourceLanguage()
