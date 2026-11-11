@@ -17,6 +17,29 @@ v = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(v)
 
 
+class TrustedRuntimeResolverSdkTests(unittest.TestCase):
+    def test_selects_latest_complete_stable_sdk10_without_using_sdk11(self):
+        with tempfile.TemporaryDirectory(prefix='protection-runtime-sdk-') as temporary:
+            root = Path(temporary)
+            for version in ('10.0.403', '10.0.404', '10.0.500-preview.1', '11.0.100'):
+                sdk = root / 'sdk' / version
+                sdk.mkdir(parents=True)
+                (sdk / 'Microsoft.NET.HostModel.dll').touch()
+            (root / 'sdk/10.0.999').mkdir()
+            self.assertEqual('10.0.404', v.trusted_runtime_resolver_sdk(root / 'dotnet'))
+
+    def test_refuses_sdk11_only_installation_before_starting_a_process(self):
+        with tempfile.TemporaryDirectory(prefix='protection-runtime-sdk-') as temporary:
+            root = Path(temporary)
+            sdk = root / 'sdk/11.0.100'
+            sdk.mkdir(parents=True)
+            (sdk / 'Microsoft.NET.HostModel.dll').touch()
+            with patch.object(v, '_RUNTIME_RESOLVER', None), patch.object(v.shutil, 'which', return_value=str(root / 'dotnet')), \
+                    patch.object(v.subprocess, 'run', side_effect=AssertionError('No SDK11 fallback may run')), \
+                    self.assertRaisesRegex(v.Blocked, 'TRUSTED_RUNTIME_RESOLVER_UNAVAILABLE'):
+                v.resolved_application_assets(root / 'Role.dll', root / 'dotnet', root / 'apphost')
+
+
 class PairedCheckoutPreflightTests(unittest.TestCase):
     def test_actual_paired_preflight_requires_clean_exact_reachable_revisions(self):
         with tempfile.TemporaryDirectory(prefix='protection-paired-checkout-') as temp:
@@ -69,14 +92,17 @@ class ShippedRoleClosureTests(unittest.TestCase):
         for role in v.ROLE_NAMES:
             assembly = 'Hexalith.Platform.Protection.Qualification.' + role.capitalize()
             project = cls.platform / 'src' / assembly / (assembly + '.csproj')
-            output = cls.platform / 'src' / assembly / 'bin/Debug/net10.0'
-            if not (output / assembly).is_file():
-                command = [str(cls.host), 'build', str(project), '-c', 'Debug', '-m:1', '-nodeReuse:false', '-p:UseHexalithProjectReferences=true', '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-p:HexalithEventStoreRoot=' + str(ROOT)]
-                for name in ('HexalithCommonsRoot', 'HexalithTenantsBasePath'):
-                    if os.environ.get(name): command.append('-p:' + name + '=' + os.environ[name])
-                source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
-                built = subprocess.run(command, env=source_build_env, capture_output=True, text=True, timeout=300)
-                if built.returncode: raise AssertionError(built.stdout + built.stderr)
+            output = cls.directory / 'build' / role
+            # Qualification rejects runtimeconfig.dev.json; SDK 11's Debug hot reload
+            # defaults must not introduce one or reuse a stale shared build layout.
+            command = [str(cls.host), 'build', str(project), '-c', 'Debug', '-o', str(output), '-m:1', '-nodeReuse:false',
+                       '-p:UseHexalithProjectReferences=true', '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false',
+                       '-p:EnableHotReloadInRuntimeConfigDevFile=false', '-p:HexalithEventStoreRoot=' + str(ROOT)]
+            for name in ('HexalithCommonsRoot', 'HexalithTenantsBasePath'):
+                if os.environ.get(name): command.append('-p:' + name + '=' + os.environ[name])
+            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
+            built = subprocess.run(command, env=source_build_env, capture_output=True, text=True, timeout=300)
+            if built.returncode: raise AssertionError(built.stdout + built.stderr)
             installed = cls.directory / role; shutil.copytree(output, installed)
             key, public = installed / 'private-test.pem', installed / 'public.pem'
             subprocess.run(['openssl', 'ecparam', '-name', 'prime256v1', '-genkey', '-noout', '-out', str(key)], check=True, capture_output=True)

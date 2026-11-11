@@ -219,18 +219,30 @@ def validate_profile(path, record, plan_sha):
 _RUNTIME_RESOLVER = None
 
 
+def trusted_runtime_resolver_sdk(host):
+    """Keep the net10 resolver and its SDK-owned HostModel on the same trusted framework."""
+    candidates = [path for path in (Path(host).resolve().parent / 'sdk').glob('10.0.*')
+                  if re.fullmatch(r'10\.0\.\d+', path.name) and (path / 'Microsoft.NET.HostModel.dll').is_file()]
+    if not candidates:
+        raise Blocked('TRUSTED_RUNTIME_RESOLVER_UNAVAILABLE')
+    return max(candidates, key=lambda path: tuple(map(int, path.name.split('.')))).name
+
+
 def resolved_application_assets(entry, host, template):
     """Runs only the trusted owner-checkout resolver, never a role or its entry assembly."""
     global _RUNTIME_RESOLVER
     if _RUNTIME_RESOLVER is None:
+        build_host = Path(shutil.which('dotnet')).resolve()
+        sdk = trusted_runtime_resolver_sdk(build_host)
         directory = Path(tempfile.mkdtemp(prefix='ext-protection-runtime-resolver-'))
         atexit.register(shutil.rmtree, directory, ignore_errors=True)
+        (directory / 'global.json').write_bytes(canonical({'sdk': {'version': sdk, 'rollForward': 'disable', 'allowPrerelease': False}}))
         source = ROOT / 'tools/ext-protection-1/runtime-closure'
         project = directory / 'RuntimeClosure.csproj'
         shutil.copyfile(source / 'RuntimeClosure.csproj', project)
         shutil.copyfile(source / 'Program.cs', directory / 'Program.cs')
-        build = subprocess.run([str(Path(shutil.which('dotnet')).resolve()), 'build', str(project), '-c', 'Debug', '-nodeReuse:false', '--nologo', '-o', str(directory / 'out')],
-                               capture_output=True, timeout=120, env={'PATH': os.defpath, 'LANG': 'C.UTF-8', 'DOTNET_CLI_TELEMETRY_OPTOUT': '1'})
+        build = subprocess.run([str(build_host), 'build', str(project), '-c', 'Debug', '-nodeReuse:false', '--nologo', '-o', str(directory / 'out')],
+                               cwd=directory, capture_output=True, timeout=120, env={'PATH': os.defpath, 'LANG': 'C.UTF-8', 'DOTNET_CLI_TELEMETRY_OPTOUT': '1'})
         if build.returncode:
             raise Blocked('TRUSTED_RUNTIME_RESOLVER_UNAVAILABLE')
         _RUNTIME_RESOLVER = directory / 'out/RuntimeClosure.dll'
