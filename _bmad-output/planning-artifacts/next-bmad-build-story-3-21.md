@@ -1,10 +1,20 @@
 # Next bmad-build prompt: Story 3.21 local failure diagnosis
 
+> **Approved and stopped 2026-11-11:** The owner explicitly authorized reopening
+> broker remediation under Platform's ownership. The next bounded work is the
+> [Platform configuration input slice](../implementation-artifacts/spec-3-21-platform-broker-configuration-input.md),
+> approved with “approve and stop” and now `ready-for-dev`. Implementation has
+> not started; resume that spec directly with `bmad-build`. Platform's
+> November 10 dispositions identify the harness input restriction as the first
+> dependency. The refresh remains closed and ES-DIAG remains superseded; do not
+> execute the historical prompt below. Platform execution requires its accepted
+> scope. All five rejected guarantees and parent gates remain open.
+
 > **Superseded 2026-11-09 — do not run this prompt.** ES-DIAG was superseded by
 > the closed [Dapr 1.19.1 refresh slice](../implementation-artifacts/spec-3-21-latest-stable-dapr-runtime-refresh.md)
 > and was never implemented. The parent
 > [Story 3.21 spec](../implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md)
-> records the current state. No EventStore build slice is open. The parent waits
+> records the current state. At that closure, no EventStore build slice was open. The parent waits
 > on Platform, Builds, AD-26 and Story 4.16. Broker remediation is an optional
 > `deferred-work.md` item that needs an explicit owner go-ahead. The text below
 > is historical.
