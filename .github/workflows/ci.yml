@@ -62,9 +62,10 @@ jobs:
         run: python3 scripts/verify-process-packages.py
 
   ci:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@fb027a87afcdf7661c8f80ade89231b7730b60d1
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@6e77e79e8914a375b0c43b0af3bd142405675ecd
     with:
       solution: Hexalith.EventStore.slnx
+      additional-sdk-version: '10.0.x'
       module-manifest: module/hexalith.module-manifest.v2.json
       integration-test-profiles: platform-package
       integration-test-reference-owners: tenants
