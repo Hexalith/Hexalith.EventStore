@@ -79,13 +79,13 @@ public sealed partial class SecretsProtectionTests
         FindViolations("evidence/unregistered.txt", original).ShouldNotBeEmpty();
         FindViolations(path, original + " ").ShouldNotBeEmpty();
 
-        string credential = Assignment("pass" + "word", JsonSerializer.Serialize(RandomSecret()));
+        string probeAssignment = Assignment("pass" + "word", JsonSerializer.Serialize(RandomSecret()));
         string[] changed = original.Split('\n');
-        changed[lineNumber - 1] += "; " + credential;
+        changed[lineNumber - 1] += "; " + probeAssignment;
         FindViolations(path, string.Join('\n', changed)).ShouldContain(path + ":" + lineNumber);
 
         var adjacent = original.Split('\n').ToList();
-        adjacent.Insert(lineNumber, credential);
+        adjacent.Insert(lineNumber, probeAssignment);
         FindViolations(path, string.Join('\n', adjacent)).ShouldContain(path + ":" + (lineNumber + 1));
 
         string[] moved = original.Split('\n');
