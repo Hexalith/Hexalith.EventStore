@@ -37,6 +37,7 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+          dotnet-version: 10.0.x
       - name: Build adapter unit tests
         run: dotnet build tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false
       - name: Run adapter unit tests
@@ -86,6 +87,7 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+          dotnet-version: 10.0.x
       - name: Load exact separately approved authority
         env:
           AUTHORITY_JSON: ${{ secrets.PAYLOAD_AZURE_AUTHORITY_JSON }}

@@ -2,17 +2,17 @@
 
 # Prerequisites
 
-Before you start the quickstart, you need three tools installed: the .NET 10 SDK to build and run the application, Docker Desktop to provide local infrastructure containers, and the DAPR CLI to manage the infrastructure abstraction layer that Hexalith.EventStore uses for state storage, messaging, and actor management.
+Before you start the quickstart, you need three tools installed: the pinned .NET 11 SDK to build the application and the .NET 10 runtime to run it, Docker Desktop to provide local infrastructure containers, and the DAPR CLI to manage the infrastructure abstraction layer that Hexalith.EventStore uses for state storage, messaging, and actor management.
 
-## .NET 10 SDK
+## .NET 11 SDK and .NET 10 runtime
 
-Hexalith.EventStore targets .NET 10. You need the .NET 10 SDK (version 10.0.403 or later patch in the same feature band) to build and run the project.
+Hexalith.EventStore targets .NET 10. Install the .NET SDK pinned in `global.json` (11.0.100, with `latestPatch` roll-forward) to build the project. Also install the .NET 10 ASP.NET Core runtime to run its applications and tests; the .NET 11 SDK alone does not supply that runtime.
 
 **Install:** Use the official installation guidance for your platform:
 
-- [Windows (.NET 10)](https://learn.microsoft.com/en-us/dotnet/core/install/windows?tabs=net10)
-- [macOS (.NET 10)](https://learn.microsoft.com/en-us/dotnet/core/install/macos?tabs=net10)
-- [Linux (.NET 10)](https://learn.microsoft.com/en-us/dotnet/core/install/linux?tabs=net10)
+- [Windows (.NET 11 SDK)](https://learn.microsoft.com/en-us/dotnet/core/install/windows?tabs=net11)
+- [macOS (.NET 11 SDK)](https://learn.microsoft.com/en-us/dotnet/core/install/macos?tabs=net11)
+- [Linux (.NET 11 SDK)](https://learn.microsoft.com/en-us/dotnet/core/install/linux?tabs=net11)
 
 **Verify installation:**
 
@@ -20,7 +20,15 @@ Hexalith.EventStore targets .NET 10. You need the .NET 10 SDK (version 10.0.403 
 $ dotnet --version
 ```
 
-Expected output: `10.0.403` or later patch in the same feature band.
+Expected output: `11.0.100` or a later patch in the same feature band.
+
+Install the [.NET 10 ASP.NET Core runtime](https://dotnet.microsoft.com/download/dotnet/10.0), then verify it separately:
+
+```bash
+$ dotnet --list-runtimes
+```
+
+The output must include both `Microsoft.NETCore.App 10.x` and `Microsoft.AspNetCore.App 10.x`.
 
 ## .NET Aspire CLI
 
@@ -150,7 +158,7 @@ You should see `dapr_placement`, `dapr_redis`, and `dapr_zipkin` listed as runni
 Run these commands to confirm everything is set up correctly:
 
 ```bash
-$ dotnet --version    # 10.0.403 or later patch in the same feature band
+$ dotnet --version    # 11.0.100 or later patch in the same feature band
 $ aspire --version    # Version string (e.g., 9.2.0)
 $ docker --version    # Output starts with "Docker version"
 $ docker info         # Returns Docker server information (daemon running)
@@ -172,7 +180,7 @@ If `docker info` returns an error, start Docker Desktop from your applications m
 
 ### .NET SDK version mismatch
 
-If `dotnet --version` fails to resolve the SDK or shows a version earlier than `10.0.403`, install SDK `10.0.403` or a later compatible patch in the `10.0.4xx` feature band from the [.NET 10 download page](https://dotnet.microsoft.com/en-us/download/dotnet/10.0). Multiple SDK versions can coexist on the same machine.
+If `dotnet --version` fails to resolve the SDK or shows a version earlier than `11.0.100`, install SDK `11.0.100` or a later compatible patch in the `11.0.1xx` feature band from the [.NET 11 download page](https://dotnet.microsoft.com/en-us/download/dotnet/11.0). Multiple SDK versions can coexist on the same machine.
 
 ### Windows: WSL 2 not enabled
 

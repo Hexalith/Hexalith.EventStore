@@ -16,7 +16,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
-using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 
 namespace Hexalith.EventStore.RestApi.Generators.Tests;
@@ -160,7 +159,9 @@ internal static class RestApiGeneratorTestHarness
         AddReference(paths, typeof(TagsAttribute).Assembly);
         AddReference(paths, typeof(IHeaderDictionary).Assembly);
         AddReference(paths, typeof(AuthorizeAttribute).Assembly);
-        AddReference(paths, typeof(StringValues).Assembly);
+        // Compile controller sources against the Primitives assembly shipped beside their
+        // ASP.NET framework metadata, rather than the test runner's newer package assembly.
+        paths.Add(Path.Combine(Path.GetDirectoryName(typeof(IHeaderDictionary).Assembly.Location)!, "Microsoft.Extensions.Primitives.dll"));
         AddReference(paths, typeof(MediaTypeHeaderValue).Assembly);
 
         AddRuntimeAssembly(paths, "netstandard.dll");

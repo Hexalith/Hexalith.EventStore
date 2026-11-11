@@ -27,7 +27,7 @@ public sealed class DomainServiceTerminalRefusalOptionsTests
     [InlineData("RPD", true)]
     [InlineData("RDP", false)]
     [InlineData("RDP", true)]
-    public void ProcessExplicitConfigurationKeepsItsExistingPrecedenceInEveryRegistrationOrder(string order, bool configureAfter)
+    public async Task ProcessExplicitConfigurationKeepsItsExistingPrecedenceInEveryRegistrationOrder(string order, bool configureAfter)
     {
         ArgumentNullException.ThrowIfNull(order);
         var builder = WebApplication.CreateBuilder();
@@ -57,7 +57,7 @@ public sealed class DomainServiceTerminalRefusalOptionsTests
         actual.MaxCommandBytesPerEnvelope.ShouldBe(configureAfter ? 64 : 96);
         actual.OperationTimeout.ShouldBe(TimeSpan.FromMilliseconds(configureAfter ? 350 : 400));
         actual.LeaseDuration.ShouldBe(TimeSpan.FromSeconds(configureAfter ? 100 : 90));
-        provider.GetRequiredService<IStartupValidator>().Validate();
+        await provider.GetRequiredService<IAsyncStartupValidator>().ValidateAsync(TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -65,7 +65,7 @@ public sealed class DomainServiceTerminalRefusalOptionsTests
     [InlineData("DR", true)]
     [InlineData("RD", false)]
     [InlineData("RD", true)]
-    public void WithoutProcessesExplicitOptionsWinBeforeOrAfterDomainAndRefusalRegistration(string order, bool configureAfter)
+    public async Task WithoutProcessesExplicitOptionsWinBeforeOrAfterDomainAndRefusalRegistration(string order, bool configureAfter)
     {
         ArgumentNullException.ThrowIfNull(order);
         var builder = WebApplication.CreateBuilder();
@@ -87,7 +87,7 @@ public sealed class DomainServiceTerminalRefusalOptionsTests
         options.OperationTimeout.ShouldBe(TimeSpan.FromMilliseconds(350));
         options.LeaseDuration.ShouldBe(TimeSpan.FromSeconds(100));
         provider.GetService<CheckpointedProcessRunner>().ShouldBeNull();
-        provider.GetRequiredService<IStartupValidator>().Validate();
+        await provider.GetRequiredService<IAsyncStartupValidator>().ValidateAsync(TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -156,7 +156,7 @@ public sealed class DomainServiceTerminalRefusalOptionsTests
         using var provider = services.BuildServiceProvider();
         provider.GetRequiredService<IOptions<EventStoreProcessOptions>>().Value.MaxCommandBytesPerEnvelope.ShouldBe(0);
         provider.GetServices<DomainServiceTerminalRefusalRule>().ShouldBeEmpty();
-        provider.GetService<IStartupValidator>().ShouldBeNull();
+        provider.GetService<IAsyncStartupValidator>().ShouldBeNull();
     }
 
     private static void ConfigureSection(IConfiguration configuration)
