@@ -528,12 +528,16 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         long epoch = -1;
         long attemptedGeneration = -1;
         try {
-            await _membershipGate.WaitAsync(token).ConfigureAwait(false);
-            acquired = true;
-            if (_connection.State != HubConnectionState.Connected) { return; }
-            epoch = Interlocked.Read(ref _connectionEpoch);
-            if (Interlocked.Read(ref _connectionRecoveryEpoch) >= 0) {
-                throw new TimeoutException("The original projection connection must terminate before membership can resume.");
+            while (true) {
+                await _membershipGate.WaitAsync(token).ConfigureAwait(false);
+                acquired = true;
+                if (_connection.State != HubConnectionState.Connected) { return; }
+                epoch = Interlocked.Read(ref _connectionEpoch);
+                if (Interlocked.Read(ref _connectionRecoveryEpoch) < 0) { break; }
+                _membershipGate.Release();
+                acquired = false;
+                await RecoverPhysicalConnectionAsync(token).ConfigureAwait(false);
+                // Reacquisition and reconciliation retain this attempt's original deadline.
             }
             if (_membershipEpoch != epoch || _membershipConnectionId != _connection.ConnectionId) {
                 _membershipEpoch = epoch;
@@ -615,6 +619,9 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
                         }
                         catch {
                             _legacyUncertainGroups.Add(name);
+                            // No legacy acknowledgement can fence a still-running canceled RPC.
+                            // Retire this transport before any later operation can claim convergence.
+                            Interlocked.Exchange(ref _connectionRecoveryEpoch, epoch);
                             throw;
                         }
                     }
@@ -747,8 +754,8 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         return Task.CompletedTask;
     }
 
-    private async Task RecoverPhysicalConnectionAsync() {
-        using var attempt = CancellationTokenSource.CreateLinkedTokenSource(_disposeCts.Token);
+    private async Task RecoverPhysicalConnectionAsync(CancellationToken cancellationToken = default) {
+        using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
         attempt.CancelAfter(MembershipAttemptBudget);
         await _membershipGate.WaitAsync(attempt.Token).ConfigureAwait(false);
         try {

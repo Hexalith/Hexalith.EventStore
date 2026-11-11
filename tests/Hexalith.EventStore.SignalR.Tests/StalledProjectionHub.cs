@@ -5,13 +5,30 @@ namespace Hexalith.EventStore.SignalR.Tests;
 /// <summary>A real transport hub whose group acknowledgement can be held by a test.</summary>
 public sealed class StalledProjectionHub(StalledProjectionRpc control) : Hub
 {
+    /// <inheritdoc />
+    public override async Task OnConnectedAsync()
+    {
+        await control.Connections.Writer.WriteAsync(Context.ConnectionId).ConfigureAwait(false);
+        await base.OnConnectedAsync().ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        await control.Disconnections.Writer.WriteAsync(Context.ConnectionId).ConfigureAwait(false);
+        await base.OnDisconnectedAsync(exception).ConfigureAwait(false);
+    }
+
     /// <summary>Holds a join acknowledgement until explicitly released.</summary>
     public async Task JoinGroup(string projectionType, string tenantId)
     {
-        control.JoinEntered.TrySetResult();
-        await control.ReleaseJoin.Task.ConfigureAwait(false);
+        if (control.HoldJoins && (control.HeldProjectionType is null || control.HeldProjectionType == projectionType))
+        {
+            control.JoinEntered.TrySetResult();
+            await control.ReleaseJoin.Task.ConfigureAwait(false);
+        }
         await Groups.AddToGroupAsync(Context.ConnectionId, $"{projectionType}:{tenantId}").ConfigureAwait(false);
-        control.JoinFinished.TrySetResult();
+        await control.JoinFinished.Writer.WriteAsync((Context.ConnectionId, $"{projectionType}:{tenantId}")).ConfigureAwait(false);
     }
 
     /// <summary>Holds a leave acknowledgement until explicitly released.</summary>

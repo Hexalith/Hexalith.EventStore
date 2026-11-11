@@ -998,6 +998,50 @@ public class EventStoreSignalRClientTests {
         finally { release.Set(); await Task.WhenAll(left, right); }
     }
 
+    private static async Task AwaitJoinCompletionAsync(StalledProjectionRpc control, string connectionId, string group)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        while (await control.JoinFinished.Reader.ReadAsync(timeout.Token).ConfigureAwait(true) != (connectionId, group)) { }
+    }
+
+    /// <summary>Caller cancellation still settles while inline physical recovery is waiting for a replacement transport.</summary>
+    [Fact]
+    public async Task InlineRecoveryHonorsCallerCancellationDuringReplacementNegotiation()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int negotiations = 0;
+        var control = new StalledProjectionRpc { HoldJoins = false };
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0"); builder.Services.AddSignalR(); builder.Services.AddSingleton(control);
+        await using WebApplication app = builder.Build();
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.Value?.EndsWith("/negotiate", StringComparison.Ordinal) == true && Interlocked.Increment(ref negotiations) == 2)
+            { entered.TrySetResult(); await release.Task.ConfigureAwait(false); }
+            await next(context).ConfigureAwait(false);
+        });
+        app.MapHub<StalledProjectionHub>("/hub");
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        string address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        await using var client = new EventStoreSignalRClient(new EventStoreSignalRClientOptions { HubUrl = address + "/hub" });
+        using var caller = new CancellationTokenSource();
+        try
+        {
+            await client.StartAsync(TestContext.Current.CancellationToken);
+            string original = await control.Connections.Reader.ReadAsync(TestContext.Current.CancellationToken);
+            long epoch = (long)typeof(EventStoreSignalRClient).GetField("_connectionEpoch", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(client)!;
+            typeof(EventStoreSignalRClient).GetField("_connectionRecoveryEpoch", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(client, epoch);
+            Task subscribe = client.SubscribeAsync("counter", "acme", () => { }, caller.Token);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await caller.CancelAsync();
+            await Should.ThrowAsync<OperationCanceledException>(() => subscribe.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+            (await control.Disconnections.Reader.ReadAsync(TestContext.Current.CancellationToken)).ShouldBe(original);
+        }
+        finally { release.TrySetResult(); await client.DisposeAsync(); await app.StopAsync(TestContext.Current.CancellationToken); }
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -1067,13 +1111,17 @@ public class EventStoreSignalRClientTests {
             calls.ShouldBe(0);
             control.ReleaseJoin.TrySetResult();
             control.ReleaseLeave.TrySetResult();
-            await (leave ? control.LeaveFinished.Task : control.JoinFinished.Task)
-                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            string originalConnection = await control.Connections.Reader.ReadAsync(TestContext.Current.CancellationToken);
+            if (leave) { await control.LeaveFinished.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); }
+            else { await AwaitJoinCompletionAsync(control, originalConnection, detail ? "counter:acme:party-1" : "counter:acme"); }
             InvokeProjectionChanged(client, "counter", "acme");
             InvokeProjectionChangedDetail(client, "counter", "acme", "party-1", new Dictionary<string, string>());
             calls.ShouldBe(0);
-            var uncertain = (IReadOnlyCollection<string>)typeof(EventStoreSignalRClient).GetField("_legacyUncertainGroups", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(client)!;
-            uncertain.ShouldContain(detail ? "counter:acme:party-1" : "counter:acme");
+            string replacement = await control.Connections.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            replacement.ShouldNotBe(originalConnection);
+            (await control.Disconnections.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBe(originalConnection);
         }
         finally
         {
@@ -1092,7 +1140,7 @@ public class EventStoreSignalRClientTests {
     [InlineData(true)]
     public async Task CancelledJoinPreservesAnotherSubscriberInTheSameGroup(bool detail)
     {
-        var control = new StalledProjectionRpc();
+        var control = new StalledProjectionRpc { HoldJoins = false, HeldProjectionType = "counter" };
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Services.AddSignalR();
@@ -1107,9 +1155,16 @@ public class EventStoreSignalRClientTests {
         int revokedCalls = 0;
         int survivingCalls = 0;
         var received = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var independentReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int independentCalls = 0;
         try
         {
             await client.StartAsync(TestContext.Current.CancellationToken);
+            if (detail) { await client.SubscribeDetailAsync("independent", "acme", "party-2", _ => { Interlocked.Increment(ref independentCalls); independentReceived.TrySetResult(); }, TestContext.Current.CancellationToken); }
+            else { await client.SubscribeAsync("independent", "acme", () => { Interlocked.Increment(ref independentCalls); independentReceived.TrySetResult(); }, TestContext.Current.CancellationToken); }
+            string originalConnection = await control.Connections.Reader.ReadAsync(TestContext.Current.CancellationToken);
+            await AwaitJoinCompletionAsync(control, originalConnection, detail ? "independent:acme:party-2" : "independent:acme");
+            control.HoldJoins = true;
             Task cancelled = detail
                 ? client.SubscribeDetailAsync("counter", "acme", "party-1", _ => revokedCalls++, cancellation.Token)
                 : client.SubscribeAsync("counter", "acme", () => revokedCalls++, cancellation.Token);
@@ -1124,8 +1179,14 @@ public class EventStoreSignalRClientTests {
                 : client.SubscribeAsync("counter", "acme", onReceived, TestContext.Current.CancellationToken);
             await cancellation.CancelAsync();
             await Should.ThrowAsync<OperationCanceledException>(() => cancelled.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+            string replacement = await control.Connections.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            replacement.ShouldNotBe(originalConnection);
             control.ReleaseJoin.TrySetResult();
             await survivor.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            (await control.Disconnections.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBe(originalConnection);
+            await AwaitJoinCompletionAsync(control, originalConnection, detail ? "counter:acme:party-1" : "counter:acme");
             IHubClients clients = app.Services.GetRequiredService<IHubContext<StalledProjectionHub>>().Clients;
             if (detail)
             {
@@ -1136,6 +1197,13 @@ public class EventStoreSignalRClientTests {
             {
                 await clients.Group("counter:acme").SendAsync("ProjectionChanged", "counter", "acme", TestContext.Current.CancellationToken);
             }
+            if (detail)
+            {
+                await clients.Group("independent:acme:party-2").SendAsync("ProjectionChangedDetail", "independent", "acme", "party-2", new Dictionary<string, string>(), TestContext.Current.CancellationToken);
+            }
+            else { await clients.Group("independent:acme").SendAsync("ProjectionChanged", "independent", "acme", TestContext.Current.CancellationToken); }
+            await independentReceived.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            independentCalls.ShouldBe(1);
             await received.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             revokedCalls.ShouldBe(0);
             survivingCalls.ShouldBe(1);
