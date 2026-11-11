@@ -213,3 +213,103 @@ snapshots do not establish the authenticated principal/session, exact message-to
 mapping or a cold stale-credential restart. Missing readback effects remain bounded
 non-observations, never proof of absence. Original packet interpretation is retained;
 changed capture sources require fresh hosted qualification.
+
+## Bounded Platform configuration input
+
+`runtime-lock-1.19.1-platform-config-v1.json` is a separate, explicitly selected
+profile. It keeps runtime/CLI 1.19.1, SDK/components 1.19.0, both immutable broker
+identities and all 24 vectors. Both historical lock files stay unchanged. The
+historical 1.19.1 source bytes are retained in
+`public-identities/1.19.1-original-inputs/`; its archive manifest distinguishes
+c94e6fffaf2d689c94bb288f151a65e10a2fea82 snapshots from two test files whose
+existing lock already referenced earlier bytes. Historical schema-1/2 packet
+interpretation and trusted source checks remain available. New historical-profile
+captures retain their actual current execution tools separately; the verifier
+accepts only a complete historical or complete current trusted tool inventory.
+
+Platform supplies a UTF-8 JSON file with this exact schema. This is a tuning input
+for the existing harness, not a Platform composition or runner descriptor:
+
+```json
+{
+  "schemaVersion": 1,
+  "platformRevision": "0123456789abcdef0123456789abcdef01234567",
+  "platformPath": "qualification/broker-experiment.json",
+  "rabbitmq": {
+    "reconnectWaitSeconds": 2,
+    "outboundTimeoutMilliseconds": 500
+  },
+  "kafka": {
+    "consumeRetryIntervalMilliseconds": 200,
+    "group.initial.rebalance.delay.ms": 100
+  }
+}
+```
+
+`platformRevision` is the full lowercase 40-character Platform source revision
+that Platform declares for the experiment; `platformPath` is its declared relative
+JSON path. They are content-bound provenance declarations. The input may be a
+separately delivered local copy: its declaration does not prove that the file was
+committed at that revision, authenticate Platform's author, or establish accepted
+owner scope. The same independently supplied original file is required during
+verification. Do not take the retained packet's copy as that independent input.
+
+Only these integer values are permitted:
+
+| Field | Values | Default |
+| --- | --- | --- |
+| RabbitMQ `reconnectWaitSeconds` | 1, 2, 3 | 1 |
+| RabbitMQ `outboundTimeoutMilliseconds` | 250, 500, 1000, 2000, 3000 | 3000 |
+| Kafka `consumeRetryIntervalMilliseconds` | 100, 200, 500, 1000 | 1000 |
+| Kafka `group.initial.rebalance.delay.ms` | 0, 100, 500, 1000 | 0 |
+
+Broker objects and tuning fields are optional; omitted fields retain the original
+defaults. Booleans, strings, floating-point numbers, unknown or duplicate keys,
+non-JSON data, credentials, endpoints and commands are rejected. Input files must
+be regular `.json` files without symlinks or `..` traversal. Declared paths must
+also be relative JSON paths without traversal. Rejection occurs before output
+creation or resource mutation and reports fields without their supplied values.
+These bounds define experiments, not proven remedies. Kafka `initialOffset` stays
+`oldest`; inbound timeout/retries, TLS, grants, scopes, durability, confirms,
+pressure controls, publication counts and observation/readback bounds are fixed.
+
+Under Platform's separately accepted execution scope and supported allocated
+runner, the existing entry points take the explicit pairing:
+
+```bash
+python3 -B tools/qualify-dapr-brokers.py --profile deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json --platform-config /path/to/platform-experiment.json --exclusive-worker "$QUALIFICATION_EXCLUSIVE_WORKER" --output /tmp/platform-broker-experiment
+python3 -B tools/validate-dapr-broker-qualification.py /tmp/platform-broker-experiment --platform-config /path/to/platform-experiment.json --allow-failures
+```
+
+The C# entry point uses `EVENTSTORE_DAPR_QUALIFICATION_PROFILE` with the new lock
+and `EVENTSTORE_DAPR_PLATFORM_CONFIG` with that same independent input. Configuration
+with either historical profile, a missing configuration with the new profile, and
+schema downgrades or mixed profile identities fail; there is no automatic profile
+selection. Existing invocations without configuration keep their defaults.
+
+Schema 3 retains exact configuration bytes, declared provenance, the complete
+current source inventory, every loaded component/subscription/configuration file,
+and sanitized effective Kafka properties. Kafka PEM values alone are replaced by
+`<disposable-pem>`; a measured-file SHA-256 receipt binds the private properties
+file before render commitment and broker launch. The independent verifier checks
+rendered settings against the requested tuning and the established loopback/port,
+private-path, negative-secret/TLS and replay-group substitutions. Render receipts
+bind each loaded directory to its sidecar arguments and Kafka properties to its
+broker launch. Changes to configuration, sources, effective settings or execution
+paths fail even after packet artifact hashes are recomputed. Worker custody,
+complete resource inventories, unrelated-resource preservation and private-material
+cleanup checks apply to schema 3 as they do to schema 2.
+
+This implementation runs no infrastructure or CI and adds no Platform runner
+capability or acceptance. Platform supplies configuration and owns subsequent
+execution; EventStore retains application assertions and evaluates its results.
+Capture integrity, technical qualification and production authority remain separate.
+All five hosted rejected guarantees stay unresolved: RabbitMQ rotation, pressure
+and missing binding, and Kafka rotation and pressure. Platform's
+[2026-11-10 dispositions](../../../references/Hexalith.Platform/docs/implementation/story-4-17-local-broker-dispositions-2026-11-10.md)
+find Kafka `connections.max.reauth.ms` and a RabbitMQ alternate exchange
+inapplicable to their vectors. RabbitMQ pressure separately needs a released
+runtime embedding the upstream negative-confirm fix; missing binding separately
+needs upstream `mandatory` and return handling. Neither is solved by these knobs.
+Timeouts and missing bounded effects remain uncertainty/FAIL. Story 3.21 stays
+in progress, selected broker stays null and production eligibility stays FAIL.

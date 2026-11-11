@@ -9,6 +9,8 @@ import stat
 
 LEGACY_PROFILE = 'deploy/dapr/qualification/runtime-lock.json'
 CANDIDATE_PROFILE = 'deploy/dapr/qualification/runtime-lock-1.19.1.json'
+PLATFORM_PROFILE = 'deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json'
+CANDIDATE_INPUTS = 'deploy/dapr/qualification/public-identities/1.19.1-original-inputs'
 LEGACY_INPUTS = 'deploy/dapr/qualification/public-identities/1.18.7-original-inputs'
 REDIS_IMAGE = 'redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf'
 APPROVED = {
@@ -26,6 +28,10 @@ APPROVED = {
 
 def profile_path(profile: dict) -> str:
     """Retain original packet paths for the original tuple."""
+    if profile.get('profileId') == 'platform-config-v1':
+        return PLATFORM_PROFILE
+    if 'profileId' in profile:
+        raise ValueError('profileId: unsupported explicit profile')
     return LEGACY_PROFILE if profile['runtime']['version'] == '1.18.7' else CANDIDATE_PROFILE
 
 
@@ -35,10 +41,14 @@ def source_input(profile: dict, root: Path, name: str, expected: str) -> Path:
     path = safe_file(root, name)
     if digest(path) == expected:
         return path
-    if profile_path(profile) == LEGACY_PROFILE and root.resolve() == Path(__file__).resolve().parents[1]:
-        retained = safe_file(root, LEGACY_INPUTS + '/' + name)
-        if digest(retained) == expected:
-            return retained
+    archives = {LEGACY_PROFILE: LEGACY_INPUTS, CANDIDATE_PROFILE: CANDIDATE_INPUTS}
+    archive = archives.get(profile_path(profile))
+    if archive and root.resolve() == Path(__file__).resolve().parents[1]:
+        retained_name = archive + '/' + name
+        if (root / retained_name).is_file():
+            retained = safe_file(root, retained_name)
+            if digest(retained) == expected:
+                return retained
     return path
 
 

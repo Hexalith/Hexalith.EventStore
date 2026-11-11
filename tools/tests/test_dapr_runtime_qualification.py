@@ -18,7 +18,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dapr_broker_qualification import digest, validate_profile, write_json
-from dapr_runtime_qualification import CANDIDATE_PROFILE, ExclusiveDocker, CONTROL_BINARIES, CustodyError, require_candidate, run_process_group, child_docker, cleanup_child_resources, retain_compatibility_witnesses
+from dapr_runtime_qualification import source_input, CANDIDATE_PROFILE, ExclusiveDocker, CONTROL_BINARIES, CustodyError, require_candidate, run_process_group, child_docker, cleanup_child_resources, retain_compatibility_witnesses
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -33,7 +33,7 @@ class RuntimeIdentityTests(unittest.TestCase):
         for name in files:
             destination = self.root / name
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, destination)
+            shutil.copyfile(source_input(self.profile, ROOT, name, self.profile['inputs'][name]) if name in self.profile['inputs'] else ROOT / name, destination)
 
     def testCandidatePositiveControl(self):
         validate_profile(self.profile, self.root)
@@ -92,10 +92,10 @@ class CandidatePacketTests(unittest.TestCase):
         for name in files:
             destination = f.directory / 'inputs' / name
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, destination)
+            shutil.copyfile(source_input(profile, ROOT, name, profile['inputs'][name]) if name in profile['inputs'] else ROOT / name, destination)
         for name in (path.removeprefix('tools/') for path in profile['inputs'] if path.startswith('tools/') and path.endswith('.py')):
             destination = f.directory / 'execution-tools' / name; destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / 'tools' / name, destination)
+            shutil.copyfile(source_input(profile, ROOT, 'tools/' + name, profile['inputs']['tools/' + name]), destination)
         for path in f.directory.glob('*/metadata/*.json'):
             data = json.loads(path.read_text()); data['runtimeVersion'] = '1.19.1'; write_json(path, data)
         for command in f.commands:

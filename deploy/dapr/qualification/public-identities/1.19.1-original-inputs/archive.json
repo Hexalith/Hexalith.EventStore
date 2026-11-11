@@ -1,0 +1,42 @@
+{
+  "baselineRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82",
+  "purpose": "trusted historical input bytes; never a copied execution harness",
+  "files": {
+    "deploy/dapr/qualification/README.md": {
+      "sha256": "5d6ed2bbd85d440080eb6bdad92a5a2ff53b2f7dbad25be290c73b981c3b6e8e",
+      "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    },
+    "tests/Hexalith.EventStore.IntegrationTests/Fixtures/DurableBrokerQualificationFixture.cs": {
+      "sha256": "2898c19e3fcf09827093321de597bbd3c23b1c614fd11c06efdd733eb192f69a",
+      "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    },
+    "tools/dapr_broker_qualification.py": {
+      "sha256": "cb5ef764c64eebdd8f3ec93a9bdad677510d63a615f4b23db5c85ccc6f9d017b",
+      "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    },
+    "tools/dapr_runtime_qualification.py": {
+      "sha256": "bc74c63297c5dba119ac1c4c1116e50c2565c3f3317aa00a27e90f455511af53",
+      "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    },
+    "tools/qualify-dapr-brokers.py": {
+      "sha256": "6f4e3c948452d567553c07d30aae2b3fd778d9468a8a1a04f7a5fb202aa31561",
+      "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    },
+    "tools/tests/test_dapr_runtime_qualification.py": {
+      "sha256": "f68536cdb00ae625a4baec9fa6075c7142b6f33900c0fec99d5d2a99d6d5b054",
+      "sourceRevision": "0a6725d51bb17a9eae28a24a53f3636bab9d48d7"
+    },
+    "tools/tests/test_dapr_runtime_qualification.py.c94e6fff-original": {
+      "sha256": "5bed2c15f774cf0f6e5669174efe5510632042f65fb33f641aa5541fd70136d0",
+      "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    },
+    "tools/tests/test_qualify_internal_actor_admission.py": {
+      "sha256": "08630bee9636119b6aaec111353e4341e0134ac4840d03a91f56a3853bafa93b",
+      "sourceRevision": "07f5ef132deb17d45d7209357f8ac89ef39bc557"
+    },
+    "tools/validate-dapr-broker-qualification.py": {
+      "sha256": "f96ca8374850a639d1566c326fec34bc2102ab7f1254118e6043a5386961dbd2",
+      "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    }
+  }
+}

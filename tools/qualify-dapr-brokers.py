@@ -30,7 +30,10 @@ from dapr_broker_qualification import (BROKERS, SCENARIOS, PRESSURE_POLICY, PRES
     attributable_denial, pressure_rejection, kafka_group_available, digest, evaluate, missing_binding_absent, rabbitmq_pressure_effective,
     reconcile_publications, validate_profile, write_json)
 
-from dapr_runtime_qualification import CustodyError, ExclusiveDocker, profile_path, source_input, child_docker, cleanup_child_resources, resource_journal, register_private_custody
+from dapr_platform_broker_configuration import (PROFILE_ID, CONFIGURATION_PATH, PROVENANCE_PATH, RENDERED_PATH,
+    load_configuration, provenance, component_source, apply_resiliency, kafka_settings, properties_bytes, sanitize_kafka_properties)
+
+from dapr_runtime_qualification import PLATFORM_PROFILE, CustodyError, ExclusiveDocker, profile_path, source_input, child_docker, cleanup_child_resources, resource_journal, register_private_custody
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,6 +57,13 @@ class Run:
         # Validate every retained path before copying bytes or creating any
         # output/private directory. A rejected profile has no side effects.
         validate_profile(self.profile, ROOT)
+        selected = profile_path(self.profile)
+        config_path = getattr(args, "platform_config", None)
+        self.platform_configuration = None
+        if (selected == PLATFORM_PROFILE) != (config_path is not None):
+            raise ValueError("platformConfig: configuration and explicit platform profile are required together")
+        if config_path is not None:
+            configuration_bytes, self.platform_configuration = load_configuration(config_path)
         self.output.mkdir(parents=True, exist_ok=False)
         self.receipts = []
         self.containers = []
@@ -67,7 +77,13 @@ class Run:
         self.private = self.private_parent / "work"
         self.private.mkdir(mode=0o755)
         self.redactions = []
-        self.packet = {"schemaVersion": 2, "profile": profile_path(self.profile), "productionEligible": False, "selectedBroker": None, "brokers": {}}
+        self.packet = {"schemaVersion": 3 if self.platform_configuration is not None else 2, "profile": profile_path(self.profile), "productionEligible": False, "selectedBroker": None, "brokers": {}}
+        self.rendered_inputs = []
+        if self.platform_configuration is not None:
+            config_destination = self.output / CONFIGURATION_PATH
+            config_destination.parent.mkdir(parents=True)
+            config_destination.write_bytes(configuration_bytes)
+            write_json(self.output / PROVENANCE_PATH, provenance(configuration_bytes, self.platform_configuration))
         self.identities = {"stage": "local-docker-first-stage", "targetProof": False, "preflightPassed": False}
         self.before = {}
         self.context = None
@@ -91,6 +107,9 @@ class Run:
                 shutil.copyfile(source, destination)
         # Current capture code is distinct from the original lock's historical input subject.
         tools = [name.removeprefix('tools/') for name in self.profile['inputs'] if name.startswith('tools/') and name.endswith('.py')] if self.profile['runtime']['version'] == '1.19.1' else ("qualify-dapr-brokers.py", "dapr_broker_qualification.py", "dapr_runtime_qualification.py")
+        if self.profile["runtime"]["version"] == "1.19.1":
+            current = json.loads((ROOT / PLATFORM_PROFILE).read_text())
+            tools = [name.removeprefix('tools/') for name in current['inputs'] if name.startswith('tools/') and name.endswith('.py')]
         for name in tools:
             destination = self.output / "execution-tools" / name
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -317,6 +336,10 @@ class Run:
         if digest(daprd) != self.profile["runtime"]["binarySha256"] or digest(cli) != self.profile["runtime"]["cliSha256"]:
             raise ValueError("daprd/CLI binary hash differs from runtime-lock.json")
         self.daprd = daprd
+        if getattr(self, "platform_configuration", None) is not None:
+            self.identities["daprdExecutable"] = {"path": str(daprd), "hashReceipt": len(self.receipts)}
+            self.receipts.append({"argv": ["SHA256", str(daprd)], "startedUtc": utc(), "endedUtc": utc(),
+                "exitCode": 0, "output": digest(daprd)})
         self.command([str(daprd), "--version"])
         self.command([str(cli), "--version"])
         self.identities.update({"preflightPassed": True, "daprdSha256": digest(daprd), "cliSha256": digest(cli), "dockerEndpoint": owner.endpoint})
@@ -442,7 +465,27 @@ class Run:
             return (self.private / name).read_text().replace("\n", "\\n")
         controller = port()
         config = {"process.roles": "broker,controller", "node.id": "1", "controller.quorum.voters": f"1@127.0.0.1:{controller}", "controller.listener.names": "CONTROLLER", "listeners": f"SSL://0.0.0.0:{self.broker_port},CONTROLLER://127.0.0.1:{controller}", "advertised.listeners": f"SSL://127.0.0.1:{self.broker_port}", "listener.security.protocol.map": "SSL:SSL,CONTROLLER:SSL", "inter.broker.listener.name": "SSL", "log.dirs": "/var/lib/kafka/data", "offsets.topic.replication.factor": "1", "transaction.state.log.replication.factor": "1", "transaction.state.log.min.isr": "1", "group.initial.rebalance.delay.ms": "0", "auto.create.topics.enable": "false", "ssl.keystore.type": "PEM", "ssl.keystore.key": pem("server.key"), "ssl.keystore.certificate.chain": pem("server.crt"), "ssl.truststore.type": "PEM", "ssl.truststore.certificates": pem("ca.crt"), "ssl.client.auth": "required", "authorizer.class.name": "org.apache.kafka.metadata.authorizer.StandardAuthorizer", "super.users": "User:CN=localhost;User:CN=admin", "allow.everyone.if.no.acl.found": "false", "log.retention.check.interval.ms": "1000"}
+        if getattr(self, "platform_configuration", None) is not None:
+            config = kafka_settings(self.broker_port, controller, self.platform_configuration, pem)
         (self.private / "kafka.properties").write_text("\n".join(f"{k}={v}" for k, v in config.items()) + "\n")
+        if getattr(self, "platform_configuration", None) is not None:
+            raw_bytes = (self.private / "kafka.properties").read_bytes()
+            sanitized = sanitize_kafka_properties(raw_bytes)
+            raw_sha256 = hashlib.sha256(raw_bytes).hexdigest()
+            retained_name = "kafka/effective-inputs/kafka.properties"
+            retained = self.output / retained_name
+            retained.parent.mkdir(parents=True, exist_ok=True)
+            retained.write_bytes(sanitized)
+            hash_receipt = len(self.receipts)
+            self.receipts.append({"argv": ["SHA256", str(self.private / "kafka.properties")], "startedUtc": utc(),
+                "endedUtc": utc(), "exitCode": 0, "output": raw_sha256})
+            sanitization_receipt = len(self.receipts)
+            self.receipts.append({"argv": ["SANITIZE", "kafka-properties", str(self.private / "kafka.properties")],
+                "startedUtc": utc(), "endedUtc": utc(), "exitCode": 0,
+                "output": json.dumps({"rawSha256": raw_sha256, "sanitizedSha256": digest(retained)}, sort_keys=True)})
+            self.retain_rendered({"kind": "kafka", "hashReceipt": hash_receipt, "sanitizationReceipt": sanitization_receipt, "path": retained_name, "rawPath": str(self.private / "kafka.properties"),
+                "privateRoot": str(self.private), "brokerPort": self.broker_port, "controllerPort": controller,
+                "rawSha256": raw_sha256, "sha256": digest(retained)})
         client = {"security.protocol": "SSL", "ssl.keystore.type": "PEM", "ssl.keystore.key": pem("admin.key"), "ssl.keystore.certificate.chain": pem("admin.crt"), "ssl.truststore.type": "PEM", "ssl.truststore.certificates": pem("ca.crt")}
         (self.private / "admin.properties").write_text("\n".join(f"{k}={v}" for k, v in client.items()) + "\n")
 
@@ -453,6 +496,8 @@ class Run:
         path = self.private / (self.broker + "-" + role + "-" + secrets.token_hex(4))
         path.mkdir()
         source = (self.retained_inputs / "deploy/dapr/qualification" / (self.broker + ".yaml")).read_text()
+        if getattr(self, "platform_configuration", None) is not None:
+            source = component_source(source, self.broker, self.platform_configuration)
         if mutation == "missing-secret":
             source = source.replace("name: qualification-" + self.broker + ",", "name: qualification-absent,")
         if self.broker == "kafka" and getattr(self, "kafka_group", None):
@@ -476,10 +521,24 @@ class Run:
                 "targets": {"components": {"pubsub": {"inbound": {"retry": "bounded", "timeout": "bounded"}, "outbound": {"retry": "bounded", "timeout": "bounded"}}}},
             },
         }
+        if getattr(self, "platform_configuration", None) is not None:
+            apply_resiliency(resiliency, self.broker, self.platform_configuration)
         write_json(path / "resiliency.yaml", resiliency)
         retained = self.output / self.broker / "loaded-inputs" / path.name
         shutil.copytree(path, retained)
+        if getattr(self, "platform_configuration", None) is not None:
+            self.retain_rendered({"kind": "components", "broker": self.broker, "role": role, "mutation": mutation,
+                "kafkaGroup": getattr(self, "kafka_group", None), "privateRoot": str(self.private), "baoUrl": self.bao_url,
+                "resourcePath": str(path), "path": str(retained.relative_to(self.output)),
+                "files": {item.name: digest(item) for item in sorted(retained.iterdir())}})
         return path
+
+    def retain_rendered(self, row):
+        row["renderReceipt"] = len(self.receipts)
+        self.receipts.append({"argv": ["CONFIGURATION", "render", row["kind"]], "startedUtc": utc(), "endedUtc": utc(),
+            "exitCode": 0, "output": json.dumps(row, sort_keys=True)})
+        self.rendered_inputs.append(row)
+        write_json(self.output / RENDERED_PATH, self.rendered_inputs)
 
     def sidecar(self, role, app_port, mutation=None, ready=True):
         http_port, grpc_port, internal_port = port(), port(), port()
@@ -956,6 +1015,8 @@ class Run:
         write_json(self.output / "cleanup.json", {"ownedResourcesRemaining": remaining, "complete": self.cleanup_complete, "errors": self.cleanup_errors, "unrelatedContainersUnchanged": all(after.get(key) == value for key, value in self.before.items()), "ownershipLabel": self.run_id, "privateMaterialRemoved": not self.private_parent.exists()})
         write_json(self.output / "execution-identities.json", self.identities)
         write_json(self.output / "commands.json", self.receipts)
+        if getattr(self, "platform_configuration", None) is not None:
+            write_json(self.output / RENDERED_PATH, self.rendered_inputs)
         if getattr(self, "regression", False):
             return
         self.packet["artifacts"] = {str(p.relative_to(self.output)): digest(p) for p in sorted(self.output.rglob("*")) if p.is_file()}
@@ -965,6 +1026,7 @@ class Run:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, required=True)
+    parser.add_argument("--platform-config", type=Path, help="bounded schema-1 Platform JSON; requires the explicit platform-config-v1 profile")
     parser.add_argument("--exclusive-worker", type=Path, default=os.environ.get("QUALIFICATION_EXCLUSIVE_WORKER"), help="exclusive disposable worker allocation JSON; required before Docker mutation")
     parser.add_argument("--brokers", default="rabbitmq,kafka")
     parser.add_argument("--output", type=Path, required=True)
