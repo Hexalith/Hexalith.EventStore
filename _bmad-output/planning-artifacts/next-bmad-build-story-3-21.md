@@ -1,14 +1,18 @@
 # Next bmad-build prompt: Story 3.21 local failure diagnosis
 
-> **Approved and stopped 2026-11-11:** The owner explicitly authorized reopening
-> broker remediation under Platform's ownership. The next bounded work is the
-> [Platform configuration input slice](../implementation-artifacts/spec-3-21-platform-broker-configuration-input.md),
-> approved with “approve and stop” and now `ready-for-dev`. Implementation has
-> not started; resume that spec directly with `bmad-build`. Platform's
-> November 10 dispositions identify the harness input restriction as the first
-> dependency. The refresh remains closed and ES-DIAG remains superseded; do not
-> execute the historical prompt below. Platform execution requires its accepted
-> scope. All five rejected guarantees and parent gates remain open.
+> **Current 2026-11-12:** The
+> [Platform configuration input slice](../implementation-artifacts/spec-3-21-platform-broker-configuration-input.md)
+> is done. Continue from the parent
+> [Story 3.21 assessment](../implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md#platform-result-assessment--2026-11-12),
+> which evaluates Platform's candidate-01 hosted attempt: `startup_failure`
+> before job allocation, zero artifacts and 0/24 observed vectors. Platform owns
+> startup investigation and any separately accepted further execution on an
+> exclusive worker; the consumed single-attempt scope authorizes no retry.
+> Current-checkout qualification input drift is recorded separately from that
+> hosted failure. The refresh remains closed and ES-DIAG remains superseded; do
+> not execute the historical prompt below. All five rejected guarantees remain,
+> Story 3.21 stays `in-progress`, broker selection stays null and production
+> eligibility stays FAIL.
 
 > **Superseded 2026-11-09 — do not run this prompt.** ES-DIAG was superseded by
 > the closed [Dapr 1.19.1 refresh slice](../implementation-artifacts/spec-3-21-latest-stable-dapr-runtime-refresh.md)
