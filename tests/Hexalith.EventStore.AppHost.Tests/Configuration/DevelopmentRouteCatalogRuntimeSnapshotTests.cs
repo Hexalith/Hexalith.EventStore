@@ -13,8 +13,12 @@ namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 [Collection(AspireEnvironmentMutationCollection.Name)]
 public sealed class DevelopmentRouteCatalogRuntimeSnapshotTests
 {
+    // Three scenarios first copy the whole runtime installation; shared CI runners need more than
+    // 90 seconds for the following preparation. The product deadline is unchanged.
+    private static readonly TimeSpan PreparationTimeout = TimeSpan.FromSeconds(180);
+
     /// <summary>Framework-pruned contracts are snapshotted from the selected runtime, with all start-time identities retained.</summary>
-    [Theory(Timeout = 120000)]
+    [Theory(Timeout = 300000)]
     [InlineData("valid")]
     [InlineData("framework-installation-drift")]
     [InlineData("unselected-framework-installation")]
@@ -95,14 +99,14 @@ public sealed class DevelopmentRouteCatalogRuntimeSnapshotTests
             if (scenario == "probe-bcl-shadow")
             {
                 var refusal = await Should.ThrowAsync<InvalidOperationException>(() => selected.PrepareEventStoreDevelopmentOwnerAsync(
-                    TimeSpan.FromSeconds(90), TestContext.Current.CancellationToken));
+                    PreparationTimeout, TestContext.Current.CancellationToken));
                 refusal.ToString().ShouldContain("runtime probe framework dependency 'System.Console'");
                 string diagnostics = refusal.Message.Split("private diagnostics: ", StringSplitOptions.None)[1];
                 try { File.Exists(Path.Combine(diagnostics, "runtime.stdout.log")).ShouldBeFalse(); }
                 finally { Directory.Delete(diagnostics, recursive: true); }
                 return;
             }
-            await using var prepared = await selected.PrepareEventStoreDevelopmentOwnerAsync(TimeSpan.FromSeconds(90), TestContext.Current.CancellationToken);
+            await using var prepared = await selected.PrepareEventStoreDevelopmentOwnerAsync(PreparationTimeout, TestContext.Current.CancellationToken);
             using var receipt = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(prepared.Directory, "preparation.json"), TestContext.Current.CancellationToken));
             var runtime = receipt.RootElement.GetProperty("managedRuntime");
             runtime.GetProperty("protocol").GetString().ShouldBe("EventStoreSelectedOwnerManagedRuntimeV1");

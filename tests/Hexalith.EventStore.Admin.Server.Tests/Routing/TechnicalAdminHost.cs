@@ -163,6 +163,9 @@ internal sealed class TechnicalAdminHost : IAsyncDisposable
             .RequireAuthorization(AdminAuthorizationPolicies.ReadOnly);
         FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(_app, DevelopmentTechnicalHttpTransport.Operation, technical: true);
         await _app.StartAsync(TestContext.Current.CancellationToken);
+        // Like production callers, wait for the ApplicationStarted capture; this host clears its
+        // logging providers, so a refused capture must surface here with its own exception.
+        await _app.Services.GetRequiredService<FiniteRouteCatalogReceiver>().WaitForCaptureAsync(TestContext.Current.CancellationToken);
         Store.Coordinates = Store.Coordinates with { HttpEndpoint = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single() + "/" };
         var surface = _app.Services.GetRequiredService<FiniteRouteCatalogReceiver>().Observe();
         var observation = (await DevelopmentRouteCatalogInputs.CaptureAsync(builder.Configuration, "admin-test", [], [], [], [],
