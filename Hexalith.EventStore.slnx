@@ -33,6 +33,8 @@
     <Project Path="src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj" />
     <Project Path="src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
     <Project Path="src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj" />
+    <Project Path="src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj" />
+    <Project Path="src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj" />
     <Project Path="src/Hexalith.EventStore.PayloadProtection.AzureKeyVault/Hexalith.EventStore.PayloadProtection.AzureKeyVault.csproj" />
     <Project Path="src/Hexalith.EventStore.Operations/Hexalith.EventStore.Operations.csproj" />
     <Project Path="src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj" />
@@ -55,6 +57,7 @@
     <Project Path="tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.Client.TestContracts/Hexalith.EventStore.Client.TestContracts.csproj" />
     <Project Path="tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/Hexalith.EventStore.DeferredWorkGovernance.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj" />
@@ -67,6 +70,7 @@
     <Project Path="tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.PublishedCompatibility.Tests/Hexalith.EventStore.PublishedCompatibility.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.QueryRouting.Tests/Hexalith.EventStore.QueryRouting.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.QuerySelectorFixture/Hexalith.EventStore.QuerySelectorFixture.csproj" />
     <Project Path="tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj" />
@@ -75,5 +79,9 @@
     <Project Path="tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Testing.Integration.Tests/Hexalith.EventStore.Testing.Integration.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.TestSubscriber/Hexalith.EventStore.TestSubscriber.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Hexalith.EventStore.CatalogConstruction/Hexalith.EventStore.CatalogConstruction.csproj" />
   </Folder>
 </Solution>

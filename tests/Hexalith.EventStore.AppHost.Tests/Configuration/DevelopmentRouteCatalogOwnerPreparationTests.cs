@@ -86,9 +86,16 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
     [InlineData("configuration")]
     [InlineData("missing-inventory")]
     [InlineData("sdk-drift")]
+    [InlineData("json-drift")]
+    [InlineData("json-missing")]
+    [InlineData("encoder-drift")]
+    [InlineData("encoder-missing")]
+    [InlineData("pipeline-drift")]
+    [InlineData("pipeline-missing")]
     [InlineData("diagnostic-overflow")]
     public async Task ActualSelectedBuildOwnsItsOutputMetadataAndSdkIdentityAsync(string scenario)
     {
+        ArgumentNullException.ThrowIfNull(scenario);
         using var mapping = IsolatedSourceMappingEnvironment.Enter();
         string root = Directory.CreateTempSubdirectory("catalog-selected-project-").FullName;
         string path = Path.Combine(root, "Selected.csproj");
@@ -97,6 +104,20 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
         try
         {
             string contracts = typeof(RouteCatalogEnvelope).Assembly.Location;
+            var jsonDependencies = new Dictionary<string, string>
+            {
+                ["System.Text.Json"] = typeof(JsonSerializerOptions).Assembly.Location,
+                ["System.Text.Encodings.Web"] = typeof(System.Text.Encodings.Web.JavaScriptEncoder).Assembly.Location,
+                ["System.IO.Pipelines"] = typeof(System.IO.Pipelines.PipeReader).Assembly.Location,
+            };
+            var originalJsonDependencies = new Dictionary<string, string>(jsonDependencies);
+            string? changedJsonDependency = scenario.Split('-')[0] switch
+            {
+                "json" => "System.Text.Json",
+                "encoder" => "System.Text.Encodings.Web",
+                "pipeline" => "System.IO.Pipelines",
+                _ => null,
+            };
             if (scenario == "sdk-drift")
             {
                 string copy = Path.Combine(root, "Hexalith.EventStore.Contracts.dll");
@@ -104,22 +125,61 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
                 using (var bytes = new FileStream(copy, FileMode.Append)) bytes.WriteByte(0);
                 contracts = copy;
             }
+            if (changedJsonDependency is not null && scenario.EndsWith("-drift", StringComparison.Ordinal))
+            {
+                string copy = Path.Combine(root, changedJsonDependency + ".dll");
+                File.Copy(jsonDependencies[changedJsonDependency], copy);
+                using (var bytes = new FileStream(copy, FileMode.Append)) bytes.WriteByte(0);
+                jsonDependencies[changedJsonDependency] = copy;
+            }
             string Reference(string assemblyPath) => $"<Reference Include=\"{SecurityElement.Escape(Path.GetFileNameWithoutExtension(assemblyPath))}\"><HintPath>{SecurityElement.Escape(assemblyPath)}</HintPath></Reference>";
             string overflow = scenario == "diagnostic-overflow" ? $"<Target Name=\"Overflow\" BeforeTargets=\"PrepareForBuild\"><Message Importance=\"high\" Text=\"{new string('x', 9 * 1024 * 1024)}\" /></Target>" : string.Empty;
-            string drift = scenario == "sdk-drift" ? $"<Target Name=\"SelectedRuntimeDrift\" AfterTargets=\"Build\"><Copy SourceFiles=\"{SecurityElement.Escape(contracts)}\" DestinationFiles=\"$(TargetDir)/Hexalith.EventStore.Contracts.dll\" /></Target>" : string.Empty;
+            string drift = scenario switch
+            {
+                "sdk-drift" => $"<Target Name=\"SelectedRuntimeDrift\" AfterTargets=\"Build\"><Copy SourceFiles=\"{SecurityElement.Escape(contracts)}\" DestinationFiles=\"$(TargetDir)/Hexalith.EventStore.Contracts.dll\" /></Target>",
+                _ when changedJsonDependency is not null && scenario.EndsWith("-drift", StringComparison.Ordinal)
+                    => $"<Target Name=\"SelectedJsonDrift\" AfterTargets=\"Build\"><Copy SourceFiles=\"{SecurityElement.Escape(jsonDependencies[changedJsonDependency])}\" DestinationFiles=\"$(TargetDir)/{changedJsonDependency}.dll\" /></Target>",
+                _ when changedJsonDependency is not null
+                    => $"<Target Name=\"SelectedJsonMissing\" AfterTargets=\"Build\"><Delete Files=\"$(TargetDir)/{changedJsonDependency}.dll\" /></Target>",
+                _ => string.Empty,
+            };
             await File.WriteAllTextAsync(path, $"""
                 <Project Sdk="Microsoft.NET.Sdk">
-                  <PropertyGroup><TargetFramework>net10.0</TargetFramework><AssemblyName>Selected$(SelectedOwnerArtifact)</AssemblyName><BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath></PropertyGroup>
-                  <ItemGroup>{Reference(contracts)}{Reference(typeof(RouteCatalogAdapterSourceAttribute).Assembly.Location)}{Reference(typeof(DevelopmentCatalogProbeDeclarations).Assembly.Location)}</ItemGroup>
+                  <PropertyGroup><TargetFramework>net10.0</TargetFramework><TreatWarningsAsErrors>true</TreatWarningsAsErrors><MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors><AssemblyName>Selected$(SelectedOwnerArtifact)</AssemblyName><BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath></PropertyGroup>
+                  <ItemGroup>{Reference(contracts)}{string.Concat(jsonDependencies.Values.Select(Reference))}{Reference(typeof(Activity).Assembly.Location)}{Reference(typeof(RouteCatalogAdapterSourceAttribute).Assembly.Location)}{Reference(typeof(DevelopmentCatalogProbeDeclarations).Assembly.Location)}</ItemGroup>
                   <Target Name="RequireActualMapping" BeforeTargets="PrepareForBuild"><Error Condition="'$(SelectedOwnerArtifact)' != 'owned'" Text="The actual selected build environment was lost." /></Target>
                   {overflow}
                   {drift}
                 </Project>
                 """, TestContext.Current.CancellationToken);
-            await File.WriteAllTextAsync(Path.Combine(root, "Selected.cs"), scenario == "missing-inventory" ? "public sealed class EmptyOwner;" : """
+            await File.WriteAllTextAsync(Path.Combine(root, "Selected.cs"), scenario == "missing-inventory" ? "public sealed class EmptyOwner;" : changedJsonDependency is not null ? """
                 [assembly: Hexalith.EventStore.Contracts.Routing.RouteCatalogDeclarationSource(typeof(Hexalith.EventStore.AppHost.Tests.Configuration.DevelopmentCatalogProbeDeclarations))]
                 [assembly: Hexalith.EventStore.DomainService.RouteCatalogAdapterSource(typeof(Hexalith.EventStore.AppHost.Tests.Configuration.DevelopmentCatalogProbeDeclarations))]
                 public sealed class SelectedOwner;
+                """ : """
+                [assembly: Hexalith.EventStore.Contracts.Routing.RouteCatalogDeclarationSource(typeof(SelectedOwner))]
+                [assembly: Hexalith.EventStore.DomainService.RouteCatalogAdapterSource(typeof(Hexalith.EventStore.AppHost.Tests.Configuration.DevelopmentCatalogProbeDeclarations))]
+                public static class SelectedOwner
+                {
+                    public static System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Contracts.Routing.RouteContractDeclaration> Routes
+                        => Hexalith.EventStore.AppHost.Tests.Configuration.DevelopmentCatalogProbeDeclarations.Routes;
+                    public static System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Contracts.Routing.RouteOperationContract> Operations
+                    {
+                        get
+                        {
+                            var options = new System.Text.Json.JsonSerializerOptions
+                            {
+                                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                            };
+                            using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("\"owner\""));
+                            var reader = System.IO.Pipelines.PipeReader.Create(stream);
+                            string value = System.Text.Json.JsonSerializer.DeserializeAsync<string>(reader, options).AsTask().GetAwaiter().GetResult();
+                            reader.Complete();
+                            if (value != "owner") throw new System.InvalidOperationException("The selected owner's actual PipeReader JSON API failed.");
+                            return Hexalith.EventStore.AppHost.Tests.Configuration.DevelopmentCatalogProbeDeclarations.Operations;
+                        }
+                    }
+                }
                 """, TestContext.Current.CancellationToken);
             var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
             builder.Environment.EnvironmentName = "Development";
@@ -136,13 +196,27 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
                 selected.WithDebugSupport(_ => Task.FromResult(launch), "project");
 #pragma warning restore ASPIREEXTENSION001
             }
-            if (scenario is "missing-inventory" or "sdk-drift" or "diagnostic-overflow")
+            if (scenario is "missing-inventory" or "sdk-drift" or "diagnostic-overflow" || changedJsonDependency is not null)
             {
                 var refusal = await Should.ThrowAsync<InvalidOperationException>(() => selected.PrepareEventStoreDevelopmentOwnerAsync(TimeSpan.FromSeconds(90), TestContext.Current.CancellationToken));
                 retained = refusal.Message.Split("private diagnostics: ", StringSplitOptions.None)[1];
                 File.Exists(Path.Combine(retained, "build.stdout.log")).ShouldBeTrue();
                 File.Exists(Path.Combine(retained, "preparation.json")).ShouldBeFalse();
-                refusal.ToString().ShouldContain(scenario switch { "sdk-drift" => "differs from the actual AppHost SDK", "diagnostic-overflow" => "bounded stream limit", _ => "No compiled owner declaration source" });
+                refusal.ToString().ShouldContain(scenario switch
+                {
+                    "sdk-drift" => "differs from the actual AppHost SDK",
+                    _ when changedJsonDependency is not null && scenario.EndsWith("-drift", StringComparison.Ordinal)
+                        => $"Selected child SDK dependency '{changedJsonDependency}' differs from the actual AppHost SDK",
+                    _ when changedJsonDependency is not null
+                        => $"Selected child JSON contract dependency '{changedJsonDependency}' is absent from its immutable output snapshot",
+                    "diagnostic-overflow" => "bounded stream limit",
+                    _ => "No compiled owner declaration source",
+                });
+                if (changedJsonDependency is not null && scenario.EndsWith("-missing", StringComparison.Ordinal))
+                    File.Exists(Path.Combine(retained, "metadata", changedJsonDependency + ".dll")).ShouldBeFalse();
+                if (changedJsonDependency is not null && scenario.EndsWith("-drift", StringComparison.Ordinal))
+                    SHA256.HashData(await File.ReadAllBytesAsync(Path.Combine(retained, "metadata", changedJsonDependency + ".dll"), TestContext.Current.CancellationToken))
+                        .ShouldNotBe(SHA256.HashData(await File.ReadAllBytesAsync(originalJsonDependencies[changedJsonDependency], TestContext.Current.CancellationToken)));
                 if (scenario == "diagnostic-overflow") new FileInfo(Path.Combine(retained, "build.stdout.log")).Length.ShouldBeLessThanOrEqualTo(8 * 1024 * 1024);
                 return;
             }

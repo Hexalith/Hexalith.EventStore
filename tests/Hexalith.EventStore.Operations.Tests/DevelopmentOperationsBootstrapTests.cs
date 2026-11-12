@@ -66,6 +66,7 @@ public sealed class DevelopmentOperationsBootstrapTests
                 using var registration = factory.CapturedStoppingToken.Register(() => stopping.TrySetResult());
                 await stopping.Task.WaitAsync(bound.Token);
                 var refusal = await Should.ThrowAsync<RouteCatalogUnavailableException>(() => fence.WaitForCaptureAsync(bound.Token));
+                factory.AssertedReceiverRefusal = refusal;
                 refusal.Message.ShouldBe("No installed SDK technical MVC action qualifies this receiver.");
                 File.Exists(path).ShouldBeFalse();
                 File.Exists(Path.Combine(directory, "activation.json")).ShouldBeFalse();

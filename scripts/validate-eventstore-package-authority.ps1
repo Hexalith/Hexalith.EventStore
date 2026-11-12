@@ -56,7 +56,7 @@ try {
     # Canonical UTF-8/LF hashes accept ordinary Git CRLF checkouts while still
     # rejecting every source-content change before delegation.
     $null = Read-EventStoreCanonicalAuthority -Path $authority -ExpectedSha256 (
-        'b20e45e3800e7d5e08770993192b646887097b8187e70f3f629adc741a0441fe')
+        'b1c62ba6bc34d12550a2550b25bf5e769ca444e9984dbc60ffb21cc89be233c2')
     $null = Read-EventStoreCanonicalAuthority -Path $companion -ExpectedSha256 (
         'f8b82eaf22a96e8b17e2f7ac9aa73839f34ec8c356f90e386190b454eb06391c')
 

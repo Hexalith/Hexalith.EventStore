@@ -148,10 +148,17 @@ public sealed class ReadDiagnosticsPrivacyTests
 
     /// <summary>Distinct owner branches, early admission refusal, and exceptions emit only a common boundary record.</summary>
     /// <param name="publicPath">A routing-equivalent public query path.</param>
+    /// <param name="incomingTraceFlags">Explicit incoming sampling, random, and unrecognized trace flags, or the real client-generated context.</param>
     [Theory]
-    [InlineData("/api/v1/queries")]
-    [InlineData("/API/V1/QUERIES/")]
-    public async Task RealProvidersOmitWholeReadSubtreesAndKeepUniformCompletion(string publicPath)
+    [InlineData("/api/v1/queries", null)]
+    [InlineData("/API/V1/QUERIES/", null)]
+    [InlineData("/api/v1/queries", ActivityTraceFlags.None)]
+    [InlineData("/api/v1/queries", ActivityTraceFlags.Recorded)]
+    [InlineData("/api/v1/queries", ActivityTraceFlags.RandomTraceId)]
+    [InlineData("/api/v1/queries", ActivityTraceFlags.Recorded | ActivityTraceFlags.RandomTraceId)]
+    [InlineData("/api/v1/queries", (ActivityTraceFlags)0x04)]
+    [InlineData("/api/v1/queries", (ActivityTraceFlags)0x05)]
+    public async Task RealProvidersOmitWholeReadSubtreesAndKeepUniformCompletion(string publicPath, ActivityTraceFlags? incomingTraceFlags)
     {
         string secret = Guid.NewGuid().ToString("N");
         using StringWriter console = new(CultureInfo.InvariantCulture);
@@ -273,6 +280,11 @@ public sealed class ReadDiagnosticsPrivacyTests
                 string correlation = "privacy-" + branch.ToString(CultureInfo.InvariantCulture);
                 Task completion = logs.ExpectBoundary(correlation);
                 using HttpRequestMessage request = new(HttpMethod.Post, publicPath) { Content = JsonContent.Create(branch) };
+                if (incomingTraceFlags is { } incomingFlags)
+                {
+                    request.Headers.Add("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-"
+                        + ((byte)incomingFlags).ToString("x2", CultureInfo.InvariantCulture));
+                }
                 request.Headers.Add(CorrelationIdMiddleware.HeaderName, correlation);
                 if (branch == 4) request.Headers.Add("Early-Refusal", "true");
                 using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
@@ -281,7 +293,13 @@ public sealed class ReadDiagnosticsPrivacyTests
             }
             nestedCalls.ShouldBe(6);
             propagated.Count.ShouldBe(6);
-            propagated.ShouldAllBe(value => value.Length == 55 && value.EndsWith("-00", StringComparison.Ordinal));
+            foreach (string value in propagated)
+            {
+                value.Length.ShouldBe(55);
+                ActivityContext.TryParse(value, null, out ActivityContext context).ShouldBeTrue();
+                // Sampling suppression depends on Recorded; other W3C flags do not enable collection.
+                (context.TraceFlags & ActivityTraceFlags.Recorded).ShouldBe(ActivityTraceFlags.None);
+            }
             logs.Records.Count.ShouldBe(5);
             logs.Records.ShouldAllBe(record => record.StartsWith("Hexalith.EventStore.QueryBoundary|", StringComparison.Ordinal)
                 && record.Contains("StatusCode=404", StringComparison.Ordinal)

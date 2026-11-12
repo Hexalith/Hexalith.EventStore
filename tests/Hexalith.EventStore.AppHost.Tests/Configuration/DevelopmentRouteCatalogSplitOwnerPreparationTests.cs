@@ -139,8 +139,12 @@ public sealed class DevelopmentRouteCatalogSplitOwnerPreparationTests
     {
         string Reference(string path) => $"<Reference Include=\"{SecurityElement.Escape(Path.GetFileNameWithoutExtension(path))}\"><HintPath>{SecurityElement.Escape(path)}</HintPath></Reference>";
         string references = Reference(typeof(RouteCatalogEnvelope).Assembly.Location) + Reference(typeof(RouteCatalogAdapterSourceAttribute).Assembly.Location)
-            + Reference(typeof(DevelopmentCatalogProbeDeclarations).Assembly.Location);
-        string Properties(string name) => $"<TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><EnableDefaultCompileItems>false</EnableDefaultCompileItems><AssemblyName>{name}</AssemblyName><BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath>";
+            + Reference(typeof(DevelopmentCatalogProbeDeclarations).Assembly.Location)
+            + Reference(typeof(JsonSerializerOptions).Assembly.Location)
+            + Reference(typeof(System.Text.Encodings.Web.JavaScriptEncoder).Assembly.Location)
+            + Reference(typeof(System.IO.Pipelines.PipeReader).Assembly.Location)
+            + Reference(typeof(System.Diagnostics.Activity).Assembly.Location);
+        string Properties(string name) => $"<TargetFramework>net10.0</TargetFramework><TreatWarningsAsErrors>true</TreatWarningsAsErrors><MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors><ImplicitUsings>enable</ImplicitUsings><EnableDefaultCompileItems>false</EnableDefaultCompileItems><AssemblyName>{name}</AssemblyName><BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath>";
         foreach (string name in new[] { "Split.Contracts", "Split.Adapters", "Foreign.Contracts" })
         {
             string directory = Path.Combine(root, name); Directory.CreateDirectory(directory);

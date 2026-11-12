@@ -13,6 +13,11 @@ internal sealed class OperationsBootstrapFactory(
     IReadOnlyDictionary<string, string?> configuration,
     bool disposeStoppedHostBeforeClientLookup = false) : WebApplicationFactory<Program>
 {
+    private IHost? _capturedHost;
+
+    /// <summary>Gets or sets the exact receiver refusal asserted by the test.</summary>
+    internal RouteCatalogUnavailableException? AssertedReceiverRefusal { get; set; }
+
     /// <summary>Gets the actual receiver captured before application startup can stop the host.</summary>
     internal FiniteRouteCatalogReceiver CapturedReceiver { get; private set; } = null!;
 
@@ -24,6 +29,7 @@ internal sealed class OperationsBootstrapFactory(
     {
         builder.ConfigureHostConfiguration(config => config.AddInMemoryCollection(configuration));
         IHost host = builder.Build();
+        _capturedHost = host;
         CapturedReceiver = host.Services.GetRequiredService<FiniteRouteCatalogReceiver>();
         CapturedStoppingToken = host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         var stopping = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -37,6 +43,23 @@ internal sealed class OperationsBootstrapFactory(
             host.Dispose();
         }
         return host;
+    }
+
+    /// <inheritdoc />
+    public override async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await base.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (RouteCatalogUnavailableException exception) when (ReferenceEquals(exception, AssertedReceiverRefusal))
+        {
+            // Host shutdown can rethrow the same receiver refusal already asserted by the test.
+        }
+        finally
+        {
+            _capturedHost?.Dispose();
+        }
     }
 
     /// <inheritdoc />
