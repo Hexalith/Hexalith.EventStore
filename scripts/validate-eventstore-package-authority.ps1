@@ -58,7 +58,7 @@ try {
     $null = Read-EventStoreCanonicalAuthority -Path $authority -ExpectedSha256 (
         'b20e45e3800e7d5e08770993192b646887097b8187e70f3f629adc741a0441fe')
     $null = Read-EventStoreCanonicalAuthority -Path $companion -ExpectedSha256 (
-        '9db2a37db1125ad075efb50477543c73affc23e6030ac1997b2c996adab33438')
+        'f8b82eaf22a96e8b17e2f7ac9aa73839f34ec8c356f90e386190b454eb06391c')
 
     # Exact retained inventories can exceed the OS per-argument length limit.
     # Transport structured arguments outside the checkout, preserving array membership.
