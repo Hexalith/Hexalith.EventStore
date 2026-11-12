@@ -44,7 +44,7 @@ jobs:
       - name: Initialize only root Builds dependency
         run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
       - name: Initialize .NET
-        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd
+        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b
         with:
           global-json-file: global.json
       - name: Verify private runtime input preparation controls
@@ -140,7 +140,7 @@ jobs:
         run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
 
       - name: Initialize .NET
-        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd
+        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b
         with:
           global-json-file: global.json
 

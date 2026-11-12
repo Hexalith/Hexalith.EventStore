@@ -13,7 +13,8 @@ mkdir -p "$package_root" "$work_root/old" "$work_root/current"
 
 for project in Contracts Client ServiceDefaults DomainService Server; do
     dotnet pack "$repo_root/src/Hexalith.EventStore.$project/Hexalith.EventStore.$project.csproj" \
-        --configuration "$configuration" -m:1 -p:Version="$new_version" -p:NuGetAudit=false \
+        --configuration "$configuration" -m:1 -p:Version="$new_version" \
+        -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low \
         -p:UseHexalithProjectReferences=false \
         -o "$package_root"
 done
@@ -45,6 +46,7 @@ for helper in LegacySuccessEvent LegacyRejectionEvent LegacyEventfulResult; do
     cp "$fixture_root/$helper.cs" "$work_root/old/$helper.cs"
 done
 cp "$fixture_root/LegacySnapshotManager.cs" "$work_root/old/LegacySnapshotManager.cs"
+# The immutable old package is a wire-compatibility reader, not current security acceptance.
 dotnet restore "$work_root/old/LegacyConsumer.csproj" --configfile "$work_root/NuGet.Config" -p:NuGetAudit=false -p:UseHexalithProjectReferences=false
 dotnet build "$work_root/old/LegacyConsumer.csproj" --configuration "$configuration" --no-restore -m:1 -p:UseHexalithProjectReferences=false
 dotnet "$work_root/old/bin/$configuration/net10.0/LegacyConsumer.dll" \
@@ -59,7 +61,7 @@ cat > "$work_root/current/CurrentConsumer.csproj" <<EOF
 </ItemGroup></Project>
 EOF
 cp "$fixture_root/CurrentConsumer.cs" "$work_root/current/CurrentConsumer.cs"
-dotnet restore "$work_root/current/CurrentConsumer.csproj" --configfile "$work_root/NuGet.Config" -p:NuGetAudit=false -p:UseHexalithProjectReferences=false
+dotnet restore "$work_root/current/CurrentConsumer.csproj" --configfile "$work_root/NuGet.Config" -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low -p:UseHexalithProjectReferences=false
 dotnet build "$work_root/current/CurrentConsumer.csproj" --configuration "$configuration" --no-restore -m:1 -p:UseHexalithProjectReferences=false
 dotnet "$work_root/current/bin/$configuration/net10.0/CurrentConsumer.dll" \
     "$work_root/old/bin/$configuration/net10.0/LegacyConsumer.dll" "$work_root/old-wire.json" \
