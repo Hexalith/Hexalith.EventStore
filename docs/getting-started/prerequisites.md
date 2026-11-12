@@ -2,11 +2,11 @@
 
 # Prerequisites
 
-Before you start the quickstart, you need three tools installed: the pinned .NET 11 SDK to build the application and the .NET 10 runtime to run it, Docker Desktop to provide local infrastructure containers, and the DAPR CLI to manage the infrastructure abstraction layer that Hexalith.EventStore uses for state storage, messaging, and actor management.
+Before you start the quickstart, you need three tools installed: the pinned .NET 11 SDK to build and run the application, Docker Desktop to provide local infrastructure containers, and the DAPR CLI to manage the infrastructure abstraction layer that Hexalith.EventStore uses for state storage, messaging, and actor management.
 
-## .NET 11 SDK and .NET 10 runtime
+## .NET 11 SDK and runtime
 
-Hexalith.EventStore targets .NET 10. Install the .NET SDK pinned in `global.json` (11.0.100, with `latestPatch` roll-forward) to build the project. Also install the .NET 10 ASP.NET Core runtime to run its applications and tests; the .NET 11 SDK alone does not supply that runtime.
+Hexalith.EventStore 5 targets .NET 11. Install the .NET SDK pinned in `global.json` (11.0.100, with `latestPatch` roll-forward) to build and run the project. Moving applications from EventStore 4 to EventStore 5 requires updating their target framework to `net11.0` and deploying the .NET 11 ASP.NET Core runtime.
 
 **Install:** Use the official installation guidance for your platform:
 
@@ -22,13 +22,15 @@ $ dotnet --version
 
 Expected output: `11.0.100` or a later patch in the same feature band.
 
-Install the [.NET 10 ASP.NET Core runtime](https://dotnet.microsoft.com/download/dotnet/10.0), then verify it separately:
+The SDK includes the required runtime. Verify it separately:
 
 ```bash
 $ dotnet --list-runtimes
 ```
 
-The output must include both `Microsoft.NETCore.App 10.x` and `Microsoft.AspNetCore.App 10.x`.
+The output must include both `Microsoft.NETCore.App 11.x` and `Microsoft.AspNetCore.App 11.x`. The repository's retained historical package and wire-compatibility suites also require the [.NET 10 ASP.NET Core runtime](https://dotnet.microsoft.com/download/dotnet/10.0); it is not required to run current EventStore applications.
+
+Contributors running the full package-consumer checks also need the .NET 10.0.4xx SDK (10.0.403 or a later patch). A separate fixture uses that SDK to verify that the new REST generator refuses an unsupported compiler host with `HXRESTSDK001`.
 
 ## .NET Aspire CLI
 

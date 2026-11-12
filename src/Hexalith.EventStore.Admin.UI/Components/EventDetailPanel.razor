@@ -190,7 +190,6 @@
         _causationChain = null;
         _causationError = null;
         _error = null;
-        StateHasChanged();
 
         try
         {
@@ -213,11 +212,16 @@
 
         if (_eventDetail is not null)
         {
-            await LoadStateAsync();
+            Task stateRequest = LoadStateAsync();
+            // Blazor renders when this lifecycle task completes, not between its requests.
+            StateHasChanged();
+            await stateRequest;
 
             if (AutoTraceCausation && _causationChain is null)
             {
-                await TraceCausation();
+                Task causationRequest = TraceCausation();
+                StateHasChanged();
+                await causationRequest;
             }
         }
     }
@@ -233,7 +237,6 @@
         _stateSnapshot = null;
         _stateError = null;
         _stateErrorRetryable = false;
-        StateHasChanged();
 
         long requestedSequence = SequenceNumber;
         string requestedAggregateId = AggregateId;
@@ -327,7 +330,6 @@
         _causationLoading = true;
         _causationError = null;
         _causationChain = null;
-        StateHasChanged();
 
         try
         {

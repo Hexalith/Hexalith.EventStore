@@ -1353,18 +1353,21 @@ public class ConsistencyPageTests : AdminUITestContext {
         private ClaimsPrincipal _user = new(new ClaimsIdentity([new Claim(AdminClaimTypes.Role, initialRole.ToString())], "TestAuth"));
 
         public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => CreateStateAsync();
+
+        private Task<AuthenticationState> CreateStateAsync()
             => Task.FromResult(new AuthenticationState(_user));
 
         public void SetRole(AdminRole role, string? tenantId = null) {
             List<Claim> claims = [new Claim(AdminClaimTypes.Role, role.ToString())];
             if (tenantId is not null) { claims.Add(new Claim("eventstore:tenant", tenantId)); }
             _user = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
-            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+            NotifyAuthenticationStateChanged(CreateStateAsync());
         }
 
         public void SignOut() {
             _user = new ClaimsPrincipal(new ClaimsIdentity());
-            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+            NotifyAuthenticationStateChanged(CreateStateAsync());
         }
     }
 }

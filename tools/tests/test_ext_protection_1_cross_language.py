@@ -37,7 +37,7 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
         contracts = ROOT / 'src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj'
         project = cls.directory / 'Interop.csproj'
         project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
-                           '<TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings>'
+                           '<TargetFramework>net11.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings>'
                            '<Nullable>enable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems>'
                            '</PropertyGroup><ItemGroup>' + ''.join('<Compile Include="' + escape(str(source)) + '" />' for source in sources)
                            + '<ProjectReference Include="' + escape(str(contracts)) + '" /></ItemGroup></Project>')
@@ -52,7 +52,7 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
         print(result.stdout)
         if result.returncode:
             raise RuntimeError('Cross-language build failed: ' + result.stderr)
-        cls.assembly = cls.directory / ('bin/' + configuration + '/net10.0/Interop.dll')
+        cls.assembly = cls.directory / ('bin/' + configuration + '/net11.0/Interop.dll')
 
     def test_golden_canonical_manifest_and_bidirectional_es256_match_actual_csharp_sources(self):
         vectors = v.read_json(FIXTURES / 'capability-vectors.json')['vectors']

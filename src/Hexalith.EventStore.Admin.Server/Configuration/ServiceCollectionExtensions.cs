@@ -89,6 +89,8 @@ public static class ServiceCollectionExtensions {
     public static IServiceCollection AddAdminOpenApi(
         this IServiceCollection services) {
         _ = services.AddOpenApi(options => {
+            // Keep the published Admin document contract while NET11 defaults to OpenAPI3.2.
+            options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
             // Document metadata and JWT security scheme
             _ = options.AddDocumentTransformer((document, context, ct) => {
                 document.Info = new OpenApiInfo {

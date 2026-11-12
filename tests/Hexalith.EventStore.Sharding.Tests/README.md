@@ -16,7 +16,7 @@ From the repository root, build both projects in Debug:
 ```bash
 dotnet build tests/Hexalith.EventStore.Sharding.TestHost/Hexalith.EventStore.Sharding.TestHost.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
 dotnet build tests/Hexalith.EventStore.Sharding.Tests/Hexalith.EventStore.Sharding.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*BindingTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*BindingTests'
 ```
 
 Prerequisites: the pinned .NET SDK, a working local Docker server, installed
@@ -39,7 +39,7 @@ absolute value in your shell, then invoke the built executable directly:
 
 ```bash
 export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected future UTC second>'
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*SyntheticShardingTests' -class '*LifecycleTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*SyntheticShardingTests' -class '*LifecycleTests'
 ```
 
 `ExpiryLifecycleTests` is explicit and does not run by default. To exercise the
@@ -48,7 +48,7 @@ and run only that class with xUnit's explicit switch:
 
 ```bash
 export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected short future UTC second>'
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ExpiryLifecycleTests' -explicit only
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ExpiryLifecycleTests' -explicit only
 ```
 
 That explicit test proves lifecycle cancellation and teardown at the actual
@@ -61,7 +61,7 @@ save cancellation is known to precede its commit; only that instrumentation prov
 unchanged state there. Focused local checks require no Docker:
 
 ```bash
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*FixturePreflightTests' -class '*TransportLifecycleTests' -class '*ShardActorExpiryTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*FixturePreflightTests' -class '*TransportLifecycleTests' -class '*ShardActorExpiryTests'
 ```
 
 Before the first container is created, the fixture writes `binding.json` with
@@ -134,7 +134,7 @@ The separate production-v1/local-mechanics regression is:
 
 ```bash
 dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
-dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*GlobalPosition*'
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net11.0/Hexalith.EventStore.Server.Tests.dll -class '*GlobalPosition*'
 ```
 
 ## Same-storage provider recovery
@@ -153,9 +153,9 @@ and expiry remove the named volume explicitly and verify no owned volume remains
 
 ```bash
 dotnet build tests/Hexalith.EventStore.Sharding.Tests/Hexalith.EventStore.Sharding.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ShardActorRecoveryTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ShardActorRecoveryTests'
 export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected future UTC second>'
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderRecoveryTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderRecoveryTests'
 ```
 
 Observable fault boundaries are the confirmed stopped container, a granted
@@ -263,9 +263,9 @@ before owned storage is deleted. Diagnostic timeout evidence remains visible.
 
 ```bash
 dotnet build tests/Hexalith.EventStore.Sharding.Tests/Hexalith.EventStore.Sharding.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*PostgresFaultProxyTests' -class '*PostgresFaultProxyFailureTests' -class '*PostgresFaultProxyIsolationTests' -class '*AttemptJournalTests' -class '*ShardAttemptValidatorTests' -class '*FaultExperimentTests' -class '*FixtureProxyCleanupTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*PostgresFaultProxyTests' -class '*PostgresFaultProxyFailureTests' -class '*PostgresFaultProxyIsolationTests' -class '*AttemptJournalTests' -class '*ShardAttemptValidatorTests' -class '*FaultExperimentTests' -class '*FixtureProxyCleanupTests'
 export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected future UTC second>'
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderCommitAmbiguityTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderCommitAmbiguityTests'
 ```
 
 Completion, injected startup failure after proxy creation and expiry cancel the
@@ -278,7 +278,7 @@ still drains every accepted task. An explicit live proxy expiry case is:
 
 ```bash
 export EVENTSTORE_SHARDING_EXPIRES_UTC='<operator-selected UTC second allowing proxy startup>'
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderProxyExpiryTests' -explicit only
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderProxyExpiryTests' -explicit only
 ```
 
 Focused dependency-free tests cover fragmented/malformed frames, both COMMIT
@@ -335,9 +335,9 @@ complete rows.
 ```bash
 dotnet build tests/Hexalith.EventStore.Sharding.TestHost/Hexalith.EventStore.Sharding.TestHost.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
 dotnet build tests/Hexalith.EventStore.Sharding.Tests/Hexalith.EventStore.Sharding.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --nologo --verbosity minimal
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*OneKeyProtocolTests' -class '*OneKeyAttemptValidatorTests' -class '*OneKeyAttemptJournalTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*OneKeyProtocolTests' -class '*OneKeyAttemptValidatorTests' -class '*OneKeyAttemptJournalTests'
 export EVENTSTORE_SHARDING_EXPIRES_UTC='<authorized future exclusive UTC second within one hour>'
-dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderOneKeyTests'
+dotnet tests/Hexalith.EventStore.Sharding.Tests/bin/Debug/net11.0/Hexalith.EventStore.Sharding.Tests.dll -class '*ProviderOneKeyTests'
 ```
 
 Implementation verification on 2026-11-01 built the isolated projects in Debug

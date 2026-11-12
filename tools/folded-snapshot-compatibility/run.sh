@@ -54,7 +54,7 @@ dotnet "$work_root/old/bin/$configuration/net10.0/LegacyConsumer.dll" \
 
 cat > "$work_root/current/CurrentConsumer.csproj" <<EOF
 <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>
-<OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
+<OutputType>Exe</OutputType><TargetFramework>net11.0</TargetFramework>
 <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
 </PropertyGroup><ItemGroup>
 <PackageReference Include="Hexalith.EventStore.Server" Version="$new_version" />
@@ -63,7 +63,7 @@ EOF
 cp "$fixture_root/CurrentConsumer.cs" "$work_root/current/CurrentConsumer.cs"
 dotnet restore "$work_root/current/CurrentConsumer.csproj" --configfile "$work_root/NuGet.Config" -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low -p:UseHexalithProjectReferences=false
 dotnet build "$work_root/current/CurrentConsumer.csproj" --configuration "$configuration" --no-restore -m:1 -p:UseHexalithProjectReferences=false
-dotnet "$work_root/current/bin/$configuration/net10.0/CurrentConsumer.dll" \
+dotnet "$work_root/current/bin/$configuration/net11.0/CurrentConsumer.dll" \
     "$work_root/old/bin/$configuration/net10.0/LegacyConsumer.dll" "$work_root/old-wire.json" \
     "$work_root/old-snapshot.json" "$work_root/old-request.json" \
     "$work_root/new-snapshot.json" "$work_root/new-request.json" "$work_root/new-wire.json"

@@ -121,7 +121,7 @@ public class SampleApiCatalogReadinessTests
             ?? throw new InvalidOperationException("The actual test build configuration is required.");
         if (configuration is not ("Debug" or "Release")) throw new InvalidOperationException("A qualified native test configuration is required.");
         string executable = Path.Combine(root?.FullName ?? throw new DirectoryNotFoundException("Cannot find the owning sample API."),
-            "samples/Hexalith.EventStore.Sample.Api/bin", configuration, "net10.0/Hexalith.EventStore.Sample.Api.dll");
+            "samples/Hexalith.EventStore.Sample.Api/bin", configuration, "net11.0/Hexalith.EventStore.Sample.Api.dll");
         var start = new ProcessStartInfo("dotnet") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
         start.ArgumentList.Add(executable);
         start.WorkingDirectory = Path.GetDirectoryName(executable)!;

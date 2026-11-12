@@ -37,7 +37,7 @@ public sealed class AdminOperationTransformer : IOpenApiOperationTransformer {
             && response is OpenApiResponse tooLarge
             && tooLarge.Content is not null
             && tooLarge.Content.Values.FirstOrDefault() is OpenApiMediaType mediaType) {
-            tooLarge.Content = new Dictionary<string, OpenApiMediaType> {
+            tooLarge.Content = new Dictionary<string, IOpenApiMediaType> {
                 ["application/problem+json"] = mediaType,
             };
         }

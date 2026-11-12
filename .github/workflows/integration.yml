@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$P1R_QUALIFICATION_OUTPUT_ROOT"
-          dotnet tests/Hexalith.EventStore.PublishedCompatibility.Tests/bin/Release/net10.0/Hexalith.EventStore.PublishedCompatibility.Tests.dll \
+          dotnet tests/Hexalith.EventStore.PublishedCompatibility.Tests/bin/Release/net11.0/Hexalith.EventStore.PublishedCompatibility.Tests.dll \
             --results-directory TestResults/published-compatibility \
             --report-xunit-trx --report-xunit-trx-filename published-compatibility.trx \
             2>&1 | tee "$P1R_QUALIFICATION_OUTPUT_ROOT/runner.log"

@@ -137,10 +137,17 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_focusSearchRequested && _isOpen)
+        try
         {
-            _focusSearchRequested = false;
-            await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusCommandPaletteSearch");
+            if (_focusSearchRequested && _isOpen)
+            {
+                _focusSearchRequested = false;
+                await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusCommandPaletteSearch");
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit ended before this optional browser interaction completed.
         }
     }
 

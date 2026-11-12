@@ -90,7 +90,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         bool enablePubSubProjectionTransport = false,
         string? aggregateActorTypeName = null)
     {
-        string assembly = Path.Combine(repositoryRoot, "src", "Hexalith.EventStore", "bin", "Debug", "net10.0", "Hexalith.EventStore.dll");
+        string assembly = Path.Combine(repositoryRoot, "src", "Hexalith.EventStore", "bin", "Debug", "net11.0", "Hexalith.EventStore.dll");
         if (!File.Exists(assembly))
         {
             throw new FileNotFoundException("Build the IntegrationTests project in Debug before running this proof.", assembly);

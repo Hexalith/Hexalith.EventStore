@@ -38,7 +38,7 @@ class ActorAdmissionRunnerTests(unittest.TestCase):
 
     def test_default_configuration_remains_debug(self):
         self.assertEqual("Debug", self.run.args.configuration)
-        self.assertEqual(self.run.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+        self.assertEqual(self.run.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net11.0",
                          self.run.test_output)
 
     def test_selected_configuration_applies_to_every_binary_source(self):
@@ -52,7 +52,7 @@ class ActorAdmissionRunnerTests(unittest.TestCase):
                             (run.test_output, "tests/Hexalith.EventStore.Server.LiveSidecar.Tests"),
                             (run.sample_output, "samples/Hexalith.EventStore.Sample"),
                             (run.eventstore_output, "src/Hexalith.EventStore")):
-                        self.assertEqual(run.root / project / "bin" / configuration / "net10.0", actual)
+                        self.assertEqual(run.root / project / "bin" / configuration / "net11.0", actual)
                 finally:
                     shutil.rmtree(run.runtime)
 
@@ -64,7 +64,7 @@ class ActorAdmissionRunnerTests(unittest.TestCase):
         try:
             self.assertEqual(frozen / "sample", run.sample_output)
             self.assertEqual(frozen / "eventstore", run.eventstore_output)
-            self.assertEqual(run.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0",
+            self.assertEqual(run.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net11.0",
                              run.test_output)
         finally:
             shutil.rmtree(run.runtime)

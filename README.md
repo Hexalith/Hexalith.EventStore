@@ -72,7 +72,7 @@ Beyond commands, the platform includes a query pipeline with ETag-based cache va
 
 **Get started in under 10 minutes** — follow the [Quickstart Guide](docs/getting-started/quickstart.md).
 
-Prerequisites: [.NET SDK 11.0.100](https://dotnet.microsoft.com/download/dotnet/11.0) (as pinned in `global.json`) and the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0), [Docker Desktop](https://www.docker.com/products/docker-desktop/), [DAPR CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
+Prerequisites: [.NET SDK 11.0.100](https://dotnet.microsoft.com/download/dotnet/11.0) (as pinned in `global.json`) and the [.NET 11 runtime](https://dotnet.microsoft.com/download/dotnet/11.0), [Docker Desktop](https://www.docker.com/products/docker-desktop/), [DAPR CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 
 ## Run and Debug in the Platform Workspace
 

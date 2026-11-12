@@ -25,7 +25,9 @@ public sealed class TokenAuthenticationStateProvider : AuthenticationStateProvid
         roleState.RoleChanged += OnRoleChanged;
     }
 
-    public override async Task<AuthenticationState> GetAuthenticationStateAsync() {
+    public override Task<AuthenticationState> GetAuthenticationStateAsync() => GetCurrentStateAsync();
+
+    private async Task<AuthenticationState> GetCurrentStateAsync() {
         try {
             string token = await _tokenProvider.GetAccessTokenAsync().ConfigureAwait(false);
             ClaimsPrincipal principal = ParseJwtClaims(token);
@@ -83,5 +85,5 @@ public sealed class TokenAuthenticationStateProvider : AuthenticationStateProvid
     }
 
     private void OnRoleChanged(AdminRole role)
-        => NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        => NotifyAuthenticationStateChanged(GetCurrentStateAsync());
 }

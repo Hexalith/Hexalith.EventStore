@@ -23,7 +23,7 @@ LANES = {
 
 def lane_command(lane, profile, worker, output, configuration='Release'):
     project, classes = LANES[lane]
-    assembly = f'tests/{project}/bin/{configuration}/net10.0/{project}.dll'
+    assembly = f'tests/{project}/bin/{configuration}/net11.0/{project}.dll'
     env = dict(os.environ)
     if lane in ('durable-broker-fixture', 'actor-admission-process'):
         env.update(EVENTSTORE_DAPR_QUALIFICATION_PROFILE=str(profile), QUALIFICATION_EXCLUSIVE_WORKER=str(worker),

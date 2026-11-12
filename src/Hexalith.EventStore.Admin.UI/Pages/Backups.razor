@@ -1000,7 +1000,6 @@
         if (_validateTarget is null) return;
 
         _isOperating = true;
-        StateHasChanged();
         _operationCts?.Cancel();
         _operationCts?.Dispose();
         _operationCts = new CancellationTokenSource();
@@ -1169,7 +1168,6 @@
     private async Task OnExportConfirm()
     {
         _isOperating = true;
-        StateHasChanged();
         _operationCts?.Cancel();
         _operationCts?.Dispose();
         _operationCts = new CancellationTokenSource();

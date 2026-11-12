@@ -159,9 +159,9 @@ internal static class RestApiGeneratorTestHarness
         AddReference(paths, typeof(TagsAttribute).Assembly);
         AddReference(paths, typeof(IHeaderDictionary).Assembly);
         AddReference(paths, typeof(AuthorizeAttribute).Assembly);
-        // Compile controller sources against the Primitives assembly shipped beside their
-        // ASP.NET framework metadata, rather than the test runner's newer package assembly.
-        paths.Add(Path.Combine(Path.GetDirectoryName(typeof(IHeaderDictionary).Assembly.Location)!, "Microsoft.Extensions.Primitives.dll"));
+        // Resolve the actual runtime contract: NET11 places Primitives in Core rather than
+        // beside the ASP.NET Http assembly, so shared-framework directory adjacency is not stable.
+        AddReference(paths, typeof(Microsoft.Extensions.Primitives.StringValues).Assembly);
         AddReference(paths, typeof(MediaTypeHeaderValue).Assembly);
 
         AddRuntimeAssembly(paths, "netstandard.dll");

@@ -82,6 +82,41 @@ public class AdminUserContextTests {
         (await context.HasMinimumRoleAsync(AdminRole.ReadOnly)).ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AuthenticationChangeInvalidatesAnOlderPendingAdministratorRead(bool minimumRole) {
+        var pending = new TaskCompletionSource<AuthenticationState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var provider = new PendingAuthenticationStateProvider(pending.Task);
+        var context = new AdminUserContext(provider);
+        Task<bool> read = minimumRole ? context.HasMinimumRoleAsync(AdminRole.ReadOnly)
+            : ReadAdministratorAsync(context);
+        provider.NotifyCurrentState(Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()))));
+        pending.SetResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(AdminClaimTypes.Role, "Admin")], "TestAuth"))));
+        (await read).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task CanceledPendingRoleReadDoesNotWaitForAnUnresponsiveProvider() {
+        var pending = new TaskCompletionSource<AuthenticationState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var provider = new PendingAuthenticationStateProvider(pending.Task);
+        var context = new AdminUserContext(provider);
+        using var cancellation = new CancellationTokenSource();
+        Task<AdminRole> read = context.GetRoleAsync(cancellation.Token);
+        cancellation.Cancel();
+        await Should.ThrowAsync<OperationCanceledException>(() => read.WaitAsync(TimeSpan.FromSeconds(1)));
+    }
+
+    private sealed class PendingAuthenticationStateProvider(Task<AuthenticationState> pending) : AuthenticationStateProvider {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() => pending;
+
+        public void NotifyCurrentState(Task<AuthenticationState> state) => NotifyAuthenticationStateChanged(state);
+    }
+
+    private static async Task<bool> ReadAdministratorAsync(AdminUserContext context)
+        => await context.GetRoleAsync() == AdminRole.Admin;
+
     private static AdminUserContext CreateContext(bool authenticated, params Claim[] claims) {
         AuthenticationStateProvider provider = Substitute.For<AuthenticationStateProvider>();
         _ = provider.GetAuthenticationStateAsync().Returns(Task.FromResult(new AuthenticationState(

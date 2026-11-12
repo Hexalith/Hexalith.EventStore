@@ -30,7 +30,8 @@ public sealed class CommandExampleTransformer : IOpenApiOperationTransformer {
         }
 
         if (operation.RequestBody?.Content is not null
-            && operation.RequestBody.Content.TryGetValue("application/json", out OpenApiMediaType? mediaType)) {
+            && operation.RequestBody.Content.TryGetValue("application/json", out IOpenApiMediaType? candidate)
+            && candidate is OpenApiMediaType mediaType) {
             mediaType.Examples ??= new Dictionary<string, IOpenApiExample>();
             mediaType.Examples["IncrementCounter"] = new OpenApiExample {
                 Summary = "Increment Counter (Counter domain)",

@@ -116,7 +116,9 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-          dotnet-version: 10.0.x
+          # The offline cross-framework API controls require the exact 10.0.15
+          # reference pack supplied by this SDK, alongside global.json's SDK11.
+          dotnet-version: 10.0.404
 
       - name: Run generated API smoke preflight regression
         run: bash scripts/tests/generated-api-smoke-preflight.test.sh
@@ -125,6 +127,16 @@ jobs:
         run: |
           python3 -m unittest discover -s tools/tests -p test_release_package_contract.py
           python3 -m unittest discover -s tools/tests -p test_package_consumer_environment.py
+
+      - name: Install pinned API compatibility tool for offline controls
+        run: >-
+          dotnet tool install Microsoft.DotNet.ApiCompat.Tool --version 11.0.100
+          --tool-path "${RUNNER_TEMP}/release-api-tool"
+
+      - name: Verify release API gate and real cross-framework refusal controls
+        env:
+          RELEASE_API_COMPAT_TOOL_DLL: ${{ runner.temp }}/release-api-tool/.store/microsoft.dotnet.apicompat.tool/11.0.100/microsoft.dotnet.apicompat.tool/11.0.100/tools/net10.0/any/Microsoft.DotNet.ApiCompat.Tool.dll
+        run: python3 -m unittest discover -s tools/tests -p test_release_api_compatibility.py
 
       - name: Verify qualification runner exit preservation
         run: python3 -m unittest discover -s tools/tests -p test_published_runner_exit.py

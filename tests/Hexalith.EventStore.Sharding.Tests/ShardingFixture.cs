@@ -105,7 +105,7 @@ internal sealed partial class ShardingFixture : IAsyncDisposable
                     _ => resolveDockerEndpoint is not null ? resolveDockerEndpoint() : ResolveDockerEndpointAsync());
                 EnsureActive();
                 _root = FindRoot();
-                _hostDirectory = Path.Combine(_root, "tests", "Hexalith.EventStore.Sharding.TestHost", "bin", "Debug", "net10.0");
+                _hostDirectory = Path.Combine(_root, "tests", "Hexalith.EventStore.Sharding.TestHost", "bin", "Debug", "net11.0");
                 if (!File.Exists(Path.Combine(_hostDirectory, "Hexalith.EventStore.Sharding.TestHost.dll")))
                     throw new InvalidOperationException("Build the test host in Debug before execution.");
                 _daprd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", OperatingSystem.IsWindows() ? "daprd.exe" : "daprd");

@@ -104,7 +104,7 @@ def write_consumer_project(
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <OutputType>Exe</OutputType>
-            <TargetFramework>net10.0</TargetFramework>
+            <TargetFramework>net11.0</TargetFramework>
             <ImplicitUsings>enable</ImplicitUsings>
             <Nullable>enable</Nullable>
           </PropertyGroup>
@@ -590,6 +590,7 @@ def run(
     command: list[str],
     cwd: pathlib.Path = ROOT,
     packages_folder: pathlib.Path | None = None,
+    expected_error_code: str | None = None,
 ) -> None:
     """Run one consumer command and preserve its diagnostic output."""
 
@@ -599,8 +600,14 @@ def run(
     }
     if packages_folder is not None:
         env["NUGET_PACKAGES"] = str(packages_folder)
-    completed = subprocess.run(command, cwd=cwd, check=False, env=env)
-    if completed.returncode != 0:
+    completed = subprocess.run(command, cwd=cwd, check=False, env=env,
+                               capture_output=expected_error_code is not None, text=expected_error_code is not None)
+    if expected_error_code is not None:
+        output = (completed.stdout or "") + (completed.stderr or "")
+        print(output, end="", flush=True)
+        if completed.returncode == 0 or expected_error_code not in output or "CS8784" in output:
+            raise ValueError(f"Unsupported compiler host did not refuse with {expected_error_code} before analyzer initialization.")
+    elif completed.returncode != 0:
         raise subprocess.CalledProcessError(completed.returncode, completed.args)
 
 
@@ -674,17 +681,45 @@ def validate_library_package(
             run(["dotnet", "run", "--no-build", "--configuration", "Release", "--project", str(project_path)])
         assert_assets_use_packages(project_path, package.package_id, package.version)
         if package.package_id == "Hexalith.EventStore.RestApi.Generators":
-            # Analyzer packages must still load in the supported .NET 10 compiler host.
-            # Newer Immutable metadata can build here on SDK 11 but fail consumers with CS8784.
-            (consumer_dir / "global.json").write_text(
-                json.dumps({"sdk": {"version": "10.0.403", "rollForward": "latestPatch"}}),
-                encoding="utf-8",
-            )
-            run(
-                ["dotnet", "build", str(project_path), "--no-restore", "--configuration", "Release",
-                 "-t:Rebuild", "-warnaserror", "-p:UseHexalithProjectReferences=false"],
-                cwd=consumer_dir,
-            )
+            # The new major generator requires SDK11 despite its netstandard packaging.
+            # Verify SDK10 refuses clearly, independently of NET11 product references.
+            legacy_project = write_legacy_generator_host_project(consumer_dir, project_path)
+            run(["dotnet", "restore", str(legacy_project), "--configfile", str(config_path),
+                 "--packages", str(consumer_dir / "packages"), "-p:UseHexalithProjectReferences=false"],
+                cwd=legacy_project.parent)
+            run(["dotnet", "build", str(legacy_project), "--no-restore", "--configuration", "Release",
+                 "-t:Rebuild", "-warnaserror", "-p:UseHexalithProjectReferences=false"], cwd=legacy_project.parent,
+                expected_error_code="HXRESTSDK001")
+            assert_assets_use_packages(legacy_project, package.package_id, package.version)
+
+
+def write_legacy_generator_host_project(consumer_dir: pathlib.Path, current_project: pathlib.Path) -> pathlib.Path:
+    """Exercise the explicit SDK10 refusal without referencing NET11 products."""
+
+    legacy = consumer_dir / "legacy-analyzer-host"
+    legacy.mkdir()
+    sources = [ROOT / "src/Hexalith.EventStore.Contracts/Rest" / name
+               for name in ("RestApiAttribute.cs", "RestTenantSource.cs")]
+    for source in sources:
+        if not source.is_file():
+            raise ValueError(f"Canonical analyzer contract source is absent: {source}")
+    includes = "".join(f"<Compile Include={quoteattr(str(source))} />" for source in sources)
+    project = legacy / "LegacyAnalyzerHost.csproj"
+    project.write_text(textwrap.dedent(f"""\
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
+            <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+            <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+            <NuGetAudit>true</NuGetAudit><NuGetAuditMode>all</NuGetAuditMode><NuGetAuditLevel>low</NuGetAuditLevel>
+          </PropertyGroup>
+          <ItemGroup><PackageReference Include="Hexalith.EventStore.RestApi.Generators" />{includes}</ItemGroup>
+        </Project>
+        """), encoding="utf-8")
+    (legacy / "ConsumerProbe.cs").write_bytes((current_project.parent / "ConsumerProbe.cs").read_bytes())
+    (legacy / "global.json").write_text(
+        json.dumps({"sdk": {"version": "10.0.403", "rollForward": "latestPatch"}}), encoding="utf-8")
+    return project
 
 
 def validate_dotnet_tool_package(

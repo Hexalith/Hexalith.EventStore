@@ -22,6 +22,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../tools/Hexalith.EventStore.RuntimeIdentityProbe/Hexalith.EventStore.RuntimeIdentityProbe.csproj"
+                      ReferenceOutputAssembly="false" OutputItemType="EmbeddedResource" PrivateAssets="all" />
+  </ItemGroup>
+  <Target Name="NameSelectedOwnerRuntimeIdentityProbe" BeforeTargets="CreateManifestResourceNames" DependsOnTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <EmbeddedResource Update="@(EmbeddedResource)" Condition="'%(Filename)' == 'Hexalith.EventStore.RuntimeIdentityProbe' and '%(Extension)' == '.dll'">
+        <LogicalName>Hexalith.EventStore.Aspire.RuntimeIdentityProbe.dll</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.EventStore.AppHost.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
   </ItemGroup>

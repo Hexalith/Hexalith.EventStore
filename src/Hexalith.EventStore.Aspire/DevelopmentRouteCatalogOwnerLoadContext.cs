@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>Loads one selected child with its own dependency resolver, sharing only identical SDK contracts and their JSON contract types.</summary>
-internal sealed class DevelopmentRouteCatalogOwnerLoadContext(string targetPath, IReadOnlyDictionary<Assembly, string> loadedSdk) : AssemblyLoadContext(isCollectible: true)
+internal sealed class DevelopmentRouteCatalogOwnerLoadContext(string targetPath, IReadOnlyDictionary<Assembly, string> loadedSdk, IReadOnlyDictionary<string, string>? sharedRuntimeContracts = null) : AssemblyLoadContext(isCollectible: true)
 {
     private readonly AssemblyDependencyResolver _resolver = new(targetPath);
 
@@ -16,7 +16,7 @@ internal sealed class DevelopmentRouteCatalogOwnerLoadContext(string targetPath,
         .Append(typeof(System.Text.Json.JsonSerializerOptions).Assembly)
         .Append(typeof(System.Text.Encodings.Web.JavaScriptEncoder).Assembly)
         .Append(typeof(System.IO.Pipelines.PipeReader).Assembly)
-        .Where(IsSharedContract).Distinct()
+        .Where(IsSharedContract).Append(typeof(object).Assembly).Distinct()
         .ToDictionary(assembly => assembly, LoadedSdkDigest);
 
     private static bool IsJsonContractDependency(string? name) => name is
@@ -66,7 +66,12 @@ internal sealed class DevelopmentRouteCatalogOwnerLoadContext(string targetPath,
         Assembly? shared = Default.Assemblies.SingleOrDefault(assembly => assembly.GetName().Name == assemblyName.Name);
         if (shared is not null && IsSharedContract(shared))
         {
-            if (path is null || shared.GetName().FullName != assemblyName.FullName
+            if (path is null && IsJsonContractDependency(assemblyName.Name)
+                && sharedRuntimeContracts is not null && sharedRuntimeContracts.TryGetValue(assemblyName.Name!, out string? frozen))
+                path = frozen;
+            if (path is null || !Path.GetFullPath(path).StartsWith(Path.GetDirectoryName(targetPath)! + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                || shared.GetName().FullName != assemblyName.FullName
+                || AssemblyName.GetAssemblyName(path).FullName != assemblyName.FullName
                 || string.IsNullOrEmpty(shared.Location)
                 || Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))) != SharedDigest(shared))
                 throw new InvalidOperationException($"Selected child SDK dependency '{assemblyName.Name}' differs from the actual AppHost SDK.");

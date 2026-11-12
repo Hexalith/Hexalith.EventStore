@@ -1,4 +1,5 @@
 using System.Security;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Diagnostics;
@@ -68,9 +69,15 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "Hexalith.EventStore.slnx"))) root = root.Parent;
         string path = Path.Combine(root?.FullName ?? throw new DirectoryNotFoundException("The selected SDK Sample root is required."),
             "samples", "Hexalith.EventStore.Sample", "Hexalith.EventStore.Sample.csproj");
+        string configuration = typeof(RouteCatalogEnvelope).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()!.Configuration;
         var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
         builder.Environment.EnvironmentName = "Development";
         var selected = builder.AddProject("optional-selected-sample", path);
+#pragma warning disable ASPIREEXTENSION001
+        var launch = (ProjectLaunchConfiguration)await selected.Resource.CreateLaunchConfigurationAsync(ExecutableLaunchMode.NoDebug, TestContext.Current.CancellationToken);
+        launch.BuildConfiguration = configuration;
+        selected.WithDebugSupport(_ => Task.FromResult(launch), "project");
+#pragma warning restore ASPIREEXTENSION001
         await using var prepared = await selected.PrepareEventStoreDevelopmentOwnerAsync(TimeSpan.FromSeconds(90), TestContext.Current.CancellationToken);
         var operations = CompiledRouteCatalogDeclarations.ReadOperations([prepared.Owner.Contracts]);
         operations.Count.ShouldBe(7);
@@ -132,22 +139,31 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
                 using (var bytes = new FileStream(copy, FileMode.Append)) bytes.WriteByte(0);
                 jsonDependencies[changedJsonDependency] = copy;
             }
-            string Reference(string assemblyPath) => $"<Reference Include=\"{SecurityElement.Escape(Path.GetFileNameWithoutExtension(assemblyPath))}\"><HintPath>{SecurityElement.Escape(assemblyPath)}</HintPath></Reference>";
+            // These cases deliberately require app-local JSON contracts; separate NET11 controls cover framework pruning.
+            string Reference(string assemblyPath) => $"<Reference Include=\"{SecurityElement.Escape(Path.GetFileNameWithoutExtension(assemblyPath))}\"><HintPath>{SecurityElement.Escape(assemblyPath)}</HintPath>{(jsonDependencies.ContainsKey(Path.GetFileNameWithoutExtension(assemblyPath)) ? "<Private>true</Private>" : string.Empty)}</Reference>";
+            // NET11 normally selects its framework references despite Private=true. This fixture deliberately
+            // owns an app-local dependency: let the SDK generate its deps entry and copy the exact real body.
+            string explicitLocalJson = "<Target Name=\"DeclareExactLocalJsonContracts\" BeforeTargets=\"_ComputeReferenceAssemblies;_ComputeUserRuntimeAssemblies\" DependsOnTargets=\"ResolveAssemblyReferences\"><ItemGroup>"
+                + string.Concat(originalJsonDependencies.Select(dependency => $"<ReferencePath Remove=\"@(ReferencePath)\" Condition=\"'%(Filename)' == '{dependency.Key}'\" /><ReferencePath Include=\"{SecurityElement.Escape(dependency.Value)}\" CopyLocal=\"true\" IncludeRuntimeDependency=\"true\" FrameworkFile=\"false\" /><ReferenceCopyLocalPaths Include=\"{SecurityElement.Escape(dependency.Value)}\" />"))
+                + "</ItemGroup></Target><Target Name=\"CopyExactLocalJsonContracts\" AfterTargets=\"Build\">"
+                + string.Concat(originalJsonDependencies.Select(dependency => $"<Copy SourceFiles=\"{SecurityElement.Escape(dependency.Value)}\" DestinationFiles=\"$(TargetDir)/{dependency.Key}.dll\" />"))
+                + "</Target>";
             string overflow = scenario == "diagnostic-overflow" ? $"<Target Name=\"Overflow\" BeforeTargets=\"PrepareForBuild\"><Message Importance=\"high\" Text=\"{new string('x', 9 * 1024 * 1024)}\" /></Target>" : string.Empty;
             string drift = scenario switch
             {
-                "sdk-drift" => $"<Target Name=\"SelectedRuntimeDrift\" AfterTargets=\"Build\"><Copy SourceFiles=\"{SecurityElement.Escape(contracts)}\" DestinationFiles=\"$(TargetDir)/Hexalith.EventStore.Contracts.dll\" /></Target>",
+                "sdk-drift" => $"<Target Name=\"SelectedRuntimeDrift\" AfterTargets=\"Build\" DependsOnTargets=\"CopyExactLocalJsonContracts\"><Copy SourceFiles=\"{SecurityElement.Escape(contracts)}\" DestinationFiles=\"$(TargetDir)/Hexalith.EventStore.Contracts.dll\" /></Target>",
                 _ when changedJsonDependency is not null && scenario.EndsWith("-drift", StringComparison.Ordinal)
-                    => $"<Target Name=\"SelectedJsonDrift\" AfterTargets=\"Build\"><Copy SourceFiles=\"{SecurityElement.Escape(jsonDependencies[changedJsonDependency])}\" DestinationFiles=\"$(TargetDir)/{changedJsonDependency}.dll\" /></Target>",
+                    => $"<Target Name=\"SelectedJsonDrift\" AfterTargets=\"Build\" DependsOnTargets=\"CopyExactLocalJsonContracts\"><Copy SourceFiles=\"{SecurityElement.Escape(jsonDependencies[changedJsonDependency])}\" DestinationFiles=\"$(TargetDir)/{changedJsonDependency}.dll\" /></Target>",
                 _ when changedJsonDependency is not null
-                    => $"<Target Name=\"SelectedJsonMissing\" AfterTargets=\"Build\"><Delete Files=\"$(TargetDir)/{changedJsonDependency}.dll\" /></Target>",
+                    => $"<Target Name=\"SelectedJsonMissing\" AfterTargets=\"Build\" DependsOnTargets=\"CopyExactLocalJsonContracts\"><Error Condition=\"!Exists('$(TargetDir)/{changedJsonDependency}.dll')\" Text=\"The missing-runtime fixture requires its actual app-local contract before deletion.\" /><MakeDir Directories=\"$(TargetDir)/required-local-runtime\" /><Copy SourceFiles=\"$(TargetDir)/{changedJsonDependency}.dll;$(TargetDir)/$(AssemblyName).deps.json\" DestinationFolder=\"$(TargetDir)/required-local-runtime\" /><Delete Files=\"$(TargetDir)/{changedJsonDependency}.dll\" /></Target>",
                 _ => string.Empty,
             };
             await File.WriteAllTextAsync(path, $"""
                 <Project Sdk="Microsoft.NET.Sdk">
-                  <PropertyGroup><TargetFramework>net10.0</TargetFramework><TreatWarningsAsErrors>true</TreatWarningsAsErrors><MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors><AssemblyName>Selected$(SelectedOwnerArtifact)</AssemblyName><BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath></PropertyGroup>
+                  <PropertyGroup><TargetFramework>net11.0</TargetFramework><GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles><TreatWarningsAsErrors>true</TreatWarningsAsErrors><MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors><AssemblyName>Selected$(SelectedOwnerArtifact)</AssemblyName><BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath></PropertyGroup>
                   <ItemGroup>{Reference(contracts)}{string.Concat(jsonDependencies.Values.Select(Reference))}{Reference(typeof(Activity).Assembly.Location)}{Reference(typeof(RouteCatalogAdapterSourceAttribute).Assembly.Location)}{Reference(typeof(DevelopmentCatalogProbeDeclarations).Assembly.Location)}</ItemGroup>
                   <Target Name="RequireActualMapping" BeforeTargets="PrepareForBuild"><Error Condition="'$(SelectedOwnerArtifact)' != 'owned'" Text="The actual selected build environment was lost." /></Target>
+                  {explicitLocalJson}
                   {overflow}
                   {drift}
                 </Project>
@@ -213,7 +229,16 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
                     _ => "No compiled owner declaration source",
                 });
                 if (changedJsonDependency is not null && scenario.EndsWith("-missing", StringComparison.Ordinal))
+                {
                     File.Exists(Path.Combine(retained, "metadata", changedJsonDependency + ".dll")).ShouldBeFalse();
+                    string evidence = Directory.EnumerateDirectories(output, "required-local-runtime", SearchOption.AllDirectories).Single();
+                    SHA256.HashData(await File.ReadAllBytesAsync(Path.Combine(evidence, changedJsonDependency + ".dll"), TestContext.Current.CancellationToken))
+                        .ShouldBe(SHA256.HashData(await File.ReadAllBytesAsync(originalJsonDependencies[changedJsonDependency], TestContext.Current.CancellationToken)));
+                    using var beforeDeletion = JsonDocument.Parse(await File.ReadAllBytesAsync(Directory.GetFiles(evidence, "*.deps.json").Single(), TestContext.Current.CancellationToken));
+                    beforeDeletion.RootElement.GetProperty("targets").EnumerateObject().SelectMany(framework => framework.Value.EnumerateObject())
+                        .SelectMany(library => library.Value.EnumerateObject()).Where(group => group.Name is "runtime" or "runtimeTargets")
+                        .SelectMany(group => group.Value.EnumerateObject()).Any(asset => Path.GetFileName(asset.Name) == changedJsonDependency + ".dll").ShouldBeTrue();
+                }
                 if (changedJsonDependency is not null && scenario.EndsWith("-drift", StringComparison.Ordinal))
                     SHA256.HashData(await File.ReadAllBytesAsync(Path.Combine(retained, "metadata", changedJsonDependency + ".dll"), TestContext.Current.CancellationToken))
                         .ShouldNotBe(SHA256.HashData(await File.ReadAllBytesAsync(originalJsonDependencies[changedJsonDependency], TestContext.Current.CancellationToken)));
@@ -265,7 +290,7 @@ public sealed class DevelopmentRouteCatalogOwnerPreparationTests
         {
             await File.WriteAllTextAsync(path, """
                 <Project Sdk="Microsoft.NET.Sdk">
-                  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+                  <PropertyGroup><TargetFramework>net11.0</TargetFramework><GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles></PropertyGroup>
                   <UsingTask TaskName="AwaitOwnerDeadline" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
                     <ParameterGroup><Marker ParameterType="System.String" Required="true" /></ParameterGroup>
                     <Task><Code Type="Fragment" Language="cs"><![CDATA[System.IO.File.WriteAllText(Marker, typeof(System.Environment).GetProperty("ProcessId").GetValue(null, null).ToString()); System.Threading.Thread.Sleep(30000);]]></Code></Task>

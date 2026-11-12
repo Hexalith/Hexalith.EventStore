@@ -318,7 +318,6 @@ public class StateInspectorModalTests : AdminUITestContext {
         private void CloseInspector() {
             CloseNotifications++;
             _show = false;
-            StateHasChanged();
         }
     }
 

@@ -212,6 +212,7 @@ jobs:
           name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             .hexalith/release-evidence/**
+            !.hexalith/release-evidence/api-compatibility/**/scratch/**
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 30

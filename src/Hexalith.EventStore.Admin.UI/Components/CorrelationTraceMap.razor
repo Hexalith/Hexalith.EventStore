@@ -389,7 +389,14 @@
 
     private async Task CopyCorrelationIdAsync()
     {
-        await JSRuntime.InvokeAsync<bool>("hexalithAdmin.copyToClipboard", CorrelationId);
+        try
+        {
+            await JSRuntime.InvokeAsync<bool>("hexalithAdmin.copyToClipboard", CorrelationId);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit ended before this optional browser interaction completed.
+        }
     }
 
     private async Task HandleClose()
@@ -404,9 +411,16 @@
 
     private async Task OpenExternalTrace()
     {
-        if (_traceMap?.ExternalTraceUrl is not null)
+        try
         {
-            await JSRuntime.InvokeVoidAsync("open", _traceMap.ExternalTraceUrl, "_blank");
+            if (_traceMap?.ExternalTraceUrl is not null)
+            {
+                await JSRuntime.InvokeVoidAsync("open", _traceMap.ExternalTraceUrl, "_blank");
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit ended before this optional browser interaction completed.
         }
     }
 

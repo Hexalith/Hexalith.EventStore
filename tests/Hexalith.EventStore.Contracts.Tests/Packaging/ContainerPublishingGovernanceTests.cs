@@ -899,7 +899,7 @@ public sealed class ContainerPublishingGovernanceTests
         // and it drifted two rotations behind. Bind it to the workflow it describes.
         secrets.ShouldContain(ApprovedBuildsReleaseSha);
         ci.ShouldContain(ApprovedBuildsReleaseSha);
-        targets.ShouldContain("mcr.microsoft.com/dotnet/aspnet:10.0-alpine");
+        targets.ShouldContain("mcr.microsoft.com/dotnet/aspnet:11.0-alpine");
         targets.ShouldContain("<ContainerUser>app</ContainerUser>");
         targets.ShouldContain("<ContainerPort Include=\"8080\"");
         project.ShouldContain("<ContainerRepository>eventstore</ContainerRepository>");

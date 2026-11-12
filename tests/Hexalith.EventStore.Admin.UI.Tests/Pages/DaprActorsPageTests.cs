@@ -374,6 +374,9 @@ public class DaprActorsPageTests : AdminUITestContext {
         private AdminRole _role = initialRole;
 
         public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => CreateStateAsync();
+
+        private Task<AuthenticationState> CreateStateAsync()
             => Task.FromResult(new AuthenticationState(
                 new ClaimsPrincipal(new ClaimsIdentity(
                     [new Claim(AdminClaimTypes.Role, _role.ToString())],
@@ -381,7 +384,7 @@ public class DaprActorsPageTests : AdminUITestContext {
 
         public void SetRole(AdminRole role) {
             _role = role;
-            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+            NotifyAuthenticationStateChanged(CreateStateAsync());
         }
     }
 }

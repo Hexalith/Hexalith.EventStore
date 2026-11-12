@@ -100,6 +100,20 @@ class PackageConsumerEnvironmentTests(unittest.TestCase):
                     ], cwd=directory)
                     self.assertTrue(dict(os.environ) == before, "Consumer command changed the parent environment.")
 
+    def test_expected_compiler_refusal_cannot_accept_success_or_a_loader_failure(self):
+        for code, output, expected in (
+                (1, "error HXRESTSDK001: SDK11 is required", True),
+                (0, "HXRESTSDK001", False),
+                (1, "error CS8784: loader failed; HXRESTSDK001", False),
+                (1, "error UNRELATED001", False)):
+            with self.subTest(code=code, output=output), patch.object(CONSUMERS.subprocess, "run") as child:
+                child.return_value = subprocess.CompletedProcess(["dotnet", "build"], code, output, "")
+                if expected:
+                    CONSUMERS.run(["dotnet", "build"], expected_error_code="HXRESTSDK001")
+                else:
+                    with self.assertRaises(ValueError):
+                        CONSUMERS.run(["dotnet", "build"], expected_error_code="HXRESTSDK001")
+
     def test_child_failure_keeps_original_exit_code(self):
         with patch.object(CONSUMERS.subprocess, "run") as child:
             child.return_value = subprocess.CompletedProcess(["dotnet", "restore"], 37)

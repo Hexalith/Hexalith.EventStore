@@ -41,6 +41,12 @@ public sealed class DevelopmentRouteCatalogSplitOwnerPreparationTests
     [Theory(Timeout = 120000)]
     [InlineData("valid")]
     [InlineData("configuration")]
+    [InlineData("root-source-drift")]
+    [InlineData("root-snapshot-drift")]
+    [InlineData("declaration-source-drift")]
+    [InlineData("declaration-snapshot-drift")]
+    [InlineData("adapter-source-drift")]
+    [InlineData("adapter-snapshot-drift")]
     [InlineData("missing-declaration")]
     [InlineData("missing-adapter-root-has-inventory")]
     [InlineData("reversed-roles")]
@@ -79,7 +85,7 @@ public sealed class DevelopmentRouteCatalogSplitOwnerPreparationTests
                 "foreign-declaration" => "Foreign.Contracts.dll", "mismatched-file-name" => "Substitute.dll", _ => "Split.Contracts.dll",
             };
             string adapters = scenario switch { "missing-adapter-root-has-inventory" => "Missing.Adapters.dll", "reversed-roles" => "Split.Contracts.dll", _ => "Split.Adapters.dll" };
-            if (scenario is not ("valid" or "configuration"))
+            if (scenario is not ("valid" or "configuration") && !scenario.EndsWith("-drift", StringComparison.Ordinal))
             {
                 var refusal = await Should.ThrowAsync<InvalidOperationException>(() => selected.PrepareEventStoreDevelopmentOwnerAsync(
                     declarations, adapters, TimeSpan.FromSeconds(90), TestContext.Current.CancellationToken));
@@ -124,6 +130,21 @@ public sealed class DevelopmentRouteCatalogSplitOwnerPreparationTests
                     identity.GetProperty("dependencies").EnumerateArray().Single(file => file.GetProperty("name").GetString() == Path.GetFileName(source))
                         .GetProperty("sha256").GetString().ShouldBe(digest);
                 }
+                using var application = builder.Build();
+                await builder.Eventing.PublishAsync(new BeforeResourceStartedEvent(selected.Resource, application.Services), TestContext.Current.CancellationToken);
+                if (scenario.EndsWith("-drift", StringComparison.Ordinal))
+                {
+                    string name = scenario.StartsWith("declaration-", StringComparison.Ordinal) ? declarations
+                        : scenario.StartsWith("adapter-", StringComparison.Ordinal) ? adapters : Path.GetFileName(identity.GetProperty("targetPath").GetString()!);
+                    string directory = scenario.Contains("snapshot", StringComparison.Ordinal) ? Path.Combine(retained, "metadata")
+                        : Path.GetDirectoryName(identity.GetProperty("targetPath").GetString()!)!;
+                    string changed = Path.Combine(directory, name);
+                    if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(changed, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                    await File.AppendAllTextAsync(changed, "changed split owner", TestContext.Current.CancellationToken);
+                    (await Should.ThrowAsync<InvalidOperationException>(() => builder.Eventing.PublishAsync(
+                        new BeforeResourceStartedEvent(selected.Resource, application.Services), TestContext.Current.CancellationToken)))
+                        .ToString().ShouldContain("managed runtime inputs changed");
+                }
             }
             finally { await prepared.DisposeAsync(); }
             Directory.Exists(retained).ShouldBeFalse();
@@ -144,7 +165,7 @@ public sealed class DevelopmentRouteCatalogSplitOwnerPreparationTests
             + Reference(typeof(System.Text.Encodings.Web.JavaScriptEncoder).Assembly.Location)
             + Reference(typeof(System.IO.Pipelines.PipeReader).Assembly.Location)
             + Reference(typeof(System.Diagnostics.Activity).Assembly.Location);
-        string Properties(string name) => $"<TargetFramework>net10.0</TargetFramework><TreatWarningsAsErrors>true</TreatWarningsAsErrors><MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors><ImplicitUsings>enable</ImplicitUsings><EnableDefaultCompileItems>false</EnableDefaultCompileItems><AssemblyName>{name}</AssemblyName><BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath>";
+        string Properties(string name) => $"<TargetFramework>net11.0</TargetFramework><GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles><TreatWarningsAsErrors>true</TreatWarningsAsErrors><MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors><ImplicitUsings>enable</ImplicitUsings><EnableDefaultCompileItems>false</EnableDefaultCompileItems><AssemblyName>{name}</AssemblyName><BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath>";
         foreach (string name in new[] { "Split.Contracts", "Split.Adapters", "Foreign.Contracts" })
         {
             string directory = Path.Combine(root, name); Directory.CreateDirectory(directory);

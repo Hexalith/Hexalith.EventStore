@@ -58,6 +58,7 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
             || path != Path.GetFullPath(project.Resource.GetProjectMetadata().ProjectPath))
             throw new InvalidOperationException("The selected child launch and project identities differ.");
         var loadedSdk = DevelopmentRouteCatalogOwnerLoadContext.CaptureLoadedSdkIdentity();
+        var selectedRuntime = await DevelopmentRouteCatalogRuntimeSnapshot.CaptureAsync(project, deadline.Token).ConfigureAwait(false);
         string directory = System.IO.Directory.CreateTempSubdirectory("hexalith-selected-owner-").FullName;
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         DevelopmentRouteCatalogOwnerLoadContext? context = null;
@@ -97,8 +98,13 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
             byte[] targetHash = SHA256.HashData(await File.ReadAllBytesAsync(target, deadline.Token).ConfigureAwait(false));
             string snapshot = Path.Combine(directory, "metadata"); System.IO.Directory.CreateDirectory(snapshot);
             Dictionary<string, string> identities = [];
+            Dictionary<string, string> sources = [];
+            string runtimeConfig = Path.ChangeExtension(target, ".runtimeconfig.json");
+            if (!File.Exists(runtimeConfig)) throw new InvalidOperationException("The selected child must produce its actual runtime configuration.");
+            string runtimeConfigDev = Path.ChangeExtension(target, ".runtimeconfig.dev.json");
             string[] dependencies = System.IO.Directory.EnumerateFiles(Path.GetDirectoryName(target)!, "*.dll")
-                .Append(Path.ChangeExtension(target, ".deps.json")).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+                .Append(Path.ChangeExtension(target, ".deps.json")).Append(runtimeConfig)
+                .Concat(File.Exists(runtimeConfigDev) ? [runtimeConfigDev] : []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
             foreach (string dependency in dependencies)
             {
                 byte[] bytes = await File.ReadAllBytesAsync(dependency, deadline.Token).ConfigureAwait(false);
@@ -107,11 +113,19 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
                     await frozen.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
                 if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(Path.Combine(snapshot, name), UnixFileMode.UserRead);
                 identities.Add(name, Digest(bytes));
+                sources.Add(name, dependency);
             }
             string metadataPath = Path.Combine(snapshot, Path.GetFileName(target));
             if (identities[Path.GetFileName(target)] != Convert.ToHexStringLower(targetHash))
                 throw new InvalidOperationException("The selected child target changed before its immutable metadata was prepared.");
-            context = new(metadataPath, loadedSdk);
+            var runtimeEvidence = await selectedRuntime.PrepareAsync(target, snapshot, loadedSdk, identities, sources,
+                async (probeStart, name, token) =>
+                {
+                    using var probeDeadline = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    probeDeadline.CancelAfter(timeout);
+                    await RunAsync(probeStart, directory, name, probeDeadline).ConfigureAwait(false);
+                }, deadline.Token).ConfigureAwait(false);
+            context = new(metadataPath, loadedSdk, selectedRuntime.SharedContracts);
             context.VerifySharedSdkIdentity();
             Assembly rootAssembly = context.LoadFromAssemblyPath(metadataPath);
             Assembly declarations = declarationFileName is null ? rootAssembly : LoadArtifact(context, metadataPath, declarationFileName);
@@ -127,10 +141,12 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
                 RequireActualArtifact(Path.GetDirectoryName(target)!, adapterFileName!);
             }
             foreach (var dependency in identities)
-                if (dependency.Value != Digest(await File.ReadAllBytesAsync(Path.Combine(Path.GetDirectoryName(target)!, dependency.Key), deadline.Token).ConfigureAwait(false))
+                if (dependency.Value != Digest(await File.ReadAllBytesAsync(sources[dependency.Key], deadline.Token).ConfigureAwait(false))
                     || dependency.Value != Digest(await File.ReadAllBytesAsync(Path.Combine(snapshot, dependency.Key), deadline.Token).ConfigureAwait(false)))
                     throw new InvalidOperationException("The selected child output changed while its immutable metadata was prepared.");
             context.VerifySharedSdkIdentity();
+            selectedRuntime.TrackOwnerInputs(snapshot, identities, sources);
+            await selectedRuntime.VerifyAsync(deadline.Token).ConfigureAwait(false);
             var receipt = new
             {
                 project = project.Resource.Name, projectPath = path, projectSha256 = Digest(await File.ReadAllBytesAsync(path, deadline.Token).ConfigureAwait(false)),
@@ -144,6 +160,7 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
                     .Select(dependency => new { assembly = dependency.Key.FullName, moduleVersionId = dependency.Key.ManifestModule.ModuleVersionId, sha256 = dependency.Value }).ToArray(),
             };
             var receiptNode = JsonSerializer.SerializeToNode(receipt)!;
+            receiptNode["managedRuntime"] = runtimeEvidence;
             if (declarationFileName is not null)
             {
                 object Artifact(string name, Assembly assembly) => new
@@ -158,6 +175,7 @@ public static class DevelopmentRouteCatalogOwnerPreparationExtensions
             }
             using (var receiptFile = PrivateFile(Path.Combine(directory, "preparation.json")))
                 await JsonSerializer.SerializeAsync(receiptFile, receiptNode, cancellationToken: deadline.Token).ConfigureAwait(false);
+            selectedRuntime.ObserveStarts();
             return new(new(project, declarations, adapters), directory, context);
         }
         catch (Exception exception)

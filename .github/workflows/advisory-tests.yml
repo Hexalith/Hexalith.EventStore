@@ -59,7 +59,7 @@ jobs:
 
       - name: Install Playwright browsers
         shell: bash
-        run: pwsh tests/Hexalith.EventStore.Admin.UI.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+        run: pwsh tests/Hexalith.EventStore.Admin.UI.E2E/bin/Release/net11.0/playwright.ps1 install --with-deps chromium
 
       - name: Advisory test suites
         shell: bash

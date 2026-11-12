@@ -17,7 +17,6 @@
 
   <ItemGroup>
     <PackageReference Include="Dapr.Client" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>

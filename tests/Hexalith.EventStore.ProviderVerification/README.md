@@ -7,7 +7,7 @@ Build the solution and focused tests:
 ```bash
 dotnet build Hexalith.EventStore.slnx --configuration Release -m:1
 dotnet build tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1
-dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net11.0/Hexalith.EventStore.ProviderVerification.Tests.dll
 ```
 
 The focused built-DLL suite currently contains 77 tests, including a self-contained one-interaction Pact run through real Kestrel and the production controller/middleware pipeline followed by verified port closure.

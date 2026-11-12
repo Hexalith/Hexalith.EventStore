@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)Hexalith.EventStore.Logging.targets" />
+  <!-- The generator remains netstandard2.0, while its Roslyn/Immutable11 compiler closure
+       requires the NET11 SDK. Refuse unsupported hosts before analyzer initialization. -->
+  <Target Name="RequireEventStoreRestGeneratorCompilerHost" BeforeTargets="CoreCompile">
+    <Error Condition="'$(NETCoreSdkVersion)' == ''" Code="HXRESTSDK001"
+           Text="Hexalith.EventStore.RestApi.Generators requires .NET SDK 11.0.100 or later; the compiler host could not be identified." />
+    <Error Condition="'$(NETCoreSdkVersion)' != '' and $([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '11.0.100'))"
+           Code="HXRESTSDK001" Text="Hexalith.EventStore.RestApi.Generators requires .NET SDK 11.0.100 or later; the selected compiler host is $(NETCoreSdkVersion)." />
+  </Target>
+</Project>

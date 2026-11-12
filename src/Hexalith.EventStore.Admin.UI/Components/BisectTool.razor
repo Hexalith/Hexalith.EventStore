@@ -325,7 +325,6 @@
 
         _fieldSelectionLoading = true;
         _availableFields = null;
-        StateHasChanged();
 
         try
         {
@@ -361,7 +360,6 @@
         finally
         {
             _fieldSelectionLoading = false;
-            StateHasChanged();
         }
     }
 
@@ -374,7 +372,6 @@
             _validationError = _goodSequence.HasValue && _badSequence.HasValue && _goodSequence >= _badSequence
                 ? "Known Good must be less than Known Bad."
                 : "Please enter valid sequence numbers.";
-            StateHasChanged();
             return;
         }
 
@@ -385,7 +382,6 @@
         _result = null;
         _error = null;
         _streamTooSmallCount = null;
-        StateHasChanged();
 
         try
         {
@@ -441,7 +437,6 @@
         }
         finally
         {
-            StateHasChanged();
         }
     }
 
@@ -462,7 +457,6 @@
         _filteredAvailableFields = [];
         _selectedFieldPaths = [];
         _fieldSearchTerm = string.Empty;
-        StateHasChanged();
     }
 
     private async Task HandleClose()

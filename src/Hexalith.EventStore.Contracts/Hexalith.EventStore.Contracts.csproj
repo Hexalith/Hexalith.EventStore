@@ -15,7 +15,6 @@
     <ProjectReference Include="$(HexalithCommonsRoot)\src\libraries\Hexalith.Commons.UniqueIds\Hexalith.Commons.UniqueIds.csproj" Condition="'$(HexalithCommonsFromSource)' == 'true'" />
     <PackageReference Include="Hexalith.Commons.UniqueIds" Condition="'$(HexalithCommonsFromSource)' != 'true'" />
     <!-- Public route contracts expose JSON types, so owners must restore this same dependency. -->
-    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
 </Project>

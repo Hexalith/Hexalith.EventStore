@@ -93,8 +93,9 @@ For detailed installation instructions for each tool, see the [Prerequisites](do
 
 ### Required Tools
 
-- **.NET 11 SDK** (11.0.100 or later patch in the same feature band) and the .NET 10 ASP.NET Core runtime
-- **.NET 10 SDK** (10.0.403 or later patch in the 10.0.4xx feature band) for the full package-consumer compatibility checks; normal repository builds use SDK 11.
+- **.NET 11 SDK** (11.0.100 or later patch in the same feature band), including the .NET 11 ASP.NET Core runtime.
+- **.NET 10.0.4xx SDK** (10.0.403 or a later patch) for the package-consumer check that verifies refusal of the unsupported SDK 10 analyzer host.
+- **.NET 10 ASP.NET Core runtime** for retained historical package and wire-compatibility fixtures. Current EventStore applications and package consumers target .NET 11.
 - **Node.js** (`^22.14.0` or `>=24.10.0`) and **npm** (for repository tooling
   and Git hook installation)
 - **Docker Desktop** (for local DAPR infrastructure)
@@ -157,7 +158,7 @@ endpoint, and reports the process id of the `dotnet run` launcher. The gateway i
 ps --ppid <launcher-pid> -o pid,args
 ```
 
-Attach to the child running `src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore`, for example with
+Attach to the child running `src/Hexalith.EventStore/bin/Debug/net11.0/Hexalith.EventStore`, for example with
 VS Code ("Attach to a .NET process"). Breakpoints in this checkout's sources bind. Stay attached until
 you finish, then stop only that run with:
 

@@ -4,7 +4,7 @@
 
 This guide shows the big picture: how the same Hexalith.EventStore Counter sample application runs across three deployment environments — local Docker Compose, on-premise Kubernetes, and Azure Container Apps — with only infrastructure configuration changes. Use this page to understand the progression path and then follow the individual deployment guides for detailed walkthroughs.
 
-> **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — .NET 10 SDK, Docker Desktop, DAPR CLI, Aspire CLI
+> **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — .NET 11 SDK, Docker Desktop, DAPR CLI, Aspire CLI
 
 ## The Zero-Code-Change Promise
 

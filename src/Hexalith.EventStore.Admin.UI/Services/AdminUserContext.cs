@@ -14,8 +14,8 @@ public sealed class AdminUserContext(AuthenticationStateProvider authStateProvid
     /// Returns <see cref="AdminRole.ReadOnly"/> if no role claim is found.
     /// </summary>
     public async Task<AdminRole> GetRoleAsync(CancellationToken cancellationToken = default) {
-        AuthenticationState authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
-        if (TryResolveRole(authState, out AdminRole role)) {
+        AuthenticationState? authState = await ReadCurrentAsync(cancellationToken).ConfigureAwait(false);
+        if (authState is not null && TryResolveRole(authState, out AdminRole role)) {
             return role;
         }
 
@@ -78,8 +78,22 @@ public sealed class AdminUserContext(AuthenticationStateProvider authStateProvid
     /// Admin > Operator > ReadOnly.
     /// </summary>
     public async Task<bool> HasMinimumRoleAsync(AdminRole minimumRole, CancellationToken cancellationToken = default) {
-        AuthenticationState authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
-        return TryResolveRole(authState, out AdminRole currentRole) && currentRole >= minimumRole;
+        AuthenticationState? authState = await ReadCurrentAsync(cancellationToken).ConfigureAwait(false);
+        return authState is not null && TryResolveRole(authState, out AdminRole currentRole) && currentRole >= minimumRole;
+    }
+
+    private async Task<AuthenticationState?> ReadCurrentAsync(CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+        int changed = 0;
+        void Invalidate(Task<AuthenticationState> _) => Interlocked.Exchange(ref changed, 1);
+        authStateProvider.AuthenticationStateChanged += Invalidate;
+        try {
+            AuthenticationState state = await authStateProvider.GetAuthenticationStateAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+            return Volatile.Read(ref changed) == 0 ? state : null;
+        }
+        finally {
+            authStateProvider.AuthenticationStateChanged -= Invalidate;
+        }
     }
 
     private static bool TryResolveRole(AuthenticationState authState, out AdminRole role) {

@@ -36,7 +36,7 @@
   <PropertyGroup Condition="'$(EnableContainer)' == 'true'">
     <IsPackable>false</IsPackable>
     <IsPublishable>true</IsPublishable>
-    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-alpine</ContainerBaseImage>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:11.0-alpine</ContainerBaseImage>
     <ContainerFamily>alpine</ContainerFamily>
     <ContainerRegistry Condition="'$(ContainerRegistry)' == ''">registry.hexalith.com</ContainerRegistry>
     <ContainerImageTag Condition="'$(ContainerImageTags)' == '' and '$(ContainerImageTag)' == ''">$(ContainerProvenanceReleaseVersion)</ContainerImageTag>
@@ -132,7 +132,7 @@
   </Target>
 
   <!-- Package consumers need the same generator selection as source-catalog builds. -->
-  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+  <ItemGroup Condition="'$(IsPackable)' == 'true' and '$(MSBuildProjectName)' != 'Hexalith.EventStore.RestApi.Generators'">
     <None Include="$(MSBuildThisFileDirectory)buildTransitive/Hexalith.EventStore.Logging.targets"
           Pack="true" PackagePath="buildTransitive/$(MSBuildProjectName).targets" Visible="false" />
   </ItemGroup>

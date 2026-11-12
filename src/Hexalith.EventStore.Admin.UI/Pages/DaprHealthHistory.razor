@@ -497,7 +497,14 @@
         _activeRow = newRow;
         _activeCol = newCol;
         StateHasChanged();
-        await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusGridCell", ".health-heatmap", _activeRow, _activeCol);
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusGridCell", ".health-heatmap", _activeRow, _activeCol);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit ended before the selected grid cell could receive focus.
+        }
     }
 
     private void ActivateGridCell(int row, int col)
@@ -516,7 +523,6 @@
     private void ClearComponentSelection()
     {
         _selectedComponent = null;
-        StateHasChanged();
     }
 
     private void FilterByCell(string component, TimeSlot slot)
@@ -531,7 +537,6 @@
     {
         _cellFilter = null;
         UpdateFilteredTransitions();
-        StateHasChanged();
     }
 
     private void OnTransitionSearchChanged()

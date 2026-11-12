@@ -38,11 +38,14 @@ public class AuthorizedViewRoleChangeTests : AdminUITestContext {
         private AdminRole _role = initialRole;
 
         public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => CreateStateAsync();
+
+        private Task<AuthenticationState> CreateStateAsync()
             => Task.FromResult(new AuthenticationState(CreatePrincipal(_role)));
 
         public void SetRole(AdminRole role) {
             _role = role;
-            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+            NotifyAuthenticationStateChanged(CreateStateAsync());
         }
 
         private static ClaimsPrincipal CreatePrincipal(AdminRole role)

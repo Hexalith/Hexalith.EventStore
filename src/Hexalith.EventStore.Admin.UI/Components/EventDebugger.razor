@@ -471,7 +471,6 @@
         // Start URL throttle timer
         StartUrlThrottle();
 
-        StateHasChanged();
 
         // Fire-and-forget on the Blazor sync context (no Task.Run — avoids thread-safety issues)
         _ = RunAutoPlayLoopAsync(token);
@@ -566,7 +565,6 @@
     private void PauseAutoPlay()
     {
         StopAutoPlay();
-        StateHasChanged();
     }
 
     private void StopAutoPlay()
@@ -707,7 +705,6 @@
         }
 
         _watchFieldInput = string.Empty;
-        StateHasChanged();
     }
 
     private void RemoveWatchField(string path)

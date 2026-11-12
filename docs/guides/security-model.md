@@ -6,7 +6,7 @@ Hexalith.EventStore uses a six-layer defense-in-depth architecture where every l
 
 > **Prerequisites:**
 >
-> - [Prerequisites](../getting-started/prerequisites.md) — .NET 10 SDK, Docker Desktop, DAPR CLI
+> - [Prerequisites](../getting-started/prerequisites.md) — .NET 11 SDK, Docker Desktop, DAPR CLI
 > - [Deployment Progression](deployment-progression.md) — understand the three deployment environments
 
 ## Security Architecture Overview

@@ -27,9 +27,9 @@ class SourceSnapshotEmissionTests(unittest.TestCase):
             if not assembly.is_absolute() or assembly.is_symlink() or not assembly.is_file() or hashlib.sha256(assembly.read_bytes()).hexdigest() != os.environ.get('EXT_PROTECTION_SNAPSHOT_COMPONENT_SHA256'):
                 raise ValueError('Exact independently hash-pinned component test assembly required')
         else:
-            platform = ROOT.parent / 'platform'
+            platform = ROOT / 'references/Hexalith.Platform'
             if not (platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj').is_file():
-                platform = ROOT / 'references/Hexalith.Platform'
+                platform = ROOT.parent / 'platform'
             argv = ['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'),
                     '-c', 'Debug', '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT),
                     '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-m:1', '-nodeReuse:false']
@@ -37,7 +37,13 @@ class SourceSnapshotEmissionTests(unittest.TestCase):
             built = subprocess.run(argv, cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
             if built.returncode:
                 raise AssertionError(built.stdout + built.stderr)
-            assembly = platform / 'tests/Hexalith.Platform.Protection.Tests/bin/Debug/net10.0/Hexalith.Platform.Protection.Tests.dll'
+            evaluated = subprocess.run(
+                ['dotnet', 'msbuild', argv[2], '-p:Configuration=Debug', '-getProperty:TargetPath', *argv[5:]],
+                cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=60, check=False)
+            assembly = Path(evaluated.stdout.strip())
+            if evaluated.returncode or not assembly.is_absolute() or not assembly.is_file():
+                raise AssertionError('Owning component project must report its built TargetPath: '
+                                     + evaluated.stdout + evaluated.stderr)
         vector = cls.directory / 'actual.json'
         environment = dict(os.environ, EXT_PROTECTION_SNAPSHOT_VECTOR=str(vector))
         argv = ['dotnet', str(assembly), '-class', 'Hexalith.Platform.Protection.Tests.ErasureRootLoop2SnapshotObservationTests',

@@ -3,6 +3,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
+using Hexalith.EventStore.Admin.UI.Components.Shared;
 using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +39,60 @@ public class EventDetailPanelTests : AdminUITestContext {
         string markup = cut.Markup;
         markup.ShouldContain("CounterIncremented");
         markup.ShouldContain("corr-1");
+    }
+
+    [Fact]
+    public async Task EventDetailPanel_RendersEachCompletedRequestWhileLaterRequestsRemainPending() {
+        TaskCompletionSource<EventDetail?> detail = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<AggregateStateSnapshot?> state = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<CausationChain?> causation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = _mockApiClient.GetEventDetailAsync(
+            "tenant-a", "Counter", "agg-1", 5, Arg.Any<CancellationToken>())
+            .Returns(detail.Task);
+        _ = _mockApiClient.GetAggregateStateAtPositionAsync(
+            "tenant-a", "Counter", "agg-1", 5, Arg.Any<CancellationToken>())
+            .Returns(state.Task);
+        _ = _mockApiClient.TraceCausationChainAsync(
+            "tenant-a", "Counter", "agg-1", 5, Arg.Any<CancellationToken>())
+            .Returns(causation.Task);
+
+        IRenderedComponent<EventDetailPanel> cut = Render<EventDetailPanel>(p => p
+            .Add(c => c.TenantId, "tenant-a")
+            .Add(c => c.Domain, "Counter")
+            .Add(c => c.AggregateId, "agg-1")
+            .Add(c => c.SequenceNumber, 5)
+            .Add(c => c.AutoTraceCausation, true));
+        cut.FindComponents<SkeletonCard>().Count.ShouldBe(2);
+
+        await cut.InvokeAsync(() => detail.SetResult(CreateEventDetail(5, "CounterIncremented")));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("CounterIncremented");
+            cut.Markup.ShouldContain("corr-1");
+            cut.FindComponents<SkeletonCard>().Count.ShouldBe(1);
+        });
+        state.Task.IsCompleted.ShouldBeFalse();
+        causation.Task.IsCompleted.ShouldBeFalse();
+
+        await cut.InvokeAsync(() => state.SetResult(new AggregateStateSnapshot(
+            "tenant-a", "Counter", "agg-1", 5, DateTimeOffset.UtcNow, """{"count":5}""")));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Aggregate state at sequence 5");
+            cut.Markup.ShouldContain("Loading...");
+            cut.FindComponents<SkeletonCard>().ShouldBeEmpty();
+        });
+        causation.Task.IsCompleted.ShouldBeFalse();
+
+        await cut.InvokeAsync(() => causation.SetResult(new CausationChain(
+            "IncrementCounter", "cmd-1", "corr-1", "user-1",
+            [new CausationEvent(5, "CounterIncremented", DateTimeOffset.UtcNow)],
+            ["CounterSummary"])));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("IncrementCounter");
+            cut.Markup.ShouldNotContain("Loading...");
+        });
     }
 
     [Fact]

@@ -38,9 +38,11 @@ public class InitiatorFocusServiceTests : AdminUITestContext
             _ => new TaskCanceledException("interop timed out"),
         };
         IJSRuntime jsRuntime = Substitute.For<IJSRuntime>();
+#pragma warning disable BL0016 // NSubstitute setup only; no browser JS executes here.
         _ = jsRuntime.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(
                 "hexalithAdmin.waitForRender", Arg.Any<object?[]?>())
             .Returns(ValueTask.FromException<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(exception));
+#pragma warning restore BL0016
         InitiatorFocusService service = new(jsRuntime);
 
         Exception? fault = await Record.ExceptionAsync(async () => await service.RestoreAsync("initiating-control"));

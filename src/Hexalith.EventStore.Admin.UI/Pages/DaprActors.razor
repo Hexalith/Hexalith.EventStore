@@ -570,7 +570,16 @@
     }
 
     private async Task FocusInspectButtonAsync()
-        => await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusElementById", "inspect-actor-button").ConfigureAwait(false);
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusElementById", "inspect-actor-button").ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit ended before focus could be restored.
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {

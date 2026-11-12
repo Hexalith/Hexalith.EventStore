@@ -116,19 +116,26 @@
 
     private async Task LoadSidebarStateForCurrentTierAsync()
     {
-        string storageKey = await GetSidebarStorageKeyAsync();
-        string? savedState = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", storageKey);
-        if (bool.TryParse(savedState, out bool collapsed))
+        try
         {
-            _sidebarCollapsed = collapsed;
+            string storageKey = await GetSidebarStorageKeyAsync();
+            string? savedState = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", storageKey);
+            if (bool.TryParse(savedState, out bool collapsed))
+            {
+                _sidebarCollapsed = collapsed;
+            }
+            else
+            {
+                // Two states only:
+                //   _sidebarCollapsed = false → Normal: 220px, icons + labels (≥1280px default)
+                //   _sidebarCollapsed = true  → Compact-text: 140px, labels only, no icons (<1280px default)
+                // Ctrl+B toggles between the two regardless of viewport (saved per-tier).
+                _sidebarCollapsed = IsNarrowTier(storageKey);
+            }
         }
-        else
+        catch (JSDisconnectedException)
         {
-            // Two states only:
-            //   _sidebarCollapsed = false → Normal: 220px, icons + labels (≥1280px default)
-            //   _sidebarCollapsed = true  → Compact-text: 140px, labels only, no icons (<1280px default)
-            // Ctrl+B toggles between the two regardless of viewport (saved per-tier).
-            _sidebarCollapsed = IsNarrowTier(storageKey);
+            // The circuit ended before this optional browser interaction completed.
         }
     }
 
@@ -185,16 +192,24 @@
 
     private async Task<string> GetSidebarStorageKeyAsync()
     {
-        int viewportWidth = await JSRuntime.InvokeAsync<int>("hexalithAdmin.getViewportWidth");
-        string tier = viewportWidth switch
+        try
         {
-            >= 1920 => "optimal",
-            >= 1280 => "standard",
-            >= 960 => "compact",
-            _ => "minimum",
-        };
+            int viewportWidth = await JSRuntime.InvokeAsync<int>("hexalithAdmin.getViewportWidth");
+            string tier = viewportWidth switch
+            {
+                >= 1920 => "optimal",
+                >= 1280 => "standard",
+                >= 960 => "compact",
+                _ => "minimum",
+            };
 
-        return $"hexalith-sidebar-collapsed-{tier}";
+            return $"hexalith-sidebar-collapsed-{tier}";
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit ended before this optional browser interaction completed.
+            return "hexalith-sidebar-collapsed-minimum";
+        }
     }
 
     // Narrow viewport tiers default to a collapsed sidebar when no saved state exists.

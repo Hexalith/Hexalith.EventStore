@@ -200,14 +200,14 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             "references/Hexalith.Builds/Props/Directory.Packages.props",
         ];
         string[] binaries = [
-            "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll",
-            "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
-            "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
-            "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Actors.dll",
-            "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Actors.AspNetCore.dll",
-            "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Client.dll",
-            "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.deps.json",
-            "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll",
+            "src/Hexalith.EventStore/bin/Debug/net11.0/Hexalith.EventStore.dll",
+            "src/Hexalith.EventStore/bin/Debug/net11.0/Hexalith.EventStore.Gateway.dll",
+            "src/Hexalith.EventStore/bin/Debug/net11.0/Hexalith.EventStore.Server.dll",
+            "src/Hexalith.EventStore/bin/Debug/net11.0/Dapr.Actors.dll",
+            "src/Hexalith.EventStore/bin/Debug/net11.0/Dapr.Actors.AspNetCore.dll",
+            "src/Hexalith.EventStore/bin/Debug/net11.0/Dapr.Client.dll",
+            "src/Hexalith.EventStore/bin/Debug/net11.0/Hexalith.EventStore.deps.json",
+            "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net11.0/Hexalith.EventStore.IntegrationTests.dll",
         ];
         Dictionary<string, string> retainedSourcePaths = sources.ToDictionary(
             path => path,

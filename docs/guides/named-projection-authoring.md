@@ -133,7 +133,7 @@ python3 scripts/pack-release-packages.py ./nupkgs 0.0.0-ci-test
 python3 scripts/validate-nuget-packages.py ./nupkgs
 python3 scripts/validate-consumer-package-references.py ./nupkgs
 EVENTSTORE_PACKAGE_CONTRACT_DIR=./nupkgs \
-  tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests \
+  tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net11.0/Hexalith.EventStore.Contracts.Tests \
   -class '*ProjectionPackageContractTests'
 ```
 

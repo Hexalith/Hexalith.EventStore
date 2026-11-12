@@ -461,7 +461,6 @@
     private async Task OnTriggerConfirm()
     {
         _isOperating = true;
-        StateHasChanged();
         _triggerCts?.Cancel();
         _triggerCts = new CancellationTokenSource();
         try
@@ -499,7 +498,6 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
         }
     }
 

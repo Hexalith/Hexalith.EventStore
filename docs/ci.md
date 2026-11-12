@@ -632,7 +632,7 @@ checks.
 
 For package validation, run the same shared-CI entry points locally:
 
-Install SDK 11 from `global.json` and a .NET 10.0.4xx SDK (10.0.403 or a later patch) before running the full package-consumer checks. The extra SDK verifies that the published REST generator still loads and emits its manifest in the supported .NET 10 compiler host.
+Install SDK 11 from `global.json` and a .NET 10.0.4xx SDK (10.0.403 or a later patch) before running the full package-consumer checks. Current NET11 consumers verify that the REST generator emits its manifest. The new major generator requires SDK 11.0.100 or later because its Roslyn compiler dependencies use Immutable 11, although the analyzer assembly retains `netstandard2.0` packaging. A separate analyzer-only NET10 project verifies that SDK 10 refuses with `HXRESTSDK001` before analyzer initialization. Historical published 4.2 consumers retain their original runtime and compiler context.
 
 ```bash
 python3 scripts/pack-release-packages.py /tmp/hexalith-eventstore-ci-packages 0.0.0-ci-test

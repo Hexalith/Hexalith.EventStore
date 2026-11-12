@@ -309,7 +309,6 @@
         }
 
         _loading = true;
-        StateHasChanged();
 
         _cts?.Cancel();
         _cts?.Dispose();
@@ -351,7 +350,6 @@
         finally
         {
             _loading = false;
-            StateHasChanged();
         }
     }
 

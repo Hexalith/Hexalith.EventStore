@@ -727,14 +727,14 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             "Hexalith.EventStore",
             "bin",
             _overrides.Configuration,
-            "net10.0");
+            "net11.0");
         string sampleOutput = Path.Combine(
             _repositoryRoot,
             "samples",
             "Hexalith.EventStore.Sample",
             "bin",
             _overrides.Configuration,
-            "net10.0");
+            "net11.0");
         string eventStoreShadow = Path.Combine(_runtimeDirectory, "eventstore");
         string sampleShadow = Path.Combine(_runtimeDirectory, "sample");
         CopyDirectory(eventStoreOutput, eventStoreShadow);

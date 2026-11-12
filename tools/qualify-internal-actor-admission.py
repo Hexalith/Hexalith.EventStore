@@ -78,11 +78,11 @@ class Qualification:
         self.digest_key = secrets.token_bytes(32)
         self.tenant = "tenant-admission"
         self.started = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        self.test_output = self.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin" / args.configuration / "net10.0"
+        self.test_output = self.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin" / args.configuration / "net11.0"
         self.sample_output = (Path(args.runtime) / "sample" if args.runtime else
-                              self.root / "samples/Hexalith.EventStore.Sample/bin" / args.configuration / "net10.0")
+                              self.root / "samples/Hexalith.EventStore.Sample/bin" / args.configuration / "net11.0")
         self.eventstore_output = (Path(args.runtime) / "eventstore" if args.runtime else
-                                  self.root / "src/Hexalith.EventStore/bin" / args.configuration / "net10.0")
+                                  self.root / "src/Hexalith.EventStore/bin" / args.configuration / "net11.0")
 
     def save(self, name, value):
         (self.out / name).write_text(json.dumps(value, indent=2) + "\n")
