@@ -82,6 +82,10 @@ public sealed partial class DomainServiceTrustBoundaryTests
         await using WebApplication app = await StartAsync(processor: processor,
             settings: failure == "origin" ? new() { ["EventStore:TrustedEffectOrigin:EventStoreWorkloadId"] = "other-eventstore" } : null,
             configureServices: services => services.AddSingleton<IReadModelStore>(failure == "audit" ? failing : store));
+        app.Services.GetRequiredService<IReadModelStore>().ShouldBeSameAs(failure == "audit" ? failing : store);
+        IReadModelBatchStore batchStore = app.Services.GetRequiredService<IReadModelBatchStore>();
+        batchStore.ShouldBeOfType<InMemoryReadModelStore>();
+        if (failure != "audit") batchStore.ShouldBeSameAs(store);
         using HttpRequestMessage request = ProcessRequest(Assertion([EventStoreWorkloadOperations.DomainServiceProcess]));
         DomainServiceRequest original = (await request.Content!.ReadFromJsonAsync<DomainServiceRequest>(TestContext.Current.CancellationToken))!;
         var identity = new EffectIdentity("tenant-a", "widget", "source", 3, EffectKindCatalog.CascadeExpire, "widget", "widget-1", 0);
@@ -293,6 +297,11 @@ public sealed partial class DomainServiceTrustBoundaryTests
 
         int commandLogStart = logs.Messages.Count;
         using HttpResponseMessage commandResponse = await client.SendAsync(command, TestContext.Current.CancellationToken);
+        // Exercise the real registered cleanup pass before inspecting host-wide privacy diagnostics.
+        app.Services.GetRequiredService<IReadModelBatchStore>().ShouldBeSameAs(
+            app.Services.GetRequiredService<IReadModelStore>().ShouldBeOfType<InMemoryReadModelStore>());
+        await app.Services.GetServices<IHostedService>().OfType<DomainSharedProjectionScratchCleanupService>()
+            .Single().RunPassAsync(TestContext.Current.CancellationToken);
         string processDenial = logs.Messages.Skip(commandLogStart).Where(static message => message.Contains(
             "Reason=" + WorkloadAuthenticationReasons.AdministratorVerifierUnavailable,
             StringComparison.Ordinal)).ShouldHaveSingleItem();
@@ -883,6 +892,12 @@ public sealed partial class DomainServiceTrustBoundaryTests
         // This suite isolates workload/channel/authority verification. Catalog admission has its
         // own real-HTTP, Dapr and mTLS positive/negative qualification fixture.
         builder.Services.AddScoped<IDomainRouteCatalogGuard, DomainRouteCatalogIsolatedGuard>();
+        var readModelStore = new InMemoryReadModelStore();
+        builder.Services.AddSingleton<IReadModelStore>(readModelStore);
+        // Fault-only store overrides still need a local batch implementation for hosted cleanup.
+        builder.Services.AddSingleton<IReadModelBatchStore>(services =>
+            services.GetRequiredService<IReadModelStore>() as IReadModelBatchStore ?? readModelStore);
+        builder.Services.AddEventStoreReadModelStore();
         if (processor is not null)
         {
             _ = builder.Services.AddKeyedSingleton<IDomainProcessor>("widget", processor);
