@@ -1,4 +1,4 @@
-// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 4-8.
+// Approved Dapr Kubernetes cryptography supplement: 3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd; sections 4-8.
 using System.Security.Cryptography;
 using System.Text;
 using Hexalith.EventStore.Contracts.Identity;

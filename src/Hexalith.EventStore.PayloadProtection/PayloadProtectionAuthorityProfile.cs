@@ -1,16 +1,16 @@
 // Approved on-premises supplement: 43fc3400f9e01662eac5ad945407711d0d24a744685e92cef203c2162106e2d3; sections 1-7.
 // On-premises authority: 835f96ca5b4253f0598712a40773df468f02bd48f518eb0313794addfdc9b180; approved supplement section 1.
-// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; section 6.
+// Approved Dapr Kubernetes cryptography supplement: 3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd; section 6.
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Closed content-bound authority selection; configuration can never supply an arbitrary digest.</summary>
 internal sealed class PayloadProtectionAuthorityProfile
 {
     /// <summary>Gets the exact approved Story 8.12 supplement normative digest.</summary>
-    internal const string DaprKubernetesCryptoSupplementDigest = "14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881";
+    internal const string DaprKubernetesCryptoSupplementDigest = "3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd";
 
     /// <summary>Gets SHA-256 of ASCII HXPA, byte 03, the predecessor effective digest and the supplement digest.</summary>
-    internal const string DaprKubernetesCryptoDigest = "29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44";
+    internal const string DaprKubernetesCryptoDigest = "5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204";
 
     private PayloadProtectionAuthorityProfile(string digest, int keyRecordSchemaVersion)
     {

@@ -1,5 +1,5 @@
-// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 2-5 and 7.
-// Profile authority: 29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44.
+// Approved Dapr Kubernetes cryptography supplement: 3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd; sections 2-5 and 7.
+// Profile authority: 5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204.
 // The owner accepted the Alpha cryptography posture for this profile only on 2026-11-10. It is a recorded limitation, not a readiness claim.
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;

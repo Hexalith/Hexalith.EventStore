@@ -1,5 +1,5 @@
-// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 2 and 7.
-// Profile authority: 29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44.
+// Approved Dapr Kubernetes cryptography supplement: 3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd; sections 2 and 7.
+// Profile authority: 5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204.
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Dapr;
@@ -12,15 +12,15 @@ using DaprGrpcClient = Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient;
 
 namespace Hexalith.EventStore.PayloadProtection;
 
-/// <summary>Calls the generated Dapr.Protos 1.19.0 EncryptAlpha1/DecryptAlpha1 client on the calling task, so each call's gRPC status is its outcome.</summary>
+/// <summary>Calls the generated Dapr.Protos 1.19.1 EncryptAlpha1/DecryptAlpha1 client on the calling task, so each call's gRPC status is its outcome.</summary>
 /// <remarks>
 /// It starts no background task and has no retry policy. Each call writes its whole input as one sequence-0 message, completes the request stream and
 /// reads the response stream to its end before it returns. Output received before a non-OK status is discarded and cleared, and every received
-/// protobuf buffer is cleared once copied. The request message (options and payload) is the one Dapr.Client 1.19.0 EncryptAsync/DecryptAsync send.
+/// protobuf buffer is cleared once copied. The request message (options and payload) is the one Dapr.Client 1.19.1 EncryptAsync/DecryptAsync send.
 /// </remarks>
 internal sealed class DaprCryptographyGrpcTransport : IDisposable
 {
-    /// <summary>Gets the header Dapr.Client 1.19.0 sends the sidecar API token in.</summary>
+    /// <summary>Gets the header Dapr.Client 1.19.1 sends the sidecar API token in.</summary>
     internal const string ApiTokenHeader = "dapr-api-token";
     /// <summary>Gets the largest accepted Encrypt output: the closed WrappedDekV2 envelope bound.</summary>
     internal const int MaximumEncryptOutputBytes = WrappedDekV2.MaximumEnvelopeBytes;
@@ -42,7 +42,7 @@ internal sealed class DaprCryptographyGrpcTransport : IDisposable
     {
         ArgumentNullException.ThrowIfNull(invoker);
         _client = new DaprGrpcClient(invoker);
-        // Like Dapr.Client 1.19.0, a missing or blank token sends no header.
+        // Like Dapr.Client 1.19.1, a missing or blank token sends no header.
         _apiToken = string.IsNullOrWhiteSpace(apiToken) ? null : apiToken;
         _channel = channel;
         _allocate = allocate ?? (static length => new byte[length]);
@@ -51,7 +51,7 @@ internal sealed class DaprCryptographyGrpcTransport : IDisposable
     /// <summary>Gets the owned channel's target, or null when the invoker is caller-owned.</summary>
     internal string? Target => _channel?.Target;
 
-    /// <summary>Resolves the sidecar gRPC endpoint and API token exactly as Dapr.Client 1.19.0 does, and owns the resulting channel.</summary>
+    /// <summary>Resolves the sidecar gRPC endpoint and API token exactly as Dapr.Client 1.19.1 does, and owns the resulting channel.</summary>
     /// <remarks>
     /// Configuration values take precedence over the DAPR_GRPC_ENDPOINT, DAPR_GRPC_PORT and DAPR_API_TOKEN environment variables. As with
     /// Dapr.Client, an endpoint whose scheme is not http or https is refused (here by GrpcChannel itself, with an InvalidOperationException).
@@ -60,13 +60,13 @@ internal sealed class DaprCryptographyGrpcTransport : IDisposable
     {
         string endpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
         string apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
-        // Dapr.Client 1.19.0 builds its channel with exactly these options. No service config is set, so no retry or hedging policy exists.
+        // Dapr.Client 1.19.1 builds its channel with exactly these options. No service config is set, so no retry or hedging policy exists.
         GrpcChannel channel = GrpcChannel.ForAddress(endpoint, new GrpcChannelOptions { ThrowOperationCanceledOnCancellation = true });
         try { return new DaprCryptographyGrpcTransport(channel.CreateCallInvoker(), apiToken, channel, allocate: null); }
         catch { channel.Dispose(); throw; }
     }
 
-    /// <summary>Encrypts with the request message Dapr.Client 1.19.0 EncryptAsync sends; the returned array-backed output belongs to the caller.</summary>
+    /// <summary>Encrypts with the request message Dapr.Client 1.19.1 EncryptAsync sends; the returned array-backed output belongs to the caller.</summary>
     internal async ValueTask<ReadOnlyMemory<byte>> EncryptAsync(string componentName, string keyName, ReadOnlyMemory<byte> plaintext, CancellationToken token)
     {
         var request = new EncryptRequest
@@ -86,7 +86,7 @@ internal sealed class DaprCryptographyGrpcTransport : IDisposable
         return await ExchangeAsync(call, request, static response => response.Payload, MaximumEncryptOutputBytes, token).ConfigureAwait(false);
     }
 
-    /// <summary>Decrypts with the request message Dapr.Client 1.19.0 DecryptAsync sends; the returned array-backed output belongs to the caller.</summary>
+    /// <summary>Decrypts with the request message Dapr.Client 1.19.1 DecryptAsync sends; the returned array-backed output belongs to the caller.</summary>
     internal async ValueTask<ReadOnlyMemory<byte>> DecryptAsync(string componentName, string keyName, ReadOnlyMemory<byte> envelope, CancellationToken token)
     {
         var request = new DecryptRequest

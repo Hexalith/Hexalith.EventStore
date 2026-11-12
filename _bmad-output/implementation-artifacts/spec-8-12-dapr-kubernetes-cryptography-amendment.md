@@ -4,13 +4,16 @@ type: 'architecture-amendment-candidate'
 created: '2026-11-10'
 status: 'approved-authorized'
 implementation_authorized: true
-approval_date: '2026-11-10'
-approval_source: 'Interactive project owner: Option A, approve revision 3 as drafted'
-revision: 3
-revision_reason: 'Story 8.7 gate 2: call the generated Dapr.Protos 1.19.0 client so gRPC failure statuses reach the section 7 mapping (owner decision 2026-11-10)'
-previous_approval_source: 'Interactive project owner: Approve revision 2'
-previous_normative_sha256: 'e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034'
-previous_effective_authority_sha256: '2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d'
+approval_date: '2026-11-12'
+approval_source: 'Interactive project owner: approve 1.19.1'
+revision: 4
+revision_reason: 'Story 8.7 owner-approved Dapr.Client and Dapr.Protos 1.19.1 input; generated gRPC transport and wire contract unchanged'
+previous_approval_source: 'Interactive project owner: Option A, approve revision 3 as drafted'
+revision_2_approval_source: 'Interactive project owner: Approve revision 2'
+previous_normative_sha256: '14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881'
+revision_2_normative_sha256: 'e31a6b1d147f9e71bcbad97edc39d556e384fa587fdbdd391ce7e290ecff3034'
+previous_effective_authority_sha256: '29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44'
+revision_2_effective_authority_sha256: '2c7c509921cf611cae5ec394c9ba093951d9e3693e8740f9a5894b6df915c20d'
 revision_1_approval_source: 'Interactive project owner: Approve and continue (revision 1)'
 revision_1_normative_sha256: '2289212dd2076ebd4a7a6b155f59d2bc05d3da14bff49430c1877c83ea1f0fb0'
 revision_1_effective_authority_sha256: 'b11cf7679867f7ab383cb007420ee3e55c22401c1b57452dc81ed5ea8899103f'
@@ -18,8 +21,8 @@ approval_assurance: 'single-maintainer-attested'
 alpha_posture_decision: 'accepted-for-this-profile-only'
 alpha_posture_decision_date: '2026-11-10'
 predecessor_effective_authority_sha256: 'eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9'
-candidate_normative_sha256: '14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881'
-proposed_effective_authority_sha256: '29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44'
+candidate_normative_sha256: '3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd'
+proposed_effective_authority_sha256: '5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204'
 paired_spec_frozen_intent_sha256: 'b36bbe08191d0db7bf319f920f8025a3c820e2f27bb0fc5dd3842207321bfee1'
 ---
 
@@ -44,11 +47,11 @@ This supplement adds one selectable backend profile, named `DaprKubernetesCrypto
 
 - **Component.** The only selected component is `crypto.dapr.kubernetes.secrets`, version `v1`, from the component-inclusive Dapr runtime **1.19.1** (components-contrib **1.19.0**). Its archives and SHA-256 values are those in `deploy/dapr/qualification/runtime-lock-1.19.1.json`. The component's `defaultNamespace` metadata must be unset, so every key name carries its namespace.
 - **Alpha posture.** The cryptography API and this component are Alpha. The owner accepted that posture on 2026-11-10 for this profile only. It is a recorded limitation, not a readiness claim.
-- **Client calls.** EventStore calls only the generated gRPC client of `Dapr.Protos` **1.19.0**, the package `Dapr.Client` 1.19.0 already depends on. It calls no `Dapr.Client` cryptography method and starts no background task:
-  - `EncryptAlpha1`, with the component name, the key address as key name, key wrap `RSA-OAEP-256`, data cipher `aes-gcm` and `omitDecryptionKeyName` set. This is the request that `Dapr.Client` 1.19.0 `EncryptAsync` sends.
+- **Client calls.** EventStore calls only the generated gRPC client of `Dapr.Protos` **1.19.1**, the package `Dapr.Client` 1.19.1 already depends on. It calls no `Dapr.Client` cryptography method and starts no background task:
+  - `EncryptAlpha1`, with the component name, the key address as key name, key wrap `RSA-OAEP-256`, data cipher `aes-gcm` and `omitDecryptionKeyName` set. This is the request that `Dapr.Client` 1.19.1 `EncryptAsync` sends.
   - `DecryptAlpha1`, with the component name and the recorded key address as key name.
   - Each call writes its whole input as one message with sequence 0, completes the request stream, and reads the response stream to its end on the calling task. The call's gRPC status is its outcome. Output received before a non-OK status is discarded and cleared.
-  - The sidecar gRPC endpoint and API token are resolved as `Dapr.Client` 1.19.0 resolves them: `DAPR_GRPC_ENDPOINT` or `DAPR_GRPC_PORT`, and `DAPR_API_TOKEN`, sent as `dapr-api-token`. No option field supplies them.
+  - The sidecar gRPC endpoint and API token are resolved as `Dapr.Client` 1.19.1 resolves them: `DAPR_GRPC_ENDPOINT` or `DAPR_GRPC_PORT`, and `DAPR_API_TOKEN`, sent as `dapr-api-token`. No option field supplies them.
   - Envelopes written through `Dapr.Client` 1.19.0 `EncryptAsync` keep their meaning and decrypt unchanged.
   - No production source suppresses the `DAPR_CRYPTOGRAPHY` diagnostic.
 - **Excluded.** Subtle get-key/wrap/unwrap, the `Dapr.Cryptography` package, custom runtimes, provider HTTP, any application Kubernetes client and exported KEKs are excluded.
@@ -228,3 +231,19 @@ The approval was recorded while EventStore HEAD was `02873c9d4d3da23a53037cb3bda
 The owner also accepted one daprd limitation: daprd 1.19.1 returns gRPC `Internal` when Kubernetes refuses a Secret read (403), so a denied ServiceAccount stays `ConsistencyMismatch` under §7. The lane proves `Denied` with an unauthenticated call against a per-run API token, and `deferred-work.md` records the limitation.
 
 Under revision 3, the unchanged §7 phrases "inside the SDK exception" and "SDK-returned arrays" cover the gRPC runtime's exceptions and the buffers it returns, because no `Dapr.Client` cryptography method is called any more. The lane's per-run API token is set on a self-hosted daprd. It proves only that `Unauthenticated` maps to `Denied`. It is not the in-cluster sidecar API-token authentication that §8 keeps as platform-blocked.
+
+## Revision 4 — 2026-11-12 (approved SDK input)
+
+At EventStore HEAD `35131a50028c638321d910f1529d3504b105662c`, the interactive project owner answered **"approve 1.19.1"** to the Story 8.7 audit's Dapr SDK mismatch. This authorizes replacing the section 2 generated-client and SDK input with `Dapr.Protos` and `Dapr.Client` **1.19.1**, already selected by the Builds catalog. The transport stays on generated `EncryptAlpha1`/`DecryptAlpha1` calls on the calling task; this approval does not select the SDK cryptography methods.
+
+Only the four current SDK version references in the section 2 client-calls bullet change. The runtime remains 1.19.1 and components-contrib remains 1.19.0; the legacy-envelope sentence continues to refer to 1.19.0. All request fields, addresses, record schemas, bounds, reader capabilities, failure rules and qualification requirements are unchanged. The revision 3 text and its approvals remain historical evidence in the preceding record and the recorded Git revision.
+
+| Digest | Revision 3 (historical) | Revision 4 (approved) |
+|---|---|---|
+| Normative | `14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881` | `3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd` |
+| Effective authority | `29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44` | `5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204` |
+| Paired frozen intent | `b36bbe08191d0db7bf319f920f8025a3c820e2f27bb0fc5dd3842207321bfee1` | unchanged |
+
+The assurance is `single-maintainer-attested`. Code constants and their bound checks move to revision 4; roots, fences, deployments and leases bound to revision 3 are refused and never restamped. No stored-root migration is authorized. Fresh source/unit and isolated-kind qualification must identify SDK 1.19.1; earlier 1.19.0 results remain historical. Platform custody/cluster, state/fleet/restore/history, Server activation, release and G5 gates remain open.
+
+Revision 4 local verification on 2026-11-12 passed 1,245 core unit tests and all 14 selected isolated-kind crypto cases, with zero failures/skips. The live lane resolved `Dapr.Client/1.19.1` and `Dapr.Protos/1.19.1` and used the lock-verified daprd 1.19.1 binary. No lane cluster or container survived. Commands and limits are recorded in the Story 8.7 SDK approval entry; these results qualify the bounded local handoff only, not the Platform target or Server activation.

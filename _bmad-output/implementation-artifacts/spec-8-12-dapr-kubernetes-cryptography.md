@@ -308,3 +308,10 @@ Verification (Debug, source mode):
 - `git diff --check` is clean.
 
 The Kubernetes and lifecycle live lanes were not re-run. The change touches only executor bookkeeping for Missing Reconciles, so the Dapr lane keeps its pass-2 behavior and the lifecycle backend returns to its pre-8.12 behavior. The pushed lifecycle CI lane will cover the latter. With no high or medium finding left unresolved, the spec stays `done` and sprint tracking moves to `done`.
+
+
+### SDK 1.19.1 successor handoff — 2026-11-12
+
+The owner answered **"approve 1.19.1"** while resuming Story 8.7. The [supplement](spec-8-12-dapr-kubernetes-cryptography-amendment.md) is revision 4: its current generated-client/SDK input is now Dapr.Protos/Dapr.Client 1.19.1, normative `3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd`, effective authority `5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204`. The frozen intent, previous approval records, runtime/component lock, schemas, request semantics and exclusions are preserved. No existing authority root is restamped; the new regression refuses revision 3 fence/deployment/capability bytes.
+
+Fresh source-mode Debug results: 1,245/1,245 core tests and 14/14 isolated-kind crypto cases, zero failures/skips. The lane resolved SDK 1.19.1, used lock-verified daprd 1.19.1, and removed its cluster and PostgreSQL container. API comparison found no public changes for either SDK package; both golden verifiers passed V001–V003 unchanged. Exact commands and scope limits are in the [8.7 SDK approval entry](spec-8-7-server-persistence-and-snapshot-integration.md#sdk-1191-approval-and-successor-verification--2026-11-12). The earlier 1.19.0 verification above remains historical. Story 8.12 remains done only for its bounded EventStore handoff; Platform target, shared-state/fleet/restore/history, Server activation, release and G5 remain gated.

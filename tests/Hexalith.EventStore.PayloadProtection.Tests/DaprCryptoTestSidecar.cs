@@ -1,4 +1,4 @@
-// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 2 and 7.
+// Approved Dapr Kubernetes cryptography supplement: 3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd; sections 2 and 7.
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Dapr.Client.Autogen.Grpc.v1;

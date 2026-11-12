@@ -3,7 +3,7 @@ name: Payload Protection Kubernetes Crypto
 # Story 8.12 opt-in qualification lane for the DaprKubernetesCrypto profile (crypto.dapr.kubernetes.secrets/v1, Alpha posture accepted
 # for this profile only). It owns a disposable kind cluster and a self-hosted daprd 1.19.1 verified against the runtime lock, with
 # runtime-generated RSA-3072 Secrets and a per-run sidecar API token. The backend calls the generated Dapr.Protos client (amendment
-# revision 3), so Denied, Unavailable and ConsistencyMismatch are each proven. Existing lanes and their 1.18.7 pins are unchanged. Passing
+# revision 4, SDK 1.19.1), so Denied, Unavailable and ConsistencyMismatch are each proven. Existing lanes and their 1.18.7 pins are unchanged. Passing
 # authorizes only the bounded Story 8.7 handoff; it is not a release, deployment, readiness or G5 gate.
 on:
   workflow_dispatch:

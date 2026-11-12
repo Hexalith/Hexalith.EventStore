@@ -1,5 +1,5 @@
-// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 4-6.
-// Profile authority: 29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44.
+// Approved Dapr Kubernetes cryptography supplement: 3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd; sections 4-6.
+// Profile authority: 5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204.
 using System.Security.Cryptography;
 using System.Text;
 using Grpc.Core;
@@ -23,7 +23,7 @@ public sealed class KeyRecordAuthorityTests
         normative.ShouldBe(PayloadProtectionAuthorityProfile.DaprKubernetesCryptoSupplementDigest);
         byte[] preimage = [.. "HXPA"u8, 0x03, .. Convert.FromHexString(PayloadProtectionStateKeys.AuthorityDigest), .. Convert.FromHexString(normative)];
         Convert.ToHexStringLower(SHA256.HashData(preimage)).ShouldBe(PayloadProtectionAuthorityProfile.DaprKubernetesCryptoDigest);
-        Kubernetes.Digest.ShouldBe("29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44");
+        Kubernetes.Digest.ShouldBe("5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204");
         Kubernetes.KeyRecordSchemaVersion.ShouldBe(2);
         string text = Encoding.UTF8.GetString(amendment);
         text.ShouldContain("status: 'approved-authorized'");
@@ -33,6 +33,35 @@ public sealed class KeyRecordAuthorityTests
         byte[] spec = Artifact("spec-8-12-dapr-kubernetes-cryptography.md");
         byte[] frozen = Block(spec, "<frozen-after-approval", "</frozen-after-approval>");
         text.ShouldContain("paired_spec_frozen_intent_sha256: '" + Convert.ToHexStringLower(SHA256.HashData(frozen)) + "'");
+    }
+
+    [Fact]
+    public async Task RevisionThreeFenceDeploymentAndCapabilityBytesAreRefusedWithoutRestamping()
+    {
+        const string revisionThree = "29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44";
+        KubernetesCryptoTestEnvironment env = await KubernetesCryptoTestEnvironment.CreateAsync();
+        string root = KubernetesCryptoTestEnvironment.Root;
+        PayloadProtectionStateValue<FenceV1> fence = (await env.Store.ReadAsync<FenceV1>(PayloadProtectionStateKeys.Fence(root)))!;
+        PayloadProtectionStateValue<DeploymentGenerationV1> deployment = (await env.Store.ReadAsync<DeploymentGenerationV1>(PayloadProtectionStateKeys.Deployment(root)))!;
+        PayloadProtectionStateValue<CapabilityLeaseV1> capability = (await env.Store.ReadAsync<CapabilityLeaseV1>(
+            PayloadProtectionStateKeys.Capability(root, deployment.Value.Generation, env.Leases.InstanceId)))!;
+        int commits = env.Store.Commits;
+
+        AssertRefused(fence);
+        AssertRefused(deployment);
+        AssertRefused(capability);
+        Should.Throw<PayloadProtectionFormatException>(() => Kubernetes.Require(revisionThree));
+        env.Store.Commits.ShouldBe(commits);
+
+        static void AssertRefused<T>(PayloadProtectionStateValue<T> current) where T : class
+        {
+            string currentJson = Encoding.UTF8.GetString(current.Bytes.Span);
+            currentJson.ShouldContain(Kubernetes.Digest);
+            byte[] previous = Encoding.UTF8.GetBytes(currentJson.Replace(Kubernetes.Digest, revisionThree, StringComparison.Ordinal));
+            byte[] unchanged = previous.ToArray();
+            Should.Throw<PayloadProtectionFormatException>(() => PayloadProtectionStateCodec.Decode<T>(previous, Kubernetes));
+            previous.ShouldBe(unchanged);
+        }
     }
 
     [Fact]

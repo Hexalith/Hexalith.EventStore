@@ -1,4 +1,4 @@
-// Approved Dapr Kubernetes cryptography supplement: 14eb081c36c1122b337c75ee1d341afc7db0a01ea107ed83596817ddcfd33881; sections 2-4 and 7.
+// Approved Dapr Kubernetes cryptography supplement: 3489775e15bdc5b7ffad4a67f37c6372a23d50b213095e26bd45e1514ad285bd; sections 2-4 and 7.
 using System.Diagnostics.Metrics;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -533,7 +533,7 @@ public sealed class DaprCryptographyBackendTests
     [InlineData("DaprKubernetesCrypto:RetainedKeys", "pp-keys/kek-v0/key.pem")]
     [InlineData("Backend", "DaprKubernetes")]
     [InlineData("AzureKeyVault", Canary)]
-    [InlineData("AuthorityDigest", "29ec85464835a52d3e4548826b1a5495ceb85e70007e1cbefdea042f852d8c44")]
+    [InlineData("AuthorityDigest", "5d11b464555ac1f40fde3eadfd03c2a3f984f0770d594b30062a4cc641e34204")]
     public void ClosedOptionsRejectUnknownProviderPrivateAndNoncanonicalSettings(string field, string value)
     {
         Should.Throw<InvalidOperationException>(() => PayloadProtectionOptions.Load(Configuration((field, value)))).Message
