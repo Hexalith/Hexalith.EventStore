@@ -217,12 +217,16 @@ def validate_profile(path, record, plan_sha):
 
 
 _RUNTIME_RESOLVER = None
+# Qualification roles build against the current EventStore runtime; the resolver,
+# its SDK-owned HostModel and the apphost template must share that framework major.
+ROLE_RUNTIME_MAJOR = 11
+ROLE_SHARED_FRAMEWORK_BOUNDARY = f'trusted-machine-dotnet{ROLE_RUNTIME_MAJOR}-sdk-framework-and-os'
 
 
 def trusted_runtime_resolver_sdk(host):
-    """Keep the net10 resolver and its SDK-owned HostModel on the same trusted framework."""
-    candidates = [path for path in (Path(host).resolve().parent / 'sdk').glob('10.0.*')
-                  if re.fullmatch(r'10\.0\.\d+', path.name) and (path / 'Microsoft.NET.HostModel.dll').is_file()]
+    """Keep the role-runtime resolver and its SDK-owned HostModel on the same trusted framework."""
+    candidates = [path for path in (Path(host).resolve().parent / 'sdk').glob(f'{ROLE_RUNTIME_MAJOR}.0.*')
+                  if re.fullmatch(rf'{ROLE_RUNTIME_MAJOR}\.0\.\d+', path.name) and (path / 'Microsoft.NET.HostModel.dll').is_file()]
     if not candidates:
         raise Blocked('TRUSTED_RUNTIME_RESOLVER_UNAVAILABLE')
     return max(candidates, key=lambda path: tuple(map(int, path.name.split('.')))).name
@@ -258,7 +262,7 @@ def validate_role_installation(role, config):
     manifest = read_json(pinned_file(config['installationManifest'], config['installationManifestSha256']))
     if not isinstance(manifest, dict) or set(manifest) != {'schema', 'role', 'entryAssembly', 'files', 'sharedFrameworkBoundary', 'dotnetHost', 'appHostTemplate'} \
             or manifest['schema'] != 'ext-protection-1-role-installation/v2' or role not in ROLE_NAMES or manifest['role'] != role \
-            or manifest['sharedFrameworkBoundary'] != 'trusted-machine-dotnet10-sdk-framework-and-os' or not isinstance(manifest['files'], list) \
+            or manifest['sharedFrameworkBoundary'] != ROLE_SHARED_FRAMEWORK_BOUNDARY or not isinstance(manifest['files'], list) \
             or not 1 <= len(manifest['files']) <= 4096:
         raise Blocked('COMPLETE_SHIPPED_ROLE_INSTALLATION_REQUIRED')
     inventory, physical = {}, set()
@@ -284,7 +288,7 @@ def validate_role_installation(role, config):
     if manifest['entryAssembly'] != str(entry) or not mandatory <= set(inventory):
         raise Blocked('APPLICATION_DEPENDENCY_PIN_MISSING')
     options = read_json(runtime).get('runtimeOptions')
-    if not isinstance(options, dict) or options.get('tfm') != 'net10.0' or set(options) - {'tfm', 'framework', 'frameworks', 'configProperties', 'rollForward'} \
+    if not isinstance(options, dict) or options.get('tfm') != f'net{ROLE_RUNTIME_MAJOR}.0' or set(options) - {'tfm', 'framework', 'frameworks', 'configProperties', 'rollForward'} \
             or options.get('rollForward', 'LatestPatch') not in ('LatestPatch', 'Minor') or Path(str(executable) + '.runtimeconfig.dev.json').exists():
         raise Blocked('EXTERNAL_RUNTIME_RESOLUTION_UNSUPPORTED')
     properties = options.get('configProperties', {})
@@ -293,7 +297,7 @@ def validate_role_installation(role, config):
         raise Blocked('EXTERNAL_RUNTIME_RESOLUTION_UNSUPPORTED')
     frameworks = options.get('frameworks', [options['framework']] if 'framework' in options else [])
     if not frameworks or any(not isinstance(value, dict) or set(value) != {'name', 'version'} or value['name'] not in ('Microsoft.NETCore.App', 'Microsoft.AspNetCore.App')
-                             or not re.fullmatch(r'10\.0\.[0-9]+', value['version']) for value in frameworks):
+                             or not re.fullmatch(rf'{ROLE_RUNTIME_MAJOR}\.0\.[0-9]+', value['version']) for value in frameworks):
         raise Blocked('SHARED_FRAMEWORK_BOUNDARY_UNSUPPORTED')
     client = read_json(client_path)
     expected_fields = {'Schema', 'Role', 'Identity', 'Endpoint', 'CredentialReference', 'PublicAnchorFile', 'PublicAnchorSha256'}
@@ -308,11 +312,11 @@ def validate_role_installation(role, config):
         raise Blocked('TRUSTED_DOTNET_HOST_PIN_REQUIRED')
     mandatory.add(str(host))
     template = Path(manifest['appHostTemplate'])
-    if not template.is_relative_to(host.parent) or not re.fullmatch(r'packs/Microsoft\.NETCore\.App\.Host\.linux-x64/10\.0\.[0-9]+/runtimes/linux-x64/native/apphost', str(template.relative_to(host.parent))) or str(template) not in inventory:
+    if not template.is_relative_to(host.parent) or not re.fullmatch(rf'packs/Microsoft\.NETCore\.App\.Host\.linux-x64/{ROLE_RUNTIME_MAJOR}\.0\.[0-9]+/runtimes/linux-x64/native/apphost', str(template.relative_to(host.parent))) or str(template) not in inventory:
         raise Blocked('TRUSTED_APPHOST_TEMPLATE_PIN_REQUIRED')
     mandatory.add(str(template))
     resolved = resolved_application_assets(entry, host, template)
-    if not re.fullmatch(r'10\.0\.[0-9]+', resolved.get('runtime', '')) or set(resolved) != {'files', 'runtime'}:
+    if not re.fullmatch(rf'{ROLE_RUNTIME_MAJOR}\.0\.[0-9]+', resolved.get('runtime', '')) or set(resolved) != {'files', 'runtime'}:
         raise Blocked('SHARED_FRAMEWORK_BOUNDARY_UNSUPPORTED')
     for asset in resolved['files']:
         if not isinstance(asset, str) or not Path(asset).is_relative_to(executable.parent):

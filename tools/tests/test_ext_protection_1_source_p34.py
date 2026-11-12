@@ -27,9 +27,9 @@ class SourcePostActivationEvidenceTests(unittest.TestCase):
             if not assembly.is_absolute() or assembly.is_symlink() or not assembly.is_file() or hashlib.sha256(assembly.read_bytes()).hexdigest() != os.environ.get('EXT_PROTECTION_P34_COMPONENT_SHA256'):
                 raise ValueError('Exact independently hash-pinned component test assembly required')
         else:
-            platform = ROOT.parent / 'platform'
+            platform = ROOT / 'references/Hexalith.Platform'
             if not (platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj').is_file():
-                platform = ROOT / 'references/Hexalith.Platform'
+                platform = ROOT.parent / 'platform'
             output = cls.directory / 'bin'
             argv = ['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'),
                     '-c', 'Debug', '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT),

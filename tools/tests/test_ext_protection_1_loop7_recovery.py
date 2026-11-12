@@ -27,8 +27,8 @@ class ActualNativeRecoveryEvidenceTests(unittest.TestCase):
             if not assembly.is_absolute() or assembly.is_symlink() or not assembly.is_file() or hashlib.sha256(assembly.read_bytes()).hexdigest() != os.environ.get('EXT_PROTECTION_LOOP7_COMPONENT_SHA256'):
                 raise ValueError('Exact independently hash-pinned component test assembly required')
         else:
-            platform = ROOT.parent / 'platform'
-            if not (platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj').is_file(): platform = ROOT / 'references/Hexalith.Platform'
+            platform = ROOT / 'references/Hexalith.Platform'
+            if not (platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj').is_file(): platform = ROOT.parent / 'platform'
             output = cls.directory / 'bin'
             source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
             built = subprocess.run(['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'), '-c', 'Debug',

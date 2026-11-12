@@ -18,24 +18,24 @@ SPEC.loader.exec_module(v)
 
 
 class TrustedRuntimeResolverSdkTests(unittest.TestCase):
-    def test_selects_latest_complete_stable_sdk10_without_using_sdk11(self):
+    def test_selects_latest_complete_stable_sdk11_without_using_sdk10_or_sdk12(self):
         with tempfile.TemporaryDirectory(prefix='protection-runtime-sdk-') as temporary:
             root = Path(temporary)
-            for version in ('10.0.403', '10.0.404', '10.0.500-preview.1', '11.0.100'):
+            for version in ('10.0.404', '11.0.100', '11.0.101', '11.0.200-preview.1', '12.0.100'):
                 sdk = root / 'sdk' / version
                 sdk.mkdir(parents=True)
                 (sdk / 'Microsoft.NET.HostModel.dll').touch()
-            (root / 'sdk/10.0.999').mkdir()
-            self.assertEqual('10.0.404', v.trusted_runtime_resolver_sdk(root / 'dotnet'))
+            (root / 'sdk/11.0.999').mkdir()
+            self.assertEqual('11.0.101', v.trusted_runtime_resolver_sdk(root / 'dotnet'))
 
-    def test_refuses_sdk11_only_installation_before_starting_a_process(self):
+    def test_refuses_sdk10_only_installation_before_starting_a_process(self):
         with tempfile.TemporaryDirectory(prefix='protection-runtime-sdk-') as temporary:
             root = Path(temporary)
-            sdk = root / 'sdk/11.0.100'
+            sdk = root / 'sdk/10.0.404'
             sdk.mkdir(parents=True)
             (sdk / 'Microsoft.NET.HostModel.dll').touch()
             with patch.object(v, '_RUNTIME_RESOLVER', None), patch.object(v.shutil, 'which', return_value=str(root / 'dotnet')), \
-                    patch.object(v.subprocess, 'run', side_effect=AssertionError('No SDK11 fallback may run')), \
+                    patch.object(v.subprocess, 'run', side_effect=AssertionError('No SDK10 fallback may run')), \
                     self.assertRaisesRegex(v.Blocked, 'TRUSTED_RUNTIME_RESOLVER_UNAVAILABLE'):
                 v.resolved_application_assets(root / 'Role.dll', root / 'dotnet', root / 'apphost')
 
@@ -88,7 +88,7 @@ class ShippedRoleClosureTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix='protection-shipped-closure-'); cls.addClassCleanup(cls.temporary.cleanup)
         cls.directory = Path(cls.temporary.name); cls.platform = v.qualification_platform_root(ROOT)
         cls.host = Path(shutil.which('dotnet')).resolve(); cls.roles = {}
-        cls.template = max((cls.host.parent / 'packs/Microsoft.NETCore.App.Host.linux-x64').glob('10.0.*/runtimes/linux-x64/native/apphost'), key=lambda path: tuple(map(int, path.parts[-5].split('.'))))
+        cls.template = max((cls.host.parent / 'packs/Microsoft.NETCore.App.Host.linux-x64').glob(f'{v.ROLE_RUNTIME_MAJOR}.0.*/runtimes/linux-x64/native/apphost'), key=lambda path: tuple(map(int, path.parts[-5].split('.'))))
         for role in v.ROLE_NAMES:
             assembly = 'Hexalith.Platform.Protection.Qualification.' + role.capitalize()
             project = cls.platform / 'src' / assembly / (assembly + '.csproj')
@@ -115,7 +115,7 @@ class ShippedRoleClosureTests(unittest.TestCase):
                                            'CredentialReference': config['credentialReference'], 'PublicAnchorFile': str(public), 'PublicAnchorSha256': config['publicAnchorSha256']}))
             assets = set(v.resolved_application_assets(installed / (assembly + '.dll'), cls.host, cls.template)['files'])
             assets.update(map(str, (executable, installed / (assembly + '.deps.json'), installed / (assembly + '.runtimeconfig.json'), client, public, cls.host, cls.template)))
-            manifest = {'schema': 'ext-protection-1-role-installation/v2', 'role': role, 'entryAssembly': str(installed / (assembly + '.dll')), 'sharedFrameworkBoundary': 'trusted-machine-dotnet10-sdk-framework-and-os',
+            manifest = {'schema': 'ext-protection-1-role-installation/v2', 'role': role, 'entryAssembly': str(installed / (assembly + '.dll')), 'sharedFrameworkBoundary': v.ROLE_SHARED_FRAMEWORK_BOUNDARY,
                         'dotnetHost': str(cls.host), 'appHostTemplate': str(cls.template), 'files': [{'path': path, 'sha256': v.digest(Path(path).read_bytes())} for path in sorted(assets)]}
             Path(config['installationManifest']).write_bytes(v.canonical(manifest)); config['installationManifestSha256'] = v.digest(Path(config['installationManifest']).read_bytes())
             cls.roles[role] = config
