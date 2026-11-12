@@ -115,8 +115,8 @@ public class SnapshotManagerTests(ITestOutputHelper output) {
     }
 
     [Theory]
-    [InlineData(159_744, true)]
-    [InlineData(159_743, false)]
+    [InlineData(174_080, true)]
+    [InlineData(174_079, false)]
     [InlineData(16_384, false)]
     public async Task SerializerWorkspaceBoundaryStagesOnlyTheAdmittedCandidate(long scratchBytes, bool admitted)
     {
@@ -156,7 +156,7 @@ public class SnapshotManagerTests(ITestOutputHelper output) {
         const int maximumOutput = 1024;
         const long maximumInput = 132_096;
         const long scratch = 262_144;
-        const long requiredScratch = 16_384 + 24 * maximumInput + 4096 + 64 * 64;
+        const long requiredScratch = maximumOutput + 6 * maximumInput + 4096 + 24 * maximumInput + 4096 + 64 * 64;
         BoundedSnapshotJsonBuffer.CanSerialize(maximumOutput, JsonSerializerOptions.Web, requiredScratch, maximumInput)
             .ShouldBeTrue();
         BoundedSnapshotJsonBuffer.CanSerialize(maximumOutput, JsonSerializerOptions.Web, requiredScratch - 1, maximumInput)
@@ -184,7 +184,7 @@ public class SnapshotManagerTests(ITestOutputHelper output) {
         // HX-FS-V1 §§6.2/8.6, V5/V16: equal options produce exact canonical bytes at the admitted boundary.
         JsonSerializerOptions options = JsonSerializerOptions.Web;
         const int maximum = 8192;
-        const long requiredScratch = 3 * maximum + 4096 + 24 * maximum + 4096 + 64 * 64;
+        const long requiredScratch = maximum + 6L * maximum + 4096 + 24L * maximum + 4096 + 64 * 64;
         BoundedSnapshotJsonBuffer.CanSerialize(maximum, options, requiredScratch, maximumInputBytes: maximum).ShouldBeTrue();
         BoundedSnapshotJsonBuffer.CanSerialize(maximum, options, requiredScratch - 1, maximumInputBytes: maximum).ShouldBeFalse();
         object[] values = [JsonSerializer.Deserialize<JsonElement>("""{"name":"<界>","items":[1,2,3]}"""),
@@ -200,7 +200,7 @@ public class SnapshotManagerTests(ITestOutputHelper output) {
 
         // One escape near the start rents a worst-case encoder buffer for the entire suffix.
         const int largeMaximum = 128 * 1024;
-        const long largeScratch = 27L * largeMaximum + 4096 + 4096 + 64 * 64;
+        const long largeScratch = 31L * largeMaximum + 4096 + 4096 + 64 * 64;
         string sparseEscaping = "<" + new string('a', 100_000);
         using var largeOutput = new BoundedSnapshotByteStream(largeMaximum, options, largeScratch, maximumInputBytes: largeMaximum);
         BoundedSnapshotJsonBuffer.Serialize(largeOutput, sparseEscaping, typeof(string), options, largeMaximum, largeScratch, maximumInputBytes: largeMaximum);
@@ -214,6 +214,80 @@ public class SnapshotManagerTests(ITestOutputHelper output) {
         Exception boundedFailure = Record.Exception(() => BoundedSnapshotJsonBuffer.Serialize(
             boundedOutput, deep.RootElement, typeof(JsonElement), options, maximum, requiredScratch, maximumInputBytes: maximum)).ShouldNotBeNull();
         boundedFailure.GetType().ShouldBe(canonicalFailure.GetType());
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void SparseEscapingAfterWrittenPrefixPreservesCanonicalBytes(bool propertyName, bool escapeAtEnd)
+    {
+        // JSON 11 reserves six times the original scalar length, even for one escape.
+        const int maximum = 128 * 1024;
+        const long maximumInput = maximum;
+        const long scratch = maximum + 30 * maximumInput + 4096 + 4096 + 64 * 64;
+        string letters = new('a', 100_000);
+        string scalar = escapeAtEnd ? letters + "<" : "<" + letters;
+        var value = new Dictionary<string, string>
+        {
+            ["prefix"] = new('p', 20_000),
+            [propertyName ? scalar : "value"] = propertyName ? "value" : scalar,
+        };
+        byte[] canonical = JsonSerializer.SerializeToUtf8Bytes(value, JsonSerializerOptions.Web);
+        canonical.Length.ShouldBeLessThan(maximum);
+        BoundedSnapshotJsonBuffer.CanSerialize(maximum, JsonSerializerOptions.Web, scratch, maximumInput).ShouldBeTrue();
+        BoundedSnapshotJsonBuffer.CanSerialize(maximum, JsonSerializerOptions.Web, scratch - 1, maximumInput).ShouldBeFalse();
+        using var bounded = new MemoryStream(maximum);
+
+        BoundedSnapshotJsonBuffer.Serialize(bounded, value, value.GetType(), JsonSerializerOptions.Web,
+            maximum, scratch, maximumInput);
+
+        bounded.ToArray().ShouldBe(canonical);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FixedWriterHintCapacityDoesNotRelaxActualOutputCeiling(bool oversized)
+    {
+        const int maximum = 128 * 1024;
+        const long scratch = 31L * maximum + 4096 + 4096 + 64 * 64;
+        string value = "<" + new string('a', maximum - 8 + (oversized ? 1 : 0));
+        byte[] canonical = JsonSerializer.SerializeToUtf8Bytes(value, JsonSerializerOptions.Web);
+        canonical.Length.ShouldBe(maximum + (oversized ? 1 : 0));
+        using var bounded = new MemoryStream(maximum);
+
+        if (oversized)
+        {
+            Should.Throw<InvalidOperationException>(() => BoundedSnapshotJsonBuffer.Serialize(bounded,
+                value, typeof(string), JsonSerializerOptions.Web, maximum, scratch, maximumInputBytes: maximum))
+                .Message.ShouldBe("SnapshotCaptureLimitExceeded");
+            bounded.Length.ShouldBe(0);
+        }
+        else
+        {
+            BoundedSnapshotJsonBuffer.Serialize(bounded, value, typeof(string), JsonSerializerOptions.Web,
+                maximum, scratch, maximumInputBytes: maximum);
+            bounded.ToArray().ShouldBe(canonical);
+        }
+    }
+
+    [Theory]
+    [InlineData(int.MaxValue, 1)]
+    [InlineData(1, int.MaxValue)]
+    [InlineData(8192, long.MaxValue)]
+    public void UnrepresentableFixedWriterCapacityRefusesBeforeConverters(int maximumOutput, long maximumInput)
+    {
+        var value = new SnapshotVersionProbeState();
+        BoundedSnapshotJsonBuffer.CanSerialize(maximumOutput, JsonSerializerOptions.Web, long.MaxValue, maximumInput)
+            .ShouldBeFalse();
+
+        Should.Throw<InvalidOperationException>(() => BoundedSnapshotJsonBuffer.Serialize(Stream.Null,
+            value, typeof(SnapshotVersionProbeState), JsonSerializerOptions.Web, maximumOutput, long.MaxValue, maximumInput))
+            .Message.ShouldBe("SnapshotCaptureLimitExceeded");
+
+        value.SerializationCount.ShouldBe(0);
     }
 
     [Theory]

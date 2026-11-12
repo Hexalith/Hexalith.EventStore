@@ -446,8 +446,8 @@ public sealed class FoldedSnapshotCaptureTests
     }
 
     [Theory]
-    [InlineData(122_880, true)]
-    [InlineData(122_879, false)]
+    [InlineData(136_192, true)]
+    [InlineData(136_191, false)]
     [InlineData(16_384, false)]
     public async Task SerializerScratchIsAdmittedBeforeOptionalStateCopy(long scratchBytes, bool admitted)
     {

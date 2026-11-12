@@ -18,7 +18,7 @@ internal sealed class BoundedSnapshotJsonBuffer : IBufferWriter<byte>
             throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
         }
         _maximumBytes = maximumBytes;
-        _buffer = new byte[checked((int)BufferCapacity(maximumBytes, options))];
+        _buffer = new byte[checked((int)BufferCapacity(maximumBytes, options, maximumInputBytes))];
     }
 
     /// <summary>Checks the fixed output buffer, encoder scratch, and depth stack without allocating them.</summary>
@@ -33,7 +33,9 @@ internal sealed class BoundedSnapshotJsonBuffer : IBufferWriter<byte>
             // The encoder can rent six UTF16 chars per input char, rounded by the
             // pool to less than twice that request, at two bytes per char. Reserve
             // that 24x input allowance beside the fixed output and writer/depth state.
-            long required = checked(BufferCapacity(maximumBytes, options) + 24L * maximumInputBytes
+            long capacity = BufferCapacity(maximumBytes, options, maximumInputBytes);
+            if (capacity > Array.MaxLength) { return false; }
+            long required = checked(capacity + 24L * maximumInputBytes
                 + 4096 + 64L * (options.MaxDepth == 0 ? 64 : options.MaxDepth));
             return required <= scratchBytes;
         }
@@ -56,8 +58,11 @@ internal sealed class BoundedSnapshotJsonBuffer : IBufferWriter<byte>
         output.Write(buffer._buffer.AsSpan(0, buffer._written));
     }
 
-    private static long BufferCapacity(int maximumBytes, JsonSerializerOptions options)
-        => Math.Max(options.DefaultBufferSize, checked(3L * maximumBytes + 4096));
+    private static long BufferCapacity(int maximumBytes, JsonSerializerOptions options, long maximumInputBytes)
+        // JSON 11 can request six bytes per original UTF16 character before it
+        // knows the escaped output length. A growth request follows any committed
+        // prefix, so reserve that hint beside the output ceiling and growth slack.
+        => Math.Max(options.DefaultBufferSize, checked(maximumBytes + 6L * maximumInputBytes + 4096));
 
     /// <inheritdoc/>
     public void Advance(int count)
