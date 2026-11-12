@@ -559,7 +559,7 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(workflow, "ci");
         string tenantsSourceModeJob = ExtractTopLevelWorkflowJobBlock(workflow, "tenants-source-mode");
 
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b");
         ciJob.ShouldContain("build-timeout-minutes: 180");
         ciJob.ShouldContain("test-platform: microsoft-testing-platform");
         ciJob.ShouldContain("run-consumer-validation: true");
@@ -577,16 +577,16 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Fact]
-    public void Shared_ci_v2_requires_the_pinned_tool_declared_package_suite_and_pull_only_secrets()
+    public void Shared_ci_requires_the_pinned_tool_and_keeps_the_declared_package_suite()
     {
         string root = FindRepositoryRoot();
         string ciJob = ExtractTopLevelWorkflowJobBlock(File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml")), "ci");
         ciJob.ShouldContain("module-manifest: module/hexalith.module-manifest.v2.json");
-        ciJob.ShouldContain("integration-test-profiles: platform-package");
-        ciJob.ShouldContain("integration-test-reference-owners: tenants");
-        AssertPlatformPackageReferenceOwnerSelection(ciJob);
-        ciJob.ShouldContain("registry-pull-username: ${{ secrets.HEXALITH_CI_REGISTRY_USERNAME }}");
-        ciJob.ShouldContain("registry-pull-password: ${{ secrets.HEXALITH_CI_REGISTRY_PASSWORD }}");
+        // The platform-package profile is deferred until Platform qualifies a current
+        // EventStore/Tenants cohort; see the Runner-owned package integration lane in docs/ci.md.
+        ciJob.ShouldNotContain("integration-test-profiles:");
+        ciJob.ShouldNotContain("integration-test-reference-owners:");
+        ciJob.ShouldNotContain("secrets:");
         foreach (string retired in new[] { "integration-test-projects:", "aspire-test-project:", "dapr-version:", "dapr-runtime-version:", "secrets: inherit" })
         {
             ciJob.ShouldNotContain(retired);
@@ -602,27 +602,6 @@ public sealed class ReleasePackageManifestTests
         suite.GetProperty("mode").GetString().ShouldBe("package");
         suite.GetProperty("executor").GetString().ShouldBe("mtp");
         suite.GetProperty("entry").GetString().ShouldBe("tests/Hexalith.EventStore.Platform.IntegrationTests/Hexalith.EventStore.Platform.IntegrationTests.csproj");
-    }
-
-    /// <summary>The qualification caller accepts only one literal reviewed reference owner.</summary>
-    /// <param name="replacement">An unqualified replacement for the required owner input.</param>
-    [Theory]
-    [InlineData("")]
-    [InlineData("      integration-test-reference-owners:")]
-    [InlineData("      integration-test-reference-owners: memories")]
-    [InlineData("      integration-test-reference-owners: tenants,memories")]
-    [InlineData("      integration-test-reference-owners: tenants,tenants")]
-    [InlineData("      integration-test-reference-owners: ${{ inputs.owner }}")]
-    [InlineData("      integration-test-reference-owners: tenants\n      integration-test-reference-owners: tenants")]
-    public void SharedCiV2ReferenceOwnerSelectionRejectsChangedInputs(string replacement)
-    {
-        const string OwnerInput = "      integration-test-reference-owners: tenants";
-        string valid = $"  ci:\n    with:\n{OwnerInput}\n";
-        AssertPlatformPackageReferenceOwnerSelection(valid);
-
-        string changed = valid.Replace(OwnerInput, replacement, StringComparison.Ordinal);
-
-        _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertPlatformPackageReferenceOwnerSelection(changed));
     }
 
     /// <summary>SDK-owned test support remains source while external Release dependencies remain packages.</summary>
@@ -821,7 +800,7 @@ public sealed class ReleasePackageManifestTests
         liveSidecarJob.ShouldNotContain("set +e");
 
         string ciJob = ExtractTopLevelWorkflowJobBlock(ci, "ci");
-        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci-v2.yml@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b");
         ciJob.ShouldContain("unit-test-projects: |");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Contracts.Tests");
         ciJob.ShouldNotContain("continue-on-error");
@@ -2332,18 +2311,6 @@ public sealed class ReleasePackageManifestTests
         AssertWorkflowJobCannotBeSkippedOrTolerated(
             jobBlock.Replace("        if: always()\n", string.Empty, StringComparison.Ordinal),
             "Tenants source-mode");
-    }
-
-    private static void AssertPlatformPackageReferenceOwnerSelection(string jobBlock)
-    {
-        string[] ownerInputs = jobBlock
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace('\r', '\n')
-            .Split('\n')
-            .Where(static line => line.TrimStart().StartsWith("integration-test-reference-owners:", StringComparison.Ordinal))
-            .ToArray();
-
-        ownerInputs.ShouldBe(["      integration-test-reference-owners: tenants"]);
     }
 
     private static void AssertSemanticReleaseGovernanceJobIsBlocking(string jobBlock)

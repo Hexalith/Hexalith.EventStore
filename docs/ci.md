@@ -123,14 +123,17 @@ place for run output.
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`, plus `scripts/check-committed-files.sh`, `tools/tests/test_check_committed_files.py` and `tools/tests/test_dapr_broker_qualification.py` | Dedicated `Integration Tests` workflow after `dapr init`; its required `live-sidecar` job first runs the committed-file guard and the two Python suites. This lane is visible but not part of the semantic-release gate. It is not a `dotnet test` of `Server.Tests`. |
 | Payload-protection lifecycle | `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests` | Dedicated `Payload Protection Lifecycle` workflow; isolated processes and digest-pinned PostgreSQL v2 state, persisted assertions and zero skips. The existing `Payload Protection` core workflow runs independently. The project's xUnit `Explicit` `Lane=KubernetesCrypto` cases are reported as not run there; they run only in the manually dispatched `Payload Protection Kubernetes Crypto` workflow with `--explicit only`. |
 | Advisory browser/governance suites | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
-| Runner-owned package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | The declared `platform-package` suite requires the real gateway and run-scoped Redis persistence after all twenty isolated projects pass. Published CLI 4.44.11 and the pinned v2 producer perform unconditional owned cleanup. Identity/catalog prerequisites remain blocking; the current SDK revision still requires exact-head hosted qualification. The separate Contracts gate remains blocking. |
+| Runner-owned package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | Deferred: the `platform-package` profile is not run by CI. It composes the published EventStore and Tenants packages selected by the Builds catalog, and Platform admits only its hand-qualified cohorts (EventStore 4.0.4/Tenants 7.0.0, 4.1.0/7.0.2, private 4.1.0 or 4.2.0/7.0.5), so the current EventStore 4.2.0/Tenants 7.0.7 selection refuses with HXP020 before starting resources. Restore the `integration-test-profiles: platform-package` and `integration-test-reference-owners: tenants` inputs once Platform publishes a release that qualifies the current cohort. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 | Isolated synthetic sharding | `tests/Hexalith.EventStore.Sharding.Tests` | Deferred CI automation; the operator opt-in Debug lane and its owned `Sharding.TestHost` fixture are documented in `tests/Hexalith.EventStore.Sharding.Tests/README.md`. Synthetic observations do not qualify a production provider profile or release gate. |
 
-The v2 caller explicitly maps only `HEXALITH_CI_REGISTRY_USERNAME` and
-`HEXALITH_CI_REGISTRY_PASSWORD` to its pull-only registry secret interface. It
-accepts no inherited secrets, caller Dapr overrides or direct integration/AppHost
-execution inputs. Existing independent jobs and consumer/coverage gates remain.
+The `ci` job calls shared `domain-ci.yml` at the same Builds pin as the
+`domain-ci-v2.yml` it replaced. It runs the same package preparation, build,
+unit and consumer-validation steps, but not v2's mandatory `platform-package`
+integration step, so it passes no registry secrets, inherited secrets, caller
+Dapr overrides or direct integration/AppHost execution inputs. Return to
+`domain-ci-v2.yml` with the `platform-package` profile once Platform qualifies
+the current cohort. Existing independent jobs and consumer/coverage gates remain.
 
 ### Current package-test producer selection — 2026-11-06
 
