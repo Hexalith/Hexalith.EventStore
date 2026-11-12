@@ -50,7 +50,8 @@ public sealed class TestEnvironmentDescriptorReaderTests
         }
         else
         {
-            _ = Should.Throw<TestEnvironmentDescriptorException>(() => TestEnvironmentDescriptorReader.ReadDescriptor(file.Path));
+            Should.Throw<TestEnvironmentDescriptorException>(() => TestEnvironmentDescriptorReader.ReadDescriptor(file.Path))
+                .Rule.ShouldBe(fault is "expired" or "ended" ? "HXT108" : "HXT104");
         }
     }
 
@@ -59,8 +60,11 @@ public sealed class TestEnvironmentDescriptorReaderTests
     public async Task AttachedExpiryCancelsFixtureRequests()
     {
         using var file = new DescriptorTestFile();
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
         JsonNode root = JsonNode.Parse(File.ReadAllText(file.Path))!;
         JsonNode bindings = root["bindings"]!;
+        bindings["environment"]!["resources"]![0]!["endpoints"]![0]!["uri"] = "http://127.0.0.1:" + ((IPEndPoint)listener.LocalEndpoint).Port;
         bindings["run"]!["runId"] = "attached-run";
         bindings["run"]!["role"] = "attached";
         bindings["run"]!["attachedRunId"] = "attached-run";
@@ -69,15 +73,24 @@ public sealed class TestEnvironmentDescriptorReaderTests
         {
             ["originalAttachmentRequestId"] = "request-1", ["environmentId"] = "sample-environment",
             ["ownerRunId"] = "sample-owner-run", ["attachedRunId"] = "attached-run", ["acceptedAt"] = accepted.UtcDateTime.ToString("O"),
-            ["requestedHoldSeconds"] = 1, ["effectiveHoldSeconds"] = 1, ["expiresAt"] = accepted.AddSeconds(1).UtcDateTime.ToString("O"),
+            ["requestedHoldSeconds"] = 15, ["effectiveHoldSeconds"] = 15, ["expiresAt"] = accepted.AddSeconds(15).UtcDateTime.ToString("O"),
             ["end"] = new JsonObject { ["state"] = "active" },
         }) };
         File.WriteAllText(file.Path, root.ToJsonString());
         using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
-        using HttpClient client = descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(5), false);
-        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await Task.Delay(TimeSpan.FromSeconds(5), descriptor.RequestCancellation));
+        using HttpClient client = descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(20), false);
+        Task<HttpResponseMessage> request = client.GetAsync("/");
+        using TcpClient connection = await listener.AcceptTcpClientAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+        byte[] prefix = new byte[4];
+        await connection.GetStream().ReadExactlyAsync(prefix, TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(2));
+        Encoding.ASCII.GetString(prefix).ShouldBe("GET ");
+        request.IsCompleted.ShouldBeFalse("The local server has received the request and deliberately withholds its response.");
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await request.WaitAsync(TimeSpan.FromSeconds(30)));
+
+        // Cancellation must come from the original expiry, not earlier; the tolerance covers timer and clock granularity only.
+        DateTimeOffset.UtcNow.ShouldBeGreaterThanOrEqualTo(descriptor.AttachmentExpiresAtUtc!.Value.AddMilliseconds(-250));
         descriptor.RequestCancellation.IsCancellationRequested.ShouldBeTrue();
-        _ = Should.Throw<OperationCanceledException>(() => descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(5), false));
+        _ = Should.Throw<OperationCanceledException>(() => descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(20), false));
     }
 
     /// <summary>Pins the embedded immutable contract without requiring any external checkout.</summary>
