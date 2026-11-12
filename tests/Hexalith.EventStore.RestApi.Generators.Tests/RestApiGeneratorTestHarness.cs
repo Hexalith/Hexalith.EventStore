@@ -177,7 +177,6 @@ internal static class RestApiGeneratorTestHarness
         AddRuntimeAssembly(paths, "System.Runtime.dll");
         AddRuntimeAssembly(paths, "System.Runtime.Extensions.dll");
         AddRuntimeAssembly(paths, "System.Security.Claims.dll");
-        AddRuntimeAssembly(paths, "System.Text.Json.dll");
         AddRuntimeAssembly(paths, "System.Text.RegularExpressions.dll");
         AddRuntimeAssembly(paths, "System.Threading.Tasks.dll");
 
