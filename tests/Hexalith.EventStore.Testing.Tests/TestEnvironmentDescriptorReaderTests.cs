@@ -73,19 +73,22 @@ public sealed class TestEnvironmentDescriptorReaderTests
         {
             ["originalAttachmentRequestId"] = "request-1", ["environmentId"] = "sample-environment",
             ["ownerRunId"] = "sample-owner-run", ["attachedRunId"] = "attached-run", ["acceptedAt"] = accepted.UtcDateTime.ToString("O"),
-            ["requestedHoldSeconds"] = 5, ["effectiveHoldSeconds"] = 5, ["expiresAt"] = accepted.AddSeconds(5).UtcDateTime.ToString("O"),
+            ["requestedHoldSeconds"] = 15, ["effectiveHoldSeconds"] = 15, ["expiresAt"] = accepted.AddSeconds(15).UtcDateTime.ToString("O"),
             ["end"] = new JsonObject { ["state"] = "active" },
         }) };
         File.WriteAllText(file.Path, root.ToJsonString());
         using TestEnvironmentDescriptor descriptor = TestEnvironmentDescriptorReader.ReadDescriptor(file.Path);
         using HttpClient client = descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(20), false);
         Task<HttpResponseMessage> request = client.GetAsync("/");
-        using TcpClient connection = await listener.AcceptTcpClientAsync(TestContext.Current.CancellationToken);
+        using TcpClient connection = await listener.AcceptTcpClientAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5));
         byte[] prefix = new byte[4];
         await connection.GetStream().ReadExactlyAsync(prefix, TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(2));
         Encoding.ASCII.GetString(prefix).ShouldBe("GET ");
         request.IsCompleted.ShouldBeFalse("The local server has received the request and deliberately withholds its response.");
-        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await request.WaitAsync(TimeSpan.FromSeconds(10)));
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await request.WaitAsync(TimeSpan.FromSeconds(30)));
+
+        // Cancellation must come from the original expiry, not earlier; the tolerance covers timer and clock granularity only.
+        DateTimeOffset.UtcNow.ShouldBeGreaterThanOrEqualTo(descriptor.AttachmentExpiresAtUtc!.Value.AddMilliseconds(-250));
         descriptor.RequestCancellation.IsCancellationRequested.ShouldBeTrue();
         _ = Should.Throw<OperationCanceledException>(() => descriptor.CreateHttpClient("eventstore", "Hexalith.EventStore", "http", TimeSpan.FromSeconds(20), false));
     }
