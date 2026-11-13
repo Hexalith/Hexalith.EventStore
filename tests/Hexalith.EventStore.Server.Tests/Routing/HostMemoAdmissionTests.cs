@@ -29,11 +29,17 @@ public sealed class HostMemoAdmissionTests
         await fixture.ActivateAsync(fixture.Candidate());
         var scopes = new List<RouteCatalogDecodeScope?>();
         var hits = new List<(int Hits, int Captures, bool Memo)>();
+        var imageScopes = new List<RouteCatalogImageDigestScope?>();
+        var imageHits = new List<int>();
         using RouteCatalogAuthority authority = Create(fixture, _ =>
         {
             var current = RouteCatalogDecodeScope.Current;
             scopes.Add(current);
             hits.Add((current?.CacheHits ?? 0, current?.CaptureCount ?? 0, current?.HasHostMemo == true));
+            var imageScope = RouteCatalogImageDigestScope.Current;
+            imageScopes.Add(imageScope);
+            TechnicalHttpActionObservation.AssemblyIdentity(typeof(RouteCatalogAuthority).Assembly);
+            imageHits.Add(imageScope?.CacheHits ?? 0);
             return Task.FromResult(fixture.Observations[0]);
         }, retain: enabled);
         await using (var first = await authority.AcquireAsync()) { }
@@ -41,6 +47,8 @@ public sealed class HostMemoAdmissionTests
         if (PrivateExpected)
         {
             scopes[0].ShouldNotBeSameAs(scopes[1]);
+            imageScopes[0].ShouldNotBeNull().ShouldNotBeSameAs(imageScopes[1]);
+            imageHits.ShouldBe([0, enabled ? 1 : 0]);
             hits[0].Hits.ShouldBe(hits[0].Captures - 1);
             hits[1].Memo.ShouldBe(enabled);
             hits[1].Hits.ShouldBe(hits[1].Captures - (enabled ? 0 : 1));
@@ -60,12 +68,16 @@ public sealed class HostMemoAdmissionTests
         var fixture = new RouteCatalogTestFixture();
         await fixture.ActivateAsync(fixture.Candidate());
         var foreignReads = new List<(RouteCatalogDecodeScope? Scope, bool Memo, int Count)>();
+        var foreignBindings = new List<RouteCatalogBindingScope?>();
+        var foreignImages = new List<RouteCatalogImageDigestScope?>();
         var foreignStore = Substitute.For<IRouteCatalogStateStore>();
         foreignStore.Coordinates.Returns(fixture.Store.Coordinates);
         foreignStore.ReadAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             var current = RouteCatalogDecodeScope.Current;
             foreignReads.Add((current, current?.HasHostMemo == true, current?.Count ?? 0));
+            foreignBindings.Add(RouteCatalogBindingScope.Current);
+            foreignImages.Add(RouteCatalogImageDigestScope.Current);
             return fixture.Store.ReadAsync(call.Arg<CancellationToken>());
         });
         foreignStore.CompareExchangeAsync(Arg.Any<RouteCatalogActivationState>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -74,15 +86,21 @@ public sealed class HostMemoAdmissionTests
             retain: mode == "enabled", scoped: mode != "disabled", store: foreignStore);
         bool nested = false;
         RouteCatalogDecodeScope? outer = null;
+        RouteCatalogBindingScope? outerBinding = null;
+        RouteCatalogImageDigestScope? outerImage = null;
         using RouteCatalogAuthority first = Create(fixture, async _ =>
         {
             if (nested)
             {
                 nested = false;
                 outer = RouteCatalogDecodeScope.Current;
+                outerBinding = RouteCatalogBindingScope.Current;
+                outerImage = RouteCatalogImageDigestScope.Current;
                 int captures = outer?.CaptureCount ?? 0;
                 await using (var lease = await foreign.AcquireAsync().WaitAsync(TimeSpan.FromSeconds(5))) { }
                 RouteCatalogDecodeScope.Current.ShouldBeSameAs(outer);
+                RouteCatalogBindingScope.Current.ShouldBeSameAs(outerBinding);
+                RouteCatalogImageDigestScope.Current.ShouldBeSameAs(outerImage);
                 (outer?.CaptureCount ?? 0).ShouldBe(captures);
             }
             return fixture.Observations[0];
@@ -93,6 +111,19 @@ public sealed class HostMemoAdmissionTests
         await using (var next = await first.AcquireAsync().WaitAsync(TimeSpan.FromSeconds(5))) { }
 
         foreignReads.Count.ShouldBe(3); // Initial authority, fresh admission inventory, then completed-lease release.
+        if (PrivateExpected && mode != "disabled") foreignBindings[0].ShouldNotBeNull().ShouldNotBeSameAs(outerBinding);
+        else foreignBindings[0].ShouldBeNull();
+        foreignBindings[1].ShouldBeSameAs(foreignBindings[0]);
+        if (PrivateExpected && mode == "enabled")
+        {
+            foreignBindings[2].ShouldNotBeNull().ShouldNotBeSameAs(foreignBindings[0]);
+            foreignBindings[2].ShouldNotBeSameAs(outerBinding);
+        }
+        else foreignBindings[2].ShouldBeNull();
+        if (PrivateExpected && mode != "disabled") foreignImages[0].ShouldNotBeNull().ShouldNotBeSameAs(outerImage);
+        else foreignImages[0].ShouldBeNull();
+        foreignImages[1].ShouldBeSameAs(foreignImages[0]);
+        foreignImages[2].ShouldBeNull();
         foreignReads[0].Count.ShouldBe(0); // A was warm; this exact separate host was not.
         if (PrivateExpected && mode != "disabled") foreignReads[0].Scope.ShouldNotBeNull().ShouldNotBeSameAs(outer);
         else foreignReads[0].Scope.ShouldBeNull();
@@ -103,6 +134,8 @@ public sealed class HostMemoAdmissionTests
         if (mode != "enabled" || !PrivateExpected) foreignReads[2].Scope.ShouldBeNull();
         else foreignReads[2].Scope.ShouldNotBeNull().ShouldNotBeSameAs(outer);
         RouteCatalogDecodeScope.Current.ShouldBeNull();
+        RouteCatalogBindingScope.Current.ShouldBeNull();
+        RouteCatalogImageDigestScope.Current.ShouldBeNull();
         (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
     }
 
@@ -158,17 +191,30 @@ public sealed class HostMemoAdmissionTests
         using RouteCatalogAuthority authority = Create(fixture, _ =>
         {
             borrowed.Add(RouteCatalogDecodeScope.Current?.HasHostMemo == true);
+            TechnicalHttpActionObservation.AssemblyIdentity(typeof(RouteCatalogAuthority).Assembly);
             return Task.FromResult(fixture.Observations[0]);
         });
         RouteCatalogDispatchLease lease = await authority.AcquireAsync();
         var memo = (RouteCatalogValidatedBytesMemo)typeof(RouteCatalogAuthority).GetField("_validatedBytes",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(authority)!;
+        var bindings = (RouteCatalogBindingMemo)typeof(RouteCatalogAuthority).GetField("_bindingComputations",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(authority)!;
+        var images = (RouteCatalogImageDigestMemo)typeof(RouteCatalogAuthority).GetField("_imageDigests",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(authority)!;
         memo.Count.ShouldBe(PrivateExpected ? 1 : 0);
+        bindings.Count.ShouldBe(PrivateExpected ? 1 : 0);
+        images.Count.ShouldBe(PrivateExpected ? 1 : 0);
         var fence = (await fixture.Store.ReadAsync(default)).State.Leases.Single();
 
         authority.Dispose();
 
         memo.IsClosed.ShouldBeTrue();
+        bindings.IsClosed.ShouldBeTrue();
+        bindings.Count.ShouldBe(0);
+        bindings.RetainedBytes.ShouldBe(0);
+        images.IsClosed.ShouldBeTrue();
+        images.Count.ShouldBe(0);
+        images.RetainedBytes.ShouldBe(0);
         memo.Count.ShouldBe(0);
         memo.RetainedBytes.ShouldBe(0);
         (await fixture.Store.ReadAsync(default)).State.Leases.Single().ShouldBe(fence);
@@ -177,6 +223,37 @@ public sealed class HostMemoAdmissionTests
         await using (var fallback = await authority.AcquireAsync()) { }
         borrowed.ShouldBe([PrivateExpected, false]);
         memo.Count.ShouldBe(0);
+    }
+
+    /// <summary>Lifecycle and readback observations cannot inherit another open image computation context.</summary>
+    [Fact]
+    public async Task LifecycleAndReadbackSuppressForeignImageComputations()
+    {
+        var fixture = new RouteCatalogTestFixture();
+        RouteCatalogActivation original = fixture.Candidate();
+        await fixture.ActivateAsync(original);
+        bool control = false;
+        var ordinaryPool = System.Buffers.ArrayPool<byte>.Create(4096, 1);
+        using var authority = Create(fixture, _ =>
+        {
+            if (control)
+            {
+                RouteCatalogImageDigestScope.Current.ShouldBeNull();
+                RouteCatalogImageBuffers.Select(ordinaryPool).ShouldBeSameAs(ordinaryPool);
+            }
+            TechnicalHttpActionObservation.AssemblyIdentity(typeof(RouteCatalogAuthority).Assembly);
+            return Task.FromResult(fixture.Observations[0]);
+        });
+        await using var lease = await authority.AcquireAsync(TestContext.Current.CancellationToken);
+        using var unrelated = RouteCatalogImageDigestScope.Enter();
+        TechnicalHttpActionObservation.AssemblyIdentity(typeof(RouteCatalogAuthority).Assembly);
+        control = true;
+
+        await authority.ReadbackAsync(TestContext.Current.CancellationToken);
+        await authority.PrepareAsync(fixture.Candidate(2, original.RootDigest), TestContext.Current.CancellationToken);
+
+        RouteCatalogImageDigestScope.Current.ShouldBeSameAs(unrelated);
+        unrelated.CacheHits.ShouldBe(0);
     }
 
     private static RouteCatalogAuthority Create(RouteCatalogTestFixture fixture,

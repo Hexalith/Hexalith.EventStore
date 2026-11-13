@@ -61,4 +61,7 @@ internal static class TechnicalHttpRouteTemplate
         }
         catch (Exception failure) when (failure is ArgumentException or InvalidOperationException) { return false; }
     }
+
+    internal static bool Matches(string template, string method, string verb, TechnicalHttpParsedTemplate parsed)
+        => parsed.Matches(template, method, verb, FrameworkServices);
 }

@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Diagnostics;
 
 using Hexalith.EventStore.Contracts.Routing;
@@ -46,6 +47,8 @@ public sealed class ScopedRouteCatalogAcquisitionTests
         RouteCatalogDecodeScope? observed = null;
         bool? schedulingObserved = null;
         bool? hostMemoObserved = null;
+        bool? concurrentPoolObserved = null;
+        var ordinaryPool = ArrayPool<byte>.Create(4096, 1);
         RouteCatalogAuthority? authority = null;
         var store = Substitute.For<IRouteCatalogStateStore>();
         store.Coordinates.Returns(fixture.Store.Coordinates);
@@ -54,6 +57,7 @@ public sealed class ScopedRouteCatalogAcquisitionTests
             observed ??= RouteCatalogDecodeScope.Current;
             schedulingObserved ??= RouteCatalogLocalAdmissionTurn.IsHeldBy(authority!);
             hostMemoObserved ??= RouteCatalogDecodeScope.Current?.HasHostMemo == true;
+            concurrentPoolObserved ??= !ReferenceEquals(RouteCatalogImageBuffers.Select(ordinaryPool), ordinaryPool);
             return fixture.Store.ReadAsync(call.Arg<CancellationToken>());
         });
         store.CompareExchangeAsync(Arg.Any<RouteCatalogActivationState>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -70,6 +74,7 @@ public sealed class ScopedRouteCatalogAcquisitionTests
         schedulingObserved.ShouldBe(true);
         hostMemoObserved.ShouldBe(changed == "enabled" && ReuseExpected);
         RouteCatalogDecodeScope.Current.ShouldBeNull();
+        concurrentPoolObserved.ShouldBe(changed == "enabled" && ReuseExpected);
     }
 
     /// <summary>The exact SDK bootstrap options and real host environment select reuse without raw profile keys.</summary>
@@ -118,7 +123,8 @@ public sealed class ScopedRouteCatalogAcquisitionTests
 
             if (ReuseExpected) observed.ShouldNotBeNull().Count.ShouldBe(0);
             else observed.ShouldBeNull();
-            schedulingObserved.ShouldBeTrue();
+            // The private lane closes its initial turn before this fresh callback; the fallback retains the full gate.
+            schedulingObserved.ShouldBe(!ReuseExpected);
             hostMemoObserved.ShouldBe(ReuseExpected);
             if (ReuseExpected)
             {

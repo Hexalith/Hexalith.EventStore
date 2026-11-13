@@ -28,6 +28,29 @@ public sealed class TechnicalHttpRouteCatalogReceiver
     private IServiceProvider? _services;
     private IDevelopmentNativeActorReceiver? _native;
     private IDevelopmentDaprCallbackReceiver? _callbacks;
+    private readonly object _privateImageOwnerGate = new();
+    private RouteCatalogAuthority? _privateImageOwner;
+    private bool _privateImageOwnerAmbiguous;
+
+    /// <summary>Connects the default factory's existing owner without resolving or validating authority during receiver checks.</summary>
+    internal void AttachPrivateImageOwner(RouteCatalogAuthority owner)
+    {
+        lock (_privateImageOwnerGate)
+        {
+            if (_privateImageOwnerAmbiguous) return;
+            if (_privateImageOwner is null) _privateImageOwner = owner;
+            else if (!ReferenceEquals(_privateImageOwner, owner))
+            {
+                _privateImageOwner = null;
+                _privateImageOwnerAmbiguous = true;
+            }
+        }
+    }
+
+    private RouteCatalogImageDigestScope? BeginPrivateImagePrecheck()
+    {
+        lock (_privateImageOwnerGate) return _privateImageOwner?.BeginPrivateReceiverImageScope();
+    }
 
     /// <summary>Tests the exact explicit profile; an unknown configured family refuses rather than falling back.</summary>
     public static bool IsEnabled(IConfiguration configuration)
@@ -91,15 +114,21 @@ public sealed class TechnicalHttpRouteCatalogReceiver
             RouteCatalogNativeActorTransport? native = null; RouteCatalogDaprCallbackTransport? callback = null;
             if (context.GetEndpoint() is RouteEndpoint nativeEndpoint)
             {
-                var nativePass = new TechnicalHttpObservationPass(app.Services);
-                native = fence._native?.Observe(nativeEndpoint, nativePass); callback = fence._callbacks?.Observe(nativeEndpoint, nativePass);
-                string? nativeFingerprint = native is not null || callback is not null ? fence.Fingerprint(nativeEndpoint, nativePass, out _) : null;
-                nativePass.Complete();
-                if (native is not null && (!fence._native!.Allows(context) || nativeFingerprint is null || native.Verbs != context.Request.Method)
-                    || callback is not null && (nativeFingerprint is null || callback.Verbs != context.Request.Method))
-                { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+                bool discovery;
+                using (var imageBoundary = RouteCatalogImageDigestScope.Suppress())
+                using (var images = fence.BeginPrivateImagePrecheck())
+                {
+                    var nativePass = new TechnicalHttpObservationPass(app.Services);
+                    native = fence._native?.Observe(nativeEndpoint, nativePass); callback = fence._callbacks?.Observe(nativeEndpoint, nativePass);
+                    string? nativeFingerprint = native is not null || callback is not null ? fence.Fingerprint(nativeEndpoint, nativePass, out _) : null;
+                    nativePass.Complete();
+                    if (native is not null && (!fence._native!.Allows(context) || nativeFingerprint is null || native.Verbs != context.Request.Method)
+                        || callback is not null && (nativeFingerprint is null || callback.Verbs != context.Request.Method))
+                    { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+                    discovery = native?.Kind is "config" or "health" || callback?.Kind == "subscribe";
+                }
                 // These real sidecar handshake/discovery protocols must work before catalog activation.
-                if (native?.Kind is "config" or "health" || callback?.Kind == "subscribe")
+                if (discovery)
                 { await next(context).ConfigureAwait(false); return; }
             }
             RouteCatalogTechnicalHttpEndpoint? description = null;
@@ -266,20 +295,20 @@ public sealed class TechnicalHttpRouteCatalogReceiver
             if (admitted && callback is not null) operation = "sdk-dapr-callback:" + callback.Kind;
             endpoints.Add(new(TechnicalHttpActionObservation.Pattern(endpoint), native?.Kind == "health" ? ["GET"] : Methods(endpoint), operation, Policies(endpoint),
                 endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null, endpoint.RoutePattern.Parameters.Count > 0, admitted && operation is not null)
-                { NativeActor = native, DaprCallback = callback, TechnicalGrants = description is null ? null : ConcreteGrants(description) });
+                { NativeActor = native, DaprCallback = callback, TechnicalGrants = description is null ? null : ConcreteGrants(description, pass) });
         }
         pass.Complete();
         return new(RouteCatalogTechnicalHttpPolicy.FenceVersion, endpoints.OrderBy(endpoint => endpoint.Pattern, StringComparer.Ordinal).ToArray())
         { TechnicalHttp = technical.OrderBy(endpoint => endpoint.Pattern, StringComparer.Ordinal).ToArray() };
     }
 
-    private IReadOnlyList<RouteCatalogHttpGrant> ConcreteGrants(RouteCatalogTechnicalHttpEndpoint endpoint)
+    private IReadOnlyList<RouteCatalogHttpGrant> ConcreteGrants(RouteCatalogTechnicalHttpEndpoint endpoint, TechnicalHttpObservationPass pass)
     {
         string? json = _services!.GetRequiredService<IConfiguration>()["EventStore:RouteCatalog:DevelopmentBootstrap:DeclaredInvocations"];
-        var invocations = json is null ? [] : System.Text.Json.JsonSerializer.Deserialize<RouteCatalogDeclaredInvocation[]>(json) ?? [];
+        var invocations = pass.DeclaredInvocations(json);
         return invocations.Where(invocation => !invocation.Method.Contains('*', StringComparison.Ordinal)
             && invocation.HttpMethods.Any(verb => endpoint.Methods.Contains(verb, StringComparer.Ordinal)
-                && TechnicalHttpRouteTemplate.Matches(endpoint.Pattern, invocation.Method.Trim('/'), verb)))
+                && pass.MatchesTemplate(endpoint.Pattern, invocation.Method.Trim('/'), verb)))
             .Select(invocation => new RouteCatalogHttpGrant(invocation.Method, string.Join(' ', invocation.HttpMethods.Intersect(endpoint.Methods, StringComparer.Ordinal).Order(StringComparer.Ordinal))))
             .Distinct().OrderBy(grant => grant.Method, StringComparer.Ordinal).ThenBy(grant => grant.Verbs, StringComparer.Ordinal).ToArray();
     }
@@ -350,6 +379,8 @@ public sealed class TechnicalHttpRouteCatalogReceiver
 
     private string? RequestFingerprint(RouteEndpoint endpoint, out RouteCatalogTechnicalHttpEndpoint? description)
     {
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
+        using var images = BeginPrivateImagePrecheck();
         var pass = new TechnicalHttpObservationPass(_services!);
         string? fingerprint = Fingerprint(endpoint, pass, out description);
         pass.Complete(); return fingerprint;

@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Schema;
 
+using Hexalith.EventStore.Contracts.Routing;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +19,9 @@ internal sealed class TechnicalHttpObservationPass(IServiceProvider services)
     private readonly Dictionary<Type, string> _schemas = [];
     private readonly Dictionary<string, AuthorizationPolicy?> _policies = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _policyIdentities = new(StringComparer.Ordinal);
+    private string? _declaredInvocationText;
+    private RouteCatalogDeclaredInvocation[] _declaredInvocations = [];
+    private TechnicalHttpParsedTemplate? _parsedTemplate;
     private readonly List<(Func<string?> Current, string? Expected)> _observations = [];
     private readonly JsonSerializerOptions _options = Options(services);
 
@@ -49,6 +54,22 @@ internal sealed class TechnicalHttpObservationPass(IServiceProvider services)
     }
 
     internal void RequireUnchanged(Func<string?> current, string? expected) => _observations.Add((current, expected));
+
+    /// <summary>Reuses parsing only for exactly equal freshly read configuration text within this observation.</summary>
+    internal IReadOnlyList<RouteCatalogDeclaredInvocation> DeclaredInvocations(string? json)
+    {
+        if (!string.Equals(json, _declaredInvocationText, StringComparison.Ordinal))
+        {
+            var invocations = json is null ? [] : JsonSerializer.Deserialize<RouteCatalogDeclaredInvocation[]>(json) ?? [];
+            _declaredInvocationText = json;
+            _declaredInvocations = invocations;
+        }
+        return _declaredInvocations;
+    }
+
+    /// <summary>Reuses only successful syntax parsing of the last exact template; each match still observes fresh values and constraints.</summary>
+    internal bool MatchesTemplate(string template, string method, string verb)
+        => TechnicalHttpRouteTemplate.Matches(template, method, verb, _parsedTemplate ??= new());
 
     internal void Complete()
     {

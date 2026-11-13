@@ -15,7 +15,7 @@ public sealed class DevelopmentRouteCatalogTrustValidator(IOptions<RouteCatalogH
         ArgumentNullException.ThrowIfNull(activation);
         cancellationToken.ThrowIfCancellationRequested();
         if (environment?.IsDevelopment() != true || !options.Value.DevelopmentFixture
-            || RouteCatalogCodec.Decode(activation.CanonicalCatalog, activation.RootDigest).Profile != "Development"
+            || RouteCatalogCodec.ReadProfile(activation.CanonicalCatalog, activation.RootDigest) != "Development"
             || activation.Owner != "Development-fixture" || activation.TrustProof != bindingDigest)
         {
             throw new RouteCatalogUnavailableException("An activated owner-bound production catalog is required; Development fixtures supply no production authority.", RouteCatalogRefusalReason.Trust);

@@ -71,7 +71,7 @@ public static class DevelopmentDomainRouteCatalog
             {
                 ReceiverSurface = fence.Observe(), Operations = operations,
                 ExecutableOwners = implementations.Distinct().OrderBy(assembly => assembly.FullName, StringComparer.Ordinal)
-                    .ToDictionary(assembly => assembly.FullName!, assembly => ReadExecutableDigest(assembly.Location), StringComparer.Ordinal),
+                    .ToDictionary(assembly => assembly.FullName!, assembly => ReadExecutableDigest(assembly), StringComparer.Ordinal),
             };
         });
     }
@@ -81,6 +81,13 @@ public static class DevelopmentDomainRouteCatalog
     {
         using FileStream image = File.OpenRead(path);
         return Convert.ToHexStringLower(SHA256.HashData(image));
+    }
+
+    /// <summary>Preserves a fresh complete stream observation while allowing only the owning private scope's exact-byte computation reuse.</summary>
+    internal static string ReadExecutableDigest(Assembly assembly)
+    {
+        using FileStream image = File.OpenRead(assembly.Location);
+        return RouteCatalogFreshStreamImageDigest.Compute(assembly, image);
     }
 
     /// <summary>Captures targets from compiled declarations only after comparing the complete actual local query/projection inventory and canonical receiver policies.</summary>

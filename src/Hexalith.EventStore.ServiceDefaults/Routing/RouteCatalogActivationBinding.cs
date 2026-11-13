@@ -12,6 +12,13 @@ public static class RouteCatalogActivationBinding
     public static string ComputeDigest(RouteCatalogActivation activation)
     {
         ArgumentNullException.ThrowIfNull(activation);
+        return RouteCatalogBindingScope.Current is { } scope && scope.TryCompute(activation, out string digest)
+            ? digest : ComputeDigestCore(activation);
+    }
+
+    /// <summary>Runs the original validation and exact v1/v2 preimage computation without reuse.</summary>
+    internal static string ComputeDigestCore(RouteCatalogActivation activation)
+    {
         RouteCatalogEnvelope envelope = RouteCatalogCodec.Decode(activation.CanonicalCatalog, activation.RootDigest);
         if (envelope.SchemaVersion is not (2 or 3) || string.IsNullOrWhiteSpace(activation.AttemptId)
             || string.IsNullOrWhiteSpace(activation.Owner) || activation.RequiredHosts is not { Count: > 0 and <= 256 }

@@ -1,6 +1,6 @@
 namespace Hexalith.EventStore.ServiceDefaults.Routing;
 
-/// <summary>Identifies a genuinely open local acquisition callback to avoid reentrant scheduling deadlock.</summary>
+/// <summary>Identifies a genuinely held local admission phase to avoid reentrant scheduling deadlock.</summary>
 /// <remarks>This is a private scheduling marker, never dispatch authority or a reusable catalog observation.</remarks>
 internal sealed class RouteCatalogLocalAdmissionTurn : IDisposable
 {

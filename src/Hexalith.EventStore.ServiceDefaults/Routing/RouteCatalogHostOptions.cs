@@ -20,7 +20,8 @@ public sealed class RouteCatalogHostOptions
     /// <summary>Gets or sets explicit v2 invocation intent and owned-coordinate enforcement for technical cohorts.</summary>
     public bool RequireTechnicalHttpBinding { get; set; }
 
-    /// <summary>Gets or sets explicit private Debug/Development reuse of deterministic canonical decoding within one fresh acquisition.</summary>
+    /// <summary>Gets or sets explicit private Debug/Development scoped exact-input computation reuse and short local admission phases.</summary>
+    /// <remarks>Fresh catalog, host, trust, native-read and full image/loaded-MVID observations remain required.</remarks>
     public bool ScopedDecodeReuse { get; set; }
 
     /// <summary>Gets or sets the retained selector for coordinating local lease completion with admission.</summary>
@@ -28,8 +29,8 @@ public sealed class RouteCatalogHostOptions
     /// compatibility and diagnostics. No lifecycle, remote enrollment, durable fence or fresh validation semantics change.</remarks>
     public bool SerializeLocalLeaseRelease { get; set; }
 
-    /// <summary>Gets or sets explicit private Debug/Development retention of bounded deterministic validated document bytes.</summary>
-    /// <remarks>Default false; no state, ETag, host, trust, permission or dispatch result is retained.</remarks>
+    /// <summary>Gets or sets explicit private Debug/Development retention of bounded deterministic catalog, binding and exact image inputs.</summary>
+    /// <remarks>Default false; reuse requires current complete input equality. No state, ETag, host admission, trust, permission or dispatch result is retained.</remarks>
     public bool RetainValidatedCatalogBytes { get; set; }
 
     /// <summary>Gets or sets explicit private Debug/Development reuse of this authority's live receiver scope for nested metadata transport.</summary>

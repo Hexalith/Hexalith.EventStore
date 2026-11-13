@@ -31,9 +31,18 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     private readonly SemaphoreSlim _localAdmission = new(1, 1);
     private const int MaximumUpdateAttempts = 96;
     private readonly RouteCatalogValidatedBytesMemo _validatedBytes = new();
+    private readonly RouteCatalogCanonicalHashMemo _canonicalHashes = new();
+    private readonly RouteCatalogBindingMemo _bindingComputations = new();
+    private readonly RouteCatalogImageDigestMemo _imageDigests = new();
 
     /// <summary>Releases only private computational byte storage, without removing or reconciling any durable dispatch fence.</summary>
-    public void Dispose() => _validatedBytes.Dispose();
+    public void Dispose()
+    {
+        _canonicalHashes.Dispose();
+        _validatedBytes.Dispose();
+        _bindingComputations.Dispose();
+        _imageDigests.Dispose();
+    }
     private readonly ILogger<RouteCatalogAuthority>? _logger;
 
     /// <summary>Uses optional host logging without changing the existing public constructor or acquisition authority.</summary>
@@ -47,6 +56,8 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     {
         ArgumentNullException.ThrowIfNull(candidate);
         using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+        using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
         candidate = Freeze(candidate);
         await ValidateAsync(candidate, cancellationToken).ConfigureAwait(false);
         await UpdateAsync(state =>
@@ -70,6 +81,8 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     public async Task<RouteCatalogHostAttestation> ReadyAsync(string attemptId, CancellationToken cancellationToken = default)
     {
         using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+        using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
         RouteCatalogHostAttestation? receipt = null;
         await UpdateAsync(async state =>
         {
@@ -89,6 +102,8 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     public async Task CommitAsync(string attemptId, CancellationToken cancellationToken = default)
     {
         using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+        using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
         await UpdateAsync(async state =>
         {
             if (state.Pending is null && state.Committed?.AttemptId == attemptId)
@@ -116,6 +131,8 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     {
         ArgumentNullException.ThrowIfNull(request);
         using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+        using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
         await UpdateAsync(async state =>
         {
             if (state.CompletedTransitions.Contains(request)) return state;
@@ -143,6 +160,8 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     {
         ArgumentNullException.ThrowIfNull(request);
         using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+        using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
         await UpdateAsync(async state =>
         {
             RouteCatalogActivation committed = state.Committed ?? throw new RouteCatalogUnavailableException("No committed generation can verify quiescence.");
@@ -175,23 +194,25 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     public async Task<RouteCatalogDispatchLease> AcquireAsync(CancellationToken cancellationToken = default)
     {
         DispatchDiagnostics? diagnostics = DispatchDiagnostics.Create(_logger, cancellationToken);
-        using (var stage = diagnostics?.Start(DispatchStageName.CatalogAdmissionWait))
-        {
-            await _localAdmission.WaitAsync(cancellationToken).ConfigureAwait(false);
-            stage?.Complete();
-        }
+        await WaitForLocalAdmissionAsync(cancellationToken, diagnostics).ConfigureAwait(false);
+        RouteCatalogAdmissionGate? admission = null;
         try
         {
             using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
-            // Always mark the open acquisition: release serializes with admission, and a
-            // reentrant callback release must not queue behind its own held gate.
+            using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+            using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
             using var admissionTurn = RouteCatalogLocalAdmissionTurn.Enter(this);
+            admission = new(this, _localAdmission, admissionTurn);
+            // Select once. Later option drift cannot change which acquired phase owns release.
+            bool shortAdmission = PrivateScopedDecodeEnabled();
             using var decoding = BeginPrivateDecodeScope();
+            using var bindingComputation = BeginPrivateBindingScope();
+            using var imageComputation = BeginPrivateImageScope();
             long started = Stopwatch.GetTimestamp();
             bool completed = false;
             try
             {
-                RouteCatalogDispatchLease lease = await AcquireCoreAsync(cancellationToken, diagnostics).ConfigureAwait(false);
+                RouteCatalogDispatchLease lease = await AcquireCoreAsync(cancellationToken, diagnostics, admission, shortAdmission).ConfigureAwait(false);
                 completed = true;
                 return lease;
             }
@@ -214,7 +235,18 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
                 }
             }
         }
-        finally { _localAdmission.Release(); }
+        finally
+        {
+            if (admission is null) _localAdmission.Release();
+            else admission.Dispose();
+        }
+    }
+
+    private async Task WaitForLocalAdmissionAsync(CancellationToken cancellationToken, DispatchDiagnostics? diagnostics)
+    {
+        using var stage = diagnostics?.Start(DispatchStageName.CatalogAdmissionWait);
+        await _localAdmission.WaitAsync(cancellationToken).ConfigureAwait(false);
+        stage?.Complete();
     }
 
 #if DEBUG
@@ -247,7 +279,11 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             held.Request = await RouteCatalogMetadataRequest.CaptureAsync(request, appId, method, held.Token).ConfigureAwait(false);
             if (held.Request is null) return null;
             using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+            using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+            using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
             using var decoding = BeginPrivateDecodeScope();
+            using var bindingComputation = BeginPrivateBindingScope();
+            using var imageComputation = BeginPrivateImageScope();
             var activation = System.Text.Json.JsonSerializer.Deserialize<RouteCatalogActivation>(held.Activation,
                 System.Text.Json.JsonSerializerOptions.Web) ?? throw new RouteCatalogUnavailableException("The private issuer activation is unavailable.");
             if (activation.RootDigest != held.Snapshot.RootDigest
@@ -267,9 +303,20 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         && options.Value.RetainValidatedCatalogBytes;
 
     private RouteCatalogDecodeScope? BeginPrivateDecodeScope() => !PrivateScopedDecodeEnabled() ? null
-        : PrivateHostMemoEnabled() ? RouteCatalogDecodeScope.EnterWithMemo(_validatedBytes) : RouteCatalogDecodeScope.Enter();
+        : PrivateHostMemoEnabled() ? RouteCatalogDecodeScope.EnterWithCanonicalHashMemo(_validatedBytes, _canonicalHashes) : RouteCatalogDecodeScope.Enter();
 
-    private async Task<RouteCatalogDispatchLease> AcquireCoreAsync(CancellationToken cancellationToken, DispatchDiagnostics? diagnostics)
+    private RouteCatalogBindingScope? BeginPrivateBindingScope() => !PrivateScopedDecodeEnabled() ? null
+        : RouteCatalogBindingScope.Enter(PrivateHostMemoEnabled() && !_bindingComputations.IsClosed ? _bindingComputations : null);
+
+    private RouteCatalogImageDigestScope? BeginPrivateImageScope() => !PrivateScopedDecodeEnabled() ? null
+        : RouteCatalogImageDigestScope.Enter(PrivateHostMemoEnabled() && !_imageDigests.IsClosed ? _imageDigests : null);
+
+    /// <summary>Borrows only this open authority's selected image computations for synchronous receiver checks, without observing authority.</summary>
+    internal RouteCatalogImageDigestScope? BeginPrivateReceiverImageScope() => PrivateHostMemoEnabled() && !_imageDigests.IsClosed
+        ? RouteCatalogImageDigestScope.Enter(_imageDigests) : null;
+
+    private async Task<RouteCatalogDispatchLease> AcquireCoreAsync(CancellationToken cancellationToken, DispatchDiagnostics? diagnostics,
+        RouteCatalogAdmissionGate admission, bool shortAdmission)
     {
         RequireLocalIdentity();
         RouteCatalogActivation? captured = null;
@@ -279,6 +326,11 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         string leaseId = Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId();
         for (int attempt = 0; attempt < MaximumUpdateAttempts; attempt++)
         {
+            if (shortAdmission && !admission.IsHeld)
+            {
+                await WaitForLocalAdmissionAsync(cancellationToken, diagnostics).ConfigureAwait(false);
+                admission.EnterAfterWait();
+            }
             (RouteCatalogActivationState state, _) = await ReadAdmissionStateAsync(cancellationToken, diagnostics).ConfigureAwait(false);
             bool retainedLease = state.Leases.Any(fence => fence.LeaseId == leaseId);
             if ((!retainedLease && state.Pending is not null) || state.Committed is null)
@@ -289,71 +341,83 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             RouteCatalogHostIdentity identity = options.Value.Identity!;
             string profile = options.Value.Profile;
             RouteCatalogStateCoordinates? coordinates = store.Coordinates;
+            // Own every input before releasing the initial phase. Each observation remains
+            // fresh and ordered; independent local acquisitions may observe concurrently.
+            if (shortAdmission) admission.Release();
             RouteCatalogActivation observed = Freeze(candidate);
             await ValidateAsync(observed, cancellationToken, diagnostics).ConfigureAwait(false);
-            if (!SameAdmissionActivation(candidate, observed))
-                throw new RouteCatalogUnavailableException("The observed catalog activation changed during admission.");
-            RequireLocalIdentity();
-            if (options.Value.Identity != identity || options.Value.Profile != profile || store.Coordinates != coordinates)
-                throw new RouteCatalogUnavailableException("The local catalog authority changed during admission.");
-            if (retainedLease)
+            if (shortAdmission)
             {
-                RequireAdmissionFence(state, leaseId, identity, candidate);
-                captured = candidate;
-                epoch = state.Epoch;
-                capturedAppId = identity.AppId;
-                capturedCoordinates = coordinates;
-                break;
+                await WaitForLocalAdmissionAsync(cancellationToken, diagnostics).ConfigureAwait(false);
+                admission.EnterAfterWait();
             }
-            // Lease-only writers may have advanced the inventory while the expensive fresh owner
-            // capture ran. Rebase only onto an independently read, exactly unchanged authority.
-            (RouteCatalogActivationState fresh, string etag) = await ReadAdmissionStateAsync(cancellationToken, diagnostics).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (options.Value.Identity != identity || options.Value.Profile != profile || store.Coordinates != coordinates)
-                throw new RouteCatalogUnavailableException("The local catalog authority changed during admission.");
-            bool sameAuthority = fresh.Epoch == state.Epoch && fresh.Committed is { } committed
-                && SameAdmissionActivation(candidate, Freeze(committed));
-            if (sameAuthority && fresh.Leases.Any(fence => fence.LeaseId == leaseId))
+            try
             {
-                // Recover an already durable admission even if a successor began draining it.
-                // This creates no fence and retains the original response-loss cleanup path.
-                RequireAdmissionFence(fresh, leaseId, identity, candidate);
-                captured = candidate;
-                epoch = fresh.Epoch;
-                capturedAppId = identity.AppId;
-                capturedCoordinates = coordinates;
-                break;
-            }
-            if (fresh.Pending is not null)
-                throw new RouteCatalogUnavailableException("No complete catalog generation is serving.");
-            if (sameAuthority)
-            {
-                long sequence = checked(fresh.LastLease + 1);
-                if (fresh.Leases.Count >= 4096)
-                    throw new RouteCatalogUnavailableException("The durable dispatch lease inventory requires draining.");
+                if (!SameAdmissionActivation(candidate, observed))
+                    throw new RouteCatalogUnavailableException("The observed catalog activation changed during admission.");
+                RequireLocalIdentity();
+                if (options.Value.Identity != identity || options.Value.Profile != profile || store.Coordinates != coordinates)
+                    throw new RouteCatalogUnavailableException("The local catalog authority changed during admission.");
+                if (retainedLease)
+                {
+                    RequireAdmissionFence(state, leaseId, identity, candidate);
+                    captured = candidate;
+                    epoch = state.Epoch;
+                    capturedAppId = identity.AppId;
+                    capturedCoordinates = coordinates;
+                    break;
+                }
+                // Lease-only writers may have advanced the inventory while the expensive fresh owner
+                // capture ran. Rebase only onto an independently read, exactly unchanged authority.
+                (RouteCatalogActivationState fresh, string etag) = await ReadAdmissionStateAsync(cancellationToken, diagnostics).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (options.Value.Identity != identity || options.Value.Profile != profile || store.Coordinates != coordinates)
                     throw new RouteCatalogUnavailableException("The local catalog authority changed during admission.");
-                RouteCatalogActivationState next = fresh with
+                bool sameAuthority = fresh.Epoch == state.Epoch && fresh.Committed is { } committed
+                    && SameAdmissionActivation(candidate, Freeze(committed));
+                if (sameAuthority && fresh.Leases.Any(fence => fence.LeaseId == leaseId))
                 {
-                    LastLease = sequence,
-                    Leases = [.. fresh.Leases, new RouteCatalogDispatchFence(sequence, leaseId, identity.HostId, candidate.RootDigest, fresh.Epoch)],
-                };
-                bool exchanged;
-                using (var stage = diagnostics?.Start(DispatchStageName.CatalogCompareExchange))
-                {
-                    exchanged = await store.CompareExchangeAsync(next, etag, cancellationToken).ConfigureAwait(false);
-                    stage?.Complete();
-                }
-                if (exchanged)
-                {
+                    // Recover an already durable admission even if a successor began draining it.
+                    // This creates no fence and retains the original response-loss cleanup path.
+                    RequireAdmissionFence(fresh, leaseId, identity, candidate);
                     captured = candidate;
                     epoch = fresh.Epoch;
                     capturedAppId = identity.AppId;
                     capturedCoordinates = coordinates;
                     break;
                 }
+                if (fresh.Pending is not null)
+                    throw new RouteCatalogUnavailableException("No complete catalog generation is serving.");
+                if (sameAuthority)
+                {
+                    long sequence = checked(fresh.LastLease + 1);
+                    if (fresh.Leases.Count >= 4096)
+                        throw new RouteCatalogUnavailableException("The durable dispatch lease inventory requires draining.");
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (options.Value.Identity != identity || options.Value.Profile != profile || store.Coordinates != coordinates)
+                        throw new RouteCatalogUnavailableException("The local catalog authority changed during admission.");
+                    RouteCatalogActivationState next = fresh with
+                    {
+                        LastLease = sequence,
+                        Leases = [.. fresh.Leases, new RouteCatalogDispatchFence(sequence, leaseId, identity.HostId, candidate.RootDigest, fresh.Epoch)],
+                    };
+                    bool exchanged;
+                    using (var stage = diagnostics?.Start(DispatchStageName.CatalogCompareExchange))
+                    {
+                        exchanged = await store.CompareExchangeAsync(next, etag, cancellationToken).ConfigureAwait(false);
+                        stage?.Complete();
+                    }
+                    if (exchanged)
+                    {
+                        captured = candidate;
+                        epoch = fresh.Epoch;
+                        capturedAppId = identity.AppId;
+                        capturedCoordinates = coordinates;
+                        break;
+                    }
+                }
             }
+            finally { if (shortAdmission) admission.Release(); }
             if (attempt < MaximumUpdateAttempts - 1)
                 await Task.Delay(Random.Shared.Next(1, Math.Min((attempt + 1) * 4, 50) + 1), cancellationToken).ConfigureAwait(false);
         }
@@ -398,6 +462,11 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     {
         ArgumentNullException.ThrowIfNull(lease);
         using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+        using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
+        using var decoding = BeginPrivateDecodeScope();
+        using var bindingComputation = BeginPrivateBindingScope();
+        using var imageComputation = BeginPrivateImageScope();
         lease.RequireOpenForExecution();
         if (lease.Activation is not { } activation
             || lease.Snapshot.AuthorityCoordinates != store.Coordinates
@@ -411,6 +480,8 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     public async Task<RouteCatalogGenerationReadback> ReadbackAsync(CancellationToken cancellationToken = default)
     {
         using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
+        using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
         RequireLocalIdentity();
         (RouteCatalogActivationState state, _) = await store.ReadAsync(cancellationToken).ConfigureAwait(false);
         RouteCatalogActivation committed = state.Committed ?? throw new RouteCatalogUnavailableException("No catalog has been activated.");
@@ -428,7 +499,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     {
         // Release writes share the local admission gate with acquisitions, so this
         // host does not manufacture avoidable conflicts against its own new reads.
-        // A release called by an open validation callback keeps the original CAS path:
+        // A release called from a genuinely held admission phase keeps the original CAS path:
         // queuing behind that same callback would deadlock. Its write still forces a
         // fresh acquisition retry. Closed or unrelated flows cannot use this exception.
         bool queued = !RouteCatalogLocalAdmissionTurn.IsHeldBy(this);
@@ -440,7 +511,11 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     private async Task ReleaseCoreAsync(string leaseId)
     {
         using var decodingBoundary = RouteCatalogDecodeScope.Suppress();
-        using var decoding = PrivateHostMemoEnabled() ? RouteCatalogDecodeScope.EnterWithMemo(_validatedBytes) : null;
+        using var bindingBoundary = RouteCatalogBindingScope.Suppress();
+        using var imageBoundary = RouteCatalogImageDigestScope.Suppress();
+        using var decoding = PrivateHostMemoEnabled() ? RouteCatalogDecodeScope.EnterWithCanonicalHashMemo(_validatedBytes, _canonicalHashes) : null;
+        using var bindingComputation = PrivateHostMemoEnabled() && !_bindingComputations.IsClosed
+            ? RouteCatalogBindingScope.Enter(_bindingComputations) : null;
         // Only this completed local lease is removed. CAS contention cannot turn known
         // quiescence into an abandoned fence; backend failures still propagate for retry.
         // The caller, ReleaseAsync, owns the only local admission gate acquisition.
@@ -467,7 +542,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         }
         phase = ReportDecodePhase("binding", phase);
         RouteCatalogHostOptions local = options.Value;
-        if (local.Identity is null || Catalog(activation).Profile != local.Profile
+        if (local.Identity is null || RouteCatalogCodec.ReadProfile(activation.CanonicalCatalog, activation.RootDigest) != local.Profile
             || !activation.RequiredHosts.Contains(local.Identity))
             throw new RouteCatalogUnavailableException("Local host inventory, topology, authentication or profile disagrees with the exact required host set.");
         phase = ReportDecodePhase("profile", phase);

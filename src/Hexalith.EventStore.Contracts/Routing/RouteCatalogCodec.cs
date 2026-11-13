@@ -72,6 +72,25 @@ public static class RouteCatalogCodec
         return DecodeCore(bytes, expectedRootDigest, null, null);
     }
 
+    /// <summary>Reads only Profile, reusing a bounded validated scalar after complete fresh owned-input equality within the current private scope.</summary>
+    internal static string ReadProfile(ReadOnlyMemory<byte> bytes, string? expectedRootDigest = null)
+    {
+        RouteCatalogDecodeScope? scope = RouteCatalogDecodeScope.Current;
+        if (scope?.TryCapture(bytes, out byte[] captured, out string root, out bool validated, out string? profile) == true)
+        {
+            if (validated && profile is not null)
+            {
+                if (expectedRootDigest is not null && expectedRootDigest != root)
+                    throw Failure("$", "root-digest-mismatch");
+                return profile;
+            }
+            // Missing facts and misses take the complete original decoder path. Remember
+            // remains after every original closed-schema/canonical/expected-root check.
+            return DecodeCore(captured, expectedRootDigest, scope, root).Profile;
+        }
+        return Decode(bytes, expectedRootDigest).Profile;
+    }
+
     private static RouteCatalogEnvelope DecodeCore(ReadOnlyMemory<byte> bytes, string? expectedRootDigest,
         RouteCatalogDecodeScope? scope, string? capturedRoot)
     {
@@ -104,7 +123,7 @@ public static class RouteCatalogCodec
             throw Failure("$", "root-digest-mismatch");
         }
 
-        if (scope is not null) scope.Remember(capturedRoot!, ownedBytes);
+        if (scope is not null) scope.Remember(capturedRoot!, ownedBytes, envelope.Profile);
         return envelope;
     }
 
@@ -277,7 +296,31 @@ public static class RouteCatalogCodec
     /// <summary>Returns lowercase SHA-256 of the exact canonical envelope bytes, outside the envelope.</summary>
     public static string ComputeRootDigest(RouteCatalogEnvelope envelope) => Convert.ToHexStringLower(SHA256.HashData(Encode(envelope)));
 
-    private static string Hash<T>(T value) => Convert.ToHexStringLower(SHA256.HashData(CanonicalBytes(value)));
+    private static string Hash<T>(T value)
+    {
+        RouteCatalogDecodeScope? scope = RouteCatalogDecodeScope.Current;
+        if (scope?.HasCanonicalHashMemo != true)
+        {
+            return Convert.ToHexStringLower(SHA256.HashData(CanonicalBytes(value)));
+        }
+
+        // Preserve the original serializer and its original position after validation/normalization.
+        // This privately owned immutable snapshot supplies BOTH the key and miss computation.
+        JsonElement captured = JsonSerializer.SerializeToElement(value, Options);
+        string ownedKey = captured.GetRawText();
+        if (scope.TryGetCanonicalHash(ownedKey, out string prior))
+        {
+            return prior;
+        }
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            WriteCanonical(writer, captured);
+        }
+        string digest = Convert.ToHexStringLower(SHA256.HashData(stream.ToArray()));
+        scope.RememberCanonicalHash(ownedKey, digest);
+        return digest;
+    }
 
     private static byte[] CanonicalBytes<T>(T value)
     {

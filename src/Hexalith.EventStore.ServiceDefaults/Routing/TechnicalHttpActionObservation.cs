@@ -198,7 +198,7 @@ internal static class TechnicalHttpActionObservation
 
     /// <summary>Recaptures the loaded module's exact current image identity through the bounded private buffer pool.</summary>
     internal static string AssemblyIdentity(Assembly assembly)
-        => AssemblyIdentity(assembly, ImageBuffers);
+        => AssemblyIdentity(assembly, RouteCatalogImageBuffers.Select(ImageBuffers));
 
     /// <summary>Reads a fresh privately owned image, returning its borrowed buffer only after PE validation and hashing finish.</summary>
     internal static string AssemblyIdentity(Assembly assembly, ArrayPool<byte> imageBuffers)
@@ -229,7 +229,9 @@ internal static class TechnicalHttpActionObservation
             var metadata = pe.GetMetadataReader();
             if (metadata.GetGuid(metadata.GetModuleDefinition().Mvid) != assembly.ManifestModule.ModuleVersionId)
                 throw new RouteCatalogUnavailableException("The installed technical SDK image differs from its loaded module.");
-            return $"{assembly.FullName}:{assembly.ManifestModule.ModuleVersionId}:{Convert.ToHexStringLower(SHA256.HashData(bytes.AsSpan(0, length)))}";
+            string digest = RouteCatalogImageDigestScope.Current is { } scope && scope.TryCompute(assembly, bytes.AsSpan(0, length), out string computed)
+                ? computed : Convert.ToHexStringLower(SHA256.HashData(bytes.AsSpan(0, length)));
+            return $"{assembly.FullName}:{assembly.ManifestModule.ModuleVersionId}:{digest}";
         }
         finally
         {

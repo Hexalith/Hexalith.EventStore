@@ -34,6 +34,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -57,7 +58,7 @@ internal sealed class TechnicalHttpCatalogFixture : IAsyncDisposable
     public ITenantCommandService TenantCommands { get; } = Substitute.For<ITenantCommandService>();
 
     public async Task StartAsync(CancellationToken token, Action<IServiceCollection>? services = null, Action<WebApplication>? endpoints = null, bool fullInventory = false, bool activate = true, string? inventoryAssembly = null, string? attempt = null, bool includeBusiness = false,
-        IReadOnlyList<RouteCatalogDeclaredInvocation>? invocations = null, bool legacyFinite = false)
+        IReadOnlyList<RouteCatalogDeclaredInvocation>? invocations = null, bool legacyFinite = false, Action<IConfiguration>? observeConfiguration = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
         invocations ??= [new("technical-ui-proxy", "/api/v1/admin", ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])];
@@ -128,6 +129,7 @@ internal sealed class TechnicalHttpCatalogFixture : IAsyncDisposable
         builder.Services.AddScoped<GeneratedRouteCatalogFilter>();
         builder.Services.AddControllers(options => options.Filters.AddService<GeneratedRouteCatalogFilter>()).AddApplicationPart(typeof(AdminStorageCommandController).Assembly).AddApplicationPart(typeof(AdminTenantsController).Assembly)
             .ConfigureApplicationPartManager(manager => manager.FeatureProviders.Add(new TechnicalHttpControllerFeatureProvider(fullInventory, inventoryAssembly, includeBusiness)));
+        observeConfiguration?.Invoke(builder.Configuration);
         services?.Invoke(builder.Services);
         App = builder.Build();
         if (includeBusiness) App.Use(async (context, next) =>
