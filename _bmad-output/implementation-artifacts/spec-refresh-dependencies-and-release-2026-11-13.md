@@ -2,7 +2,7 @@
 title: Refresh dependencies and restore a publishable EventStore build
 type: bugfix
 created: 2026-11-13
-status: in-review
+status: done
 route: dispatch
 review_loop_iteration: 0
 baseline_commit: 83f756886917ea00ff9431973f6949f9467f0ea2
@@ -52,7 +52,7 @@ context:
 - [x] CI preparation -- complete the already approved Platform integration deferral by removing only its leftover preparation input and aligning documentation and contract assertions; preserve all standalone producer gates and restore prerequisites.
 - [x] Technical parameter qualification -- repair concurrent cold-reflection identity checks with exact runtime metadata provenance, deterministic positive/tamper controls, original timeout case and full Admin.Server verification.
 - [x] Root gitlinks -- record latest remotely available commits, including any newly published catalog changes; verify all direct repositories are clean and remotely available before the parent commit.
-- [ ] CI and release -- validate, push, monitor exact-source workflows, fix failures, dispatch release and approve its authorized pending deployment, then verify the resulting fourteen listed NuGet versions and source commit.
+- [x] CI and release -- validate, push, monitor exact-source workflows, fix failures, dispatch release and approve its authorized pending deployment, then verify the resulting fourteen listed NuGet versions and source commit.
 
 **Acceptance Criteria:**
 - Given verified registry metadata, when dependencies are selected, then all direct stable dependencies are current and existing intentional previews are retained without downgrade.
@@ -76,6 +76,10 @@ The root and all nine declared submodules started clean. Four checkouts have bee
 - Pinned CLR source: https://github.com/dotnet/runtime/blob/v11.0.0/src/coreclr/System.Private.CoreLib/src/System/Reflection/RuntimeMethodInfo.CoreCLR.cs (FetchNonReturnParameters and GetParameters). Full solution Release build after the first reflection fix passed with zero warnings/errors in 45.47 seconds. Focused verification used `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net11.0/Hexalith.EventStore.Server.Tests.dll -class '*TechnicalHttpInstalledMetadataTests' -class '*TechnicalHttpCatalogReceiverTests'` and the Admin.Server built assembly with `-class '*DevelopmentActorStateMetadataTimeoutTests'`, then unfiltered. Logs are `/tmp/eventstore-reflection-server-focused.log`, `/tmp/eventstore-reflection-admin-timeout.log`, `/tmp/eventstore-reflection-admin-full.log`; the deterministic original-source failure is `/tmp/eventstore-reflection-clone-before.log`.
 
 - Review patches completed: exact Attributes equality prevents a cloned Optional flag from relaxing a required body. The new refusal test failed before that guard; all 18 edited endpoint cases now pass. Real AdminBackupsController.GetBackupJobs acceptance forces distinct runtime clones for its query and optional CancellationToken parameters, checks HTTP results and unchanged persisted backup state. Final Release solution build passed with zero warnings/errors; unfiltered Admin.Server passed 852 total / zero failures / 13 existing skips; combined endpoint and receiver controls passed 54/54. Evidence: `/tmp/eventstore-reflection-final-solution-build.log`, `/tmp/eventstore-reflection-final-admin-full.log`, `/tmp/eventstore-reflection-final-server-controls.log`.
+
+- Completed publication: [v5.0.1](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v5.0.1), published 2026-11-13T16:02:46Z, targets exact source `741d5cecbbaee14f035e66cb27e1acf50969fa04` and contains all 14 package assets. [Release run 43456476937](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/43456476937) succeeded after exact-source proof and the explicitly authorized one-time production approval (deployment `7769619255`); environment protections were unchanged.
+- All nine push workflows passed on that released source, including [CI 43450076421](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/43450076421), [Integration 43450074742](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/43450074742), Commitlint, CodeQL and the independent payload/advisory/design lanes. All 20 unit projects passed; Admin.Server passed 852 total with 13 existing skips, Server passed 8094 total with 25 existing skips, and AppHost passed 392 with zero skips. The existing Platform package-integration deferral remains explicit; no Platform qualification is claimed.
+- Independent NuGet verification completed at `2026-11-13T16:22:09.920449+00:00`: **14/14** expected IDs from `tools/release-packages.json` have listed registration/catalog entries at `5.0.1`, downloadable package content (HTTP 200), and repository commit `741d5cecbbaee14f035e66cb27e1acf50969fa04`. For each lowercase package ID, verification read `https://api.nuget.org/v3/registration5-gz-semver2/{id}/5.0.1.json`, followed `catalogEntry`, checked both listing flags/version/ID/repository commit, and sent HEAD to `packageContent`. NuGet accepted all 14 pushes at 15:59:24–15:59:30Z; registrations became available asynchronously. This final documentation receipt does not change the released code or dependency snapshot.
 
 ## Spec Change Log
 
