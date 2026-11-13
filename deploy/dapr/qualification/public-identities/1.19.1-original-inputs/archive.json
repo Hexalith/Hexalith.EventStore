@@ -2,6 +2,10 @@
   "baselineRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82",
   "purpose": "trusted historical input bytes; never a copied execution harness",
   "files": {
+    ".github/workflows/dapr-runtime-qualification.yml": {
+      "sha256": "12d698191182f3ce2e5ae56d61717615660f0c53f037adbe6e69ccb3df018fbf",
+      "sourceRevision": "af9735b2e6fbcfc868051eee8d88ce40110cfefc"
+    },
     "deploy/dapr/qualification/README.md": {
       "sha256": "5d6ed2bbd85d440080eb6bdad92a5a2ff53b2f7dbad25be290c73b981c3b6e8e",
       "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
@@ -21,6 +25,14 @@
     "tools/qualify-dapr-brokers.py": {
       "sha256": "6f4e3c948452d567553c07d30aae2b3fd778d9468a8a1a04f7a5fb202aa31561",
       "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    },
+    "tools/qualify-internal-actor-admission.py": {
+      "sha256": "8ef65c22d016916df3cf1fe6dd800c7e1a57af45321ab1b8bab01ab19835ea5a",
+      "sourceRevision": "07f5ef132deb17d45d7209357f8ac89ef39bc557"
+    },
+    "tools/run-dapr-runtime-lane.py": {
+      "sha256": "2676390e441aadc016718132dff14613cbe21b1b9b6169bd2acca661f7f2f07e",
+      "sourceRevision": "07f5ef132deb17d45d7209357f8ac89ef39bc557"
     },
     "tools/tests/test_dapr_runtime_qualification.py": {
       "sha256": "f68536cdb00ae625a4baec9fa6075c7142b6f33900c0fec99d5d2a99d6d5b054",
