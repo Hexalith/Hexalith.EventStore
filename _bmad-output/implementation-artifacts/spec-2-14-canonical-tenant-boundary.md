@@ -93,6 +93,7 @@ The [investigation](investigations/story-2-14-code-map.md) gives paths/tests. Re
 
 ## Spec Change Log
 
+- 2026-11-13: Rechecked the current implementation and CI wiring without changing source or dependency declarations. Seven focused selections passed 1,345/1,345 cases without skips. The broader Tenants integration graph is blocked by unchanged .NET 10 sibling projects consuming .NET 11 dependencies; the narrower generated API host and Server.Tests builds passed, with 400 server cases passing. Hosted matrix execution, complete package qualification and G-HIGH-RISK remain open; status and the CI execution checkbox are unchanged.
 - 2026-11-13: Closed the remaining SignalR grant precheck gap before custom or remote tenant validation. The 24 new denial cases reproduced unauthorized admission against unchanged production; after the fix, the hub, membership transport, tenant validator and HTTP hub endpoint selection passed 142/142 without skips. No hosted/package/G-HIGH-RISK closure is claimed; the execution checkbox and in-progress status remain unchanged.
 - 2026-11-04: Closed remaining local command/query/stream header-conflict and snapshot-administration propagation gaps. Added 37 regressions, with 35 failures reproduced before the production fix. The nine focused Server classes pass 418/418. A guarded full Server run completed with two environment/artifact failures; their targeted reruns pass without changing fixtures, package pins or user caches. CI execution, package qualification and G-HIGH-RISK remain open; story status stays in progress.
 - 2026-11-03: Aligned the standalone Admin UI E2E backend with the compiled streams-list route. Added real-client path/scope capture regressions for all-tenant and canonical tenant reads, plus explicit refusal of the stale route. The backend-free transport suite passed 10/10; no browser or live-backend qualification is claimed.
@@ -109,6 +110,40 @@ The [investigation](investigations/story-2-14-code-map.md) gives paths/tests. Re
 - 2026-10-27: Applied the owner-approved declaration/runtime split to this frozen prerequisite only. Story 5.13 retains strict runtime enforcement, exhaustive parity and activation, including stable declared targets or rejection during metadata outages. Existing migration/inventory, compatibility, assurance and package gates remain open; status stays draft.
 
 ## Verification
+
+2026-11-13 current-tree acceptance check: frontmatter `context` is empty. The source migration tasks and explicit CI lanes are already present at EventStore `ec73195a109e1b6a22e5141642df1d256e990bbd`; no new source defect reproduced and no production, test or workflow edit was needed. Source-mode Debug builds of Server.Tests, Contracts.Tests, RestApi.Generators.Tests, Admin.Server.Tests and Admin.UI.Tests passed with zero warnings/errors using the following command for each project:
+
+```bash
+dotnet build tests/<project>/<project>.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false -p:HexalithCommonsFromSource=true --no-restore -m:1 -v:minimal
+```
+
+The built `bin/Debug/net11.0/<project>.dll` assemblies were invoked directly with `-class` selectors and `-noLogo`. Server, Admin.Server and Tenants.Server calls set `DAPR_HTTP_ENDPOINT=http://127.0.0.1:1 DAPR_GRPC_ENDPOINT=http://127.0.0.1:1`; the other selections did not set these variables. All seven selections passed without errors, skips or unrun cases:
+
+| Assembly | Complete selected classes (common namespace omitted) | Passed |
+| --- | --- | --- |
+| EventStore.Server.Tests | `Authorization.{ClaimsTenantValidatorTests,ActorTenantValidatorTests,AdminTenantAuthorizationFilterTests}`, `Controllers.{CommandsControllerTenantTests,QueriesControllerTests,StreamsControllerTests,AdminStorageCommandControllerTests,CommandValidationControllerTests,QueryValidationControllerTests}`, `Commands.{CommandStatusControllerTests,ReplayControllerTests}`, `SignalR.{ProjectionChangedHubTests,ProjectionMembershipTransportTests}`, `Integration.SignalRHubEndpointTests` | 632/632 |
+| EventStore.Server.Tests | `Controllers.WorkloadGatewayControllerTests` | 9/9 |
+| EventStore.Contracts.Tests | `Identity.{TenantCanonicalizerTests,AggregateIdentityTests}` | 89/89 |
+| EventStore.RestApi.Generators.Tests | `RestApiGeneratedControllerErrorSemanticsTests` | 72/72 |
+| EventStore.Admin.Server.Tests | `Authorization.{AdminTenantAuthorizationFilterTests,AdminActionSecurityMetadataTests}`, `Services.{DaprStreamQueryServiceTests,HttpContextAdminAuthContextTests}`, `IntegrationTests.AdminAuthorizationIntegrationTests`, `Controllers.AdminStreamsControllerTests` | 125/125 |
+| EventStore.Admin.UI.Tests | `Services.AdminStreamApiClientTests` | 18/18 |
+| Tenants.Server.Tests | `Routing.TenantCatalogParityTests`, `CommandPipeline.TenantSubmitCommandValidatorTests`, `Bootstrap.TenantBootstrapBoundCommandTests`, `Authorization.TenantOwnerSourceTargetTests`, `Queries.{TenantOwnerAuthorityQueryHandlerTests,TenantReadAuthorityQueryHandlerTests,GetTenantAuditQueryHandlerTests}`, `Projections.TenantAuditOwnershipTests` | 400/400 |
+
+The broader Tenants integration check did not run. From `references/Hexalith.Tenants`, this command failed with `NETSDK1005`: its existing assets file had no `net11.0` target:
+
+```bash
+dotnet build tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false -p:HexalithCommonsFromSource=true --no-restore -m:1 -v:minimal
+```
+
+The local-cache-only restore exposed the unchanged sibling framework mismatch:
+
+```bash
+dotnet restore tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false -p:HexalithCommonsFromSource=true -p:NuGetAudit=false --source /home/administrator/.nuget/packages -v:minimal
+```
+
+It reported `NU1201` for .NET 10 `Hexalith.Memories.EventStore`/`Hexalith.Memories.Server` consuming the .NET 11 EventStore Contracts/Client/DomainService sources, and `NU1202` for .NET 10 Memories.Server/FrontComposer.Shell consuming `Microsoft.AspNetCore.Authentication.JwtBearer`/`OpenIdConnect` 11.0.0. Neither sibling targets nor dependency declarations were changed. The narrower fallback restored `tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj` with the same local-cache restore flags, then built it and `src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj` with the same source-mode Debug build flags; both builds passed with zero warnings/errors. The eight complete server classes above passed 400/400. This proves the generated Tenants API compiles and the selected server boundaries hold; it does not replace compiled Tenants HTTP runtime/bootstrap or live Dapr readback qualification.
+
+Logs are `/tmp/story-2-14-implementation-{server,contracts,generator,admin-server,admin-ui}-{build,matrix}.log`, `/tmp/story-2-14-implementation-workload-matrix.log` and `/tmp/story-2-14-implementation-tenants-{build,restore,api-build,server-restore,server-build,server-matrix}.log`. Admin's in-process HTTP fixture emitted its existing health-collector disposal cancellation logs while all assertions passed. The local Aspire describe preflight again reported no running AppHost. Startup was withheld because the tracked component still selects retained `localhost:6379` with `keyPrefix: none`; this spec authorizes no data mutation. Tests used substitutes, in-memory or owned loopback transports and unavailable port-1 Dapr endpoints. No retained-backend test, hosted CI dispatch, remote operation, deployment, data migration, package publication, staging, commit or push occurred. The full hosted matrix, complete published-package qualification and G-HIGH-RISK remain open; the baseline commit, in-progress status and unchecked CI execution task are preserved.
 
 2026-11-13 SignalR follow-up: the source-mode Debug Server.Tests build passed with zero warnings/errors on the current .NET 11 target, including the linked Gateway compilation. The new `ProjectionAdmission*` selection ran 28 cases against unchanged production: all 24 malformed/reserved/duplicate grant cases failed and the four canonical forwarding cases passed. After the local precheck was added, the following five complete classes passed 142/142 without skips:
 
