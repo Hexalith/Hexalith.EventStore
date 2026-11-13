@@ -134,7 +134,7 @@ internal static class TechnicalHttpActionObservation
         }
         var parameters = action.Parameters.OfType<ControllerParameterDescriptor>().ToArray();
         if (parameters.Length != action.Parameters.Count || parameters.Any(parameter =>
-            parameter.ParameterInfo != action.MethodInfo.GetParameters().SingleOrDefault(value => value.Name == parameter.Name)
+            !ParameterMatches(parameter.ParameterInfo, action.MethodInfo.GetParameters().SingleOrDefault(value => value.Name == parameter.Name))
             || parameter.ParameterType != parameter.ParameterInfo.ParameterType || !BindingMatches(parameter, endpoint, services))) throw new RouteCatalogUnavailableException("technical-http-parameter-binding");
         var requests = parameters.Where(parameter => parameter.ParameterType != typeof(CancellationToken)
             && parameter.BindingInfo?.BindingSource?.Id != "Services").Select(parameter => new
@@ -161,6 +161,13 @@ internal static class TechnicalHttpActionObservation
         ?? throw new RouteCatalogUnavailableException("The actual technical endpoint has no route pattern.")).Trim('/');
 
     internal static string Hash<T>(T value) => Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value)));
+
+    // Cold runtime reflection can produce distinct wrappers for the same parameter.
+    // Require the runtime implementation too: custom wrappers can spoof provenance and binding attributes.
+    private static bool ParameterMatches(ParameterInfo actual, ParameterInfo? declared) => actual is not null && declared is not null
+        && actual.GetType() == declared.GetType() && actual.Member == declared.Member && actual.MetadataToken == declared.MetadataToken
+        && actual.Position == declared.Position && actual.Name == declared.Name && actual.ParameterType == declared.ParameterType
+        && actual.Attributes == declared.Attributes;
 
     private static bool BindingMatches(ControllerParameterDescriptor parameter, RouteEndpoint endpoint, IServiceProvider services)
     {
