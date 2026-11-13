@@ -437,11 +437,7 @@ class Run:
             command = "/opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id MkU3OEVBNTcwNTJENDM2Qk --config /work/kafka.properties && exec /opt/kafka/bin/kafka-server-start.sh /work/kafka.properties"
             self.broker_container = self.container(broker, self.profile["images"][broker]["reference"], ["/bin/bash", "-ec", command], ["-p", f"127.0.0.1::{self.broker_internal_port}", "-v", f"{self.private}:/work:ro", "-v", f"{self.broker_dir}:/var/lib/kafka/data"])
             self.broker_ready()
-            for topic in self.profile["topics"]:
-                if topic != "qualification.missing-binding":
-                    self.kafka("kafka-topics.sh", "--create", "--topic", topic, "--partitions", "1", "--replication-factor", "1", "--config", "retention.ms=60000", "--config", "segment.ms=1000")
-                    self.kafka("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read", "--operation", "Write", "--operation", "Describe", "--topic", topic)
-            self.kafka("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read", "--group", "qualification-consumer")
+            self.kafka_topics()
             self.broker_secret = {"brokers": f"127.0.0.1:{self.broker_port}"}
         target = self.refresh_forwarder()
         proxy = self.process([sys.executable, self.retained_inputs / "tools/dapr_qualification_tcp_proxy.py",
@@ -488,6 +484,20 @@ class Run:
                 "rawSha256": raw_sha256, "sha256": digest(retained)})
         client = {"security.protocol": "SSL", "ssl.keystore.type": "PEM", "ssl.keystore.key": pem("admin.key"), "ssl.keystore.certificate.chain": pem("admin.crt"), "ssl.truststore.type": "PEM", "ssl.truststore.certificates": pem("ca.crt")}
         (self.private / "admin.properties").write_text("\n".join(f"{k}={v}" for k, v in client.items()) + "\n")
+
+    def kafka_topics(self):
+        """Create every bound topic and its exact ACLs; the missing-binding topic stays absent.
+
+        The pressure vector keeps its consumer stopped through eight throttled publishes (up to
+        8 x 12 s) and native offset diagnostics. In candidate-01 attempt 2 a 60 s retention deleted
+        both acknowledged records before the consumer restarted, so that topic never expires by time.
+        """
+        for topic in self.profile["topics"]:
+            if topic != "qualification.missing-binding":
+                retention = "retention.ms=-1" if topic == "qualification.backpressure" else "retention.ms=60000"
+                self.kafka("kafka-topics.sh", "--create", "--topic", topic, "--partitions", "1", "--replication-factor", "1", "--config", retention, "--config", "segment.ms=1000")
+                self.kafka("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read", "--operation", "Write", "--operation", "Describe", "--topic", topic)
+        self.kafka("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read", "--group", "qualification-consumer")
 
     def kafka(self, script, *arguments, check=True):
         return self.docker("exec", self.broker_container, "/opt/kafka/bin/" + script, "--bootstrap-server", f"127.0.0.1:{self.broker_port}", "--command-config", "/work/admin.properties", *arguments, check=check)

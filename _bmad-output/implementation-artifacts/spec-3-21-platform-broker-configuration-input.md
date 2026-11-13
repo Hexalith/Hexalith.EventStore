@@ -68,6 +68,7 @@ context:
 
 ## Spec Change Log
 
+- 2026-11-13: Corrected two defects shown by Platform candidate-01 attempt 2 (run 43333995506) and restored the drifted lock input inventory; see the corrections section below. Intent, acceptance criteria, pass rules and the five rejected guarantees are unchanged.
 - 2026-11-11: Added the explicit platform-config-v1 profile, bounded JSON, schema-3 effective-input and execution receipts, trusted historical-input archive, C# forwarding/controls and Platform handoff documentation. No frozen intent, historical lock, sealed workflow, dependency pin, shared catalog or gitlink changed.
 
 ## Review Triage Log
@@ -181,3 +182,40 @@ advancing any parent gate. The validation baseline is
 exists for this slice. Platform execution still requires accepted scope and runner
 support. All five rejected guarantees, null broker selection and FAIL production
 eligibility remain.
+
+
+### Candidate-01 attempt-2 corrections — 2026-11-13
+
+Platform retained the attempt-2 packet (artifact `platform-broker-candidate-01-43333995506-1`,
+SHA-256 `906c0d943e7a0ee8393bb83b96c4c917477fe18820afe37fe6ba7274afe7aeb7`) and diagnosed it
+offline in its
+[packet diagnosis](../../references/Hexalith.Platform/docs/implementation/story-4-17-broker-candidate-01-packet-diagnosis.md).
+Branch `fix/3-21-candidate-01-verifier-and-pressure-retention` from `bb9e2b51fc8a609181077eba2ae900bcbe40745a`
+makes only these changes:
+
+- **Lock inventory.** `d5589b53f` and `15c8ccd52` drifted four platform-config-v1 inputs and three
+  historical 1.19.1 inputs, so `validate_profile` rejected both and the discovery suite failed
+  (96 OK, 76 failures, 22 errors at `bb9e2b51f`). Their exact historical bytes are archived from
+  `af9735b2e6fbcfc868051eee8d88ce40110cfefc` and `07f5ef132deb17d45d7209357f8ac89ef39bc557`.
+  The platform-config-v1 lock now binds 94 current inputs. Both historical lock files are unchanged.
+- **Verifier.** The execution check read the producer's `docker exec <kafka> kafka-topics.sh
+  --config retention.ms=60000` receipts as daprd launches. `--config` is now exempt only inside
+  the producer's exact Kafka admin grammar in the measured Kafka container. `--app-id` and
+  `--resources-path` still identify a sidecar there; all other receipts keep full identification.
+- **Harness.** The pressure topic's 60 s fixture retention deleted both acknowledged Kafka records
+  4.5 s before the consumer restarted. `qualification.backpressure` is now created with
+  `retention.ms=-1`; other topics, the fault, bounds and pass rule are unchanged.
+
+Validation from the branch root:
+
+- `python3 -B -m unittest discover -v -s tools/tests -p 'test_dapr*qualification.py'` — 160 passed.
+- `python3 -B -m unittest discover -v -s tools/tests -p test_dapr_platform_broker_configuration.py` — 32 passed.
+- `python3 -B -m unittest discover -v -s tools/tests -p test_qualify_internal_actor_admission.py` — 11 passed.
+- Scratch-copy mutations (the pinned rule, skipping every `docker exec`, an exemption without the
+  container binding, and the 60 s pressure retention) each fail the new controls.
+- `git diff --check` — passed. No C#, workflow, historical lock or gitlink changed, so no .NET build ran.
+
+No infrastructure, CI or live qualification ran. A fixed verifier cannot re-verify the 02a4d3b2
+packet, so these corrections need a new Platform candidate and an owner-authorized attempt.
+Story 3.21 stays `in-progress`; all five rejected guarantees, null broker selection and FAIL
+production eligibility remain.

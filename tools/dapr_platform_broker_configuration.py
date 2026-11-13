@@ -22,6 +22,9 @@ DEFAULTS = {"rabbitmq": {"reconnectWaitSeconds": 1, "outboundTimeoutMilliseconds
             "kafka": {"consumeRetryIntervalMilliseconds": 1000, "group.initial.rebalance.delay.ms": 0}}
 KAFKA_STARTUP = "/opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id MkU3OEVBNTcwNTJENDM2Qk --config /work/kafka.properties && exec /opt/kafka/bin/kafka-server-start.sh /work/kafka.properties"
 ROLES = ("qualification-publisher", "qualification-consumer", "qualification-forbidden")
+SIDECAR_FIELDS = ("--app-id", "--resources-path", "--config")
+KAFKA_TOOL = re.compile(r"/opt/kafka/bin/kafka-[a-z]+(?:-[a-z]+)*[.]sh")
+CONTAINER_ID = re.compile(r"[a-f0-9]{64}")
 
 
 def fail(field, reason):
@@ -207,6 +210,20 @@ def kafka_launch(argv: list[str], row: dict, image: str) -> None:
                 fail("execution", "Kafka temporary mount overrides committed inputs")
 
 
+def kafka_administration(argv: list, container: str | None, broker_port) -> bool:
+    """Match only the producer's own Kafka admin grammar, run inside the measured broker container.
+
+    Kafka tools take their own `--config` option for topic settings such as `retention.ms`; it is not
+    daprd configuration. Every other receipt, including `docker exec` into any other container or path,
+    keeps the complete sidecar identification. `--app-id` and `--resources-path` still identify a
+    sidecar even inside this grammar.
+    """
+    return (isinstance(container, str) and CONTAINER_ID.fullmatch(container) is not None and type(broker_port) is int
+            and len(argv) > 8 and argv[:3] == ["docker", "exec", container]
+            and KAFKA_TOOL.fullmatch(argv[3]) is not None
+            and argv[4:8] == ["--bootstrap-server", f"127.0.0.1:{broker_port}", "--command-config", "/work/admin.properties"])
+
+
 def validate_configuration_packet(directory: Path, config_path: Path | None, commands: list, executed: set[str] | bool) -> None:
     """Verify separate source bytes, every rendered byte and the actual execution path."""
     from dapr_broker_qualification import digest, safe_file, SHA
@@ -295,12 +312,19 @@ def validate_configuration_packet(directory: Path, config_path: Path | None, com
     executable_path = executable.get("path")
     profile_path = directory / "inputs/deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json"
     profile = json.loads(profile_path.read_text()) if profile_path.is_file() else {}
+    kafka_container = None
+    if kafka and (directory / "kafka/image-identity.json").is_file():
+        # The Kafka loop below binds this identity to the measured launch and inspection.
+        kafka_identity = json.loads(safe_file(directory, "kafka/image-identity.json").read_text())
+        kafka_container = kafka_identity.get("containerId") if isinstance(kafka_identity, dict) else None
     for index, receipt in enumerate(commands):
         argv = receipt["argv"]
-        fields = ("--app-id", "--resources-path", "--config")
+        administration = kafka_administration(argv, kafka_container, kafka[0]["brokerPort"] if kafka else None)
+        fields = SIDECAR_FIELDS[:2] if administration else SIDECAR_FIELDS
         identified = any(argument == field or argument.startswith(field + "=") for argument in argv[1:] for field in fields)
         if not identified and (argv[0] != executable_path or argv[1:] == ["--version"]):
             continue
+        fields = SIDECAR_FIELDS
         measured = executable.get("hashReceipt")
         if (argv[0] != executable_path or type(measured) is not int or not 0 <= measured < index
                 or identities.get("preflightPassed") is not True):

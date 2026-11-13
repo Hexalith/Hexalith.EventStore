@@ -184,6 +184,25 @@ class ConfigurationTests(unittest.TestCase):
             self.assertEqual(run.profile["runtime"]["binarySha256"], receipt["output"])
             self.assertTrue(run.identities["preflightPassed"])
 
+    def testActualProducerKeepsKafkaPressureRecordsBeyondTopicRetention(self):
+        module = producer(); run = module.Run.__new__(module.Run)
+        run.profile = json.loads((ROOT / PLATFORM_PROFILE).read_text()); calls = []
+        run.kafka = lambda script, *arguments, check=True: calls.append((script, *arguments)) or (0, "")
+        run.kafka_topics()
+        created = {call[call.index("--topic") + 1]: [call[position + 1] for position, value in enumerate(call) if value == "--config"]
+                   for call in calls if call[:2] == ("kafka-topics.sh", "--create")}
+        bound = [topic for topic in run.profile["topics"] if topic != "qualification.missing-binding"]
+        self.assertEqual(bound, list(created))
+        for topic in bound:
+            # Only the pressure topic changes; the 60 s fixture retention stays for every other topic.
+            expected = "retention.ms=-1" if topic == "qualification.backpressure" else "retention.ms=60000"
+            self.assertEqual([expected, "segment.ms=1000"], created[topic], topic)
+            self.assertIn(("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read",
+                           "--operation", "Write", "--operation", "Describe", "--topic", topic), calls)
+        self.assertEqual(("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read",
+                          "--group", "qualification-consumer"), calls[-1])
+        self.assertEqual(2 * len(bound) + 1, len(calls))
+
     def testCompleteOriginalPacketDoesNotDependOnCurrentPlatformSourceInventory(self):
         control = historical.CandidatePacketTests(); control.setUp(); self.addCleanup(control.doCleanups)
         import dapr_broker_qualification as contract
@@ -284,6 +303,8 @@ class PlatformPacketTests(unittest.TestCase):
             "requestedImage": profile["images"]["kafka"]["reference"], "kind": "disposable-broker-container"})
         f.packet.update(schemaVersion=3, profile=PLATFORM_PROFILE)
         write_json(f.directory / "commands.json", f.commands); f.seal()
+        # Later controls drive the producer's own Kafka administration through the same Docker custody.
+        run.broker_container = container_id; run.profile = profile; self.run = run; self.daprd = daprd
 
     def verify(self, **kwargs):
         return validate_packet(self.f.directory, platform_config=self.source, **kwargs)
@@ -532,6 +553,85 @@ class PlatformPacketTests(unittest.TestCase):
         result = self.verify(allow_failures=True)
         self.assertEqual("FAIL", result["technicalQualification"]); self.assertEqual(5, len(result["failedScenarios"]))
         with self.assertRaisesRegex(ValueError, "technical qualification FAIL"): self.verify()
+
+    def administered_packet(self):
+        """Append the producer's actual Kafka topic/ACL receipts; return them with the sealed commands."""
+        start = len(self.f.commands)
+        self.run.kafka_topics()
+        write_json(self.f.directory / "commands.json", self.f.commands); self.f.seal()
+        return [index for index in range(start, len(self.f.commands))
+                if self.f.commands[index]["argv"][3:4] == ["/opt/kafka/bin/kafka-topics.sh"]]
+
+    def rejected(self, index, argv, pattern="sidecar"):
+        f = self.f; original = copy.deepcopy(f.commands)
+        row = f.commands[index]; row["argv"] = argv
+        if "dockerCustody" in row:
+            row["executedArgv"] = ["docker", "--host", row["dockerCustody"]["endpoint"], *argv[1:]]
+        write_json(f.directory / "commands.json", f.commands); f.seal()
+        try:
+            with self.assertRaisesRegex(ValueError, pattern): self.verify()
+        finally:
+            f.commands = original; write_json(f.directory / "commands.json", f.commands); f.seal()
+
+    def testProducerKafkaTopicCreationConfigIsNotIdentifiedAsSidecarLaunch(self):
+        created = self.administered_packet()
+        self.assertEqual(7, len(created))
+        for index in created:
+            argv = self.f.commands[index]["argv"]
+            # Attempt-2 receipt 1079 shape, which the pinned 02a4d3b2 rule read as a daprd launch.
+            self.assertEqual(["docker", "exec", self.run.broker_container, "/opt/kafka/bin/kafka-topics.sh",
+                              "--bootstrap-server", "127.0.0.1:12345", "--command-config", "/work/admin.properties", "--create"], argv[:9])
+            self.assertEqual(2, argv.count("--config")); self.assertNotEqual(self.daprd, argv[0])
+        self.assertEqual("PASS", self.verify()["integrity"])
+
+    def testUnmeasuredExecutablesAndMisplacedSidecarFlagsStillFail(self):
+        topic = self.administered_packet()[0]
+        launch = next(index for index, row in enumerate(self.f.commands)
+                      if row["argv"][0] == self.daprd and "--resources-path" in row["argv"])
+        sidecar, admin = self.f.commands[launch]["argv"], self.f.commands[topic]["argv"]
+        container = self.run.broker_container
+        # Carry the measured control-plane endpoints so the independent control-plane check passes
+        # and the configuration execution check itself must reject the launch.
+        endpoints = [value for field in ("--placement-host-address", "--scheduler-host-address")
+                     for value in (field, sidecar[sidecar.index(field) + 1])]
+        cases = {
+            "unmeasured executable with all three flags": (launch, ["/tmp/unmeasured/daprd", *sidecar[1:]]),
+            "unmeasured executable with only --config": (launch, ["/usr/local/bin/unmeasured", "--config", sidecar[sidecar.index("--config") + 1]]),
+            "measured sidecar run through the Kafka container": (topic, ["docker", "exec", container, *sidecar]),
+            "--app-id inside Kafka administration": (topic, [*admin, "--app-id", "qualification-consumer", *endpoints]),
+            "--resources-path inside Kafka administration": (topic, [*admin, "--resources-path", "/substituted", *endpoints]),
+            "--config in another container": (topic, [*admin[:2], "e" * 64, *admin[3:]]),
+            "--config from an executable outside the Kafka tools": (topic, [*admin[:3], "/work/kafka-topics.sh", *admin[4:]]),
+            "--config against another listener": (topic, [*admin[:5], "127.0.0.1:1", *admin[6:]]),
+            "--config without the admin credentials": (topic, [*admin[:7], "/work/other.properties", *admin[8:]]),
+        }
+        for name, (index, argv) in cases.items():
+            with self.subTest(name):
+                self.rejected(index, argv, "sidecar executable lacks the measured Dapr preflight binding")
+        self.assertEqual("PASS", self.verify()["integrity"])
+
+    def testDuplicatedOrAssignmentFormSidecarFlagsStillFail(self):
+        topic = self.administered_packet()[0]
+        launch = next(index for index, row in enumerate(self.f.commands)
+                      if row["argv"][0] == self.daprd and "--resources-path" in row["argv"])
+        sidecar, admin = self.f.commands[launch]["argv"], self.f.commands[topic]["argv"]
+
+        def assigned(field):
+            position = sidecar.index(field)
+            return [*sidecar[:position], field + "=" + sidecar[position + 1], *sidecar[position + 2:]]
+        cases = {"duplicated " + field: (launch, [*sidecar, field, sidecar[sidecar.index(field) + 1]])
+                 for field in ("--app-id", "--resources-path", "--config")}
+        cases.update({field + "= form": (launch, assigned(field)) for field in ("--app-id", "--resources-path", "--config")})
+        cases.update({
+            "--app-id= inside Kafka administration": (topic, [*admin, "--app-id=qualification-consumer"]),
+            "--resources-path= inside Kafka administration": (topic, [*admin, "--resources-path=/substituted"]),
+            "--config= in another container": (topic, [*admin[:2], "e" * 64, *admin[3:8], "--config=retention.ms=1"]),
+        })
+        for name, (index, argv) in cases.items():
+            with self.subTest(name):
+                self.rejected(index, argv, "ambiguous or incomplete sidecar configuration" if index == launch
+                              else "sidecar executable lacks the measured Dapr preflight binding")
+        self.assertEqual("PASS", self.verify()["integrity"])
 
 
 if __name__ == "__main__":
