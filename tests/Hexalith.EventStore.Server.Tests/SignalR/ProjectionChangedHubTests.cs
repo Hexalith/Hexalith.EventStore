@@ -14,6 +14,99 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.SignalR;
 
 public class ProjectionChangedHubTests {
+    public static TheoryData<string, string> InvalidGrantInvocations
+    {
+        get
+        {
+            var cases = new TheoryData<string, string>();
+            foreach (string invocation in new[] { "join", "scoped-join", "validate", "reconcile" })
+            {
+                foreach (string grant in new[] { "", " ", "bad!", "system", "ACME", "acme" })
+                {
+                    cases.Add(invocation, grant);
+                }
+            }
+
+            return cases;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidGrantInvocations))]
+    public async Task ProjectionAdmission_MalformedOrDuplicateGrant_RejectsBeforeValidationOrMembership(
+        string invocation, string invalidGrant)
+    {
+        string connectionId = "invalid-grant-" + Guid.NewGuid().ToString("N");
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(TenantValidationResult.Allowed);
+        var user = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", "user-1"),
+            new Claim("eventstore:tenant", "acme"),
+            new Claim("eventstore:tenant", invalidGrant),
+        ], "Bearer"));
+        ProjectionChangedHub sut = CreateHub(connectionId, groups, user: user, tenantValidator: tenantValidator);
+
+        try
+        {
+            HubException ex = await Should.ThrowAsync<HubException>(() => InvokeProjectionAdmissionAsync(sut, invocation));
+
+            ex.Message.ShouldBe("Tenant authorization failed.");
+            _ = await tenantValidator.DidNotReceive().ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>(), Arg.Any<string?>());
+            await groups.DidNotReceive().AddToGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await groups.DidNotReceive().RemoveFromGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            await sut.OnDisconnectedAsync(null);
+        }
+    }
+
+    [Theory]
+    [InlineData("join")]
+    [InlineData("scoped-join")]
+    [InlineData("validate")]
+    [InlineData("reconcile")]
+    public async Task ProjectionAdmission_ValidDistinctGrants_ForwardsCanonicalExplicitTenant(string invocation)
+    {
+        string connectionId = "canonical-admission-" + Guid.NewGuid().ToString("N");
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), "acme",
+                Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(TenantValidationResult.Allowed);
+        var user = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", "user-1"),
+            new Claim("eventstore:tenant", "OTHER"),
+            new Claim("eventstore:tenant", "ACME"),
+        ], "Bearer"));
+        ProjectionChangedHub sut = CreateHub(connectionId, groups, user: user, tenantValidator: tenantValidator);
+
+        try
+        {
+            await InvokeProjectionAdmissionAsync(sut, invocation);
+
+            _ = await tenantValidator.Received(1).ValidateAsync(user, "acme",
+                Arg.Any<CancellationToken>(), Arg.Any<string?>());
+            if (invocation == "validate")
+            {
+                await groups.DidNotReceive().AddToGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            }
+            else
+            {
+                string group = invocation == "join" ? "order-list:acme" : "order-list:acme:scope-1";
+                await groups.Received(1).AddToGroupAsync(connectionId, group, Arg.Any<CancellationToken>());
+            }
+        }
+        finally
+        {
+            await sut.OnDisconnectedAsync(null);
+        }
+    }
+
     [Fact]
     public async Task CanceledSnapshotAdmissionRemovesNewMembershipState()
     {
@@ -489,6 +582,16 @@ public class ProjectionChangedHubTests {
         await groups.DidNotReceive().RemoveFromGroupAsync(connection, "new:acme" + (scoped ? ":scope" : string.Empty), Arg.Any<CancellationToken>());
         await hub.OnDisconnectedAsync(null);
     }
+
+    private static Task InvokeProjectionAdmissionAsync(ProjectionChangedHub hub, string invocation)
+        => invocation switch
+        {
+            "join" => hub.JoinGroup("order-list", "Acme"),
+            "scoped-join" => hub.JoinGroupScoped("order-list", "Acme", "scope-1"),
+            "validate" => hub.ValidateProjectionGroup("order-list", "Acme", "scope-1"),
+            "reconcile" => hub.ReconcileProjectionMembership(1, [["order-list", "Acme", "scope-1"]]),
+            _ => throw new ArgumentOutOfRangeException(nameof(invocation)),
+        };
 
     private static ProjectionChangedHub CreateHub(
         string connectionId,

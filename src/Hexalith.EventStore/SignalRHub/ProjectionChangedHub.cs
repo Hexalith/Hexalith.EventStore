@@ -172,6 +172,12 @@ public partial class ProjectionChangedHub(
             throw new HubException("Authentication is required to join projection change groups.");
         }
 
+        if (!TenantCanonicalizer.TryCanonicalizeGrants(
+            Context.User.FindAll("eventstore:tenant").Select(claim => claim.Value), out _))
+        {
+            throw new HubException("Tenant authorization failed.");
+        }
+
         TenantValidationResult tenantValidation;
         try {
             tenantValidation = await tenantValidator
