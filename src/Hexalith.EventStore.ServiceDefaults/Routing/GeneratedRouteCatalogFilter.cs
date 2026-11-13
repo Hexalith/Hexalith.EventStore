@@ -1,8 +1,11 @@
+using System.Globalization;
 using System.Reflection;
 
 using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Rest;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -19,6 +22,12 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
         ArgumentNullException.ThrowIfNull(next);
         RouteCatalogEndpointAttribute? metadata = context.ActionDescriptor.EndpointMetadata.OfType<RouteCatalogEndpointAttribute>().SingleOrDefault();
         if (metadata is null) { await next().ConfigureAwait(false); return; }
+        IActionResult? scopeFailure = ValidateRequestScope(context, metadata.TenantSource);
+        if (scopeFailure is not null)
+        {
+            context.Result = scopeFailure;
+            return;
+        }
         RouteCatalogDispatchLease? lease = null;
         try
         {
@@ -57,6 +66,71 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
             context.HttpContext.Items.Remove(RouteCatalogGeneratedAction.ValidatorKey);
         }
     }
+
+    private static IActionResult? ValidateRequestScope(ActionExecutingContext context, RestTenantSource source)
+    {
+        // Older generated actions and manually cataloged controllers have no scope-source
+        // metadata. Their existing action and catalog validation remain authoritative.
+        if (source == RestTenantSource.Inherit)
+            return null;
+
+        HttpRequest request = context.HttpContext.Request;
+        bool hasTenantHeader = request.Headers.TryGetValue("X-Hexalith-Tenant", out var tenantHeader);
+        bool hasScopeHeader = request.Headers.TryGetValue("X-Hexalith-Scope", out var scopeHeader);
+        if (hasTenantHeader && hasScopeHeader)
+            return ScopeProblem(StatusCodes.Status400BadRequest, "Tenant and platform scopes cannot be combined.");
+        if (source == RestTenantSource.System)
+            return ScopeProblem(StatusCodes.Status400BadRequest, "A public system tenant is not supported.");
+
+        string? requestedTenant = null;
+        switch (source)
+        {
+            case RestTenantSource.Platform:
+                if (hasTenantHeader || !hasScopeHeader || scopeHeader.Count != 1
+                    || !TenantCanonicalizer.IsPlatformScope(scopeHeader[0]))
+                    return ScopeProblem(StatusCodes.Status400BadRequest, "An explicit canonical platform scope is required.");
+                break;
+            case RestTenantSource.Route:
+                string? tenant = context.RouteData.Values.TryGetValue("tenant", out object? tenantValue) && tenantValue is not null
+                    ? Convert.ToString(tenantValue, CultureInfo.InvariantCulture) : null;
+                string? tenantId = context.RouteData.Values.TryGetValue("tenantId", out object? tenantIdValue) && tenantIdValue is not null
+                    ? Convert.ToString(tenantIdValue, CultureInfo.InvariantCulture) : null;
+                if (hasTenantHeader || hasScopeHeader || tenant is not null && tenantId is not null)
+                    return ScopeProblem(StatusCodes.Status400BadRequest, "Duplicate or mixed tenant scopes are not allowed.");
+                requestedTenant = tenant ?? tenantId;
+                break;
+            case RestTenantSource.Claims:
+                if (hasScopeHeader || !hasTenantHeader || tenantHeader.Count != 1)
+                    return ScopeProblem(StatusCodes.Status400BadRequest, "An explicit tenant header is required.");
+                requestedTenant = tenantHeader[0];
+                break;
+            default:
+                return ScopeProblem(StatusCodes.Status400BadRequest, "The request scope source is invalid.");
+        }
+
+        string canonicalTenant = string.Empty;
+        if (source != RestTenantSource.Platform && !TenantCanonicalizer.TryCanonicalize(requestedTenant, out canonicalTenant))
+            return ScopeProblem(StatusCodes.Status400BadRequest, "The tenant is invalid or reserved.");
+        if (context.HttpContext.User.Identity?.IsAuthenticated != true
+            || !TenantCanonicalizer.TryCanonicalizeGrants(
+                context.HttpContext.User.FindAll("eventstore:tenant").Select(claim => claim.Value), out IReadOnlySet<string> grants)
+            || source != RestTenantSource.Platform && !grants.Contains(canonicalTenant))
+            return ScopeProblem(StatusCodes.Status403Forbidden, "The tenant is not authorized.");
+
+        return null;
+    }
+
+    private static ObjectResult ScopeProblem(int status, string detail)
+        => new(new ProblemDetails
+        {
+            Status = status,
+            Title = status == StatusCodes.Status400BadRequest ? "Bad Request" : "Forbidden",
+            Detail = detail,
+        })
+        {
+            StatusCode = status,
+            ContentTypes = { "application/problem+json" },
+        };
 
     /// <summary>Validates the same partition tenant already resolved by a generated action before gateway dispatch.</summary>
     public static bool ValidateTenant(Microsoft.AspNetCore.Http.HttpContext context, Type contractType, string kind, string tenant)

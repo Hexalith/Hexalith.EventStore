@@ -258,7 +258,8 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("    [RequestSizeLimit(1_048_576)]");
         builder.AppendLine("    [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]");
         builder.Append("    [global::Hexalith.EventStore.Contracts.Routing.RouteCatalogEndpoint(typeof(")
-            .Append(message.FullyQualifiedTypeName).AppendLine("), \"command\")]");
+            .Append(message.FullyQualifiedTypeName).Append("), \"command\", TenantSource = global::Hexalith.EventStore.Contracts.Rest.RestTenantSource.")
+            .Append(GetTenantSource(options, route)).AppendLine(")]");
         AppendCommandProblemProducesResponseTypes(builder);
         builder.Append("    public async Task<IActionResult> ").Append(methodName).AppendLine("(");
         AppendRouteParameters(builder, message, routeParameters, trailingComma: true);
@@ -315,7 +316,8 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("    [ProducesResponseType(StatusCodes.Status304NotModified)]");
         AppendQueryProblemProducesResponseTypes(builder);
         builder.Append("    [global::Hexalith.EventStore.Contracts.Routing.RouteCatalogEndpoint(typeof(")
-            .Append(message.FullyQualifiedTypeName).AppendLine("), \"query\")]");
+            .Append(message.FullyQualifiedTypeName).Append("), \"query\", TenantSource = global::Hexalith.EventStore.Contracts.Rest.RestTenantSource.")
+            .Append(GetTenantSource(options, route)).AppendLine(")]");
         builder.Append("    public async Task<IActionResult> ").Append(methodName).AppendLine("(");
         bool hasEarlierParameter = AppendRouteParameters(builder, message, routeParameters, trailingComma: routeParameters.Length > 0 || queryParameters.Length > 0);
         AppendQueryParameters(builder, queryParameters, hasEarlierParameter);
@@ -1665,7 +1667,10 @@ internal static class RestApiControllerEmitter
         => string.Equals(GetTenantSource(options, route), "Route", StringComparison.Ordinal);
 
     private static string GetTenantSource(RestApiOptions options, RestApiRouteDescriptor route)
-        => string.Equals(route.TenantSource, "Inherit", StringComparison.Ordinal) ? options.TenantSource : route.TenantSource;
+    {
+        string source = string.Equals(route.TenantSource, "Inherit", StringComparison.Ordinal) ? options.TenantSource : route.TenantSource;
+        return string.Equals(source, "Inherit", StringComparison.Ordinal) ? "Claims" : source;
+    }
 
     private static string ToStringExpression(string identifier, string fallbackExpression)
         => "Convert.ToString(" + identifier + ", CultureInfo.InvariantCulture) ?? " + fallbackExpression;

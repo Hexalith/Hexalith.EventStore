@@ -10,4 +10,7 @@ public sealed class RouteCatalogEndpointAttribute(Type ContractType, string Kind
     public Type ContractType { get; } = ContractType;
     /// <summary>Gets the message kind.</summary>
     public string Kind { get; } = Kind;
+
+    /// <summary>Gets or sets the generated action's effective request scope source for local admission before catalog access.</summary>
+    public Rest.RestTenantSource TenantSource { get; set; } = Rest.RestTenantSource.Inherit;
 }

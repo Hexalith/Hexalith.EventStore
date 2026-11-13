@@ -245,14 +245,12 @@ public partial class QueriesController : ControllerBase {
                 || !string.Equals(Request.Headers["X-Hexalith-Scope"].ToString(), explicitScope, StringComparison.Ordinal))
             || Request.Headers.ContainsKey("X-Hexalith-Tenant"))
             return BadRequest("Mixed or conflicting request scopes are not allowed.");
+        if (!TenantCanonicalizer.TryCanonicalizeGrants(User.FindAll("eventstore:tenant").Select(claim => claim.Value), out _))
+            return Forbid();
         if (!platformScope)
         {
             if (!TenantCanonicalizer.TryCanonicalize(explicitScope, out string canonicalTenant))
                 return Forbid();
-            if (!TenantCanonicalizer.TryCanonicalizeGrants(User.FindAll("eventstore:tenant").Select(claim => claim.Value), out _))
-            {
-                return Forbid();
-            }
             if (legacyTenantRead)
             {
                 if (!TenantCanonicalizer.TryCanonicalize(request.AggregateId, out string canonicalAggregate)
