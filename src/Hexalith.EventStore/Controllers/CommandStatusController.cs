@@ -218,9 +218,13 @@ public class CommandStatusController(
     [ProducesResponseType(typeof(CommandStatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetWorkloadStatus(string tenant, string messageId, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value)
+        if (!TenantCanonicalizer.TryCanonicalize(tenant, out string canonicalTenant)
+            || Request.Headers.ContainsKey("X-Hexalith-Tenant")
+            || Request.Headers.ContainsKey("X-Hexalith-Scope")
+            || Request.Query.ContainsKey("tenant") || Request.Query.ContainsKey("tenantId")
+            || string.IsNullOrWhiteSpace(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value)
             || !string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
-                tenant, StringComparison.Ordinal)
+                canonicalTenant, StringComparison.Ordinal)
             || string.IsNullOrWhiteSpace(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value))
         {
             return Forbid();
@@ -231,14 +235,14 @@ public class CommandStatusController(
             return BadRequest();
         }
 
-        CommandStatusRecord? record = await statusStore.ReadStatusAsync(tenant, messageId, cancellationToken)
+        CommandStatusRecord? record = await statusStore.ReadStatusAsync(canonicalTenant, messageId, cancellationToken)
             .ConfigureAwait(false);
         return record is not null
             && string.Equals(record.MessageId, messageId, StringComparison.Ordinal)
             && string.Equals(record.Domain,
                 User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
                 StringComparison.Ordinal)
-            ? CreateStatusResult(tenant, messageId, record, Activity.Current)
+            ? CreateStatusResult(canonicalTenant, messageId, record, Activity.Current)
             : NotFound();
     }
 

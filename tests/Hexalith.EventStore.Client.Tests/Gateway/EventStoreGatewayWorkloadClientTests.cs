@@ -178,6 +178,81 @@ public sealed class EventStoreGatewayWorkloadClientTests
         calls.ShouldBe(0);
     }
 
+    /// <summary>Uses one canonical tenant for the status route, assertion and receipt.</summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async Task MixedCaseStatusTenantIsCanonicalBeforeCredentialsAndTransport()
+    {
+        var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
+        assertions.IssueAsync(EventStoreGatewayWorkloadOperations.CommandStatus, "acme", Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<string?>("canonical-assertion"));
+        using var http = new HttpClient(new Handler(request =>
+        {
+            request.RequestUri!.AbsolutePath.ShouldBe("/api/v1/commands/status/workload/acme/message-1");
+            request.Headers.GetValues("X-Hexalith-Workload-Assertion").ShouldBe(["canonical-assertion"]);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"correlationId":"message-1","tenantId":"acme","status":"Completed","statusCode":4,"messageId":"message-1"}""",
+                    Encoding.UTF8, "application/json"),
+            };
+        })) { BaseAddress = new Uri("https://eventstore.test/") };
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions()), assertions);
+
+        (await gateway.GetWorkloadCommandStatusAsync("AcMe", "message-1")).ShouldNotBeNull()
+            .TenantId.ShouldBe("acme");
+
+        await assertions.Received(1).IssueAsync(EventStoreGatewayWorkloadOperations.CommandStatus,
+            "acme", Arg.Any<CancellationToken>());
+        assertions.ReceivedCalls().ShouldHaveSingleItem();
+    }
+
+    /// <summary>Rejects invalid and reserved status scope before credentials or transport.</summary>
+    /// <param name="tenant">The invalid tenant.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData(" acme")]
+    [InlineData("acme ")]
+    [InlineData("ac_me")]
+    [InlineData("-acme")]
+    [InlineData("acme-")]
+    [InlineData("system")]
+    [InlineData("SYSTEM")]
+    [InlineData("platform:tenants")]
+    [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    public async Task InvalidStatusTenantNeverAcquiresCredentials(string tenant)
+    {
+        using var http = new HttpClient(new Handler(_ => throw new InvalidOperationException("Unexpected transport")))
+            { BaseAddress = new Uri("https://eventstore.test/") };
+        var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions()), assertions);
+
+        await Should.ThrowAsync<ArgumentException>(() => gateway.GetWorkloadCommandStatusAsync(tenant, "message-1"));
+
+        assertions.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Rejects additional scope headers before credentials or transport.</summary>
+    /// <param name="header">The extra scope header.</param>
+    /// <param name="value">The duplicate or conflicting scope.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData("X-Hexalith-Tenant", "acme")]
+    [InlineData("X-Hexalith-Tenant", "other")]
+    [InlineData("X-Hexalith-Scope", "platform:tenants")]
+    public async Task AdditionalStatusScopeNeverAcquiresCredentials(string header, string value)
+    {
+        using var http = new HttpClient(new Handler(_ => throw new InvalidOperationException("Unexpected transport")))
+            { BaseAddress = new Uri("https://eventstore.test/") };
+        http.DefaultRequestHeaders.Add(header, value);
+        var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions()), assertions);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => gateway.GetWorkloadCommandStatusAsync("acme", "message-1"));
+
+        assertions.ReceivedCalls().ShouldBeEmpty();
+    }
+
     private sealed class StubAssertions : IEventStoreGatewayWorkloadAssertionSource
     {
         public List<(string Operation, string Tenant)> Issued { get; } = [];
