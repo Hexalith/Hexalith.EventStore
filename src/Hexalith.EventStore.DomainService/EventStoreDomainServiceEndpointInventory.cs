@@ -15,9 +15,9 @@ namespace Hexalith.EventStore.DomainService;
 /// <item><description>Only the exact health, alive, and ready probes may carry anonymous metadata.</description></item>
 /// <item><description>Every canonical operational route must carry its exact catalog policy (<see cref="EventStoreDomainServiceRoutes"/>).
 /// No canonical route may be public.</description></item>
-/// <item><description>Every sidecar-originated route — <c>dapr/subscribe</c>, every pub/sub subscription, and every
+/// <item><description>Every non-canonical sidecar-originated route — <c>dapr/subscribe</c>, pub/sub subscriptions, and
 /// Dapr actor route — must carry <see cref="EventStoreDomainServicePolicies.SidecarChannel"/>, including one a host
-/// mapped itself before the SDK.</description></item>
+/// mapped itself before the SDK. Canonical operation policies take precedence over subscription metadata.</description></item>
 /// <item><description>Every other endpoint must name an explicit authorization policy. The fallback never classifies it.</description></item>
 /// </list>
 /// </remarks>
@@ -52,21 +52,6 @@ public static class EventStoreDomainServiceEndpointInventory
                 continue;
             }
 
-            if (IsSidecarOriginated(endpoint, route))
-            {
-                if (isAnonymous || publicMarkers.Count > 0)
-                {
-                    violations.Add($"{route}: a sidecar-originated route cannot allow anonymous access or carry a public marker.");
-                }
-
-                if (!authorizeData.Any(static data => string.Equals(data.Policy, EventStoreDomainServicePolicies.SidecarChannel, StringComparison.Ordinal)))
-                {
-                    violations.Add($"{route}: a sidecar-originated route must require policy '{EventStoreDomainServicePolicies.SidecarChannel}' (call RequireEventStoreSidecarChannel()).");
-                }
-
-                continue;
-            }
-
             if (EventStoreDomainServiceRoutes.TryGet(route, out EventStoreDomainServiceRoute? catalogRoute))
             {
                 if (isAnonymous || publicMarkers.Count > 0)
@@ -79,6 +64,20 @@ public static class EventStoreDomainServiceEndpointInventory
                     violations.Add($"{route}: the effective endpoint must require policy '{catalogRoute!.Policy}'.");
                 }
 
+                continue;
+            }
+
+            if (IsSidecarOriginated(endpoint, route))
+            {
+                if (isAnonymous || publicMarkers.Count > 0)
+                {
+                    violations.Add($"{route}: a sidecar-originated route cannot allow anonymous access or carry a public marker.");
+                }
+
+                if (!authorizeData.Any(static data => string.Equals(data.Policy, EventStoreDomainServicePolicies.SidecarChannel, StringComparison.Ordinal)))
+                {
+                    violations.Add($"{route}: a sidecar-originated route must require policy '{EventStoreDomainServicePolicies.SidecarChannel}' (call RequireEventStoreSidecarChannel()).");
+                }
 
                 continue;
             }

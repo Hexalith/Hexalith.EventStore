@@ -22,18 +22,33 @@ public sealed class WorkloadJwtBearerEvents(
     ILogger<WorkloadJwtBearerEvents> logger) : JwtBearerEvents
 {
     /// <inheritdoc />
-    public override Task MessageReceived(MessageReceivedContext context)
+    public override async Task MessageReceived(MessageReceivedContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         string? reason = GetMessageRejection(context);
         if (reason is not null)
         {
             context.Fail(new WorkloadAuthenticationException(reason));
-            return Task.CompletedTask;
+            return;
+        }
+
+        if (context.Options.ConfigurationManager is { } manager)
+        {
+            try
+            {
+                // Fetch before Wilson handles BaseConfigurationManager: its last-known-good fallback can
+                // otherwise turn an unavailable authority into a misleading signature failure.
+                _ = await manager.GetConfigurationAsync(context.HttpContext.RequestAborted).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException
+                || !context.HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                context.Fail(new WorkloadAuthenticationException(WorkloadAuthenticationReasons.VerifierUnavailable));
+                return;
+            }
         }
 
         context.Token = context.Request.Headers[EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName][0];
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />

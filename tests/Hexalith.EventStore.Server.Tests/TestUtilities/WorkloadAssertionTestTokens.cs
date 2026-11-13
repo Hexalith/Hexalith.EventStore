@@ -26,6 +26,7 @@ internal static class WorkloadAssertionTestTokens
     /// <param name="bindings">Optional resource bindings.</param>
     /// <param name="signingKey">The signing key; defaults to the test-process key.</param>
     /// <param name="issuer">The issuer; defaults to <see cref="Issuer"/>.</param>
+    /// <param name="notBefore">The not-before time; defaults to the issue time.</param>
     /// <returns>The serialized assertion.</returns>
     public static string Create(
         string audience,
@@ -35,7 +36,8 @@ internal static class WorkloadAssertionTestTokens
         DateTime? issuedAt = null,
         IReadOnlyDictionary<string, string>? bindings = null,
         string? signingKey = null,
-        string? issuer = null)
+        string? issuer = null,
+        DateTime? notBefore = null)
     {
         DateTime issued = issuedAt ?? DateTime.UtcNow;
         var claims = new Dictionary<string, object>(StringComparer.Ordinal);
@@ -61,7 +63,7 @@ internal static class WorkloadAssertionTestTokens
             Issuer = issuer ?? Issuer,
             Audience = audience,
             IssuedAt = issued,
-            NotBefore = issued,
+            NotBefore = notBefore ?? issued,
             Expires = issued.Add(lifetime ?? TimeSpan.FromMinutes(2)),
             Claims = claims,
             SigningCredentials = new SigningCredentials(

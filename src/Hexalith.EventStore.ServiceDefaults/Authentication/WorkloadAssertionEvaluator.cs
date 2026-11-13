@@ -108,7 +108,6 @@ public static class WorkloadAssertionEvaluator
         {
             new(ClaimTypes.NameIdentifier, "workload:" + caller),
             new(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, caller),
-            new(EventStoreWorkloadAuthenticationDefaults.LegacyCallerClaimType, caller),
         };
         var surfaces = validated.FindAll(RouteCatalogSurfacePolicy.ClaimType).ToArray();
         if (surfaces.Length > 0)

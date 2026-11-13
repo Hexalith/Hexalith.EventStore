@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -51,7 +52,7 @@ public sealed partial class DomainServiceTrustBoundaryTests
     private const string ChannelToken = "story-5-5-domain-channel-token";
     private const string Issuer = "hexalith-dev";
     private const string AuthorityIssuer = "https://identity.example.test/realms/hexalith";
-    private static readonly string SigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+    private static readonly string SigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
     /// <summary>A valid assertion for the route's operation reaches the domain processor exactly once.</summary>
     [Fact]
@@ -148,6 +149,11 @@ public sealed partial class DomainServiceTrustBoundaryTests
     [InlineData("wrong-caller", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.CallerNotAllowed)]
     [InlineData("conflicting-caller", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.CallerConflict)]
     [InlineData("expired", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.AssertionExpired)]
+    [InlineData("future-issued", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.AssertionNotYetValid)]
+    [InlineData("ambiguous-caller", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.AssertionMalformed)]
+    [InlineData("ambiguous-binding", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.BindingAmbiguous)]
+    [InlineData("missing-operation", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.OperationMissing)]
+    [InlineData("wrong-algorithm", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.SignatureInvalid)]
     [InlineData("long-lived", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.AssertionStale)]
     [InlineData("wrong-key", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.SignatureInvalid)]
     [InlineData("duplicate-assertion", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.AssertionDuplicate)]
@@ -165,6 +171,17 @@ public sealed partial class DomainServiceTrustBoundaryTests
             "wrong-audience" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], audience: "tenants"),
             "wrong-caller" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], caller: "sample-api"),
             "expired" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], issuedAt: DateTime.UtcNow.AddMinutes(-10)),
+            "future-issued" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], issuedAt: DateTime.UtcNow.AddHours(1), notBefore: DateTime.UtcNow.AddMinutes(-1)),
+            "ambiguous-caller" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], extraClaims: new Dictionary<string, object>
+            {
+                [EventStoreWorkloadAuthenticationDefaults.CallerClaimType] = new[] { Caller, "another-caller" },
+            }),
+            "ambiguous-binding" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], extraClaims: new Dictionary<string, object>
+            {
+                [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = new[] { "tenant-a", "tenant-b" },
+            }),
+            "missing-operation" => Assertion([]),
+            "wrong-algorithm" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], algorithm: SecurityAlgorithms.HmacSha384),
             "long-lived" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], lifetime: TimeSpan.FromHours(1)),
             "wrong-key" => Assertion([EventStoreWorkloadOperations.DomainServiceProcess], signingKey: Convert.ToBase64String(new byte[32])),
             _ => valid,
@@ -223,8 +240,10 @@ public sealed partial class DomainServiceTrustBoundaryTests
     {
         var processor = new CapturingWidgetProcessor();
         var verifierCalls = new ConcurrentQueue<DomainServiceAdministratorClaim>();
+        var logs = new CapturingLoggerProvider();
         await using WebApplication app = await StartAsync(
             processor: processor,
+            logs: logs,
             configureServices: services =>
             {
                 if (verifier != "none")
@@ -250,6 +269,15 @@ public sealed partial class DomainServiceTrustBoundaryTests
         hasFlag.ShouldBe(expectedFlag);
         command.Extensions!.Keys.ShouldAllBe(key => key == DomainServiceAdministratorAssertions.GlobalAdminExtensionKey || key == "keep");
         command.Extensions!["keep"].ShouldBe("me");
+        var removals = logs.Entries.Where(static entry => entry.EventId.Id == 5521).ToArray();
+        if (verifier == "allow") removals.ShouldBeEmpty();
+        else
+        {
+            var removed = removals.ShouldHaveSingleItem();
+            removed.Level.ShouldBe(verifier == "none" ? LogLevel.Debug : LogLevel.Warning);
+            removed.Message.ShouldContain("SecurityEvent=WireAdminAssertionRemoved");
+            removed.Message.ShouldContain("CorrelationId=corr-1");
+        }
         if (verifier != "none")
         {
             DomainServiceAdministratorClaim claim = verifierCalls.ShouldHaveSingleItem();
@@ -263,8 +291,11 @@ public sealed partial class DomainServiceTrustBoundaryTests
     /// domain work with a bounded, retryable 503. The command emits its bounded reason and correlation identifier;
     /// the protected query suppresses internal denial diagnostics. Neither exposes raw exception details.
     /// </summary>
-    [Fact]
-    public async Task WireAdministratorFlag_VerifierFailure_FailsClosedWithBoundedUnavailable()
+    /// <param name="timeout">Whether the verifier times out without request cancellation.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WireAdministratorFlag_VerifierFailure_FailsClosedWithBoundedUnavailable(bool timeout)
     {
         string internalDetail = "verifier-internal-detail-" + Guid.NewGuid().ToString("N");
         var processor = new CapturingWidgetProcessor();
@@ -283,7 +314,7 @@ public sealed partial class DomainServiceTrustBoundaryTests
                     new DelegateVerifier(claim =>
                     {
                         verifierCalls.Enqueue(claim);
-                        throw new InvalidOperationException(internalDetail);
+                        throw timeout ? new TaskCanceledException(internalDetail) : new InvalidOperationException(internalDetail);
                     }));
             });
         HttpClient client = app.GetTestClient();
@@ -407,7 +438,6 @@ public sealed partial class DomainServiceTrustBoundaryTests
             new[]
             {
                 System.Security.Claims.ClaimTypes.NameIdentifier,
-                EventStoreWorkloadAuthenticationDefaults.LegacyCallerClaimType,
                 EventStoreWorkloadAuthenticationDefaults.OperationClaimType,
                 EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType,
             }.Order(StringComparer.Ordinal));
@@ -418,13 +448,15 @@ public sealed partial class DomainServiceTrustBoundaryTests
     }
 
     /// <summary>The query administrator hint reaches the handler only after verification.</summary>
-    /// <param name="registerVerifier">Whether an allowing verifier is registered.</param>
+    /// <param name="verifier">The administrator verifier behavior.</param>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task QueryAdministratorHint_IsClearedUnlessVerified(bool registerVerifier)
+    [InlineData("none")]
+    [InlineData("allow")]
+    [InlineData("deny")]
+    public async Task QueryAdministratorHint_IsClearedUnlessVerified(string verifier)
     {
         var observed = new ConcurrentQueue<QueryEnvelope>();
+        var logs = new CapturingLoggerProvider();
         IDomainQueryHandler handler = Substitute.For<IDomainQueryHandler>();
         _ = handler.Domain.Returns("widget");
         _ = handler.QueryType.Returns("probe-administrator-hint");
@@ -433,12 +465,12 @@ public sealed partial class DomainServiceTrustBoundaryTests
             observed.Enqueue(call.Arg<QueryEnvelope>());
             return QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { ok = true }));
         });
-        await using WebApplication app = await StartAsync(configureServices: services =>
+        await using WebApplication app = await StartAsync(logs: logs, configureServices: services =>
         {
             _ = services.AddScoped(_ => handler);
-            if (registerVerifier)
+            if (verifier != "none")
             {
-                _ = services.AddSingleton<IDomainServiceAdministratorVerifier>(new DelegateVerifier(_ => true));
+                _ = services.AddSingleton<IDomainServiceAdministratorVerifier>(new DelegateVerifier(_ => verifier == "allow"));
             }
         });
         var query = new QueryEnvelope("tenant-a", "widget", "widget-1", "probe-administrator-hint", [], "corr-q", "acting-user", isGlobalAdmin: true);
@@ -451,7 +483,21 @@ public sealed partial class DomainServiceTrustBoundaryTests
         using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        observed.ShouldHaveSingleItem().IsGlobalAdmin.ShouldBe(registerVerifier);
+        observed.ShouldHaveSingleItem().IsGlobalAdmin.ShouldBe(verifier == "allow");
+        // The protected query pipeline suppresses detailed diagnostics, including administrator assertion logs.
+        logs.Entries.ShouldNotContain(static entry => entry.EventId.Id == 5521);
+        using IServiceScope scope = app.Services.CreateScope();
+        QueryEnvelope rebuilt = await DomainServiceAdministratorAssertions.RebuildAsync(scope.ServiceProvider, query, TestContext.Current.CancellationToken);
+        rebuilt.IsGlobalAdmin.ShouldBe(verifier == "allow");
+        var removals = logs.Entries.Where(static entry => entry.EventId.Id == 5521).ToArray();
+        if (verifier == "allow") removals.ShouldBeEmpty();
+        else
+        {
+            var removed = removals.ShouldHaveSingleItem();
+            removed.Level.ShouldBe(verifier == "none" ? LogLevel.Debug : LogLevel.Warning);
+            removed.Message.ShouldContain("SecurityEvent=WireAdminAssertionRemoved");
+            removed.Message.ShouldContain("CorrelationId=corr-q");
+        }
     }
 
     /// <summary>Every canonical operational route enforces its own operation through the real pipeline.</summary>
@@ -574,7 +620,11 @@ public sealed partial class DomainServiceTrustBoundaryTests
 
         forgedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         discoveryResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        deliveredResponse.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
+        deliveredResponse.StatusCode.ShouldNotBeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);
+        using var admittedDiscovery = new HttpRequestMessage(HttpMethod.Get, "/dapr/subscribe");
+        admittedDiscovery.Headers.Add(DaprAppChannelToken.HeaderName, ChannelToken);
+        using HttpResponseMessage admittedDiscoveryResponse = await client.SendAsync(admittedDiscovery, TestContext.Current.CancellationToken);
+        admittedDiscoveryResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     /// <summary>
@@ -850,6 +900,168 @@ public sealed partial class DomainServiceTrustBoundaryTests
         calls.ShouldBe(1);
     }
 
+    /// <summary>The real actor discovery route admits a channel token and refuses an untokened request.</summary>
+    [Fact]
+    public async Task ActorConfigurationRoute_RequiresTheAppChannelToken()
+    {
+        await using WebApplication app = await StartAsync(
+            configureServices: services => services.AddActors(configure: null),
+            beforeSdk: application => application.MapActorsHandlers().RequireEventStoreSidecarChannel());
+        using HttpResponseMessage denied = await app.GetTestClient().GetAsync("/dapr/config", TestContext.Current.CancellationToken);
+        using var admitted = new HttpRequestMessage(HttpMethod.Get, "/dapr/config");
+        admitted.Headers.Add(DaprAppChannelToken.HeaderName, ChannelToken);
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(admitted, TestContext.Current.CancellationToken);
+
+        denied.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    /// <summary>A canonical route cannot use subscription metadata to replace its operation policy with the channel policy.</summary>
+    [Fact]
+    public async Task TopicMarkedCanonicalOverride_StillRequiresTheCatalogOperationPolicy()
+    {
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(
+            beforeSdk: application => application.MapPost("/project", () => Results.Ok())
+                .WithTopic("pubsub", "widget.events").RequireEventStoreSidecarChannel()));
+
+        failure.Message.ShouldContain(EventStoreDomainServicePolicies.Project);
+    }
+
+    /// <summary>Invalid production contracts and lifetime bounds fail startup with the setting name.</summary>
+    /// <param name="scenario">The invalid setting.</param>
+    [Theory]
+    [InlineData("jwt-contract")]
+    [InlineData("lifetime-zero")]
+    [InlineData("lifetime-too-large")]
+    public async Task ProductionInvalidCredentialConfiguration_FailsStartup(string scenario)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["Authentication:JwtBearer:Authority"] = AuthorityIssuer,
+            ["Authentication:JwtBearer:Issuer"] = AuthorityIssuer,
+            ["Authentication:JwtBearer:SigningKey"] = null,
+            ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
+            ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+        };
+        if (scenario == "jwt-contract") settings["Authentication:JwtBearer:Audience"] = null;
+        else settings["Authentication:Workload:MaximumLifetimeSeconds"] = scenario == "lifetime-zero" ? "0" : "3600";
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(
+            environmentName: Environments.Production, settings: settings));
+
+        failure.Message.ShouldContain(scenario == "jwt-contract" ? "Authentication:JwtBearer" : "MaximumLifetimeSeconds");
+        failure.Message.ShouldNotContain(ChannelToken);
+        failure.Message.ShouldNotContain(SigningKey);
+    }
+
+    /// <summary>Development logs the missing setting and still denies protected work under unusable credentials.</summary>
+    /// <param name="scenario">The missing or invalid receiver setting.</param>
+    /// <param name="reason">The bounded denial reason.</param>
+    [Theory]
+    [InlineData("channel", WorkloadAuthenticationReasons.ChannelUnconfigured)]
+    [InlineData("lifetime", WorkloadAuthenticationReasons.VerifierUnconfigured)]
+    public async Task DevelopmentInvalidCredentialConfiguration_LogsTheSettingAndDeniesWork(string scenario, string reason)
+    {
+        var logs = new CapturingLoggerProvider();
+        var processor = new CapturingWidgetProcessor();
+        var settings = new Dictionary<string, string?>
+        {
+            [scenario == "channel" ? DaprAppChannelToken.ConfigurationKey : "Authentication:Workload:MaximumLifetimeSeconds"]
+                = scenario == "channel" ? null : "3600",
+        };
+        await using WebApplication app = await StartAsync(settings: settings, logs: logs, processor: processor);
+        var gap = logs.Entries.Where(static entry => entry.EventId.Id == 5531).ShouldHaveSingleItem();
+        gap.Level.ShouldBe(LogLevel.Warning);
+        gap.Message.ShouldContain(scenario == "channel" ? DaprAppChannelToken.ConfigurationKey : "MaximumLifetimeSeconds");
+        gap.Message.ShouldNotContain(ChannelToken);
+        gap.Message.ShouldNotContain(SigningKey);
+        using HttpRequestMessage request = ProcessRequest(Assertion([EventStoreWorkloadOperations.DomainServiceProcess]));
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        processor.Commands.ShouldBeEmpty();
+        logs.Messages.ShouldContain(message => message.Contains("Reason=" + reason, StringComparison.Ordinal));
+    }
+
+    /// <summary>Authority-mode trusted-effect submitters refuse startup without their own workload client.</summary>
+    /// <param name="missing">The absent client setting.</param>
+    [Theory]
+    [InlineData("ClientId")]
+    [InlineData("ClientSecret")]
+    public async Task TrustedEffectSubmitter_WithoutAuthorityClientCredentials_FailsStartup(string missing)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["Authentication:JwtBearer:Authority"] = AuthorityIssuer,
+            ["Authentication:JwtBearer:Issuer"] = AuthorityIssuer,
+            ["Authentication:JwtBearer:SigningKey"] = null,
+            ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
+            ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+            ["Authentication:WorkloadIssuer:ClientId"] = AppId,
+            ["Authentication:WorkloadIssuer:ClientSecret"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)),
+        };
+        settings["Authentication:WorkloadIssuer:" + missing] = null;
+
+        OptionsValidationException failure = await Should.ThrowAsync<OptionsValidationException>(() => StartAsync(
+            environmentName: Environments.Production, settings: settings,
+            configureServices: services => services.AddHttpClient("trusted-effects").AddEventStoreTrustedEffectWorkloadAssertion()));
+
+        failure.Message.ShouldContain("Authentication:WorkloadIssuer:" + missing);
+    }
+
+    /// <summary>Unsafe correlation headers use the server trace identifier in bounded authentication-denial logs.</summary>
+    /// <param name="scenario">The unsafe correlation value.</param>
+    [Theory]
+    [InlineData("oversized")]
+    [InlineData("comma")]
+    [InlineData("equals")]
+    public async Task InvalidCorrelationHeader_UsesTheTraceIdentifierInDenialTelemetry(string scenario)
+    {
+        var logs = new CapturingLoggerProvider();
+        await using WebApplication app = await StartAsync(logs: logs);
+        string correlation = scenario switch { "comma" => "bad,correlation", "equals" => "bad=correlation", _ => new string('x', 129) };
+        using HttpRequestMessage request = ProcessRequest(null);
+        request.Headers.Remove("X-Correlation-ID");
+        request.Headers.Add("X-Correlation-ID", correlation);
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        var denial = logs.Entries.Where(static entry => entry.EventId.Id == 5501).ShouldHaveSingleItem();
+        denial.TraceId.ShouldNotBeNullOrEmpty();
+        denial.Message.ShouldContain("CorrelationId=" + denial.TraceId);
+        denial.Message.ShouldNotContain(correlation);
+    }
+
+    /// <summary>An otherwise validated principal with conflicting authorized parties cannot become a workload.</summary>
+    [Fact]
+    public void WorkloadEvaluator_RejectsAmbiguousCallerClaims()
+    {
+        long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var principal = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+        [
+            new System.Security.Claims.Claim("iat", now.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            new System.Security.Claims.Claim("exp", (now + 120).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            new System.Security.Claims.Claim(EventStoreWorkloadAuthenticationDefaults.CallerClaimType, Caller),
+            new System.Security.Claims.Claim(EventStoreWorkloadAuthenticationDefaults.CallerClaimType, "another-caller"),
+            new System.Security.Claims.Claim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType, EventStoreWorkloadOperations.DomainServiceProcess),
+        ]));
+
+        WorkloadAssertionEvaluation evaluation = WorkloadAssertionEvaluator.Evaluate(principal,
+            EventStoreWorkloadAuthenticationDefaults.WorkloadScheme,
+            new WorkloadAuthenticationOptions { Audience = AppId, AllowedCallers = [Caller] },
+            allowedCallersOverride: null, daprCallerHeader: default, DateTimeOffset.UtcNow, TimeSpan.Zero);
+
+        evaluation.Succeeded.ShouldBeFalse();
+        evaluation.ReasonCode.ShouldBe(WorkloadAuthenticationReasons.CallerAmbiguous);
+        evaluation.Principal.ShouldBeNull();
+    }
+
+    /// <summary>An explicit JWT algorithm-validation failure retains its bounded reason code.</summary>
+    [Fact]
+    public void WorkloadEvaluator_ClassifiesInvalidAlgorithms()
+        => WorkloadAssertionEvaluator.ClassifyFailure(new SecurityTokenInvalidAlgorithmException())
+            .ShouldBe(WorkloadAuthenticationReasons.AlgorithmInvalid);
+
     private static async Task<WebApplication> StartAsync(
         string environmentName = "Development",
         Dictionary<string, string?>? settings = null,
@@ -883,6 +1095,7 @@ public sealed partial class DomainServiceTrustBoundaryTests
 
         _ = builder.Configuration.AddInMemoryCollection(configuration);
         builder.Logging.ClearProviders();
+        builder.Logging.AddFilter(typeof(DomainServiceAdministratorAssertions).FullName, LogLevel.Debug);
         if (logs is not null)
         {
             _ = builder.Logging.AddProvider(logs);
@@ -978,7 +1191,9 @@ public sealed partial class DomainServiceTrustBoundaryTests
         DateTime? issuedAt = null,
         TimeSpan? lifetime = null,
         string? signingKey = null,
-        IReadOnlyDictionary<string, object>? extraClaims = null)
+        IReadOnlyDictionary<string, object>? extraClaims = null,
+        DateTime? notBefore = null,
+        string algorithm = SecurityAlgorithms.HmacSha256)
     {
         DateTime issued = issuedAt ?? DateTime.UtcNow;
         var claims = new Dictionary<string, object>(StringComparer.Ordinal)
@@ -998,12 +1213,12 @@ public sealed partial class DomainServiceTrustBoundaryTests
             Issuer = Issuer,
             Audience = audience,
             IssuedAt = issued,
-            NotBefore = issued,
+            NotBefore = notBefore ?? issued,
             Expires = issued.Add(lifetime ?? TimeSpan.FromMinutes(2)),
             Claims = claims,
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey ?? SigningKey)),
-                SecurityAlgorithms.HmacSha256),
+                algorithm),
         };
         return new JsonWebTokenHandler { SetDefaultTimesOnTokenCreation = false }.CreateToken(descriptor);
     }
@@ -1056,12 +1271,18 @@ public sealed partial class DomainServiceTrustBoundaryTests
             => Task.FromResult(verify(claim));
     }
 
-    private sealed class UnavailableConfigurationManager : IConfigurationManager<OpenIdConnectConfiguration>
+    private sealed class UnavailableConfigurationManager : BaseConfigurationManager, IConfigurationManager<OpenIdConnectConfiguration>
     {
+        /// <inheritdoc />
         public Task<OpenIdConnectConfiguration> GetConfigurationAsync(CancellationToken cancel)
             => throw new InvalidOperationException("IDX20803: Unable to obtain configuration.");
 
-        public void RequestRefresh()
+        /// <inheritdoc />
+        public override Task<BaseConfiguration> GetBaseConfigurationAsync(CancellationToken cancel)
+            => throw new InvalidOperationException("IDX20803: Unable to obtain configuration.");
+
+        /// <inheritdoc />
+        public override void RequestRefresh()
         {
         }
     }
@@ -1069,16 +1290,20 @@ public sealed partial class DomainServiceTrustBoundaryTests
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {
         private readonly ConcurrentQueue<string> _messages = new();
+        private readonly ConcurrentQueue<(EventId EventId, LogLevel Level, string Message, string? TraceId)> _entries = new();
+
+        /// <summary>Gets emitted event metadata and the active trace identifier at logging time.</summary>
+        public IReadOnlyCollection<(EventId EventId, LogLevel Level, string Message, string? TraceId)> Entries => [.. _entries];
 
         public IReadOnlyCollection<string> Messages => [.. _messages];
 
-        public ILogger CreateLogger(string categoryName) => new CapturingLogger(_messages);
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(_messages, _entries);
 
         public void Dispose()
         {
         }
 
-        private sealed class CapturingLogger(ConcurrentQueue<string> messages) : ILogger
+        private sealed class CapturingLogger(ConcurrentQueue<string> messages, ConcurrentQueue<(EventId EventId, LogLevel Level, string Message, string? TraceId)> entries) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state)
                 where TState : notnull
@@ -1087,7 +1312,11 @@ public sealed partial class DomainServiceTrustBoundaryTests
             public bool IsEnabled(LogLevel logLevel) => true;
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-                => messages.Enqueue(formatter(state, exception) + (exception is null ? string.Empty : " | " + exception));
+            {
+                string message = formatter(state, exception) + (exception is null ? string.Empty : " | " + exception);
+                messages.Enqueue(message);
+                entries.Enqueue((eventId, logLevel, message, Activity.Current?.TraceId.ToString()));
+            }
         }
     }
 }

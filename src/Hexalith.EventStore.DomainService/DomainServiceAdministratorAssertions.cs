@@ -54,17 +54,19 @@ public static partial class DomainServiceAdministratorAssertions
             }
         }
 
-        bool verified = asserted && await VerifyAsync(
-            serviceProvider,
-            new DomainServiceAdministratorClaim(command.TenantId, command.Domain, command.UserId, command.CorrelationId),
-            cancellationToken).ConfigureAwait(false);
+        (bool verified, bool hasVerifier) = asserted
+            ? await VerifyAsync(
+                serviceProvider,
+                new DomainServiceAdministratorClaim(command.TenantId, command.Domain, command.UserId, command.CorrelationId),
+                cancellationToken).ConfigureAwait(false)
+            : (false, false);
         if (verified)
         {
             rebuilt[GlobalAdminExtensionKey] = "true";
         }
         else if (asserted)
         {
-            LogAssertionRemoved(GetLogger(serviceProvider), command.Domain, command.CommandType, command.CorrelationId);
+            LogAssertionRemoved(GetLogger(serviceProvider), hasVerifier ? LogLevel.Warning : LogLevel.Debug, command.Domain, command.CommandType, command.CorrelationId);
         }
 
         return request with { Command = command with { Extensions = rebuilt.Count > 0 ? rebuilt : null } };
@@ -89,7 +91,7 @@ public static partial class DomainServiceAdministratorAssertions
             return query;
         }
 
-        bool verified = await VerifyAsync(
+        (bool verified, bool hasVerifier) = await VerifyAsync(
             serviceProvider,
             new DomainServiceAdministratorClaim(query.TenantId, query.Domain, query.UserId, query.CorrelationId),
             cancellationToken).ConfigureAwait(false);
@@ -98,11 +100,11 @@ public static partial class DomainServiceAdministratorAssertions
             return query;
         }
 
-        LogAssertionRemoved(GetLogger(serviceProvider), query.Domain, query.QueryType, query.CorrelationId);
+        LogAssertionRemoved(GetLogger(serviceProvider), hasVerifier ? LogLevel.Warning : LogLevel.Debug, query.Domain, query.QueryType, query.CorrelationId);
         return query with { IsGlobalAdmin = false };
     }
 
-    private static async Task<bool> VerifyAsync(
+    private static async Task<(bool Verified, bool HasVerifier)> VerifyAsync(
         IServiceProvider serviceProvider,
         DomainServiceAdministratorClaim claim,
         CancellationToken cancellationToken)
@@ -110,7 +112,7 @@ public static partial class DomainServiceAdministratorAssertions
         IDomainServiceAdministratorVerifier[] verifiers = [.. serviceProvider.GetServices<IDomainServiceAdministratorVerifier>()];
         if (verifiers.Length == 0 || string.IsNullOrWhiteSpace(claim.UserId))
         {
-            return false;
+            return (false, verifiers.Length > 0);
         }
 
         foreach (IDomainServiceAdministratorVerifier verifier in verifiers)
@@ -130,11 +132,11 @@ public static partial class DomainServiceAdministratorAssertions
 
             if (!confirmed)
             {
-                return false;
+                return (false, true);
             }
         }
 
-        return true;
+        return (true, true);
     }
 
     /// <summary>
@@ -160,7 +162,6 @@ public static partial class DomainServiceAdministratorAssertions
 
     [LoggerMessage(
         EventId = 5521,
-        Level = LogLevel.Warning,
         Message = "Unverified administrator assertion removed at the domain-service boundary: SecurityEvent=WireAdminAssertionRemoved, Domain={Domain}, MessageType={MessageType}, CorrelationId={CorrelationId}")]
-    private static partial void LogAssertionRemoved(ILogger logger, string domain, string messageType, string correlationId);
+    private static partial void LogAssertionRemoved(ILogger logger, LogLevel level, string domain, string messageType, string correlationId);
 }

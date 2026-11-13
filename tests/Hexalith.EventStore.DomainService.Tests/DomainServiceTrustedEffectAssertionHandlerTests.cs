@@ -3,10 +3,12 @@ using System.Security.Cryptography;
 
 using Hexalith.EventStore.Client.Effects;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.DomainService.Tests.Fixtures;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.JsonWebTokens;
 
 using NSubstitute;
@@ -85,16 +87,27 @@ public sealed class DomainServiceTrustedEffectAssertionHandlerTests
     public async Task SubmitterClient_WithoutIssuableAssertion_SendsNoCredential()
     {
         var capture = new CapturingHandler();
-        await using ServiceProvider services = BuildDomainService(capture, environmentName: Environments.Production);
+        var logs = new ReminderDiagnosticLogger<DomainServiceTrustedEffectAssertionHandler>();
+        await using ServiceProvider services = BuildDomainService(capture, environmentName: Environments.Production, logger: logs);
         HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ITrustedEffectSubmitter));
 
-        using HttpResponseMessage response = await client.PostAsync(HttpTrustedEffectSubmitter.Route, new StringContent("{}"), TestContext.Current.CancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, HttpTrustedEffectSubmitter.Route)
+        {
+            Content = new StringContent("{}"),
+        };
+        request.Headers.Add("Authorization", "Bearer " + Convert.ToHexString(RandomNumberGenerator.GetBytes(12)));
+        request.Headers.Add(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName, "caller-supplied-assertion");
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         capture.Assertions.ShouldBeEmpty();
         capture.Authorization.ShouldBeNull();
+        var warning = logs.Entries.Where(static entry => entry.EventId.Id == 5542).ShouldHaveSingleItem();
+        warning.Level.ShouldBe(LogLevel.Warning);
+        warning.Message.ShouldContain("without a workload assertion");
     }
 
-    private static ServiceProvider BuildDomainService(CapturingHandler capture, string environmentName = "Development")
+    private static ServiceProvider BuildDomainService(CapturingHandler capture, string environmentName = "Development",
+        ReminderDiagnosticLogger<DomainServiceTrustedEffectAssertionHandler>? logger = null)
     {
         var settings = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -107,6 +120,7 @@ public sealed class DomainServiceTrustedEffectAssertionHandlerTests
         };
         var services = new ServiceCollection();
         _ = services.AddLogging();
+        if (logger is not null) _ = services.AddSingleton<ILogger<DomainServiceTrustedEffectAssertionHandler>>(logger);
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         _ = services.AddSingleton(configuration);
         IHostEnvironment environment = Substitute.For<IHostEnvironment>();

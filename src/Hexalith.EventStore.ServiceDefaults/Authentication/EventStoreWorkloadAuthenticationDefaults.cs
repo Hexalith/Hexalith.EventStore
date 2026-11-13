@@ -12,8 +12,8 @@ namespace Hexalith.EventStore.ServiceDefaults.Authentication;
 /// identity or grants.
 /// </para>
 /// <para>
-/// The authenticated principal carries only the workload identity and its granted operations. It never carries
-/// tenant, domain, permission, or global-administrator claims.
+/// The authenticated principal carries the workload identity, granted operations, and signed resource bindings.
+/// It never carries tenant grants (<c>eventstore:tenant</c>), domain grants, permissions, or global-administrator claims.
 /// </para>
 /// </remarks>
 public static class EventStoreWorkloadAuthenticationDefaults
@@ -51,9 +51,6 @@ public static class EventStoreWorkloadAuthenticationDefaults
     /// <summary>Gets the claim type recording an authenticated sidecar channel.</summary>
     public const string ChannelClaimType = "eventstore:channel";
 
-    /// <summary>Gets the legacy caller-attribution claim kept for existing consumers; derived only from the assertion.</summary>
-    public const string LegacyCallerClaimType = "dapr_caller_app_id";
-
     /// <summary>Gets the header a Dapr sidecar uses to attribute the calling application.</summary>
     public const string DaprCallerHeaderName = "dapr-caller-app-id";
 
@@ -75,7 +72,7 @@ public static class EventStoreWorkloadAuthenticationDefaults
     /// <summary>Gets the claim binding an assertion to one pub/sub topic.</summary>
     public const string TopicBindingClaimType = BindingClaimPrefix + "topic";
 
-    /// <summary>Gets the maximum accepted assertion size in UTF-8 characters.</summary>
+    /// <summary>Gets the maximum accepted assertion length in UTF-16 code units, also used as the JWT byte-size limit.</summary>
     public const int MaximumAssertionLength = 16_384;
 
     /// <summary>

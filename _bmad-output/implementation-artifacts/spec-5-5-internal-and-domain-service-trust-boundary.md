@@ -4,6 +4,8 @@ type: 'feature'
 created: '2026-09-22'
 status: 'in-progress'
 baseline_commit: '253980f9eb63cc5a7d96be7c8676197e78f39d67'
+resume_commit: '69b244d9cfb0e5fc077e324fe9c2a9cae7d026dc'
+workflow_checkpoint: 'step-04-review-pending'
 route: 'dispatch'
 review_loop_iteration: 1
 context:
@@ -96,49 +98,49 @@ Post-build code review, 2026-11-01. The review covers the implementation commits
 
 #### Group A — shared ServiceDefaults credential layer (issuer, evaluator, channel token, JwtBearer events, telemetry) and issuer/authority tests
 
-- [ ] [Review][Patch] Authority-mode metadata outage is misreported as a 401 `signature-invalid` instead of a 503 `verifier-unavailable` [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadJwtBearerEvents.cs:24]
+- [x] [Review][Patch] Authority-mode metadata outage is misreported as a 401 `signature-invalid` instead of a 503 `verifier-unavailable` [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadJwtBearerEvents.cs:24]
   - `ConfigurationManager<OpenIdConnectConfiguration>` derives from `BaseConfigurationManager`, so JwtBearer hands it to Wilson. Wilson 8.23 logs IDX10261 ("Proceeding with token validation") and validates with no signing keys. The result is a `SecurityTokenSignatureKeyNotFoundException`, which `ClassifyFailure` maps to `signature-invalid`.
   - `WorkloadAssertionValidator` prefetches the configuration and returns `VerifierUnavailable`, so the two paths disagree.
   - The fix: prefetch `context.Options.ConfigurationManager` in `MessageReceived` and fail with `VerifierUnavailable` when that throws.
   - The 503 test passes only because its fixture is low-fidelity. `UnavailableConfigurationManager` (`tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs:1024`) implements only `IConfigurationManager<>` and so takes JwtBearer's fallback branch. Make it a `BaseConfigurationManager`.
-- [ ] [Review][Patch] Trusted-effect submitters start healthy in authority mode without workload client credentials, then every submission fails with 401 at runtime [src/Hexalith.EventStore.DomainService/EventStoreTrustedEffectSubmissionExtensions.cs:35]
+- [x] [Review][Patch] Trusted-effect submitters start healthy in authority mode without workload client credentials, then every submission fails with 401 at runtime [src/Hexalith.EventStore.DomainService/EventStoreTrustedEffectSubmissionExtensions.cs:35]
   - This is the same failure class P-5 fixed for EventStore.
   - Fix: call `RequireEventStoreWorkloadIssuerClientCredentials()` from `AddEventStoreTrustedEffectWorkloadAssertion`.
-- [ ] [Review][Patch] Two `AuthorityContract_FailsClosed` cases, `missing-secret` and `insecure-endpoint`, pass by construction [tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs:395]
+- [x] [Review][Patch] Two `AuthorityContract_FailsClosed` cases, `missing-secret` and `insecure-endpoint`, pass by construction [tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs:395]
   - The baseline endpoint returns the opaque `authority-token`, which `GetTokenScopeFailure` always rejects.
   - So deleting the `HasClientCredentials` guard or the HTTPS endpoint guard leaves the test green.
   - Fix: use `ScopedWorkloadTokenEndpoint` as the baseline and assert `Calls == 0` for both cases.
-- [ ] [Review][Patch] The evaluator's future-`iat` guard (`assertion-not-yet-valid`) has no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:47]
+- [x] [Review][Patch] The evaluator's future-`iat` guard (`assertion-not-yet-valid`) has no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:47]
   - Without the guard, a future `iat` slips past the `exp - iat` lifetime bound.
   - Add a row with `nbf <= now` and `iat = now+1h` to `DomainServiceTrustBoundaryTests.InvalidCredential_IsDeniedBeforeDomainWork` and to the `DaprInternalAuthenticationHandlerTests` denial theory.
-- [ ] [Review][Patch] The receiver's `MaximumLifetimeSeconds` cap (1–900) and the `verifier-unconfigured` denial have no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs:60]
+- [x] [Review][Patch] The receiver's `MaximumLifetimeSeconds` cap (1–900) and the `verifier-unconfigured` denial have no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs:60]
   - Test that 3600 fails startup in Production.
   - Test that in Development, 3600 makes a valid assertion get 401 `verifier-unconfigured`.
-- [ ] [Review][Patch] Correlation-ID bounding in denial logs is never tested with a bad header [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationTelemetry.cs:73]
+- [x] [Review][Patch] Correlation-ID bounding in denial logs is never tested with a bad header [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationTelemetry.cs:73]
   - Send an oversized `X-Correlation-ID`, or one containing `,`/`=`. Assert that the trace id is logged instead.
-- [ ] [Review][Patch] The symmetric issuer's lifetime clamp has no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs:176]
+- [x] [Review][Patch] The symmetric issuer's lifetime clamp has no test [src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs:176]
   - The existing assertion passes with the default 120 s.
   - Make it a theory over `LifetimeSeconds` 3600 → 300 and 0 → 1.
-- [ ] [Review][Patch] The blank-scope-prefix startup rule has no test row [src/Hexalith.EventStore.ServiceDefaults/Authentication/ValidateWorkloadAssertionIssuerOptions.cs:36]
+- [x] [Review][Patch] The blank-scope-prefix startup rule has no test row [src/Hexalith.EventStore.ServiceDefaults/Authentication/ValidateWorkloadAssertionIssuerOptions.cs:36]
   - Add `authority-blank-audience-prefix` and `authority-blank-operation-prefix` rows, each expected to fail.
-- [ ] [Review][Patch] Several fail-closed evaluator branches have no test: `caller-ambiguous`, `binding-ambiguous`, `operation-missing` and `algorithm-invalid` [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:65]
+- [x] [Review][Patch] Several fail-closed evaluator branches have no test: `caller-ambiguous`, `binding-ambiguous`, `operation-missing` and `algorithm-invalid` [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:65]
   - Add rows to the existing denial theory.
-- [ ] [Review][Patch] The rebuilt workload principal still carries the legacy `dapr_caller_app_id` claim [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:111]
+- [x] [Review][Patch] The rebuilt workload principal still carries the legacy `dapr_caller_app_id` claim [src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs:111]
   - Nothing in `src` or Tenants reads it, and KEEP 1 says the principal holds nothing else.
   - Remove the claim and the `LegacyCallerClaimType` constant.
-- [ ] [Review][Patch] A configured `APP_API_TOKEN` with leading or trailing whitespace never matches [src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprAppChannelToken.cs:70]
+- [x] [Review][Patch] A configured `APP_API_TOKEN` with leading or trailing whitespace never matches [src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprAppChannelToken.cs:70]
   - Kestrel trims optional whitespace from header values, but the expected value is compared untrimmed.
   - Compare against the trimmed configured value.
-- [ ] [Review][Patch] `EventStoreHost_InAuthorityModeWithoutWorkloadClient_FailsStartup` depends on the environment [tests/Hexalith.EventStore.Server.Tests/Authentication/ProductionAuthorityAuthenticationTests.cs:67]
+- [x] [Review][Patch] `EventStoreHost_InAuthorityModeWithoutWorkloadClient_FailsStartup` depends on the environment [tests/Hexalith.EventStore.Server.Tests/Authentication/ProductionAuthorityAuthenticationTests.cs:67]
   - It uses `Remove` instead of a `null` override, so an ambient `Authentication__WorkloadIssuer__*` value leaks through.
   - It also accepts any `Exception`.
   - Override with `null` and assert an `OptionsValidationException` in the exception chain.
-- [ ] [Review][Patch] `ScopedWorkloadTokenEndpoint` hides unknown-operation scopes [tests/Hexalith.EventStore.Server.Tests/TestUtilities/ScopedWorkloadTokenEndpoint.cs:148]
+- [x] [Review][Patch] `ScopedWorkloadTokenEndpoint` hides unknown-operation scopes [tests/Hexalith.EventStore.Server.Tests/TestUtilities/ScopedWorkloadTokenEndpoint.cs:148]
   - `KnownOperations.Single(...)` throws inside the handler, and the issuer swallows that as `token-endpoint-unavailable`, so a test expecting `null` passes for the wrong reason.
   - Return 400 for an unknown scope.
-- [ ] [Review][Patch] The principal remark says workload principals "never carry tenant … claims", but signed `eventstore:bound-tenant` bindings are copied onto them [src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs:15]
+- [x] [Review][Patch] The principal remark says workload principals "never carry tenant … claims", but signed `eventstore:bound-tenant` bindings are copied onto them [src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs:15]
   - Reword the remark: no tenant grants (`eventstore:tenant`); only signed resource bindings.
-- [ ] [Review][Patch] The `MaximumAssertionLength` doc says "UTF-8 characters", but the code compares UTF-16 `string.Length` and uses the value as `MaximumTokenSizeInBytes` [src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs:78]
+- [x] [Review][Patch] The `MaximumAssertionLength` doc says "UTF-8 characters", but the code compares UTF-16 `string.Length` and uses the value as `MaximumTokenSizeInBytes` [src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs:78]
 
 **Rejected (Group A):**
 
@@ -175,38 +177,38 @@ Post-build code review, 2026-11-01. The review covers the implementation commits
 - [x] [Review][Defer] The Tier-3 projection-fault probe has been unauthenticated since this story [tests/Hexalith.EventStore.IntegrationTests/ContractTests/ProjectionMalformedResponseE2ETests.cs:35] — deferred: owner decision 2026-11-01, folded into the existing Aspire-in-CI follow-up. Tier-3 is not gated in CI. Recorded in `deferred-work.md`.
   - `ProjectionMalformedResponseE2ETests` sends `POST /project` straight to `sample` with no `dapr-api-token` and no workload assertion. It now gets 401 and fails at its first assertion whenever Tier-3 runs.
   - The R1/R2 triage logs never recorded this failure.
-- [ ] [Review][Patch] Domains with no administrator verifier log Warning 5521 `SecurityEvent=WireAdminAssertionRemoved` on every legitimate global-admin request [src/Hexalith.EventStore.DomainService/DomainServiceAdministratorAssertions.cs:111]
+- [x] [Review][Patch] Domains with no administrator verifier log Warning 5521 `SecurityEvent=WireAdminAssertionRemoved` on every legitimate global-admin request [src/Hexalith.EventStore.DomainService/DomainServiceAdministratorAssertions.cs:111]
   - The gateway adds `actor:globalAdmin` / `IsGlobalAdmin` for every human global administrator, whatever the target domain (`CommandsController.cs:263`, `QueriesController.cs:332`).
   - Only Tenants registers a verifier, so Sample, Parties and other domains raise a false security event on every request, which buries real forgery signals.
   - Fix: log at Warning only when a registered verifier refuses; with no verifier, strip the flag at Debug.
-- [ ] [Review][Patch] The sample fails startup whenever `EventStore:SampleFaults:MalformedProjectResponse=true` [samples/Hexalith.EventStore.Sample/Program.cs:44]
+- [x] [Review][Patch] The sample fails startup whenever `EventStore:SampleFaults:MalformedProjectResponse=true` [samples/Hexalith.EventStore.Sample/Program.cs:44]
   - `GET /faults/project-hit-count` has no explicit policy. Its comment relies on a fallback policy that no longer exists: at HEAD the inventory requires an explicit policy on every non-probe endpoint.
   - That flag is exactly what `AspireProjectionFaultTestFixture` sets.
   - Fix: add `.RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload)`, as the comment intends.
-- [ ] [Review][Patch] The inventory classifies sidecar routes before checking the catalog [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceEndpointInventory.cs:55]
+- [x] [Review][Patch] The inventory classifies sidecar routes before checking the catalog [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceEndpointInventory.cs:55]
   - A canonical route that also carries `ITopicMetadata` passes with only the sidecar-channel policy, and any mesh peer can satisfy that policy (D-2).
   - Fix: run the catalog check first.
-- [ ] [Review][Patch] A stale `InternalsVisibleTo Include="Hexalith.EventStore.Testing.Integration"` remains [src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj:25]
+- [x] [Review][Patch] A stale `InternalsVisibleTo Include="Hexalith.EventStore.Testing.Integration"` remains [src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj:25]
   - Since `06c967cf9`, the harness uses no DomainService internals. Remove the grant.
-- [ ] [Review][Patch] Development credential warning 5531 logs only `{FailureCount}` [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityStartupValidator.cs:85]
+- [x] [Review][Patch] Development credential warning 5531 logs only `{FailureCount}` [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityStartupValidator.cs:85]
   - Log the failure messages instead. They are secret-free; the non-Development exception text already includes them.
-- [ ] [Review][Patch] `SubmitterClient_WithoutIssuableAssertion_SendsNoCredential` cannot detect a credential leak [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustedEffectAssertionHandlerTests.cs]
+- [x] [Review][Patch] `SubmitterClient_WithoutIssuableAssertion_SendsNoCredential` cannot detect a credential leak [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustedEffectAssertionHandlerTests.cs]
   - It sends no forwarded `Authorization` and no caller-supplied assertion, so a handler that forwarded either on the issuer-unavailable path would still pass.
   - Add both headers, as the happy-path test does, and assert that the 5542 warning is logged.
-- [ ] [Review][Patch] Only the channel-token branch of the startup validator is tested [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityStartupValidator.cs:59]
+- [x] [Review][Patch] Only the channel-token branch of the startup validator is tested [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityStartupValidator.cs:59]
   - Add a theory next to `ProductionWithoutChannelToken_FailsStartup` with three cases:
     - Production with an invalid `Authentication:JwtBearer` throws and names the section.
     - Production with `Authentication:Workload:MaximumLifetimeSeconds=0` throws.
     - Development without `APP_API_TOKEN` starts, logs 5531, and protected routes still return 401.
-- [ ] [Review][Patch] A verifier timeout that maps to the bounded 503 has no test [src/Hexalith.EventStore.DomainService/DomainServiceAdministratorAssertions.cs:123]
+- [x] [Review][Patch] A verifier timeout that maps to the bounded 503 has no test [src/Hexalith.EventStore.DomainService/DomainServiceAdministratorAssertions.cs:123]
   - Add a variant to the P-4 test where the verifier throws `TaskCanceledException` while the request token is not cancelled. Expect 503 with `administrator-verifier-unavailable`, the correlation id, and no domain work.
-- [ ] [Review][Patch] Sidecar-channel admission is only checked as "not 401" [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs:548]
+- [x] [Review][Patch] Sidecar-channel admission is only checked as "not 401" [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs:548]
   - A 403 on every sidecar delivery would still pass. No tokened `GET /dapr/subscribe` is sent, and no real-pipeline request reaches SDK actor routes.
   - Fix:
     - Assert `ShouldNotBeOneOf(Unauthorized, Forbidden)`.
     - Add a tokened discovery request that expects 200.
     - Add a tokened and an untokened `/dapr/config` request.
-- [ ] [Review][Patch] The 5521 forged-admin log line is never asserted [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs:175]
+- [x] [Review][Patch] The 5521 forged-admin log line is never asserted [tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.cs:175]
   - Pass `CapturingLoggerProvider` into `WireAdministratorFlag_IsHonoredOnlyAfterCurrentVerification` and `QueryAdministratorHint_IsClearedUnlessVerified`.
   - Assert one line for `deny` and none for `allow`. Set the `none` expectation according to the 5521 log-level patch above.
 - Note for the Group A legacy-claim patch: `WorkloadPrincipal_IsRebuiltMinimal` asserts that `LegacyCallerClaimType` is present, so that test must change along with the code.
@@ -513,3 +515,95 @@ Every internal caller is a workload with its own assertion. That includes EventS
 - `dotnet build Hexalith.EventStore.slnx --configuration Release` — expected: succeeds without warnings.
 - AppHost.Tests (`AppHostTrustBoundaryModelTests`, `AppHostAuthenticationModelTests`, `AspireSecurityResourceNamingTests`) and QueryRouting.Tests — expected: pass.
 - Tenants, from `references/Hexalith.Tenants`: `dotnet build tests/<Project>/<Project>.csproj -c Debug -p:UseHexalithProjectReferences=true`, then run Tenants.Server.Tests and the IntegrationTests classes `CommandApiRuntimeIntegrationTests` and `DomainServiceEndpointsTests`. Expected: pass, apart from the pre-existing reserved-extension test listed in the Spec Change Log.
+
+
+### Resumed implementation verification — 2026-11-13
+
+Starting revision: `69b244d9cfb0e5fc077e324fe9c2a9cae7d026dc`. The original
+`baseline_commit` is preserved. All 25 pending Group A/B patches are implemented;
+Groups C/D remain unchanged. No submodule content was changed.
+
+- `aspire start`, `aspire wait security --timeout 30`, and `aspire describe`, each
+  targeting `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`
+  with `--non-interactive`: healthy baseline, including Keycloak. `aspire stop`
+  against the same target completed before builds.
+- `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1`: passed,
+  zero warnings/errors. Current test assemblies target `net11.0`.
+- Debug source-reference builds use `-p:UseHexalithProjectReferences=true -m:1`.
+  Run each built test assembly directly with `dotnet <assembly>`, using single-dash
+  `-class` filters for focused classes. DomainService full suite: 1,402 passed,
+  one existing live-sidecar skip; final boundary classes: 115/115 in both Debug
+  and Release. Server focused authentication/issuer/callback/outbound classes:
+  201/201 in both configurations. Release AppHost security model classes: 17/17;
+  QueryRouting: 15/15; ServiceDefaults: 157/157; SignalR: 64/64.
+- Full Server suite: 8,075 passed, 25 skipped, one fixture checksum failure.
+  That failure reproduced at the starting revision before compatibility code ran.
+  A fresh isolated restore of the same pinned `Hexalith.Tenants.Contracts` 7.0.0
+  from the configured nuget.org feed matched the pinned SHA-256
+  `e21f5ac7b5f332f1921f70a249ab2032b9978d56ffdd6641a0a4b94d04850bdc`;
+  the shared-cache and original test-output archive instead hashed to
+  `81a33bb7562507004d4dfb8da2365cdea1fb874ff53798787bff110c0d9573ef`.
+  Materializing the clean fixture through the existing
+  `CopyPublishedTenantQuerySelectorFixture` target made all 3 fixture-class tests
+  pass. No tracked pin or shared cache was changed. A normal rebuild can copy
+  the stale shared-cache fixture again; use an isolated same-version restore.
+- Actual Sample startup with `EventStore:SampleFaults:MalformedProjectResponse=true`:
+  `/alive` returned 200, anonymous `/faults/project-hit-count` returned 401.
+- Tenants source-reference Server build: zero warnings/errors; full suite:
+  1,875/1,875. Ordinary integration command, from `references/Hexalith.Tenants`,
+  `dotnet build tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj -c Debug -p:UseHexalithProjectReferences=true -m:1`,
+  remains blocked before tests by CS0618 in generated
+  `Hexalith.Tenants.UI.Composition.CreateTenantCommand.CommandForm.g.razor.cs(550,68)`:
+  `'EditContext.Validate()' is obsolete: 'Validate is obsolete. Use ValidateAsync instead.'`
+  The gate was preserved. An isolated project importing the owning build/package
+  configuration and linking the original backend tests and their 26-file source
+  closure built without warnings/errors; `CommandApiRuntimeIntegrationTests`
+  and `DomainServiceEndpointsTests` passed 200/200. No warning suppression,
+  dependency updates, or Tenants edits were used.
+
+Matrix audit against passing Release suites:
+
+| Approved matrix row | Executed coverage |
+| --- | --- |
+| Internal invocation | `ValidWorkloadAssertion_ProcessesTheCommand`, `WorkloadPrincipal_IsRebuiltMinimal`, issuer scoped-token tests |
+| Header forgery | DomainService and gateway invalid-credential theories; administrator rebuild and verifier-timeout tests assert zero domain work |
+| Route override | `HostOverrides_MustCarryTheSdkPolicy`, `TopicMarkedCanonicalOverride_StillRequiresTheCatalogOperationPolicy`, inventory/startup tests |
+| Projection callback | `CrossProcessPath_UnprovenCallback_LeavesFreshnessUnchanged`, verifier-unavailable case, both real-publisher round trips |
+
+The Keycloak AppHost baseline establishes resource health, not a new live
+workload-scope exchange or topology-parity qualification. Previously recorded
+deferrals remain in force.
+
+
+### Saved checkpoint — 2026-11-13
+
+Stopped at the user's explicit request. Implementation and matrix verification
+are complete; independent Step 4 review has **not started**. Keep story and
+sprint status `in-progress` until the remaining workflow is completed.
+
+Resume at the rendered `step-04-review.md` under
+`_bmad/render/bmad-build/eventstore-5ec6a32020fe/70d85eb25b5f587c9387/`.
+Use the current files and the preserved original baseline; do not reimplement
+completed tasks. This run started at
+`69b244d9cfb0e5fc077e324fe9c2a9cae7d026dc` and changed 17 implementation/test
+files plus this spec. No commits, staging, pushes, or submodule edits were made.
+
+The full original-baseline diff was saved at
+`/tmp/bmad-5-5-diff-audit-8dy9lob8/baseline-to-working-tree.diff`
+(238,302,404 bytes; SHA-256
+`2eac6e8943ebcf67dac336eee022b9c72efc486a934e11a0fd974d25a94bbfa7`).
+It includes months of unrelated history. The separate current-run diff is
+`/tmp/bmad-5-5-diff-audit-8dy9lob8/current-run.diff`. These snapshots precede this
+checkpoint and must be regenerated before review. Use `--submodule=short` when
+creating the full diff; the default submodule history rendering encounters an
+unavailable historical submodule object. Do not fetch or initialize nested
+submodules to render it.
+
+Detailed commands and results remain at `/tmp/story-5-5-validation-report.md`;
+the durable summary and matrix mapping are immediately above. The temporary
+focused Tenants runner is
+`/tmp/story-5-5-tenants-focused-vjujk3cc/Hexalith.Tenants.IntegrationTests.csproj`,
+with its original-source closure in `source-manifest.txt`. Preserve the ordinary
+Tenants integration CS0618 blocker and the shared-cache fixture caveat when
+reporting verification. No reviewer agents or owned AppHost processes remain
+running.

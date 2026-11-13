@@ -67,7 +67,7 @@ public static class DaprAppChannelToken
             return DaprAppChannelTokenStatus.Missing;
         }
 
-        byte[] expected = Encoding.UTF8.GetBytes(expectedToken);
+        byte[] expected = Encoding.UTF8.GetBytes(expectedToken.Trim());
         byte[] actual = Encoding.UTF8.GetBytes(header[0]!);
         try
         {

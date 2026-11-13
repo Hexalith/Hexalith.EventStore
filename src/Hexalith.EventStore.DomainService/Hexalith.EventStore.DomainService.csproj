@@ -21,8 +21,6 @@
     <InternalsVisibleTo Include="Hexalith.EventStore.Server" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
-    <!-- The shipped domain-service test harness rebuilds administrator context exactly as the SDK /process does. -->
-    <InternalsVisibleTo Include="Hexalith.EventStore.Testing.Integration" />
   </ItemGroup>
 
   <ItemGroup>

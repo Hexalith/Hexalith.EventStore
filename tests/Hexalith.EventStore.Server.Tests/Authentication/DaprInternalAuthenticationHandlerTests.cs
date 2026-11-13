@@ -347,6 +347,7 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     [InlineData("conflicting-caller-header", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.CallerConflict)]
     [InlineData("wrong-operation", HttpStatusCode.Forbidden, WorkloadAuthenticationReasons.OperationNotGranted)]
     [InlineData("expired", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.AssertionExpired)]
+    [InlineData("future-issued", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.AssertionNotYetValid)]
     [InlineData("long-lived", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.AssertionStale)]
     [InlineData("wrong-key", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.SignatureInvalid)]
     [InlineData("wrong-issuer", HttpStatusCode.Unauthorized, WorkloadAuthenticationReasons.IssuerInvalid)]
@@ -367,6 +368,7 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
             "missing-caller" => WorkloadAssertionTestTokens.Create(Audience, caller: null, [EventStoreWorkloadOperations.TrustedEffect]),
             "wrong-operation" => WorkloadAssertionTestTokens.Create(Audience, AllowedCaller, [EventStoreWorkloadOperations.ProjectionNotify]),
             "expired" => WorkloadAssertionTestTokens.Create(Audience, AllowedCaller, [EventStoreWorkloadOperations.TrustedEffect], issuedAt: DateTime.UtcNow.AddMinutes(-10)),
+            "future-issued" => WorkloadAssertionTestTokens.Create(Audience, AllowedCaller, [EventStoreWorkloadOperations.TrustedEffect], issuedAt: DateTime.UtcNow.AddHours(1), notBefore: DateTime.UtcNow.AddMinutes(-1)),
             "long-lived" => WorkloadAssertionTestTokens.Create(Audience, AllowedCaller, [EventStoreWorkloadOperations.TrustedEffect], lifetime: TimeSpan.FromHours(1)),
             "wrong-key" => WorkloadAssertionTestTokens.Create(Audience, AllowedCaller, [EventStoreWorkloadOperations.TrustedEffect], signingKey: Convert.ToBase64String(new byte[48])),
             "wrong-issuer" => WorkloadAssertionTestTokens.Create(Audience, AllowedCaller, [EventStoreWorkloadOperations.TrustedEffect], issuer: "https://unexpected.example.test"),
@@ -674,6 +676,17 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
         _ = await _factory.Admission.DidNotReceiveWithAnyArgs().AdmitAsync(default!, default!, default);
         _ = await _factory.Proof.DidNotReceiveWithAnyArgs().SignAsync(default!, default);
         _ = await _factory.Router.DidNotReceiveWithAnyArgs().RouteAsync(default!, default!, default!, default);
+    }
+
+    /// <summary>Optional whitespace around a configured channel token is normalized before comparison.</summary>
+    [Fact]
+    public void AppChannelToken_TrimsConfiguredWhitespace()
+    {
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        context.Request.Headers[DaprAppChannelToken.HeaderName] = ChannelToken;
+
+        DaprAppChannelToken.Verify(context.Request, " \t" + ChannelToken + " \t", isDevelopment: false)
+            .ShouldBe(DaprAppChannelTokenStatus.Valid);
     }
 
     private static HttpRequestMessage TrustedEffectRequest(string? assertion, bool includeChannelToken = true)

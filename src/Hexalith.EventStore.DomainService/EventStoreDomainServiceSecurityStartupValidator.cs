@@ -82,7 +82,7 @@ internal sealed partial class EventStoreDomainServiceSecurityStartupValidator(
                 "Domain-service internal credentials are not configured: " + string.Join(" ", failures));
         }
 
-        LogDevelopmentCredentialGap(logger, failures.Count);
+        LogDevelopmentCredentialGap(logger, string.Join(" ", failures));
         return Task.CompletedTask;
     }
 
@@ -104,6 +104,6 @@ internal sealed partial class EventStoreDomainServiceSecurityStartupValidator(
     [LoggerMessage(
         EventId = 5531,
         Level = LogLevel.Warning,
-        Message = "Domain-service internal credential configuration is incomplete in Development ({FailureCount} gap(s)); configure APP_API_TOKEN, Authentication:JwtBearer, and Authentication:Workload before exposing this host. Protected requests the configuration cannot verify are denied.")]
-    private static partial void LogDevelopmentCredentialGap(ILogger logger, int failureCount);
+        Message = "Domain-service internal credential configuration is incomplete in Development: {Failures} Protected requests the configuration cannot verify are denied.")]
+    private static partial void LogDevelopmentCredentialGap(ILogger logger, string failures);
 }

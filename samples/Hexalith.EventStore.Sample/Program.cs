@@ -40,10 +40,10 @@ if (malformedProjectionResponse) {
         return Results.Content("{\"projectionType\":", "application/json");
     }).RequireEventStoreDomainServicePolicy("/project");
 
-    // Not anonymous: the domain-service fallback policy requires an EventStore workload assertion.
+    // The route inventory requires an explicit workload policy on this diagnostic endpoint.
     _ = app.MapGet("/faults/project-hit-count", () => Results.Ok(new {
         Count = Volatile.Read(ref malformedProjectionResponseHitCount),
-    }));
+    })).RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload);
 }
 
 app.UseEventStoreDomainService();

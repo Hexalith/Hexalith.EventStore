@@ -48,6 +48,9 @@ internal sealed class ScopedWorkloadTokenEndpoint(string shape = "exact") : Http
     /// <summary>Gets the requested scope parameters, in request order.</summary>
     public IReadOnlyList<string> Scopes => _scopes;
 
+    /// <summary>Gets the number of token-endpoint calls, including refused scopes.</summary>
+    public int Calls => _scopes.Count;
+
     /// <summary>Gets the raw form bodies, in request order.</summary>
     public IReadOnlyList<string> Bodies => _bodies;
 
@@ -145,7 +148,14 @@ internal sealed class ScopedWorkloadTokenEndpoint(string shape = "exact") : Http
             [WorkloadAssertionIssuerOptions.DefaultAudienceScopePrefix.Length..];
         string operationScope = parts.Single(static part => part.StartsWith(WorkloadAssertionIssuerOptions.DefaultOperationScopePrefix, StringComparison.Ordinal))
             [WorkloadAssertionIssuerOptions.DefaultOperationScopePrefix.Length..];
-        string operation = KnownOperations.Single(candidate => candidate.Replace(':', '.') == operationScope);
+        string? operation = KnownOperations.SingleOrDefault(candidate => candidate.Replace(':', '.') == operationScope);
+        if (operation is null)
+        {
+            return new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent("{\"error\":\"invalid_scope\"}", Encoding.UTF8, "application/json"),
+            };
+        }
         string minted = shape switch
         {
             "extra-audience" => UnsignedToken([audience, audience == "tenants" ? "sample" : "tenants"], operation),

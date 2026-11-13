@@ -66,12 +66,12 @@ public sealed class ProductionAuthorityAuthenticationTests
         };
         if (missing is "client-id" or "both")
         {
-            _ = settings.Remove("Authentication:WorkloadIssuer:ClientId");
+            settings["Authentication:WorkloadIssuer:ClientId"] = null;
         }
 
         if (missing is "client-secret" or "both")
         {
-            _ = settings.Remove("Authentication:WorkloadIssuer:ClientSecret");
+            settings["Authentication:WorkloadIssuer:ClientSecret"] = null;
         }
 
         using WebApplicationFactory<EventStoreProgram> factory = new WebApplicationFactory<EventStoreProgram>()
@@ -83,6 +83,13 @@ public sealed class ProductionAuthorityAuthenticationTests
             });
 
         Exception failure = Should.Throw<Exception>(() => factory.CreateClient());
+        Exception? validationFailure = failure;
+        while (validationFailure is not null && validationFailure is not OptionsValidationException)
+        {
+            validationFailure = validationFailure.InnerException;
+        }
+
+        validationFailure.ShouldBeOfType<OptionsValidationException>();
 
         string message = failure.ToString();
         message.ShouldContain("Authentication:WorkloadIssuer:ClientId");

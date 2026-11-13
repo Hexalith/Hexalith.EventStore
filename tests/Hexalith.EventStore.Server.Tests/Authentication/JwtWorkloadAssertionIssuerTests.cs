@@ -29,10 +29,17 @@ public sealed class JwtWorkloadAssertionIssuerTests
     private const string TokenEndpoint = "https://identity.example.test/realms/hexalith/protocol/openid-connect/token";
 
     /// <summary>In symmetric Development mode the assertion is signed per call with exact audience, operation, and bindings.</summary>
-    [Fact]
-    public async Task SymmetricContract_SignsShortLivedBoundAssertion()
+    /// <param name="lifetimeSeconds">The configured issuer lifetime.</param>
+    /// <param name="expectedSeconds">The clamped signed lifetime.</param>
+    [Theory]
+    [InlineData(120, 120)]
+    [InlineData(3600, 300)]
+    [InlineData(0, 1)]
+    public async Task SymmetricContract_SignsShortLivedBoundAssertion(int lifetimeSeconds, int expectedSeconds)
     {
-        await using ServiceProvider services = Build(Environments.Development, Symmetric(), workload: "eventstore");
+        Dictionary<string, string?> settings = Symmetric();
+        settings["Authentication:WorkloadIssuer:LifetimeSeconds"] = lifetimeSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        await using ServiceProvider services = Build(Environments.Development, settings, workload: "eventstore");
         IWorkloadAssertionIssuer issuer = services.GetRequiredService<IWorkloadAssertionIssuer>();
 
         string? assertion = await issuer.IssueAsync(
@@ -53,7 +60,7 @@ public sealed class JwtWorkloadAssertionIssuerTests
         token.GetClaim("azp").Value.ShouldBe("eventstore");
         token.GetClaim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType).Value.ShouldBe(EventStoreWorkloadOperations.ProjectionNotify);
         token.GetClaim(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType).Value.ShouldBe("acme");
-        (token.ValidTo - token.IssuedAt).ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(JwtWorkloadAssertionIssuer.MaximumSignedLifetimeSeconds));
+        (token.ValidTo - token.IssuedAt).ShouldBe(TimeSpan.FromSeconds(expectedSeconds));
         token.TryGetClaim("global_admin", out _).ShouldBeFalse();
     }
 
@@ -291,6 +298,8 @@ public sealed class JwtWorkloadAssertionIssuerTests
     [InlineData("authority-without-secret", false)]
     [InlineData("authority-without-client-id", false)]
     [InlineData("authority-insecure-endpoint", false)]
+    [InlineData("authority-blank-audience-prefix", false)]
+    [InlineData("authority-blank-operation-prefix", false)]
     [InlineData("symmetric-without-client", true)]
     public void ClientCredentialsRequirement_FailsAuthorityModeWithoutAClient(string mode, bool expectedValid)
     {
@@ -304,6 +313,12 @@ public sealed class JwtWorkloadAssertionIssuerTests
                 break;
             case "authority-without-client-id":
                 settings["Authentication:WorkloadIssuer:ClientId"] = null;
+                break;
+            case "authority-blank-audience-prefix":
+                settings["Authentication:WorkloadIssuer:AudienceScopePrefix"] = "   ";
+                break;
+            case "authority-blank-operation-prefix":
+                settings["Authentication:WorkloadIssuer:OperationScopePrefix"] = "   ";
                 break;
             case "authority-insecure-endpoint":
                 settings["Authentication:WorkloadIssuer:TokenEndpoint"] = "http://identity.example.test/token";
@@ -392,7 +407,8 @@ public sealed class JwtWorkloadAssertionIssuerTests
     public async Task AuthorityContract_FailsClosed(string scenario)
     {
         Dictionary<string, string?> settings = AuthorityWithClient();
-        var tokenEndpoint = new TokenEndpointHandler(HttpStatusCode.OK, "{\"access_token\":\"authority-token\",\"expires_in\":300}");
+        var scopedEndpoint = new ScopedWorkloadTokenEndpoint();
+        HttpMessageHandler tokenEndpoint = scopedEndpoint;
         switch (scenario)
         {
             case "missing-secret":
@@ -416,6 +432,28 @@ public sealed class JwtWorkloadAssertionIssuerTests
             TestContext.Current.CancellationToken);
 
         assertion.ShouldBeNull(scenario);
+        if (scenario is "missing-secret" or "insecure-endpoint")
+        {
+            scopedEndpoint.Calls.ShouldBe(0);
+        }
+    }
+
+    /// <summary>The scoped authority fixture refuses unknown operation scopes as an HTTP error.</summary>
+    [Fact]
+    public async Task ScopedTokenEndpoint_RejectsUnknownOperationScopes()
+    {
+        var endpoint = new ScopedWorkloadTokenEndpoint();
+        using var client = new HttpClient(endpoint);
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["scope"] = "eventstore-audience.sample eventstore-operation.domain-service.unknown",
+        });
+
+        using HttpResponseMessage response = await client.PostAsync(TokenEndpoint, form, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("invalid_scope");
+        endpoint.Calls.ShouldBe(1);
     }
 
     private static Dictionary<string, string?> Symmetric()

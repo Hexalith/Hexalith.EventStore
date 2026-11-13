@@ -32,7 +32,7 @@ public static class EventStoreTrustedEffectSubmissionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(gatewayAudience);
-        _ = builder.Services.AddEventStoreWorkloadAssertionIssuer();
+        _ = builder.Services.AddEventStoreWorkloadAssertionIssuer().RequireEventStoreWorkloadIssuerClientCredentials();
         return builder.AddHttpMessageHandler(serviceProvider =>
             new DomainServiceTrustedEffectAssertionHandler(serviceProvider, gatewayAudience.Trim()));
     }
