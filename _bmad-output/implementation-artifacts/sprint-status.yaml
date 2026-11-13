@@ -141,6 +141,7 @@ development_status:
   # durable-broker qualification for the AD-26 profile; a Story 3.19 issue-step prerequisite.
   # 2026-11-09: EventStore supplies requirements/assertions; Platform owns concrete profile execution; prior 1.19.1 results remain historical.
   3-21-production-dapr-runtime-pin-and-durable-broker-qualification: in-progress
+  # 2026-11-13: Platform candidate-02 run 43386723091 is independently verified 20/24, cleanup credited; four current FAILs and five historical guarantees REJECTED/open. See the parent spec's dated reconciliation: Kafka pressure/rotation and supported RabbitMQ delivery remain dependencies; no successor execution/selection/authority is accepted.
   # requires platform 4.17
   # 2026-10-23: both superseded by spec-evidence-storage-simplification (proof = tests
   # + CI recorded in the story/spec; committed evidence and its machinery removed).
