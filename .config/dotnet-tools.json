@@ -10,14 +10,14 @@
       "rollForward": false
     },
     "hexalith.eventstore.admin.cli": {
-      "version": "4.2.0",
+      "version": "5.0.0",
       "commands": [
         "eventstore-admin"
       ],
       "rollForward": false
     },
     "hexalith.builds.module.cli": {
-      "version": "5.0.1",
+      "version": "5.2.1",
       "commands": [
         "hexalith-module"
       ],

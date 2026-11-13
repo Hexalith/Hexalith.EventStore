@@ -581,7 +581,9 @@ public sealed class ReleasePackageManifestTests
     {
         string root = FindRepositoryRoot();
         string ciJob = ExtractTopLevelWorkflowJobBlock(File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml")), "ci");
-        ciJob.ShouldContain("module-manifest: module/hexalith.module-manifest.v2.json");
+        // Module preparation belongs to the deferred Platform integration and must not
+        // run its qualified-tuple checks in standalone producer CI.
+        ciJob.ShouldNotContain("module-manifest:");
         // The platform-package profile is deferred until Platform qualifies a current
         // EventStore/Tenants cohort; see the Runner-owned package integration lane in docs/ci.md.
         ciJob.ShouldNotContain("integration-test-profiles:");
@@ -594,7 +596,7 @@ public sealed class ReleasePackageManifestTests
 
         using JsonDocument tools = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".config", "dotnet-tools.json")));
         JsonElement tool = tools.RootElement.GetProperty("tools").GetProperty("hexalith.builds.module.cli");
-        tool.GetProperty("version").GetString().ShouldBe("5.0.1");
+        tool.GetProperty("version").GetString().ShouldBe("5.2.1");
         tool.GetProperty("rollForward").GetBoolean().ShouldBeFalse();
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "module", "hexalith.module-manifest.v2.json")));
         JsonElement suite = manifest.RootElement.GetProperty("modules")[0].GetProperty("tests").EnumerateArray()

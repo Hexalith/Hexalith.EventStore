@@ -118,43 +118,66 @@ place for run output.
 
 | Lane | Projects | Workflow behavior |
 |------|----------|-------------------|
-| Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci-v2.yml@567604b616613ba429be0609636d805db776a709` job through `unit-test-projects`. All nineteen previous unit projects and the self-contained AppHost model-test project execute before integration; no AppHost topology is started by these tests. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
+| Deterministic release gate | Contracts, Client, ServiceDefaults, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci.yml@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b` job through `unit-test-projects`. All nineteen previous unit projects and the self-contained AppHost model-test project execute before integration; no AppHost topology is started by these tests. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
 | Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs`, `tools/tests/test_release_publication_authority.py` | Blocking EventStore-owned CI job. It provisions Node 24, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. It also runs the publication-authority regressions against the exact approved Builds publication engine. |
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`, plus `scripts/check-committed-files.sh`, `tools/tests/test_check_committed_files.py` and `tools/tests/test_dapr_broker_qualification.py` | Dedicated `Integration Tests` workflow after `dapr init`; its required `live-sidecar` job first runs the committed-file guard and the two Python suites. This lane is visible but not part of the semantic-release gate. It is not a `dotnet test` of `Server.Tests`. |
 | Payload-protection lifecycle | `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests` | Dedicated `Payload Protection Lifecycle` workflow; isolated processes and digest-pinned PostgreSQL v2 state, persisted assertions and zero skips. The existing `Payload Protection` core workflow runs independently. The project's xUnit `Explicit` `Lane=KubernetesCrypto` cases are reported as not run there; they run only in the manually dispatched `Payload Protection Kubernetes Crypto` workflow with `--explicit only`. |
 | Advisory browser/governance suites | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
-| Runner-owned package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | Deferred: the `platform-package` profile is not run by CI. It composes the published EventStore and Tenants packages selected by the Builds catalog, and Platform admits only its hand-qualified cohorts (EventStore 4.0.4/Tenants 7.0.0, 4.1.0/7.0.2, private 4.1.0 or 4.2.0/7.0.5), so the current EventStore 4.2.0/Tenants 7.0.7 selection refuses with HXP020 before starting resources. Restore the `integration-test-profiles: platform-package` and `integration-test-reference-owners: tenants` inputs once Platform publishes a release that qualifies the current cohort. |
+| Runner-owned package integration | `tests/Hexalith.EventStore.Platform.IntegrationTests` | Deferred: the `platform-package` profile is not run by CI. It composes the published EventStore and Tenants packages selected by the Builds catalog, and Platform admits only its hand-qualified cohorts (EventStore 4.0.4/Tenants 7.0.0, 4.1.0/7.0.2, private 4.1.0 or 4.2.0/7.0.5), so the current EventStore 5.0.0/Tenants 7.0.7 selection remains unqualified. The leftover `module-manifest` preparation input is also omitted: shared `prepare-module-build` enforces the same strict tuple identity before compilation. Restore it only after meeting the [Platform integration restoration requirements](#platform-integration-restoration). |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 | Isolated synthetic sharding | `tests/Hexalith.EventStore.Sharding.Tests` | Deferred CI automation; the operator opt-in Debug lane and its owned `Sharding.TestHost` fixture are documented in `tests/Hexalith.EventStore.Sharding.Tests/README.md`. Synthetic observations do not qualify a production provider profile or release gate. |
 
 The `ci` job calls shared `domain-ci.yml` at the same Builds pin as the
-`domain-ci-v2.yml` it replaced. It runs the same package preparation, build,
-unit and consumer-validation steps, but not v2's mandatory `platform-package`
-integration step, so it passes no registry secrets, inherited secrets, caller
-Dapr overrides or direct integration/AppHost execution inputs. Return to
-`domain-ci-v2.yml` with the `platform-package` profile once Platform qualifies
-the current cohort. Existing independent jobs and consumer/coverage gates remain.
+`domain-ci-v2.yml` it replaced. It retains the standalone Release package build,
+restore prerequisites, unit-test inventory and consumer-validation steps. The
+2026-11-12 owner-approved Platform deferral also omits `module-manifest`, which
+otherwise invokes `prepare-module-build` and fails its strict qualified-tuple
+identity check before compilation. That shared check remains unchanged. CI
+passes no registry secrets, inherited secrets, caller Dapr overrides or direct
+integration/AppHost execution inputs. No Platform tuple qualification is
+claimed; existing independent jobs and consumer/coverage gates remain.
 
-### Current package-test producer selection — 2026-11-06
+### Current standalone producer selection — 2026-11-13
 
-The active package profile records genuine Builds4.44.11 source
+Standalone CI uses `domain-ci.yml@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b`.
+The local tool manifest pins module CLI 5.2.1. The current shared catalog
+selects EventStore 5.0.0/Tenants 7.0.7 for standalone consumers. The
+module manifest retains its declared `platform-package` suite, but CI omits
+both its preparation input and integration profile under the owner-approved
+deferral. These selections grant no Platform tuple qualification.
+
+### Platform integration restoration
+
+Before restoring the lane, bump the Platform gitlink to a published release
+that qualifies the current EventStore/Tenants cohort and its manifest/image
+identities. Align the pinned published module tool and shared catalog identity
+with that release's qualification. Then return to `domain-ci-v2.yml` with
+`module-manifest: module/hexalith.module-manifest.v2.json`,
+`integration-test-profiles: platform-package`,
+`integration-test-reference-owners: tenants` and the two pull-only registry
+secrets, `registry-pull-username` and `registry-pull-password`. Require fresh
+exact-source CI to prove native execution before claiming qualification.
+
+### Historical package-test producer selection — 2026-11-06
+
+The retained package-profile record used genuine Builds4.44.11 source
 `567604b616613ba429be0609636d805db776a709` and Platform source
 `ed991837945571a12743214fc18a87fbd323fc30`. The exact module-tool pin,
-shared CI caller and producer catalog agree. Builds normal release
+shared CI caller and producer catalog agreed at that time. Builds normal release
 [42252030945](https://github.com/Hexalith/Hexalith.Builds/actions/runs/42252030945)
-published the signed tool after its successful source CI. The catalog selects
-EventStore4.1.0 and genuine Tenants7.0.5, whose corrected owner source is
+published the signed tool after its successful source CI. That catalog selected
+EventStore4.1.0 and genuine Tenants7.0.5, whose corrected owner source was
 `d88aef6b52d7e8a2e2d81132b1d76b7e1d1f0f35`.
 
-Platform admits this six-DLL/two-image combination only through its separate
+Platform admitted this six-DLL/two-image combination only through its separate
 private EventStore `platform-package` test purpose and authenticated owner proof.
-The released production model supplies the exact signed Tenants.Server body;
-its current-owner Memories container reuses the actual Dapr endpoint provider.
-Public version selection and full-Parties launch admission remain unchanged.
-The caller retains both declared integration facts, real gateway persistence,
+The released production model supplied the exact signed Tenants.Server body;
+its then-current owner Memories container reused the actual Dapr endpoint provider.
+Public version selection and full-Parties launch admission remained unchanged.
+The caller retained both declared integration facts, real gateway persistence,
 all isolated unit projects, original deadlines and unconditional owned cleanup.
-Fresh exact-source CI must establish native execution; producer/source checks
-alone do not grant it.
+Fresh exact-source CI was still required to establish native execution; these
+historical producer/source checks do not qualify the current selection.
 
 ### Historical package-profile bootstrap
 
