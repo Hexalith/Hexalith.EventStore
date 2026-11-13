@@ -184,6 +184,25 @@ class ConfigurationTests(unittest.TestCase):
             self.assertEqual(run.profile["runtime"]["binarySha256"], receipt["output"])
             self.assertTrue(run.identities["preflightPassed"])
 
+    def testActualProducerKeepsKafkaPressureRecordsBeyondTopicRetention(self):
+        module = producer(); run = module.Run.__new__(module.Run)
+        run.profile = json.loads((ROOT / PLATFORM_PROFILE).read_text()); calls = []
+        run.kafka = lambda script, *arguments, check=True: calls.append((script, *arguments)) or (0, "")
+        run.kafka_topics()
+        created = {call[call.index("--topic") + 1]: [call[position + 1] for position, value in enumerate(call) if value == "--config"]
+                   for call in calls if call[:2] == ("kafka-topics.sh", "--create")}
+        bound = [topic for topic in run.profile["topics"] if topic != "qualification.missing-binding"]
+        self.assertEqual(bound, list(created))
+        for topic in bound:
+            # Only the pressure topic changes; the 60 s fixture retention stays for every other topic.
+            expected = "retention.ms=-1" if topic == "qualification.backpressure" else "retention.ms=60000"
+            self.assertEqual([expected, "segment.ms=1000"], created[topic], topic)
+            self.assertIn(("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read",
+                           "--operation", "Write", "--operation", "Describe", "--topic", topic), calls)
+        self.assertEqual(("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read",
+                          "--group", "qualification-consumer"), calls[-1])
+        self.assertEqual(2 * len(bound) + 1, len(calls))
+
     def testCompleteOriginalPacketDoesNotDependOnCurrentPlatformSourceInventory(self):
         control = historical.CandidatePacketTests(); control.setUp(); self.addCleanup(control.doCleanups)
         import dapr_broker_qualification as contract

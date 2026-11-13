@@ -486,10 +486,16 @@ class Run:
         (self.private / "admin.properties").write_text("\n".join(f"{k}={v}" for k, v in client.items()) + "\n")
 
     def kafka_topics(self):
-        """Create every bound topic and its exact ACLs; the missing-binding topic stays absent."""
+        """Create every bound topic and its exact ACLs; the missing-binding topic stays absent.
+
+        The pressure vector keeps its consumer stopped through eight throttled publishes (up to
+        8 x 12 s) and native offset diagnostics. In candidate-01 attempt 2 a 60 s retention deleted
+        both acknowledged records before the consumer restarted, so that topic never expires by time.
+        """
         for topic in self.profile["topics"]:
             if topic != "qualification.missing-binding":
-                self.kafka("kafka-topics.sh", "--create", "--topic", topic, "--partitions", "1", "--replication-factor", "1", "--config", "retention.ms=60000", "--config", "segment.ms=1000")
+                retention = "retention.ms=-1" if topic == "qualification.backpressure" else "retention.ms=60000"
+                self.kafka("kafka-topics.sh", "--create", "--topic", topic, "--partitions", "1", "--replication-factor", "1", "--config", retention, "--config", "segment.ms=1000")
                 self.kafka("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read", "--operation", "Write", "--operation", "Describe", "--topic", topic)
         self.kafka("kafka-acls.sh", "--add", "--allow-principal", "User:CN=client", "--operation", "Read", "--group", "qualification-consumer")
 
