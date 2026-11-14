@@ -5,6 +5,7 @@ using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
@@ -104,9 +105,87 @@ public class DeadLetterPublisherTests {
             ignoreOrder: true);
         capturedMetadata["cloudevent.type"].ShouldBe("deadletter.command.failed");
         capturedMetadata["cloudevent.source"].ShouldBe("eventstore/test-tenant/test-domain");
-        capturedMetadata["cloudevent.id"].ShouldBe(message.CorrelationId);
+        capturedMetadata["cloudevent.id"].ShouldBe(command.MessageId);
         capturedMetadata["cloudevent.datacontenttype"].ShouldBe("application/json");
         capturedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "deadLetterTopic", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task PublishDeadLetter_SameCorrelationIdDifferentMessageIds_PublishesDistinctCloudEventIds() {
+        // Arrange
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions {
+            PubSubName = "pubsub",
+            DeadLetterTopicPrefix = "deadletter"
+        });
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        var publisher = new DeadLetterPublisher(daprClient, options, logger);
+
+        var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
+        CommandEnvelope first = CreateTestEnvelope();
+        CommandEnvelope second = first with { MessageId = Guid.NewGuid().ToString() };
+        second.CorrelationId.ShouldBe(first.CorrelationId);
+        second.MessageId.ShouldNotBe(first.MessageId);
+
+        var capturedIds = new List<string>();
+        _ = daprClient.PublishEventAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Do<Dictionary<string, string>>(m => capturedIds.Add(m["cloudevent.id"])),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        _ = await publisher.PublishDeadLetterAsync(identity, CreateTestDeadLetterMessage(first));
+        _ = await publisher.PublishDeadLetterAsync(identity, CreateTestDeadLetterMessage(second));
+
+        // Assert - subscribers deduplicating on cloudevent.id must see two distinct messages.
+        capturedIds.ShouldBe([first.MessageId, second.MessageId]);
+    }
+
+    [Fact]
+    public async Task PublishDeadLetter_DrainExhaustion_UsesReducedCommandMessageIdAsCloudEventId() {
+        // Arrange
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions {
+            PubSubName = "pubsub",
+            DeadLetterTopicPrefix = "deadletter"
+        });
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        var publisher = new DeadLetterPublisher(daprClient, options, logger);
+
+        var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-exhausted",
+            StartSequence: 4,
+            EndSequence: 6,
+            EventCount: 3,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 8,
+            LastFailureReason: "Pub/sub unavailable",
+            MessageId: "msg-exhausted");
+        DeadLetterMessage message = DeadLetterMessage.FromDrainExhaustion(identity, record, "msg-exhausted", 8);
+
+        Dictionary<string, string>? capturedMetadata = null;
+        _ = daprClient.PublishEventAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Do<Dictionary<string, string>>(m => capturedMetadata = m),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        bool result = await publisher.PublishDeadLetterAsync(identity, message);
+
+        // Assert - the terminal exhaustion sink is keyed on the drain tracking identity, not the correlation.
+        result.ShouldBeTrue();
+        _ = capturedMetadata.ShouldNotBeNull();
+        capturedMetadata["cloudevent.id"].ShouldBe(message.Command.MessageId);
+        capturedMetadata["cloudevent.id"].ShouldBe("msg-exhausted");
     }
 
     [Fact]

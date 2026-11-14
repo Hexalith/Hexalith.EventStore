@@ -543,7 +543,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-7-outbound-dapr-routing-header-ownership (2026-07-10)"), 2026-08-30
 location: EventStoreServiceCollectionExtensions.cs:68
 reason: **Public `AddEventStoreDaprServiceInvocation` does not format-validate `appId`** (`EventStoreServiceCollectionExtensions.cs:68`) — only `ThrowIfNullOrWhiteSpace`. On the published `Hexalith.EventStore.Client` package, an external consumer passing a whitespace/control-char `appId` gets fail-fast broken routing (a CR/LF value is dropped by `TryAddWithoutValidation`). In-repo callers pass safe literals, so no live impact. The one item on new public surface worth a later hardening patch (independent of the regex-guard disposition).
-status: open
+status: done 2026-11-14
+resolution: Resolved by current code (`596de60e1`) and covered by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`: the fixed-value overload calls `DaprServiceInvocationHandler.ValidateAppId` at registration, which rejects blank ids and any character outside ASCII letters, digits, `-`, `.` and `_`. Tests: `DaprServiceInvocationRegistrationTests.AddEventStoreDaprServiceInvocation_WithMalformedAppId_ThrowsArgumentException` (`app\r\nid`, `app id`, `app/id`) and `AddEventStoreDaprServiceInvocation_WithBlankAppId_ThrowsArgumentException`.
 
 ### DW-82: `apiToken` whitespace handling inconsistent with `appId`
 
@@ -797,7 +798,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:248
 reason: Operational-index metadata request binding can deserialize `Domains` as null and then dereference `request.Domains.Count`, returning an internal error instead of a bounded malformed-request response. Add null-safe request validation. [`src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:248`]
-status: open
+status: done 2026-11-14
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. The capability-bound metadata branch now returns 400 `UnsupportedCapability` unless `domains` holds exactly one non-blank domain, instead of dereferencing a null list; the unbound branch already tolerated null. Test: `EventStoreDomainServiceExtensionsTests.NamedMetadataEndpoint_CapabilityBoundRequestWithoutUsableDomain_ReturnsBadRequest` (raw JSON: absent, null, `[null]`, `[""]` and `["  "]`).
 
 ### DW-120: Erase lifecycle admission does not reject blank operation/digest values, and an unknown persisted phase can fall through to a fresh erase admission. Validate erase identity and fail closed on undefined lifecycle phases.
 
@@ -1060,7 +1062,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-22, runtime/unit chunk)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:107
 reason: source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` summary: Validate `DomainServiceOptions.MaxEventsPerResult` and `MaxEventSizeBytes` bounds during startup instead of allowing zero or negative limits to reject otherwise valid responses at invocation time. evidence: The fields and response-limit behavior predate this review range. The new startup validation at `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:107` covers only `InvocationTimeoutSeconds`; adding the two existing bounds is real hardening but is not caused by the Story 1.20 corrective change.
-status: open
+status: done 2026-11-14
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. Startup options validation now rejects negative `MaxEventsPerResult` or `MaxEventSizeBytes` with `OptionsValidationException`; zero stays valid because the invoker defines it as admitting only an empty boundary. Tests: `EventStoreServerServiceCollectionExtensionsTests.AddEventStoreServerRejectsNegativeDomainServiceResultLimitAtHostStartAsync` and `AddEventStoreServerAcceptsZeroDomainServiceResultLimitsAtHostStartAsync`.
 
 ### DW-159: [MEDIUM] `InboundBearerForwardingHandler` appends `Authorization` with a bare `TryAddWithoutValidation` and no preceding `Headers.Remove(...)` — the exact append-not-replace anti-pattern AD-18 exists to eliminate, sitting in the same outbound handler chain as the platform handler that deliberately does Remove-then-add. It also coerces the multi-valued `Request.Headers.Authorization` (`StringValues`) to `string?`, so a caller sending two `Authorization` headers is forwarded as one comma-joined value.
 
@@ -1081,7 +1084,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-5-dedicated-external-tenants-api-host (2026-07-26)"), 2026-08-30
 location: src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:70
 reason: source_spec: `_bmad-output/implementation-artifacts/2-5-dedicated-external-tenants-api-host.md` summary: [LOW] The DAPR API token is captured by value at registration time, so a token rotated at runtime (secret remount, config reload) stays stale until process restart; an `IOptionsMonitor`-based handler factory would pick up rotations. evidence: Story 2.5 code review (edge-case-hunter) [`src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:70`]. Pre-existing platform design, unchanged by this patch and identical to the deleted host-local handler. Owned by Hexalith.EventStore.
-status: open
+status: done 2026-11-14
+resolution: Platform capability resolved by current code (`b6c903d0d`): the generic `AddEventStoreDaprServiceInvocation<TState>` overload resolves app id and token from DI state on every send, so reloadable options pick up rotations. Tests: `DaprServiceInvocationRegistrationTests.FactoriesUseDependencyInjectionOncePerSend` and `DaprServiceInvocationHandlerTests.SendAsyncWithRotatedOrRemovedCredentialResolvesEachSend` (valid, rotated, null and blank tokens). Admin.UI (`AdminUIServiceExtensions.cs:122`), Sample.Api (`Program.cs:42`), Sample.BlazorUI (`SampleUiGatewayServiceExtensions.cs:22`), Testing (`OwnerSourceReadServiceCollectionExtensions.cs:47`) and the Tenants API host (`Hexalith.Tenants.Api/Program.cs:145`, `:152`) still call the fixed-value overload and keep a startup-captured token; migration is tracked by the follow-up entry under "Deferred from: build of spec-dw-234-119-483-203-158-fail-closed-hardening.md (2026-11-14)".
 decision: 2026-09-06 Support live rotation — Resolve the token per request through validated IOptionsMonitor state and test valid, blank, and changed token snapshots.
 decision: 2026-09-06 Support live rotation — Resolve the token per request through validated IOptionsMonitor state and test valid, blank, and changed token snapshots.
 
@@ -1363,7 +1367,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story-3.2 (2026-07-29)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Queries/DaprETagService.cs:45-46
 reason: source_spec: `_bmad-output/implementation-artifacts/3-2-harden-dapr-etag-timeout-for-integration-conditions.md` summary: [LOW] The `requestTimeout` override parameter validates nothing. `TimeSpan.Zero`, any negative value, or a value above `int.MaxValue` ms throws inside the `try` and is swallowed into a permanent silent fail-open; `Timeout.InfiniteTimeSpan` is accepted and removes the fail-open bound the class documents as its core invariant. evidence: Story 3.2 code review (edge-case-hunter), 2026-07-29. `Dapr.Actors.DaprHttpInteractor..ctor` does `httpClient.Timeout = requestTimeout ?? httpClient.Timeout`, and `HttpClient.Timeout` throws `ArgumentOutOfRangeException` for zero, negatives other than `Timeout.InfiniteTimeSpan`, and values above `int.MaxValue` ms. That throw occurs at `src/Hexalith.EventStore.Server/Queries/DaprETagService.cs:45-46`, inside the `try`, so the generic `catch` at `:57` returns null forever. For the infinite case, `ActorProxyOptions.RequestTimeout`'s own XML doc confirms it disables timeouts; combined with `proxy.GetCurrentETagAsync()` taking no `CancellationToken` (`:48`, deliberate — see the remoting-interface comment at `:36-44`), neither bound survives and `CachingProjectionActor.QueryAsync` (`src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs:50-52`) can block indefinitely. Real-world reachability is currently nil: all 13 `new DaprETagService(...)` sites in the repo are tests, and DI supplies nothing for the optional parameter. Rated LOW for that reason; it becomes material the moment a production caller supplies a value. Also note the in-file comment at `:42` still hardcodes "the 3 s RequestTimeout" although the window is now instance-dependent. Suggested durable fix: `ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(requestTimeout.Value, TimeSpan.Zero)` plus an upper bound in the constructor, so a bad value fails fast instead of failing open forever.
-status: open
+status: done 2026-11-14
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. The `DaprETagService` constructor throws `ArgumentOutOfRangeException` for a `requestTimeout` below 1 millisecond or above 5 minutes, including `Timeout.InfiniteTimeSpan` and sub-millisecond values that `HttpClient` truncates to zero; null keeps the 3 s default and the stale "3 s" comment is reworded. Tests: `DaprETagServiceTests.Constructor_RejectsRequestTimeoutOutsideFiniteBound` and `GetCurrentETagAsync_AcceptsRequestTimeoutBoundary` (1 ms and 5 min).
 
 ### DW-204: [LOW] Two unguarded seams around the Tenants dependency: nothing asserts the `references/Hexalith.Tenants` gitlink is coherent with the `HexalithTenantsVersion` package pin, and no test exercises the DI construction path that supplies `DaprETagService`'s 3s production default.
 
@@ -1581,7 +1586,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 4-4-committed-event-publication-recovery (2026-08-07)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs:56
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md` summary: [HIGH] Dead-letter `cloudevent.id` is keyed on `CorrelationId`, so two dead-letters sharing a correlation id can be deduplicated away by subscribers. evidence: `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs:56` sets `["cloudevent.id"] = safeMessage.CorrelationId`, unlike event publication which uses the per-event `MessageId` (`EventPublisher.cs:200`). Pre-existing since the dead-letter path was introduced, but Story 4.4 makes it load-bearing: drain exhaustion is now a terminal data-loss sink, so a deduplicated exhaustion dead-letter means committed events vanish with no trace. Fix by carrying a per-message id override so exhaustion publishes with `cloudevent.id` = the reduced command's `MessageId`.
-status: open
+status: done 2026-11-14
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. `DeadLetterPublisher` now sets `cloudevent.id` to `Command.MessageId`, so dead-letters sharing a correlation id keep distinct ids and drain exhaustion publishes the reduced envelope's tracking identity. Caveat: a legacy drain record without a `MessageId` falls back to its tracking id (the correlation id), so only message-keyed drain records are guaranteed distinct. Tests: `DeadLetterPublisherTests.PublishDeadLetter_SameCorrelationIdDifferentMessageIds_PublishesDistinctCloudEventIds` and `PublishDeadLetter_DrainExhaustion_UsesReducedCommandMessageIdAsCloudEventId`.
 
 ### DW-235: [MEDIUM] `ReplayController` accepts `PublishFailed` unconditionally and never consults the new `Retryable` signal, so replaying a command whose drain reminder is still armed can publish the same committed range twice.
 
@@ -3356,7 +3362,8 @@ status: open
 origin: migrated from legacy ledger ("unsectioned flat append and 2026-09-06 code review of spec-5-1-infrastructure-failure-cache-clear"), 2026-09-06
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`GetEventsAsync`; legacy location 1449)
 reason: `GetEventsAsync` still throws `InvalidOperationException` for persisted metadata with `CurrentSequence == 0`, while `GetStreamMetadataAsync` and `ReadEventsRangeAsync` accept the same touched-empty stream and return empty results. Story 5.1 changed only metadata-read cancellation propagation, so this pre-existing read-contract inconsistency remains separate.
-status: open
+status: done 2026-11-14
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. `GetEventsAsync` now rejects only negative `CurrentSequence`, so a touched-empty stream returns `[]` like `ReadEventsRangeAsync`. Tests: `AggregateActorGetEventsTests.GetEventsAsync_TouchedEmptyStream_ReturnsEmptyArray` and `GetEventsAsync_NegativeCurrentSequence_ThrowsInvalidOperationException`.
 
 ### DW-484: Bound Client domain-event marker transition persistence.
 
@@ -6647,3 +6654,22 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
   evidence: `module-manifest` in `ci.yml` still invoked shared `prepare-module-build` before compilation after the 2026-11-12 switch to `domain-ci.yml`. Its strict catalog/image identity check rejects the current EventStore 5.0.0/Tenants 7.0.7 cohort. The input is now omitted; the module tool remains pinned and the package integration suite remains declared in the module manifest.
   reason: This completes the 2026-11-12 owner decision recorded above. Standalone Release package build, restore prerequisites, all configured unit tests and consumer validation remain blocking. Shared identity checks are unchanged and no Platform tuple qualification is claimed. Restore `module-manifest` together with the `platform-package` profile, reference owners, pull-only registry secrets and a qualified Platform release when closing the original deferral.
   status: open — Platform qualification and restoration remain deferred.
+
+## Deferred from: build of spec-dw-234-119-483-203-158-fail-closed-hardening.md (2026-11-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-234-119-483-203-158-fail-closed-hardening.md`
+  summary: Move the remaining fixed-value `AddEventStoreDaprServiceInvocation(appId, apiToken)` callers to the per-send `AddEventStoreDaprServiceInvocation<TState>` overload so a rotated DAPR API token is picked up without a restart (follow-up to DW-161, low).
+  evidence: The platform per-send overload exists (`b6c903d0d`), but these hosts still pass a token read once at startup: `src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:122`, `samples/Hexalith.EventStore.Sample.Api/Program.cs:42`, `samples/Hexalith.EventStore.Sample.BlazorUI/Services/SampleUiGatewayServiceExtensions.cs:22`, `src/Hexalith.EventStore.Testing/OwnerSourceRead/OwnerSourceReadServiceCollectionExtensions.cs:47`, and in Hexalith.Tenants `src/Hexalith.Tenants.Api/Program.cs:145` and `:152` (also `src/Hexalith.Tenants.UI/Extensions/TenantsUiServiceCollectionExtensions.cs:157`).
+  reason: Out of scope for the fail-closed hardening spec, which closed DW-161 on the platform capability only. The Tenants callers belong to Hexalith.Tenants and need a change in that repository.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-234-119-483-203-158-fail-closed-hardening.md`
+  summary: Decide whether the aggregate read paths (`GetEventsAsync`, `ReadEventsRangeAsync`, `GetStreamMetadataAsync`) should require `SourceProofCodec.IsQualifiedEmpty` before treating `CurrentSequence == 0` metadata as a touched-empty stream (medium).
+  evidence: Review triage row 1 (blind hunter, edge-case hunter, verification-gap other findings). `EventStreamReader.cs:63` and `EventPersister.cs:116-118` reject zero metadata unless it is a qualified empty seed, and `EventStreamReaderTests.RehydrateAsync_InvalidMetadata_ZeroSequence_ThrowsException` pins that. The read paths accept any zero (P4-8P comment at `AggregateActor.cs:2570-2574`), and DW-483 aligned `GetEventsAsync` with them as the frozen spec required. For corrupt unqualified zero metadata, commands now fail with "Invalid aggregate metadata" while projection delivery reads `[]` and logs `NoEventsFound` (`ProjectionUpdateOrchestrator.cs:296-321`).
+  reason: The frozen spec matrix orders `CurrentSequence == 0 → []`, so gating on seed proof needs an owner decision on the read-versus-write contract.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-234-119-483-203-158-fail-closed-hardening.md`
+  summary: `deploy/README.md:46` documents the event `cloudevent.id` as `{correlationId}:{sequenceNumber}`, but events publish the persisted `messageId` (low).
+  evidence: Review triage row 17. `docs/concepts/event-envelope.md:253` and `:276` state that `cloudevent.id` is the persisted EventStore `messageId` and warn against deriving identity from correlation ID and sequence; `EventPublisher` keys `cloudevent.id` on `MessageId`. Pre-existing, not caused by this change.
+  status: open

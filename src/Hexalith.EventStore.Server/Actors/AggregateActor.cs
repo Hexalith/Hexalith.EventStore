@@ -2155,7 +2155,7 @@ public partial class AggregateActor(
         }
 
         long currentSequence = metadataResult.Value.CurrentSequence;
-        if (currentSequence <= 0) {
+        if (currentSequence < 0) {
             throw new InvalidOperationException(
                 $"Invalid aggregate metadata: CurrentSequence={currentSequence} for {identity.ActorId}");
         }

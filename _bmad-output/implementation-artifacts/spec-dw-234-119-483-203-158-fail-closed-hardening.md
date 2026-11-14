@@ -2,8 +2,9 @@
 title: 'Five deferred server fail-closed defects (DW-234, DW-119, DW-483, DW-203, DW-158)'
 type: 'bugfix'
 created: '2026-11-14'
-status: 'draft'
+status: 'done'
 route: 'dispatch'
+baseline_commit: '325c3ddcf'
 review_loop_iteration: 0
 context: []
 ---
@@ -50,17 +51,17 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs` -- set `cloudevent.id` to `safeMessage.Command.MessageId` -- per-message identity (DW-234)
-- [ ] `tests/.../Events/DeadLetterPublisherTests.cs` -- update the metadata assertion; add a same-CorrelationId/different-MessageId test and a drain-exhaustion id test
-- [ ] `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs` -- capability branch: `request.Domains is not { Count: 1 }` -- 400 instead of NRE (DW-119)
-- [ ] `tests/.../EventStoreDomainServiceExtensionsTests.cs` -- add a theory for absent and explicit-null `domains` via raw JSON
-- [ ] `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` -- `GetEventsAsync` guard `< 0` (DW-483)
-- [ ] `tests/.../Actors/AggregateActorGetEventsTests.cs` -- `CurrentSequence 0 → []` and `-1 → InvalidOperationException`
-- [ ] `src/Hexalith.EventStore.Server/Queries/DaprETagService.cs` -- validate `requestTimeout` in (0, 5 min] in the field initializer; reword the :42 comment (DW-203)
-- [ ] `tests/.../Queries/DaprETagServiceTests.cs` -- theory for rejected values; boundary 5 min accepted
-- [ ] `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` -- add a `.Validate` for nonnegative limits (DW-158)
-- [ ] `tests/.../Configuration/EventStoreServerServiceCollectionExtensionsTests.cs` -- negative rejected, zero accepted
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` -- close the seven entries (`status: done 2026-11-14` + `resolution:`)
+- [x] `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs` -- set `cloudevent.id` to `safeMessage.Command.MessageId` -- per-message identity (DW-234)
+- [x] `tests/.../Events/DeadLetterPublisherTests.cs` -- update the metadata assertion; add a same-CorrelationId/different-MessageId test and a drain-exhaustion id test
+- [x] `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs` -- capability branch: `request.Domains is not { Count: 1 }` -- 400 instead of NRE (DW-119)
+- [x] `tests/.../EventStoreDomainServiceExtensionsTests.cs` -- add a theory for absent and explicit-null `domains` via raw JSON
+- [x] `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` -- `GetEventsAsync` guard `< 0` (DW-483)
+- [x] `tests/.../Actors/AggregateActorGetEventsTests.cs` -- `CurrentSequence 0 → []` and `-1 → InvalidOperationException`
+- [x] `src/Hexalith.EventStore.Server/Queries/DaprETagService.cs` -- validate `requestTimeout` in (0, 5 min] in the field initializer; reword the :42 comment (DW-203)
+- [x] `tests/.../Queries/DaprETagServiceTests.cs` -- theory for rejected values; boundary 5 min accepted
+- [x] `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` -- add a `.Validate` for nonnegative limits (DW-158)
+- [x] `tests/.../Configuration/EventStoreServerServiceCollectionExtensionsTests.cs` -- negative rejected, zero accepted
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- close the seven entries (`status: done 2026-11-14` + `resolution:`)
 
 **Acceptance Criteria:**
 - Given the touched projects, when each test project is built and its assembly run, then every new and existing test passes.
@@ -76,3 +77,28 @@ DW-234 uses `Command.MessageId` and no new override field. It differs per comman
 - `dotnet build tests/Hexalith.EventStore.Server.Tests -c Debug` then run the built assembly with `-class` for the four touched classes -- expected: all pass
 - `dotnet build tests/Hexalith.EventStore.DomainService.Tests -c Debug` then run `-class Hexalith.EventStore.DomainService.Tests.EventStoreDomainServiceExtensionsTests` -- expected: all pass
 - `dotnet test tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` -- expected: pass/skip unchanged
+
+## Review Triage Log
+
+| # | Source | Finding | Verdict | Evidence | Route |
+|---|--------|---------|---------|----------|-------|
+| 1 | blind+edge+vg-other | DW-483 `GetEventsAsync` now accepts unqualified `CurrentSequence == 0` metadata that `EventStreamReader`/`EventPersister` reject unless `SourceProofCodec.IsQualifiedEmpty` | medium | Real: `EventStreamReader.cs:63` rejects unproven zero, while the read siblings (`AggregateActor.cs:2233`, `:2577`, P4-8P comment) accept any zero. The frozen matrix orders `CurrentSequence == 0 → []`, so gating on proof is excluded by intent; the read-vs-write contract is an owner design question | defer |
+| 2 | blind+edge | DW-119 capability branch still accepts `domains` `[null]`, `[""]`, `["  "]` (passes `{ Count: 1 }`) | low | Real: raw JSON reaches the handler, and a null key makes `IsKeyedService` check the non-keyed registration, so the result is 200 instead of 400. Fix is a one-line tightening of the guard this diff edits | patch |
+| 3 | blind | `AdminOperationalIndexMetadata.Request.Domains` declared non-nullable hides future null dereferences | low | Annotation change on public contract surface; no current unguarded dereference after the fix | reject |
+| 4 | edge+blind | DW-203 positive timeout under 1 ms passes `> TimeSpan.Zero`; no minimum-boundary test | low | Real: `HttpClient` cancels via `CancelAfter`, which truncates to whole ms → 0 → every fetch times out, the same failure as zero. Direct bound correction | patch |
+| 5 | blind | DW-203 5-minute cap is a bare literal without a named constant or rationale | low | Cosmetic; the literal appears in one predicate and its message; fix is a refactor, not a correction | reject |
+| 6 | blind | DW-203 class comment ("never blocks") contradicts a 5-minute override | false | The production default stays 3 s; overrides exist for live-sidecar tests, and the window stays finite | reject |
+| 7 | blind | DW-203 constructor lacks `<param>`/`<exception>` docs for the new throw | low | Cosmetic; primary-constructor class with no existing param docs | reject |
+| 8 | blind+edge | DW-161 closed although Admin.UI, Sample.Api, Sample.BlazorUI, Testing OwnerSourceRead and Tenants.Api still use the fixed-value overload | medium | Real: `AdminUIServiceExtensions.cs:122`, `Sample.Api/Program.cs:42` capture the token at startup. The platform capability (generic overload + tests) exists; the resolution must name the remaining callers, and the migration is pre-existing work | patch (resolution text) + defer (caller migration) |
+| 9 | blind | DW-161 entry keeps its duplicated `decision:` line | low | Pre-existing; Always rule limits closures to `status:` + `resolution:` | reject |
+| 10 | blind+vg-other | DW-81 cited tests do not pin registration-time rejection of malformed ids on the fixed overload | low | Real: `DaprServiceInvocationRegistrationTests.cs:78-86` uses only `""`/`"   "`; reverting `EventStoreServiceCollectionExtensions.cs:70` to `ThrowIfNullOrWhiteSpace` stays green. Fix is one small theory | patch |
+| 11 | blind | DW-234 legacy correlation-keyed drain records (null `MessageId`) still publish `cloudevent.id` = correlation id; ledger says ids stay distinct without caveat | low | Real but legacy-only: `UnpublishedEventsRecord.GetTrackingIdentity` falls back to the tracking id; the frozen matrix mandates the tracking identity. Identity change rejected; the ledger caveat is a direct text correction | patch (resolution text) |
+| 12 | blind | DW-158 single combined message names both limit keys; test `Contains(limitKey)` is always true | low | Theory still proves each half (each case sets one key); splitting adds a second validation branch | reject |
+| 13 | blind | DW-158 predicate duplicated from `DaprDomainServiceInvoker.ValidateOptions` | low | Spec directs mirroring; no named caller diverges today | reject |
+| 14 | blind | `DomainServiceOptions` XML docs silent on nonnegative rule | low | Pre-existing doc gap; cosmetic | reject |
+| 15 | blind | New DW-158 test names mix `AtHostStartupAsync` and `AtHostStartAsync` | low | Real naming drift from the sibling convention; direct rename | patch |
+| 16 | blind | Dead-letter `cloudevent.id` change undocumented; docs tell consumers to match by correlation id | false | No doc describes the dead-letter `cloudevent.id`; `drain-failure-reason-codes.md` refers to the payload correlation ID, which is unchanged; in-repo consumers read `data`, not the CloudEvent id | reject |
+| 17 | blind (evidence) | `deploy/README.md:46` documents event `cloudevent.id` as `{correlationId}:{sequenceNumber}` | low | Real, pre-existing: `docs/concepts/event-envelope.md:253` and `EventPublisher` use the persisted `messageId` | defer |
+| 18 | blind | Dead-letter logs/activity tags do not carry `Command.MessageId` | low | Payload carries the command and its MessageId; fix adds a logger parameter and tag | reject |
+| 19 | edge | Null `DeadLetterMessage.Command` causes a swallowed NRE | false | `Command` is non-nullable; `FromException` throws on null and `FromDrainExhaustion` builds a non-null envelope; both publish sites use these factories | reject |
+| 20 | vg | Verification gaps in the five code changes | none | Layer reported no gaps; both test projects are in CI `unit-test-projects` | — |

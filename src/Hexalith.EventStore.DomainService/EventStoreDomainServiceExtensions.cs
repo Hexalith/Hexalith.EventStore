@@ -641,7 +641,8 @@ public static class EventStoreDomainServiceExtensions {
                 else {
                     if (!string.Equals(request.AppId, identity.AppId, StringComparison.Ordinal)
                         || !string.Equals(request.ServiceVersion, identity.ServiceVersion, StringComparison.Ordinal)
-                        || request.Domains.Count != 1) {
+                        || request.Domains is not [{ } requestedDomain]
+                        || string.IsNullOrWhiteSpace(requestedDomain)) {
                         return Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
                     }
 

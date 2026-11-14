@@ -1813,6 +1813,30 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         body.ShouldContain(ProjectionDispatchReasonCodes.UnsupportedCapability);
     }
 
+    [Theory]
+    [InlineData("""{"appId":"authoritative-app","serviceVersion":"v1"}""")]
+    [InlineData("""{"domains":null,"appId":"authoritative-app","serviceVersion":"v1"}""")]
+    [InlineData("""{"domains":[null],"appId":"authoritative-app","serviceVersion":"v1"}""")]
+    [InlineData("""{"domains":[""],"appId":"authoritative-app","serviceVersion":"v1"}""")]
+    [InlineData("""{"domains":["  "],"appId":"authoritative-app","serviceVersion":"v1"}""")]
+    public async Task NamedMetadataEndpoint_CapabilityBoundRequestWithoutUsableDomain_ReturnsBadRequest(string json) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:DomainService:AppId"] = "authoritative-app";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        using JsonDocument request = JsonDocument.Parse(json);
+
+        (int status, string body) = await InvokeEndpointAsync(
+            app,
+            "/admin/operational-index-metadata",
+            request.RootElement);
+
+        status.ShouldBe(StatusCodes.Status400BadRequest, body);
+        body.ShouldContain(ProjectionDispatchReasonCodes.UnsupportedCapability);
+    }
+
     [Fact]
     public void UseEventStoreDomainService_InvokesDuplicateNamedRouteValidationAtStartup() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();

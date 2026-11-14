@@ -54,7 +54,9 @@ public partial class DeadLetterPublisher(
             var metadata = new Dictionary<string, string> {
                 ["cloudevent.type"] = "deadletter.command.failed",
                 ["cloudevent.source"] = $"eventstore/{identity.TenantId}/{identity.Domain}",
-                ["cloudevent.id"] = safeMessage.CorrelationId,
+                // Per-message identity: dead-letters that share a correlation id must not be
+                // deduplicated away by subscribers keyed on cloudevent.id (mirrors EventPublisher).
+                ["cloudevent.id"] = safeMessage.Command.MessageId,
                 ["cloudevent.datacontenttype"] = "application/json",
             };
 

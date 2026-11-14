@@ -85,6 +85,17 @@ public sealed class DaprServiceInvocationRegistrationTests {
             () => builder.AddEventStoreDaprServiceInvocation(appId));
     }
 
+    [Theory]
+    [InlineData("app\r\nid")]
+    [InlineData("app id")]
+    [InlineData("app/id")]
+    public void AddEventStoreDaprServiceInvocation_WithMalformedAppId_ThrowsArgumentException(string appId) {
+        IHttpClientBuilder builder = new ServiceCollection().AddHttpClient("test");
+
+        _ = Should.Throw<ArgumentException>(
+            () => builder.AddEventStoreDaprServiceInvocation(appId));
+    }
+
     private sealed class ConflictingHeaderHandler : DelegatingHandler {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,

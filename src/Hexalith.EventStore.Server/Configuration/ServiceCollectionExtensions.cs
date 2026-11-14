@@ -242,6 +242,10 @@ public static class EventStoreServerServiceCollectionExtensions {
                     && options.InvocationTimeoutSeconds <= DomainServiceOptions.MaximumInvocationTimeoutSeconds,
                 $"{nameof(DomainServiceOptions.InvocationTimeoutSeconds)} must be between 1 and "
                     + $"{DomainServiceOptions.MaximumInvocationTimeoutSeconds} seconds.")
+            .Validate(
+                static options => options.MaxEventsPerResult >= 0 && options.MaxEventSizeBytes >= 0,
+                $"{nameof(DomainServiceOptions.MaxEventsPerResult)} and {nameof(DomainServiceOptions.MaxEventSizeBytes)} "
+                    + "must be nonnegative; zero admits only an empty boundary.")
             .ValidateOnStart();
         _ = services.AddOptions<ProjectionChangeNotifierOptions>()
             .Bind(configuration.GetSection("EventStore:ProjectionChanges"))

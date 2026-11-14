@@ -698,6 +698,30 @@ public class AggregateActorGetEventsTests {
     }
 
     [Fact]
+    public async Task GetEventsAsync_TouchedEmptyStream_ReturnsEmptyArray() {
+        (AggregateActor actor, IActorStateManager stateManager) = CreateActor();
+        ConfigureMetadata(stateManager, 0);
+
+        EventEnvelope[] result = await actor.GetEventsAsync(0);
+
+        result.ShouldBeEmpty();
+        _ = stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetEventsAsync_NegativeCurrentSequence_ThrowsInvalidOperationException() {
+        (AggregateActor actor, IActorStateManager stateManager) = CreateActor();
+        ConfigureMetadata(stateManager, -1);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.GetEventsAsync(0));
+
+        exception.Message.ShouldContain("CurrentSequence=-1");
+    }
+
+    [Fact]
     public async Task GetEventsAsync_WithEvents_ReturnsEventsAfterSequence() {
         (AggregateActor actor, IActorStateManager stateManager) = CreateActor();
         ConfigureMetadata(stateManager, 3);

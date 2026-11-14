@@ -88,6 +88,61 @@ public class DaprETagServiceTests {
             Arg.Any<ActorProxyOptions>());
     }
 
+    public static TheoryData<TimeSpan> UnsupportedRequestTimeouts => new() {
+        TimeSpan.Zero,
+        TimeSpan.FromTicks(1),
+        TimeSpan.FromMilliseconds(1) - TimeSpan.FromTicks(1),
+        TimeSpan.FromSeconds(-1),
+        Timeout.InfiniteTimeSpan,
+        TimeSpan.FromMinutes(5) + TimeSpan.FromTicks(1),
+        TimeSpan.MaxValue,
+    };
+
+    [Theory]
+    [MemberData(nameof(UnsupportedRequestTimeouts))]
+    public void Constructor_RejectsRequestTimeoutOutsideFiniteBound(TimeSpan requestTimeout) {
+        // A bad override must fail fast instead of being swallowed into a permanent fail-open
+        // (zero/negative/oversized) or removing the bound entirely (InfiniteTimeSpan).
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+
+        ArgumentOutOfRangeException exception = Should.Throw<ArgumentOutOfRangeException>(
+            () => new DaprETagService(factory, NullLogger<DaprETagService>.Instance, requestTimeout));
+
+        exception.ParamName.ShouldBe("requestTimeout");
+    }
+
+    public static TheoryData<TimeSpan> RequestTimeoutBoundaries => new() {
+        TimeSpan.FromMilliseconds(1),
+        TimeSpan.FromMinutes(5),
+    };
+
+    [Theory]
+    [MemberData(nameof(RequestTimeoutBoundaries))]
+    public async Task GetCurrentETagAsync_AcceptsRequestTimeoutBoundary(TimeSpan requestTimeout) {
+        // Arrange
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        _ = actor.GetCurrentETagAsync().Returns(SelfRoutingETag.GenerateNew("counter"));
+        TimeSpan? observedRequestTimeout = null;
+        _ = factory.CreateActorProxy<IETagActor>(
+            Arg.Any<ActorId>(),
+            ETagActor.ETagActorTypeName,
+            Arg.Any<ActorProxyOptions>()).Returns(callInfo => {
+                observedRequestTimeout = callInfo.Arg<ActorProxyOptions>().RequestTimeout;
+                return actor;
+            });
+
+        var service = new DaprETagService(
+            factory, NullLogger<DaprETagService>.Instance, requestTimeout: requestTimeout);
+
+        // Act
+        string? result = await service.GetCurrentETagAsync("counter", "tenant1");
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        observedRequestTimeout.ShouldBe(requestTimeout);
+    }
+
     [Fact]
     public async Task GetCurrentETagAsync_KeepsRequestTimeoutPerInstance() {
         // Arrange - both services are constructed BEFORE either is invoked. That ordering is what

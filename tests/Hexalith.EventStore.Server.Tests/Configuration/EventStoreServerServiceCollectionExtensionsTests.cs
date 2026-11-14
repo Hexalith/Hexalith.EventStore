@@ -327,6 +327,43 @@ public class EventStoreServerServiceCollectionExtensionsTests {
         await host.StopAsync().ConfigureAwait(true);
     }
 
+    [Theory]
+    [InlineData(nameof(DomainServiceOptions.MaxEventsPerResult))]
+    [InlineData(nameof(DomainServiceOptions.MaxEventSizeBytes))]
+    public async Task AddEventStoreServerRejectsNegativeDomainServiceResultLimitAtHostStartAsync(string limitKey) {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        _ = builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> {
+            [$"EventStore:DomainServices:{limitKey}"] = "-1",
+        });
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        using IHost host = builder.Build();
+
+        OptionsValidationException exception = await Should.ThrowAsync<OptionsValidationException>(
+            () => host.StartAsync()).ConfigureAwait(true);
+        exception.OptionsType.ShouldBe(typeof(DomainServiceOptions));
+        exception.Failures.ShouldContain(failure =>
+            failure.Contains(limitKey, StringComparison.Ordinal)
+            && failure.Contains("nonnegative", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AddEventStoreServerAcceptsZeroDomainServiceResultLimitsAtHostStartAsync() {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        _ = builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> {
+            ["EventStore:DomainServices:MaxEventsPerResult"] = "0",
+            ["EventStore:DomainServices:MaxEventSizeBytes"] = "0",
+        });
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        using IHost host = builder.Build();
+
+        await host.StartAsync().ConfigureAwait(true);
+
+        DomainServiceOptions options = host.Services.GetRequiredService<IOptions<DomainServiceOptions>>().Value;
+        options.MaxEventsPerResult.ShouldBe(0);
+        options.MaxEventSizeBytes.ShouldBe(0);
+        await host.StopAsync().ConfigureAwait(true);
+    }
+
     [Fact]
     public async Task AddEventStoreServerRejectsInvalidInvocationTimeoutAtHostStartAsync() {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
