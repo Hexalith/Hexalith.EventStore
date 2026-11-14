@@ -106,6 +106,9 @@ jobs:
           submodules: false
           persist-credentials: false
 
+      - name: Verify temporary job cleanup
+        run: bash scripts/run-with-temp.sh python3 -B -m unittest discover -s tools/tests -p 'test_run_with_temp.py' -v
+
       - name: Initialize root-declared submodules
         run: git -c submodule.recurse=false submodule update --init
 
