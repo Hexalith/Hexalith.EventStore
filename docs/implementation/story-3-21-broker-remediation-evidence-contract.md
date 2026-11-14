@@ -424,3 +424,42 @@ technical qualification **FAIL (20/24)**, five historical guarantees **REJECTED/
 selection **null** and production eligibility **FAIL** are unchanged. Kafka re-entry,
 packet custody and the December 13 Administrator review remain unchanged. Platform and
 EventStore have not been pushed as part of this submission.
+
+## RabbitMQ Package B local contribution prepared — 2026-11-14
+
+Package A [PR #4767](https://github.com/dapr/components-contrib/pull/4767) remained OPEN, with
+all six upstream workflows awaiting maintainer approval and no reviews or comments as of
+2026-11-14T11:54Z. Under the owner's **"Adopt all"**, Platform prepared Package B for
+[#4765](https://github.com/dapr/components-contrib/issues/4765) as a local-only contribution
+stacked on Package A head `96c3259b7c12a476edd208848153d3cf72a8c4f0`. An unroutable return is
+terminal (FailedPrecondition, no retry), and `publishMandatory` without `publisherConfirm` fails
+`Init`.
+
+The local Platform package at
+`docs/implementation/story-4-17-upstream/package-b-local-2026-11-14/` retains `contribution.patch`
+(SHA-256 `422dda73031e0bcbcf7a5e39329581f00a70486c2f7d23e9314041c4aaf3a29f`). It changes only
+seven `pubsub/rabbitmq` files. The patch binds each `basic.return` to the attempt that observes
+its own ACK on the same channel generation, with bounded state and no use of application message
+IDs. A generation with an unresolved mandatory attempt is never published on again. The default
+is unchanged. The package also retains source and toolchain identities, check receipts, negative
+controls, a coverage map and an unexecuted broker/Dapr proposal.
+
+Fresh disposable jobs fetched the official base by SHA and Package A's head from its retained
+bundle; a read-only `ls-remote` found `refs/pull/4767/head` still at `96c3259b`. The jobs
+applied the patch unchanged to a local test commit. All 15 required receipts pass: Package A's
+14-check set rebased to `96c3259b`, plus `make check-component-metadata`. Lint reports
+`0 issues.` The full unit suite passed 73/230 (floor 62/196) and the focused race run 330/980
+(floor 230/720). Fifteen negative controls were detected, and every I/O-matrix row maps to
+passing tests.
+
+This meets the Package B work-package source requirements locally only. It is not submission,
+upstream acceptance, Dapr HTTP mapping or supported-runtime delivery. Nothing was pushed, forked,
+opened, commented on or labeled, and no broker, Dapr runtime, conformance/certification suite or
+qualification ran. A later separately approved slice submits it after Package A or as a stacked
+PR. The gate remains an **official supported Dapr release embedding the required fixes**. EventStore
+exact runtime/component/source/binary/image/lock admission, Builds alignment and a separately
+accepted Platform full-matrix proposal follow. Both parent stories remain **in-progress**;
+technical qualification **FAIL (20/24)**, five historical guarantees **REJECTED/open**, selection
+**null** and production eligibility **FAIL** are unchanged. Kafka stop rules, packet custody and
+the December 13 Administrator review remain unchanged. EventStore records this as a local commit
+only.
