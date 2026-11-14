@@ -17,6 +17,7 @@ using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.Extensions.Options;
@@ -91,14 +92,22 @@ public sealed partial class AdminOperationalIndexHostedService(
 
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken cancellationToken) {
-        await _refreshStopping.CancelAsync().ConfigureAwait(false);
+        using AdminIndexShutdownTrace? trace = AdminIndexShutdownTrace.StartStop(logger, cancellationToken);
+        using (AdminIndexShutdownTrace? cancellationTrace = AdminIndexShutdownTrace.StartCancellation(logger, cancellationToken))
+        {
+            await _refreshStopping.CancelAsync().ConfigureAwait(false);
+            cancellationTrace?.Complete();
+        }
         if (_refreshTask is not null) {
             try {
+                using AdminIndexShutdownTrace? refreshTrace = AdminIndexShutdownTrace.StartRefresh(logger, cancellationToken);
                 await _refreshTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+                refreshTrace?.Complete();
             }
             catch (OperationCanceledException) when (_refreshStopping.IsCancellationRequested) {
             }
         }
+        trace?.Complete();
     }
 
     /// <inheritdoc/>

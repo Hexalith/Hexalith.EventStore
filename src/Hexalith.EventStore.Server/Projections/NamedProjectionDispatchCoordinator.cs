@@ -18,6 +18,7 @@ using Hexalith.EventStore.Server.Queries;
 
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -57,8 +58,9 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
         INamedProjectionCatalogRefresher? catalogRefresher = null,
         IProjectionDeliveryIdempotencyCoordinator? idempotencyCoordinator = null,
         IOptions<EventStoreActorOptions>? actorOptions = null,
-        IProjectionDeliveryHistoryReader? historyReader = null)
-        : this(routeCatalog, checkpointStore, lifecycleGateway, actorProxyFactory, daprClient, httpClientFactory, options, logger, retryScheduler, timeProvider, catalogRefresher, idempotencyCoordinator, actorOptions, historyReader, authority)
+        IProjectionDeliveryHistoryReader? historyReader = null,
+        IHostApplicationLifetime? hostApplicationLifetime = null)
+        : this(routeCatalog, checkpointStore, lifecycleGateway, actorProxyFactory, daprClient, httpClientFactory, options, logger, retryScheduler, timeProvider, catalogRefresher, idempotencyCoordinator, actorOptions, historyReader, authority, hostApplicationLifetime)
     {
         ArgumentNullException.ThrowIfNull(authority);
     }
@@ -79,7 +81,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
         IProjectionDeliveryIdempotencyCoordinator? idempotencyCoordinator = null,
         IOptions<EventStoreActorOptions>? actorOptions = null,
         IProjectionDeliveryHistoryReader? historyReader = null,
-        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null,
+        IHostApplicationLifetime? hostApplicationLifetime = null)
     {
         this.routeCatalog = routeCatalog;
         this.checkpointStore = checkpointStore;
@@ -96,11 +99,15 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
         this.actorOptions = actorOptions;
         this.historyReader = historyReader;
         this.catalogAuthority = catalogAuthority;
+        _hostStopping = hostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private readonly TimeProvider _timeProvider;
+    // Delivery cleanup outlives caller cancellation. Host shutdown cancels the actual
+    // lifecycle RPC, whose failure still retains its catalog fence and durable retry work.
+    private readonly CancellationToken _hostStopping;
     private string AggregateActorTypeName => actorOptions?.Value.AggregateActorTypeName ?? nameof(AggregateActor);
 
     /// <inheritdoc/>
@@ -742,7 +749,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
                             identity,
                             projectionType,
                             deliveryLeaseToken,
-                            CancellationToken.None)).ConfigureAwait(false)) {
+                            _hostStopping)).ConfigureAwait(false)) {
                         throw new InvalidOperationException("Named projection delivery lifecycle lease completion was rejected.");
                     }
 
@@ -1176,7 +1183,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
                         identity,
                         projectionType,
                         dispatchId,
-                        CancellationToken.None)).ConfigureAwait(false)) {
+                        _hostStopping)).ConfigureAwait(false)) {
                     lifecycleCompletionFailure ??= new InvalidOperationException(
                         "Named projection delivery lifecycle lease completion was rejected.");
                     continue;

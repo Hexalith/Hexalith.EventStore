@@ -25,6 +25,7 @@ using Hexalith.EventStore.Server.Tests.Actors;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -214,13 +215,13 @@ internal sealed class LegacyReplayProductionHarness : IDisposable, IProjectionRe
         Notifications.ClearReceivedCalls();
     }
 
-    internal ProjectionUpdateOrchestrator CreateOrchestrator(IRouteCatalogAuthority? authority = null, IProjectionSourceGuardDelivery? sourceGuard = null)
+    internal ProjectionUpdateOrchestrator CreateOrchestrator(IRouteCatalogAuthority? authority = null, IProjectionSourceGuardDelivery? sourceGuard = null, IHostApplicationLifetime? hostApplicationLifetime = null)
         => new(_actors, _invocation, _clients, _resolver,
             Checkpoints, Options.Create(_options), Logger,
             deliveryCheckpointStore: Checkpoints,
             lifecycleGateway: Lifecycle, namedProjectionDispatchCoordinator: NamedCoordinator,
             projectionActivationOutbox: Outbox, rebuildWriteGateway: this,
-            sourceGuardDelivery: sourceGuard, deliveryStateStore: Rows, deliveryIdempotency: _coordinator, timeProvider: Clock, catalogAuthority: authority);
+            sourceGuardDelivery: sourceGuard, deliveryStateStore: Rows, deliveryIdempotency: _coordinator, timeProvider: Clock, catalogAuthority: authority, hostApplicationLifetime: hostApplicationLifetime);
 
     internal Task DeliverAsync(CancellationToken cancellationToken = default)
         => CreateOrchestrator().DeliverProjectionAsync(Identity, cancellationToken);

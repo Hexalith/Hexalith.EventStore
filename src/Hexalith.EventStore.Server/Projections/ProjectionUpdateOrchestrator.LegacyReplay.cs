@@ -300,13 +300,19 @@ internal partial class ProjectionUpdateOrchestrator
             finally
             {
                 finalization ??= new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
+                // Ordinary caller cancellation cannot abandon finalization. Host shutdown
+                // cancels its actual owned call while preserving the existing deadline.
+                using CancellationTokenSource? shutdownFinalization = _hostStopping.CanBeCanceled
+                    ? CancellationTokenSource.CreateLinkedTokenSource(finalization.Token, _hostStopping)
+                    : null;
+                CancellationToken cleanupToken = shutdownFinalization?.Token ?? finalization.Token;
                 try
                 {
-                    if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteDeliveryWriteAsync(identity, route, lease, finalization.Token)).ConfigureAwait(false)) completed = false;
+                    if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteDeliveryWriteAsync(identity, route, lease, cleanupToken)).ConfigureAwait(false)) completed = false;
                     if (completed)
                     {
                         observedCheckpoint = head;
-                        if (work is not null && !await CompleteLegacyIntentAsync(identity, outbox, work, finalization.Token).ConfigureAwait(false))
+                        if (work is not null && !await CompleteLegacyIntentAsync(identity, outbox, work, cleanupToken).ConfigureAwait(false))
                         {
                             reason = ProjectionDispatchReasonCodes.DeliveryInProgress;
                         }

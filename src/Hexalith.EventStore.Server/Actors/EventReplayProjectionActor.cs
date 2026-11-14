@@ -10,6 +10,7 @@ using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Hexalith.EventStore.Server.Actors;
 
@@ -37,14 +38,24 @@ public partial class EventReplayProjectionActor(
     ILogger<EventReplayProjectionActor> logger)
     : CachingProjectionActor(host, eTagService, logger), IProjectionWriteActor, IProjectionRebuildWriteActor, IProjectionRebuildInspectionActor, IProjectionReplayPublicationActor, IProjectionBoundReplayCompletionActor {
     private IProjectionLifecycleGateway? _publicationLifecycle;
+    private readonly CancellationToken _publicationHostStopping;
 
     /// <summary>Creates a projection actor with actor-owned lifecycle-fenced replay publication.</summary>
-    [ActivatorUtilitiesConstructor]
     public EventReplayProjectionActor(ActorHost host, IETagService eTagService,
         IProjectionChangeNotifier projectionChangeNotifier, ILogger<EventReplayProjectionActor> logger,
         IActorProxyFactory actorProxyFactory) : this(host, eTagService, projectionChangeNotifier, logger)
     {
         _publicationLifecycle = new DaprProjectionLifecycleGateway(actorProxyFactory);
+    }
+
+    /// <summary>Connects host shutdown to the reconciliation request's actual lifecycle-proof transport.</summary>
+    [ActivatorUtilitiesConstructor]
+    public EventReplayProjectionActor(ActorHost host, IETagService eTagService,
+        IProjectionChangeNotifier projectionChangeNotifier, ILogger<EventReplayProjectionActor> logger,
+        IActorProxyFactory actorProxyFactory, IHostApplicationLifetime? hostApplicationLifetime = null)
+        : this(host, eTagService, projectionChangeNotifier, logger, actorProxyFactory)
+    {
+        _publicationHostStopping = hostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None;
     }
 
     /// <summary>Sets the owning lifecycle seam for production protocol fixtures.</summary>

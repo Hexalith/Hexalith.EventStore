@@ -20,6 +20,7 @@ using Hexalith.EventStore.Server.Queries;
 
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -77,8 +78,9 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
         IProjectionSourceGuardDelivery? sourceGuardDelivery = null,
         IProjectionDeliveryStateStore? deliveryStateStore = null,
         IProjectionDeliveryIdempotencyCoordinator? deliveryIdempotency = null,
-        TimeProvider? timeProvider = null)
-        : this(actorProxyFactory, daprClient, httpClientFactory, resolver, checkpointTracker, projectionOptions, logger, rebuildCheckpointStore, payloadProtectionService, actorOptions, deliveryCheckpointStore, lifecycleGateway, namedProjectionDispatchCoordinator, projectionActivationOutbox, rebuildWriteGateway, sourceGuardDelivery, deliveryStateStore, deliveryIdempotency, timeProvider, authority)
+        TimeProvider? timeProvider = null,
+        IHostApplicationLifetime? hostApplicationLifetime = null)
+        : this(actorProxyFactory, daprClient, httpClientFactory, resolver, checkpointTracker, projectionOptions, logger, rebuildCheckpointStore, payloadProtectionService, actorOptions, deliveryCheckpointStore, lifecycleGateway, namedProjectionDispatchCoordinator, projectionActivationOutbox, rebuildWriteGateway, sourceGuardDelivery, deliveryStateStore, deliveryIdempotency, timeProvider, authority, hostApplicationLifetime)
     {
         ArgumentNullException.ThrowIfNull(authority);
     }
@@ -104,7 +106,8 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
         IProjectionDeliveryStateStore? deliveryStateStore = null,
         IProjectionDeliveryIdempotencyCoordinator? deliveryIdempotency = null,
         TimeProvider? timeProvider = null,
-        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
+        Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null,
+        IHostApplicationLifetime? hostApplicationLifetime = null)
     {
         this.actorProxyFactory = actorProxyFactory;
         this.daprClient = daprClient;
@@ -126,6 +129,7 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
         this.deliveryIdempotency = deliveryIdempotency;
         this.timeProvider = timeProvider;
         this.catalogAuthority = catalogAuthority;
+        _hostStopping = hostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None;
         _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
     }
 
@@ -135,6 +139,7 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
     internal static readonly KeyedSemaphore<string> ProjectionLocks = new(StringComparer.Ordinal);
     private const string RebuildPromotionPendingReasonCode = "rebuild-promotion-pending";
     private readonly IEventPayloadProtectionService _payloadProtectionService;
+    private readonly CancellationToken _hostStopping;
     private string AggregateActorTypeName => actorOptions?.Value.AggregateActorTypeName ?? nameof(AggregateActor);
 
     /// <inheritdoc/>

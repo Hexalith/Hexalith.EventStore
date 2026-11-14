@@ -1,3 +1,5 @@
+using Hexalith.EventStore.ServiceDefaults.Diagnostics;
+
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -53,12 +55,25 @@ internal sealed partial class BoundedTelemetryShutdownService(
     /// </para>
     /// </remarks>
     public async Task StopAsync(CancellationToken cancellationToken) {
+        using ShutdownStageScope? trace = ShutdownStageScope.TryStart(logger, ShutdownStage.TelemetryStop, cancellationToken);
         int budgetMilliseconds = (int)ShutdownBudget.TotalMilliseconds;
         Task shutdown = Task.Run(
             () => {
-                ShutdownProvider("tracer", () => tracerProvider?.Shutdown(budgetMilliseconds));
-                ShutdownProvider("meter", () => meterProvider?.Shutdown(budgetMilliseconds));
-                ShutdownProvider("logger", () => loggerProvider?.Shutdown(budgetMilliseconds));
+                using (ShutdownStageScope? providerTrace = ShutdownStageScope.TryStart(logger, ShutdownStage.TelemetryTracerCall, cancellationToken))
+                {
+                    ShutdownProvider("tracer", () => tracerProvider?.Shutdown(budgetMilliseconds));
+                    providerTrace?.Complete();
+                }
+                using (ShutdownStageScope? providerTrace = ShutdownStageScope.TryStart(logger, ShutdownStage.TelemetryMeterCall, cancellationToken))
+                {
+                    ShutdownProvider("meter", () => meterProvider?.Shutdown(budgetMilliseconds));
+                    providerTrace?.Complete();
+                }
+                using (ShutdownStageScope? providerTrace = ShutdownStageScope.TryStart(logger, ShutdownStage.TelemetryLoggerCall, cancellationToken))
+                {
+                    ShutdownProvider("logger", () => loggerProvider?.Shutdown(budgetMilliseconds));
+                    providerTrace?.Complete();
+                }
             },
             CancellationToken.None);
 
@@ -69,6 +84,7 @@ internal sealed partial class BoundedTelemetryShutdownService(
             // The host wants to stop now. The interlock is already taken, so disposal stays bounded.
             Log.TelemetryShutdownAbandoned(logger, (int)ShutdownBudget.TotalMilliseconds);
         }
+        trace?.Complete();
     }
 
     private void ShutdownProvider(string provider, Func<bool?> shutdown) {

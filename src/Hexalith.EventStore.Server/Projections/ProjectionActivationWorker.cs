@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.ServiceDefaults.Diagnostics;
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.Extensions.Hosting;
@@ -48,7 +49,9 @@ internal sealed partial class ProjectionActivationWorker(
         Volatile.Write(ref _isRunning, 0);
         // Honor the host's wait deadline. ExecuteAsync keeps ownership of its slots
         // and independently drains actual calls even after this wait is canceled.
+        using ShutdownStageScope? trace = ShutdownStageScope.TryStart(Logger, ShutdownStage.ProjectionActivationStop, cancellationToken);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        trace?.Complete();
     }
 
     /// <inheritdoc/>
@@ -71,7 +74,9 @@ internal sealed partial class ProjectionActivationWorker(
         {
             Volatile.Write(ref _isRunning, 0);
             // Calls which ignore cancellation still hold their slot and catalog lease.
+            using ShutdownStageScope? trace = ShutdownStageScope.TryStart(Logger, ShutdownStage.ProjectionActivationExecutionDrain, stoppingToken);
             await ObserveAsync(_running.Values.ToArray(), stoppingToken).ConfigureAwait(false);
+            trace?.Complete();
         }
     }
 
@@ -212,7 +217,12 @@ internal sealed partial class ProjectionActivationWorker(
             // A canceled protocol wait can finish before an enrolled native RPC. Keep
             // this hosted slot and its exact authority until that actual call ends.
             // Draining never clears Retain() or converts an ambiguous outcome to proof.
-            if (lease is not null) await lease.DrainRemoteCallsAsync().ConfigureAwait(false);
+            if (lease is not null)
+            {
+                using ShutdownStageScope? trace = ShutdownStageScope.TryStart(Logger, ShutdownStage.ProjectionActivationRemoteDrain, stoppingToken);
+                await lease.DrainRemoteCallsAsync().ConfigureAwait(false);
+                trace?.Complete();
+            }
         }
     }
 

@@ -15,7 +15,7 @@ public partial class EventReplayProjectionActor
     {
         AggregateIdentity identity = ValidatePublication(request);
         await ClearPublicationCacheAsync().ConfigureAwait(false);
-        if (!await OwnsPublicationAsync(identity, request).ConfigureAwait(false)) return false;
+        if (!await OwnsPublicationAsync(identity, request, _publicationHostStopping).ConfigureAwait(false)) return false;
         ConditionalValue<ProjectionRebuildPromotionReceipt> saved = await ReadPublicationStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
         if (!saved.HasValue || saved.Value.PublicationBinding is not { } binding
             || saved.Value.SelectedReplayFence is not { } selected
@@ -190,10 +190,11 @@ public partial class EventReplayProjectionActor
         return identity;
     }
 
-    private async Task<bool> OwnsPublicationAsync(AggregateIdentity identity, ProjectionReplayPublicationRequest request)
+    private async Task<bool> OwnsPublicationAsync(AggregateIdentity identity, ProjectionReplayPublicationRequest request,
+        CancellationToken cancellationToken = default)
         => _publicationLifecycle is not null && request.Lifecycle.Phase == ProjectionLifecyclePhase.Delivering
             && await _publicationLifecycle.OwnsDeliveryWriteAsync(identity, request.Binding.ProjectionName,
-                request.LifecycleOperationId, request.Lifecycle).ConfigureAwait(false);
+                request.LifecycleOperationId, request.Lifecycle, cancellationToken).ConfigureAwait(false);
 
     private static bool IsPublicationDigest(string? value) => value is { Length: 64 }
         && value.All(static character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
