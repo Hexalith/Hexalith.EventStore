@@ -6556,7 +6556,7 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-17-generated-code-and-generator-build-quality.md`
   summary: Sample.Api's emitted REST-generator file path (about 268 characters plus the clone root) may exceed Windows MAX_PATH now that `EmitCompilerGeneratedFiles=true` (medium if true, unverified).
-  evidence: The path is `samples/Hexalith.EventStore.Sample.Api/obj/<cfg>/net10.0/generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/Hexalith.EventStore.RestApi.Hexalith.EventStore.Sample.Api.Generated.CounterRestController.Controller.g.cs`. CI and the owner build on Linux.
+  evidence: The path is `samples/Hexalith.EventStore.Sample.Api/obj/<cfg>/net10.0/generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/Hexalith.EventStore.RestApi.Hexalith.EventStore.Sample.Api.Generated.CounterRestController.Controller.g.cs`. CI and the owner build on Linux. Code review on 2026-11-14 measured it under `net11.0` at 268 (Debug) or 270 (Release) characters relative to the repository root. It is past 260 before the clone root is added, so only the Windows toolchain behaviour remains unverified.
   reason: maybe-false. To settle it, build Sample.Api on Windows from a typical clone path with both VS MSBuild and `dotnet build`, long paths disabled. If it fails, shorten `CompilerGeneratedFilesOutputPath` or the generator hint names.
 
 ## Approved carry-forward: Dapr/Kubernetes payload successor (2026-11-08)

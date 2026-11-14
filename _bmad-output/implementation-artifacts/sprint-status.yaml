@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-11-10
+# last_updated: 2026-11-14
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-10
+last_updated: 2026-11-14
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -101,7 +101,9 @@ development_status:
   # 2026-11-07: NFR13 gates built; review pass 1 applied 7 patches, deferred 2 (IDE1006/IDE0055 repo-wide, Windows path).
   # Main tree: Release -warnaserror solution 0 warnings/0 errors; Generators.Tests 158/158; Contracts.Tests 1,569 (0 failed, 2 env skips).
   # Seeded generator/emitter/missing-files runs fail as required; no CI run yet. Results: spec-2-17-*.md.
-  2-17-generated-code-and-generator-build-quality: review
+  # 2026-11-14 code review (owned paths 37f0b65ef..2bd75f6b2): 1 test patch applied (UnconditionalSuppressMessage ban), 201/201;
+  # 2 existing deferrals kept, 20 rejected. 2bd75f6b2 is green in CI 43531295585.
+  2-17-generated-code-and-generator-build-quality: done
   epic-2-retrospective: done
 
   epic-3: in-progress

@@ -34,6 +34,7 @@ public sealed class RestApiGeneratedCodeQualityTests
     [
         "System.CodeDom.Compiler.GeneratedCodeAttribute",
         "System.Diagnostics.CodeAnalysis.SuppressMessageAttribute",
+        "System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute",
     ];
 
     [Theory]
@@ -148,6 +149,7 @@ public sealed class RestApiGeneratedCodeQualityTests
     [InlineData("#pragma warning disable\n", "'#pragma warning'")]
     [InlineData("[System.CodeDom.Compiler.GeneratedCode(\"seed\", \"1.0\")] ", "System.CodeDom.Compiler.GeneratedCodeAttribute")]
     [InlineData("[System.Diagnostics.CodeAnalysis.SuppressMessage(\"Reliability\", \"CA2007\")] ", "System.Diagnostics.CodeAnalysis.SuppressMessageAttribute")]
+    [InlineData("[System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(\"Reliability\", \"CA2007\")] ", "System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute")]
     public void SeededAnalyzerBlinding_IsReportedByTheWarningCheck(string seed, string expectedViolation)
     {
         (CSharpCompilation compilation, ImmutableArray<SyntaxTree> generatedTrees) = SeedController(
