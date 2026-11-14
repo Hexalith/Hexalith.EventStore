@@ -143,9 +143,10 @@ public class CommandsController(
                 return Forbid();
             request = request with { Tenant = canonicalTenant };
         }
-        if (!workloadOnly && !platformScope &&
-            (!TenantCanonicalizer.TryCanonicalizeGrants(User.FindAll("eventstore:tenant").Select(claim => claim.Value), out IReadOnlySet<string> grants)
-             || !grants.Contains(request.Tenant)))
+        ClaimsPrincipal scopePrincipal = platformPrincipal ?? User;
+        if ((!workloadOnly || platformScope) &&
+            (!TenantCanonicalizer.TryCanonicalizeGrants(scopePrincipal.FindAll("eventstore:tenant").Select(claim => claim.Value), out IReadOnlySet<string> grants)
+             || !platformScope && !grants.Contains(request.Tenant)))
             return Forbid();
 
         RouteCatalogDispatchLease? platformLease = null;

@@ -136,6 +136,18 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         string tenant, string messageId, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
+        if (!TenantCanonicalizer.TryCanonicalize(tenant, out string canonicalTenant))
+        {
+            throw new ArgumentException("Tenant scope is invalid or reserved.", nameof(tenant));
+        }
+
+        if (_httpClient.DefaultRequestHeaders.Contains("X-Hexalith-Tenant")
+            || _httpClient.DefaultRequestHeaders.Contains("X-Hexalith-Scope"))
+        {
+            throw new InvalidOperationException("The workload status route requires exactly one tenant scope.");
+        }
+
+        tenant = canonicalTenant;
         string path = $"{_options.WorkloadCommandStatusPath.TrimEnd('/')}/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(messageId)}";
         using HttpResponseMessage response = await SendWorkloadAsync(
             HttpMethod.Get, path, null, EventStoreGatewayWorkloadOperations.CommandStatus,

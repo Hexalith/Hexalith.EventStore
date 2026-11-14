@@ -9,6 +9,35 @@ namespace Hexalith.EventStore.RestApi.Generators.Tests;
 
 public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
 {
+    /// <summary>Compiles both action kinds and verifies metadata uses the same effective scope source as their bodies.</summary>
+    /// <param name="assemblyMode">The assembly's configured tenant source.</param>
+    /// <param name="routeMode">The query route's tenant-source override.</param>
+    /// <param name="expected">The effective query scope source.</param>
+    [Theory]
+    [InlineData("Route", "Inherit", "Route")]
+    [InlineData("Claims", "Inherit", "Claims")]
+    [InlineData("System", "Inherit", "System")]
+    [InlineData("Platform", "Inherit", "Platform")]
+    [InlineData("Route", "Claims", "Claims")]
+    [InlineData("Claims", "Route", "Route")]
+    [InlineData("Platform", "Route", "Route")]
+    [InlineData("Route", "Platform", "Platform")]
+    [InlineData("Inherit", "Inherit", "Claims")]
+    public void GeneratedMetadataCapturesEffectiveTenantSourceBeforeCatalogAdmission(string assemblyMode, string routeMode, string expected)
+    {
+        RestApiGeneratedController controller = CreateController(tenantMode: assemblyMode, routeTenantMode: routeMode);
+
+        foreach (string methodName in new[] { "IncrementCounterCommandAsync", "GetCounterStatusQueryQueryAsync" })
+        {
+            object metadata = controller.Controller.GetType().GetMethod(methodName)!
+                .GetCustomAttributes(typeof(RouteCatalogEndpointAttribute), false).Single();
+            string expectedSource = methodName == "IncrementCounterCommandAsync"
+                ? assemblyMode == "Inherit" ? "Claims" : assemblyMode
+                : expected;
+            ((RouteCatalogEndpointAttribute)metadata).TenantSource.ToString().ShouldBe(expectedSource);
+        }
+    }
+
     [Theory]
     [InlineData("Route", false)]
     [InlineData("Claims", false)]

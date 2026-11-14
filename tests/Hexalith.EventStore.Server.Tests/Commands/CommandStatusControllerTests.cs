@@ -71,6 +71,7 @@ public class CommandStatusControllerTests {
     public async Task GetWorkloadStatus_UsesTheSameRecordAwarePublicationPollingPolicy(bool? retryable)
     {
         SetupHttpContext("tenant-a");
+        _controller.Request.Headers.Remove("X-Hexalith-Tenant");
         var identity = (ClaimsIdentity)_controller.User.Identity!;
         identity.AddClaims([
             new Claim(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, "caller"),
