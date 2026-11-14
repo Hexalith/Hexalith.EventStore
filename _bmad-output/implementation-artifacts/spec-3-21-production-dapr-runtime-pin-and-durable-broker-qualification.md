@@ -110,7 +110,7 @@ Actual broker failures and preservation blockers are retained rather than repair
 
 ## Approved follow-up and current integrity limitation
 
-**Current (2026-11-13):** Platform candidate-02 observed all 24 vectors, with retained independent verification recording 20 PASS / 4 FAIL, integrity verified and cleanup credited. Technical qualification and production eligibility remain FAIL, selected broker null, and both parent stories in-progress. The [current result reconciliation](#platform-result-reconciliation--2026-11-13) below records exact execution identities and the unresolved Kafka pressure, Kafka rotation and supported RabbitMQ delivery intakes. The [offline successor assessment](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md) records the owner-approved offline evidence criteria and remaining concrete inputs; no remedy or execution is accepted. The reconciliation supersedes the startup failure and source-drift observations as current blockers, while preserving those dated assessments. Reading the evidence does not accept a diagnostic plan, inventory/profile handoff, AD-26 decision or further execution.
+**Current (2026-11-14):** Platform candidate-02 remains 20 PASS / 4 FAIL across all 24 vectors, with verified integrity and credited cleanup. The [completed dependency handoff](#completed-platform-dependency-handoff--2026-11-14) reconciles off-site packet custody, actual upstream issues #4764/#4765 and the subsequent Kafka source stop decisions. Custody and issue filing are complete; supported remedies, admission and exact further execution remain open. The [original result reconciliation](#platform-result-reconciliation--2026-11-13) retains execution identities and outcomes, and the [owning evidence contract](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#completed-platform-handoff-reconciliation--2026-11-14) carries the latest evidence links and re-entry criteria. Technical qualification and production eligibility remain FAIL, selection null, five historical guarantees REJECTED/open and both parents in-progress. Dated pending-custody/unposted-issue statements below are historical. No diagnostic, inventory/profile handoff, AD-26 decision or further execution is accepted here.
 
 **Historical (2026-11-12):** EventStore assessed Platform's [candidate-01 hosted report](../../references/Hexalith.Platform/docs/implementation/story-4-17-broker-candidate-01-hosted.md) and retained receipts. Its single attempt ended as `startup_failure` before job allocation: zero jobs, zero artifacts and 0/24 observed vectors. This supplies an infrastructure-blocker assessment, with packet integrity, technical qualification, cleanup and artifact delivery still unproven. The [Platform configuration input slice](spec-3-21-platform-broker-configuration-input.md) is done. Platform owns startup investigation and any separately accepted further execution; the consumed single-attempt scope does not authorize a retry. The exact-subject assessment and proposed handoffs below preserve all five historical rejected guarantees, the full 24-vector denominator, null broker selection, FAIL production eligibility and `in-progress` parent status.
 
@@ -372,6 +372,35 @@ The source producer/verifier, locks, runtime/tool pins and all 24 predicates/vec
 Both parent statuses stay in-progress, five historical guarantees REJECTED/open, technical
 qualification FAIL (20/24), broker selection null and production eligibility FAIL. No infrastructure,
 qualification, external issue, pin adoption or broker-selection action occurred.
+
+## Completed Platform dependency handoff — 2026-11-14
+
+The [owning handoff reconciliation](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#completed-platform-handoff-reconciliation--2026-11-14)
+consumes Platform's published receipts at `bad341e575ffc936ab8d36705e9bbd142f74604d`.
+It supersedes the earlier pending-custody/unposted-issue statements as current tracking without
+rewriting their dated preparation history or the immutable source work packages.
+
+- Platform preserved all four original packets plus the inventory manifest off-site; its receipt
+  records five accepted object versions and separate automated readback completed before each
+  original expiry. Custody is complete with the retained validation/accountability limits and
+  Administrator no-deletion hold. The manual custody review remains due by December 13, 2026
+  (Europe/Paris); completed preservation grants no broker guarantee or general retention-service acceptance.
+- The two prepared RabbitMQ requests are now actual public issues
+  [#4764](https://github.com/dapr/components-contrib/issues/4764) and
+  [#4765](https://github.com/dapr/components-contrib/issues/4765). Filing is complete; implementation,
+  upstream acceptance and supported runtime delivery remain outstanding. Do not duplicate the filings.
+- Kafka pressure retains its unidentified supported-mechanism dependency. The subsequent rotation
+  feasibility and controlled-association decisions reach their source stop rules; logger settings
+  and HTTP completion cannot supply the missing whole-publisher/request association witness.
+  Historical cause stays unadjudicable and no instrumentation or logging-only repeat is ready.
+
+Re-entry needs the concrete supported Kafka mechanism/witness or separately accepted alternative
+design, or supported RabbitMQ fix delivery. EventStore owns assertions/input admission, Builds
+owns alignment and Platform owns a separately accepted exact full-matrix execution proposal.
+AD-26, profile inventory and the previously recorded staging/shared-host/restore and 5.7/3.19
+prerequisites remain. Both parents stay in-progress; five historical guarantees REJECTED/open,
+technical FAIL (20/24), selection null and production eligibility FAIL. No run, source/profile/pin
+change, custody operation or upstream mutation occurred in this documentation reconciliation.
 
 ## Verification
 

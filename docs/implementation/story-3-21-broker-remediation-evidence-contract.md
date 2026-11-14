@@ -1,5 +1,9 @@
 # Story 3.21 — offline remediation assessment and proposed evidence contract
 
+**Current handoff (2026-11-14):** the [completed Platform handoff reconciliation](#completed-platform-handoff-reconciliation--2026-11-14)
+below supersedes the earlier pending-custody/unposted-issue statements. Those dated preparation
+statuses remain historical; the approved acceptance criteria remain binding. No successor is admitted.
+
 2026-11-13. **Owner approved the offline investigation, evidence criteria and delivery requirements;
 exact implementation inputs remain conditional and execution is not admitted.**
 Platform 4.17 and EventStore 3.21 remain **in-progress**. Candidate-02 remains technical
@@ -240,3 +244,88 @@ policy review; no new service is provisioned.
 No producer, verifier, profile, runtime pin, 24-vector inventory or qualification predicate changed.
 Both parent stories remain in-progress, all five historical guarantees REJECTED/open, technical
 qualification FAIL (20/24), selection null and production eligibility FAIL.
+
+## Completed Platform handoff reconciliation — 2026-11-14
+
+Platform's published reconciliation source is
+[`bad341e575ffc936ab8d36705e9bbd142f74604d`](https://github.com/Hexalith/Hexalith.Platform/commit/bad341e575ffc936ab8d36705e9bbd142f74604d).
+The following reads its retained outcomes; this local EventStore update does not replay operations,
+reverify a remote archive or admit implementation/execution. The preceding dated records describe
+what was known at preparation time. The original candidate-02 execution identities and evidence
+authority remain unchanged.
+
+### Packet custody completed
+
+The immutable [custody receipt](https://github.com/Hexalith/Hexalith.Platform/blob/bad341e575ffc936ab8d36705e9bbd142f74604d/docs/implementation/story-4-17-custody/receipt.json)
+records accepted preservation of all four original sanitized ZIPs and the unchanged inventory
+manifest: five exact object versions under Scaleway `hexalith-recovery-points`, `fr-par`, prefix
+`evidence/4-17/20261114t010116z-5574db84/`. Completion was
+`2026-11-14T01:14:47.503827Z`, before every archive's GitHub expiry. Independent automated
+download/readback matched all five file digests, 2,215 archive entries and 2,059 packet artifact
+hashes, with the original schemas and authority labels. Candidate-01 remains diagnostic-only
+with its original integrity rejection; storage verification does not upgrade that label.
+
+The [preservation record](https://github.com/Hexalith/Hexalith.Platform/blob/bad341e575ffc936ab8d36705e9bbd142f74604d/docs/implementation/story-4-17-packet-custody-preparation-2026-11-14.md#off-site-custody-completed--2026-11-14)
+and [post-review checks](https://github.com/Hexalith/Hexalith.Platform/blob/bad341e575ffc936ab8d36705e9bbd142f74604d/docs/implementation/story-4-17-custody/post-review-checks.json)
+retain protection and validation limits. Verification used separate agent execution on a shared
+host, not an independent human or security boundary. The recorded thirty-day COMPLIANCE minimum
+is not permission to delete afterward; the Administrator holds deletion until the guarantees
+close, then reviews applicable policy. The existing
+[Administrator checkpoint](https://github.com/Hexalith/Hexalith.Platform/blob/bad341e575ffc936ab8d36705e9bbd142f74604d/docs/implementation/story-4-17-custody/post-review-verification.md#administrator-checkpoint-and-deletion-review)
+requires manual read-only review by **December 13, 2026 (Europe/Paris)**, before the first
+enforced minimum ends at `2026-12-14T01:08:47.313Z`; record a dated follow-up, preserve denied
+probes and distinguish current-ACL inference from version-bound proof. No schedule or automatic
+control change is created. Completed preservation resolves the destination/transfer dependency,
+not this continuing custody obligation or general Story 4.13 acceptance; it grants no broker qualification.
+
+### RabbitMQ dependency requests submitted
+
+The immutable [approved plan](https://github.com/Hexalith/Hexalith.Platform/blob/bad341e575ffc936ab8d36705e9bbd142f74604d/docs/implementation/story-4-17-upstream/plan.json)
+and [submission receipts](https://github.com/Hexalith/Hexalith.Platform/blob/bad341e575ffc936ab8d36705e9bbd142f74604d/docs/implementation/story-4-17-upstream/receipts.json)
+bind the actual two submissions and exact approved title/body commitments:
+
+| Dependency request | Actual issue | Created (UTC) |
+| --- | --- | --- |
+| A: preserve publish errors through cancellation and reconnect | [dapr/components-contrib #4764](https://github.com/dapr/components-contrib/issues/4764) | 2026-11-14T03:22:27Z |
+| B: opt-in mandatory publishing and correlated returns | [dapr/components-contrib #4765](https://github.com/dapr/components-contrib/issues/4765) | 2026-11-14T03:22:57Z |
+
+Submission establishes no upstream acceptance, implementation or supported delivery.
+Do not file the prepared requests again. Preserve the original local
+[RabbitMQ work package](story-3-21-rabbitmq-upstream-work-packages.md) at EventStore
+`51dd68b86a690ffe9e11c565dccec49b2d401a94`, SHA-256
+`8f34e21a085fb7d63d8c63b7a8a3fe88a6897b6127224523d2d728229e563bbd`;
+its unexecuted recipes and then-unposted status remain historical submission inputs.
+
+### Kafka stop decisions and next re-entry
+
+The pressure stop rule in the unchanged [Kafka work package](story-3-21-kafka-bounded-investigation.md)
+still applies: no supported Produce-pressure mechanism yielding the unchanged accepted rejection
+was identified. Do not implement or tune a replacement fault without that concrete dependency.
+
+Platform's subsequent [rotation feasibility decision](https://github.com/Hexalith/Hexalith.Platform/blob/bad341e575ffc936ab8d36705e9bbd142f74604d/docs/implementation/story-4-17-kafka-rotation-observation-feasibility.md)
+and [controlled-association decision](https://github.com/Hexalith/Hexalith.Platform/blob/bad341e575ffc936ab8d36705e9bbd142f74604d/docs/implementation/story-4-17-kafka-controlled-association.md)
+reach the source-path stop criterion. Supported logger controls alone establish no complete join.
+No supported nonclosing witness was established for completion of all prior Dapr invocations and
+their Produce attempts on the same live old publisher. A later success, sentinel, readback or
+calculated wait cannot certify the required empty-other-work invariant. Historical causality
+remains unadjudicable; these source conclusions are not a measured cause of the historical failure.
+
+Reopening rotation requires a concrete supported completion/discrimination witness or a separately
+accepted alternative correlation design. Publisher/socket/principal association, serving applied
+ACL/audit evidence and the separate cold-old-generation control remain unresolved. A logging-only
+repeat is not ready and the existing live-session predicate remains unchanged.
+
+Kafka may re-enter independently when its missing supported pressure mechanism or accepted
+observation/design is concrete. EventStore must still admit the exact producer/verifier/profile/
+configuration inputs before an execution proposal; RabbitMQ delivery does not gate that work.
+
+For RabbitMQ, re-entry requires implementation plus an official supported Dapr release embedding
+the required fixes. EventStore 3.21 owns assertions and exact supported runtime/component/lock
+admission after that delivery; Builds then owns catalog/CLI/runner alignment. Platform
+still needs a separately accepted exact source/configuration/worker/tool execution proposal,
+independent verification and all 24 vectors. A bounded diagnostic may predict failures, but
+this reconciliation admits none. AD-26, Story 4.9 profile inventory, accepted 5.7/3.19 bindings,
+staging 4.14–4.16 and shared-host/restore prerequisites remain open.
+
+Both parents remain **in-progress**, all five historical guarantees **REJECTED/open**, technical
+qualification **FAIL (20/24)**, selected broker **null**, production eligibility **FAIL**.
