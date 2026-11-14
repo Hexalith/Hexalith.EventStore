@@ -134,6 +134,53 @@ The starting EventStore HEAD is `486fd9f1a22f78a22b052375009866a8e6239a99`. The 
 
 ## Verification
 
+### Current-source prerequisite revalidation (2026-11-14 08:42 UTC)
+
+The complete spec was reread; frontmatter `context: []` requires no additional files. This run follows the latest prerequisites-only amendment. Existing compatibility changes were verified and later owner fixes identified without duplicating implementation. No production, test, workflow or dependency declaration was changed.
+
+The actual local source cohort was:
+
+| Source owner | Full local revision |
+| --- | --- |
+| EventStore | `05d304d0da7506bfc5bf1b055ae1cccc570fba42` |
+| FrontComposer | `745a86889bd3fdaefa45673c541f2db32c179ed2` |
+| Memories | `c4ee997702ede948ada5f99eeae7b3782e92003b` |
+| Tenants | `401d926eb7d51bdf332696ed3f0fe39a812b3501` |
+| Builds | `c8c3473cc205ef811bd9fb3ee23fe7d375f9c566` |
+| Commons | `fbf4e94233821f6ca336af91a06feaaeb7a16855` |
+| Platform | `3ebb3ac3ff9da06afa4ceb43ec85a5388d6326bc` |
+| McpCli | `b0fe2a7767fdd3bec8e06f452c13e75c0cc02341` |
+| PolymorphicSerializations | `e97b56930e213f674b64c157551f499b0473ec43` |
+
+From the owning FrontComposer directory, both builds passed with zero warnings/errors:
+
+```bash
+dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false --no-restore -m:1 -v:minimal
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false --no-restore -m:1 -v:minimal
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net11.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandFormEmitterTests -class Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandFormValidationCompilationTests -class Hexalith.FrontComposer.SourceTools.Tests.Emitters.RenderTreeSequenceRewriterTests -noLogo
+```
+
+The generator selection passed **99/99**, with zero errors, skips or unrun cases, including compilation of the actual emitted validation block against both installed .NET 10 and .NET 11 APIs. The same seventeen-class Shell command recorded under “Final local cohort and authenticated CI checkpoint” was rerun with both Dapr endpoints at unavailable loopback port 1. It completed **359 cases: 357 passed, two failed, zero errors/skips/unrun cases**. Both failures are `FrontComposerShellTests.FocusSettlingAfterKeyboardModuleTeardownHandlesOnlyDisposal` with `unrelatedFailure: true`; the local merge reintroduced broad `InvalidOperationException` catches that suppress the required failure. Exact argv is retained in `/tmp/story-2-14-current-lmX7tJza/frontcomposer-shell-command.sh`, alongside `frontcomposer-{generator,shell}-{build,tests}.log`.
+
+Read-only authenticated comparison and exact-source retrieval show this defect is **already fixed** by owner commit `c97156de9a6472553a6a86270a0a6e893de6e2e0`, inherited by remote FrontComposer `118f9f046491c2c6236bab4d477dbeb26dfbdda5`. That source removes both broad catches and retains disposal, JS and cancellation recovery. No redundant fix or local dependency checkout update was made. The local failed result remains recorded. [Current-owner CI 43575274947](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43575274947) passes its configured Release build/test and dependency-governance jobs on `118f9f046491c2c6236bab4d477dbeb26dfbdda5`; its configured test shards do not supply a focused Shell regression result. [Quality 43575274810](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43575274810) has passed Debug-gated tests, committed files, accessibility/visual, Chromium and Epic 9 live acceptance; its broad Unit + bUnit lane, Firefox and WebKit remain running at this checkpoint. Those pending outcomes remain unproven. The older [Quality 43526689541](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43526689541), on `b9b3cbbba746dc3e023383eceac0494b711d73de`, is now final: all seven other jobs passed, while broad build-and-test failed the previously recorded main-only governance acquisition. The later passing dependency-governance result belongs to its newer source.
+
+From the owning Tenants directory, the initial source-mode `--no-restore` build failed with two `CS1704` errors and two `MSB3243` warnings from stale mixed Commons package/source assets. The permitted local-cache-only restore below resolved that artifact mismatch; the identical build then passed with zero warnings/errors:
+
+```bash
+dotnet restore tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false -p:HexalithCommonsFromSource=true -p:NuGetAudit=false --source /home/administrator/.nuget/packages -v:minimal
+dotnet build tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false -p:HexalithCommonsFromSource=true --no-restore -m:1 -v:minimal
+run-with-temp env DAPR_HTTP_ENDPOINT=http://127.0.0.1:1 DAPR_GRPC_ENDPOINT=http://127.0.0.1:1 dotnet tests/Hexalith.Tenants.IntegrationTests/bin/Debug/net11.0/Hexalith.Tenants.IntegrationTests.dll -class Hexalith.Tenants.IntegrationTests.TenantsApiGeneratedControllerTests -noLogo
+```
+
+The generated-controller class passed **67/67**, with zero errors, skips or unrun cases. Its in-process/captured transports and owned loopback API processes used no retained Dapr backend. The newly supplied `run-with-temp` instruction was applied prospectively to this runtime job. Logs are `/tmp/story-2-14-current-lmX7tJza/tenants-{build,restore,restored-build,generated-http}.log`.
+
+The latest authenticated Tenants runs use newer owner source `6fcff842a8e48fc843d7b2df942d369f99f92b6b`, but its source tree still pins EventStore `639c9d5c0c8c8fba14aaec536dd1c2e3ceaccc13`, FrontComposer `19418a0c29daf38eef03b0891958cd8aa93c59bf` and Memories `a3f0b3a4a0f0905f6b88da039491ceb286103207`. Its effective package defaults remain EventStore `4.2.0` and Memories `3.0.27`. [Package CI 43574425256](https://github.com/Hexalith/Hexalith.Tenants/actions/runs/43574425256) still fails before generated HTTP assertions with `CS0618` for `EditContext.Validate()` in job `132385464067`. [Source-reference integration 43573281801](https://github.com/Hexalith/Hexalith.Tenants/actions/runs/43573281801) still fails before readback with the six `NU1201`/`NU1202` sibling .NET 10/.NET 11 errors in job `132382026462`. Their unchanged selected inputs do not include the verified fixes. Exact logs and authenticated job/run snapshots are retained in the same temporary evidence directory.
+
+EventStore's existing current-head [CI 43575060004](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/43575060004) has five jobs passed (Contracts, Tenants topology/source mode, checkpointed process packages, folded snapshots and release governance); broad build-and-test is running Tier 1 tests. Both jobs in existing [Integration 43575059779](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/43575059779) remain running. Both runs bind `05d304d0da7506bfc5bf1b055ae1cccc570fba42`; no duplicate dispatch was made. Pre-existing EventStore commit `325c3ddcf122d7b6dfc9f2a5190fa88ac4fa1394` preserves routed tenant scope in the sample fixtures and adds forwarding regressions, so the earlier twelve-failure checkpoint is historical; the current broad gate is still pending.
+
+Required next work remains the separately authorized adoption of the corrected owner sources and compatible published cohorts, the final compiled-host/fresh-cache package/disposable Dapr readback matrix, and Story 9.2's assurance mechanism plus qualifying human attestation. Story 9.2 remains backlog. No deployment, retained-data mutation, package publication, dependency adoption, staging, commit or push occurred. Concurrent unrelated temporary-cleanup files were preserved. The original frozen block SHA-256 remains `5cde19424d2447ca1b15fb91efda5153b10c3f62dd85dc4a3da12860d200e6ce`; original frontmatter, `in-progress` status and unchecked Story 2.14 CI execution task remain unchanged.
+
+
 ### Compatibility prerequisite verification (2026-11-13)
 
 The following evidence belongs to the separately authorized compatibility-prerequisite run. Earlier checkpoints below remain historical. Story 2.14 stays `in-progress`, its original `baseline_commit` is preserved, and the complete hosted/readback/package/assurance execution task remains unchecked.
