@@ -4,6 +4,9 @@
 below supersedes the earlier pending-custody/unposted-issue statements. Those dated preparation
 statuses remain historical; the approved acceptance criteria remain binding. No successor is admitted.
 
+**Accepted next priority:** [RabbitMQ Package A, then Package B](#accepted-remediation-priority--2026-11-14),
+with Kafka stop conditions and independent re-entry retained.
+
 2026-11-13. **Owner approved the offline investigation, evidence criteria and delivery requirements;
 exact implementation inputs remain conditional and execution is not admitted.**
 Platform 4.17 and EventStore 3.21 remain **in-progress**. Candidate-02 remains technical
@@ -329,3 +332,58 @@ staging 4.14–4.16 and shared-host/restore prerequisites remain open.
 
 Both parents remain **in-progress**, all five historical guarantees **REJECTED/open**, technical
 qualification **FAIL (20/24)**, selected broker **null**, production eligibility **FAIL**.
+
+## Accepted remediation priority — 2026-11-14
+
+The owner's **“apply recommended”** accepts the detailed tradeoff recommendation as
+engineering priority. EventStore coordinates the existing supported-delivery dependency:
+
+1. **Package A / [#4764](https://github.com/dapr/components-contrib/issues/4764) first:**
+   preserve broker NACK and revoked-credential errors through the public Publish path,
+   confirmations, retries and reconnects. Cancellation must return non-success within
+   existing bounds; include lock acquisition, exchange declaration and connection waits.
+   Keep the original attributable errors, uncertain in-flight effects and persisted-readback
+   controls. A helper-only NACK fix does not establish the complete remedy.
+2. **Package B / [#4765](https://github.com/dapr/components-contrib/issues/4765) next:**
+   opt-in mandatory publishing with the existing proposed confirms compatibility rule,
+   actual attempt/channel return correlation and return/confirmation ordering before
+   success. Preserve concurrency, duplicate-ID, reconnect, cancellation and bounded-state
+   controls plus routed positive and physically unbound negative controls through Dapr.
+
+These are the existing requirements in the retained work packages, not new implementations
+or upstream acceptance. Preserve the original package and issue-body commitments. A focused
+upstream contribution can accelerate delivery if later concretely scoped; none is started
+or communicated by this local priority decision. No private runtime is adopted.
+
+**Kafka pressure:** retain the source stop condition until a supported actual Produce-pressure
+rejection mechanism satisfies the unchanged predicate. More quota tuning, administrative
+errors, message-size failures and timeouts are not demonstrated substitutes. If Kafka is
+strategically required, resolve its pressure-contract question before further speculative
+implementation; an owner contract decision would be separate and is not supplied here.
+
+**Kafka rotation:** retain the completion/discrimination stop rule. A future small source-backed
+design must establish HTTP/request-retry association, actual publisher/authenticated principal
+and serving applied-ACL/audit joins using supported observations before instrumentation.
+Logging volume, sentinels or waits do not close those gaps. Preserve the separate cold-generation
+control, live-session predicate and historically unadjudicable cause. A concrete Kafka input may
+re-enter independently of RabbitMQ delivery under its own EventStore admission/design decision.
+
+The EventStore 3.21 maintainer owns manual read-only checks of the existing issues and official
+releases when the [existing reopened broker item](../../_bmad-output/implementation-artifacts/deferred-work.md)
+(source_spec `spec-3-21-latest-stable-dapr-runtime-refresh.md`) is discussed in normal sprint
+planning. Record material changes in that item and this contract with the observation date,
+issue/release URL, exact release/source identities and remaining gates. If nothing changes,
+retain the waiting disposition; do not add a repetitive reconciliation. Add no monitoring
+service, scheduled automation or automatic qualification retry.
+For RabbitMQ, re-entry requires an official supported Dapr release embedding the required fixes,
+not only a source merge, issue closure, partial package or native-client result. EventStore
+verifies and admits exact runtime/component/source/binary/image/lock identities; Builds owns
+catalog/CLI/runner alignment; Platform prepares the separately accepted exact full-matrix
+source/configuration/worker/tool execution proposal with independent verification and cleanup.
+
+The existing complete 24-vector comparison and predicates remain. RabbitMQ-first is an effort
+priority, not selection or a claim that its remediation would make the aggregate pass. Preserve
+the five historical REJECTED/open guarantees, technical FAIL (20/24), selection null, production
+eligibility FAIL and both in-progress parents. AD-26/profile, staging and shared-host/restore
+prerequisites, completed packet custody and its December 13 Administrator checkpoint remain.
+This local decision supplies no release, input adoption, runtime change or new qualification.
