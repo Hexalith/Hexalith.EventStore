@@ -102,11 +102,17 @@ Actual broker failures and preservation blockers are retained rather than repair
 - 2026-10-20: implemented the disposable local stage and tightened evidence checks against native receipts. Clarified that the C# capture test accepts observed rejected guarantees while the qualification validator and non-promoting workflow still fail them. Frozen intent and acceptance expectations are unchanged.
 - 2026-10-20: user explicitly approved the [shared-host course correction](../planning-artifacts/sprint-change-proposal-2026-10-20.md); frozen intent and staged acceptance were renegotiated under [the exact-subject planning receipt](evidence/story-3-21-platform-host-reconciliation-2026-10-20/approval/approval.json). ES-DIAG intent is approved; its Story 9.1 implementation preflight remains required. No AD-26 ratification, broker selection or production authority is inferred.
 
+- 2026-11-13: Reconciled Platform candidate-02's retained, independently verified 20/24 result and subsequent remediation intake. The November 12 pre-allocation failure and source-drift observations below are historical. Recorded the current four failed vectors, all five open historical guarantees and missing engineering/owner inputs without changing frozen intent, task completion, predicates, locks or either parent status.
+
+- 2026-11-13: Continued offline assessment from published Platform `44756d1db8a38ac305cbb5247ae9cd52985b1d76` and EventStore `5f4db84502c7c54b316dd9429dccd12ae881e759`. Prepared the proposed remediation evidence contract: pressure-fault feasibility plus producer/verifier admission dependency, minimum principal/applied-ACL/publisher/readback join, supported RabbitMQ delivery and packet-custody decision. This accepts no implementation, execution, pins or guarantee closure. The reproducible audit now compares immutable evidence links with the published Git baseline, allowing the current intake to evolve without rewriting the published subject.
+
 ## Review Triage Log
 
 ## Approved follow-up and current integrity limitation
 
-**Current (2026-11-12):** EventStore assessed Platform's [candidate-01 hosted report](../../references/Hexalith.Platform/docs/implementation/story-4-17-broker-candidate-01-hosted.md) and retained receipts. Its single attempt ended as `startup_failure` before job allocation: zero jobs, zero artifacts and 0/24 observed vectors. This supplies an infrastructure-blocker assessment, with packet integrity, technical qualification, cleanup and artifact delivery still unproven. The [Platform configuration input slice](spec-3-21-platform-broker-configuration-input.md) is done. Platform owns startup investigation and any separately accepted further execution; the consumed single-attempt scope does not authorize a retry. The exact-subject assessment and proposed handoffs below preserve all five historical rejected guarantees, the full 24-vector denominator, null broker selection, FAIL production eligibility and `in-progress` parent status.
+**Current (2026-11-13):** Platform candidate-02 observed all 24 vectors, with retained independent verification recording 20 PASS / 4 FAIL, integrity verified and cleanup credited. Technical qualification and production eligibility remain FAIL, selected broker null, and both parent stories in-progress. The [current result reconciliation](#platform-result-reconciliation--2026-11-13) below records exact execution identities and the unresolved Kafka pressure, Kafka rotation and supported RabbitMQ delivery intakes. The [offline successor assessment](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md) records the owner-approved offline evidence criteria and remaining concrete inputs; no remedy or execution is accepted. The reconciliation supersedes the startup failure and source-drift observations as current blockers, while preserving those dated assessments. Reading the evidence does not accept a diagnostic plan, inventory/profile handoff, AD-26 decision or further execution.
+
+**Historical (2026-11-12):** EventStore assessed Platform's [candidate-01 hosted report](../../references/Hexalith.Platform/docs/implementation/story-4-17-broker-candidate-01-hosted.md) and retained receipts. Its single attempt ended as `startup_failure` before job allocation: zero jobs, zero artifacts and 0/24 observed vectors. This supplies an infrastructure-blocker assessment, with packet integrity, technical qualification, cleanup and artifact delivery still unproven. The [Platform configuration input slice](spec-3-21-platform-broker-configuration-input.md) is done. Platform owns startup investigation and any separately accepted further execution; the consumed single-attempt scope does not authorize a retry. The exact-subject assessment and proposed handoffs below preserve all five historical rejected guarantees, the full 24-vector denominator, null broker selection, FAIL production eligibility and `in-progress` parent status.
 
 **Enabling slice (2026-11-11):** The owner reopened deferred broker remediation under Platform's ownership. The approved [Platform configuration input slice](spec-3-21-platform-broker-configuration-input.md) implemented an explicitly selected schema-3 harness input and independent verification without running infrastructure or CI. Platform's [2026-11-10 dispositions](../../references/Hexalith.Platform/docs/implementation/story-4-17-local-broker-dispositions-2026-11-10.md) identified the harness's pinned configuration as the first dependency. Configuration provenance binds exact bytes and declared Platform revision/path without authenticating owner acceptance. The enabling implementation supplied no runner capability or execution acceptance.
 
@@ -119,6 +125,8 @@ Actual broker failures and preservation blockers are retained rather than repair
 RabbitMQ backlog durability and Kafka replay are separate claims. Production retention, capacity and restore objectives need owner records. Static source concerns require live fault tests.
 
 ## Platform result assessment — 2026-11-12
+
+Historical assessment of the first, unallocated attempt. Its statements about the then-current startup and lock-drift blockers are superseded by the November 13 reconciliation; its original identities, observations and verification results remain unchanged.
 
 Assessed the retained Platform checkout `add09b79e61b6e08469bc37f9ec12e82899531db` from EventStore source `9aba65a5f4c8735e666d96b397a06ca8d8d9a55d`. The [hosted report](../../references/Hexalith.Platform/docs/implementation/story-4-17-broker-candidate-01-hosted.md), [execution status](../../references/Hexalith.Platform/_bmad-output/implementation-artifacts/evidence/4-17/candidate-01-hosted/execution-status.json), [vector assessment](../../references/Hexalith.Platform/_bmad-output/implementation-artifacts/evidence/4-17/candidate-01-hosted/vector-assessment.json) and [independent-verifier assessment](../../references/Hexalith.Platform/_bmad-output/implementation-artifacts/evidence/4-17/candidate-01-hosted/independent-verifier-assessment.json) agree. This assessment reads existing receipts; it does not authenticate an owner handoff or establish execution from a source pin alone.
 
@@ -171,9 +179,203 @@ Metadata audit command (run from EventStore's root): `python3 -B /tmp/story-3-21
 
 No new CI run was dispatched. The linked Platform run is the retained failed attempt, not a new verification run. The uncompleted final task, frozen intent and `in-progress` status remain unchanged. Fresh execution remains blocked on Platform's startup investigation and accepted further scope/worker; this session has no owner-issued exclusive worker allocation. Kubernetes/restore, Builds adoption, Story 4.16 capability proof, AD-26 ratification and accepted selected input bindings remain outstanding. Historical packets, locks, sealed workflows and authority records remain untouched.
 
+## Platform result reconciliation — 2026-11-13
+
+Read the retained Platform [authoritative attempt assessment](https://github.com/Hexalith/Hexalith.Platform/blob/a71fee52cf03417e439e0b1141ccc64ae5cf3ad9/_bmad-output/implementation-artifacts/evidence/4-17/candidate-02-hosted-attempt-1/attempt-assessment.json), [vector assessment](https://github.com/Hexalith/Hexalith.Platform/blob/a71fee52cf03417e439e0b1141ccc64ae5cf3ad9/_bmad-output/implementation-artifacts/evidence/4-17/candidate-02-hosted-attempt-1/vector-assessment.json), [hosted report](https://github.com/Hexalith/Hexalith.Platform/blob/a71fee52cf03417e439e0b1141ccc64ae5cf3ad9/docs/implementation/story-4-17-broker-candidate-02-hosted-attempt-1.md) and [next-candidate intake](https://github.com/Hexalith/Hexalith.Platform/blob/a71fee52cf03417e439e0b1141ccc64ae5cf3ad9/docs/implementation/story-4-17-next-candidate-intake.md). These immutable links require no nested Platform submodule. This reconciliation checks the retained assessments and current source admission; it does not re-download or independently reverify the original broker packet. The hosted and local verifier results below are those recorded by Platform.
+
+| Bound input | Exact identity |
+| --- | --- |
+| Executed run / attempt | [43386723091 / 1](https://github.com/Hexalith/Hexalith.Platform/actions/runs/43386723091); immutable tag `qualification/broker-candidate-02/attempt-1-4d66ff55` |
+| Executed Platform / EventStore revisions | `4d66ff5584e4f62239551bb02311649334171a84` / `495dd24943031ec75e2822c6168ada3c8b9fdb82` |
+| Original independent configuration | `docs/implementation/story-4-17-broker-candidate-02.json`, SHA-256 `b8601e3a6d4e8460d039573ca2f7e1728e52aa67e61fc0710d74cab5d072580b` |
+| Explicit profile | `deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json`; runtime/CLI 1.19.1, SDK/components 1.19.0; full both-broker/24-vector denominator |
+| Artifact identity and custody limitation | ID `14018214306`, ZIP SHA-256 `a26b848840ca8061a00d8ea7598b52b6a91b5331822645c23bc527278e40949a`; bytes were not committed; recorded expiry `2026-12-13T07:40:43Z`. The links retain assessments, not the entire packet or independent off-site custody. |
+| Documentation review baselines | Platform `a7f901ae79ed5fd7ad2f04f0779b21108a4cdee9`; EventStore `fd07d0ab33858818d836e43bf8c112c5d4827534`. Neither replaces the executed identities above. |
+
+| Result dimension | Retained assessment |
+| --- | --- |
+| Capture and integrity | All 24 observed; producer exit 1; independent integrity exit 0 both hosted and locally, with identical verifier stdout |
+| Technical qualification | FAIL, independent technical exit 1; 20 verified PASS / 4 verified FAIL |
+| Current failed vectors | `kafka/cancellation-backpressure`, `rabbitmq/secret-rotation`, `rabbitmq/cancellation-backpressure`, `rabbitmq/missing-bindings` |
+| Cleanup | Complete receipt and credited cleanup, following verified packet integrity |
+| Production authority | Expected independent authority rejection, exit 1; production eligibility FAIL and selected broker null |
+| Historical guarantees | All five remain REJECTED/open; candidate-02's verified Kafka rotation PASS is one observation awaiting historical-failure adjudication |
+
+Kafka pressure now has acknowledgedLoss 0, but none of its two HTTP 204 and six HTTP 500 responses supplies the accepted attributable rejection. RabbitMQ durable-quarantine and retention-expiry pass with the candidate-02 defaults; its rotation (stale publish 599), pressure (three acknowledged IDs missing at the bound, no attributable rejection) and missing binding (unbound publish 204) still fail. Candidate-01 attempt 2 was diagnostic-only because its pinned verifier rejected the packet; it receives no qualification credit from candidate-02's later verified packet.
+
+The next-candidate intake leaves three engineering dependencies:
+
+1. **Kafka pressure — EventStore 3.21:** demonstrate a supported producer-pressure fault satisfying the unchanged `pressure_rejection` predicate through Dapr. The present `producer_byte_rate=1024` fault throttles rather than demonstrating the required Produce rejection; another configuration-only attempt has no demonstrated remedy. Timeouts remain uncertain and FAIL. Bring any proposed guarantee/predicate change to the owner separately.
+2. **Kafka rotation — EventStore 3.21:** adjudicate the historical failure versus the one verified PASS. Existing receipt/source comparisons do not bind the stale request to its actual authenticated broker principal or prove applied authorizer state. Define the missing publisher/generation, principal, ACL-state, stale-publication and persisted-readback observations, retaining the positive new-generation control and missing cold-old-generation proof. The analysis supplies no accepted diagnostic plan, instrumentation or new run.
+3. **RabbitMQ — EventStore/upstream, then Builds and Platform:** obtain supported publish-path fixes for NACK propagation through retry/cancellation, revoked-credential/reconnect errors, and mandatory publishing with correlated returns. A lower-level NACK backport alone demonstrates no end-to-end remedy. At this read-only check the latest [runtime 1.19.1](https://github.com/dapr/dapr/releases/tag/v1.19.1) and [components 1.19.0](https://github.com/dapr/components-contrib/releases/tag/v1.19.0) predate [backport #4748](https://github.com/dapr/components-contrib/pull/4748). Builds owns accepted runtime/tool alignment; Platform owns exact supported configuration and execution. No private build or exception is accepted.
+
+The previous approved attempt is consumed. A successor needs its own accepted question/evidence plan, exact source/lock/configuration bindings, supported worker/tools and separate execution decision. Platform Kubernetes/shared-host and restore rehearsal, staging 4.14–4.16, Builds adoption, authenticated per-role AD-26 ratification, Platform Story 4.9's profile inventory and accepted 5.7/3.19 input bindings remain outstanding. Frozen parent intent, tasks, acceptance criteria, all historical assessments and both in-progress parent statuses are preserved.
+
+### Current proposed downstream handoffs
+
+These rows replace the November 12 table only as current proposals; no inventory/profile acceptance or owner-delivery receipt is supplied.
+
+| Owner / proposed row | Latest exact-subject observation | Missing acceptance input |
+| --- | --- | --- |
+| Story 3.17 — `pubsub.kafka/v1`, local/CI candidate | Candidate-02: 11/12 verified PASS; pressure FAIL with acknowledgedLoss 0 but no attributable rejection. Rotation PASS once; historical rotation and pressure guarantees remain REJECTED/open. | Feasible accepted pressure fault and rotation adjudication/evidence plan; qualified selected inputs and authenticated exact-subject inventory acceptance remain absent. |
+| Story 3.17 — `pubsub.rabbitmq/v1`, local/CI candidate | Candidate-02: 9/12 verified PASS; rotation, pressure and missing binding FAIL. | Supported end-to-end publish-path fixes and full requalification; no remedy, exception or selected-component handoff is accepted. |
+| Story 5.9 — qualification reproduction guidance | Record the consumed candidate-02 attempt, separate 20/24 technical FAIL versus verified integrity/credited cleanup, original configuration and execution identities, and current 94-input admission PASS. Startup/lock-drift statements from November 12 are historical. | Guidance using these immutable assessment/intake links, no claims of new packet verification, production authority, accepted diagnostic scope or a runnable successor. |
+
+Platform Story 4.17's deferred-work ledger records the separate custody decision needed before the artifact's recorded expiry. The current assessment links are insufficient custody of the full packet required for later adjudication.
+
+Current offline check: `tools/qualify-dapr-brokers.py`, `tools/validate-dapr-broker-qualification.py`, `tools/dapr_platform_broker_configuration.py` and `deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json` are byte-identical to executed EventStore `495dd24943031ec75e2822c6168ada3c8b9fdb82`, and `validate_profile` accepts all 94 current locked inputs. This resolves the November 12 locked-input drift as a current admission blocker; it proves no new broker behavior or runtime capability.
+
+Offline verification from the Platform workspace: `PYTHONDONTWRITEBYTECODE=1 PYTHONOPTIMIZE=2 python3 -B /tmp/platform417-owner-reconciliation-elxsnl8b/verify_reconciliation.py` — exit 0. This temporary stdlib-only audit checked all 94 locked inputs, nine protected source/profile/workflow hashes, four exact candidate-source comparisons, unchanged frozen intent/tasks/acceptance criteria, the 24-vector inventory and 20/4/five-historical counts, original configuration/run/verifier/cleanup/authority identities, both parent statuses/main branches and four immutable evidence links against their Git objects. The remote GitHub commit API also confirmed the linked Platform revision exists. This corrects documentation only; no new CI or broker run occurred and no behavioral test result is claimed.
+
+Reproduce the offline checks below from the Platform workspace containing its root-declared EventStore checkout. No temporary script, saved snapshot, nested submodule, service or network access is required. The source identities must already exist in the local Git object stores. Failure to locate an identity stops verification; do not substitute current sources for it.
+
+```bash
+PYTHONOPTIMIZE=2 python3 -B - <<'PY'
+from collections import Counter
+from pathlib import Path
+import hashlib, json, re, subprocess, sys
+root = Path.cwd()
+owner = root / "references/Hexalith.EventStore"
+def check(ok, message):
+    if not ok:
+        raise SystemExit(message)
+def blob(repo, revision, path):
+    return subprocess.run(["git", "-c", "core.commitGraph=false", "show", revision + ":" + path],
+                          cwd=repo, check=True, capture_output=True).stdout
+sys.path.insert(0, str(owner / "tools"))
+from dapr_broker_qualification import BROKERS, SCENARIOS, validate_profile
+profile_path = "deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json"
+profile = json.loads((owner / profile_path).read_text())
+validate_profile(profile, owner)
+check(len(profile["inputs"]) == 94, "locked-input denominator differs")
+baseline = "fd07d0ab33858818d836e43bf8c112c5d4827534"
+candidate = "495dd24943031ec75e2822c6168ada3c8b9fdb82"
+protected = ["tools/qualify-dapr-brokers.py", "tools/validate-dapr-broker-qualification.py",
+             "tools/dapr_broker_qualification.py", "tools/dapr_platform_broker_configuration.py",
+             "deploy/dapr/qualification/runtime-lock.json", "deploy/dapr/qualification/runtime-lock-1.19.1.json",
+             profile_path, ".github/workflows/ci.yml", ".github/workflows/integration.yml"]
+for path in protected:
+    check((owner / path).read_bytes() == blob(owner, baseline, path), "protected bytes differ: " + path)
+for path in [protected[0], protected[1], protected[3], profile_path]:
+    check((owner / path).read_bytes() == blob(owner, candidate, path), "candidate source differs: " + path)
+parent = "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md"
+before = blob(owner, baseline, parent).decode()
+after = (owner / parent).read_text()
+for start, end in [("<frozen-after-approval", "</frozen-after-approval>"),
+                   ("## Tasks & Acceptance", "## Implementation Notes")]:
+    check(before[before.index(start):before.index(end)] == after[after.index(start):after.index(end)],
+          "frozen intent/tasks/acceptance criteria differ")
+base = root / "_bmad-output/implementation-artifacts/evidence/4-17/candidate-02-hosted-attempt-1"
+a = json.loads((base / "attempt-assessment.json").read_text())
+v = json.loads((base / "vector-assessment.json").read_text())
+check(len(v["vectors"]) == 24 and {x["vector"] for x in v["vectors"]} ==
+      {b + "/" + s for b in BROKERS for s in SCENARIOS}, "vector inventory differs")
+check(Counter(x["verifierResult"] for x in v["vectors"]) == {"PASS": 20, "FAIL": 4} and
+      all(x["verified"] is True for x in v["vectors"]) and
+      sum(x["historicallyRejected"] for x in v["vectors"]) == 5, "vector outcomes differ")
+failed = {"kafka/cancellation-backpressure", "rabbitmq/cancellation-backpressure",
+          "rabbitmq/missing-bindings", "rabbitmq/secret-rotation"}
+check({x["vector"] for x in v["vectors"] if x["verifierResult"] == "FAIL"} ==
+      set(a["vectors"]["verifiedFailed"]) == failed and
+      a["vectors"]["observed"] == v["counts"]["observed"] == 24 and
+      a["vectors"]["verifiedPass"] == v["counts"]["verifiedPass"] == 20 and
+      a["vectors"]["verifiedFail"] == v["counts"]["verifiedFail"] == 4, "assessment counts/failures differ")
+check(a["runId"] == 43386723091 and a["runAttempt"] == 1 and
+      a["identitiesObservedOnWorker"]["platform-revision"] == "4d66ff5584e4f62239551bb02311649334171a84" and
+      a["identitiesObservedOnWorker"]["eventstore-revision"] == candidate, "run/source identities differ")
+config_hash = hashlib.sha256((root / "docs/implementation/story-4-17-broker-candidate-02.json").read_bytes()).hexdigest()
+check(config_hash == a["identitiesObservedOnWorker"]["configuration-sha256"] ==
+      "b8601e3a6d4e8460d039573ca2f7e1728e52aa67e61fc0710d74cab5d072580b", "configuration differs")
+check(a["verification"]["hosted"] == a["verification"]["local"] ==
+      {"integrity": 0, "technical": 1, "authority": 1} and a["cleanup"]["credited"] is True and
+      a["cleanup"]["receiptComplete"] is True and a["verification"]["integrityVerified"] is True and
+      a["verification"]["hostedAndLocalStdoutIdentical"] is True and
+      a["verification"]["technicalQualification"] == "FAIL" and
+      a["unchanged"]["selectedBroker"] is None and a["unchanged"]["productionEligibility"] == "FAIL",
+      "verification/cleanup/authority differs")
+for repo, key in [(root, "4-17-select-and-qualify-the-durable-production-broker"),
+                  (owner, "3-21-production-dapr-runtime-pin-and-durable-broker-qualification")]:
+    check(re.search(r"^  " + re.escape(key) + r": in-progress$",
+                    (repo / "_bmad-output/implementation-artifacts/sprint-status.yaml").read_text(), re.M),
+          "parent status differs")
+    branch = subprocess.run(["git", "-c", "core.commitGraph=false", "branch", "--show-current"],
+                            cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
+    check(branch == "main", "branch differs")
+links = re.findall(r"https://github.com/Hexalith/Hexalith.Platform/blob/([0-9a-f]{40})/([^\s)]+)", after)
+check(len(links) == 4, "immutable file-link count differs")
+for revision, path in links:
+    check(blob(root, revision, path) == blob(root, "44756d1db8a38ac305cbb5247ae9cd52985b1d76", path),
+          "linked published evidence differs: " + path)
+print("PASS: 94 inputs; protected/candidate bytes; frozen requirements; 24 vectors, 20/4/five historical; identities; authority; statuses; immutable evidence links")
+PY
+```
+
+Final reconciliation checks: the exact documented Bash block was extracted and executed with `bash -eu`, including inherited Python optimization; exit 0 with the PASS output above. Parsed sprint data is unchanged in both repositories; changed-line whitespace passes. Blind review produced five findings: denominator wording was clarified outside frozen intent, the audit was made reproducible, the profile-inventory prerequisite and current downstream proposals were added, and the pre-existing packet-custody decision was deferred to Platform before expiry. No new behavior or qualification was tested. Local commit-message preflight used the repository's pinned commitlint 21.2.4: `./node_modules/.bin/commitlint --edit /tmp/platform417-owner-reconciliation-elxsnl8b/eventstore-commit.txt --verbose` — exit 0, zero problems/warnings. No remote publication is authorized.
+
+## Offline successor proposal — 2026-11-13
+
+The proposed [owning evidence contract](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md)
+extends the published reconciliation and intake. It records demonstrated source behavior,
+unresolved dependencies and conditional acceptance criteria separately:
+
+- Kafka's present bandwidth/request quotas do not supply the required Produce rejection.
+  No supported alternative was identified. The verifier additionally requires the exact
+  byte-rate-quota command, so any feasible replacement requires EventStore producer/evidence
+  admission changes while preserving rejection semantics and all 24 vectors.
+- Rotation adjudication needs the actual publisher/generation, broker-observed effective
+  principal, installed **and applied** ACL state, stale request and persisted readback joined
+  per capture. Stock audit logging is only a potential observation input; adequate request
+  correlation remains to be established. Missing historical observations cannot be recreated
+  by another passing run. Cold-generation denial remains a proposed diagnostic question.
+- Current official Dapr/component releases still predate the NACK backport. Exact upstream
+  branch inspection leaves retry/cancellation, reconnect error and mandatory/return delivery
+  requirements open. No end-to-end supported RabbitMQ remedy is demonstrated.
+- Platform must decide durable packet custody, retention, operator and independent verifier,
+  and complete separately authorized preservation before candidate-02's recorded
+  `2026-12-13T07:40:43Z` expiry. The two relied-on historical Kafka failure packets expire earlier,
+  at `2026-12-08T23:05:01Z` and `2026-12-08T23:08:16Z`; their custody decisions cannot wait until
+  December 13. Assessment links and temporary downloads are insufficient custody.
+
+The owner's subsequent **“approve”** accepts the bounded offline feasibility/evidence scope,
+minimum rotation criteria, RabbitMQ delivery requirements and per-archive preservation criteria;
+the [owning contract](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#owner-approval--2026-11-13)
+records that decision and the subsequent bounded packet recheck. This owner approval supplies
+no supported pressure mechanism, exact instrumentation admission, upstream delivery or Builds
+adoption. Missing historical principal/applied-state observations leave causality unadjudicable
+on the available evidence, with Kafka rotation still REJECTED/open. Platform still needs actual
+custody terms/operator/verifier and a later exact execution subject; no transfer or run is admitted.
+The separate EventStore sibling checkout's concurrent work is untouched; both owning checkouts
+remain on main. All five historical guarantees remain **REJECTED/open**, technical qualification
+**FAIL (20/24)**, broker selection **null**, production eligibility **FAIL**, and both parent
+statuses **in-progress**. Frozen intent/tasks/acceptance, original packets and all pins are preserved.
+
+## Applied recommendations — 2026-11-14
+
+The owner's **“apply recommended”** direction produced a
+[bounded Kafka work package](../../docs/implementation/story-3-21-kafka-bounded-investigation.md)
+and [two local RabbitMQ upstream drafts](../../docs/implementation/story-3-21-rabbitmq-upstream-work-packages.md).
+The Kafka source review supplies no supported rejecting Produce fault and stops replacement
+implementation. Supported dynamic request/authorizer logger controls narrow the rotation candidate,
+but process/socket, stale-ID/request and audit/request joins remain unresolved. No instrumentation
+or causal remedy is claimed. RabbitMQ package A covers pressure/rotation publish-error propagation;
+package B follows the unresolved mandatory/returns half of closed upstream issue #4697. Neither
+draft was posted, and no supported complete delivery was identified in the fresh source check.
+
+Platform also staged the four exact original archives locally, with independently checked
+digests, 2,215 entry inventories and 2,059 internal artifact hashes. Original evidence labels
+remain. Staged names share original cache inodes after disk-space recovery and are not independent
+storage. The inspected handoffs identify no accepted off-site archive/allocation/access reference;
+this is a scoped finding. Off-site custody is still open before the recorded December 8/13
+deadlines, with a retention hold while guarantees remain open and later policy review.
+
+The source producer/verifier, locks, runtime/tool pins and all 24 predicates/vectors are unchanged.
+Both parent statuses stay in-progress, five historical guarantees REJECTED/open, technical
+qualification FAIL (20/24), broker selection null and production eligibility FAIL. No infrastructure,
+qualification, external issue, pin adoption or broker-selection action occurred.
+
 ## Verification
 
-The latest executed broker-guarantee results remain the 1.19.1 hosted runs in the follow-up section above; their full record is in the closed [refresh slice](spec-3-21-latest-stable-dapr-runtime-refresh.md). The 2026-11-12 Platform assessment above records the later unexecuted attempt and separate current-checkout source blocker. The rest of this section is historical 2026-10-20 1.18.7 evidence. Its linked report was removed by the 2026-10-23 evidence-storage simplification.
+The latest retained independently verified broker-guarantee result is Platform candidate-02, reconciled above on 2026-11-13: 20/24 PASS, technical qualification FAIL, five historical guarantees open. The closed [refresh slice](spec-3-21-latest-stable-dapr-runtime-refresh.md) records the earlier 19/24 result. The November 12 assessment preserves its unexecuted attempt and then-current source blocker as history. The rest of this section is historical 2026-10-20 1.18.7 evidence. Its linked report was removed by the 2026-10-23 evidence-storage simplification.
 
 Historical results and exact receipts: [retained qualification report](evidence/story-3-21/verification-2026-10-20/report.md). Verifier tests: 25 passed. Debug package-mode build, workflow lint and whitespace checks pass. The latest explicit C# live test executes all 24 vectors but fails preservation because unrelated containers disappear during the run. Four vectors remain rejected/unresolved: both credential rotations, RabbitMQ pressure and RabbitMQ missing bindings. The live-test and final evidence tasks stay unchecked; no formal review or completion is claimed.
 
