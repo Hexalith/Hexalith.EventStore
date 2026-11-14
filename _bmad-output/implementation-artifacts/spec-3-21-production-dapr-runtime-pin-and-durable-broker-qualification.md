@@ -104,11 +104,13 @@ Actual broker failures and preservation blockers are retained rather than repair
 
 - 2026-11-13: Reconciled Platform candidate-02's retained, independently verified 20/24 result and subsequent remediation intake. The November 12 pre-allocation failure and source-drift observations below are historical. Recorded the current four failed vectors, all five open historical guarantees and missing engineering/owner inputs without changing frozen intent, task completion, predicates, locks or either parent status.
 
+- 2026-11-13: Continued offline assessment from published Platform `44756d1db8a38ac305cbb5247ae9cd52985b1d76` and EventStore `5f4db84502c7c54b316dd9429dccd12ae881e759`. Prepared the proposed remediation evidence contract: pressure-fault feasibility plus producer/verifier admission dependency, minimum principal/applied-ACL/publisher/readback join, supported RabbitMQ delivery and packet-custody decision. This accepts no implementation, execution, pins or guarantee closure. The reproducible audit now compares immutable evidence links with the published Git baseline, allowing the current intake to evolve without rewriting the published subject.
+
 ## Review Triage Log
 
 ## Approved follow-up and current integrity limitation
 
-**Current (2026-11-13):** Platform candidate-02 observed all 24 vectors, with retained independent verification recording 20 PASS / 4 FAIL, integrity verified and cleanup credited. Technical qualification and production eligibility remain FAIL, selected broker null, and both parent stories in-progress. The [current result reconciliation](#platform-result-reconciliation--2026-11-13) below records exact execution identities and the unresolved Kafka pressure, Kafka rotation and supported RabbitMQ delivery intakes. It supersedes the startup failure and source-drift observations as current blockers, while preserving those dated assessments. Reading the evidence does not accept a diagnostic plan, inventory/profile handoff, AD-26 decision or further execution.
+**Current (2026-11-13):** Platform candidate-02 observed all 24 vectors, with retained independent verification recording 20 PASS / 4 FAIL, integrity verified and cleanup credited. Technical qualification and production eligibility remain FAIL, selected broker null, and both parent stories in-progress. The [current result reconciliation](#platform-result-reconciliation--2026-11-13) below records exact execution identities and the unresolved Kafka pressure, Kafka rotation and supported RabbitMQ delivery intakes. The [offline successor assessment](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md) records the owner-approved offline evidence criteria and remaining concrete inputs; no remedy or execution is accepted. The reconciliation supersedes the startup failure and source-drift observations as current blockers, while preserving those dated assessments. Reading the evidence does not accept a diagnostic plan, inventory/profile handoff, AD-26 decision or further execution.
 
 **Historical (2026-11-12):** EventStore assessed Platform's [candidate-01 hosted report](../../references/Hexalith.Platform/docs/implementation/story-4-17-broker-candidate-01-hosted.md) and retained receipts. Its single attempt ended as `startup_failure` before job allocation: zero jobs, zero artifacts and 0/24 observed vectors. This supplies an infrastructure-blocker assessment, with packet integrity, technical qualification, cleanup and artifact delivery still unproven. The [Platform configuration input slice](spec-3-21-platform-broker-configuration-input.md) is done. Platform owns startup investigation and any separately accepted further execution; the consumed single-attempt scope does not authorize a retry. The exact-subject assessment and proposed handoffs below preserve all five historical rejected guarantees, the full 24-vector denominator, null broker selection, FAIL production eligibility and `in-progress` parent status.
 
@@ -302,12 +304,74 @@ for repo, key in [(root, "4-17-select-and-qualify-the-durable-production-broker"
 links = re.findall(r"https://github.com/Hexalith/Hexalith.Platform/blob/([0-9a-f]{40})/([^\s)]+)", after)
 check(len(links) == 4, "immutable file-link count differs")
 for revision, path in links:
-    check(blob(root, revision, path) == (root / path).read_bytes(), "linked evidence differs: " + path)
+    check(blob(root, revision, path) == blob(root, "44756d1db8a38ac305cbb5247ae9cd52985b1d76", path),
+          "linked published evidence differs: " + path)
 print("PASS: 94 inputs; protected/candidate bytes; frozen requirements; 24 vectors, 20/4/five historical; identities; authority; statuses; immutable evidence links")
 PY
 ```
 
 Final reconciliation checks: the exact documented Bash block was extracted and executed with `bash -eu`, including inherited Python optimization; exit 0 with the PASS output above. Parsed sprint data is unchanged in both repositories; changed-line whitespace passes. Blind review produced five findings: denominator wording was clarified outside frozen intent, the audit was made reproducible, the profile-inventory prerequisite and current downstream proposals were added, and the pre-existing packet-custody decision was deferred to Platform before expiry. No new behavior or qualification was tested. Local commit-message preflight used the repository's pinned commitlint 21.2.4: `./node_modules/.bin/commitlint --edit /tmp/platform417-owner-reconciliation-elxsnl8b/eventstore-commit.txt --verbose` — exit 0, zero problems/warnings. No remote publication is authorized.
+
+## Offline successor proposal — 2026-11-13
+
+The proposed [owning evidence contract](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md)
+extends the published reconciliation and intake. It records demonstrated source behavior,
+unresolved dependencies and conditional acceptance criteria separately:
+
+- Kafka's present bandwidth/request quotas do not supply the required Produce rejection.
+  No supported alternative was identified. The verifier additionally requires the exact
+  byte-rate-quota command, so any feasible replacement requires EventStore producer/evidence
+  admission changes while preserving rejection semantics and all 24 vectors.
+- Rotation adjudication needs the actual publisher/generation, broker-observed effective
+  principal, installed **and applied** ACL state, stale request and persisted readback joined
+  per capture. Stock audit logging is only a potential observation input; adequate request
+  correlation remains to be established. Missing historical observations cannot be recreated
+  by another passing run. Cold-generation denial remains a proposed diagnostic question.
+- Current official Dapr/component releases still predate the NACK backport. Exact upstream
+  branch inspection leaves retry/cancellation, reconnect error and mandatory/return delivery
+  requirements open. No end-to-end supported RabbitMQ remedy is demonstrated.
+- Platform must decide durable packet custody, retention, operator and independent verifier,
+  and complete separately authorized preservation before candidate-02's recorded
+  `2026-12-13T07:40:43Z` expiry. The two relied-on historical Kafka failure packets expire earlier,
+  at `2026-12-08T23:05:01Z` and `2026-12-08T23:08:16Z`; their custody decisions cannot wait until
+  December 13. Assessment links and temporary downloads are insufficient custody.
+
+The owner's subsequent **“approve”** accepts the bounded offline feasibility/evidence scope,
+minimum rotation criteria, RabbitMQ delivery requirements and per-archive preservation criteria;
+the [owning contract](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#owner-approval--2026-11-13)
+records that decision and the subsequent bounded packet recheck. This owner approval supplies
+no supported pressure mechanism, exact instrumentation admission, upstream delivery or Builds
+adoption. Missing historical principal/applied-state observations leave causality unadjudicable
+on the available evidence, with Kafka rotation still REJECTED/open. Platform still needs actual
+custody terms/operator/verifier and a later exact execution subject; no transfer or run is admitted.
+The separate EventStore sibling checkout's concurrent work is untouched; both owning checkouts
+remain on main. All five historical guarantees remain **REJECTED/open**, technical qualification
+**FAIL (20/24)**, broker selection **null**, production eligibility **FAIL**, and both parent
+statuses **in-progress**. Frozen intent/tasks/acceptance, original packets and all pins are preserved.
+
+## Applied recommendations — 2026-11-14
+
+The owner's **“apply recommended”** direction produced a
+[bounded Kafka work package](../../docs/implementation/story-3-21-kafka-bounded-investigation.md)
+and [two local RabbitMQ upstream drafts](../../docs/implementation/story-3-21-rabbitmq-upstream-work-packages.md).
+The Kafka source review supplies no supported rejecting Produce fault and stops replacement
+implementation. Supported dynamic request/authorizer logger controls narrow the rotation candidate,
+but process/socket, stale-ID/request and audit/request joins remain unresolved. No instrumentation
+or causal remedy is claimed. RabbitMQ package A covers pressure/rotation publish-error propagation;
+package B follows the unresolved mandatory/returns half of closed upstream issue #4697. Neither
+draft was posted, and no supported complete delivery was identified in the fresh source check.
+
+Platform also staged the four exact original archives locally, with independently checked
+digests, 2,215 entry inventories and 2,059 internal artifact hashes. Original evidence labels
+remain. Staged names share original cache inodes after disk-space recovery and are not independent
+storage. The inspected handoffs identify no accepted off-site archive/allocation/access reference;
+this is a scoped finding. Off-site custody is still open before the recorded December 8/13
+deadlines, with a retention hold while guarantees remain open and later policy review.
+
+The source producer/verifier, locks, runtime/tool pins and all 24 predicates/vectors are unchanged.
+Both parent statuses stay in-progress, five historical guarantees REJECTED/open, technical
+qualification FAIL (20/24), broker selection null and production eligibility FAIL. No infrastructure,
+qualification, external issue, pin adoption or broker-selection action occurred.
 
 ## Verification
 
