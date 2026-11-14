@@ -437,22 +437,26 @@ terminal (FailedPrecondition, no retry), and `publishMandatory` without `publish
 
 The local Platform package at
 `docs/implementation/story-4-17-upstream/package-b-local-2026-11-14/` retains `contribution.patch`
-(SHA-256 `422dda73031e0bcbcf7a5e39329581f00a70486c2f7d23e9314041c4aaf3a29f`). It changes only
+(SHA-256 `7d55faea09b30fe31228566601e72e04b2158bc64a65d9d45fb086c16a31e392`). It changes only
 seven `pubsub/rabbitmq` files. The patch binds each `basic.return` to the attempt that observes
 its own ACK on the same channel generation, with bounded state and no use of application message
-IDs. A generation with an unresolved mandatory attempt is never published on again. The default
-is unchanged. The package also retains source and toolchain identities, check receipts, negative
+IDs. A generation with an unresolved mandatory attempt is never published on again; the forced
+reconnect resets the connection it shares with subscriptions, which reconnect and receive
+redeliveries. The default is unchanged. The package also retains source and toolchain identities, check receipts, negative
 controls, a coverage map and an unexecuted broker/Dapr proposal.
 
 Fresh disposable jobs fetched the official base by SHA and Package A's head from its retained
 bundle; a read-only `ls-remote` found `refs/pull/4767/head` still at `96c3259b`. The jobs
 applied the patch unchanged to a local test commit. All 15 required receipts pass: Package A's
 14-check set rebased to `96c3259b`, plus `make check-component-metadata`. Lint reports
-`0 issues.` The full unit suite passed 73/230 (floor 62/196) and the focused race run 330/980
-(floor 230/720). Fifteen negative controls were detected, and every I/O-matrix row maps to
-passing tests.
+`0 issues.` The full unit suite passed 73/232 (floor 62/196) and the focused race run 330/1000
+(floor 230/720). Eighteen negative controls were detected, and every I/O-matrix row maps to
+passing tests. Review round 1 ran three independent layers and applied 15 test, wording and
+record fixes; its only production edit folds the unroutable check into the existing terminal
+condition.
 
-This meets the Package B work-package source requirements locally only. It is not submission,
+This prepares the Package B source and unit-level tests locally only; its integration test is
+compile-only and the broker/Dapr recipe is unexecuted. It is not submission,
 upstream acceptance, Dapr HTTP mapping or supported-runtime delivery. Nothing was pushed, forked,
 opened, commented on or labeled, and no broker, Dapr runtime, conformance/certification suite or
 qualification ran. A later separately approved slice submits it after Package A or as a stacked
