@@ -51,6 +51,10 @@ public static class EventStoreWorkloadAuthenticationDefaults
     /// <summary>Gets the claim type recording an authenticated sidecar channel.</summary>
     public const string ChannelClaimType = "eventstore:channel";
 
+    /// <summary>Gets the historical caller-claim name retained for public API compatibility.</summary>
+    /// <remarks>This claim does not authenticate a workload and is not emitted on the rebuilt principal.</remarks>
+    public const string LegacyCallerClaimType = "dapr_caller_app_id";
+
     /// <summary>Gets the header a Dapr sidecar uses to attribute the calling application.</summary>
     public const string DaprCallerHeaderName = "dapr-caller-app-id";
 
