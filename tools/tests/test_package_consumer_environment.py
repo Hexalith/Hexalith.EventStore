@@ -81,7 +81,7 @@ class PackageConsumerEnvironmentTests(unittest.TestCase):
             )
             project = directory / "Consumer.csproj"
             project.write_text("""<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <PropertyGroup><TargetFramework>net11.0</TargetFramework></PropertyGroup>
   <Target Name="ProbeStandaloneConsumer">
     <Error Condition="'$(CallerMappingImported)' == 'true'" Text="Caller source mapping leaked into standalone consumer." />
     <Error Condition="'$(ConsumerUnrelatedSetting)' != 'retained'" Text="Unrelated consumer environment was removed." />
