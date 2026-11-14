@@ -14,6 +14,7 @@ using SampleApiAssemblyMarker = SampleApi::Hexalith.EventStore.Sample.Api.Servic
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Net.Http.Headers;
 
 using Shouldly;
@@ -22,6 +23,22 @@ namespace Hexalith.EventStore.Sample.Tests.SampleApi;
 
 public sealed class SampleApiGeneratedControllerRuntimeTests
 {
+    [Fact]
+    public async Task CounterQuery_WhenRouteTenantIsMissing_ReturnsBadRequestBeforeGatewayCall()
+    {
+        GeneratedController controller = CreateController();
+        controller.Controller.RouteData.Values.Remove("tenant");
+
+        IActionResult result = await InvokeQueryAsync(controller);
+
+        ObjectResult badRequest = result.ShouldBeOfType<ObjectResult>();
+        badRequest.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        badRequest.ContentTypes.ShouldContain("application/problem+json");
+        ProblemDetails problem = badRequest.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Detail.ShouldBe("The tenant is invalid or reserved.");
+        controller.Gateway.QueryCallCount.ShouldBe(0);
+    }
+
     [Fact]
     public async Task CounterQuery_WhenGatewayReturnsSuccess_ForwardsPayloadAndMetadataHeaders()
     {
@@ -428,12 +445,16 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             statusLocationBuilder ?? new FakeCommandStatusLocationBuilder(gatewayStatusBase: null))!;
         controller.ControllerContext = new ControllerContext
         {
+            RouteData = new RouteData(),
             HttpContext = new DefaultHttpContext
             {
                 User = new ClaimsPrincipal(new ClaimsIdentity(
                     [new Claim("sub", "sample-user"), new Claim("eventstore:tenant", "tenant-a")], "Test")),
             },
         };
+        // MVC routing supplies this before the real filter executes; reflected action
+        // arguments alone do not provide the filter's independently validated scope.
+        controller.RouteData.Values["tenant"] = "tenant-a";
 
         return new GeneratedController(controller, gateway);
     }

@@ -5,7 +5,6 @@ using Hexalith.EventStore.ServiceDefaults.Routing;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Routing;
 
 namespace Hexalith.EventStore.Sample.Tests;
 
@@ -19,7 +18,7 @@ internal static class SampleApiGeneratedFilterFixture
             MethodInfo = method, ControllerTypeInfo = controller.GetType().GetTypeInfo(),
             EndpointMetadata = method.GetCustomAttributes().Cast<object>().ToList(),
         };
-        var context = new ActionContext(controller.HttpContext, new RouteData(), descriptor, controller.ModelState);
+        var context = new ActionContext(controller.HttpContext, controller.RouteData, descriptor, controller.ModelState);
         var executing = new ActionExecutingContext(context, [], new Dictionary<string, object?>(), controller);
         ActionExecutedContext? executed = null;
         await new GeneratedRouteCatalogFilter(new SampleApiCommittedCatalog()).OnActionExecutionAsync(executing, async () =>
