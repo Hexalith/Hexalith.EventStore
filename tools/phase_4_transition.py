@@ -46,7 +46,8 @@ RESULT_KEYS = {"schema", "phase", "result", "codes", "binding", "required_level"
                "downstream_minimum", "approvals", "approval_payloads", "predecessors", "seal"}
 HIGH_RISK_NFRS = {f"NFR{n}" for n in (1, 2, 3, 4, 7, 10, 11, 12, 14, 15, 16, 17)}
 CONTROL_FILES = ("tools/phase_4_transition.py", "tools/validate-phase-4-transition.py",
-                 "tools/phase-4-transition.schema.json", "tools/validate-phase-4-gate-risk-matrix.py")
+                 "tools/phase-4-transition.schema.json", "tools/validate-phase-4-gate-risk-matrix.py",
+                 "tools/phase_4_gate_decision.py", "tools/validate-phase-4-gate-decision.py")
 OQ8_VALIDATOR = "tools/validate-oq8-governing-design.py"
 OQ8_FIXTURES = "tools/tests/test_oq8_governing_design.py"
 OQ8_INPUTS = (

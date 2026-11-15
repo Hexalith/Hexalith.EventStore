@@ -51,7 +51,7 @@ jobs:
           output="$RUNNER_TEMP/phase-4-transition"
           mkdir -p "$output"
           if [ "$MODE" = consume ]; then
-            python3 -B tools/validate-phase-4-transition.py consume --expected-transition high-risk-gate-pass --request-env --run-id "$SEALED_RUN_ID" --attempt "$SEALED_ATTEMPT" --result "$output/result.json" >"$output/report.txt" 2>&1
+            python3 -B tools/validate-phase-4-gate-decision.py --request-env --run-id "$SEALED_RUN_ID" --attempt "$SEALED_ATTEMPT" --result "$output/result.json" >"$output/report.txt" 2>&1
           else
             python3 -B tools/validate-phase-4-transition.py evaluate --expected-transition high-risk-gate-pass --request-env --result "$output/result.json" >"$output/report.txt" 2>&1
           fi

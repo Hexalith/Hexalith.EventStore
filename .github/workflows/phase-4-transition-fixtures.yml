@@ -15,7 +15,7 @@ jobs:
     # Prepared required-check name; repository settings are intentionally not mutated.
     name: Phase 4 transition fixtures
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -23,3 +23,5 @@ jobs:
           submodules: false
       - name: Verify authenticated transitions and rejection controls
         run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_transition.py'
+      - name: Verify actual G-OQ8 gate decision consumers
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_gate_decision.py'

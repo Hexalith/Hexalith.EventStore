@@ -34,7 +34,8 @@ TRANSITIONS = ('high-risk-gate-pass', 'high-risk-nfr-story-done', 'readiness', '
                'production-promoted', 'consumer-removal')
 SINGLE, INDEPENDENT = 'single-maintainer-attested', 'independent'
 SCRIPTS = ('tools/phase_4_transition.py', 'tools/validate-phase-4-transition.py',
-           'tools/validate-phase-4-gate-risk-matrix.py', 'tools/phase-4-transition.schema.json')
+           'tools/validate-phase-4-gate-risk-matrix.py', 'tools/phase-4-transition.schema.json',
+           'tools/phase_4_gate_decision.py', 'tools/validate-phase-4-gate-decision.py')
 MATRIX = '_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json'
 REGISTRY = '_bmad-output/implementation-artifacts/owner-role-registry.json'
 OQ8 = 'tools/validate-oq8-governing-design.py'
@@ -659,9 +660,9 @@ class TransitionTests(unittest.TestCase):
                 self.request[key].append(self.file(path))
         self.request['approvals'] = []
         result = self.assert_refused('APPROVAL_MISSING')
-        self.assertEqual(207, len(result['binding']['inputs']))
+        self.assertEqual(209, len(result['binding']['inputs']))
         schema = json.loads((ROOT / 'tools/phase-4-transition.schema.json').read_text())
-        self.assertEqual(207, schema['$defs']['binding']['properties']['inputs']['maxItems'])
+        self.assertEqual(209, schema['$defs']['binding']['properties']['inputs']['maxItems'])
         self.request['subjects'].append({'path': 'boundary/too-many', 'sha256': '0' * 64})
         self.assert_refused('INPUT_INVALID', exit_code=2)
 

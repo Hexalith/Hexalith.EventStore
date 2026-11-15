@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Phase 4 transition request, result and copyable owner approval",
-  "description": "Runtime uses stdlib closed validation. evaluate is candidate evidence; consume authenticates a completed run. A PASS is an assurance subcondition only. Approval request_sha256 excludes approvals to permit posting references after approval. No caller-provided command is accepted.",
+  "title": "Phase 4 transition request, result, owner approval and G-OQ8 decision",
+  "description": "Runtime uses stdlib closed validation. evaluate is candidate evidence; consume authenticates a completed run. A PASS is an assurance subcondition only. Approval request_sha256 excludes approvals to permit posting references after approval. No caller-provided command is accepted. A gate decision reports one authenticated consumption for G-OQ8 governing-design availability only; saved decisions are never authority for later consumption.",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -11,6 +11,9 @@
     },
     {
       "$ref": "#/$defs/approval_payload"
+    },
+    {
+      "$ref": "#/$defs/gate_decision"
     }
   ],
   "$defs": {
@@ -274,7 +277,7 @@
             "$ref": "#/$defs/file"
           },
           "minItems": 1,
-          "maxItems": 207,
+          "maxItems": 209,
           "uniqueItems": true
         }
       }
@@ -576,6 +579,135 @@
           ]
         }
       }
+    },
+    "gate_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "result",
+        "codes",
+        "binding",
+        "required_level",
+        "achieved_level",
+        "downstream_minimum",
+        "approvals",
+        "approval_payloads",
+        "predecessors",
+        "seal",
+        "gate",
+        "scope"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.phase-4-gate-decision.v1"
+        },
+        "result": {
+          "$ref": "#/$defs/result/properties/result"
+        },
+        "codes": {
+          "$ref": "#/$defs/result/properties/codes"
+        },
+        "binding": {
+          "$ref": "#/$defs/result/properties/binding"
+        },
+        "required_level": {
+          "$ref": "#/$defs/result/properties/required_level"
+        },
+        "achieved_level": {
+          "$ref": "#/$defs/result/properties/achieved_level"
+        },
+        "downstream_minimum": {
+          "$ref": "#/$defs/result/properties/downstream_minimum"
+        },
+        "approvals": {
+          "$ref": "#/$defs/result/properties/approvals"
+        },
+        "approval_payloads": {
+          "$ref": "#/$defs/result/properties/approval_payloads"
+        },
+        "predecessors": {
+          "$ref": "#/$defs/result/properties/predecessors"
+        },
+        "seal": {
+          "$ref": "#/$defs/result/properties/seal"
+        },
+        "gate": {
+          "const": "G-OQ8"
+        },
+        "scope": {
+          "const": "governing-design-availability"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "PASS"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "binding": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/binding"
+                  },
+                  {
+                    "properties": {
+                      "transition": {
+                        "const": "high-risk-gate-pass"
+                      }
+                    }
+                  }
+                ]
+              },
+              "codes": {
+                "maxItems": 0
+              },
+              "seal": {
+                "type": "object"
+              },
+              "required_level": {
+                "enum": [
+                  "single-maintainer-attested",
+                  "independent"
+                ]
+              },
+              "achieved_level": {
+                "enum": [
+                  "single-maintainer-attested",
+                  "independent"
+                ]
+              },
+              "downstream_minimum": {
+                "enum": [
+                  "single-maintainer-attested",
+                  "independent"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "codes": {
+                "minItems": 1
+              },
+              "achieved_level": {
+                "const": "none"
+              },
+              "downstream_minimum": {
+                "const": "none"
+              },
+              "seal": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

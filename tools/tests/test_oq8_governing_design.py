@@ -71,6 +71,57 @@ printf 'OQ8 governing-design availability: %s\\nSource SHA: %s\\nWorkflow SHA-25
 exit "$status"
 """
 
+DISPATCH_INPUTS = """    inputs:
+      decision_request:
+        description: Optional closed G-OQ8 transition request JSON for an assured availability decision
+        required: false
+        type: string
+      sealed_run_id:
+        description: Completed successful high-risk-gate-pass evaluation run ID
+        required: false
+        type: string
+      sealed_attempt:
+        description: Completed evaluation run attempt
+        required: false
+        type: string
+"""
+ASSURED_JOB = """  assured-decision:
+    name: OQ8 assured availability decision
+    if: github.event_name == 'workflow_dispatch' && (inputs.decision_request != '' || inputs.sealed_run_id != '' || inputs.sealed_attempt != '')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Consume authenticated G-OQ8 evaluation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PHASE4_REQUEST_JSON: ${{ inputs.decision_request }}
+          SEALED_RUN_ID: ${{ inputs.sealed_run_id }}
+          SEALED_ATTEMPT: ${{ inputs.sealed_attempt }}
+        shell: bash
+        run: |
+          output="$RUNNER_TEMP/phase-4-gate-decision"
+          mkdir -p "$output"
+          python3 -B tools/validate-phase-4-gate-decision.py --request-env --run-id "$SEALED_RUN_ID" --attempt "$SEALED_ATTEMPT" --result "$output/result.json" >"$output/report.txt" 2>&1
+      - name: Upload decision diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phase-4-gate-decision-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/phase-4-gate-decision/
+          if-no-files-found: error
+          retention-days: 90
+"""
+
 
 class GoverningDesignTests(unittest.TestCase):
     def setUp(self):
@@ -292,18 +343,20 @@ permissions:
 # oq8-governing-design:begin
 env:
 """
+        preamble = preamble.replace("  workflow_dispatch:\n", "  workflow_dispatch:\n" + DISPATCH_INPUTS)
         preamble += "".join(f"  {key}: {REQUIRED_IDENTITY[field]}\n"
                             for key, field in REQUIRED_CI_FIELDS.items())
         preamble += "# oq8-governing-design:end\n\njobs:\n"
         self.assertTrue(content.startswith(preamble), "unexpected triggers, permissions or identity environment")
         jobs = content[len(preamble):]
         headers = list(re.finditer(r"(?m)^  ([a-z-]+):\n", jobs))
-        self.assertEqual([header[1] for header in headers], ["fixtures", "live-evaluation"])
+        self.assertEqual([header[1] for header in headers], ["fixtures", "live-evaluation", "assured-decision"])
         self.assertEqual(headers[0].start(), 0)
         bodies = {}
         for index, header in enumerate(headers):
             end = headers[index + 1].start() if index + 1 < len(headers) else len(jobs)
             bodies[header[1]] = jobs[header.end():end].rstrip() + "\n"
+        self.assertEqual("  assured-decision:\n" + bodies.pop("assured-decision"), ASSURED_JOB)
         for job, title in (("fixtures", "fixtures"), ("live-evaluation", "live evaluation")):
             prefix = (f"    name: OQ8 governing-design {title}\n"
                       "    runs-on: ubuntu-24.04\n"
