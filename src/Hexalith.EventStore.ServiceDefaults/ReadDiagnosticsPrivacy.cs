@@ -27,7 +27,8 @@ public static class ReadDiagnosticsPrivacy
         if (HttpMethods.IsPost(context.Request.Method)
             && (IsPublicQuery(context) || path.Equals("/query", StringComparison.OrdinalIgnoreCase)
                 || path.Equals("/api/v1/queries/owner-authority/workload", StringComparison.OrdinalIgnoreCase)
-                || path.Equals("/api/v1/streams/read/workload", StringComparison.OrdinalIgnoreCase)))
+                || path.Equals("/api/v1/streams/read/workload", StringComparison.OrdinalIgnoreCase)
+                || path.Equals("/api/v1/streams/scan/workload", StringComparison.OrdinalIgnoreCase)))
         {
             return true;
         }

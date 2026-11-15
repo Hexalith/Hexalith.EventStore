@@ -20,6 +20,8 @@ public static class RouteCatalogSdkHttpPolicy
                 => (EventStoreOperationIdentifiers.GatewayCommandStatus, "GET"),
             ("Hexalith.EventStore.Controllers.QueriesController", "api/v1/queries/owner-authority/workload")
                 => (EventStoreOperationIdentifiers.GatewayOwnerAuthorityQuery, "POST"),
+            ("Hexalith.EventStore.Controllers.StreamsController", "api/v1/streams/scan/workload")
+                => (EventStoreOperationIdentifiers.GatewayNativeSourceScan, "POST"),
             ("Hexalith.EventStore.Controllers.StreamsController", "api/v1/streams/read/workload")
                 => (EventStoreOperationIdentifiers.GatewayStreamRead, "POST"),
             ("Hexalith.EventStore.Controllers.TrustedEffectsController", "api/v1/trusted-effects")

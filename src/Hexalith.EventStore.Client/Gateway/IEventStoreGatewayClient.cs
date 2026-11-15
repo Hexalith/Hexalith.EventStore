@@ -8,6 +8,10 @@ namespace Hexalith.EventStore.Client.Gateway;
 /// High-level HTTP client for the EventStore command and query gateway.
 /// </summary>
 public interface IEventStoreGatewayClient {
+    /// <summary>Reads one purpose/page/resource-bound native scan page under a separately enrolled workload operation.</summary>
+    Task<StreamReadPage> ReadNativeSourceScanPageAsync(StreamReadRequest request, CancellationToken cancellationToken = default)
+        => Task.FromException<StreamReadPage>(new InvalidOperationException("Native source scan transport is unavailable."));
+
     /// <summary>Submits through the workload-only command channel.</summary>
     Task<SubmitCommandResponse> SubmitWorkloadCommandAsync(
         SubmitCommandRequest request, CancellationToken cancellationToken = default)

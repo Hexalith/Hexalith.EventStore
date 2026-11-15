@@ -74,6 +74,7 @@ public static class RouteCatalogTechnicalHttpPolicy
                 => Authorization.EventStoreOperationIdentifiers.GatewayCommandSubmit,
             "/api/v1/queries" => "eventstore:query-read",
             "/api/v1/queries/owner-authority/workload" => Authorization.EventStoreOperationIdentifiers.GatewayOwnerAuthorityQuery,
+            "/api/v1/streams/scan/workload" => Authorization.EventStoreOperationIdentifiers.GatewayNativeSourceScan,
             "/api/v1/streams/read" or "/api/v1/streams/read/workload"
                 => Authorization.EventStoreOperationIdentifiers.GatewayStreamRead,
             _ => null,

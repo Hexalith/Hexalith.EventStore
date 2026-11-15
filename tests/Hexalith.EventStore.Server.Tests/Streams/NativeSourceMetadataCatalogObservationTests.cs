@@ -31,12 +31,22 @@ public sealed class NativeSourceMetadataCatalogObservationTests
                 ["EventStore:RouteCatalog:DevelopmentBootstrap:AccessControlPath"] = acl,
                 ["Authentication:BoundStreamRead:MetadataOnlyCallers:folders"] = "true",
                 ["Authentication:BoundStreamRead:PrivateKey"] = privateSentinel,
+                ["Authentication:NativeSourceScan:PrivateKey"] = privateSentinel,
+                ["Authentication:NativeSourceScan:PublicKeys:folders"] = privateSentinel,
+                ["Authentication:NativeSourceScan:AllowedDomains:folders"] = "folders",
             }).Build();
             var before = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, "eventstore", [], [], [], [], [], TestContext.Current.CancellationToken);
             using JsonDocument observed = JsonDocument.Parse(before.AuthenticationProfile);
             observed.RootElement.GetProperty("settings").GetProperty("Authentication:BoundStreamRead:MetadataOnlyCallers:folders")
                 .GetString().ShouldBe("true");
             System.Text.Encoding.UTF8.GetString(before.AuthenticationProfile).ShouldNotContain(privateSentinel);
+            observed.RootElement.GetProperty("nativeScanProofCallers").EnumerateArray().Select(item => item.GetString()).ShouldBe(["folders"]);
+            observed.RootElement.GetProperty("settings").GetProperty("Authentication:NativeSourceScan:AllowedDomains:folders").GetString().ShouldBe("folders");
+            configuration["Authentication:NativeSourceScan:AllowedDomains:folders"] = "other-domain";
+            var scanChanged = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, "eventstore", [], [], [], [], [], TestContext.Current.CancellationToken);
+            before.AuthenticationProfile.SequenceEqual(scanChanged.AuthenticationProfile).ShouldBeFalse();
+            System.Text.Encoding.UTF8.GetString(scanChanged.AuthenticationProfile).ShouldNotContain(privateSentinel);
+            configuration["Authentication:NativeSourceScan:AllowedDomains:folders"] = "folders";
             configuration["Authentication:BoundStreamRead:MetadataOnlyCallers:folders"] = null;
             var after = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, "eventstore", [], [], [], [], [], TestContext.Current.CancellationToken);
             before.AuthenticationProfile.SequenceEqual(after.AuthenticationProfile).ShouldBeFalse();

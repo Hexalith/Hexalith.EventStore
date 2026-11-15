@@ -111,6 +111,7 @@ public static class EventStoreServiceCollectionExtensions {
              EventStoreWorkloadOperations.GatewayCommandSubmit,
              EventStoreWorkloadOperations.GatewayCommandStatus,
              EventStoreWorkloadOperations.GatewayStreamRead,
+             EventStoreWorkloadOperations.GatewayNativeSourceScan,
              EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery]);
 
         _ = services.AddEventStoreHttpHostSecurity();

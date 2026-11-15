@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.ServiceDefaults;
@@ -131,6 +132,10 @@ public sealed class ReadDiagnosticsPrivacyTests
     [InlineData("POST", "/query/", true)]
     [InlineData("POST", "/api/v1/queries/owner-authority/workload/", true)]
     [InlineData("POST", "/api/v1/streams/read/workload", true)]
+    [InlineData("POST", "/api/v1/streams/scan/workload", true)]
+    [InlineData("POST", "/API/V1/STREAMS/SCAN/WORKLOAD/", true)]
+    [InlineData("GET", "/api/v1/streams/scan/workload", false)]
+    [InlineData("POST", "/api/v1/streams/scan/workload-extra", false)]
     [InlineData("PUT", "/actors/AggregateActor/opaque/method/InspectSourceMetadataPairAsync", true)]
     [InlineData("POST", "/ACTORS/AggregateActor/opaque/METHOD/GetStreamMetadataAsync/", true)]
     [InlineData("PUT", "/actors/AggregateActor/opaque/method/InspectSourceProofAsync", true)]
@@ -152,6 +157,8 @@ public sealed class ReadDiagnosticsPrivacyTests
     [Theory]
     [InlineData("/api/v1/queries", null)]
     [InlineData("/API/V1/QUERIES/", null)]
+    [InlineData("/api/v1/streams/scan/workload", null)]
+    [InlineData("/API/V1/STREAMS/SCAN/WORKLOAD/", ActivityTraceFlags.Recorded)]
     [InlineData("/api/v1/queries", ActivityTraceFlags.None)]
     [InlineData("/api/v1/queries", ActivityTraceFlags.Recorded)]
     [InlineData("/api/v1/queries", ActivityTraceFlags.RandomTraceId)]
@@ -160,6 +167,9 @@ public sealed class ReadDiagnosticsPrivacyTests
     [InlineData("/api/v1/queries", (ActivityTraceFlags)0x05)]
     public async Task RealProvidersOmitWholeReadSubtreesAndKeepUniformCompletion(string publicPath, ActivityTraceFlags? incomingTraceFlags)
     {
+        ArgumentNullException.ThrowIfNull(publicPath);
+        bool publicQuery = publicPath.TrimEnd('/').Equals("/api/v1/queries", StringComparison.OrdinalIgnoreCase);
+        ConcurrentDictionary<string, TaskCompletionSource> completedRequests = new(StringComparer.Ordinal);
         string secret = Guid.NewGuid().ToString("N");
         using StringWriter console = new(CultureInfo.InvariantCulture);
         TextWriter previous = Console.Out;
@@ -215,6 +225,16 @@ public sealed class ReadDiagnosticsPrivacyTests
             WebApplication app = builder.Build();
             await using var appLifetime = app.ConfigureAwait(true);
             app.UseMiddleware<CorrelationIdMiddleware>();
+            app.Use(async (context, next) =>
+            {
+                string correlation = context.Request.Headers[CorrelationIdMiddleware.HeaderName].ToString();
+                context.Response.OnCompleted(() =>
+                {
+                    if (completedRequests.TryGetValue(correlation, out var completion)) completion.TrySetResult();
+                    return Task.CompletedTask;
+                });
+                await next(context).ConfigureAwait(true);
+            });
             app.UseExceptionHandler(new ExceptionHandlerOptions
             {
                 ExceptionHandlingPath = "/error-reexecuted",
@@ -238,7 +258,7 @@ public sealed class ReadDiagnosticsPrivacyTests
                 }
                 await next(context).ConfigureAwait(true);
             });
-            app.MapPost("/api/v1/queries", async (HttpContext context, ILoggerFactory factory) =>
+            app.MapPost(publicPath.TrimEnd('/'), async (HttpContext context, ILoggerFactory factory) =>
             {
                 int branch = (await context.Request.ReadFromJsonAsync<int>(TestContext.Current.CancellationToken).ConfigureAwait(true));
                 ILogger logger = factory.CreateLogger("Privacy.Probe");
@@ -278,7 +298,9 @@ public sealed class ReadDiagnosticsPrivacyTests
             for (int branch = 0; branch <= 4; branch++)
             {
                 string correlation = "privacy-" + branch.ToString(CultureInfo.InvariantCulture);
-                Task completion = logs.ExpectBoundary(correlation);
+                var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                completedRequests[correlation] = completed;
+                Task completion = publicQuery ? logs.ExpectBoundary(correlation) : completed.Task;
                 using HttpRequestMessage request = new(HttpMethod.Post, publicPath) { Content = JsonContent.Create(branch) };
                 if (incomingTraceFlags is { } incomingFlags)
                 {
@@ -300,7 +322,7 @@ public sealed class ReadDiagnosticsPrivacyTests
                 // Sampling suppression depends on Recorded; other W3C flags do not enable collection.
                 (context.TraceFlags & ActivityTraceFlags.Recorded).ShouldBe(ActivityTraceFlags.None);
             }
-            logs.Records.Count.ShouldBe(5);
+            logs.Records.Count.ShouldBe(publicQuery ? 5 : 0);
             logs.Records.ShouldAllBe(record => record.StartsWith("Hexalith.EventStore.QueryBoundary|", StringComparison.Ordinal)
                 && record.Contains("StatusCode=404", StringComparison.Ordinal)
                 && record.EndsWith("|TraceId=00000000000000000000000000000000|SpanId=0000000000000000", StringComparison.Ordinal));
@@ -328,7 +350,7 @@ public sealed class ReadDiagnosticsPrivacyTests
             Console.SetOut(previous);
         }
         console.ToString().ShouldNotContain(secret);
-        console.ToString().ShouldContain("Query boundary completed");
+        if (publicQuery) console.ToString().ShouldContain("Query boundary completed");
         console.ToString().ShouldContain("ordinary-log-visible");
     }
 }

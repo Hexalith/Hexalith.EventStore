@@ -15,6 +15,41 @@ namespace Hexalith.EventStore.DomainService;
 /// <summary>Composes the SDK gateway client's workload command and stream transport for a domain host.</summary>
 public static class EventStoreGatewayWorkloadTransportExtensions
 {
+    /// <summary>Registers an independent bounded native scanner using the actual host issuer and separate scan proof key.</summary>
+    /// <remarks>The receiving workload must enroll the exact stream-scan-native operation, tenant/domain grant and
+    /// Authentication:NativeSourceScan public key/domain. Ordinary metadata-only enrollment remains enforced.</remarks>
+    public static IHttpClientBuilder AddEventStoreGatewayNativeSourceScanner(this IServiceCollection services,
+        string domain, string gatewayAudience = EventStoreTrustedEffectSubmissionExtensions.DefaultGatewayAudience)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+        ArgumentException.ThrowIfNullOrWhiteSpace(gatewayAudience);
+        if (domain != domain.Trim() || domain.Length > 64 || domain.Contains('*', StringComparison.Ordinal)
+            || gatewayAudience != gatewayAudience.Trim()) throw new ArgumentException("Configure one exact source domain and audience.");
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddEventStoreWorkloadAssertionIssuer();
+        return services.AddHttpClient("Hexalith.EventStore.NativeSourceScan", (provider, client) =>
+        {
+            IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
+            string endpoint = configuration["DAPR_HTTP_ENDPOINT"] ?? $"http://localhost:{configuration["DAPR_HTTP_PORT"] ?? "3500"}";
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri? address) || address.Scheme != Uri.UriSchemeHttp
+                || !string.IsNullOrEmpty(address.UserInfo) || !string.IsNullOrEmpty(address.Query)
+                || !string.IsNullOrEmpty(address.Fragment) || address.AbsolutePath != "/")
+                throw new InvalidOperationException("The configured local Dapr HTTP endpoint is unavailable.");
+            client.BaseAddress = address;
+        }).AddEventStoreDaprServiceInvocation(provider => provider.GetRequiredService<IConfiguration>(),
+            configuration => configuration["EventStore:Gateway:AppId"] ?? "eventstore", configuration => configuration["DAPR_API_TOKEN"])
+          .AddTypedClient<INativeSourceScanner>((client, provider) =>
+          {
+              var clock = provider.GetRequiredService<TimeProvider>();
+              var credentials = new DomainServiceNativeSourceScanCredentials(provider.GetRequiredService<IWorkloadAssertionIssuer>(),
+                  provider.GetRequiredService<IConfiguration>(), domain, gatewayAudience, clock);
+              var gateway = new EventStoreGatewayClient(client, Options.Create(new EventStoreGatewayClientOptions
+                  { UseWorkloadTransport = true, MaxStreamReadResponseBytes = 2_097_152 }), credentials, credentials);
+              return new NativeSourceScanner(gateway, clock);
+          });
+    }
+
     /// <summary>Registers complete authenticated source reads independently of the host's human gateway client.</summary>
     /// <remarks>The reader uses the existing host issuer and owner proof key. It exposes no command client,
     /// grants no authority, and verifies complete native source prefixes through the existing SDK transport.

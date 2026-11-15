@@ -27,8 +27,11 @@ builder.Services.AddEventStoreSignalR(builder.Configuration);
 #if PRIVATE_CATALOG_INVOCATION_PROOF
 Hexalith.EventStore.Testing.CatalogInvocation.CatalogInvocationServiceCollectionExtensions.AddPrivateCatalogInvocation(
     builder.Services, builder.Configuration, builder.Environment);
+Hexalith.EventStore.Testing.OriginalSource.SyntheticOriginalSourceServiceCollectionExtensions.AddPrivateSyntheticOriginalSource(
+    builder.Services, builder.Configuration, builder.Environment);
 #else
-if (builder.Configuration.GetValue<bool>("EventStore:Testing:CatalogInvocation:Enabled"))
+if (builder.Configuration.GetValue<bool>("EventStore:Testing:CatalogInvocation:Enabled")
+    || builder.Configuration.GetValue<bool>("EventStore:Testing:OriginalSource:Enabled"))
     throw new InvalidOperationException("Private catalog invocation requires an explicitly selected Debug proof build.");
 #endif
 

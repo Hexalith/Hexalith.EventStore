@@ -69,6 +69,26 @@ public sealed class CatalogInvocationTests : IDisposable
         Should.Throw<IOException>(() => files.PathFor("../outside", ".request"));
     }
 
+    /// <summary>Cancellation, a refused publication and replacement failure leave no unpublished bytes or changed destination.</summary>
+    [Theory]
+    [InlineData("canceled")]
+    [InlineData("publication")]
+    [InlineData("destination")]
+    public async Task FailedAtomicWritesRetireOnlyTheirOwnTemporaryFile(string fault)
+    {
+        var files = new CatalogInvocationFiles(_directory);
+        string id = Guid.NewGuid().ToString("N");
+        await files.WriteAsync(id, ".response", "original", TestContext.Current.CancellationToken);
+        byte[] original = await File.ReadAllBytesAsync(files.PathFor(id, ".response"), TestContext.Current.CancellationToken);
+        using var canceled = new CancellationTokenSource(); canceled.Cancel();
+        await Should.ThrowAsync<Exception>(() => files.WriteAsync(id, ".response", "replacement",
+            fault == "canceled" ? canceled.Token : TestContext.Current.CancellationToken, replace: fault != "destination",
+            beforePublish: fault == "publication" ? () => throw new IOException("Refused before publication.") : null));
+        (await File.ReadAllBytesAsync(files.PathFor(id, ".response"), TestContext.Current.CancellationToken)).ShouldBe(original);
+        Directory.GetFiles(_directory, "*.tmp").ShouldBeEmpty();
+        Directory.GetFiles(_directory).ShouldHaveSingleItem().ShouldBe(files.PathFor(id, ".response"));
+    }
+
     /// <summary>Verifies finite Selection Rejects Caller Expansion.</summary>
     /// <param name="app">The app control.</param>
     /// <param name="method">The method control.</param>

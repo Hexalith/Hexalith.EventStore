@@ -101,10 +101,19 @@ public sealed partial class StreamsController(
         CancellationToken cancellationToken = default)
         => ReadStreamCoreAsync(request, workloadOnly: true, cancellationToken);
 
+    /// <summary>Reads one bounded native source page under its separately enrolled exact scan operation and proof.</summary>
+    [HttpPost("scan/workload")]
+    [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayNativeSourceScanPolicy)]
+    [RequestSizeLimit(1_048_576)]
+    [ProducesResponseType(typeof(StreamReadPage), StatusCodes.Status200OK)]
+    public Task<IActionResult> ReadNativeSourceScanPageAsync([FromBody] StreamReadRequest request,
+        CancellationToken cancellationToken = default)
+        => ReadStreamCoreAsync(request, workloadOnly: true, cancellationToken, nativeScan: true);
+
     private async Task<IActionResult> ReadStreamCoreAsync(
         StreamReadRequest request,
         bool workloadOnly,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken, bool nativeScan = false) {
         ArgumentNullException.ThrowIfNull(request);
         if (workloadOnly && request.Tenant is null)
             return ProblemWithReason(StatusCodes.Status400BadRequest, ProblemTypeUris.BadRequest,
@@ -157,7 +166,24 @@ public sealed partial class StreamsController(
             return validationFailure;
         }
 
-        if (workloadOnly) {
+        if (nativeScan)
+        {
+            string? caller = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value;
+            string? allowedDomains = caller is null ? null : configuration?[$"Authentication:NativeSourceScan:AllowedDomains:{caller}"];
+            bool bound = User.Identity?.IsAuthenticated == true && caller is not null
+                && User.HasClaim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType, EventStoreWorkloadOperations.GatewayNativeSourceScan)
+                && User.FindAll(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType).Select(claim => claim.Value).SequenceEqual([request.Tenant], StringComparer.Ordinal)
+                && User.FindAll(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType).Select(claim => claim.Value).SequenceEqual([request.Domain], StringComparer.Ordinal)
+                && allowedDomains?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Contains(request.Domain, StringComparer.Ordinal) == true
+                && !Request.Headers.ContainsKey("Authorization") && !Request.Headers.ContainsKey("X-Hexalith-Scope")
+                && !Request.Headers.ContainsKey("X-Hexalith-Tenant") && !Request.Headers.ContainsKey(BoundStreamReadProof.HeaderName)
+                && request == proofRequest
+                && Request.Headers.TryGetValue(BoundNativeSourceScanProof.HeaderName, out var proof)
+                && proof.Count == 1 && BoundNativeSourceScanProof.Verify(proof[0], request, caller,
+                    configuration?[$"Authentication:NativeSourceScan:PublicKeys:{caller}"], DateTimeOffset.UtcNow);
+            if (!bound) return Forbid();
+        }
+        else if (workloadOnly) {
             string? caller = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value;
             bool jwtBound = string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
                     proofRequest.Tenant, StringComparison.Ordinal)
@@ -206,6 +232,20 @@ public sealed partial class StreamsController(
         bool protectedNativeRead = workloadOnly || Hexalith.EventStore.ServiceDefaults.ReadDiagnosticsPrivacy.IsProtectedRequest(HttpContext);
         try {
             var identity = new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId!);
+            // Selection is owner composition, never a request flag. It is consulted only after
+            // the exact workload operation, tenant/domain bindings and resource/page proof above.
+            if (nativeScan)
+            {
+                INativeSourceScanSource[] selected = HttpContext.RequestServices.GetServices<INativeSourceScanSource>()
+                    .Where(source => source.IsSelected(identity)).ToArray();
+                if (selected.Length > 1) return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                if (selected.Length == 1)
+                {
+                    try { return Ok(await selected[0].ReadAsync(request, cancellationToken).ConfigureAwait(false)); }
+                    catch (Exception exception) when (exception is IOException or InvalidOperationException or System.Text.Json.JsonException)
+                    { return StatusCode(StatusCodes.Status503ServiceUnavailable); }
+                }
+            }
             IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId),
                 "AggregateActor");

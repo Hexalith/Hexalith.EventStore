@@ -11,4 +11,7 @@ public static class EventStoreGatewayWorkloadOperations
 
     /// <summary>Stream read operation.</summary>
     public const string StreamRead = "eventstore:stream-read";
+
+    /// <summary>Exact native source scan operation.</summary>
+    public const string NativeSourceScan = "eventstore:stream-scan-native";
 }

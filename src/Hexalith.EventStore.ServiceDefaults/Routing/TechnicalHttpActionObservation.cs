@@ -36,7 +36,7 @@ internal static class TechnicalHttpActionObservation
     internal static bool IsCoreAction(ControllerActionDescriptor action) => action.MethodInfo.DeclaringType?.Assembly.GetName().Name == "Hexalith.EventStore.Gateway"
         && action.MethodInfo.DeclaringType.Namespace == "Hexalith.EventStore.Controllers"
         && (action.MethodInfo.DeclaringType.Name, action.MethodInfo.Name) is ("CommandsController", "Submit" or "SubmitWorkload" or "SubmitBoundWorkload")
-            or ("QueriesController", "Submit" or "SubmitBoundOwnerAuthorityAsync") or ("StreamsController", "ReadStreamAsync" or "ReadWorkloadStreamAsync")
+            or ("QueriesController", "Submit" or "SubmitBoundOwnerAuthorityAsync") or ("StreamsController", "ReadStreamAsync" or "ReadWorkloadStreamAsync" or "ReadNativeSourceScanPageAsync")
             or ("RoutingCatalogMetadataController", "Get");
 
     internal static bool DedicatedWorkloadPolicy(AuthorizationPolicy? policy, string scheme, string operation) => policy is not null

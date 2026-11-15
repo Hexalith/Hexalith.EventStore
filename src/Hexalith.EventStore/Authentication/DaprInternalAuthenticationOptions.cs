@@ -43,6 +43,9 @@ public sealed class DaprInternalAuthenticationOptions : AuthenticationSchemeOpti
     /// <summary>Policy for workload-only stream reads.</summary>
     public const string GatewayStreamReadPolicy = SchemeName + ":" + EventStoreWorkloadOperations.GatewayStreamRead;
 
+    /// <summary>Policy for separately enrolled native source scans.</summary>
+    public const string GatewayNativeSourceScanPolicy = SchemeName + ":" + EventStoreWorkloadOperations.GatewayNativeSourceScan;
+
     /// <summary>Policy for bound owner authority queries.</summary>
     public const string GatewayOwnerAuthorityQueryPolicy = SchemeName + ":" + EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery;
 

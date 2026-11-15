@@ -36,8 +36,12 @@ public static class DevelopmentRouteCatalogInputs
         byte[] authentication = JsonSerializer.SerializeToUtf8Bytes(new
         {
             settings, boundProofCallers = configuredKeys,
+            nativeScanProofCallers = configuration.GetSection("Authentication:NativeSourceScan:PublicKeys").GetChildren().Select(child => child.Key).Order(StringComparer.Ordinal).ToArray(),
             applicationChannelTokenConfigured = !string.IsNullOrEmpty(configuration["APP_API_TOKEN"]),
             sidecarApiTokenConfigured = !string.IsNullOrEmpty(configuration["DAPR_API_TOKEN"]),
+            syntheticOriginalPrimary = configuration.GetSection("EventStore:Testing:OriginalSource").GetChildren()
+                .Where(child => new[] { "Enabled", "Mode", "RunId", "Tenant", "Domain", "AggregatePrefix", "Directory" }.Contains(child.Key, StringComparer.Ordinal))
+                .OrderBy(child => child.Key, StringComparer.Ordinal).ToDictionary(child => child.Key, child => child.Value),
         });
         var actorStateOwners = DevelopmentActorStateOwnerBoundary.ReadObserved(configuration);
         if (actorStateOwners.Length > 0)

@@ -39,6 +39,9 @@ public static class EventStoreWorkloadOperations
     /// <summary>Read an event stream through the workload-only gateway.</summary>
     public const string GatewayStreamRead = EventStoreOperationIdentifiers.GatewayStreamRead;
 
+    /// <summary>Exact native source scan operation.</summary>
+    public const string GatewayNativeSourceScan = EventStoreOperationIdentifiers.GatewayNativeSourceScan;
+
     /// <summary>Resolve one exact owner authority query under a signed requester binding.</summary>
     public const string GatewayOwnerAuthorityQuery = EventStoreOperationIdentifiers.GatewayOwnerAuthorityQuery;
 }

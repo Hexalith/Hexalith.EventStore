@@ -1,6 +1,6 @@
 namespace Hexalith.EventStore.Contracts.Streams;
 
-/// <summary>Content-free native incarnation and committed-prefix evidence returned by the existing actor inspection.</summary>
+/// <summary>Content-free native incarnation and committed-prefix evidence from the actor, or an explicitly selected Testing-owned original-primary fixture.</summary>
 /// <param name="CodecVersion">The native proof codec version.</param>
 /// <param name="TenantId">The exact source Tenant.</param>
 /// <param name="Domain">The exact source domain.</param>

@@ -2123,6 +2123,13 @@ public sealed partial class SharedProjectionEpochCoordinator
                             new InvalidOperationException("The prepared shared projection batch needs a retry."));
                     }
 
+                    if (result.Status == ReadModelBatchStatus.Conflict)
+                    {
+                        // A refused CAS/prepared identity never attests completion. Keep the exact
+                        // prepared journal so a cold retry or owner repair can establish its end-state.
+                        throw new SharedProjectionWriteUnavailableException(new InvalidOperationException(
+                            "The prepared shared projection batch was refused: " + result.Status + "/" + result.ConflictKind));
+                    }
                     if (!result.IsSuccess)
                     {
                         throw new InvalidOperationException("Shared projection catch-up is incomplete: " + result.Status);

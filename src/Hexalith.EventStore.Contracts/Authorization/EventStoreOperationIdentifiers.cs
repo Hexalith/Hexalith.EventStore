@@ -42,6 +42,9 @@ public static class EventStoreOperationIdentifiers
     /// <summary>Read an event stream through the workload-only gateway.</summary>
     public const string GatewayStreamRead = "eventstore:stream-read";
 
+    /// <summary>Authenticated bounded native source scanning with an exact resource proof.</summary>
+    public const string GatewayNativeSourceScan = "eventstore:stream-scan-native";
+
     /// <summary>Resolve one exact owner authority query under a signed requester binding.</summary>
     public const string GatewayOwnerAuthorityQuery = "eventstore:owner-authority-query";
 }

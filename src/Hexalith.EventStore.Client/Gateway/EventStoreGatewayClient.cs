@@ -204,10 +204,32 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             : throw new EventStoreGatewayException((int)response.StatusCode, "Invalid workload stream response");
     }
 
+    /// <inheritdoc/>
+    public async Task<StreamReadPage> ReadNativeSourceScanPageAsync(StreamReadRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!_options.UseWorkloadTransport || request.Tenant.StartsWith("platform:", StringComparison.Ordinal)
+            || _httpClient.DefaultRequestHeaders.Contains("Authorization")
+            || _httpClient.DefaultRequestHeaders.Contains("X-Hexalith-Scope")
+            || _httpClient.DefaultRequestHeaders.Contains("X-Hexalith-Tenant"))
+            throw new InvalidOperationException("Native scan requires an independent exact workload transport.");
+        string? proof = _streamReadProofs is null ? null
+            : await _streamReadProofs.IssueAsync(request, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(proof)) throw new InvalidOperationException("Native source scan proof is unavailable.");
+        using HttpResponseMessage response = await SendWorkloadAsync(HttpMethod.Post, "api/v1/streams/scan/workload", request,
+            EventStoreGatewayWorkloadOperations.NativeSourceScan, request.Tenant, cancellationToken, nativeScanProof: proof).ConfigureAwait(false);
+        await response.Content.LoadIntoBufferAsync(2_097_152, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode) await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
+        StreamReadPage? page = await response.Content.ReadFromJsonAsync<StreamReadPage>(JsonOptions, cancellationToken).ConfigureAwait(false);
+        if (page is null) throw new EventStoreGatewayException((int)response.StatusCode, "Invalid native scan response");
+        StreamReadPageValidator.ValidateAndGetNextSequence(request, page);
+        return page;
+    }
+
     private async Task<HttpResponseMessage> SendWorkloadAsync(
         HttpMethod method, string path, object? body, string operation, string tenant,
         CancellationToken cancellationToken, string? streamReadProof = null, string? boundCommandProof = null,
-        string? explicitScope = null) {
+        string? explicitScope = null, string? nativeScanProof = null) {
         string? assertion = _workloadAssertions is null
             ? null
             : body switch {
@@ -228,6 +250,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         if (streamReadProof is not null) {
             request.Headers.TryAddWithoutValidation("X-Hexalith-Bound-Stream-Read-Proof", streamReadProof);
         }
+        if (nativeScanProof is not null) {
+            request.Headers.TryAddWithoutValidation(BoundNativeSourceScanProof.HeaderName, nativeScanProof);
+        }
         if (boundCommandProof is not null) {
             request.Headers.TryAddWithoutValidation(BoundWorkloadCommandProof.HeaderName, boundCommandProof);
         }
@@ -236,7 +261,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         }
 
         return await SendTranslatingAsync(
-            () => _httpClient.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
+            () => _httpClient.SendAsync(request, nativeScanProof is null ? HttpCompletionOption.ResponseContentRead : HttpCompletionOption.ResponseHeadersRead, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
