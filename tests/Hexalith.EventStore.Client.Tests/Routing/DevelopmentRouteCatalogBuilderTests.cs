@@ -397,7 +397,7 @@ public class DevelopmentRouteCatalogBuilderTests
             {
                 (exit, log) = await RunToolAsync(tool, "development", profile, developmentOutput);
                 exit.ShouldBe(0, log);
-                log.ShouldContain("2579a2d99016508de5ee3102233a4ccf4cad3d951fa84b26c6766fcbf76cc43a");
+                log.ShouldContain("8afc9833a67417e53fbbf91a18c76e4f273a11d534fc2637e0552da43c5544ff");
                 log.ShouldContain("Development declarations verified; runtime certification, secret availability and catalog activation are unverified.");
                 File.ReadAllBytes(developmentOutput).ShouldBe(developmentExpected);
             }

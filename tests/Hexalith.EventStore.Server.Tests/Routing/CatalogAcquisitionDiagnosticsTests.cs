@@ -54,7 +54,13 @@ public sealed class CatalogAcquisitionDiagnosticsTests
             {
                 log.Records.Where(record => Equals(record["Stage"], "CatalogStateRead")).Select(record => record["Status"])
                     .ShouldBe(new object[] { "Started", "Completed", "Started", "Completed" });
-                foreach (string stage in new[] { "CatalogAdmissionWait", "CatalogActivationDigest", "CatalogHostCapture", "CatalogTrust", "CatalogCompareExchange", "CatalogSnapshot" })
+                object[] admissionWaits = ["Started", "Completed"];
+#if DEBUG
+                if (development) admissionWaits = [.. admissionWaits, .. admissionWaits];
+#endif
+                log.Records.Where(record => Equals(record["Stage"], "CatalogAdmissionWait")).Select(record => record["Status"])
+                    .ShouldBe(admissionWaits);
+                foreach (string stage in new[] { "CatalogActivationDigest", "CatalogHostCapture", "CatalogTrust", "CatalogCompareExchange", "CatalogSnapshot" })
                     CommandDispatchDiagnosticsTests.AssertClosed(log, stage, "Completed");
             }
         }
