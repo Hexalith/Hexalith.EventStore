@@ -7909,12 +7909,14 @@ So that no high-risk result overstates the assurance behind it.
 
 **Architecture constraints:** None new.
 
-**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-HIGH-RISK. **Approval:** Assurance Control at the registry-computed level; while the registry names one human, the owner's time-separated attestation, labelled `single-maintainer-attested`. (The 2026-09-26 "named independent reviewer" blocker was superseded the same day because the owner is the project's only person.)
+**Dependencies:** Owner-approved scoped corrective work under the current AD-12 evidence policy. The owning story/spec records its authorization and applicable approval provenance; deleted Story 9.1 tooling is not a prerequisite to restore. **Approval:** Assurance Control at the registry-computed level; while the registry names one human, the owner's time-separated attestation, labelled `single-maintainer-attested`. (The 2026-09-26 "named independent reviewer" blocker was superseded the same day because the owner is the project's only person.)
+
+**Execution clarification (approved 2026-11-15):** The owner's `/bmad-build 9.2` request authorizes this scoped work, recorded in `spec-9-2-phase-4-high-risk-gate-matrix-and-assurance-control.md`. Schedule 9.2 under AD-12's current story/spec-plus-CI policy; deleted Story 9.1 tooling is not a prerequisite, and do not restore deleted evidence packets, registries, manifests, seals or workflows merely because older text names them. The matrix and the owner-role registry are tracked at `_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json` and `_bmad-output/implementation-artifacts/owner-role-registry.json`, outside the ignored evidence folder. Record input identities, commands, results, source SHA and CI link in the owning story/spec. Preserve truthful initial FAIL behavior.
 
 **Acceptance Criteria:**
 
-**Given** `_bmad-output/implementation-artifacts/evidence/phase-4-gate-risk-matrix.json`
-**When** `python3 tools/validate-phase-4-gate-risk-matrix.py _bmad-output/implementation-artifacts/evidence/phase-4-gate-risk-matrix.json` runs
+**Given** `_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json`
+**When** `python3 tools/validate-phase-4-gate-risk-matrix.py _bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json` runs
 **Then** the matrix enumerates exactly the 17 gates PRD G-HIGH-RISK lists, each `high-risk` or a reason-coded `standard-control`
 **And** omissions, unknown gates, new unclassified gates, and reasonless classifications are rejected.
 
@@ -7932,7 +7934,7 @@ So that no high-risk result overstates the assurance behind it.
 **When** CI runs
 **Then** a required fixture job blocks merges and proves every rejection path with an observed failing negative fixture beside a positive control
 **And** a separate, non-required live-evaluation job runs on every push to `main` and publishes a retrievable, content-bound PASS or FAIL without blocking merges; its result is evidence only and never a seal
-**And** the matrix inputs are content-hashed so that edits invalidate the result, and the jobs use a new workflow file or the Story 9.1 workflow under the Epic 9 truthful-FAIL CI rule.
+**And** the matrix inputs are content-hashed so that edits invalidate the result, and the jobs use a new workflow file under the Epic 9 truthful-FAIL CI rule.
 
 **Given** a high-risk gate result to PASS, a story recorded against a high-risk NFR to `done`, readiness, `release-available`, `production-promoted`, or consumer removal is attempted
 **When** its dedicated transition workflow, owned by this story beside the matrix validator, runs for that one guarded transition

@@ -22,6 +22,20 @@ end_of_line = lf
 [/docs/architecture/oq8/LICENSE]
 end_of_line = lf
 
+# Story 9.2 gate risk matrix inputs are content-hashed; editor saves keep their LF bytes.
+[/_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json]
+end_of_line = lf
+
+[/_bmad-output/implementation-artifacts/owner-role-registry.json]
+end_of_line = lf
+
+# Gate workflows are hashed G-OQ8 and G-HIGH-RISK subjects.
+[/.github/workflows/oq8-governing-design.yml]
+end_of_line = lf
+
+[/.github/workflows/phase-4-gate-risk-matrix.yml]
+end_of_line = lf
+
 # C# files
 [*.cs]
 # Naming conventions

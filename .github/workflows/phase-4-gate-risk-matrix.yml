@@ -1,0 +1,63 @@
+name: Phase 4 gate risk matrix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    name: Phase 4 gate risk matrix fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Test classification and Assurance Control rejection paths
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_gate_risk_matrix.py'
+
+  live-evaluation:
+    name: Phase 4 gate risk matrix live evaluation
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+          fetch-depth: 0
+      - name: Evaluate and report the current matrix
+        shell: bash
+        run: |
+          status=0
+          output="$RUNNER_TEMP/phase-4-gate-risk-matrix"
+          mkdir -p "$output"
+          python3 -B tools/validate-phase-4-gate-risk-matrix.py _bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json --result "$output/result.json" >"$output/report.txt" 2>&1 || status=$?
+          source_sha="$(git rev-parse HEAD)"
+          workflow_digest="$(sha256sum .github/workflows/phase-4-gate-risk-matrix.yml | cut -d ' ' -f 1)"
+          result=FAIL
+          if [ "$status" -eq 0 ]; then
+            result=PASS
+          fi
+          {
+            printf 'Phase 4 gate risk matrix: %s (evidence only, never a seal)\n\nSource SHA: %s\n\nWorkflow SHA-256: %s\n\n```text\n' "$result" "$source_sha" "$workflow_digest"
+            cat "$output/report.txt"
+            printf '```\n'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      - name: Upload the content-bound result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phase-4-gate-risk-matrix-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/phase-4-gate-risk-matrix/
+          if-no-files-found: error
+          retention-days: 90

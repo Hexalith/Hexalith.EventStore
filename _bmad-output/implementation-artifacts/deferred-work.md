@@ -6678,3 +6678,22 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
   summary: `deploy/README.md:46` documents the event `cloudevent.id` as `{correlationId}:{sequenceNumber}`, but events publish the persisted `messageId` (low).
   evidence: Review triage row 17. `docs/concepts/event-envelope.md:253` and `:276` state that `cloudevent.id` is the persisted EventStore `messageId` and warn against deriving identity from correlation ID and sequence; `EventPublisher` keys `cloudevent.id` on `MessageId`. Pre-existing, not caused by this change.
   status: open
+
+## Deferred from: bmad-build intake of Story 9.2 (2026-11-15)
+
+- source_spec: none
+  summary: Build the Story 9.2 guarded-transition seal workflows (ACs 5, 7, 8) — six dedicated transition workflows whose validators retrieve a passing result from the GitHub Actions API for the exact head SHA, workflow-file digest and authenticated CI identity, plus predecessor re-validation from the pinned commit and its negative fixtures.
+  evidence: Owner chose "Split" at the bmad-build multi-goal check on 2026-11-15. The gate matrix, owner-role registry, Assurance Control validator and fixture/live CI (ACs 1–4, 6) merge and are tested on their own; the seal workflows depend only on the matrix schema and are a separate PR. AC 9 (G-RUNTIME-PARITY evaluation) stays follow-on work per its own text.
+  status: open
+
+## Deferred from: code review of spec-9-2-phase-4-high-risk-gate-matrix-and-assurance-control.md (2026-11-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-phase-4-high-risk-gate-matrix-and-assurance-control.md`
+  summary: Inputs for the deferred Story 9.2 seal-workflow work: per-transition seal records, OR13 enforcement of the `high-risk-nfr-story-done` transition, and platform verification of attestation authenticity, timestamps and author identity.
+  evidence: Review findings BH-05, BH-06, BH-09 and BH-13. The v1 matrix carries one `seal` per row, but OR10 binds a seal to one guarded transition. The offline validator trusts self-declared Git dates, `created_at` and the row's `author`. The high-risk NFR set is inconsistent in the PRD: `prd.md:711` lists NFR7, NFR12 and NFR16, while SM3 (`prd.md:546`) and §11.2 list NFR1–NFR4, NFR7, NFR10–NFR11 and NFR14–NFR17, so the transition cannot yet name its NFRs.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-phase-4-high-risk-gate-matrix-and-assurance-control.md`
+  summary: Reconcile the remaining planning text that still makes the deleted Story 9.1 tooling a prerequisite: PRD OR28 (`prd.md:763`, "Until this exists, no gate-closing implementation handoff is authorized") and the Epic 9 implementation note (`epics.md:397`, "or the Story 9.1 workflow").
+  evidence: Review finding BH-12. Approved clarifications now exempt Stories 9.3 (2026-11-09) and 9.2 (2026-11-15), but OR28 and the epic note still state the old rule, and Stories 9.4 and 9.5 have no clarification. The text predates this change.
+  status: open

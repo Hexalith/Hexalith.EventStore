@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-11-14
+# last_updated: 2026-11-15
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -301,7 +301,9 @@ development_status:
   # Story 9.2 closes on sealed CI plus a time-separated owner attestation (single-maintainer-attested).
   # 9.1: superseded 2026-10-23 by spec-evidence-storage-simplification (validator, schema, workflow, tests and fixtures removed).
   9-1-corrective-work-authorization-record-and-validator: done
-  9-2-phase-4-high-risk-gate-matrix-and-assurance-control: backlog
+  # 9.2: ACs 1-4 and the AC 6 record checks done 2026-11-15 (spec-9-2-phase-4-high-risk-gate-matrix-and-assurance-control, CI pending);
+  # ACs 5, 7 and 8 (seal-retrieving transition workflows) are deferred, so the story stays in-progress.
+  9-2-phase-4-high-risk-gate-matrix-and-assurance-control: in-progress
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-BASELINE validator with the OR8
   # drift and OR15 lifecycle guards, G-CLAUSE, and G-MVP-COVERAGE. Each live gate result
   # is truthfully FAIL today; only fixture suites block merges (Epic 9 truthful-FAIL CI rule).

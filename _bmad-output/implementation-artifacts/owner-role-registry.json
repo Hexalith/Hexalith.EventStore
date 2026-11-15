@@ -1,0 +1,34 @@
+{
+  "schema": "hexalith.eventstore.owner-role-registry.v1",
+  "repository": "Hexalith/Hexalith.EventStore",
+  "identities": [
+    {
+      "id": "github:jpiquot",
+      "kind": "human",
+      "github_id": 6775094
+    },
+    {
+      "id": "bmad:murat",
+      "kind": "tool-persona"
+    },
+    {
+      "id": "github:github-actions[bot]",
+      "kind": "ci"
+    }
+  ],
+  "roles": {
+    "product-owner": ["github:jpiquot"],
+    "eventstore-owner": ["github:jpiquot"],
+    "release-owner": ["github:jpiquot"],
+    "deployment-owner": ["github:jpiquot"],
+    "consumer-owner": ["github:jpiquot"],
+    "security-approver": ["github:jpiquot"],
+    "test-owner": ["github:jpiquot"],
+    "architecture-owner": ["github:jpiquot"],
+    "epic-owner": ["github:jpiquot"],
+    "eventstore-api-owner": ["github:jpiquot"],
+    "persistence-owner": ["github:jpiquot"],
+    "tenants-owner": ["github:jpiquot"],
+    "folders-content-owner": ["github:jpiquot"]
+  }
+}
