@@ -1,0 +1,8 @@
+<Project>
+  <!-- Offline package probes compile the selected Platform source for the current verifier runtime.
+       This supported import survives MSBuild target-framework discovery, which removes the
+       TargetFramework global property. It grants no historical/native/installed qualification. -->
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+  </PropertyGroup>
+</Project>

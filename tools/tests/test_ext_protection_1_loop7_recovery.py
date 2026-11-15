@@ -27,13 +27,19 @@ class ActualNativeRecoveryEvidenceTests(unittest.TestCase):
             if not assembly.is_absolute() or assembly.is_symlink() or not assembly.is_file() or hashlib.sha256(assembly.read_bytes()).hexdigest() != os.environ.get('EXT_PROTECTION_LOOP7_COMPONENT_SHA256'):
                 raise ValueError('Exact independently hash-pinned component test assembly required')
         else:
+            # Package probes rebuild the frozen source for the current harness runtime;
+            # the owning catalog still selects its retained SDK package family.
+            configuration = os.environ.get('EXT_PROTECTION_INTEROP_CONFIGURATION', 'Debug')
+            project_references = os.environ.get('EXT_PROTECTION_INTEROP_PROJECT_REFERENCES', 'true')
+            if configuration not in ('Debug', 'Release') or project_references not in ('true', 'false'):
+                raise ValueError('Invalid offline interop build configuration')
             platform = ROOT / 'references/Hexalith.Platform'
             if not (platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj').is_file(): platform = ROOT.parent / 'platform'
             output = cls.directory / 'bin'
-            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
-            built = subprocess.run(['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'), '-c', 'Debug',
-                '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT), '-p:OutputPath=' + str(output) + '/',
-                '-p:AppendTargetFrameworkToOutputPath=false', '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-m:1', '-nodeReuse:false'], cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
+            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI' or project_references == 'false'}
+            built = subprocess.run(['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'), '-c', configuration,
+                '-p:UseHexalithProjectReferences=' + project_references, '-p:HexalithEventStoreRoot=' + str(ROOT), '-p:OutputPath=' + str(output) + '/',
+                '-p:AppendTargetFrameworkToOutputPath=false', *(['-p:CustomAfterMicrosoftCommonProps=' + str(ROOT / 'tools/tests/ext_protection_component_runtime.props')] if project_references == 'false' else []), '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-m:1', '-nodeReuse:false'], cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
             if built.returncode: raise AssertionError(built.stdout + built.stderr)
             assembly = output / 'Hexalith.Platform.Protection.Tests.dll'
         executed = subprocess.run(['dotnet', str(assembly), '-class', 'Hexalith.Platform.Protection.Tests.ProtectionQualificationLoop7RecoveryTests', '-noColor'],

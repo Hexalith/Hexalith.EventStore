@@ -86,6 +86,10 @@ class ShippedRoleClosureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temporary = tempfile.TemporaryDirectory(prefix='protection-shipped-closure-'); cls.addClassCleanup(cls.temporary.cleanup)
+        configuration = os.environ.get('EXT_PROTECTION_INTEROP_CONFIGURATION', 'Debug')
+        project_references = os.environ.get('EXT_PROTECTION_INTEROP_PROJECT_REFERENCES', 'true')
+        if configuration not in ('Debug', 'Release') or project_references not in ('true', 'false'):
+            raise ValueError('Invalid offline interop build configuration')
         cls.directory = Path(cls.temporary.name); cls.platform = v.qualification_platform_root(ROOT)
         cls.host = Path(shutil.which('dotnet')).resolve(); cls.roles = {}
         cls.template = max((cls.host.parent / 'packs/Microsoft.NETCore.App.Host.linux-x64').glob(f'{v.ROLE_RUNTIME_MAJOR}.0.*/runtimes/linux-x64/native/apphost'), key=lambda path: tuple(map(int, path.parts[-5].split('.'))))
@@ -95,12 +99,13 @@ class ShippedRoleClosureTests(unittest.TestCase):
             output = cls.directory / 'build' / role
             # Qualification rejects runtimeconfig.dev.json; SDK 11's Debug hot reload
             # defaults must not introduce one or reuse a stale shared build layout.
-            command = [str(cls.host), 'build', str(project), '-c', 'Debug', '-o', str(output), '-m:1', '-nodeReuse:false',
-                       '-p:UseHexalithProjectReferences=true', '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false',
+            command = [str(cls.host), 'build', str(project), '-c', configuration, '-o', str(output), '-m:1', '-nodeReuse:false',
+                       '-p:UseHexalithProjectReferences=' + project_references,
+                       *(['-p:CustomAfterMicrosoftCommonProps=' + str(ROOT / 'tools/tests/ext_protection_component_runtime.props')] if project_references == 'false' else []), '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false',
                        '-p:EnableHotReloadInRuntimeConfigDevFile=false', '-p:HexalithEventStoreRoot=' + str(ROOT)]
             for name in ('HexalithCommonsRoot', 'HexalithTenantsBasePath'):
                 if os.environ.get(name): command.append('-p:' + name + '=' + os.environ[name])
-            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
+            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI' or project_references == 'false'}
             built = subprocess.run(command, env=source_build_env, capture_output=True, text=True, timeout=300)
             if built.returncode: raise AssertionError(built.stdout + built.stderr)
             installed = cls.directory / role; shutil.copytree(output, installed)

@@ -27,18 +27,24 @@ class SourceSnapshotEmissionTests(unittest.TestCase):
             if not assembly.is_absolute() or assembly.is_symlink() or not assembly.is_file() or hashlib.sha256(assembly.read_bytes()).hexdigest() != os.environ.get('EXT_PROTECTION_SNAPSHOT_COMPONENT_SHA256'):
                 raise ValueError('Exact independently hash-pinned component test assembly required')
         else:
+            # Package probes rebuild the selected source for the current harness runtime;
+            # the owning catalog still selects its retained SDK package family.
+            configuration = os.environ.get('EXT_PROTECTION_INTEROP_CONFIGURATION', 'Debug')
+            project_references = os.environ.get('EXT_PROTECTION_INTEROP_PROJECT_REFERENCES', 'true')
+            if configuration not in ('Debug', 'Release') or project_references not in ('true', 'false'):
+                raise ValueError('Invalid offline interop build configuration')
             platform = ROOT / 'references/Hexalith.Platform'
             if not (platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj').is_file():
                 platform = ROOT.parent / 'platform'
             argv = ['dotnet', 'build', str(platform / 'tests/Hexalith.Platform.Protection.Tests/Hexalith.Platform.Protection.Tests.csproj'),
-                    '-c', 'Debug', '-p:UseHexalithProjectReferences=true', '-p:HexalithEventStoreRoot=' + str(ROOT),
-                    '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-m:1', '-nodeReuse:false']
-            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI'}
+                    '-c', configuration, '-p:UseHexalithProjectReferences=' + project_references, '-p:HexalithEventStoreRoot=' + str(ROOT),
+                    *(['-p:CustomAfterMicrosoftCommonProps=' + str(ROOT / 'tools/tests/ext_protection_component_runtime.props')] if project_references == 'false' else []), '-p:GeneratePackageOnBuild=false', '-p:RunAnalyzers=false', '-m:1', '-nodeReuse:false']
+            source_build_env = {key: value for key, value in os.environ.items() if key != 'CI' or project_references == 'false'}
             built = subprocess.run(argv, cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=300, check=False)
             if built.returncode:
                 raise AssertionError(built.stdout + built.stderr)
             evaluated = subprocess.run(
-                ['dotnet', 'msbuild', argv[2], '-p:Configuration=Debug', '-getProperty:TargetPath', *argv[5:]],
+                ['dotnet', 'msbuild', argv[2], '-p:Configuration=' + configuration, '-getProperty:TargetPath', *argv[5:]],
                 cwd=platform, env=source_build_env, capture_output=True, text=True, timeout=60, check=False)
             assembly = Path(evaluated.stdout.strip())
             if evaluated.returncode or not assembly.is_absolute() or not assembly.is_file():
