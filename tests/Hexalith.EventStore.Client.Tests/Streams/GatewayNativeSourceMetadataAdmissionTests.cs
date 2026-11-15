@@ -142,9 +142,11 @@ public sealed class GatewayNativeSourceMetadataAdmissionTests
         });
         var releases = Enumerable.Range(0, 16).Select(_ => new ManualResetEventSlim()).ToArray();
         var exited = Enumerable.Range(0, 16).Select(_ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).ToArray();
+        var callbackEntered = Enumerable.Range(0, 16).Select(_ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).ToArray();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); int enteredCount = 0; int completedCalls = 0;
         void Block(int ordinal)
         {
+            callbackEntered[ordinal].TrySetResult();
             if (Interlocked.Increment(ref enteredCount) == 16) entered.TrySetResult();
             try { releases[ordinal].Wait(); } finally { exited[ordinal].TrySetResult(); }
         }
@@ -157,8 +159,7 @@ public sealed class GatewayNativeSourceMetadataAdmissionTests
         }).ToArray();
         var callers = Enumerable.Range(0, 16).Select(_ => new CancellationTokenSource()).ToArray();
         var clocks = Enumerable.Range(0, 16).Select(_ => new AuthoritativeReadTimeProvider()).ToArray();
-        var pending = Enumerable.Range(0, 16).Select(ordinal => new NativeSourceScanner(gateway, clocks[ordinal], TimeSpan.FromSeconds(2)).ScanAsync(identity,
-            () => { if (stage == "factory") Block(ordinal); return folds[ordinal]; }, callers[ordinal].Token)).ToArray();
+        var pending = new List<Task<NativeSourceScanResult<string>>>();
         var fresh = new NativeSourceScanner(gateway, TimeProvider.System);
         INativeSourceScanFold<string> Healthy()
         {
@@ -166,6 +167,29 @@ public sealed class GatewayNativeSourceMetadataAdmissionTests
         }
         try
         {
+            // Callback exit precedes its admitted worker's actual completion. A previous
+            // theory can therefore still hold a slot during this fixture's setup. Establish
+            // each real callback entry before adding the next worker, retrying only safe
+            // pre-entry refusals within the existing ten-second setup bound.
+            var setup = Stopwatch.StartNew();
+            for (int ordinal = 0; ordinal < 16; ordinal++)
+            {
+                int worker = ordinal;
+                while (true)
+                {
+                    Task<NativeSourceScanResult<string>> attempt = new NativeSourceScanner(gateway, clocks[worker], TimeSpan.FromSeconds(2)).ScanAsync(identity,
+                        () => { if (stage == "factory") Block(worker); return folds[worker]; }, callers[worker].Token);
+                    pending.Add(attempt);
+                    Task completed = await Task.WhenAny(callbackEntered[worker].Task, attempt)
+                        .WaitAsync(TimeSpan.FromSeconds(10) - setup.Elapsed, TestContext.Current.CancellationToken);
+                    if (completed == callbackEntered[worker].Task) break;
+                    NativeSourceScanResult<string> refusal = await attempt;
+                    refusal.Observation.ShouldBeNull(); refusal.Value.ShouldBeNull();
+                    refusal.ReasonCode.ShouldBe("source-unavailable");
+                    pending.RemoveAt(pending.Count - 1);
+                    await Task.Yield();
+                }
+            }
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
             int before = Volatile.Read(ref providerCalls);
             if (callerCanceled)
