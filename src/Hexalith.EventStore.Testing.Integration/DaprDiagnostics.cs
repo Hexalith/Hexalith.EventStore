@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -15,6 +16,116 @@ namespace Hexalith.EventStore.Testing.Integration;
 /// redaction guarantees instead of re-implementing them.
 /// </remarks>
 public static class DaprDiagnostics {
+    /// <summary>Stable classification for a healthy resource whose HTTP endpoint is not ready.</summary>
+    public const string AppHostEndpointNotReady = "APPHOST_ENDPOINT_NOT_READY";
+
+    /// <summary>Stable classification for an occupied effective DAPR control-plane binding.</summary>
+    public const string DaprControlPlanePortCollision = "DAPR_CONTROL_PLANE_PORT_COLLISION";
+
+    /// <summary>Stable classification when the required DAPR sidecar executable is absent.</summary>
+    public const string DaprExecutableNotFound = "DAPR_EXECUTABLE_NOT_FOUND";
+
+    /// <summary>Fails before startup when a selected DAPR executable is not installed.</summary>
+    /// <param name="executable">An explicit executable path or command resolved from PATH.</param>
+    public static void RequireDaprExecutable(string executable)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executable);
+        bool explicitPath = Path.IsPathRooted(executable)
+            || executable.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]) >= 0;
+        bool exists = explicitPath ? File.Exists(Path.GetFullPath(executable))
+            : (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator)
+                .Any(directory => File.Exists(Path.Combine(directory, executable)));
+        if (!exists) throw new FileNotFoundException($"{DaprExecutableNotFound}: install the selected DAPR runtime before retrying.");
+    }
+
+    /// <summary>Waits for an HTTP endpoint with bounded retries and support-safe failure details.</summary>
+    /// <param name="client">The endpoint's client.</param>
+    /// <param name="path">The relative readiness path.</param>
+    /// <param name="endpointIdentity">The resource and endpoint name, without tenant or request data.</param>
+    /// <param name="timeout">The positive total retry budget.</param>
+    /// <param name="retryInterval">The positive delay between attempts.</param>
+    /// <param name="cancellationToken">Cancels the wait without reclassifying caller cancellation.</param>
+    /// <returns>A task completing only after a successful HTTP response.</returns>
+    public static async Task WaitForAppHostEndpointAsync(HttpClient client, string path, string endpointIdentity,
+        TimeSpan timeout, TimeSpan retryInterval, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(endpointIdentity);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(timeout, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(retryInterval, TimeSpan.Zero);
+        cancellationToken.ThrowIfCancellationRequested();
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(timeout);
+        string lastResult = "no response";
+        try
+        {
+            while (true)
+            {
+                try
+                {
+                    using HttpResponseMessage response = await client.GetAsync(path, HttpCompletionOption.ResponseHeadersRead, budget.Token)
+                        .ConfigureAwait(false);
+                    if (response.IsSuccessStatusCode) return;
+                    // Bodies, exception messages and request URLs may contain credentials or tenant identities.
+                    lastResult = $"HTTP {(int)response.StatusCode}";
+                }
+                catch (HttpRequestException)
+                {
+                    lastResult = "connection unavailable";
+                }
+                catch (OperationCanceledException) when (!budget.IsCancellationRequested)
+                {
+                    lastResult = "request timeout";
+                }
+                await Task.Delay(retryInterval, budget.Token).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && budget.IsCancellationRequested)
+        {
+            throw new TimeoutException($"{AppHostEndpointNotReady}: endpoint={ToSupportSafeDiagnostic(endpointIdentity)}; "
+                + $"last={lastResult}; retry after checking the endpoint binding, within a {timeout.TotalSeconds.ToString(CultureInfo.InvariantCulture)}-second budget.");
+        }
+    }
+
+    /// <summary>Checks only the effective local control-plane bindings the caller is about to create.</summary>
+    /// <param name="effectiveBindings">Resource/endpoint identities and their actual configured TCP bindings.</param>
+    /// <param name="cancellationToken">Cancels before probing or reporting another binding.</param>
+    /// <remarks>This is an advisory preflight; a later bind race must still be handled by the owner.</remarks>
+    public static void RequireAvailableDaprControlPlaneBindings(IReadOnlyDictionary<string, IPEndPoint> effectiveBindings,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(effectiveBindings);
+        cancellationToken.ThrowIfCancellationRequested();
+        var probes = new List<Socket>();
+        try
+        {
+            foreach (var binding in effectiveBindings.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                ArgumentException.ThrowIfNullOrWhiteSpace(binding.Key);
+                ArgumentNullException.ThrowIfNull(binding.Value);
+                var socket = new Socket(binding.Value.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                probes.Add(socket);
+                socket.ExclusiveAddressUse = true;
+                try
+                {
+                    socket.Bind(binding.Value);
+                    socket.Listen(1);
+                }
+                catch (SocketException exception) when (exception.SocketErrorCode is SocketError.AddressAlreadyInUse or SocketError.AccessDenied)
+                {
+                    throw new InvalidOperationException($"{DaprControlPlanePortCollision}: endpoint={ToSupportSafeDiagnostic(binding.Key)}; "
+                        + $"port={binding.Value.Port}; release the owning binding or select an isolated port before retrying.");
+                }
+            }
+        }
+        finally
+        {
+            foreach (Socket probe in probes) probe.Dispose();
+        }
+    }
+
     /// <summary>The default host port of the local <c>dapr init</c>-managed Redis instance.</summary>
     public const int DefaultRedisPort = 6379;
 

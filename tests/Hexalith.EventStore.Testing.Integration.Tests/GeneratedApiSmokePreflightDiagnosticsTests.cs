@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using System.Text.RegularExpressions;
 
 using Hexalith.EventStore.Testing.Integration;
@@ -107,6 +111,82 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
         // resolver, so the resolved ports must land on those documented candidates.
         DaprLocalEndpoints.PlacementPort.ShouldBeOneOf(6050, 50005);
         DaprLocalEndpoints.SchedulerPort.ShouldBeOneOf(6060, 50006);
+    }
+
+    [Fact]
+    public async Task HealthyResourceWithUnavailableEndpointHasStableSafeDiagnostic()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        await using var app = builder.Build();
+        app.Run(context => { context.Response.StatusCode = 503; return context.Response.WriteAsync("tenantId=secret-tenant Bearer secret-token"); });
+        await app.StartAsync();
+        using var client = app.GetTestClient();
+        var error = await Should.ThrowAsync<TimeoutException>(() => DaprDiagnostics.WaitForAppHostEndpointAsync(
+            client, "/health?token=private", "sample-api.http", TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(10)));
+        error.Message.ShouldContain(DaprDiagnostics.AppHostEndpointNotReady);
+        error.Message.ShouldContain("sample-api.http");
+        error.Message.ShouldContain("HTTP 503");
+        error.Message.ShouldContain("retry");
+        error.Message.ShouldNotContain("secret");
+        error.Message.ShouldNotContain("private");
+        AssertSupportSafe(error.Message);
+    }
+
+    [Fact]
+    public async Task EndpointRaceRetriesAndThenSucceeds()
+    {
+        int requests = 0;
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        await using var app = builder.Build();
+        app.Run(context => { context.Response.StatusCode = Interlocked.Increment(ref requests) == 1 ? 503 : 200; return Task.CompletedTask; });
+        await app.StartAsync();
+        using var client = app.GetTestClient();
+        await DaprDiagnostics.WaitForAppHostEndpointAsync(client, "/alive", "sample-api.http",
+            TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(10));
+        requests.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task EndpointWaitPreservesCallerCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        await using var app = builder.Build();
+        app.Run(context =>
+        {
+            entered.TrySetResult();
+            return Task.Delay(Timeout.InfiniteTimeSpan, context.RequestAborted);
+        });
+        await app.StartAsync();
+        using var client = app.GetTestClient();
+        Task wait = DaprDiagnostics.WaitForAppHostEndpointAsync(client, "/alive", "sample-api.http",
+            TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(10), cancellation.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        cancellation.Cancel();
+        await Should.ThrowAsync<OperationCanceledException>(() => wait);
+    }
+
+    [Fact]
+    public async Task RefusedConnectionHasStableSupportSafeEndpointDiagnostic()
+    {
+        using var reservation = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork,
+            System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
+        reservation.ExclusiveAddressUse = true;
+        reservation.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0));
+        int port = ((System.Net.IPEndPoint)reservation.LocalEndPoint!).Port;
+        using var client = new HttpClient(new SocketsHttpHandler { UseProxy = false })
+            { BaseAddress = new Uri($"http://127.0.0.1:{port}") };
+        var error = await Should.ThrowAsync<TimeoutException>(() => DaprDiagnostics.WaitForAppHostEndpointAsync(
+            client, "/alive?tenantId=private", "sample-api.http", TimeSpan.FromMilliseconds(150), TimeSpan.FromMilliseconds(10)));
+        error.Message.ShouldContain(DaprDiagnostics.AppHostEndpointNotReady);
+        error.Message.ShouldContain("sample-api.http");
+        error.Message.ShouldContain("connection unavailable");
+        error.Message.ShouldNotContain("private");
+        AssertSupportSafe(error.Message);
     }
 
     private static void AssertSupportSafe(string value) {

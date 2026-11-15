@@ -120,6 +120,83 @@ public class DaprTestPrerequisiteDiagnosticsTests {
         }
     }
 
+    [Fact]
+    public void EffectiveControlPlaneBindingCollisionNamesItsOwnerAndReleasesProbeSockets()
+    {
+        using var occupied = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        occupied.Start();
+        var endpoint = (System.Net.IPEndPoint)occupied.LocalEndpoint;
+        var bindings = new Dictionary<string, System.Net.IPEndPoint> { ["dapr-placement.grpc"] = endpoint };
+        var error = Should.Throw<InvalidOperationException>(() => DaprDiagnostics.RequireAvailableDaprControlPlaneBindings(bindings));
+        error.Message.ShouldContain(DaprDiagnostics.DaprControlPlanePortCollision);
+        error.Message.ShouldContain("dapr-placement.grpc");
+        error.Message.ShouldContain($"port={endpoint.Port}");
+        occupied.Stop();
+        DaprDiagnostics.RequireAvailableDaprControlPlaneBindings(bindings);
+        using var restored = new System.Net.Sockets.TcpListener(endpoint);
+        restored.Start();
+    }
+
+    [Fact]
+    public void UnrelatedOccupiedPortDoesNotFailEffectiveBindings()
+    {
+        using var occupied = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        using var selected = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        occupied.Start();
+        selected.Start();
+        var endpoint = (System.Net.IPEndPoint)selected.LocalEndpoint;
+        selected.Stop();
+        DaprDiagnostics.RequireAvailableDaprControlPlaneBindings(new Dictionary<string, System.Net.IPEndPoint>
+            { ["dapr-scheduler.grpc"] = endpoint });
+    }
+
+    [Fact]
+    public void CancelledControlPlaneProbeDoesNotClassifyACollision()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        Should.Throw<OperationCanceledException>(() => DaprDiagnostics.RequireAvailableDaprControlPlaneBindings(
+            new Dictionary<string, System.Net.IPEndPoint> { ["placement.grpc"] = new(System.Net.IPAddress.Loopback, 1) }, cancellation.Token));
+    }
+
+    [Fact]
+    public void TwoSelectedResourcesCannotClaimTheSameUnusedBindingAndProbesAreReleased()
+    {
+        using var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        var binding = (System.Net.IPEndPoint)listener.LocalEndpoint;
+        listener.Stop();
+        var error = Should.Throw<InvalidOperationException>(() => DaprDiagnostics.RequireAvailableDaprControlPlaneBindings(
+            new Dictionary<string, System.Net.IPEndPoint> { ["placement.grpc"] = binding, ["scheduler.grpc"] = binding }));
+        error.Message.ShouldContain(DaprDiagnostics.DaprControlPlanePortCollision);
+        error.Message.ShouldContain("scheduler.grpc");
+        using var restored = new System.Net.Sockets.TcpListener(binding);
+        restored.Start();
+    }
+
+    [Fact]
+    public void ExplicitRelativeExecutablePathsUseTheWorkingDirectoryInsteadOfPath()
+    {
+        string executableName = OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet";
+        var pathDirectories = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator);
+        pathDirectories.Any(directory => File.Exists(Path.Combine(directory, executableName))).ShouldBeTrue();
+        string explicitMissing = "." + Path.DirectorySeparatorChar + executableName;
+        File.Exists(Path.GetFullPath(explicitMissing)).ShouldBeFalse();
+        DaprDiagnostics.RequireDaprExecutable(executableName);
+        Should.Throw<FileNotFoundException>(() => DaprDiagnostics.RequireDaprExecutable(explicitMissing));
+
+        string directory = Path.Combine(Path.GetTempPath(), "selected-daprd-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string selected = Path.Combine(directory, "daprd");
+            File.WriteAllText(selected, "fixture");
+            DaprDiagnostics.RequireDaprExecutable("." + Path.DirectorySeparatorChar
+                + Path.GetRelativePath(Environment.CurrentDirectory, selected));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
     private static void AssertSupportSafe(string value) {
         Regex compactJwt = new(@"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", RegexOptions.Compiled);
         Regex bearerToken = new(@"Bearer\s+[A-Za-z0-9._~+/=-]{20,}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
