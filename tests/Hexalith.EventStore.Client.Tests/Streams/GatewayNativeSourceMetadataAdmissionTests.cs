@@ -142,12 +142,10 @@ public sealed class GatewayNativeSourceMetadataAdmissionTests
         });
         var releases = Enumerable.Range(0, 16).Select(_ => new ManualResetEventSlim()).ToArray();
         var exited = Enumerable.Range(0, 16).Select(_ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).ToArray();
-        var callbackEntered = Enumerable.Range(0, 16).Select(_ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).ToArray();
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); int enteredCount = 0; int completedCalls = 0;
+        var entered = Enumerable.Range(0, 16).Select(_ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).ToArray(); int completedCalls = 0;
         void Block(int ordinal)
         {
-            callbackEntered[ordinal].TrySetResult();
-            if (Interlocked.Increment(ref enteredCount) == 16) entered.TrySetResult();
+            entered[ordinal].TrySetResult();
             try { releases[ordinal].Wait(); } finally { exited[ordinal].TrySetResult(); }
         }
         var folds = Enumerable.Range(0, 16).Select(ordinal =>
@@ -159,7 +157,11 @@ public sealed class GatewayNativeSourceMetadataAdmissionTests
         }).ToArray();
         var callers = Enumerable.Range(0, 16).Select(_ => new CancellationTokenSource()).ToArray();
         var clocks = Enumerable.Range(0, 16).Select(_ => new AuthoritativeReadTimeProvider()).ToArray();
-        var pending = new List<Task<NativeSourceScanResult<string>>>();
+        Task<NativeSourceScanResult<string>> StartScan(int ordinal) => new NativeSourceScanner(gateway, clocks[ordinal], TimeSpan.FromSeconds(2)).ScanAsync(identity,
+            () => { if (stage == "factory") Block(ordinal); return folds[ordinal]; }, callers[ordinal].Token);
+        var pending = new List<Task<NativeSourceScanResult<string>>>(16);
+        Task<NativeSourceScanResult<string>>? starting = null;
+        Exception? originalFailure = null;
         var fresh = new NativeSourceScanner(gateway, TimeProvider.System);
         INativeSourceScanFold<string> Healthy()
         {
@@ -167,30 +169,31 @@ public sealed class GatewayNativeSourceMetadataAdmissionTests
         }
         try
         {
-            // Callback exit precedes its admitted worker's actual completion. A previous
-            // theory can therefore still hold a slot during this fixture's setup. Establish
-            // each real callback entry before adding the next worker, retrying only safe
-            // pre-entry refusals within the existing ten-second setup bound.
-            var setup = Stopwatch.StartNew();
+            using var setup = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            setup.CancelAfter(TimeSpan.FromSeconds(10));
             for (int ordinal = 0; ordinal < 16; ordinal++)
             {
-                int worker = ordinal;
                 while (true)
                 {
-                    Task<NativeSourceScanResult<string>> attempt = new NativeSourceScanner(gateway, clocks[worker], TimeSpan.FromSeconds(2)).ScanAsync(identity,
-                        () => { if (stage == "factory") Block(worker); return folds[worker]; }, callers[worker].Token);
-                    pending.Add(attempt);
-                    Task completed = await Task.WhenAny(callbackEntered[worker].Task, attempt)
-                        .WaitAsync(TimeSpan.FromSeconds(10) - setup.Elapsed, TestContext.Current.CancellationToken);
-                    if (completed == callbackEntered[worker].Task) break;
-                    NativeSourceScanResult<string> refusal = await attempt;
-                    refusal.Observation.ShouldBeNull(); refusal.Value.ShouldBeNull();
-                    refusal.ReasonCode.ShouldBe("source-unavailable");
-                    pending.RemoveAt(pending.Count - 1);
+                    setup.Token.ThrowIfCancellationRequested();
+                    starting = StartScan(ordinal);
+                    await Task.WhenAny(starting, entered[ordinal].Task).WaitAsync(setup.Token);
+                    setup.Token.ThrowIfCancellationRequested();
+                    if (entered[ordinal].Task.IsCompleted)
+                    {
+                        pending.Add(starting);
+                        starting = null;
+                        break;
+                    }
+                    NativeSourceScanResult<string> refused = await starting;
+                    starting = null;
+                    refused.Observation.ShouldBeNull(); refused.Value.ShouldBeNull();
+                    refused.ReasonCode.ShouldBe("source-unavailable");
                     await Task.Yield();
                 }
             }
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            pending.Count.ShouldBe(16);
+            entered.ShouldAllBe(signal => signal.Task.IsCompleted);
             int before = Volatile.Read(ref providerCalls);
             if (callerCanceled)
             {
@@ -215,12 +218,40 @@ public sealed class GatewayNativeSourceMetadataAdmissionTests
             if (callerCanceled) pending.ShouldAllBe(task => task.IsCanceled);
             else pending.ShouldAllBe(task => task.Result.Observation == null && task.Result.Value == null);
         }
+        catch (Exception exception)
+        {
+            originalFailure = exception;
+            throw;
+        }
         finally
         {
-            foreach (var release in releases) release.Set();
-            await Task.WhenAll(exited.Select(value => value.Task)).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-            foreach (var caller in callers) caller.Dispose(); foreach (var release in releases) release.Dispose();
-            ThreadPool.SetMinThreads(minimum, ioMinimum);
+            Task<NativeSourceScanResult<string>>[] started = starting is null ? [.. pending] : [.. pending, starting];
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            try
+            {
+                Task cancellations;
+                try { cancellations = Task.WhenAll(callers.Select(caller => caller.CancelAsync())); }
+                finally { foreach (var release in releases) release.Set(); }
+                await cancellations.WaitAsync(cleanup.Token);
+                await Task.WhenAll(started.Select(async attempt =>
+                {
+                    try { await attempt; }
+                    catch (OperationCanceledException) { }
+                })).WaitAsync(cleanup.Token);
+                await Task.WhenAll(exited.Where((_, ordinal) => entered[ordinal].Task.IsCompleted)
+                    .Select(value => value.Task)).WaitAsync(cleanup.Token);
+            }
+            catch (Exception cleanupFailure) when (originalFailure is not null)
+            {
+                TestContext.Current.TestOutputHelper?.WriteLine("Native selector cleanup failed: " + cleanupFailure.GetType().Name);
+            }
+            finally
+            {
+                foreach (var caller in callers) caller.Dispose();
+                for (int ordinal = 0; ordinal < releases.Length; ordinal++)
+                    if (exited[ordinal].Task.IsCompleted) releases[ordinal].Dispose();
+                ThreadPool.SetMinThreads(minimum, ioMinimum);
+            }
         }
     }
 

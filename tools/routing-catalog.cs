@@ -13,7 +13,7 @@ using Hexalith.EventStore.Contracts.Routing;
 // Repository-local offline developer tool. No operator service, activation, or signing authority.
 // Development construction/checking verify declarations. The separate compiled-profile boundary
 // rejects the unbounded query fallback pending 5.13; it inspects no running deployment or catalog file.
-// The retained 30-route file is an unactivated runtime candidate.
+// The retained 31-route file is an unactivated runtime candidate.
 // dotnet run tools/routing-catalog.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -- development . deploy/dapr/eventstore-routing-catalog.json
 // dotnet run tools/routing-catalog.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -- check-development . deploy/dapr/eventstore-routing-catalog.json
 // dotnet run tools/routing-catalog.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -- check-development-runtime .
