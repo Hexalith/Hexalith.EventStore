@@ -110,7 +110,7 @@ Actual broker failures and preservation blockers are retained rather than repair
 
 ## Approved follow-up and current integrity limitation
 
-**Current (2026-11-14):** Platform candidate-02 remains 20 PASS / 4 FAIL across all 24 vectors, with verified integrity and credited cleanup. The [completed dependency handoff](#completed-platform-dependency-handoff--2026-11-14) reconciles off-site packet custody, actual upstream issues #4764/#4765 and the subsequent Kafka source stop decisions. Custody and issue filing are complete; supported remedies, admission and exact further execution remain open. The [original result reconciliation](#platform-result-reconciliation--2026-11-13) retains execution identities and outcomes, and the [owning evidence contract](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#completed-platform-handoff-reconciliation--2026-11-14) carries the latest evidence links and re-entry criteria. Technical qualification and production eligibility remain FAIL, selection null, five historical guarantees REJECTED/open and both parents in-progress. Dated pending-custody/unposted-issue statements below are historical. No diagnostic, inventory/profile handoff, AD-26 decision or further execution is accepted here.
+**Current (2026-11-15):** Platform candidate-02 remains 20 PASS / 4 FAIL across all 24 vectors, with verified integrity and credited cleanup. The [completed dependency handoff](#completed-platform-dependency-handoff--2026-11-14) retains off-site packet custody and Kafka source stop decisions. RabbitMQ contributions are now open upstream PRs #4767 and #4768, recorded in the [submission reconciliation](#rabbitmq-upstream-submission-reconciliation--2026-11-15); supported delivery, admission and exact further execution remain open. The [original result reconciliation](#platform-result-reconciliation--2026-11-13) retains execution identities and outcomes. Technical qualification and production eligibility remain FAIL, selection null, five historical guarantees REJECTED/open and both parents in-progress. Dated preparation statements below remain historical. No diagnostic, inventory/profile handoff, AD-26 decision or further execution is accepted here.
 
 **Accepted priority (2026-11-14):** The owner applied the [RabbitMQ Package A then B recommendation](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#accepted-remediation-priority--2026-11-14). Kafka pressure/rotation retain their concrete stop and independent re-entry conditions. Use normal planning checkpoints for release checks; implementation/delivery, exact input admission and execution remain outstanding. This priority neither selects a broker nor changes the full comparison, predicates or parent outcomes.
 
@@ -403,6 +403,31 @@ AD-26, profile inventory and the previously recorded staging/shared-host/restore
 prerequisites remain. Both parents stay in-progress; five historical guarantees REJECTED/open,
 technical FAIL (20/24), selection null and production eligibility FAIL. No run, source/profile/pin
 change, custody operation or upstream mutation occurred in this documentation reconciliation.
+
+## RabbitMQ upstream submission reconciliation — 2026-11-15
+
+The [owning contract](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#rabbitmq-package-b-submission-reconciliation--2026-11-15)
+now records Package B's actual [PR #4768](https://github.com/dapr/components-contrib/pull/4768),
+head `c6ba13793f181461afb3c74c9300f5876879861f`, tree
+`50f8ef2d3d3a240595d6088917f9d51afe04ec3c` and sole parent Package A
+`96c3259b7c12a476edd208848153d3cf72a8c4f0`. Both PRs remain OPEN/unmerged; B includes A,
+which must be resolved before a separately checked and approved rebase. Official Dapr 1.19.1
+still embeds components 1.19.0, so supported delivery and the EventStore/Builds/Platform
+admission and execution gates remain open. This reconciles submission only; the final parent
+task remains unchecked and status in-progress.
+
+Offline checks at EventStore `fdb59895975e86a1e234325a01237f259cdbd53b`:
+
+- `run-with-temp env PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tools/tests -p test_dapr_broker_qualification.py` — 25 passed.
+- `run-with-temp env PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tools/tests -p test_dapr_platform_broker_qualification.py` — 32 passed.
+- Read-only size/SHA-256 and Git-object checks — 17 proposal and 11 publication commitments,
+  three immutable Platform files and receipt identity joins pass; current profile admits all
+  94 locked inputs and retains all 24 vectors. This verifies inputs and documentation, not broker behavior.
+- `git diff --check` and documentation checks pass: frozen intent/tasks/acceptance, frontmatter
+  and sprint status are unchanged; all three new relative links/anchors resolve.
+
+No CI was dispatched. Pins, predicates, source, historical packets and frozen requirements remain unchanged;
+technical FAIL (20/24), five historical REJECTED/open guarantees, null selection and production FAIL remain.
 
 ## Verification
 

@@ -7,7 +7,8 @@ statuses remain historical; the approved acceptance criteria remain binding. No 
 **Accepted next priority:** [RabbitMQ Package A, then Package B](#accepted-remediation-priority--2026-11-14),
 with Kafka stop conditions and independent re-entry retained. The subsequent
 [Package A code contribution](#rabbitmq-package-a-code-contribution-submitted--2026-11-14)
-is submitted as upstream PR #4767; no supported release is admitted.
+and [Package B submission reconciliation](#rabbitmq-package-b-submission-reconciliation--2026-11-15)
+record open upstream PRs #4767 and #4768; no supported release is admitted.
 
 2026-11-13. **Owner approved the offline investigation, evidence criteria and delivery requirements;
 exact implementation inputs remain conditional and execution is not admitted.**
@@ -467,3 +468,32 @@ technical qualification **FAIL (20/24)**, five historical guarantees **REJECTED/
 **null** and production eligibility **FAIL** are unchanged. Kafka stop rules, packet custody and
 the December 13 Administrator review remain unchanged. EventStore records this as a local commit
 only.
+
+## RabbitMQ Package B submission reconciliation — 2026-11-15
+
+Read-only reconciliation of Platform's [published submission record](https://github.com/Hexalith/Hexalith.Platform/blob/f6f85032598865b9123f16364448bfd02c0ff5b0/docs/implementation/story-4-17-upstream/package-b-submission-2026-11-14/SUBMISSION.md)
+and GitHub confirms that the owner-approved Package B was submitted on November 14 as
+[PR #4768](https://github.com/dapr/components-contrib/pull/4768), currently OPEN, unmerged and
+non-draft. Its head is `c6ba13793f181461afb3c74c9300f5876879861f`, reviewed tree
+`50f8ef2d3d3a240595d6088917f9d51afe04ec3c`, and sole parent Package A
+`96c3259b7c12a476edd208848153d3cf72a8c4f0`. Both PRs target base
+`440b15349565bb15f7a88636477864e5a9f8cc72`; [#4767](https://github.com/dapr/components-contrib/pull/4767)
+remains OPEN and unmerged at that unchanged head. B's upstream comparison includes A+B:
+two commits, eight files, 2786 additions and 72 deletions. Review A first; dependency resolution
+and any rebase require a newly checked exact diff and approval before a branch update.
+
+The retained [submission receipt](https://github.com/Hexalith/Hexalith.Platform/blob/f6f85032598865b9123f16364448bfd02c0ff5b0/docs/implementation/story-4-17-upstream/package-b-submission-2026-11-14/publication/submission-receipt.json)
+and [PR readback](https://github.com/Hexalith/Hexalith.Platform/blob/f6f85032598865b9123f16364448bfd02c0ff5b0/docs/implementation/story-4-17-upstream/package-b-submission-2026-11-14/publication/pr-readback.json)
+match their published Git objects. All 17 original proposal artifact commitments and 11 publication
+artifact commitments pass size/SHA-256 checks; fresh GitHub readback agrees on the exact PR body,
+title, source identities and comparison scope. The prior local-only section remains preparation
+history. No component tests, broker or Dapr runtime ran in this reconciliation.
+
+Latest official releases remain [Dapr v1.19.1](https://github.com/dapr/dapr/releases/tag/v1.19.1)
+and [components v1.19.0](https://github.com/dapr/components-contrib/releases/tag/v1.19.0);
+the runtime's [immutable go.mod](https://github.com/dapr/dapr/blob/cfb5ee090dda7cfc26145c7703605d831350aa2a/go.mod)
+still embeds v1.19.0. Submission supplies no supported delivery. EventStore exact admission,
+Builds alignment and a separately accepted Platform full-matrix proposal remain required after
+official supported delivery. The 24-vector comparison, pins, Kafka stop rules, custody and
+December 13 review stay unchanged. Both parents remain **in-progress**, five historical guarantees
+**REJECTED/open**, technical **FAIL (20/24)**, selection **null** and production eligibility **FAIL**.
