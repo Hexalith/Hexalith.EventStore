@@ -1,0 +1,65 @@
+name: Phase 4 release-available
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Evaluate candidate or consume a completed successful attempt
+        required: true
+        type: choice
+        options: [evaluate, consume]
+      request:
+        description: Closed transition request JSON (owner posts approval comments)
+        required: true
+        type: string
+      sealed_run_id:
+        description: Completed evaluation run ID (consume only)
+        required: false
+        type: string
+      sealed_attempt:
+        description: Completed evaluation run attempt (consume only)
+        required: false
+        type: string
+
+# Dedicated attempts are dispatched only; their failure never adds a required main check.
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  attempt:
+    name: Phase 4 transition attempt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Verify this guarded attempt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode }}
+          PHASE4_REQUEST_JSON: ${{ inputs.request }}
+          SEALED_RUN_ID: ${{ inputs.sealed_run_id }}
+          SEALED_ATTEMPT: ${{ inputs.sealed_attempt }}
+        shell: bash
+        run: |
+          output="$RUNNER_TEMP/phase-4-transition"
+          mkdir -p "$output"
+          if [ "$MODE" = consume ]; then
+            python3 -B tools/validate-phase-4-transition.py consume --expected-transition release-available --request-env --run-id "$SEALED_RUN_ID" --attempt "$SEALED_ATTEMPT" --result "$output/result.json" >"$output/report.txt" 2>&1
+          else
+            python3 -B tools/validate-phase-4-transition.py evaluate --expected-transition release-available --request-env --result "$output/result.json" >"$output/report.txt" 2>&1
+          fi
+      - name: Upload attempt diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phase-4-transition-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/phase-4-transition/
+          if-no-files-found: error
+          retention-days: 90

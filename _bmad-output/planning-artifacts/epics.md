@@ -7913,6 +7913,8 @@ So that no high-risk result overstates the assurance behind it.
 
 **Execution clarification (approved 2026-11-15):** The owner's `/bmad-build 9.2` request authorizes this scoped work, recorded in `spec-9-2-phase-4-high-risk-gate-matrix-and-assurance-control.md`. Schedule 9.2 under AD-12's current story/spec-plus-CI policy; deleted Story 9.1 tooling is not a prerequisite, and do not restore deleted evidence packets, registries, manifests, seals or workflows merely because older text names them. The matrix and the owner-role registry are tracked at `_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json` and `_bmad-output/implementation-artifacts/owner-role-registry.json`, outside the ignored evidence folder. Record input identities, commands, results, source SHA and CI link in the owning story/spec. Preserve truthful initial FAIL behavior.
 
+**Guarded-transition delivery (owner decisions 2026-11-15):** `spec-9-2-guarded-transition-assurance-control.md` adds the closed request/result contract, shared stdlib `evaluate`/`consume` verifier and six dedicated dispatch workflows. Consumption authenticates the exact completed successful Actions run/attempt, workflow bytes, check suite, bounded artifact, owner-written issue/PR comments and pinned predecessor reruns. Evaluation is candidate evidence only. New completion claims against NFR1-NFR4, NFR7, NFR10-NFR12 and NFR14-NFR17 are guarded; preserve historical labels and revalidate historical evidence when newly consumed. Apply the 24-hour window from authenticated latest subject-changing main push, preserving AD-26's exact ratification subject. The concrete OQ8 fixture runs its existing validator and rejection suite; synthetic platform approval demonstrates the assurance subcondition, never live authority. Missing adapters, absent Stories 3.19/3.20 consumers and mandatory adoption keep this story in progress. The fixture check `Phase 4 transition fixtures` is prepared for owner configuration; this delivery does not change GitHub settings.
+
 **Acceptance Criteria:**
 
 **Given** `_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json`
@@ -7923,7 +7925,7 @@ So that no high-risk result overstates the assurance behind it.
 **Given** a high-risk entry
 **When** it is validated
 **Then** it binds its exact command, trigger, subject and evidence identities, pass condition, author and evaluator roles, required and achieved assurance level, and guarded transition
-**And** the assurance check rejects `independent` labels backed by fewer than two distinct human identities, self-approval or identity aliasing (one account in two roles, as in the Story 3.15 registry) labelled `independent`, tool-persona (such as `bmad:*`) or CI identities counted as human approvers, attestations less than 24 hours after the last authored change to the subject, a level below the required one, and missing seals, each proven by an observed failing fixture.
+**And** the assurance check rejects `independent` labels backed by fewer than two distinct human identities, self-approval or identity aliasing (one account in two roles, as in the Story 3.15 registry) labelled `independent`, tool-persona (such as `bmad:*`) or CI identities counted as human approvers, attestations less than 24 hours after the authenticated latest subject-changing push to `main`, a level below the required one, and missing seals, each proven by an observed failing fixture.
 
 **Given** an owner-role registry fixture naming one human and another naming two
 **When** the required level is computed
@@ -7944,7 +7946,7 @@ So that no high-risk result overstates the assurance behind it.
 
 **Given** an owner attestation or ratification, including an AD-26 record, is consumed by a guarded transition
 **When** that transition's sealed run validates the record
-**Then** the record binds its required assurance level, subject digest, and authenticated attestation evidence, and the consuming run checks the required level and 24-hour separation window and computes and labels the achieved level
+**Then** the record binds its required assurance level, subject digest, and authenticated attestation evidence, and the consuming run checks the required level and 24-hour separation from the authenticated latest subject-changing main push and computes and labels the achieved level
 **And** the seal attaches to the transition rather than the owner record; the record never seals itself, and every downstream record carries the lowest assurance level of its inputs.
 
 **Given** a guarded transition consumes a predecessor validator result, such as `evidence-validated`

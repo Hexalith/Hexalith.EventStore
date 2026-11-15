@@ -302,7 +302,9 @@ development_status:
   # 9.1: superseded 2026-10-23 by spec-evidence-storage-simplification (validator, schema, workflow, tests and fixtures removed).
   9-1-corrective-work-authorization-record-and-validator: done
   # 9.2: ACs 1-4 and the AC 6 record checks done 2026-11-15 (spec-9-2-phase-4-high-risk-gate-matrix-and-assurance-control, CI pending);
-  # ACs 5, 7 and 8 (seal-retrieving transition workflows) are deferred, so the story stays in-progress.
+  # Guarded verifier/schema, six dispatch workflows and authenticated OQ8 integration fixtures implemented 2026-11-15.
+  # Mandatory actual-consumer adoption, missing business adapters and absent 3.19/3.20 consumers remain blocked; CI pending.
+  # G-RUNTIME-PARITY remains follow-on; Story 9.2 stays in-progress and grants no lifecycle authority.
   9-2-phase-4-high-risk-gate-matrix-and-assurance-control: in-progress
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-BASELINE validator with the OR8
   # drift and OR15 lifecycle guards, G-CLAUSE, and G-MVP-COVERAGE. Each live gate result

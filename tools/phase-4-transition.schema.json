@@ -1,0 +1,581 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Phase 4 transition request, result and copyable owner approval",
+  "description": "Runtime uses stdlib closed validation. evaluate is candidate evidence; consume authenticates a completed run. A PASS is an assurance subcondition only. Approval request_sha256 excludes approvals to permit posting references after approval. No caller-provided command is accepted.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/result"
+    },
+    {
+      "$ref": "#/$defs/approval_payload"
+    }
+  ],
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*\\\\)(?!.*[\\u0000-\\u001f])[^/]+(?:/[^/]+)*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "comment_id",
+        "body_sha256",
+        "role"
+      ],
+      "properties": {
+        "comment_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "body_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      }
+    },
+    "predecessor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "commit",
+        "validator",
+        "inputs",
+        "output_sha256",
+        "assurance_level"
+      ],
+      "properties": {
+        "adapter": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "validator": {
+          "$ref": "#/$defs/file"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          },
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "output_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "assurance_level": {
+          "enum": [
+            "none",
+            "single-maintainer-attested",
+            "independent"
+          ]
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "repository",
+        "transition",
+        "head_sha",
+        "subject_mode",
+        "subjects",
+        "evidence",
+        "matrix",
+        "registry",
+        "required_level",
+        "author",
+        "gate",
+        "nfr_ids",
+        "approvals",
+        "predecessors"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.phase-4-transition-request.v1"
+        },
+        "repository": {
+          "const": "Hexalith/Hexalith.EventStore"
+        },
+        "transition": {
+          "enum": [
+            "high-risk-gate-pass",
+            "high-risk-nfr-story-done",
+            "readiness",
+            "release-available",
+            "production-promoted",
+            "consumer-removal"
+          ]
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "subject_mode": {
+          "enum": [
+            "files",
+            "ad26"
+          ]
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          },
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          },
+          "minItems": 0,
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "matrix": {
+          "$ref": "#/$defs/file"
+        },
+        "registry": {
+          "$ref": "#/$defs/file"
+        },
+        "required_level": {
+          "enum": [
+            "single-maintainer-attested",
+            "independent"
+          ]
+        },
+        "author": {
+          "type": "string"
+        },
+        "gate": {
+          "enum": [
+            null,
+            "G-OQ8",
+            "G-TENANT",
+            "G-STATUS-ID",
+            "G-APPEND",
+            "G-COMPAT",
+            "G-AUTH-HOSTS",
+            "G-RUNTIME-PARITY",
+            "G-PUBLICATION-AUTH",
+            "G-CONSUMER",
+            "G-HIGH-RISK",
+            "G-MVP-COVERAGE",
+            "G-READINESS"
+          ]
+        },
+        "nfr_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^NFR(?:[1-9]|1[0-8])$"
+          },
+          "minItems": 0,
+          "maxItems": 18,
+          "uniqueItems": true
+        },
+        "approvals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/approval"
+          },
+          "minItems": 0,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "predecessors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/predecessor"
+          },
+          "minItems": 0,
+          "maxItems": 20,
+          "uniqueItems": true
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "transition",
+        "head_sha",
+        "request_sha256",
+        "subject_sha256",
+        "workflow_sha256",
+        "inputs"
+      ],
+      "properties": {
+        "repository": {
+          "const": "Hexalith/Hexalith.EventStore"
+        },
+        "transition": {
+          "enum": [
+            "high-risk-gate-pass",
+            "high-risk-nfr-story-done",
+            "readiness",
+            "release-available",
+            "production-promoted",
+            "consumer-removal"
+          ]
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "subject_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "workflow_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          },
+          "minItems": 1,
+          "maxItems": 207,
+          "uniqueItems": true
+        }
+      }
+    },
+    "approval_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "repository",
+        "transition",
+        "head_sha",
+        "role",
+        "subject_sha256",
+        "request_sha256",
+        "required_level",
+        "traceability_sha256",
+        "decision"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.phase-4-transition-approval.v1"
+        },
+        "repository": {
+          "const": "Hexalith/Hexalith.EventStore"
+        },
+        "transition": {
+          "enum": [
+            "high-risk-gate-pass",
+            "high-risk-nfr-story-done",
+            "readiness",
+            "release-available",
+            "production-promoted",
+            "consumer-removal"
+          ]
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "For AD-26, the issuance head authenticated with its traceability digest; otherwise the exact attempt head."
+        },
+        "role": {
+          "type": "string"
+        },
+        "subject_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "For file subjects, canonical request without approvals. For AD-26, canonical repository/transition/subject_sha256/required_level; outside-subject edits preserve ratification."
+        },
+        "required_level": {
+          "enum": [
+            "single-maintainer-attested",
+            "independent"
+          ]
+        },
+        "traceability_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision": {
+          "const": "approved"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "phase",
+        "result",
+        "codes",
+        "binding",
+        "required_level",
+        "achieved_level",
+        "downstream_minimum",
+        "approvals",
+        "approval_payloads",
+        "predecessors",
+        "seal"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.phase-4-transition-result.v1"
+        },
+        "phase": {
+          "enum": [
+            "evaluate",
+            "consume"
+          ]
+        },
+        "result": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        },
+        "codes": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "INPUT_INVALID",
+              "API_UNAVAILABLE",
+              "API_INVALID",
+              "PAGINATION_INCOMPLETE",
+              "SOURCE_MISMATCH",
+              "REGISTRY_INVALID",
+              "LEVEL_MISMATCH",
+              "AUTHOR_INVALID",
+              "SUBJECT_MISMATCH",
+              "MATRIX_INVALID",
+              "GATE_UNBOUND",
+              "BUSINESS_PREREQUISITE_MISSING",
+              "ADAPTER_UNAVAILABLE",
+              "HISTORY_UNAVAILABLE",
+              "APPROVAL_MISSING",
+              "APPROVAL_INVALID",
+              "APPROVAL_IDENTITY",
+              "APPROVAL_ROLE",
+              "APPROVAL_EDITED",
+              "APPROVAL_WINDOW",
+              "APPROVAL_FUTURE",
+              "INDEPENDENT_REQUIRED",
+              "PREDECESSOR_IDENTITY",
+              "PREDECESSOR_FAILED",
+              "PREDECESSOR_LIMIT",
+              "RUN_INVALID",
+              "RUN_NOT_SUCCESSFUL",
+              "CI_UNAUTHENTICATED",
+              "WORKFLOW_MISMATCH",
+              "ARTIFACT_INVALID",
+              "RESULT_MISMATCH",
+              "SELF_SEAL_FORBIDDEN"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "binding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/binding"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {}
+            }
+          ]
+        },
+        "required_level": {
+          "enum": [
+            "none",
+            "single-maintainer-attested",
+            "independent"
+          ]
+        },
+        "achieved_level": {
+          "enum": [
+            "none",
+            "single-maintainer-attested",
+            "independent"
+          ]
+        },
+        "downstream_minimum": {
+          "enum": [
+            "none",
+            "single-maintainer-attested",
+            "independent"
+          ]
+        },
+        "approvals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "comment_id",
+              "body_sha256",
+              "role",
+              "github_id",
+              "created_at",
+              "subject_changed_at"
+            ],
+            "properties": {
+              "comment_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "body_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "role": {
+                "type": "string"
+              },
+              "github_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "created_at": {
+                "type": "string"
+              },
+              "subject_changed_at": {
+                "type": "string"
+              }
+            }
+          },
+          "minItems": 0,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "approval_payloads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/approval_payload"
+          },
+          "minItems": 0,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "predecessors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "identity_sha256",
+              "output_sha256",
+              "assurance_level"
+            ],
+            "properties": {
+              "identity_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "output_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "assurance_level": {
+                "enum": [
+                  "none",
+                  "single-maintainer-attested",
+                  "independent"
+                ]
+              }
+            }
+          },
+          "minItems": 0,
+          "maxItems": 20,
+          "uniqueItems": true
+        },
+        "seal": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "run_id",
+                "attempt",
+                "artifact_id",
+                "ci_app_id"
+              ],
+              "properties": {
+                "run_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "attempt": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "artifact_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "ci_app_id": {
+                  "const": 15368
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -10,6 +10,13 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
+# Fixed OQ8 predecessor configuration inputs retain exact LF bytes.
+[/.editorconfig]
+end_of_line = lf
+
+[/.gitattributes]
+end_of_line = lf
+
 # SHA-pinned Python verifiers and packet producers. Global CRLF would rewrite their
 # bytes and break subject-bound pins on an EditorConfig-honouring save.
 [*.py]
@@ -34,6 +41,13 @@ end_of_line = lf
 end_of_line = lf
 
 [/.github/workflows/phase-4-gate-risk-matrix.yml]
+end_of_line = lf
+
+# Authenticated guarded-transition workflow and schema bytes are content-hashed.
+[/.github/workflows/phase-4-*.yml]
+end_of_line = lf
+
+[/tools/phase-4-transition.schema.json]
 end_of_line = lf
 
 # C# files
