@@ -100,7 +100,7 @@ context:
 - Bound rows: G-OQ8 and G-HIGH-RISK. The G-OQ8 subject is the imported design, licence and provenance plus its validator, test and workflow. The G-HIGH-RISK subject is this validator, its tests, workflow and the registry. Both workflows are LF in `.gitattributes` and `.editorconfig`. The matrix is excluded because attestations live inside it, which would make the subject digest circular. The other ten high-risk rows are null bindings: G-RUNTIME-PARITY and G-CONSUMER name deleted or absent tools under the ignored evidence folder.
 - The PRD G-HIGH-RISK result cell's first sentence now says the versioned matrix, owner-role registry, offline validator, classifications and assurance-level checks exist (Story 9.2, CI pending), while sealed validation and guarded transitions remain absent. OR10 and OR13 name Story 9.2 as in progress.
 
-**Owner go-ahead step, not run.** Run it only after the first green `fixtures` run on `main`:
+**Owner go-ahead step, run 2026-11-15 on the owner's go-ahead** after the first green `fixtures` run on `main`:
 
 ```bash
 export GH_CONFIG_DIR=~/.config/gh
@@ -114,7 +114,7 @@ gh api --method PUT repos/Hexalith/Hexalith.EventStore/rulesets/14479516 --input
 - `python3 -B tools/validate-phase-4-gate-risk-matrix.py _bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json`: exit 1. All 12 high-risk rows FAIL at achieved `none`, with `SEAL_MISSING`, `ATTESTATION_MISSING` and `ACHIEVED_BELOW_REQUIRED`, and ten add `BINDING_UNBOUND`. The 5 standard rows and the READY record (`none`) pass.
 - `python3 -B -m unittest discover -s tools/tests -p 'test_oq8_governing_design.py'`: 111 OK. The OQ8 live check exits 0.
 - `actionlint`, `bash scripts/check-committed-files.sh` (tracked, and `--staged` on a temporary index holding the new files), `git diff --check` and `git diff --exit-code HEAD -- .github/workflows/ci.yml docs/ci.md`: all pass.
-- No CI run exists yet. The live job's first run on `main` records the source SHA and CI link.
+- CI: see **CI run** under Verification.
 
 ## Spec Change Log
 
@@ -181,3 +181,8 @@ Review pass 1 (Blind Hunter BH, Edge Case Hunter ECH, Verification Gap VG; 2026-
 - `actionlint .github/workflows/phase-4-gate-risk-matrix.yml` -- expected: no findings.
 - `bash scripts/check-committed-files.sh` and `git diff --check` -- expected: pass.
 - `git diff --exit-code HEAD -- .github/workflows/ci.yml docs/ci.md` -- expected: no changes.
+
+**CI run (2026-11-15):** source `c5602a46da2c62665c8aea35e3f4400e16fd6df6` on `main`, [run 43736232943](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/43736232943).
+- `Phase 4 gate risk matrix fixtures`: success (147 tests).
+- `Phase 4 gate risk matrix live evaluation`: failure, the expected truthful FAIL. Artifact `phase-4-gate-risk-matrix-result-43736232943-1` records `result: FAIL`, exit 1, workflow SHA-256 `2df57bf30b651d75a5806cf0e2dda7c55066450973712583bc24a40013b6f6e3`, `seal: false` and authority `none`. The registry names 1 human (required `single-maintainer-attested`). All 12 high-risk rows fail, with only `BINDING_UNBOUND`, `SEAL_MISSING`, `ATTESTATION_MISSING` and `ACHIEVED_BELOW_REQUIRED`. The 5 standard rows and READY pass.
+- Ruleset `14479516`: on the owner's go-ahead (2026-11-15), `Phase 4 gate risk matrix fixtures` (integration 15368) was added as the eighth required status check. A before/after comparison shows that addition is the only change; bypass actors and other rules are unchanged. `rules/branches/main` lists it.
