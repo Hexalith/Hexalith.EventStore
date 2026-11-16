@@ -75,7 +75,7 @@ class StoryCompletionTests(unittest.TestCase):
         f.state_path.write_text(json.dumps(f.state))
         environment = {key: value for key, value in os.environ.items() if not key.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
         environment.update(PYTHONPATH=str(f.site) + os.pathsep + str(T.ROOT / 'tools/tests'),
-                           PHASE4_FIXTURE_STATE=str(f.state_path), GH_TOKEN='fixture-secret-never-in-child',
+                           PHASE4_FIXTURE_STATE=str(f.state_path), GH_TOKEN=f.fixture_token,
                            PHASE4_REQUEST_JSON=T.canonical(f.request).decode())
         environment.update(extra)
         return environment

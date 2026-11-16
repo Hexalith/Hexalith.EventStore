@@ -350,10 +350,11 @@ class AdapterContracts(unittest.TestCase):
         shutil.copyfile(T.ROOT / 'Hexalith.EventStore.slnx', self.root / 'Hexalith.EventStore.slnx')
         probes = A.capability_probe(self.root, T.ROOT, Path(dotnet).resolve(), Path.home() / '.nuget/packages')
         self.assertEqual(list(A.CAPABILITIES), [item['id'] for item in probes])
-        self.assertTrue(probes[0]['detected'], 'The actual business recognizer must reject the runtime-generated positive assignment.')
+        self.assertEqual(7, len(probes))
         self.assertTrue(all(type(item['detected']) is bool for item in probes))
-        # Future scanner fixes may make every capability pass. All controls still
-        # execute and remain in the denominator; this test never requires a bug.
+        for item in probes:
+            with self.subTest(capability=item['id']):
+                self.assertTrue(item['detected'], 'The actual business recognizer must reject every generated credential control.')
 
     def test_real_bound_validator_refuses_and_forwards_genuine_business_results(self):
         # A deliberately incomplete private source fixture cannot complete the

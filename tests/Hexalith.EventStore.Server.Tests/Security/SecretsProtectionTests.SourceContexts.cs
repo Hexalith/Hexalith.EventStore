@@ -55,6 +55,8 @@ public sealed partial class SecretsProtectionTests
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
+            bool privateOctet = element.EnumerateObject().Any(static property => property.Name == "kty"
+                && property.Value.ValueKind == JsonValueKind.String && property.Value.GetString() == "oct");
             var names = new HashSet<string>(StringComparer.Ordinal);
             foreach (JsonProperty property in element.EnumerateObject())
             {
@@ -72,6 +74,9 @@ public sealed partial class SecretsProtectionTests
                     && !IsPackageDependencyMetadata(path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? path : path + ".json",
                         content, key, property.Name, value!)
                     && IsUsableLiteral("decoded.json", property.Name, value!, isBare: property.Value.ValueKind != JsonValueKind.String))
+                    lines.Add(LineNumber(content, GetJsonCharIndex(utf8, (int)reader.TokenStartIndex, ref position)));
+                if (privateOctet && property.Name == "k" && scalar
+                    && IsUsableLiteral("decoded.json", "privateKey", value!, isBare: property.Value.ValueKind != JsonValueKind.String))
                     lines.Add(LineNumber(content, GetJsonCharIndex(utf8, (int)reader.TokenStartIndex, ref position)));
                 ScanJsonElement(property.Value, property.Name, path, content, utf8, ref reader, ref position,
                     masked, lines, dependencies, depth, ref remaining);

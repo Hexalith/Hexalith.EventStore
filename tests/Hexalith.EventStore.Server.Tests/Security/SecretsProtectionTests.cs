@@ -1028,6 +1028,8 @@ public sealed partial class SecretsProtectionTests
             }
         }
 
+        foreach (int index in FindYamlCredentialIndexes(relativePath, content)) Record(index, "yaml-credential");
+
         foreach (Match match in CompactJwtPattern().Matches(content))
         {
             if (IsCompactJwt(match.Value))
@@ -1071,20 +1073,9 @@ public sealed partial class SecretsProtectionTests
             }
         }
 
-        foreach (Match match in CredentialConstructorPattern().Matches(content))
+        foreach (int index in FindCredentialFormatIndexes(content))
         {
-            string invocation = ExtractBalancedInvocation(content, match.Index, match.Length);
-            foreach ((int literalIndex, _, string literal) in EnumerateQuotedLiterals(
-                invocation,
-                includeBackticks: false))
-            {
-                if (!IsInertPlaceholder(literal)
-                    && !IsRuntimeSourceLookupLiteral(invocation, literalIndex))
-                {
-                    Record(match.Index + literalIndex, "credential-constructor");
-                    break;
-                }
-            }
+            Record(index, "credential-format");
         }
 
         foreach (Match match in CredentialUriPattern().Matches(content))
@@ -1104,10 +1095,10 @@ public sealed partial class SecretsProtectionTests
         foreach (Match match in XmlSecretElementPattern().Matches(content))
         {
             string name = match.Groups["name"].Value;
-            string value = match.Groups["value"].Value.Trim();
+            (int index, string value) = ReadXmlCredentialScalar(match.Groups["value"]);
             if (IsCredentialName(name) && IsUsableLiteral(relativePath, name, value, isBare: false))
             {
-                Record(match.Groups["value"].Index, "xml-secret-element");
+                Record(index, "xml-secret-element");
             }
         }
 
@@ -1163,12 +1154,8 @@ public sealed partial class SecretsProtectionTests
                 continue;
             }
 
-            if (!usesEquals
-                && value == "-"
-                && IsYamlSequenceMarker(content, match.Groups["value"].Index))
-            {
-                continue;
-            }
+            bool isYaml = Path.GetExtension(effectivePath).ToLowerInvariant() is ".yaml" or ".yml";
+            if (!usesEquals && (isYaml || value == "-" && IsYamlSequenceMarker(content, match.Groups["value"].Index))) continue;
 
             if (content.AsSpan(match.Groups["value"].Index).StartsWith("${{"))
             {
@@ -2384,48 +2371,14 @@ public sealed partial class SecretsProtectionTests
             return content[matchIndex..Math.Min(content.Length, matchIndex + matchLength)];
         }
 
-        bool insideString = false;
-        bool insideCharacter = false;
-        bool escaped = false;
+        string code = MaskCSharpComments(content);
         int depth = 0;
-        for (int index = open; index < content.Length; index++)
+        for (int index = open; index < code.Length; index++)
         {
-            char character = content[index];
-            if (insideString || insideCharacter)
-            {
-                if (escaped)
-                {
-                    escaped = false;
-                }
-                else if (character == '\\')
-                {
-                    escaped = true;
-                }
-                else if ((insideString && character == '"') || (insideCharacter && character == '\''))
-                {
-                    insideString = false;
-                    insideCharacter = false;
-                }
-
-                continue;
-            }
-
-            if (character == '"')
-            {
-                insideString = true;
-            }
-            else if (character == '\'')
-            {
-                insideCharacter = true;
-            }
-            else if (character == '(')
-            {
-                depth++;
-            }
-            else if (character == ')' && --depth == 0)
-            {
-                return content[matchIndex..(index + 1)];
-            }
+            int literal = CSharpLiteralEnd(code, index);
+            if (literal > index) { index = literal; continue; }
+            if (code[index] == '(') depth++;
+            else if (code[index] == ')' && --depth == 0) return content[matchIndex..(index + 1)];
         }
 
         return content[matchIndex..];
@@ -2433,7 +2386,7 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsRuntimeSourceLookupLiteral(string invocation, int literalIndex)
     {
-        string prefix = invocation[..literalIndex];
+        string prefix = MaskCSharpComments(invocation)[..literalIndex];
         return RuntimeSourceLookupPrefixPattern().IsMatch(prefix);
     }
 
@@ -2685,6 +2638,7 @@ public sealed partial class SecretsProtectionTests
             "bash" or "shell" or "sh" => IsInClosedMarkdownPythonHereDocument(content, index)
                 ? relativePath + ".py" : relativePath + ".sh",
             "powershell" or "ps1" => relativePath + ".ps1",
+            "yaml" or "yml" => relativePath + ".yaml",
             _ => relativePath,
         };
     }
@@ -2819,33 +2773,25 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsShellRuntimeExpression(string value)
     {
-        if (ShellSourceExpressionPattern().IsMatch(value))
-        {
-            return true;
-        }
-
         string candidate = value.Trim();
-        if (candidate.StartsWith("$(", StringComparison.Ordinal) && candidate.EndsWith(')'))
+        bool substitution = candidate.StartsWith("$(", StringComparison.Ordinal) && candidate.EndsWith(')');
+        if (substitution && !IsSingleShellRuntimeCommand(candidate[2..^1]) && !IsCurlTokenAcquisition(candidate[2..^1])) return false;
+        if (ShellSourceExpressionPattern().IsMatch(candidate)) return true;
+        if (substitution)
         {
-            string command = candidate[2..^1].TrimStart();
+            string command = candidate[2..^1].Trim();
             if (command.StartsWith("curl ", StringComparison.Ordinal)
                 || command.StartsWith("az account get-access-token ", StringComparison.Ordinal)
                 || command.StartsWith("aspire resource sample-api issue-smoke-token ", StringComparison.Ordinal)
                 || command.StartsWith("openssl rand ", StringComparison.Ordinal)
                 || command.StartsWith("head -c ", StringComparison.Ordinal)
                 || command.StartsWith("dd if=/dev/urandom", StringComparison.Ordinal)
-                || command.StartsWith("uuidgen", StringComparison.Ordinal))
-            {
-                return true;
-            }
+                || command == "uuidgen" || command.StartsWith("uuidgen ", StringComparison.Ordinal)) return true;
         }
-
-        if (candidate.StartsWith("(Invoke-RestMethod ", StringComparison.OrdinalIgnoreCase)
-            || candidate.StartsWith("(az account get-access-token ", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
+        if (candidate.StartsWith("(Invoke-RestMethod ", StringComparison.OrdinalIgnoreCase))
+            return IsPowerShellTokenAcquisition(candidate);
+        if (candidate.EndsWith(')') && candidate.StartsWith("(az account get-access-token ", StringComparison.OrdinalIgnoreCase))
+            return IsSingleShellRuntimeCommand(candidate[1..^1]);
         return false;
     }
 
@@ -3411,7 +3357,7 @@ public sealed partial class SecretsProtectionTests
     private static partial Regex CredentialUriPattern();
 
     [GeneratedRegex(
-        @"<(?<name>[A-Za-z_][A-Za-z0-9_.:-]*)\b[^>]*>(?<value>[^<\r\n]*)</\k<name>\s*>",
+        @"<(?<name>[A-Za-z_][A-Za-z0-9_.:-]*)\b[^>]*>(?<value>(?:<!\[CDATA\[[\s\S]*?\]\]>|<!--[\s\S]*?-->|<\?[\s\S]*?\?>|[^<])*)</\k<name>\s*>",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex XmlSecretElementPattern();
 
@@ -3421,7 +3367,7 @@ public sealed partial class SecretsProtectionTests
     private static partial Regex XmlKeyValueSecretPattern();
 
     [GeneratedRegex(
-        @"\bnew\s+(?:NetworkCredential|SymmetricSecurityKey)\s*\(",
+        @"\bnew\s+(?:global::)?(?:[A-Za-z_][A-Za-z0-9_]*\.)*(?<type>NetworkCredential|SymmetricSecurityKey|ClientSecretCredential)\s*\(",
         RegexOptions.CultureInvariant)]
     private static partial Regex CredentialConstructorPattern();
 
@@ -3528,7 +3474,7 @@ public sealed partial class SecretsProtectionTests
     [GeneratedRegex(@"(?:\+|\?\?|\|\|)\s*[\""'](?<literal>[^\""'\r\n]+)[\""']", RegexOptions.CultureInvariant)]
     private static partial Regex RuntimeLiteralOperandPattern();
 
-    [GeneratedRegex(@"(?:Environment\.GetEnvironmentVariable|\b[A-Za-z_][A-Za-z0-9_]*\s*\[|GetValue(?:<[^>]+>)?\s*\(|RequireOpaqueConfiguration\s*\()\s*$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?:(?<![A-Za-z0-9_.])(?:(?:global::)?System\.)?Environment\.GetEnvironmentVariable\s*\(|\b[A-Za-z_][A-Za-z0-9_]*\s*\[|GetValue(?:<[^>]+>)?\s*\(|RequireOpaqueConfiguration\s*\()\s*$", RegexOptions.CultureInvariant)]
     private static partial Regex RuntimeSourceLookupPrefixPattern();
 
     [GeneratedRegex(@"^(?:[A-Za-z0-9+/]{20,}={0,2}|[0-9A-Fa-f]{24,})$", RegexOptions.CultureInvariant)]

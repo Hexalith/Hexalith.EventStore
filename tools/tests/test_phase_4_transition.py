@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import shutil
 import subprocess
 import struct
@@ -59,6 +60,33 @@ def subject(files):
     return hash_bytes(''.join(sorted(f'{hash_bytes(content)}  {path}\n' for path, content in files)).encode())
 
 
+def workflow_run_bodies(content):
+    """Read each literal or single-line run value without adjoining YAML fields."""
+    lines = content.splitlines(keepends=True)
+    bodies = []
+    index = 0
+    while index < len(lines):
+        match = re.match(r'^(?P<indent> +)(?P<step>-[ \t]+)?run:[ \t]*(?P<value>[^\r\n]*)', lines[index])
+        index += 1
+        if not match:
+            continue
+        value = match['value'].strip()
+        if not re.fullmatch(r'[|>][+\-1-9]*(?:[ \t]+#[^\r\n]*)?', value):
+            bodies.append(value)
+            continue
+        body = []
+        header_indent = len(match['indent']) + len(match['step'] or '')
+        while index < len(lines):
+            line = lines[index]
+            indent = len(line) - len(line.lstrip(' '))
+            if line.strip() and indent <= header_indent:
+                break
+            body.append(line)
+            index += 1
+        bodies.append(''.join(body))
+    return bodies
+
+
 class TransitionTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -73,6 +101,7 @@ class TransitionTests(unittest.TestCase):
             destination = self.root / path
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / path, destination)
+        self.fixture_token = secrets.token_hex(32)
         self.state = {'observed': [], 'responses': {}}
         self.state_path = self.base / 'http.json'
         self.request_path = self.base / 'request.json'
@@ -160,7 +189,7 @@ class TransitionTests(unittest.TestCase):
         self.request_path.write_bytes(raw if raw is not None else canonical(self.request))
         env = {k: v for k, v in os.environ.items() if not k.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
         env.update({'PYTHONPATH': str(self.site) + os.pathsep + str(ROOT / 'tools/tests'),
-                    'PHASE4_FIXTURE_STATE': str(self.state_path), 'GH_TOKEN': 'fixture-secret-never-in-child'})
+                    'PHASE4_FIXTURE_STATE': str(self.state_path), 'GH_TOKEN': self.fixture_token})
         env.update(env_extra or {})
         argv = [sys.executable, '-B', str(self.root / 'tools/validate-phase-4-transition.py'), phase,
                 '--root', str(self.root), '--request', str(self.request_path), '--result', str(self.result_path)]
@@ -747,7 +776,7 @@ class TransitionTests(unittest.TestCase):
         self.assertTrue(all('authorization' not in item['headers'] for item in downloads))
         self.assertTrue(any('authorization' in item['headers'] for item in self.state['observed'] if item['url'] == endpoint))
         for location in ('http://fixture.blob.core.windows.net/archive', 'https://evil.invalid/archive',
-                         "https://fixture:<password>@fixture.blob.core.windows.net/archive"):
+                         'https://' + secrets.token_hex(8) + ':' + secrets.token_hex(32) + '@fixture.blob.core.windows.net/archive'):
             self.state['responses'][endpoint]['headers']['Location'] = location
             self.assert_refused('ARTIFACT_INVALID', 'consume')
         self.state['responses'][endpoint]['headers']['Location'] = storage
@@ -780,6 +809,43 @@ class TransitionTests(unittest.TestCase):
             thread.join()
             server.server_close()
 
+    def assert_workflow_inputs_are_environment_bound(self, content):
+        bodies = workflow_run_bodies(content)
+        self.assertTrue(bodies)
+        for body in bodies:
+            self.assertNotIn('${{ inputs.', body)
+            self.assertNotRegex(body, r'\$\{\{\s*inputs\s*\.')
+
+    def test_workflow_run_body_guard_rejects_inline_inputs_in_later_body(self):
+        content = (ROOT / '.github/workflows/phase-4-high-risk-nfr-story-done.yml').read_text()
+        self.assert_workflow_inputs_are_environment_bound(content)
+        blocks = list(re.finditer(r'(?m)^        run: \|\n', content))
+        self.assertGreaterEqual(len(blocks), 2)
+        insert = blocks[-1].end()
+        changed = content[:insert] + '          echo "${{ inputs.mode }}"\n' + content[insert:]
+        with self.assertRaises(AssertionError):
+            self.assert_workflow_inputs_are_environment_bound(changed)
+        with self.assertRaises(AssertionError):
+            self.assert_workflow_inputs_are_environment_bound('steps:\n  - name: unsafe\n    run: echo "${{ inputs.mode }}"\n')
+        safe_steps = 'steps:\n  - run: echo safe\n  - run: |\n      echo safe\n    env:\n      MODE: ${{ inputs.mode }}\n'
+        self.assert_workflow_inputs_are_environment_bound(safe_steps)
+        for changed in (safe_steps.replace('echo safe', 'echo "${{ inputs.mode }}"', 1),
+                        safe_steps.replace('      echo safe', '      echo "${{ inputs.mode }}"')):
+            with self.assertRaises(AssertionError):
+                self.assert_workflow_inputs_are_environment_bound(changed)
+
+    def test_workflow_run_body_guard_retains_commented_headers_and_compact_expressions(self):
+        for step in ('    run:', '  - run:'):
+            for header in ('|  ', '| # note', '|- # note'):
+                for expression in ('${{inputs.mode}}', '${{ inputs.mode}}', '${{inputs.mode }}', '${{\tinputs.mode\t}}'):
+                    safe = 'steps:\n' + step + ' ' + header + '\n      echo safe\n    env:\n      MODE: ' + expression + '\n'
+                    self.assert_workflow_inputs_are_environment_bound(safe)
+                    with self.assertRaises(AssertionError):
+                        self.assert_workflow_inputs_are_environment_bound(safe.replace('echo safe', 'echo "' + expression + '"'))
+                    single = 'steps:\n' + step + ' echo "' + expression + '"\n'
+                    with self.assertRaises(AssertionError):
+                        self.assert_workflow_inputs_are_environment_bound(single)
+
     def test_workflows_permissions_pins_triggers_lf_and_required_check_name(self):
         for transition in TRANSITIONS:
             path = ROOT / f'.github/workflows/phase-4-{transition}.yml'
@@ -790,7 +856,7 @@ class TransitionTests(unittest.TestCase):
             self.assertNotIn(': write', content)
             self.assertIn('if: always()', content)
             self.assertIn('--expected-transition ' + transition, content)
-            self.assertNotIn('${{ inputs.', content.split('run: |')[1])
+            self.assert_workflow_inputs_are_environment_bound(content)
             actions = re.findall(r'uses: ([^\n]+)', content)
             self.assertTrue(all(re.search(r'@[0-9a-f]{40} # v[0-9]', action) for action in actions))
         fixtures = (ROOT / '.github/workflows/phase-4-transition-fixtures.yml').read_text()

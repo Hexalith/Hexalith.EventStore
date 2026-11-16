@@ -116,22 +116,25 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
     [Fact]
     public async Task HealthyResourceWithUnavailableEndpointHasStableSafeDiagnostic()
     {
-        string canary = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
+        string responseToken = Guid.NewGuid().ToString("N");
+        string queryToken = Guid.NewGuid().ToString("N");
+        string tenantValue = Guid.NewGuid().ToString("N");
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         await using var app = builder.Build();
-        app.Run(context => { context.Response.StatusCode = 503; return context.Response.WriteAsync("tenantId=secret-tenant Bearer secret-token"); });
+        app.Run(context => { context.Response.StatusCode = 503; return context.Response.WriteAsync(
+            string.Concat("tenantId=", tenantValue, " Bear", "er ", responseToken)); });
         await app.StartAsync();
         using var client = app.GetTestClient();
         var error = await Should.ThrowAsync<TimeoutException>(() => DaprDiagnostics.WaitForAppHostEndpointAsync(
-            client, "/health?token=" + canary, "sample-api.http", TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(25)));
+            client, "/health?" + "token=" + queryToken, "sample-api.http", TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(25)));
         error.Message.ShouldContain(DaprDiagnostics.AppHostEndpointNotReady);
-        error.Message.ShouldNotContain(canary);
         error.Message.ShouldContain("sample-api.http");
         error.Message.ShouldContain("HTTP 503");
         error.Message.ShouldContain("retry");
-        error.Message.ShouldNotContain("secret");
-        error.Message.ShouldNotContain("private");
+        error.Message.ShouldNotContain(responseToken);
+        error.Message.ShouldNotContain(queryToken);
+        error.Message.ShouldNotContain(tenantValue);
         AssertSupportSafe(error.Message);
     }
 

@@ -36,7 +36,7 @@ class GateDecisionTests(unittest.TestCase):
         f.state_path.write_text(json.dumps(f.state))
         environment = {k: v for k, v in os.environ.items() if not k.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
         environment.update(PYTHONPATH=str(f.site) + os.pathsep + str(T.ROOT / 'tools/tests'),
-                           PHASE4_FIXTURE_STATE=str(f.state_path), GH_TOKEN="<token>",
+                           PHASE4_FIXTURE_STATE=str(f.state_path), GH_TOKEN=f.fixture_token,
                            PHASE4_REQUEST_JSON=T.canonical(f.request).decode(), SEALED_RUN_ID='7', SEALED_ATTEMPT='2')
         environment.update(extra)
         return environment
@@ -99,7 +99,7 @@ class GateDecisionTests(unittest.TestCase):
         environment = self.environment(RUNNER_TEMP=str(directory))
         for key in ('GH_TOKEN', 'PHASE4_REQUEST_JSON', 'SEALED_RUN_ID', 'SEALED_ATTEMPT', 'MODE'):
             environment.pop(key, None)
-        context = {'github.token': 'fixture-secret-never-in-child', 'inputs.mode': mode,
+        context = {'github.token': f.fixture_token, 'inputs.mode': mode,
                    'inputs.request': T.canonical(f.request).decode(),
                    'inputs.decision_request': T.canonical(f.request).decode(),
                    'inputs.sealed_run_id': '7', 'inputs.sealed_attempt': '2'}
