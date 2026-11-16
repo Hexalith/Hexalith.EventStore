@@ -31,7 +31,7 @@ jobs:
       - name: Build genuine owner profile tests with package references
         run: dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -m:1 --disable-build-servers
       - name: Verify owner profile digest domains and external coverage
-        run: dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net11.0/Hexalith.EventStore.Contracts.Tests.dll -class '*ProductionProfileTests'
+        run: dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net11.0/Hexalith.EventStore.Contracts.Tests.dll -class '*ProductionProfileTests' -class '*ProductionProfileV2Tests'
       - name: Build read-only owner bridge with package references
         run: dotnet build tools/production-profile.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -p:BuildInParallel=false --disable-build-servers
 

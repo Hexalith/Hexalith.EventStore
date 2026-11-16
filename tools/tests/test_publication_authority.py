@@ -355,6 +355,77 @@ class PublicationAuthorityTests(unittest.TestCase):
             (root/P.INVENTORY).write_bytes(P.canonical(inventory))
             self.refusal('SELF_DERIVED_INVENTORY',lambda:P.profile_check(root,record))
 
+    def test_explicit_inventory_versions_preserve_source_binding_and_owner_boundary(self):
+        import phase_4_transition as T
+        for version in (1, 2):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as directory:
+                root=Path(directory)
+                content=(ROOT/f'tests/Hexalith.EventStore.Contracts.Tests/Deployment/Fixtures/SyntheticProfile.v{version}.json').read_bytes()
+                fixture=json.loads(content)
+                (root/P.PROFILE).parent.mkdir(parents=True)
+                (root/P.PROFILE).write_bytes(content)
+                (root/'global.json').write_bytes((ROOT/'global.json').read_bytes())
+                source=b'separately bound synthetic composing inventory'
+                (root/'composition.json').write_bytes(source)
+                inventory={'schema':f'hexalith.eventstore.production-composing-inventory.v{version}',
+                    'source':{'path':'composition.json','sha256':P.digest(source)},
+                    'expectedApplicationIds':['app:eventstore','app:tenants'],
+                    'expectedComponentIds':['component:synthetic']}
+                inventory_path=root/P.INVENTORY
+                inventory_path.write_bytes(P.canonical(inventory))
+                result={'isStructurallyValid':True,'infrastructureDigest':fixture['infrastructureDigest'],
+                        'resolvedDigest':P.digest(content),'issues':[],'authorization':'unevaluated','qualification':'unevaluated'}
+                # The genuine bridge separately exercises coverage and decoding. This
+                # control isolates the fixed Python child's version/source bindings.
+                with mock.patch.object(T.Control,'bounded_process',return_value=P.canonical(result)) as child, mock.patch.object(P.shutil,'which',return_value='/usr/bin/dotnet'):
+                    self.assertEqual('composition.json',P.profile_check(root,None))
+                    self.assertIn(str(root/'tools/production-profile.cs'),child.call_args.args[0])
+                    self.assertIn(P.digest(inventory_path.read_bytes()),child.call_args.args[0])
+                    inventory['source']['sha256']=H('wrong-source')
+                    inventory_path.write_bytes(P.canonical(inventory))
+                    self.refusal('COMPOSING_SOURCE_MISMATCH',lambda:P.profile_check(root,None))
+                    inventory['schema']='hexalith.eventstore.production-composing-inventory.v3'
+                    inventory_path.write_bytes(P.canonical(inventory))
+                    self.refusal('SCHEMA_INVALID',lambda:P.profile_check(root,None))
+                    self.assertEqual(1,child.call_count)
+                _,codes=P.missing_prerequisites(root,'a'*40)
+                self.assertTrue(set(P.FIXED_MISSING)<=set(codes))
+                self.assertIn('RELEASE_EVIDENCE_CODEC_UNAVAILABLE',codes)
+
+    def test_all_v2_and_shared_owner_sources_remain_required_execution_subjects(self):
+        document=chain()
+        document['records']=document['records'][:1]
+        source='synthetic-composition.json'
+        inventory={'schema':'hexalith.eventstore.production-composing-inventory.v2',
+                   'source':{'path':source,'sha256':H('composition')},
+                   'expectedApplicationIds':['app:eventstore'],'expectedComponentIds':['component:containerd']}
+        required=set(P.CONTROL_FILES)|{P.RECORDS,P.PROFILE,P.INVENTORY,source}
+        required|={p.relative_to(ROOT).as_posix() for p in (ROOT/'src/Hexalith.EventStore.Contracts/Deployment').glob('ProductionProfile*.cs')}
+        values={P.INVENTORY:P.canonical(inventory),P.RECORDS:P.canonical(document)}
+        def control(paths):
+            return types.SimpleNamespace(root=ROOT,binding={'inputs':[{'path':p} for p in paths]},
+                request={'subject_mode':'files','subjects':[{'path':p} for p in paths]},local=lambda path:values[path])
+        self.assertEqual(document,P.transition_inputs(control(required)))
+        import phase_4_transition as T
+        candidate=control(required)
+        candidate.request['transition']='built'
+        # Even a passing authentication control cannot launch an unproven graph.
+        with mock.patch.object(P,'authenticate_records'), mock.patch.object(T.Control,'bounded_process') as child:
+            with self.assertRaises(T.Refusal) as caught:
+                P.evaluate_transition(candidate)
+            self.assertEqual('BUSINESS_PREREQUISITE_MISSING',caught.exception.code)
+            self.assertEqual(P.BUILD_INPUT_PROOF,str(caught.exception))
+            child.assert_not_called()
+        for path in ('docs/architecture/production-profile-v2.md',
+                     'src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileV2Codec.cs',
+                     'src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileCanonicalJson.cs',
+                     'src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileValidationDocument.cs',source):
+            with self.subTest(path=path):
+                self.refusal('PUBLICATION_INPUT_UNBOUND',lambda:P.transition_inputs(control(required-{path})))
+        incomplete=control(required)
+        incomplete.request['subjects']=[item for item in incomplete.request['subjects'] if item['path']!=source]
+        self.refusal('PUBLICATION_SUBJECT_UNBOUND',lambda:P.transition_inputs(incomplete))
+
     def test_schema_is_closed_and_has_explicit_state_grammar(self):
         schema=json.loads((ROOT/'tools/publication-authority.schema.json').read_text())
         self.assertEqual(list(P.STATES),schema['$defs']['record']['properties']['state']['enum'])

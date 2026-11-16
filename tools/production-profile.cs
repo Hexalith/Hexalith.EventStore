@@ -27,8 +27,12 @@ try
     using JsonDocument inventory = JsonDocument.Parse(inventoryBytes, new JsonDocumentOptions { MaxDepth = 16 });
     JsonElement document = inventory.RootElement;
     Closed(document, ["schema", "source", "expectedApplicationIds", "expectedComponentIds"]);
-    if (document.GetProperty("schema").GetString() != "hexalith.eventstore.production-composing-inventory.v1")
-        throw new InvalidDataException();
+    int version = document.GetProperty("schema").GetString() switch
+    {
+        "hexalith.eventstore.production-composing-inventory.v1" => 1,
+        "hexalith.eventstore.production-composing-inventory.v2" => 2,
+        _ => throw new InvalidDataException(),
+    };
     JsonElement source = document.GetProperty("source");
     Closed(source, ["path", "sha256"]);
     string sourcePath = source.GetProperty("path").GetString()!;
@@ -39,9 +43,15 @@ try
         throw new InvalidDataException();
     ProductionProfileValidationContext context = new(Ids(document, "expectedApplicationIds"), Ids(document, "expectedComponentIds"));
     byte[] bytes = ReadBounded(root, "deploy/dapr/production-profile.yaml", ProductionProfileCodec.MaximumByteLength);
-    ProductionProfile profile = ProductionProfileCodec.Decode(bytes, context, resolvedDigest,
-        infrastructureDigest == "-" ? null : infrastructureDigest);
-    ProductionProfileValidationResult result = ProductionProfileValidator.Validate(profile, context);
+    // Version comes from the separately bound inventory. Never probe or fall back.
+    ProductionProfileValidationResult result = version switch
+    {
+        1 => ProductionProfileValidator.Validate(ProductionProfileCodec.Decode(bytes, context, resolvedDigest,
+            infrastructureDigest == "-" ? null : infrastructureDigest), context),
+        2 => ProductionProfileV2Validator.Validate(ProductionProfileV2Codec.Decode(bytes, context, resolvedDigest,
+            infrastructureDigest == "-" ? null : infrastructureDigest), context),
+        _ => throw new InvalidDataException(),
+    };
     Console.WriteLine(JsonSerializer.Serialize(result, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
     return result.IsStructurallyValid ? 0 : 1;
 }

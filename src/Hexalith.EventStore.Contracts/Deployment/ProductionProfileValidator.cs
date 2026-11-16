@@ -44,12 +44,17 @@ public static partial class ProductionProfileValidator
     /// <summary>Collects structural issues, optionally excluding the digest being constructed.</summary>
     internal static IReadOnlyList<ProductionProfileIssue> Inspect(ProductionProfile? profile, ProductionProfileValidationContext? context,
         bool compareInfrastructureDigest)
+        => InspectDocument(profile, context, compareInfrastructureDigest, version: 1);
+
+    /// <summary>Runs the preserved owner checks against either version's real applicable fields.</summary>
+    internal static IReadOnlyList<ProductionProfileIssue> InspectDocument(object? candidate, ProductionProfileValidationContext? context,
+        bool compareInfrastructureDigest, int version)
     {
         var issues = new List<ProductionProfileIssue>();
         void Add(string path, string code) => issues.Add(new(path, code));
         IReadOnlyList<ProductionProfileIssue> Result() => issues.Distinct().OrderBy(i => i.Path, StringComparer.Ordinal)
             .ThenBy(i => i.Code, StringComparer.Ordinal).ToArray();
-        if (profile is null)
+        if (candidate is null)
         {
             Add("$", "missing-document");
             return Result();
@@ -65,7 +70,7 @@ public static partial class ProductionProfileValidator
         }
         try
         {
-            CheckShape(JsonSerializer.SerializeToElement(profile, ProductionProfileCodec.Options), "$", "");
+            CheckShape(JsonSerializer.SerializeToElement(candidate, ProductionProfileCodec.Options), "$", "");
         }
         catch (JsonException)
         {
@@ -77,7 +82,10 @@ public static partial class ProductionProfileValidator
             return Result();
         }
 
-        if (profile.SchemaVersion != 1) Add("$.schemaVersion", "unsupported-version");
+        ProductionProfileValidationDocument profile = ProductionProfileValidationDocument.From(candidate);
+        if (candidate is ProductionProfileV2 v2) issues.AddRange(ProductionProfileV2Validator.InspectInstances(v2));
+
+        if (profile.SchemaVersion != version) Add("$.schemaVersion", "unsupported-version");
         if (profile.Purpose != "eventstore-resolved-production-profile") Add("$.purpose", "unsupported-purpose");
         var apps = Index(profile.Applications, a => a.Id, "$.applications");
         var components = Index(profile.Components, c => c.Id, "$.components");
@@ -105,7 +113,7 @@ public static partial class ProductionProfileValidator
             Coverage(profile.Components.Select(c => c.Id).ToArray(), context.ExpectedComponentIds, "$.components");
         }
         UniqueScope(profile.Applications.Select(a => (a.ClusterId, a.Namespace, a.AppId)), "$.applications");
-        UniqueScope(profile.Components.Select(c => (c.ClusterId, c.Namespace, c.Name)), "$.components");
+        if (version == 1) UniqueScope(profile.Components.Select(c => (c.ClusterId!, c.Namespace!, c.Name)), "$.components");
 
         ProductionProfileTemplate template = profile.Template;
         Require(template.SidecarMode == "per-application", "$.template.sidecarMode", "unsupported-sidecar-mode");
@@ -157,25 +165,25 @@ public static partial class ProductionProfileValidator
         Links(topology.BackupComponentIds, components, "$.infrastructure.topology.backupComponentIds");
         Link(profile.Environment.OpenBaoComponentId, components, "$.environment.openBaoComponentId");
         Link(profile.Environment.BrokerComponentId, components, "$.environment.brokerComponentId");
-        Require(components.TryGetValue(profile.Environment.OpenBaoComponentId, out ProductionProfileComponent? secretComponent)
+        Require(components.TryGetValue(profile.Environment.OpenBaoComponentId, out ProductionProfileValidationComponent? secretComponent)
             && secretComponent.Name == "openbao" && secretComponent.Type == "secretstores.hashicorp.vault",
             "$.environment.openBaoComponentId", "secret-component-binding-mismatch");
         Require(secretComponent is not null && providers.TryGetValue(secretComponent.ProviderId, out ProductionProfileProvider? baoProvider)
             && baoProvider.Provider == "OpenBao" && baoProvider.Roles.Contains("secrets", StringComparer.Ordinal)
             && baoProvider.Version == profile.Environment.OpenBaoServerVersion,
             "$.environment.openBaoServerVersion", "secret-provider-binding-mismatch");
-        Require(components.TryGetValue(profile.Environment.BrokerComponentId, out ProductionProfileComponent? brokerComponent)
-            && brokerComponent.Type.StartsWith("pubsub.", StringComparison.Ordinal),
+        Require(components.TryGetValue(profile.Environment.BrokerComponentId, out ProductionProfileValidationComponent? brokerComponent)
+            && brokerComponent.Type?.StartsWith("pubsub.", StringComparison.Ordinal) == true,
             "$.environment.brokerComponentId", "broker-component-binding-mismatch");
         Require(profile.Environment.SchedulerComponentIds.Count > 0, "$.environment.schedulerComponentIds", "missing-scheduler-components");
         Require(profile.Environment.PlacementComponentIds.Count > 0, "$.environment.placementComponentIds", "missing-placement-components");
         Links(profile.Environment.SchedulerComponentIds, components, "$.environment.schedulerComponentIds");
         Links(profile.Environment.PlacementComponentIds, components, "$.environment.placementComponentIds");
         foreach (string id in profile.Environment.SchedulerComponentIds)
-            Require(components.TryGetValue(id, out ProductionProfileComponent? component) && component.Roles.Contains("scheduler", StringComparer.Ordinal),
+            Require(components.TryGetValue(id, out ProductionProfileValidationComponent? component) && component.Roles.Contains("scheduler", StringComparer.Ordinal),
                 "$.environment.schedulerComponentIds", "scheduler-component-binding-mismatch");
         foreach (string id in profile.Environment.PlacementComponentIds)
-            Require(components.TryGetValue(id, out ProductionProfileComponent? component) && component.Roles.Contains("placement", StringComparer.Ordinal),
+            Require(components.TryGetValue(id, out ProductionProfileValidationComponent? component) && component.Roles.Contains("placement", StringComparer.Ordinal),
                 "$.environment.placementComponentIds", "placement-component-binding-mismatch");
 
         for (int i = 0; i < profile.Applications.Count; i++)
@@ -193,9 +201,9 @@ public static partial class ProductionProfileValidator
             CheckAppCredential(app.AppApiTokenCredentialId, app.Id, path + ".appApiTokenCredentialId");
             Links(app.ComponentIds, components, path + ".componentIds");
             for (int j = 0; j < app.ComponentIds.Count; j++)
-                if (components.TryGetValue(app.ComponentIds[j], out ProductionProfileComponent? component))
+                if (components.TryGetValue(app.ComponentIds[j], out ProductionProfileValidationComponent? component))
                     Require(component.AppScopeIds.Contains(app.Id, StringComparer.Ordinal), path + $".componentIds[{j}]", "app-component-scope-mismatch");
-            ProductionProfileComponent[] actor = profile.Components.Where(c => c.ActorStateStore && c.AppScopeIds.Contains(app.Id, StringComparer.Ordinal)).ToArray();
+            ProductionProfileValidationComponent[] actor = profile.Components.Where(c => c.ActorStateStore && c.AppScopeIds.Contains(app.Id, StringComparer.Ordinal)).ToArray();
             Require(app.HostsActors ? app.ActorTypes.Count > 0 && actor.Length == 1 : app.ActorTypes.Count == 0 && actor.Length == 0,
                 path + ".hostsActors", "actor-component-coverage-mismatch");
             EvidenceLinks(app.EvidenceIds, path + ".evidenceIds",
@@ -204,10 +212,10 @@ public static partial class ProductionProfileValidator
         }
         for (int i = 0; i < profile.Components.Count; i++)
         {
-            ProductionProfileComponent component = profile.Components[i];
+            ProductionProfileValidationComponent component = profile.Components[i];
             string path = $"$.components[{i}]";
             Link(component.ProviderId, providers, path + ".providerId");
-            Require(profile.Environment.ClusterIds.Contains(component.ClusterId, StringComparer.Ordinal), path + ".clusterId", "dangling-cluster-reference");
+            Require(component.ClusterId is null || profile.Environment.ClusterIds.Contains(component.ClusterId, StringComparer.Ordinal), path + ".clusterId", "dangling-cluster-reference");
             Links(component.AppScopeIds, apps, path + ".appScopeIds");
             Links(component.PhysicalTargetIds, targets, path + ".physicalTargetIds");
             Links(component.CredentialReferenceIds, credentials, path + ".credentialReferenceIds");
@@ -222,7 +230,7 @@ public static partial class ProductionProfileValidator
                 if (credentials.TryGetValue(id, out ProductionProfileCredentialReference? credential))
                     Require(credential.ComponentIds.Contains(component.Id, StringComparer.Ordinal), path + ".credentialReferenceIds", "credential-component-mismatch");
             Require(component.Roles.Count > 0, path + ".roles", "missing-role-coverage");
-            Require(!component.Type.StartsWith("state.", StringComparison.Ordinal) || component.Stateful,
+            Require(component.Type?.StartsWith("state.", StringComparison.Ordinal) != true || component.Stateful,
                 path + ".stateful", "state-store-must-be-stateful");
             Require(component.SupportSources.Count > 0 && component.AdvisorySources.Count > 0 && component.RenewalOwners.Count > 0,
                 path + ".supportSources", "missing-currency-inputs");
@@ -243,14 +251,15 @@ public static partial class ProductionProfileValidator
                 Require(tuple.TryGetValue(component.Id, out ProductionProfileComponentVersion? pin) && pin.Version == component.Version,
                     path + ".version", "protection-tuple-mismatch");
                 Require(profile.Protection.Writers.Any(w => w.ComponentId == component.Id), path + ".id", "missing-writer-inventory");
-                foreach (ProductionProfileComponent other in profile.Components.Where(c => c.Id != component.Id))
+                foreach (ProductionProfileValidationComponent other in profile.Components.Where(c => c.Id != component.Id))
                     foreach (string own in component.PhysicalTargetIds)
                         foreach (string otherId in other.PhysicalTargetIds)
                             if (targets.TryGetValue(own, out ProductionProfilePhysicalTarget? left) && targets.TryGetValue(otherId, out ProductionProfilePhysicalTarget? right))
                                 Require(!Overlaps(left, right), path + ".physicalTargetIds", "actor-physical-target-reused");
             }
             EvidenceLinks(component.EvidenceIds, path + ".evidenceIds",
-                [component.LoadedIdentityDigest, component.AclDigest, component.ResiliencyDigest, component.DataMigrationDigest,
+                [component.LoadedIdentityDigest,
+                    .. component.IsDapr ? new[] { component.AclDigest!, component.ResiliencyDigest!, component.DataMigrationDigest! } : [],
                     .. providers.TryGetValue(component.ProviderId, out ProductionProfileProvider? provider) ? new[] { provider.ImmutableDigest } : []],
                 ["component"], componentId: component.Id);
         }
@@ -286,7 +295,7 @@ public static partial class ProductionProfileValidator
             Links(credential.ConsumerAppIds, apps, path + ".consumerAppIds");
             Links(credential.ComponentIds, components, path + ".componentIds");
             for (int j = 0; j < credential.ComponentIds.Count; j++)
-                if (components.TryGetValue(credential.ComponentIds[j], out ProductionProfileComponent? component))
+                if (components.TryGetValue(credential.ComponentIds[j], out ProductionProfileValidationComponent? component))
                 {
                     Require(component.CredentialReferenceIds.Contains(credential.Id, StringComparer.Ordinal),
                         path + $".componentIds[{j}]", "credential-component-mismatch");
@@ -294,7 +303,7 @@ public static partial class ProductionProfileValidator
                         Require(credential.ComponentIds.Count == 1 && new HashSet<string>(credential.ConsumerAppIds, StringComparer.Ordinal).SetEquals(component.AppScopeIds),
                             path + $".componentIds[{j}]", "actor-credential-isolation-required");
                 }
-            bool actorMaterial = credential.ComponentIds.Any(id => components.TryGetValue(id, out ProductionProfileComponent? component) && component.ActorStateStore)
+            bool actorMaterial = credential.ComponentIds.Any(id => components.TryGetValue(id, out ProductionProfileValidationComponent? component) && component.ActorStateStore)
                 || profile.Components.Any(c => c.ActorStateStore && c.CredentialReferenceIds.Contains(credential.Id, StringComparer.Ordinal));
             if (actorMaterial)
                 Require(!profile.Environment.Credentials.Any(other => other.Id != credential.Id &&
@@ -312,7 +321,7 @@ public static partial class ProductionProfileValidator
         for (int i = 0; i < protection.ComponentVersions.Count; i++)
         {
             ProductionProfileComponentVersion pin = protection.ComponentVersions[i];
-            Require(components.TryGetValue(pin.Id, out ProductionProfileComponent? component) && component.ActorStateStore && component.Version == pin.Version,
+            Require(components.TryGetValue(pin.Id, out ProductionProfileValidationComponent? component) && component.ActorStateStore && component.Version == pin.Version,
                 $"$.protection.componentVersions[{i}]", "protection-tuple-mismatch");
         }
         for (int i = 0; i < protection.Writers.Count; i++)
@@ -320,7 +329,7 @@ public static partial class ProductionProfileValidator
             ProductionProfileWriter writer = protection.Writers[i];
             string path = $"$.protection.writers[{i}]";
             Link(writer.AppId, apps, path + ".appId");
-            Require(components.TryGetValue(writer.ComponentId, out ProductionProfileComponent? component) && component.ActorStateStore
+            Require(components.TryGetValue(writer.ComponentId, out ProductionProfileValidationComponent? component) && component.ActorStateStore
                 && component.AppScopeIds.Contains(writer.AppId, StringComparer.Ordinal), path + ".componentId", "writer-binding-mismatch");
             Require(writer.ErasureContractDigest == protection.AuthorizedErasureContractDigest, path + ".erasureContractDigest", "erasure-binding-mismatch");
         }
@@ -349,7 +358,7 @@ public static partial class ProductionProfileValidator
             Require(unit.ComponentIds.Count > 0 && unit.Coverage.Count > 0, $"$.restore.units[{i}]", "incomplete-restore-unit");
         }
         for (int i = 0; i < profile.Components.Count; i++)
-            if (profile.Components[i].Stateful || profile.Components[i].Type.StartsWith("state.", StringComparison.Ordinal)
+            if (profile.Components[i].Stateful || profile.Components[i].Type?.StartsWith("state.", StringComparison.Ordinal) == true
                 || profile.Environment.SchedulerComponentIds.Contains(profile.Components[i].Id, StringComparer.Ordinal)
                 || profile.Environment.PlacementComponentIds.Contains(profile.Components[i].Id, StringComparer.Ordinal))
                 Require(profile.Restore.Units.Any(u => u.ComponentIds.Contains(profile.Components[i].Id, StringComparer.Ordinal)),
@@ -392,7 +401,7 @@ public static partial class ProductionProfileValidator
             Require(reference.SubjectDigests.Count > 0 && reference.Coverage.Count > 0, path, "incomplete-evidence-association");
         }
         if (compareInfrastructureDigest)
-            Require(profile.InfrastructureDigest == ProductionProfileCodec.InfrastructureDigest(profile), "$.infrastructureDigest", "infrastructure-digest-mismatch");
+            Require(profile.InfrastructureDigest == (candidate is ProductionProfileV2 currentV2 ? ProductionProfileV2Codec.InfrastructureDigest(currentV2) : ProductionProfileCodec.InfrastructureDigest((ProductionProfile)candidate)), "$.infrastructureDigest", "infrastructure-digest-mismatch");
         return Result();
 
         void Require(bool condition, string path, string code) { if (!condition) Add(path, code); }
@@ -405,7 +414,11 @@ public static partial class ProductionProfileValidator
         void CheckShape(JsonElement element, string path, string field)
         {
             if (!compareInfrastructureDigest && path == "$.infrastructureDigest") return;
-            if (element.ValueKind == JsonValueKind.Null) { Add(path, "missing-selection"); return; }
+            if (element.ValueKind == JsonValueKind.Null)
+            {
+                if (version != 2 || !ProductionProfileCanonicalJson.AllowsNull(path)) Add(path, "missing-selection");
+                return;
+            }
             if (element.ValueKind == JsonValueKind.Object)
             {
                 foreach (JsonProperty property in element.EnumerateObject()) CheckShape(property.Value, path + "." + property.Name, property.Name);

@@ -30,6 +30,7 @@ RELEASE_WORKFLOW = ".github/workflows/release.yml"
 CONTROL_FILES = ("tools/publication_authority.py", "tools/validate-publication-authority.py",
                  "tools/publication-authority.schema.json", "tools/production-profile.cs",
                  "docs/architecture/publication-authority-v1.md", "docs/architecture/production-profile-v1.md",
+                 "docs/architecture/production-profile-v2.md",
                  RELEASE_WORKFLOW, "global.json", "nuget.config", ".gitmodules",
                  "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props",
                  "src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj")
@@ -378,7 +379,10 @@ def transition_inputs(control):
     require(required <= actual, "PUBLICATION_INPUT_UNBOUND", 1)
     inventory = parse(control.local(INVENTORY))
     closed(inventory, ("schema", "source", "expectedApplicationIds", "expectedComponentIds"))
+    require(inventory["schema"] in ("hexalith.eventstore.production-composing-inventory.v1",
+                                    "hexalith.eventstore.production-composing-inventory.v2"))
     binding(inventory["source"])
+    require(inventory["source"]["path"] not in (PROFILE, INVENTORY), "SELF_DERIVED_INVENTORY", 1)
     required.add(inventory["source"]["path"])
     require(required <= actual, "PUBLICATION_INPUT_UNBOUND", 1)
     require(control.request["subject_mode"] == "files" and required <= {item["path"] for item in control.request["subjects"]},
@@ -414,7 +418,8 @@ def profile_check(root, record):
     inventory_bytes = read(root, INVENTORY)
     inventory = parse(inventory_bytes)
     closed(inventory, ("schema", "source", "expectedApplicationIds", "expectedComponentIds"))
-    require(inventory["schema"] == "hexalith.eventstore.production-composing-inventory.v1")
+    require(inventory["schema"] in ("hexalith.eventstore.production-composing-inventory.v1",
+                                    "hexalith.eventstore.production-composing-inventory.v2"))
     binding(inventory["source"])
     require(inventory["source"]["path"] not in (PROFILE, INVENTORY), "SELF_DERIVED_INVENTORY", 1)
     require(digest(read(root, inventory["source"]["path"])) == inventory["source"]["sha256"], "COMPOSING_SOURCE_MISMATCH", 1)

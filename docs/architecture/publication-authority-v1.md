@@ -74,7 +74,9 @@ digest still includes these authentication digests and the comment ID.
 
 Only `deploy/dapr/production-profile.yaml` supplies profile bytes. The bounded
 read-only `tools/production-profile.cs` bridge calls the genuine Contracts
-`ProductionProfileCodec.Decode` and `ProductionProfileValidator.Validate`.
+`ProductionProfileCodec.Decode` and `ProductionProfileValidator.Validate` for v1,
+or explicitly selected `ProductionProfileV2Codec.Decode` and
+`ProductionProfileV2Validator.Validate` for v2.
 It accepts no alternate profile path or generation mode. The fixed child resolves
 only the installed `dotnet` tool before dropping caller credentials, supplies its
 runtime root and an existing package cache, disables build-server reuse, and copies
@@ -87,14 +89,22 @@ authenticated adapter before any .NET launch. There is no success override or
 complete-graph claim; the standalone structural bridge remains non-authorizing.
 `tools/tests/check_production_profile_bridge.py` exercises the real bridge and
 Python child in disposable source copies; fixture success grants no authority. Both infrastructure and
-resolved digest domains remain exactly as documented in `production-profile-v1.md`.
+resolved digest domains remain exactly as documented in
+[production profile v1](production-profile-v1.md) and
+[production profile v2](production-profile-v2.md), respectively.
 It refuses noncanonical bytes and uses external expected app/component coverage.
 
 The separate `deploy/dapr/production-composing-inventory.json` has exactly
-`schema: hexalith.eventstore.production-composing-inventory.v1`, `source`
+`schema: hexalith.eventstore.production-composing-inventory.v1` or explicit
+`schema: hexalith.eventstore.production-composing-inventory.v2`, `source`
 (`path`, `sha256`), `expectedApplicationIds`, `expectedComponentIds`. Its source
 must be a separately bound composition inventory, never the profile or itself.
-No production coverage file is published by this construction. Declared coverage
+Its schema selects the owner decoder without fallback; mismatched versions refuse.
+V2 expected component coverage includes every infrastructure and Dapr instance.
+Both version contracts and every owner `ProductionProfile*.cs` source, including
+the shared canonical writer and binding checks, remain required execution and
+lifecycle subject bindings. No production coverage file is published by this
+construction. Declared coverage
 alone does not establish exhaustive authenticated Platform composition.
 
 Promotion additionally binds environment, both profile digests, inventory bytes,

@@ -1,4 +1,4 @@
-"""Independent stdlib-only calculation of the construction-only v1 golden vectors."""
+"""Independent stdlib-only calculation of the construction-only v1 and v2 golden vectors."""
 import hashlib
 import json
 from pathlib import Path
@@ -30,13 +30,14 @@ def digest(value):
 
 if __name__ == "__main__":
     directory = Path(__file__).resolve().parent
-    raw = (directory / "SyntheticProfile.v1.json").read_bytes()
-    profile = json.loads(raw)
-    expected = json.loads((directory / "SyntheticDigests.v1.json").read_bytes())
-    preimage = {"purpose": "platform-infrastructure-profile", "schemaVersion": 1,
-                "template": profile["template"], "infrastructure": profile["infrastructure"]}
-    assert raw == encode(profile), "noncanonical golden bytes"
-    assert (directory / "SyntheticInfrastructurePreimage.v1.json").read_bytes() == encode(preimage)
-    assert profile["infrastructureDigest"] == digest(preimage) == expected["infrastructure"]
-    assert hashlib.sha256(raw).hexdigest() == expected["resolved"]
-    print("Independent Python golden verification: 2 digests and 2 canonical byte vectors passed")
+    for version in (1, 2):
+        raw = (directory / f"SyntheticProfile.v{version}.json").read_bytes()
+        profile = json.loads(raw)
+        expected = json.loads((directory / f"SyntheticDigests.v{version}.json").read_bytes())
+        preimage = {"purpose": "platform-infrastructure-profile", "schemaVersion": version,
+                    "template": profile["template"], "infrastructure": profile["infrastructure"]}
+        assert raw == encode(profile), "noncanonical golden bytes"
+        assert (directory / f"SyntheticInfrastructurePreimage.v{version}.json").read_bytes() == encode(preimage)
+        assert profile["infrastructureDigest"] == digest(preimage) == expected["infrastructure"]
+        assert hashlib.sha256(raw).hexdigest() == expected["resolved"]
+    print("Independent Python golden verification: 4 digests and 4 canonical byte vectors passed")
