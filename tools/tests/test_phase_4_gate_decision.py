@@ -36,7 +36,7 @@ class GateDecisionTests(unittest.TestCase):
         f.state_path.write_text(json.dumps(f.state))
         environment = {k: v for k, v in os.environ.items() if not k.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
         environment.update(PYTHONPATH=str(f.site) + os.pathsep + str(T.ROOT / 'tools/tests'),
-                           PHASE4_FIXTURE_STATE=str(f.state_path), GH_TOKEN='fixture-secret-never-in-child',
+                           PHASE4_FIXTURE_STATE=str(f.state_path), GH_TOKEN="<token>",
                            PHASE4_REQUEST_JSON=T.canonical(f.request).decode(), SEALED_RUN_ID='7', SEALED_ATTEMPT='2')
         environment.update(extra)
         return environment

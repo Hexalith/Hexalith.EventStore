@@ -747,7 +747,7 @@ class TransitionTests(unittest.TestCase):
         self.assertTrue(all('authorization' not in item['headers'] for item in downloads))
         self.assertTrue(any('authorization' in item['headers'] for item in self.state['observed'] if item['url'] == endpoint))
         for location in ('http://fixture.blob.core.windows.net/archive', 'https://evil.invalid/archive',
-                         'https://owner:secret@fixture.blob.core.windows.net/archive'):
+                         "https://fixture:<password>@fixture.blob.core.windows.net/archive"):
             self.state['responses'][endpoint]['headers']['Location'] = location
             self.assert_refused('ARTIFACT_INVALID', 'consume')
         self.state['responses'][endpoint]['headers']['Location'] = storage

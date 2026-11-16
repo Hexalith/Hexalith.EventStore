@@ -116,6 +116,7 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
     [Fact]
     public async Task HealthyResourceWithUnavailableEndpointHasStableSafeDiagnostic()
     {
+        string canary = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         await using var app = builder.Build();
@@ -123,8 +124,9 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
         await app.StartAsync();
         using var client = app.GetTestClient();
         var error = await Should.ThrowAsync<TimeoutException>(() => DaprDiagnostics.WaitForAppHostEndpointAsync(
-            client, "/health?token=private", "sample-api.http", TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(25)));
+            client, "/health?token=" + canary, "sample-api.http", TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(25)));
         error.Message.ShouldContain(DaprDiagnostics.AppHostEndpointNotReady);
+        error.Message.ShouldNotContain(canary);
         error.Message.ShouldContain("sample-api.http");
         error.Message.ShouldContain("HTTP 503");
         error.Message.ShouldContain("retry");
