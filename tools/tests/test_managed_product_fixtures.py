@@ -204,6 +204,19 @@ class ManagedStageBoundaryTests(unittest.TestCase):
         self.assertEqual("scripts/pack-release-packages.py", command[1])
         self.assertNotIn("--no-build", command)
 
+    def test_offline_passes_disposable_commitlint_to_the_source_trust_fixture(self):
+        selected = {"EXT_PROTECTION_COMMITLINT_CLI": "private/cli.js",
+                    "EXT_PROTECTION_COMMITLINT_CONFIG": "private/owning.config.mjs"}
+        with mock.patch.object(product, "test"), mock.patch.object(product, "run") as invoke, \
+                mock.patch.object(product, "commitlint_fixture_environment", return_value=selected) as prepare:
+            product.offline(Path("unused"))
+        prepare.assert_called_once()
+        self.assertEqual("commitlint", prepare.call_args.args[0].name)
+        source_trust = [call for call in invoke.call_args_list if "test_ext_protection_1*.py" in call.args]
+        self.assertEqual(1, len(source_trust))
+        for name, value in selected.items():
+            self.assertEqual(value, source_trust[0].kwargs["environment"][name])
+
     def test_folded_standalone_builds_and_managed_caller_explicitly_reuses_outputs(self):
         with tempfile.TemporaryDirectory() as folder:
             scratch = Path(folder)
@@ -227,7 +240,8 @@ class ManagedStageBoundaryTests(unittest.TestCase):
                 self.assertEqual(5, len(packs))
                 self.assertTrue(all(('--no-build' in arguments) == reuse for arguments in packs))
                 self.assertTrue(all(('--no-restore' in arguments) == reuse for arguments in packs))
-        with mock.patch.object(product, 'test'), mock.patch.object(product, 'run') as invoke:
+        with mock.patch.object(product, 'test'), mock.patch.object(product, 'run') as invoke, \
+                mock.patch.object(product, 'commitlint_fixture_environment', return_value={}):
             product.offline(Path('unused'))
         folded = [call for call in invoke.call_args_list if call.args[:2] == ('bash', 'tools/folded-snapshot-compatibility/run.sh')]
         self.assertEqual(1, len(folded))

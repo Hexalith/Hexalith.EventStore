@@ -42,8 +42,9 @@ The manual `payload-azure` job requires all of the following:
 
 - A compatible published immutable Builds release and successful ordinary CI
   at the exact qualification source SHA.
-- Explicit `workflow_dispatch` selection `qualification=payload-azure` and
-  exact lowercase `authority_sha256`; the default selection is `none`.
+- Explicit `workflow_dispatch` on the rendered `qualification.yml`, selecting
+  `job=payload-azure` with exact lowercase `authority-sha256`. Its default
+  `nightly` selection never selects the manual Azure lane.
 - Runner group `payload-protection-azure-private-ephemeral`, labels
   `[self-hosted, linux, x64]`, and approval environment
   `payload-protection-azure-conformance`.
@@ -52,7 +53,9 @@ The manual `payload-azure` job requires all of the following:
 - Owner-provisioned private networking and the existing hash-pinned daprd
   1.18.7 executable. Shared preparation builds once with `environment: preserve`.
 
-The action verifies digest, exact source, expiry and custody binding before
+The generic private-job contract supplies `HEXALITH_AUTHORITY_SHA256` and
+`HEXALITH_SOURCE_SHA`; the action maps them to its strict request validator.
+It verifies digest, exact source, expiry and custody binding before
 service commands. The unchanged `AzureLiveAuthority.Load` enforces the complete
 closed authority, resource/identity/network bindings, owner receipt and fault
 windows before fixture initialization or Azure calls. Healthy tests and the
@@ -68,6 +71,12 @@ that directory. Do not suppress dependency audits or product failures. The
 preparation exception in CiCd's story 20 is limited to committed pre-adoption
 product pushes and expires on accepted adoption. After adoption, every module
 push requires successful `python3 references/Hexalith.Builds/check.py`.
+
+The offline source-trust fixture obtains commitlint 21.2.4 through the selected
+direct Builds' signed, integrity-locked guard tools in its disposable workspace.
+It validates its fixture commit messages against the exact root legacy policy
+while that file exists, then the canonical Builds policy after adoption retires
+the root tooling. No root `node_modules` installation is required by this check.
 
 Release publication follows CiCd's central scheduled nightly process. The story
 remains open until the actual adopted perimeter, normal checker, green CI and

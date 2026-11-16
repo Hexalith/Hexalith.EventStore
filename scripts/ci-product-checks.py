@@ -31,6 +31,25 @@ def test(project: str, output: Path, minimum: int, *options: str, environment: d
         "--report-xunit-trx", *options, environment=environment)
 
 
+def commitlint_fixture_environment(directory: Path) -> dict[str, str]:
+    # Retained source-trust fixtures need the signed, locked CLI after root npm
+    # tooling retires too. The selected direct Builds supplies tool policy.
+    sys.path.insert(0, str(ROOT / "references/Hexalith.Builds/Github/lib"))
+    from guard_tools import SOURCE, Tools
+
+    directory.mkdir()
+    tools = Tools(directory)
+    policy = ROOT / "commitlint.config.mjs"
+    if policy.is_file():
+        configuration = directory / "eventstore.commitlint.config.mjs"
+        configuration.write_bytes(policy.read_bytes())
+    else:
+        configuration = SOURCE / "commitlint.config.mjs"
+    return {"EXT_PROTECTION_COMMITLINT_CLI": str(directory / "node_modules/@commitlint/cli/cli.js"),
+            "EXT_PROTECTION_COMMITLINT_CONFIG": str(configuration),
+            **{name: tools.environment[name] for name in ("HEXALITH_GUARD_TOOLS", "HEXALITH_GUARD_PYTHON")}}
+
+
 def offline(output: Path) -> None:
     # The live project's offline schema class never receives Azure switches or secrets.
     test("Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests", output / "azure-schema", 15,
@@ -47,6 +66,7 @@ def offline(output: Path) -> None:
         run("dotnet", "tool", "install", "Microsoft.DotNet.ApiCompat.Tool", "--version", "11.0.100",
             "--tool-path", str(tools))
         environment = os.environ.copy()
+        environment.update(commitlint_fixture_environment(scratch / "commitlint"))
         environment["RELEASE_API_COMPAT_TOOL_DLL"] = str(tools / ".store/microsoft.dotnet.apicompat.tool/11.0.100/microsoft.dotnet.apicompat.tool/11.0.100/tools/net10.0/any/Microsoft.DotNet.ApiCompat.Tool.dll")
         for pattern in ("test_release_package_contract.py", "test_package_consumer_environment.py",
                         "test_release_api_compatibility.py", "test_ext_protection_1*.py",
