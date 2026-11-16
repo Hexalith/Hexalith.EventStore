@@ -3,6 +3,7 @@ import copy
 import datetime as dt
 import hashlib
 import json
+import shutil
 from pathlib import Path
 import secrets
 import subprocess
@@ -18,6 +19,13 @@ import publication_authority as P
 
 H = lambda label: hashlib.sha256(label.encode()).hexdigest()
 NOW = dt.datetime(2026, 6, 1, tzinfo=dt.timezone.utc)
+
+
+def copy_bridge_inputs(root):
+    for path in P.B.BUILD_INPUTS:
+        destination = root / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / path, destination)
 
 
 def chain(kind='eventstore-package'):
@@ -227,21 +235,45 @@ class PublicationAuthorityTests(unittest.TestCase):
             with self.subTest(output=output):
                 self.refusal('PROFILE_OWNER_RESULT_INVALID',lambda:P.validate_owner_result(output,resolved,infrastructure,infrastructure))
 
-    def test_zero_exit_noop_child_cannot_validate_the_profile(self):
+    def test_profile_check_validates_owner_output_after_fresh_assembly(self):
         import phase_4_transition as T
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
             fixture=json.loads((ROOT/'tests/Hexalith.EventStore.Contracts.Tests/Deployment/Fixtures/SyntheticProfile.v1.json').read_bytes())
             path=root/P.PROFILE; path.parent.mkdir(parents=True)
             path.write_bytes((ROOT/'tests/Hexalith.EventStore.Contracts.Tests/Deployment/Fixtures/SyntheticProfile.v1.json').read_bytes())
-            (root/'global.json').write_bytes((ROOT/'global.json').read_bytes())
+            copy_bridge_inputs(root)
             (root/'composition.json').write_bytes(b'independent fixture composition')
             (root/P.INVENTORY).write_bytes(P.canonical({'schema':'hexalith.eventstore.production-composing-inventory.v1',
                 'source':{'path':'composition.json','sha256':P.digest(b'independent fixture composition')},
                 'expectedApplicationIds':[a['id'] for a in fixture['applications']],
                 'expectedComponentIds':[c['id'] for c in fixture['components']]}))
-            with mock.patch.object(T.Control,'bounded_process',return_value=b''), mock.patch.object(P.shutil,'which',return_value='/usr/bin/dotnet'):
-                self.refusal('PROFILE_OWNER_RESULT_INVALID',lambda:P.profile_check(root,None))
+            valid={'isStructurallyValid':True,'infrastructureDigest':fixture['infrastructureDigest'],
+                   'resolvedDigest':P.digest(path.read_bytes()),'issues':[],
+                   'authorization':'unevaluated','qualification':'unevaluated'}
+            for output in (P.canonical(valid), b'', b'{malformed',
+                           P.canonical({**valid,'authorization':'approved'}),
+                           P.canonical({**valid,'qualification':'approved'})):
+                with self.subTest(output=output):
+                    stages=[]
+                    def child(command,scratch,filename,**kwargs):
+                        stages.append(filename)
+                        if filename=='build.log':
+                            (scratch/'bin').mkdir()
+                            (scratch/'bin/ProductionProfileBridge.dll').write_bytes(b'fresh child-produced assembly')
+                        if filename=='profile-result.txt':
+                            self.assertTrue((scratch/'bin/ProductionProfileBridge.dll').is_file())
+                            return output
+                        return b''
+                    # Exercise capture, verified copies, fresh-output checks and
+                    # the real caller; only the external process is substituted.
+                    with mock.patch.object(T.Control,'bounded_process',side_effect=child), \
+                         mock.patch.object(P.B.shutil,'which',return_value='/usr/bin/dotnet'):
+                        if output==P.canonical(valid):
+                            self.assertEqual('composition.json',P.profile_check(root,None))
+                        else:
+                            self.refusal('PROFILE_OWNER_RESULT_INVALID',lambda:P.profile_check(root,None))
+                    self.assertEqual(['restore.log','build.log','profile-result.txt'],stages)
 
     def test_cli_structural_success_and_diagnostics_cannot_overwrite_input_or_profile(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -371,7 +403,7 @@ class PublicationAuthorityTests(unittest.TestCase):
                 fixture=json.loads(content)
                 (root/P.PROFILE).parent.mkdir(parents=True)
                 (root/P.PROFILE).write_bytes(content)
-                (root/'global.json').write_bytes((ROOT/'global.json').read_bytes())
+                copy_bridge_inputs(root)
                 source=b'separately bound synthetic composing inventory'
                 (root/'composition.json').write_bytes(source)
                 inventory={'schema':f'hexalith.eventstore.production-composing-inventory.v{version}',
@@ -384,10 +416,11 @@ class PublicationAuthorityTests(unittest.TestCase):
                         'resolvedDigest':P.digest(content),'issues':[],'authorization':'unevaluated','qualification':'unevaluated'}
                 # The genuine bridge separately exercises coverage and decoding. This
                 # control isolates the fixed Python child's version/source bindings.
-                with mock.patch.object(T.Control,'bounded_process',return_value=P.canonical(result)) as child, mock.patch.object(P.shutil,'which',return_value='/usr/bin/dotnet'):
+                with mock.patch.object(P.B,'execute',return_value=P.canonical(result)) as child:
                     self.assertEqual('composition.json',P.profile_check(root,None))
-                    self.assertIn(str(root/'tools/production-profile.cs'),child.call_args.args[0])
-                    self.assertIn(P.digest(inventory_path.read_bytes()),child.call_args.args[0])
+                    self.assertEqual(set(P.B.BUILD_INPUTS)|{P.PROFILE,P.INVENTORY,'composition.json'},
+                                     set(dict(child.call_args.args[0].files)))
+                    self.assertEqual(P.digest(inventory_path.read_bytes()),child.call_args.args[1])
                     inventory['source']['sha256']=H('wrong-source')
                     inventory_path.write_bytes(P.canonical(inventory))
                     self.refusal('COMPOSING_SOURCE_MISMATCH',lambda:P.profile_check(root,None))
@@ -423,7 +456,7 @@ class PublicationAuthorityTests(unittest.TestCase):
             self.assertEqual('BUSINESS_PREREQUISITE_MISSING',caught.exception.code)
             self.assertEqual(P.BUILD_INPUT_PROOF,str(caught.exception))
             child.assert_not_called()
-        for path in ('docs/architecture/production-profile-v2.md',
+        for path in (*P.B.CONTROLS, 'docs/architecture/production-profile-v2.md',
                      'src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileV2Codec.cs',
                      'src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileCanonicalJson.cs',
                      'src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileValidationDocument.cs',source):
@@ -432,6 +465,16 @@ class PublicationAuthorityTests(unittest.TestCase):
         incomplete=control(required)
         incomplete.request['subjects']=[item for item in incomplete.request['subjects'] if item['path']!=source]
         self.refusal('PUBLICATION_SUBJECT_UNBOUND',lambda:P.transition_inputs(incomplete))
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            copy_bridge_inputs(root)
+            candidate=control(required)
+            candidate.root=root
+            extra=root/P.B.SOURCE_DIRECTORY/'ProductionProfileUnbound.cs'
+            extra.write_text('#error unbound owner source')
+            with mock.patch.object(P.B,'execute') as child:
+                self.refusal('PROFILE_BUILD_INPUT_INVALID',lambda:P.transition_inputs(candidate))
+                child.assert_not_called()
 
     def test_schema_is_closed_and_has_explicit_state_grammar(self):
         schema=json.loads((ROOT/'tools/publication-authority.schema.json').read_text())

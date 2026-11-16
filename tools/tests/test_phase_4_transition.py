@@ -191,6 +191,17 @@ class TransitionTests(unittest.TestCase):
         return self.state['responses'][API + endpoint]['json']
 
     def run_cli(self, phase='evaluate', env_extra=None, raw=None, expected=None):
+        # Publication needs the complete owner graph; unrelated OQ8 controls
+        # should not repeatedly serialize those source blobs into HTTP state.
+        if isinstance(self.request, dict) and self.request.get('transition') in ('release-available', 'production-promoted'):
+            for path in P.B.SOURCES:
+                if (HEAD, path) not in self.blobs:
+                    content=(ROOT/path).read_bytes()
+                    destination=self.root/path
+                    destination.parent.mkdir(parents=True,exist_ok=True)
+                    if not destination.exists(): destination.write_bytes(content)
+                    self.blob(HEAD,path,content)
+                    self.blob(BEFORE,path,content)
         self.state_path.write_text(json.dumps(self.state))
         self.request_path.write_bytes(raw if raw is not None else canonical(self.request))
         env = {k: v for k, v in os.environ.items() if not k.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
@@ -476,7 +487,7 @@ class TransitionTests(unittest.TestCase):
         comments={item['url'] for item in self.state['observed'] if '/issues/comments/' in item['url']}
         self.assertTrue({API+'/issues/comments/'+str(1000+i) for i in range(5)}<=comments)
         self.assertIsNone(document['seal'])
-        for path in (P.PROFILE,P.INVENTORY,P.RECORDS,rendered_path,'tools/production-profile.cs'):
+        for path in (P.PROFILE,P.INVENTORY,P.RECORDS,rendered_path,*P.B.CONTROLS,*P.B.SOURCES):
             original=(self.root/path).read_bytes()
             (self.root/path).write_bytes(original+b'\n')
             with self.subTest(path=path): self.assert_refused('SOURCE_MISMATCH')
@@ -517,6 +528,10 @@ class TransitionTests(unittest.TestCase):
         self.assertEqual(1, len(document['approvals']))
         self.assertEqual('none', document['downstream_minimum'])
         self.assertIsNone(document['seal'])
+        schema=json.loads((ROOT/'tools/phase-4-transition.schema.json').read_text())
+        maximum=C.MAX_RESULT_INPUTS+len(P.CONTROL_FILES)+len(P.B.SOURCES)
+        self.assertEqual(maximum,schema['$defs']['binding']['properties']['inputs']['maxItems'])
+        self.assertEqual(maximum,schema['$defs']['binding']['allOf'][0]['else']['then']['properties']['inputs']['maxItems'])
 
     def test_unbound_gate_and_runtime_parity_never_execute_caller_command(self):
         self.assert_pass()

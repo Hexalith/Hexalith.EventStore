@@ -1,8 +1,3 @@
-#!/usr/bin/env dotnet
-#:project ../src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj
-#:property IsPackable=false
-#:property PublishAot=false
-
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;

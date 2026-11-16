@@ -23,6 +23,10 @@ jobs:
           submodules: false
       - name: Verify structural controls and authority refusals
         run: python3 -B -m unittest discover -s tools/tests -p 'test_publication_authority.py'
+      - name: Verify bridge snapshots and fixed execution controls
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_profile_bridge_build.py'
+      - name: Verify authenticated publication bindings and pre-launch refusals
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_transition.py' -k publication -k lifecycle_subject
       - name: Materialize pinned root build configuration
         run: git -c submodule.recurse=false submodule update --init -- references/Hexalith.Builds
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -32,10 +36,7 @@ jobs:
         run: dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -m:1 --disable-build-servers
       - name: Verify owner profile digest domains and external coverage
         run: dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net11.0/Hexalith.EventStore.Contracts.Tests.dll -class '*ProductionProfileTests' -class '*ProductionProfileV2Tests'
-      - name: Build read-only owner bridge with package references
-        run: dotnet build tools/production-profile.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -p:BuildInParallel=false --disable-build-servers
-
-      - name: Verify genuine bridge runtime and fixed token-free child
+      - name: Build verified SDK-only snapshots and verify genuine bridge isolation
         run: python3 -B tools/tests/check_production_profile_bridge.py
 
   live-evaluation:
@@ -48,8 +49,6 @@ jobs:
         with:
           persist-credentials: false
           submodules: false
-      - name: Materialize pinned root build configuration
-        run: git -c submodule.recurse=false submodule update --init -- references/Hexalith.Builds
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json

@@ -479,9 +479,7 @@ class Control:
         extra_controls = STORY_CONTROL_FILES if request["transition"] == "high-risk-nfr-story-done" else ()
         if request["transition"] in ("release-available", "production-promoted"):
             import publication_authority as P
-            extra_controls = P.CONTROL_FILES + tuple(
-                p.relative_to(self.root).as_posix() for p in sorted(
-                    (self.root / "src/Hexalith.EventStore.Contracts/Deployment").glob("ProductionProfile*.cs")))
+            extra_controls = P.CONTROL_FILES + P.B.SOURCES
         for path in (*CONTROL_FILES, *extra_controls, workflow_path(request["transition"])):
             value = digest(self.local(path))
             require(path not in paths or paths[path] == value, "SOURCE_MISMATCH", "control file mismatch")

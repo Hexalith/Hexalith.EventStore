@@ -73,22 +73,41 @@ digest still includes these authentication digests and the comment ID.
 ## Profile and deployment
 
 Only `deploy/dapr/production-profile.yaml` supplies profile bytes. The bounded
-read-only `tools/production-profile.cs` bridge calls the genuine Contracts
+read-only `tools/ProductionProfileBridge/Program.cs` bridge calls the genuine Contracts
 `ProductionProfileCodec.Decode` and `ProductionProfileValidator.Validate` for v1,
 or explicitly selected `ProductionProfileV2Codec.Decode` and
 `ProductionProfileV2Validator.Validate` for v2.
-It accepts no alternate profile path or generation mode. The fixed child resolves
-only the installed `dotnet` tool before dropping caller credentials, supplies its
-runtime root and an existing package cache, disables build-server reuse, and copies
-the bound owner `global.json` into scratch so SDK selection honors that pin.
-The declared project, SDK, NuGet and build configuration files belong to its
-bound inputs. They do not prove the complete execution closure: transitive
-Contracts sources, imported Builds configuration and package/SDK resolution remain
-unverified. `PROFILE_BUILD_INPUT_PROOF_UNAVAILABLE` therefore refuses the
-authenticated adapter before any .NET launch. There is no success override or
-complete-graph claim; the standalone structural bridge remains non-authorizing.
+It accepts no alternate profile path or generation mode. `tools/profile_bridge_build.py`
+captures bounded regular files with safe paths and no symbolic ancestors: the owner
+`global.json`, closed bridge project/configuration, unchanged bridge body, all 38
+explicit owner profile sources and separately validated profile/inventory/source
+bytes (plus rendered bytes when present). Capture requires complete fixed source and
+bridge membership. Before each child, the private snapshot must have exactly the
+captured files/directories and SHA-256 hashes; changed, missing, extra or symbolic
+members refuse. Checkout edits after capture cannot change compiled or decoded bytes.
+These local hashes detect copying/mutation; they authenticate no source.
+
+The SDK-only project has explicit compile items and no project/package references.
+Unrelated Contracts sources, Builds imports and Commons dependencies are unnecessary.
+Restore, build and execution use fixed arguments, the existing bounded child with
+filtered credentials/environment and descendant reaping, private outputs and an
+empty private package cache. Cleared package sources/fallback folders and disabled
+targeting/runtime pack downloads refuse package fallback; a missing installed SDK
+or targeting pack cannot be repaired by fetching. Ancestor build/central-package
+imports and build servers/shared compilation are disabled. SDK generators remain
+enabled. Exact owner SDK selection is retained; local builds use Debug and CI uses
+Release. A zero-exit child must still produce a fresh assembly and a closed genuine
+owner result. No checkout project is built directly.
+
+The reduced application graph does not prove complete installed SDK/import resolution.
+The existing installed-toolchain trust boundary is unchanged.
+`PROFILE_BUILD_INPUT_PROOF_UNAVAILABLE` therefore still refuses the authenticated
+adapter before any .NET launch. There is no success override or complete-graph claim;
+the standalone structural bridge remains non-authorizing.
 `tools/tests/check_production_profile_bridge.py` exercises the real bridge and
-Python child in disposable source copies; fixture success grants no authority. Both infrastructure and
+Python child in disposable source copies, with poisoned unrelated Contracts and
+ancestor build/package configuration and without Builds/Commons/Tenants sources;
+fixture success grants no authority. Both infrastructure and
 resolved digest domains remain exactly as documented in
 [production profile v1](production-profile-v1.md) and
 [production profile v2](production-profile-v2.md), respectively.
@@ -101,7 +120,8 @@ The separate `deploy/dapr/production-composing-inventory.json` has exactly
 must be a separately bound composition inventory, never the profile or itself.
 Its schema selects the owner decoder without fallback; mismatched versions refuse.
 V2 expected component coverage includes every infrastructure and Dapr instance.
-Both version contracts and every owner `ProductionProfile*.cs` source, including
+The snapshot helper, bridge project/configuration/body, both version contracts and
+every owner `ProductionProfile*.cs` source, including
 the shared canonical writer and binding checks, remain required execution and
 lifecycle subject bindings. No production coverage file is published by this
 construction. Declared coverage

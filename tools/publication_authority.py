@@ -12,10 +12,10 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import stat
 import subprocess
-import tempfile
+
+import profile_bridge_build as B
 
 SCHEMA = "hexalith.eventstore.publication-authority.v1"
 RESULT_SCHEMA = "hexalith.eventstore.publication-authority-result.v1"
@@ -28,7 +28,7 @@ RECORDS = "deploy/dapr/publication-authority.json"
 REGISTRY = "_bmad-output/implementation-artifacts/owner-role-registry.json"
 RELEASE_WORKFLOW = ".github/workflows/release.yml"
 CONTROL_FILES = ("tools/publication_authority.py", "tools/validate-publication-authority.py",
-                 "tools/publication-authority.schema.json", "tools/production-profile.cs",
+                 "tools/publication-authority.schema.json", *B.CONTROLS,
                  "docs/architecture/publication-authority-v1.md", "docs/architecture/production-profile-v1.md",
                  "docs/architecture/production-profile-v2.md",
                  RELEASE_WORKFLOW, "global.json", "nuget.config", ".gitmodules",
@@ -373,8 +373,7 @@ def authenticate_records(control, records):
 def transition_inputs(control):
     """Require every fixed lifecycle and owner-profile implementation byte bound at exact head."""
     required = set(CONTROL_FILES) | {RECORDS, PROFILE, INVENTORY}
-    required |= {p.relative_to(control.root).as_posix() for p in
-                 (control.root / "src/Hexalith.EventStore.Contracts/Deployment").glob("ProductionProfile*.cs")}
+    required |= set(B.SOURCES)
     actual = {item["path"] for item in control.binding["inputs"]}
     require(required <= actual, "PUBLICATION_INPUT_UNBOUND", 1)
     inventory = parse(control.local(INVENTORY))
@@ -387,6 +386,10 @@ def transition_inputs(control):
     require(required <= actual, "PUBLICATION_INPUT_UNBOUND", 1)
     require(control.request["subject_mode"] == "files" and required <= {item["path"] for item in control.request["subjects"]},
             "PUBLICATION_SUBJECT_UNBOUND", 1)
+    try:
+        B.source_paths(control.root)
+    except B.Refusal as error:
+        raise Refusal(error.code) from error
     records = parse(control.local(RECORDS))
     validate_chain(records)
     promotion = records["records"][-1]["promotion"]
@@ -404,9 +407,8 @@ def evaluate_transition(control):
         records = document["records"]
         require(records[-1]["state"] == control.request["transition"], "STATE_MISMATCH", 1)
         authenticate_records(control, records)
-        # Partial project/config bindings do not prove the complete Contracts,
-        # imported Builds and SDK/package execution closure. Never execute that
-        # unverified graph with authenticated authority inputs.
+        # The isolated application snapshot reduces the graph but does not prove
+        # installed SDK/import resolution. Keep authenticated .NET unevaluated.
         raise Refusal(BUILD_INPUT_PROOF)
     except Refusal as error:
         raise T.Refusal("BUSINESS_PREREQUISITE_MISSING", error.code, error.exit_code) from error
@@ -422,7 +424,8 @@ def profile_check(root, record):
                                     "hexalith.eventstore.production-composing-inventory.v2"))
     binding(inventory["source"])
     require(inventory["source"]["path"] not in (PROFILE, INVENTORY), "SELF_DERIVED_INVENTORY", 1)
-    require(digest(read(root, inventory["source"]["path"])) == inventory["source"]["sha256"], "COMPOSING_SOURCE_MISMATCH", 1)
+    composition = read(root, inventory["source"]["path"])
+    require(digest(composition) == inventory["source"]["sha256"], "COMPOSING_SOURCE_MISMATCH", 1)
     for key in ("expectedApplicationIds", "expectedComponentIds"):
         require(isinstance(inventory[key], list) and 1 <= len(inventory[key]) <= 1000)
         for value in inventory[key]: text(value)
@@ -431,35 +434,18 @@ def profile_check(root, record):
     promotion = record.get("promotion") if record else None
     resolved = promotion["profile"]["resolved_sha256"] if promotion else digest(content)
     require(digest(content) == resolved, "PROFILE_RESOLVED_DIGEST_MISMATCH", 1)
+    data = {PROFILE: content, INVENTORY: inventory_bytes, inventory["source"]["path"]: composition}
     if promotion:
         require(digest(inventory_bytes) == promotion["inventory"]["sha256"], "COMPOSING_INVENTORY_MISMATCH", 1)
         rendered = read(root, promotion["rendered_deployment"]["path"])
         require(digest(rendered) == promotion["rendered_deployment"]["sha256"], "DEPLOYMENT_MISMATCH", 1)
-    # Fixed bridge only; neither paths to executables nor commands are accepted as input.
-    # All build products belong to a disposable private directory. Token-free execution.
-    import phase_4_transition as T
-    executable = shutil.which("dotnet")
-    require(executable is not None, "PROFILE_BRIDGE_UNAVAILABLE", 1)
-    dotnet = Path(executable).resolve()
-    environment = {"MSBUILDDISABLENODEREUSE": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
-                   "DOTNET_ROOT": str(dotnet.parent)}
-    package_cache = Path(os.environ.get("NUGET_PACKAGES", str(Path.home() / ".nuget/packages"))).resolve()
-    if package_cache.is_dir():
-        environment["NUGET_PACKAGES"] = str(package_cache)
-    with tempfile.TemporaryDirectory(prefix="publication-profile-") as directory:
-        scratch = Path(directory)
-        (scratch / "global.json").write_bytes(read(root, "global.json"))
-        command = [str(dotnet), "run", "--disable-build-servers", "--file", str(root / "tools/production-profile.cs"), "--configuration", "Release" if os.environ.get("CI") else "Debug",
-                   "-p:UseHexalithProjectReferences=" + ("false" if os.environ.get("CI") else "true"),
-                   "-p:UseNuGetDeps=" + ("true" if os.environ.get("CI") else "false"),
-                   "-p:BuildInParallel=false", "-p:UseArtifactsOutput=true", "-p:ArtifactsPath=" + str(scratch / "artifacts"), "--", str(root), digest(inventory_bytes), resolved,
-                   promotion["profile"]["infrastructure_sha256"] if promotion else "-"]
-        try:
-            output = T.Control.bounded_process(command, scratch, "profile-result.txt", timeout_seconds=60,
-                                      environment_extra=environment,
-                                      failure_code="PROFILE_OWNER_VALIDATION_FAILED", limit_code="PROFILE_BRIDGE_UNAVAILABLE")
-        except T.Refusal as error:
-            raise Refusal(error.code) from error
+        data[promotion["rendered_deployment"]["path"]] = rendered
+    try:
+        captured = B.capture(root, data)
+        output = B.execute(captured, digest(inventory_bytes), resolved,
+                           promotion["profile"]["infrastructure_sha256"] if promotion else "-")
+    except B.Refusal as error:
+        raise Refusal(error.code) from error
     profile = parse(content)
     validate_owner_result(output, resolved, profile.get("infrastructureDigest"),
                           promotion["profile"]["infrastructure_sha256"] if promotion else None)
