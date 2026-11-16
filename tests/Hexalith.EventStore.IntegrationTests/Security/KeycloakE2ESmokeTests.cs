@@ -30,13 +30,14 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase {
         string token = await GetTokenAsync(username);
         token.ShouldNotBeNullOrEmpty("Keycloak token acquisition failed");
 
+        string aggregateId = Guid.NewGuid().ToString();
         var request = new {
             MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "counter",
-            AggregateId = Guid.NewGuid().ToString(),
+            AggregateId = aggregateId,
             CommandType = "IncrementCounter",
-            Payload = new { orderId = "smoke-test-001", amount = 42.00 },
+            Payload = new { counterId = aggregateId },
         };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {

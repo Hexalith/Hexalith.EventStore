@@ -7,12 +7,12 @@ using StackExchange.Redis;
 
 namespace Hexalith.EventStore.IntegrationTests.Security;
 
-public sealed class ProjectionDeliveryWriterProtocolTestLeaseTests {
+public sealed class ProjectionDeliveryWriterProtocolTestLeaseTests(PrivateAuthenticationRedisFixture fixture) : IClassFixture<PrivateAuthenticationRedisFixture> {
+    private string RedisEndpoint => fixture.Endpoint;
     private const string MarkerKey = "projection-delivery-writer-protocol";
-    private const string RedisEndpoint = "localhost:6379";
 
     [Fact]
-    public async Task ActivateAndRestoreAsync_CleanStore_UsesProductionCutoverAndRestoresState() {
+    public async Task ActivateAndRestoreAsync_CleanStore_UsesCutoverHttpContractAndRestoresState() {
         const string sourceCommit = "0123456789abcdef0123456789abcdef01234567";
         using IConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions {
             EndPoints = { RedisEndpoint },
@@ -25,10 +25,10 @@ public sealed class ProjectionDeliveryWriterProtocolTestLeaseTests {
         bool markerExisted = await database.KeyExistsAsync(MarkerKey).ConfigureAwait(true);
         HashEntry[] originalState = await database.HashGetAllAsync(MarkerKey).ConfigureAwait(true);
         TimeSpan? originalExpiry = await database.KeyTimeToLiveAsync(MarkerKey).ConfigureAwait(true);
-        var lease = new ProjectionDeliveryWriterProtocolTestLease();
+        var lease = new ProjectionDeliveryWriterProtocolTestLease(RedisEndpoint);
 
         try {
-            using var client = new HttpClient(new CutoverHandler(database, sourceCommit)) {
+            using var client = new HttpClient(new WriterProtocolTestCutoverHandler(database, sourceCommit)) {
                 BaseAddress = new Uri("https://eventstore.test"),
             };
             await lease.ActivateAsync(
@@ -67,39 +67,47 @@ public sealed class ProjectionDeliveryWriterProtocolTestLeaseTests {
         }
     }
 
-    private sealed class CutoverHandler(IDatabase database, string sourceCommit) : HttpMessageHandler {
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken) {
-            if (request.Method == HttpMethod.Get
-                && string.Equals(request.RequestUri?.AbsolutePath, "/health", StringComparison.Ordinal)) {
-                return JsonResponse(
-                    HttpStatusCode.ServiceUnavailable,
-                    "{\"results\":{\"projection-delivery-writer-protocol\":{\"status\":\"Unhealthy\"},"
-                    + "\"redis\":{\"status\":\"Healthy\"}}}");
-            }
-
-            if (request.Method == HttpMethod.Post
-                && string.Equals(
-                    request.RequestUri?.AbsolutePath,
-                    "/api/v1/admin/projections/delivery-writer-protocol/activate",
-                    StringComparison.Ordinal)) {
-                request.Headers.Authorization?.Parameter.ShouldBe("admin-token");
-                _ = await database.HashSetAsync(
-                    MarkerKey,
-                    "data",
-                    $"{{\"schemaVersion\":1,\"writerProtocolVersion\":2,\"cutoverCommit\":\"{sourceCommit}\"}}")
-                    .WaitAsync(cancellationToken)
-                    .ConfigureAwait(false);
-                return JsonResponse(HttpStatusCode.OK, "{\"status\":\"Activated\"}");
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+    [Fact]
+    public async Task ActivateAsync_ForeignLease_PreservesForeignMarkerAndLease() {
+        using var redis = await ConnectionMultiplexer.ConnectAsync(RedisEndpoint);
+        IDatabase database = redis.GetDatabase();
+        const string lockKey = "projection-delivery-writer-protocol:test-isolation-lock";
+        string owner = Guid.NewGuid().ToString("N");
+        await database.HashSetAsync(MarkerKey, "data", "foreign-marker");
+        (await database.LockTakeAsync(lockKey, owner, TimeSpan.FromMinutes(1))).ShouldBeTrue();
+        var lease = new ProjectionDeliveryWriterProtocolTestLease(RedisEndpoint);
+        try {
+            using var client = new HttpClient { BaseAddress = new Uri("https://eventstore.test") };
+            await Should.ThrowAsync<InvalidOperationException>(() => lease.ActivateAsync(client,
+                "admin-token", "0123456789abcdef0123456789abcdef01234567", "test-backup", TestContext.Current.CancellationToken));
+            await lease.RestoreAsync();
+            (await database.HashGetAsync(MarkerKey, "data")).ToString().ShouldBe("foreign-marker");
+            (await database.StringGetAsync(lockKey)).ToString().ShouldBe(owner);
         }
-
-        private static HttpResponseMessage JsonResponse(HttpStatusCode statusCode, string body)
-            => new(statusCode) {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
-            };
+        finally {
+            await database.LockReleaseAsync(lockKey, owner);
+            await database.KeyDeleteAsync(MarkerKey);
+        }
     }
+
+    [Fact]
+    public async Task ActivateAsync_FailedActivation_RestoresSnapshotAndReleasesLease() {
+        using var redis = await ConnectionMultiplexer.ConnectAsync(RedisEndpoint);
+        IDatabase database = redis.GetDatabase();
+        await database.HashSetAsync(MarkerKey, "data", "previous-marker");
+        var lease = new ProjectionDeliveryWriterProtocolTestLease(RedisEndpoint);
+        try {
+            using var client = new HttpClient(new WriterProtocolTestCutoverHandler(database, "0123456789abcdef0123456789abcdef01234567", HttpStatusCode.Unauthorized)) { BaseAddress = new Uri("https://eventstore.test") };
+            await Should.ThrowAsync<InvalidOperationException>(() => lease.ActivateAsync(client,
+                "admin-token", "0123456789abcdef0123456789abcdef01234567", "test-backup", TestContext.Current.CancellationToken));
+            await lease.RestoreAsync();
+            (await database.HashGetAsync(MarkerKey, "data")).ToString().ShouldBe("previous-marker");
+            (await database.KeyExistsAsync("projection-delivery-writer-protocol:test-isolation-lock")).ShouldBeFalse();
+        }
+        finally {
+            await lease.RestoreAsync();
+            await database.KeyDeleteAsync(MarkerKey);
+        }
+    }
+
 }

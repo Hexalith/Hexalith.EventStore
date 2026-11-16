@@ -43,7 +43,8 @@ internal sealed class DevelopmentRouteCatalogTransportDocker(string endpoint)
         await WriteReceiptAsync(Path.Combine(directory, "extraction-" + name + ".json"), new { owner, image }, cancellationToken).ConfigureAwait(false);
         try
         {
-            identity = (await DockerAsync(["create", "--pull=never", "--name", owner, "--label", "hexalith.eventstore.transport=" + owner, image, "/" + name], cancellationToken).ConfigureAwait(false)).Trim();
+            identity = (await DockerAsync(ExtractionArguments(owner, image, name,
+                Environment.GetEnvironmentVariable("HEXALITH_PRIVATE_AUTH_OWNER")), cancellationToken).ConfigureAwait(false)).Trim();
             if (identity.Length != 64 || identity.Any(character => !char.IsAsciiHexDigit(character)))
                 throw new InvalidOperationException("Owned transport extraction identity is unavailable.");
             await DockerAsync(["cp", identity + ":/" + name, Path.Combine(directory, name)], cancellationToken).ConfigureAwait(false);
@@ -62,6 +63,16 @@ internal sealed class DevelopmentRouteCatalogTransportDocker(string endpoint)
                 new { owner, image, id = container.GetProperty("Id").GetString(), removed = true }, cleanup.Token).ConfigureAwait(false);
         }
         File.SetUnixFileMode(Path.Combine(directory, name), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    }
+
+    /// <summary>Retains transport custody while enrolling valid private authentication invocations in outer cleanup.</summary>
+    internal static string[] ExtractionArguments(string owner, string image, string name, string? authenticationOwner)
+    {
+        List<string> arguments = ["create", "--pull=never", "--name", owner, "--label", "hexalith.eventstore.transport=" + owner];
+        if (authenticationOwner is { Length: 32 } && authenticationOwner.All(char.IsAsciiHexDigitLower))
+            arguments.AddRange(["--label", "hexalith.eventstore.authentication-test-owner=" + authenticationOwner]);
+        arguments.AddRange([image, "/" + name]);
+        return [.. arguments];
     }
 
     private Task<string> DockerAsync(string[] arguments, CancellationToken cancellationToken)

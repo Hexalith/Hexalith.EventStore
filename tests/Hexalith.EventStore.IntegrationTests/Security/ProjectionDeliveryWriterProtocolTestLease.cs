@@ -15,7 +15,7 @@ internal sealed class ProjectionDeliveryWriterProtocolTestLease {
     private const string HealthCheckName = "projection-delivery-writer-protocol";
     private const string IsolationLockKey = "projection-delivery-writer-protocol:test-isolation-lock";
     private const string MarkerKey = "projection-delivery-writer-protocol";
-    private const string RedisEndpoint = "localhost:6379";
+    private readonly string _redisEndpoint;
     private const int SchemaVersion = 1;
     private const int WriterProtocolVersion = 2;
 
@@ -28,6 +28,12 @@ internal sealed class ProjectionDeliveryWriterProtocolTestLease {
     private string? _sourceCommit;
     private string? _lockToken;
     private bool _isActive;
+
+    /// <summary>Uses the explicitly selected topology store.</summary>
+    internal ProjectionDeliveryWriterProtocolTestLease(string redisEndpoint = "localhost:6379") {
+        ArgumentException.ThrowIfNullOrWhiteSpace(redisEndpoint);
+        _redisEndpoint = redisEndpoint;
+    }
 
     /// <summary>Resolves the exact Git commit containing the running test code.</summary>
     internal static async Task<string> ReadExactSourceCommitAsync(CancellationToken cancellationToken) {
@@ -112,8 +118,7 @@ internal sealed class ProjectionDeliveryWriterProtocolTestLease {
                         .ReadAsStringAsync(cancellationToken)
                         .ConfigureAwait(false);
                     if (!ProjectionDeliveryWriterProtocolCutoverPolicy.WriterProtocolIsOnlyUnhealthyCheck(
-                        healthBody,
-                        HealthCheckName)) {
+                        healthBody, HealthCheckName)) {
                         lastDiagnostic = "EventStore dependencies are not ready for cutover. "
                             + $"Status={(int)health.StatusCode} ({health.StatusCode}); Body={healthBody}";
                         await Task.Delay(s_retryDelay, cancellationToken).ConfigureAwait(false);
@@ -231,9 +236,9 @@ internal sealed class ProjectionDeliveryWriterProtocolTestLease {
         _isActive = false;
     }
 
-    private static async Task<IConnectionMultiplexer> ConnectRedisAsync()
+    private async Task<IConnectionMultiplexer> ConnectRedisAsync()
         => await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions {
-            EndPoints = { RedisEndpoint },
+            EndPoints = { _redisEndpoint },
             ConnectTimeout = 5_000,
             SyncTimeout = 5_000,
             AbortOnConnectFail = false,
@@ -325,8 +330,4 @@ internal sealed class ProjectionDeliveryWriterProtocolTestLease {
         }
     }
 
-    private sealed record WriterProtocolMarker(
-        int SchemaVersion,
-        int WriterProtocolVersion,
-        string CutoverCommit);
 }

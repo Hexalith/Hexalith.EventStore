@@ -326,6 +326,136 @@ class AdapterContracts(unittest.TestCase):
         platform = Platform()
         self.assertNotEqual(A.subject_at(platform, T.HEAD), A.subject_at(platform, T.BEFORE))
 
+    def test_private_dapr_home_has_empty_components_without_ambient_copy(self):
+        entry = self.file('source.txt')
+        runtime = self.root / 'daprd'
+        runtime.write_bytes(b'bound executable fixture')
+        manifest = {'entries': A.bind_entries(self.root, [entry]), 'submodules': [], 'runtime': [
+            {'name': 'dapr-runtime', 'source': str(runtime), 'destination': '.dapr/bin/daprd',
+             'sha256': A.runtime_digest(runtime), 'size': runtime.stat().st_size}]}
+        private = self.root / 'private'
+        private.mkdir()
+        A.materialize(self.root, private, manifest)
+        self.assertTrue((private / '.dapr/components').is_dir())
+        self.assertEqual([], list((private / '.dapr/components').iterdir()))
+        self.assertIn('samplingRate: "0"', (private / '.dapr/config.yaml').read_text())
+
+    def test_diagnostic_rechecks_real_index_and_untracked_path_modes(self):
+        tracked = self.file('business/tracked.cs')
+        A.write_index(self.root, [tracked])
+        for path in {*A.CONTROL_FILES, *C.STORY_CONTROL_FILES}:
+            self.file(path)
+        helper = self.file('business/helper.cs')
+        manifest = {'entries': A.bind_entries(self.root, A.diagnostic_entries(self.root), exact=False), 'submodules': []}
+        index = (self.root / '.git/index').read_bytes()
+        A.assert_stable(self.root, manifest, diagnostic=True)
+        late = self.file('business/late.cs')
+        with self.assertRaises(C.Refusal) as caught:
+            A.assert_stable(self.root, manifest, diagnostic=True)
+        self.assertEqual('SOURCE_MISMATCH', caught.exception.code)
+        (self.root / late['path']).unlink()
+        (self.root / helper['path']).chmod(0o755)
+        with self.assertRaises(C.Refusal):
+            A.assert_stable(self.root, manifest, diagnostic=True)
+        (self.root / helper['path']).chmod(0o644)
+        A.assert_stable(self.root, manifest, diagnostic=True)
+        self.assertEqual(index, (self.root / '.git/index').read_bytes())
+
+    def test_cleanup_continues_after_inspect_and_remove_disappearance(self):
+        owner = 'a' * 32
+        identifiers = ['b' * 64, 'c' * 64, 'd' * 64]
+        calls = []
+        def run(argv, label, timeout):
+            calls.append(argv)
+            if argv[1] == 'ps':
+                return b'' if any(value.startswith('id=') for value in argv) else ('\n'.join(identifiers) + '\n').encode()
+            if argv[1] == 'inspect':
+                if argv[-1] == identifiers[0]:
+                    raise C.Refusal('STORY_EVIDENCE_FAILED', 'fixed evidence command failed')
+                return json.dumps(owner).encode()
+            if argv[1] == 'rm' and argv[-1] == identifiers[1]:
+                raise C.Refusal('STORY_EVIDENCE_FAILED', 'fixed evidence command failed')
+            return b'removed'
+        A.cleanup_authentication_containers(owner, run)
+        self.assertEqual(identifiers, [argv[-1] for argv in calls if argv[1] == 'inspect'])
+        self.assertEqual(identifiers[1:], [argv[-1] for argv in calls if argv[1] == 'rm'])
+
+    def test_cleanup_aggregates_real_failures_after_remaining_owned_ids(self):
+        owner = 'a' * 32
+        identifiers = ['b' * 64, 'c' * 64, 'd' * 64]
+        calls = []
+        def run(argv, label, timeout):
+            calls.append(argv)
+            if argv[1] == 'ps':
+                selected = next((value[3:] for value in argv if value.startswith('id=')), None)
+                return ((selected or '\n'.join(identifiers)) + '\n').encode()
+            if argv[1] == 'inspect':
+                return json.dumps(owner + ' ' if argv[-1] == identifiers[0] else owner).encode()
+            if argv[1] == 'rm' and argv[-1] == identifiers[1]:
+                raise C.Refusal('STORY_EVIDENCE_FAILED', 'daemon refused removal')
+            return b'removed'
+        with self.assertRaises(C.Refusal) as caught:
+            A.cleanup_authentication_containers(owner, run)
+        self.assertIn('ownership changed; refusing cleanup', str(caught.exception))
+        self.assertIn(identifiers[1] + ':cleanup failed', str(caught.exception))
+        self.assertEqual(identifiers[1:], [argv[-1] for argv in calls if argv[1] == 'rm'])
+
+    def test_timeout_cleanup_only_removes_exact_invocation_owned_containers(self):
+        owner = 'a' * 32
+        identifier = 'b' * 64
+        calls = []
+        def run(argv, label, timeout):
+            calls.append(argv)
+            if argv[1] == 'ps':
+                self.assertIn('label=hexalith.eventstore.authentication-test-owner=' + owner, argv)
+                return (identifier + '\n').encode()
+            if argv[1] == 'inspect':
+                return (json.dumps(owner) + '\n').encode()
+            return b'removed'
+        A.cleanup_authentication_containers(owner, run)
+        self.assertEqual(['docker', 'rm', '--force', identifier], calls[-1])
+        calls.clear()
+        def foreign(argv, label, timeout):
+            calls.append(argv)
+            return (identifier + '\n').encode() if argv[1] == 'ps' else json.dumps('foreign-owner').encode()
+        with self.assertRaises(C.Refusal):
+            A.cleanup_authentication_containers(owner, foreign)
+        self.assertFalse(any(argv[1] == 'rm' for argv in calls))
+
+    def test_outer_budget_failure_reaps_started_authentication_with_the_same_owner(self):
+        for started in (False, True):
+            with self.subTest(started=started):
+                selected_owner = []
+                logs = self.root / ('retained-' + str(started))
+                logs.mkdir()
+                def interrupted(argv, scratch, filename, **options):
+                    owner = options['environment_extra'][A.AUTH_OWNER_ENV]
+                    temporary = Path(options['environment_extra'][A.AUTH_TEMP_ENV])
+                    self.assertTrue(temporary.is_dir())
+                    self.assertFalse(temporary.is_relative_to(scratch))
+                    if argv[0] == 'docker':
+                        self.assertEqual(selected_owner[0], owner)
+                        (scratch / filename).write_text('owned cleanup inventory empty\n')
+                        return b''
+                    selected_owner.append(owner)
+                    if started:
+                        (scratch / (A.AUTH_MARKER_PREFIX + owner)).touch()
+                    raise C.Refusal('STORY_EVIDENCE_LIMIT', 'forced outer budget exhaustion')
+                def cleanup_owned(owner, run):
+                    return run(['docker', 'ps'], 'integration-auth-cleanup-list', timeout=30)
+                manifest = {'runtime': [{'name': 'dotnet', 'source': sys.executable}]}
+                with mock.patch.object(A, 'materialize'), mock.patch.object(C.Control, 'bounded_process', side_effect=interrupted), \
+                     mock.patch.object(A, 'cleanup_authentication_containers', side_effect=cleanup_owned) as cleanup:
+                    with self.assertRaises(C.Refusal) as caught:
+                        A.run(self.root, manifest, diagnostic=True, logs=logs)
+                self.assertEqual('STORY_EVIDENCE_LIMIT', caught.exception.code)
+                self.assertEqual(1, len(selected_owner))
+                self.assertEqual(1 if started else 0, cleanup.call_count)
+                if started:
+                    self.assertEqual(selected_owner[0], cleanup.call_args.args[0])
+                    self.assertEqual('owned cleanup inventory empty\n',
+                        (logs / 'outer-integration-auth-cleanup-list.log').read_text())
+
     def test_bounded_process_removes_tokens_and_enforces_output(self):
         marker = os.urandom(32).hex()
         with mock.patch.dict(os.environ, GH_TOKEN=marker, GITHUB_TOKEN=marker):

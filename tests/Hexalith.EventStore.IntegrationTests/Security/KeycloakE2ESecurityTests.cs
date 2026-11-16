@@ -8,7 +8,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <summary>
-/// E2E security tests exercising the full Aspire topology with real Keycloak OIDC tokens.
+/// E2E security tests exercising the private Aspire authentication cohort with real Keycloak OIDC tokens.
 /// Verifies multi-tenant isolation, permission enforcement, and authorization pipeline
 /// against a running Keycloak instance with the hexalith realm (D11, Tasks 9.1-9.4).
 /// </summary>
@@ -182,13 +182,14 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         string tenant,
         string domain,
         string commandType) {
+        string aggregateId = Guid.NewGuid().ToString();
         var body = new {
             MessageId = Guid.NewGuid().ToString(),
             Tenant = tenant,
             Domain = domain,
-            AggregateId = Guid.NewGuid().ToString(),
+            AggregateId = aggregateId,
             CommandType = commandType,
-            Payload = new { id = Guid.NewGuid().ToString() },
+            Payload = new { counterId = aggregateId },
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {

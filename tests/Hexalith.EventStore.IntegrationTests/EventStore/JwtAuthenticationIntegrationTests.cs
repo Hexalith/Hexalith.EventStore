@@ -10,6 +10,8 @@ using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.IntegrationTests.Security;
+using Aspire.Hosting.Testing;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -27,13 +29,16 @@ using EventStoreProgram = eventstore::Program;
 
 namespace Hexalith.EventStore.IntegrationTests.EventStore;
 
+[Collection("AspireTopology")]
 public class JwtAuthenticationIntegrationTests
-    : IClassFixture<JwtAuthenticationIntegrationTests.JwtLogCapturingFactory> {
+    : IClassFixture<JwtLogCapturingFactory> {
     private readonly JwtLogCapturingFactory _factory;
+    private readonly AspireTopologyFixture _topology;
 
-    public JwtAuthenticationIntegrationTests(JwtLogCapturingFactory factory) {
+    public JwtAuthenticationIntegrationTests(JwtLogCapturingFactory factory, AspireTopologyFixture topology) {
         ArgumentNullException.ThrowIfNull(factory);
         _factory = factory;
+        _topology = topology;
     }
 
     [Fact]
@@ -266,18 +271,18 @@ public class JwtAuthenticationIntegrationTests
     [Fact]
     public async Task PostCommands_ValidToken_Returns202Accepted() {
         // Arrange - valid JWT token
-        string token = TestJwtTokenGenerator.GenerateToken(
-            tenants: ["test-tenant"],
-            domains: ["test-domain"]);
-        HttpClient client = _factory.CreateClient();
+        string username = "admin-user";
+        string token = await _topology.GetTokenAsync(username);
+        using HttpClient client = _topology.CreateEventStoreClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        string aggregateId = Guid.NewGuid().ToString("N");
         var request = new {
             messageId = Guid.NewGuid().ToString(),
-            tenant = "test-tenant",
-            domain = "test-domain",
-            aggregateId = "agg-001",
-            commandType = "CreateOrder",
-            payload = new { amount = 100 },
+            tenant = "tenant-a",
+            domain = "counter",
+            aggregateId,
+            commandType = Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter.CommandType,
+            payload = new { counterId = aggregateId },
         };
 
         // Act
@@ -290,19 +295,18 @@ public class JwtAuthenticationIntegrationTests
     [Fact]
     public async Task PostCommands_ValidTokenWithTenantClaims_ClaimsTransformedCorrectly() {
         // Arrange - JWT with tenant claims; request must use a matching tenant/domain
-        string token = TestJwtTokenGenerator.GenerateToken(
-            tenants: ["tenant-a", "tenant-b"],
-            domains: ["orders", "inventory"],
-            permissions: ["commands:*"]);
-        HttpClient client = _factory.CreateClient();
+        string username = "tenant-a-user";
+        string token = await _topology.GetTokenAsync(username);
+        using HttpClient client = _topology.CreateEventStoreClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        string aggregateId = Guid.NewGuid().ToString("N");
         var request = new {
             messageId = Guid.NewGuid().ToString(),
             tenant = "tenant-a",
-            domain = "orders",
-            aggregateId = "agg-001",
-            commandType = "CreateOrder",
-            payload = new { amount = 100 },
+            domain = "counter",
+            aggregateId,
+            commandType = Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter.CommandType,
+            payload = new { counterId = aggregateId },
         };
 
         // Act
@@ -315,13 +319,13 @@ public class JwtAuthenticationIntegrationTests
     [Fact]
     public async Task HealthEndpoint_NoAuth_Returns200() {
         // Arrange - no auth token, hitting health endpoint
-        HttpClient client = _factory.CreateClient();
+        using HttpClient client = _topology.CreateEventStoreClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/health");
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -395,43 +399,4 @@ public class JwtAuthenticationIntegrationTests
         return handler.WriteToken(handler.CreateToken(descriptor));
     }
 
-    /// <summary>
-    /// WebApplicationFactory with JWT auth config and log capturing for auth failure tests.
-    /// </summary>
-    public class JwtLogCapturingFactory : WebApplicationFactory<EventStoreProgram> {
-        public TestLogProvider LogProvider { get; } = new();
-
-        protected override void ConfigureWebHost(IWebHostBuilder builder) {
-            ArgumentNullException.ThrowIfNull(builder);
-            _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
-                ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
-                ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
-                ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
-            }));
-            _ = builder.ConfigureServices(services => {
-                // Replace Dapr stores with InMemory for tests
-                ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
-                    d => d.ServiceType == typeof(ICommandStatusStore));
-                if (statusDescriptor is not null) {
-                    _ = services.Remove(statusDescriptor);
-                }
-
-                _ = services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
-
-                ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
-                    d => d.ServiceType == typeof(ICommandArchiveStore));
-                if (archiveDescriptor is not null) {
-                    _ = services.Remove(archiveDescriptor);
-                }
-
-                _ = services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
-
-                TestServiceOverrides.ReplaceCommandRouter(services);
-                TestServiceOverrides.RemoveDaprHealthChecks(services);
-
-                _ = services.AddLogging(logging => logging.AddProvider(LogProvider));
-            });
-        }
-    }
 }

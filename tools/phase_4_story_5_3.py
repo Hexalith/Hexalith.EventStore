@@ -31,6 +31,9 @@ ORIGINAL_SPEC = "_bmad-output/implementation-artifacts/spec-5-3-production-authe
 STORY_IDENTITY = "5-3-production-authentication-guards-and-secret-stripping"
 SCHEMA = "hexalith.eventstore.story-5-3-evidence.v1"
 INVENTORY = ".story-5-3-inputs.json"
+AUTH_OWNER_ENV = "HEXALITH_PRIVATE_AUTH_OWNER"
+AUTH_TEMP_ENV = "HEXALITH_PRIVATE_AUTH_TEMP"
+AUTH_MARKER_PREFIX = ".story-5-3-authentication-started-"
 SUBMODULES = ("references/Hexalith.Builds", "references/Hexalith.Tenants", "references/Hexalith.FrontComposer")
 PACT = "tests/Hexalith.FrontComposer.Shell.Tests/Pact/frontcomposer-eventstore-command-dispatch.json"
 BUILDS_HISTORY = ("30ea43a56330a9828ed0bb2e837289231d8630d1", "22a578b576a515d2af214fe81859447fffc97981")
@@ -371,6 +374,24 @@ def runtime_inventory(root):
     return entries
 
 
+def diagnostic_entries(root, entries=None):
+    """Use the same tracked and untracked path/mode denominator at capture and recheck."""
+    entries = [dict(entry) for entry in (index_entries(root) if entries is None else entries)]
+    names = {entry["path"] for entry in entries}
+    for raw in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0"):
+        if raw:
+            path = raw.decode("utf-8")
+            source = root / path
+            mode = "120000" if source.is_symlink() else ("100755" if source.stat().st_mode & 0o111 else "100644")
+            entries.append({"path": path, "mode": mode, "git_sha": "0" * 40})
+            names.add(path)
+    for path in (*CONTROL_FILES, *C.STORY_CONTROL_FILES):
+        if path not in names:
+            entries.append({"path": path, "mode": "100644", "git_sha": "0" * 40})
+            names.add(path)
+    return validate_entries(entries)
+
+
 def inventory(root, api=None, head=None):
     """Derive membership independently; never accept an inventory from a caller."""
     entries = index_entries(root)
@@ -391,12 +412,7 @@ def inventory(root, api=None, head=None):
     else:
         # Local diagnostics bind new adapter code too. This path has no approval
         # or seal authority, and is never used by shared evaluation/consumption.
-        names = {entry["path"] for entry in entries}
-        for path in (*CONTROL_FILES, *C.STORY_CONTROL_FILES):
-            if path not in names:
-                entries.append({"path": path, "mode": "100644", "git_sha": "0" * 40})
-                names.add(path)
-        entries.sort(key=lambda item: item["path"])
+        entries = diagnostic_entries(root, entries)
     names = {entry["path"] for entry in entries}
     C.require({*CONTROL_FILES, ORIGINAL_SPEC, "Hexalith.EventStore.slnx", "global.json", "Directory.Build.props",
                "Directory.Build.targets", "Directory.Packages.props", *C.CONTROL_FILES, *C.STORY_CONTROL_FILES} <= names,
@@ -504,7 +520,9 @@ def assert_stable(root, manifest, diagnostic=False):
     current = index_entries(root)
     if diagnostic:
         # Uncommitted bytes are allowed only for a standalone diagnostic run.
-        C.require({row["path"] for row in current} <= {row["path"] for row in expected}, "SOURCE_MISMATCH", "diagnostic membership changed")
+        actual = diagnostic_entries(root, current)
+        C.require([(row["path"], row["mode"]) for row in actual] == [(row["path"], row["mode"]) for row in expected],
+                  "SOURCE_MISMATCH", "diagnostic membership changed")
     else:
         C.require(current == expected, "SOURCE_MISMATCH", "source membership changed during evidence")
     for prefix, entries in [("", manifest["entries"]), *((item["path"], item["entries"]) for item in manifest["submodules"])]:
@@ -591,7 +609,7 @@ def materialize(root, scratch, manifest):
         runtime.append(copied)
     manifest = {**manifest, "runtime": runtime}
     if any(item["name"] == "dapr-runtime" for item in runtime):
-        (scratch / ".dapr").mkdir(exist_ok=True)
+        (scratch / ".dapr/components").mkdir(parents=True, exist_ok=True)
         (scratch / ".dapr/config.yaml").write_text('apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: story-5-3\nspec:\n  tracing:\n    samplingRate: "0"\n')
     (scratch / INVENTORY).write_bytes(C.canonical(manifest))
 
@@ -787,6 +805,39 @@ def capability_probe(scratch, source_root, dotnet, fallback):
     return found
 
 
+def cleanup_authentication_containers(owner, run):
+    """Reap only this invocation's labelled containers, including on lane timeout."""
+    C.require(re.fullmatch(r"[0-9a-f]{32}", owner) is not None, "STORY_EVIDENCE_FAILED", "invalid private topology owner")
+    label = "hexalith.eventstore.authentication-test-owner"
+    raw = run(["docker", "ps", "--all", "--filter", "label=" + label + "=" + owner,
+               "--format", "{{.ID}}", "--no-trunc"], "integration-auth-cleanup-list", timeout=30)
+    identifiers = raw.decode().splitlines()
+    C.require(len(identifiers) <= 32 and all(C.sha(item, 64) for item in identifiers),
+              "STORY_EVIDENCE_FAILED", "invalid private topology cleanup inventory")
+    failures = []
+    for index, identifier in enumerate(identifiers):
+        def disappeared():
+            current = run(["docker", "ps", "--all", "--filter", "id=" + identifier, "--format", "{{.ID}}", "--no-trunc"],
+                          "integration-auth-cleanup-absent-" + str(index), timeout=30).decode().splitlines()
+            C.require(current in ([], [identifier]), "STORY_EVIDENCE_FAILED", "invalid exact-container cleanup inventory")
+            return not current
+        try:
+            actual = json.loads(run(["docker", "inspect", "--format", '{{json (index .Config.Labels "' + label + '")}}', identifier],
+                                    "integration-auth-cleanup-owner-" + str(index), timeout=30).decode())
+            if actual != owner:
+                failures.append(identifier + ":ownership changed; refusing cleanup")
+                continue
+            run(["docker", "rm", "--force", identifier], "integration-auth-cleanup-remove-" + str(index), timeout=30)
+        except (C.Refusal, OSError, ValueError, subprocess.SubprocessError) as error:
+            try:
+                if disappeared():
+                    continue
+            except (C.Refusal, OSError, ValueError, subprocess.SubprocessError) as absence_error:
+                failures.append(identifier + ":absence check failed:" + type(absence_error).__name__)
+            failures.append(identifier + ":cleanup failed:" + type(error).__name__)
+    C.require(not failures, "STORY_EVIDENCE_FAILED", "private topology cleanup failures: " + "; ".join(failures))
+
+
 def execute(scratch, manifest, dotnet, fallback):
     """Execute only the fixed evidence plan. Continue collecting truthful gaps."""
     binding = summary(manifest)
@@ -807,6 +858,14 @@ def execute(scratch, manifest, dotnet, fallback):
                      "-p:NuGetAudit=false", "-p:MinVerVersionOverride=1.0.0", "-p:UseNuGetDeps=true",
                      "-p:RestoreFallbackFolders="]
     package_inputs = {}
+    authentication_owner = os.environ.get(AUTH_OWNER_ENV) or os.urandom(16).hex()
+    C.require(re.fullmatch(r"[0-9a-f]{32}", authentication_owner) is not None,
+              "STORY_EVIDENCE_FAILED", "invalid private topology owner")
+    environment[AUTH_OWNER_ENV] = authentication_owner
+    authentication_temp = os.environ.get(AUTH_TEMP_ENV)
+    C.require(authentication_temp is not None and Path(authentication_temp).is_dir(),
+              "STORY_EVIDENCE_FAILED", "prerequisite:private-authentication-temporary-space-missing")
+    environment[AUTH_TEMP_ENV] = authentication_temp
 
     def bind_packages(cache):
         for item in dependency_inventory(cache):
@@ -816,8 +875,11 @@ def execute(scratch, manifest, dotnet, fallback):
             package_inputs[key] = item["sha256"]
 
     def run(argv, label, timeout=180):
+        selected_environment = dict(environment)
+        if label == "integration-auth":
+            selected_environment.update({name: authentication_temp for name in ("TMPDIR", "TMP", "TEMP")})
         return C.Control.bounded_process(argv, scratch, str(work.relative_to(scratch) / (label + ".log")),
-                                         timeout_seconds=timeout, environment_extra=environment,
+                                         timeout_seconds=timeout, environment_extra=selected_environment,
                                          failure_code="STORY_EVIDENCE_FAILED", limit_code="STORY_EVIDENCE_LIMIT")
 
     def attempt(label, action):
@@ -848,6 +910,7 @@ def execute(scratch, manifest, dotnet, fallback):
                     names = {item["name"] for item in manifest.get("runtime", [])}
                     C.require("dapr-cli" in names, "STORY_EVIDENCE_FAILED", "prerequisite:dapr-cli-missing")
                     C.require("dapr-runtime" in names, "STORY_EVIDENCE_FAILED", "prerequisite:dapr-runtime-missing")
+                    (scratch / (AUTH_MARKER_PREFIX + authentication_owner)).touch(mode=0o600, exist_ok=False)
                 run([str(dotnet), str(assembly), "-xml", str(xml), *[argument for name in selectors for argument in ("-class", name)]], label)
                 bind_packages(work / "packages")
                 return counts(xml, selectors)
@@ -855,6 +918,9 @@ def execute(scratch, manifest, dotnet, fallback):
                 if xml.exists():
                     error.counts = counts(xml, selectors, passing=False)
                 raise
+            finally:
+                if label == "integration-auth":
+                    cleanup_authentication_containers(authentication_owner, run)
         attempt(label, test)
 
     def probes():
@@ -910,14 +976,32 @@ def run(root, manifest, diagnostic=False, logs=None):
     if "runtime" not in manifest:
         manifest["runtime"] = runtime_inventory(root)
     dotnet = Path(next(item["source"] for item in manifest["runtime"] if item["name"] == "dotnet"))
-    with tempfile.TemporaryDirectory(prefix="story-5-3-") as directory:
+    with tempfile.TemporaryDirectory(prefix="story-5-3-") as directory, \
+         tempfile.TemporaryDirectory(prefix="story-5-3-authentication-") as authentication_directory:
         scratch = Path(directory)
         materialize(root, scratch, manifest)
         # The explicit entry point is rerun in isolation, never a saved report.
-        output = C.Control.bounded_process([sys.executable, "-I", "-B", str(scratch / VALIDATOR), "--root", str(scratch), "--bound"],
-                                           scratch, "evidence.json", timeout_seconds=2400,
-                                           failure_code="STORY_EVIDENCE_FAILED", limit_code="STORY_EVIDENCE_LIMIT",
-                                           accept_failure=True, environment_extra={"PATH": str(dotnet.parent) + os.pathsep + "/usr/local/bin" + os.pathsep + os.defpath})
+        owner = os.urandom(16).hex()
+        environment = {"PATH": str(dotnet.parent) + os.pathsep + "/usr/local/bin" + os.pathsep + os.defpath,
+                       AUTH_OWNER_ENV: owner, AUTH_TEMP_ENV: authentication_directory}
+        try:
+            output = C.Control.bounded_process([sys.executable, "-I", "-B", str(scratch / VALIDATOR), "--root", str(scratch), "--bound"],
+                                               scratch, "evidence.json", timeout_seconds=2400,
+                                               failure_code="STORY_EVIDENCE_FAILED", limit_code="STORY_EVIDENCE_LIMIT",
+                                               accept_failure=True, environment_extra=environment)
+        finally:
+            # The bounded validator can itself be killed before its inner
+            # finally runs. Its still-live parent retains the same exact owner.
+            try:
+                if (scratch / (AUTH_MARKER_PREFIX + owner)).exists():
+                    cleanup_authentication_containers(owner, lambda argv, label, timeout:
+                        C.Control.bounded_process(argv, scratch, "outer-" + label + ".log", timeout_seconds=timeout,
+                            environment_extra=environment, failure_code="STORY_EVIDENCE_FAILED", limit_code="STORY_EVIDENCE_LIMIT"))
+            finally:
+                if logs is not None:
+                    for path in [*(scratch / ".story-5-3-work").glob("*"), *scratch.glob("outer-integration-auth-cleanup-*.log")]:
+                        if path.is_file() and path.suffix in (".log", ".xml"):
+                            shutil.copyfile(path, logs / path.name)
         report = C.parse(output)
         validate_report(report, summary(manifest))
         if logs is not None:

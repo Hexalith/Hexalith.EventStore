@@ -6701,3 +6701,11 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-nfr-completion-adapter.md`
   summary: Add guarded concurrent business-source edit tests for both completion targets before claiming any genuine complete Story 5.3 completion.
   evidence: Review VG2 traced the final inventory check at the atomic write boundary; current genuine NFR4 evidence cannot reach a positive write. Do not replace this prerequisite with fabricated business PASS.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-private-authentication-integration.md`
+  summary: Correct the concurrent production-profile actor-component naming rule to match AD-5.
+  evidence: `docs/architecture/production-profile-v1.md:47` requires every actor component to be named statestore, while `_bmad-output/planning-artifacts/architecture.md` AD-5 reserves that name for EventStore and requires distinct names for other components in a namespace; introduced by concurrent commit f85419d501f279e9a813435aa73538185ad26ada.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-private-authentication-integration.md`
+  summary: Align the concurrent production-profile documentation's validator and codec claims with delivered functionality.
+  evidence: `docs/architecture/production-profile-v1.md:119` describes ProductionProfileValidator.Validate and canonical encoding/decoding, but the concurrent commit contains contract records and no validator or codec implementation; completion remains separate Story 3.19 work.
