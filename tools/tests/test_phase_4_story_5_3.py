@@ -115,14 +115,77 @@ class AdapterContracts(unittest.TestCase):
         self.assertEqual('RESULT_MISMATCH', caught.exception.code)
         self.assertEqual({}, state['responses'])
 
-    def test_guarded_driver_missing_repository_input_fails_nonzero_without_success(self):
+    def test_guarded_driver_git_metadata_paths_are_refused_before_writes(self):
+        scratch = self.root / 'wrapper-scratch'
+        scratch.mkdir()
+        for layout in ('ordinary', 'linked-worktree'):
+            source = self.root / layout
+            source.mkdir()
+            A.write_index(source, [])
+            metadata = source / '.git'
+            if layout == 'linked-worktree':
+                common = self.root / 'shared-metadata'
+                metadata.rename(common)
+                metadata = common / 'worktrees/fixture'
+                metadata.mkdir(parents=True)
+                (metadata / 'HEAD').write_text('ref: refs/heads/diagnostic\n')
+                (metadata / 'commondir').write_text('../..\n')
+                (metadata / 'gitdir').write_text(str(source / '.git') + '\n')
+                (source / '.git').write_text('gitdir: ' + str(metadata) + '\n')
+                destinations = [metadata / 'proof', common / 'proof']
+            else:
+                common = metadata
+                destinations = [metadata / 'proof']
+            (common / 'preserved-input').write_bytes(b'Git metadata must survive unchanged.\n')
+            original = {path.relative_to(common): path.read_bytes() for path in common.rglob('*') if path.is_file()}
+            for logs in destinations:
+                with self.subTest(layout=layout, destination=logs):
+                    output = io.StringIO()
+                    with mock.patch.object(G, 'ROOT', source), mock.patch.dict(os.environ, TMPDIR=str(scratch)), \
+                         mock.patch.object(G, 'prove', side_effect=AssertionError('proof must not run')) as prove, \
+                         contextlib.redirect_stdout(output):
+                        code = G.main(['--logs', str(logs)])
+                    report = json.loads(output.getvalue())
+                    self.assertNotEqual(0, code)
+                    self.assertEqual(('FAIL', 'INPUT_INVALID'), (report['result'], report['code']))
+                    self.assertIn('Git metadata', report['diagnostic'])
+                    prove.assert_not_called()
+                    self.assertFalse(logs.exists())
+                    self.assertEqual(original, {path.relative_to(common): path.read_bytes()
+                                               for path in common.rglob('*') if path.is_file()})
+
+    def test_guarded_driver_dotdot_path_inside_tmpdir_is_refused_before_writes(self):
+        scratch = self.root / 'wrapper-scratch'
+        scratch.mkdir()
+        sentinel = scratch / 'preserved-input'
+        sentinel.write_bytes(b'Temporary input must survive unchanged.\n')
+        sibling = self.root / 'sibling'
+        sibling.mkdir()
+        logs = sibling / '..' / scratch.name / 'discarded-evidence'
+        output = io.StringIO()
+        with mock.patch.dict(os.environ, TMPDIR=str(scratch)), \
+             mock.patch.object(G, 'prove', side_effect=AssertionError('proof must not run')) as prove, \
+             contextlib.redirect_stdout(output):
+            code = G.main(['--logs', str(logs)])
+        report = json.loads(output.getvalue())
+        self.assertNotEqual(0, code)
+        self.assertEqual(('FAIL', 'INPUT_INVALID'), (report['result'], report['code']))
+        self.assertIn('persistent', report['diagnostic'])
+        prove.assert_not_called()
+        self.assertFalse(logs.exists())
+        self.assertEqual([sentinel], list(scratch.iterdir()))
+        self.assertEqual(b'Temporary input must survive unchanged.\n', sentinel.read_bytes())
+
+    def test_guarded_driver_valid_persistent_dotdot_path_retains_missing_input_failure(self):
         # An actual absent private Git authority reaches main's diagnostic path;
         # no business result or prerequisite exception is substituted here.
         scratch = self.root / 'wrapper-scratch'
         scratch.mkdir()
         source = self.root / 'missing-repository'
         source.mkdir()
-        logs = self.root / 'retained-failure'
+        sibling = self.root / 'sibling'
+        sibling.mkdir()
+        logs = sibling / '..' / 'retained-failure'
         output = io.StringIO()
         with mock.patch.object(G, 'ROOT', source), mock.patch.dict(os.environ, TMPDIR=str(scratch)), \
              contextlib.redirect_stdout(output):

@@ -6700,8 +6700,9 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-nfr-completion-adapter.md`
   summary: Add guarded concurrent business-source edit tests for both completion targets before claiming any genuine complete Story 5.3 completion.
-  evidence: Review VG2 traced the final inventory check at the atomic write boundary; current genuine NFR4 evidence cannot reach a positive write. Do not replace this prerequisite with fabricated business PASS. Local progress on 2026-11-16 is recorded in spec-9-2-story-5-3-guarded-concurrent-write-proof.md: a new explicit driver uses real private Git identities, complete fresh Story 5.3 evidence and synthetic HTTP facts. Run-4 proves the spec positive write and final-preparation SOURCE_MISMATCH with preserved edit/destination and removed tempfile after three complete passing executions. Tracker evaluation then genuinely fails KeycloakAuthenticationTests.ConcurrentTenantCommands_EventsRemainIsolated at the unchanged 15-second HTTP timeout under high load; tracker positive/race paths and six-execution overall PASS remain unproven. Private head f21ddd9cc0a59019569b0582e872d486fae9ee30, tree 62151abf8c04f596b928e8b2111632d197e82951, inventory 224ea7c7a527e2ca42f0cbf571e34bdc987570282962fbd8147133b68b9bbf85 bind the observed partial proof; later concurrent production HEAD 0be0c922883d4ea61b18e843e24472162261d934 is preserved and needs a fresh capture. Earlier failures remain historical FAIL; no live assurance, NFR/readiness or parent closure is claimed.
-  status: open
+  evidence: Review VG2 traced the final inventory check at the atomic write boundary; current genuine NFR4 evidence cannot reach a positive write. Do not replace this prerequisite with fabricated business PASS. Historical local progress on 2026-11-16 is recorded in spec-9-2-story-5-3-guarded-concurrent-write-proof.md: a new explicit driver uses real private Git identities, complete fresh Story 5.3 evidence and synthetic HTTP facts. Run-4 proves the spec positive write and final-preparation SOURCE_MISMATCH with preserved edit/destination and removed tempfile after three complete passing executions. Tracker evaluation then genuinely fails KeycloakAuthenticationTests.ConcurrentTenantCommands_EventsRemainIsolated at the unchanged 15-second HTTP timeout under high load; tracker positive/race paths and six-execution overall PASS remain unproven. Private head f21ddd9cc0a59019569b0582e872d486fae9ee30, tree 62151abf8c04f596b928e8b2111632d197e82951, inventory 224ea7c7a527e2ca42f0cbf571e34bdc987570282962fbd8147133b68b9bbf85 bind the observed partial proof; later concurrent production HEAD 0be0c922883d4ea61b18e843e24472162261d934 is preserved and needs a fresh capture. Earlier failures remain historical FAIL; no live assurance, NFR/readiness or parent closure is claimed. Resumption run-5 against shared d8171e6cc18cd4b67ea310822b36e49d007fa2ec captures current v2 code and refuses its first evaluation for the static unknown-field canary in ProductionProfileV2Tests.cs: 20/21 lanes PASS, 688/689 .NET cases, scripts 56/56, probes 7/7 and authentication 29/29. No writer is reached. Its private head/tree is 4f95a073a6ac6f06a4d741127c728f19f58000a6 / fa25ffb3f907f040c4483c0e7e3d5c9ed95ee2ea; inventory 0736497f0a569f41efeb7a3c28f17c7e8f924fb227889b47d02bcd4067380003 binds 19,318 source files and nine root gitlinks. The equivalent runtime-canary prerequisite repair retains non-echo coverage; fresh complete profile, publication-authority and scanner checks pass 235/235, 25/25 and 299/299. The failed isolated Aspire baseline and exact-owned recovery remain explicit limitations. Six fresh passing business executions and both target outcomes remain required; VG2 stays open. Subsequent fresh run-6 completes the local VG2 proof: six complete genuine PASS executions, 126/126 fixed lanes, 4,134/4,134 .NET cases, 336/336 scripts and 42/42 probes. Both targets pass their real guarded write after fresh shared consumption; both final-preparation source edits return SOURCE_MISMATCH, reach the boundary once, preserve edit/destination and remove the tempfile. Private head/tree e83513343fa13224510d834fbba0e73964b90658 / 24a05aa7561966737417a37b9735055e355413f1 and common inventory d063e8c0499f7fbe11bd0ac79ffd4ffeb52a22c8e34595b36849cb586683f5ad bind 19,318 source files and nine root gitlinks. The full individual transition suite also passes 43/43. Owned children, exact-owner authentication containers and wrapper scratch are cleaned. Historical failures and the failed pre-edit Aspire resource-state baseline remain explicit; platform facts are synthetic and no live approval/seal/CI, whole-NFR/readiness or parent closure follows.
+  status: done 2026-11-16
+  resolution: Local guarded-write regression gap resolved by fresh six-execution run-6; workflow review and all live assurance remain separate.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-private-authentication-integration.md`
   summary: Correct the concurrent production-profile actor-component naming rule to match AD-5.
@@ -6710,3 +6711,39 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-private-authentication-integration.md`
   summary: Align the concurrent production-profile documentation's validator and codec claims with delivered functionality.
   evidence: `docs/architecture/production-profile-v1.md:119` describes ProductionProfileValidator.Validate and canonical encoding/decoding, but the concurrent commit contains contract records and no validator or codec implementation; completion remains separate Story 3.19 work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Respect the existing namespace resolver in the typed Gateway query emitter.
+  evidence: BH1: directly appending AssemblyName produces invalid C# for Owner-Client and ignores RootNamespace. RestApiNamespaceResolver already provides the sanitizer. Separately committed generator behavior predates this guarded-write resumption.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Validate null attribute result arguments before emitting typed Gateway bindings.
+  evidence: BH2: TypedGatewayQueryEmitter dereferences a nullable Roslyn typed constant, aborting generation for otherwise valid declarations. Reviewer reproduced NullReferenceException in scratch; parent confirmed the unguarded dereference. Separately owned generator work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Reject unsupported typed Gateway result shapes with diagnostics.
+  evidence: BH3: void and unbound generic result symbols become illegal generated generic arguments; reviewer reproduced compiler errors and parent confirmed emission lacks shape validation. Separately owned generator work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Validate effective result accessibility before emitting public typed Gateway methods.
+  evidence: BH4: an internal result exposed by the public generated method creates CS0050; the emitter has no accessibility guard. Separately owned generator work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Diagnose static query request declarations before typed Gateway emission.
+  evidence: BH5: Collect admits attributed public static classes, which emission uses as parameter and generic argument types; reviewer reproduced CS0721/CS0718. Separately owned generator work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Traverse accessible nested query declarations or diagnose their unsupported shape.
+  evidence: BH6: Collect visits namespace members but never containing types; a public Outer.Query receives no binding. Parent confirmed the traversal and reviewer reproduced omission. Separately owned generator work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Confirm the permitted referenced-assembly enrollment for typed Gateway query declarations.
+  evidence: BH7, unverified medium: the emitter explicitly documents directly referenced Contracts and filters .Contracts. An owning contract/owner decision is needed to establish whether .Requests must also enroll; if required, those attributed declarations are silently omitted. Separately owned generator work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Execute a generated typed Gateway binding and assert its complete request mapping.
+  evidence: VG1 preverified: both new generator tests compile and inspect strings without invoking QueryAsync. Swapping tenantId and aggregateId still compiles and preserves all asserted substrings. Add runtime request/payload and typed-result assertions through the real Gateway HTTP boundary. Separately committed generator behavior, outside guarded-write intent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
+  summary: Assert the Gateway correlation response header after handled exceptions.
+  evidence: BH10/VG2: DefaultHttpContext middleware tests never start the response; the real authorization-unavailable 503 test asserts only body correlation and Retry-After. Removing the added OnStarting block remains unobserved. Add a known caller correlation and exact completed-response header assertion. Separately committed middleware behavior, outside guarded-write intent.

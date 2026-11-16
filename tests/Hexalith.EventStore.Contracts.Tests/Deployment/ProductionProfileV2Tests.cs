@@ -285,12 +285,13 @@ public class ProductionProfileV2Tests
     [Fact]
     public void ClosedSchemaNeverEchoesUntrustedFieldsAndDoesNotMakeOtherFieldsNullable()
     {
-        const string secret = "credential-value-must-not-appear";
+        string canary = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         JsonNode node = Node();
-        Component(node, "component:containerd")[secret] = secret;
+        Component(node, "component:containerd")[canary] = canary;
         ProductionProfileValidationException failure = Should.Throw<ProductionProfileValidationException>(() => ProductionProfileV2Codec.Decode(Encoding.UTF8.GetBytes(node.ToJsonString()), Context));
         failure.Issues.ShouldContain(new ProductionProfileIssue("$.components[4]", "unknown-field"));
-        failure.Message.ShouldNotContain(secret);
+        failure.Message.ShouldNotContain(canary);
+        failure.Message.ShouldNotContain("credential-value-must-not-appear");
         node = Node();
         Component(node, "component:containerd").AsObject().Remove("bundleParentId");
         Should.Throw<ProductionProfileValidationException>(() => ProductionProfileV2Codec.Decode(Encoding.UTF8.GetBytes(node.ToJsonString()), Context))

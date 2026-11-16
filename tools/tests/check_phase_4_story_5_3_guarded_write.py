@@ -245,7 +245,12 @@ def main(argv=None):
     try:
         C.require(os.environ.get("TMPDIR") and Path(os.environ["TMPDIR"]).is_dir(), "INPUT_INVALID", "run this driver through run-with-temp", 2)
         C.require(not logs.exists() and not any(path.is_symlink() for path in (logs, *logs.parents))
-                  and not logs.is_relative_to(Path(os.environ["TMPDIR"]).resolve()), "INPUT_INVALID", "logs need a new persistent directory without symbolic parents", 2)
+                  and not logs.resolve().is_relative_to(Path(os.environ["TMPDIR"]).resolve()), "INPUT_INVALID", "logs need a new persistent directory without symbolic parents", 2)
+        metadata = [ROOT / ".git"]
+        if metadata[0].exists():
+            metadata.extend(Path(path) for path in A.git(ROOT, "rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir").decode().splitlines())
+        C.require(not any(logs.resolve().is_relative_to(path.resolve()) for path in metadata),
+                  "INPUT_INVALID", "logs cannot write Git metadata", 2)
         logs.mkdir(parents=True, mode=0o700)
         created = True
         result = prove(ROOT, logs)
