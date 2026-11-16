@@ -14,6 +14,10 @@
       "sha256": "2898c19e3fcf09827093321de597bbd3c23b1c614fd11c06efdd733eb192f69a",
       "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
     },
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs": {
+      "sha256": "97764901a957fdf14f27fa112c1f4ad0c1e88632221ac7626233890d35629248",
+      "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
+    },
     "tools/dapr_broker_qualification.py": {
       "sha256": "cb5ef764c64eebdd8f3ec93a9bdad677510d63a615f4b23db5c85ccc6f9d017b",
       "sourceRevision": "c94e6fffaf2d689c94bb288f151a65e10a2fea82"
