@@ -137,7 +137,8 @@ development_status:
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-COMPAT, FR36-C3 publication
   # authority, and FR36-C4/C5 consumer-removal authority owners.
   3-18-public-surface-compatibility-baseline-and-release-gate: backlog
-  3-19-publication-authority-record-and-canonical-production-profile: backlog
+  3-19-publication-authority-record-and-canonical-production-profile: in-progress
+  # 2026-11-16: Profile schema/codec/structural-validation construction slice completed and reviewed; publication, qualified inventory, ratification and authority issuance remain outstanding.
   3-20-consumer-removal-authority-manifest-and-validator: backlog
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07-architecture-routing): runtime pin and
   # durable-broker qualification for the AD-26 profile; a Story 3.19 issue-step prerequisite.

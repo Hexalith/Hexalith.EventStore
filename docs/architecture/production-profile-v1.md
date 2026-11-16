@@ -46,7 +46,8 @@ an endpoint or a credential. Actor components require exactly one such target.
 
 Actor-hosting apps have exactly one actor-state component, scoped solely to
 their scoped app ID, in their cluster and namespace. It uses the selected
-template actor type/version and component name `statestore`. No other component
+template actor type/version; EventStore's component name is `statestore`, with
+other actor-component names subject to the same scoped uniqueness rule. No other component
 may bind the same database/host/port and intersecting table or metadata table;
 distinct target IDs cannot evade isolation. Actor-hosting apps cannot scope into
 another app's actor component. Other state and shared reads are separately
@@ -55,6 +56,34 @@ name/map-key/generation records with explicit consumer and dependent component
 IDs; no credential value, provider connection string, URI userinfo, query or
 fragment is accepted in an endpoint. Reference presence says nothing about
 OpenBao grants or the referenced secret's contents.
+
+Component credential lists and each credential's component associations are
+reciprocal. Every credential associated with an actor component is restricted
+to that component and its sole scoped app, including an association declared
+only on the credential. Distinct reference IDs cannot alias the same
+`(store, logicalName, mapKey, generation)` tuple when either reference is actor
+material. The issuer bootstrap reference explicitly names the issuer component;
+an existing app-token reference alone cannot supply that association.
+`ReviewedBindingsRefuseAtExactSafePaths` covers logical aliases, reverse-only
+associations and unrelated bootstrap references independently.
+
+Physical host comparisons ignore DNS case and trailing dots before checking
+database/port/table overlap (`dns-alias`). A `state.*` component must declare
+`stateful: true` and appear in restore coverage even if that flag is falsified
+(`hidden-state`, `hidden-state-restore`). Placement restoration is required
+independently of its stateful flag and semantic coverage (`placement-restore`).
+
+Both the declared OpenBao floor and observed server use three-part versions
+meeting the architecture inventory's patched branches: 2.6.x requires at least
+2.6.4; 2.7.x and later require at least 2.7.1. The observed version also meets
+the declared floor and exactly matches the selected provider version. The
+selected provider kind is `OpenBao` with role `secrets`. Lower self-declared
+floors, unpatched 2.7.0 and mismatched provider pins refuse; patched branches
+have separate positive controls. Management/workload provider selections name
+`Kubernetes` with roles `management`/`workload`, and Rancher names `Rancher`
+with role `management`. Existence of an unrelated provider ID is insufficient.
+An application's image digest matches an artifact of kind `composed-image`,
+`module-image` or `extension-image`; a package digest cannot serve as an image.
 
 ## AD-26 and approved design mapping
 
@@ -93,6 +122,41 @@ Restore coverage contains `actor-events-revisions-erasure-completion`,
 including scheduler and placement. Each unit appears once in `restore.order`,
 and every such unit is explicitly forbidden from independent restoration.
 
+## Structural evidence associations
+
+Each section's evidence IDs resolve to references whose collective subject
+digests include its concrete identities below and whose collective coverage
+includes every listed category. Each attached reference has at least one
+relevant subject and category. App/component associations remain explicit on
+each corresponding reference; combined scheduler/placement and restore
+references collectively enumerate their required component IDs. Extra subjects
+and categories are permitted, so one reference can cover several sections.
+This checks declarations only, without authenticating evidence or evaluating
+the referenced proof.
+
+| Referencing section | Required subjects | Required coverage |
+| --- | --- | --- |
+| Application | Image, sidecar image, effective configuration, ACL and resiliency digests | `application`, with that app ID |
+| Component | Loaded identity, ACL, resiliency, migration and provider immutable digests | `component`, with that component ID |
+| Release | Composed host, Helm, catalog content, McpCli, runtime image, realm/recovery/check-suite contracts, every retained artifact and extension digest | `release` |
+| CLI compatibility | Runtime image digest | `runtime`, `cli-compatibility` |
+| Broker | Broker contract and loaded component identity | `broker`, with the broker component ID |
+| Scheduler/placement | Both configuration digests | `scheduler-reminders-and-jobs`, `placement`, with every selected component ID |
+| Catalogs | Root, route, idempotency, content, AD-34 inventory and register digests | `catalogs`, `ad34` |
+| Protection | Transaction semantics, placement/failover, authorized erasure and writer implementation digests | `append-erasure` and every mandatory append semantic |
+| Issuer | Contract and assertion configuration digests | `issuer`, with the issuer component ID |
+| Freshness | Posture digest | `freshness`, with the EventStore app ID |
+| Restore | Accepted posture digest | `restore` and all required restore semantics, with every restore-unit component ID |
+| Physical target association | Its provider immutable digest | `physical-target`, with that target ID |
+
+`EvidenceSubjectsMustBindEachReferencingSection` removes one distinct subject
+at a time. `EvidenceSemanticCoverageCannotBeReplacedByUnrelatedNonemptyCoverage`
+retains subjects while omitting one required category. The synthetic vector
+uses 90 distinct subject digests; equal placeholder digests cannot mask a wrong
+binding. Independent component-association and placement-restore omissions
+retain the other associations and all semantic coverage. Representative nested
+null, reference and binding regressions assert exact schema `Path`/`Code` pairs.
+
 ## Canonical bytes and digest domains
 
 Encoding is UTF-8 without BOM, whitespace, trailing bytes or final LF. Object
@@ -102,6 +166,9 @@ ordinally. `restore.order` alone retains declared order. Duplicate set members
 refuse. Floats, comments, unsupported versions, documents over 4 MiB, depth over
 32 and any input bytes differing from the canonical re-encoding refuse on
 decode. The decoder captures caller-owned buffers before parsing and comparison.
+Direct model validation applies the same canonical-byte size limit and returns
+`($, size-limit)` with no digests; `DirectValidationEnforcesTheCodecCanonicalByteLimit`
+covers a structurally complete oversized model, including string escaping.
 
 The infrastructure preimage is the canonical object
 `{"infrastructure":I,"purpose":"platform-infrastructure-profile","schemaVersion":1,"template":T}`.

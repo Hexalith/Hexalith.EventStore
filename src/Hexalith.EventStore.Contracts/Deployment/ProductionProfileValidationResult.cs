@@ -12,8 +12,8 @@ public sealed record ProductionProfileValidationResult(
     IReadOnlyList<ProductionProfileIssue> Issues)
 {
     /// <summary>Gets the constant absence of an authorization evaluation.</summary>
-    public string Authorization => "unevaluated";
+    public string Authorization { get; } = "unevaluated";
 
     /// <summary>Gets the constant absence of an authenticated qualification evaluation.</summary>
-    public string Qualification => "unevaluated";
+    public string Qualification { get; } = "unevaluated";
 }
