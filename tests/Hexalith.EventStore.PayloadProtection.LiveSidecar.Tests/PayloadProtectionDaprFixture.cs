@@ -55,7 +55,8 @@ public sealed class PayloadProtectionDaprFixture : IAsyncLifetime
                 """;
             await File.WriteAllTextAsync(Path.Combine(_directory, "statestore.yaml"), component).ConfigureAwait(false);
             await WaitPostgresAsync().ConfigureAwait(false);
-            string daprd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", OperatingSystem.IsWindows() ? "daprd.exe" : "daprd");
+            string daprd = Environment.GetEnvironmentVariable("EVENTSTORE_PAYLOAD_DAPRD")
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", OperatingSystem.IsWindows() ? "daprd.exe" : "daprd");
             string version = await RunAsync(daprd, ["--version"]).ConfigureAwait(false);
             if (version.Trim() != "1.18.7") { throw new InvalidOperationException("PF-02 requires the selected Dapr runtime 1.18.7."); }
             _sidecar = Start(daprd, ["--app-id", _identity, "--resources-path", _directory,

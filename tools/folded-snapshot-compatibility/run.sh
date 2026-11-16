@@ -5,6 +5,10 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fixture_root="$repo_root/tools/folded-snapshot-compatibility"
 old_version="${FOLDED_SNAPSHOT_OLD_VERSION:-3.119.0}"
 configuration="${FOLDED_SNAPSHOT_CONFIGURATION:-Release}"
+pack_options=()
+if [[ "${FOLDED_SNAPSHOT_REUSE_OUTPUTS:-false}" == "true" ]]; then
+    pack_options=(--no-build --no-restore)
+fi
 new_version="99.6.2-local$(date +%s%N)"
 work_root="$(mktemp -d)"
 trap 'rm -rf "$work_root"' EXIT
@@ -13,7 +17,7 @@ mkdir -p "$package_root" "$work_root/old" "$work_root/current"
 
 for project in Contracts Client ServiceDefaults DomainService Server; do
     dotnet pack "$repo_root/src/Hexalith.EventStore.$project/Hexalith.EventStore.$project.csproj" \
-        --configuration "$configuration" -m:1 -p:Version="$new_version" \
+        "${pack_options[@]}" --configuration "$configuration" -m:1 -p:Version="$new_version" \
         -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low \
         -p:UseHexalithProjectReferences=false \
         -o "$package_root"

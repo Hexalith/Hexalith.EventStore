@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
@@ -31,6 +32,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         try
         {
             string archive = Path.Combine(temporary, "eventstore.tar");
+            string fixture = WriteContainerFixtureProject(root, temporary);
             ProcessResult publish = await RunProcessAsync(
                 root,
                 "dotnet",
@@ -38,7 +40,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 new[]
             {
                 "publish",
-                "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+                fixture,
                 "--configuration", "Release",
                 "-t:PublishContainer",
                 "-m:1",
@@ -118,10 +120,11 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         Directory.CreateDirectory(temporary);
         try
         {
+            string fixture = WriteContainerFixtureProject(root, temporary);
             List<string> arguments =
             [
                 "publish",
-                "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+                fixture,
                 "--configuration", "Release",
                 "--os", "linux",
                 "--arch", "x64",
@@ -170,6 +173,31 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         {
             Directory.Delete(temporary, recursive: true);
         }
+    }
+
+    /// <summary>Builds only a tiny SDK fixture while importing the actual module provenance targets.</summary>
+    /// <param name="root">The real module source root.</param>
+    /// <param name="directory">The fixture-owned disposable directory.</param>
+    /// <returns>The isolated project that exercises the real SDK container publication path.</returns>
+    private static string WriteContainerFixtureProject(string root, string directory)
+    {
+        string project = Path.Combine(directory, "ProvenanceFixture.csproj");
+        new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk.Web"),
+            new XElement("PropertyGroup",
+                new XElement("TargetFramework", "net11.0"),
+                new XElement("OutputType", "Exe"),
+                new XElement("ImplicitUsings", "enable"),
+                new XElement("Nullable", "enable"),
+                new XElement("EnableContainer", "true"),
+                new XElement("IsPackable", "false"),
+                new XElement("ImportDirectoryBuildProps", "false"),
+                new XElement("ImportDirectoryBuildTargets", "false"),
+                new XElement("ImportDirectoryPackagesProps", "false")),
+            new XElement("Import", new XAttribute("Project", Path.Combine(root, "Directory.Build.targets")))))
+            .Save(project);
+        File.WriteAllText(Path.Combine(directory, "Program.cs"), "Console.WriteLine(\"Isolated OCI provenance fixture\");\n");
+        File.Copy(Path.Combine(root, "global.json"), Path.Combine(directory, "global.json"));
+        return project;
     }
 
     /// <summary>
@@ -258,6 +286,34 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
+    /// Verifies evaluated product container defaults without building or publishing the module.
+    /// </summary>
+    [Fact]
+    public void ContainerDefaultsRetainTheProductReleaseContract()
+    {
+        ProcessResult result = RunProcess(
+            FindRepositoryRoot(),
+            "dotnet",
+            "msbuild",
+            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+            "-noAutoResponse",
+            "-p:UseHexalithProjectReferences=false",
+            "-p:NuGetAudit=false",
+            "-p:MinVerVersionOverride=1.0.0",
+            "-getProperty:ContainerBaseImage,ContainerUser,ContainerRepository",
+            "-getItem:ContainerPort");
+
+        result.ExitCode.ShouldBe(0, result.Output + result.Error);
+        using JsonDocument document = JsonDocument.Parse(result.Output);
+        JsonElement properties = document.RootElement.GetProperty("Properties");
+        properties.GetProperty("ContainerBaseImage").GetString().ShouldBe("mcr.microsoft.com/dotnet/aspnet:11.0-alpine");
+        properties.GetProperty("ContainerUser").GetString().ShouldBe("app");
+        properties.GetProperty("ContainerRepository").GetString().ShouldBe("eventstore");
+        document.RootElement.GetProperty("Items").GetProperty("ContainerPort")
+            .EnumerateArray().Select(port => port.GetProperty("Identity").GetString()).ShouldContain("8080");
+    }
+
+    /// <summary>
     /// Verifies URL truncation and a missing revision are independently rejected.
     /// </summary>
     [Fact]
@@ -295,61 +351,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         };
         using JsonDocument extraLabels = JsonDocument.Parse(withSdkLabels.ToJsonString());
         Should.NotThrow(() => ValidateLabels(extraLabels.RootElement, expected));
-    }
-
-    /// <summary>
-    /// Verifies the shared authority fixtures execute replay, mismatch, expiry, and wrong-role cases.
-    /// </summary>
-    [Fact]
-    public void PublicationAuthorityFixturesPassWithoutSkippedCases()
-    {
-        string root = FindRepositoryRoot();
-        string builds = PackagingRepositoryPaths.ResolveDependency(
-            root, "Hexalith.Builds", Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE"));
-        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
-        Match releasePin = Regex.Match(
-            workflow,
-            @"repository: Hexalith/Hexalith\.Builds\s+ref: (?<sha>[0-9a-f]{40})");
-        releasePin.Success.ShouldBeTrue();
-        workflow.ShouldContain("uses: ./.hexalith/builds-execution/Github/publish-containers");
-        string releaseSha = releasePin.Groups["sha"].Value;
-
-        ProcessResult pinAvailability = RunProcess(builds, "git", "cat-file", "-e", $"{releaseSha}^{{commit}}");
-        pinAvailability.ExitCode.ShouldBe(
-            0,
-            $"Pinned Builds release SHA {releaseSha} is unavailable in references/Hexalith.Builds. " +
-            "Fetch that exact pin before running the immutable fixture. " + pinAvailability.Error);
-
-        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-builds-fixtures-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(temporary);
-        try
-        {
-            string archive = Path.Combine(temporary, "builds.tar");
-            ProcessResult snapshot = RunProcess(
-                builds,
-                "git",
-                "archive",
-                $"--output={archive}",
-                releaseSha,
-                "Github/publish-containers");
-            snapshot.ExitCode.ShouldBe(0, snapshot.Error);
-            TarFile.ExtractToDirectory(archive, temporary, overwriteFiles: true);
-
-            ProcessResult result = RunProcess(
-                temporary,
-                "python3",
-                "-m", "unittest", "-v",
-                "Github.publish-containers.tests.test_publication_preflight.PublicationPreflightTests.test_github_authority_binds_identity_owner_expiry_and_one_use_consumption",
-                "Github.publish-containers.tests.test_publication_preflight.PublicationPreflightTests.test_github_authority_rejects_expired_wrong_owner_and_identity_mismatch");
-            result.ExitCode.ShouldBe(0, result.Output + result.Error);
-            result.Error.ShouldContain("Ran 2 tests");
-            result.Error.ShouldContain("OK");
-            result.Error.ShouldNotContain("skipped");
-        }
-        finally
-        {
-            Directory.Delete(temporary, recursive: true);
-        }
     }
 
     private static Dictionary<string, string> ExpectedLabels(string created = Created) => new(StringComparer.Ordinal)

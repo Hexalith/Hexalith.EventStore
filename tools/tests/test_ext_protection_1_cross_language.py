@@ -35,12 +35,19 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
                     'DeletionCapabilitySigningOutcome.cs', 'DeletionCapabilitySigningState.cs', 'DeletionCapabilityNoIssueProof.cs',
                     'DeletionCapabilitySigningSuccessor.cs')]]
         contracts = ROOT / 'src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj'
+        if project_references == 'false':
+            contracts_output = contracts.parent / 'bin' / configuration / 'net11.0/Hexalith.EventStore.Contracts.dll'
+            if not contracts_output.is_file():
+                raise ValueError('Package-mode interop requires the shared prebuilt Contracts output: ' + str(contracts_output))
+            reference = '<Reference Include="Hexalith.EventStore.Contracts"><HintPath>' + escape(str(contracts_output)) + '</HintPath></Reference>'
+        else:
+            reference = '<ProjectReference Include="' + escape(str(contracts)) + '" />'
         project = cls.directory / 'Interop.csproj'
         project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
                            '<TargetFramework>net11.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings>'
                            '<Nullable>enable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems>'
                            '</PropertyGroup><ItemGroup>' + ''.join('<Compile Include="' + escape(str(source)) + '" />' for source in sources)
-                           + '<ProjectReference Include="' + escape(str(contracts)) + '" /></ItemGroup></Project>')
+                           + reference + '</ItemGroup></Project>')
         command = ['dotnet', 'build', str(project), '--configuration', configuration,
                    '-p:UseHexalithProjectReferences=' + project_references, '-m:1', '-nodeReuse:false', '--nologo']
         result = subprocess.run(command, capture_output=True, text=True, timeout=180)

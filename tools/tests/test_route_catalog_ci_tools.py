@@ -1,12 +1,13 @@
 """Execute the actual catalog CI Docker-selection prefix against owned fake tooling."""
 
-import ast
 import hashlib
 import io
 import json
 import os
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 import tarfile
 import unittest
 from unittest import mock
@@ -15,20 +16,14 @@ from unittest import mock
 class RouteCatalogCiToolsTests(unittest.TestCase):
     def preparation_source(self):
         root = Path(__file__).resolve().parents[2]
-        workflow = (root / ".github/workflows/integration.yml").read_text()
-        block = workflow.split("- name: Prepare pinned route catalog Development tools", 1)[1]
-        source = block.split("python3 - <<'PY'\n", 1)[1].split("\n          PY", 1)[0]
-        return root, "\n".join(line[10:] for line in source.splitlines())
+        return root, (root / "tools/prepare-route-catalog-tools.py").read_text()
 
     def run_preparation(self, context, host, endpoint):
         root, source = self.preparation_source()
-        parsed = ast.parse(source)
-        prefix = []
-        for statement in parsed.body:
-            if isinstance(statement, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "version" for target in statement.targets):
-                break
-            prefix.append(statement)
-        program = compile(ast.Module(body=prefix, type_ignores=[]), str(root / ".github/workflows/integration.yml"), "exec")
+        namespace = {"__file__": str(root / "tools/prepare-route-catalog-tools.py"), "__name__": "catalog_fixture"}
+        exec(compile(source, namespace["__file__"], "exec"), namespace)
+        class DownloadsBegin(Exception):
+            pass
         with tempfile.TemporaryDirectory(prefix="catalog-ci-docker-") as scratch:
             scratch_path = Path(scratch)
             tool = scratch_path / "docker"
@@ -51,8 +46,11 @@ class RouteCatalogCiToolsTests(unittest.TestCase):
                     if selected is None:
                         os.environ.pop(name, None)
                 try:
-                    exec(program, {})
-                except SystemExit as exception:
+                    with mock.patch('urllib.request.urlopen', side_effect=DownloadsBegin):
+                        namespace['main']()
+                except DownloadsBegin:
+                    pass
+                except ValueError as exception:
                     failure = str(exception)
             recorded = [json.loads(line) for line in calls.read_text().splitlines()] if calls.exists() else []
             return failure, recorded
@@ -113,28 +111,52 @@ class RouteCatalogCiToolsTests(unittest.TestCase):
                 tar.addfile(member, io.BytesIO(binary))
             return io.BytesIO(archive.getvalue())
         with tempfile.TemporaryDirectory(prefix='catalog-ci-tools-') as scratch:
-            environment = {'RUNNER_TEMP': scratch, 'GITHUB_ENV': str(Path(scratch) / 'selected.env'),
+            environment = {'TMPDIR': scratch, 'RUNNER_TEMP': str(Path(scratch) / 'long-lived'), 'GITHUB_ENV': str(Path(scratch) / 'selected.env'),
                            'DOCKER_CONTEXT': '', 'DOCKER_HOST': 'unix:///fixture/local.sock'}
             def read(path, *args, **kwargs):
                 return json.dumps(profile) if str(path).endswith('deploy/dapr/qualification/runtime-lock.json') else original_read(path, *args, **kwargs)
+            namespace = {'__file__': str(root / 'tools/prepare-route-catalog-tools.py'), '__name__': 'catalog_fixture'}
+            exec(compile(source, namespace['__file__'], 'exec'), namespace)
             with mock.patch.dict(os.environ, environment), mock.patch.object(Path, 'read_text', read), \
                     mock.patch('urllib.request.urlopen', side_effect=download), mock.patch('subprocess.run'):
                 if corrupt_cli:
-                    with self.assertRaisesRegex(AssertionError, 'checksum mismatch'):
-                        exec(compile(source, str(root / '.github/workflows/integration.yml'), 'exec'), {})
+                    with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                        namespace['main']()
                 else:
-                    exec(compile(source, str(root / '.github/workflows/integration.yml'), 'exec'), {})
-            selected = (Path(scratch) / 'selected.env').read_text()
-            self.assertIn('EVENTSTORE_ROUTE_CATALOG_DAPRD=', selected)
-            self.assertEqual('EVENTSTORE_ROUTE_CATALOG_DAPR_CLI=' in selected, not corrupt_cli)
+                    namespace['main']()
+            self.assertFalse((Path(scratch) / 'selected.env').exists())
+            self.assertFalse((Path(scratch) / 'long-lived').exists())
+            self.assertEqual((Path(scratch) / 'route-catalog-tools/dapr').exists(), not corrupt_cli)
             if not corrupt_cli:
                 self.assertEqual((Path(scratch) / 'route-catalog-tools/dapr').read_bytes(), binaries['dapr'])
             self.assertEqual(urls, [
                 'https://github.com/dapr/dapr/releases/download/v1.18.7/daprd_linux_amd64.tar.gz',
                 'https://github.com/dapr/cli/releases/download/v1.18.2/dapr_linux_amd64.tar.gz'])
-        workflow = (root / '.github/workflows/integration.yml').read_text()
-        self.assertIn("DAPR_CLI_VERSION: '1.18.0'", workflow)
-        self.assertIn("DAPR_RUNTIME_VERSION: '1.18.2'", workflow)
+
+    def test_optimized_interpreter_rejects_corrupt_download_before_writing_binary(self):
+        root, _ = self.preparation_source()
+        profile = json.loads((root / 'deploy/dapr/qualification/runtime-lock.json').read_text())
+        with tempfile.TemporaryDirectory(prefix='catalog-optimized-') as temporary:
+            scratch = Path(temporary)
+            lock = scratch / 'deploy/dapr/qualification/runtime-lock.json'
+            lock.parent.mkdir(parents=True)
+            lock.write_text(json.dumps(profile))
+            archive = scratch / 'corrupt.tar.gz'
+            with tarfile.open(archive, 'w:gz') as output:
+                member = tarfile.TarInfo('daprd')
+                member.size = len(b'corrupt')
+                output.addfile(member, io.BytesIO(b'corrupt'))
+            driver = scratch / 'optimized.py'
+            driver.write_text("import pathlib,runpy,sys,urllib.request\nfrom unittest import mock\n"
+                              "urllib.request.urlopen=lambda *args,**kwargs:pathlib.Path(sys.argv[2]).open('rb')\n"
+                              "with mock.patch('subprocess.run'):\n runpy.run_path(sys.argv[1],run_name='__main__')\n")
+            environment = dict(os.environ, TMPDIR=str(scratch), DOCKER_HOST='unix:///fixture/local.sock', DOCKER_CONTEXT='')
+            result = subprocess.run([sys.executable, '-O', '-B', str(driver), str(root / 'tools/prepare-route-catalog-tools.py'), str(archive)],
+                                    cwd=scratch, env=environment, capture_output=True, text=True, timeout=30)
+            self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn('checksum mismatch', result.stderr)
+            self.assertFalse((scratch / 'route-catalog-tools/daprd').exists())
+
 
 
 if __name__ == "__main__":

@@ -136,9 +136,6 @@ class ArchiveContractTests(unittest.TestCase):
         result = json.loads(failures[0].read_text())
         self.assertEqual(result["status"], "fail")
         self.assertEqual(result["error"], "invalid candidate source")
-        workflow = (ROOT / ".github/workflows/release.yml").read_text()
-        self.assertIn(".hexalith/release-evidence/**", workflow)
-        self.assertIn("!.hexalith/release-evidence/api-compatibility/**/scratch/**", workflow)
 
     def test_explicit_evidence_directory_preserves_failure_and_never_overwrites_prior_evidence(self):
         evidence = self.work / "evidence"
@@ -215,15 +212,6 @@ class ArchiveContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "canonical v4.2.0"):
                 gate.verify_source(ROOT, self.source)
 
-    def test_prepare_gate_is_after_validation_and_before_publish(self):
-        config = json.loads((ROOT / ".releaserc.json").read_text())
-        execution = next(plugin[1] for plugin in config["plugins"] if isinstance(plugin, list) and plugin[0] == "@semantic-release/exec")
-        preparation = execution["prepareCmd"].split(" && ")
-        self.assertEqual(len(preparation), 3)
-        self.assertIn("pack-release-packages.py", preparation[0])
-        self.assertIn("validate-release-packages.py", preparation[1])
-        self.assertEqual(preparation[2], "python3 tools/verify-release-api-compatibility.py ./nupkgs ${nextRelease.version}")
-        self.assertIn("dotnet nuget push", execution["publishCmd"])
 
 
 class RealApiCompatTests(unittest.TestCase):

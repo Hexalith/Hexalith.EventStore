@@ -1,0 +1,27 @@
+name: Authorized Azure payload qualification
+description: Runs only under the rendered private runner and approval environment
+  with exact owner authority.
+inputs:
+  authority-sha256:
+    description: Exact owner-approved authority document digest.
+    required: true
+  source-sha:
+    description: Same commit that passed shared CI.
+    required: true
+runs:
+  using: composite
+  steps:
+  - name: Run separately authorized Azure conformance
+    shell: bash
+    env:
+      QUALIFICATION_AUTHORITY_SHA256: ${{ inputs.authority-sha256 }}
+      QUALIFICATION_SOURCE_SHA: ${{ inputs.source-sha }}
+    run: bash scripts/run-with-temp.sh python3 -B scripts/qualify-payload-azure.py
+  - name: Retain Azure product results
+    if: always()
+    uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+    with:
+      name: eventstore-payload-azure
+      path: TestResults/azure-live*/**
+      if-no-files-found: error
+      retention-days: 7
