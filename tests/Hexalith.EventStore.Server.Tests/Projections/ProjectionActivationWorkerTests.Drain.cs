@@ -24,10 +24,11 @@ public sealed partial class ProjectionActivationWorkerTests
         var catalog = new RouteCatalogTestFixture();
         await catalog.ActivateAsync(catalog.Candidate());
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var protocolCanceled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var guard = Substitute.For<IProjectionSourceGuardDelivery>();
         Task<ProjectionSourceGuardDeliveryResult>? nativeCall = null;
-        guard.TryDeliverAsync(fixture.Identity, Arg.Any<CancellationToken>()).Returns(call =>
+        guard.TryDeliverAsync(fixture.Identity, Arg.Any<CancellationToken>()).Returns(async call =>
         {
             // Existing actor helpers can stop awaiting a native RPC when the host token
             // cancels. Its actual boundary remains enrolled independently of that wait.
@@ -38,7 +39,13 @@ public sealed partial class ProjectionActivationWorkerTests
                 return new ProjectionSourceGuardDeliveryResult(true, true, null) { FinalizedCleanupProven = true };
             });
             entered.TrySetResult();
-            return nativeCall.WaitAsync(call.Arg<CancellationToken>());
+            CancellationToken protocolToken = call.Arg<CancellationToken>();
+            try { return await nativeCall.WaitAsync(protocolToken); }
+            catch (OperationCanceledException) when (protocolToken.IsCancellationRequested)
+            {
+                protocolCanceled.TrySetResult();
+                throw;
+            }
         });
         using var worker = new ProjectionActivationWorker(fixture.Outbox, Substitute.For<IProjectionUpdateOrchestrator>(),
             Options.Create(new ProjectionDispatchOptions { RetryWorkerInterval = TimeSpan.FromMilliseconds(10) }),
@@ -59,6 +66,8 @@ public sealed partial class ProjectionActivationWorkerTests
                 worker.ExecuteTask.ShouldNotBeNull().IsCompleted.ShouldBeFalse();
                 nativeCall.ShouldNotBeNull().IsCompleted.ShouldBeFalse();
             }
+            // Native success must follow the protocol's observed cancellation, not race it.
+            await protocolCanceled.Task.WaitAsync(TimeSpan.FromSeconds(5));
             (await catalog.Store.ReadAsync(default)).State.Leases.ShouldHaveSingleItem();
             (await fixture.Outbox.GetAsync(fixture.Identity)).ShouldNotBeNull();
             resume.SetResult();
