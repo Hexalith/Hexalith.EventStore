@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Phase 4 transition request, result, owner approval and G-OQ8 decision",
+  "title": "Phase 4 transition request, result, owner approval, G-OQ8 decision and story completion",
   "description": "Runtime uses stdlib closed validation. evaluate is candidate evidence; consume authenticates a completed run. A PASS is an assurance subcondition only. Approval request_sha256 excludes approvals to permit posting references after approval. No caller-provided command is accepted. A gate decision reports one authenticated consumption for G-OQ8 governing-design availability only; saved decisions are never authority for later consumption.",
   "oneOf": [
     {
@@ -14,6 +14,12 @@
     },
     {
       "$ref": "#/$defs/gate_decision"
+    },
+    {
+      "$ref": "#/$defs/story_completion"
+    },
+    {
+      "$ref": "#/$defs/story_evidence"
     }
   ],
   "$defs": {
@@ -118,7 +124,6 @@
         "required_level",
         "author",
         "gate",
-        "nfr_ids",
         "approvals",
         "predecessors"
       ],
@@ -203,10 +208,10 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^NFR(?:[1-9]|1[0-8])$"
+            "pattern": "^NFR(?:[1-9]|1[0-9])$"
           },
           "minItems": 0,
-          "maxItems": 18,
+          "maxItems": 19,
           "uniqueItems": true
         },
         "approvals": {
@@ -226,8 +231,45 @@
           "minItems": 0,
           "maxItems": 20,
           "uniqueItems": true
+        },
+        "story": {
+          "$ref": "#/$defs/story_claim"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "transition": {
+                "const": "high-risk-nfr-story-done"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "story"
+            ]
+          },
+          "else": {
+            "required": [
+              "nfr_ids"
+            ],
+            "not": {
+              "required": [
+                "story"
+              ]
+            },
+            "properties": {
+              "nfr_ids": {
+                "items": {
+                  "pattern": "^NFR(?:[1-9]|1[0-8])$"
+                },
+                "maxItems": 18
+              }
+            }
+          }
+        }
+      ]
     },
     "binding": {
       "type": "object",
@@ -277,10 +319,75 @@
             "$ref": "#/$defs/file"
           },
           "minItems": 1,
-          "maxItems": 209,
+          "maxItems": 215,
           "uniqueItems": true
+        },
+        "story": {
+          "$ref": "#/$defs/story_claim"
+        },
+        "story_adapter": {
+          "$ref": "#/$defs/story_adapter_binding"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "transition": {
+                "const": "high-risk-nfr-story-done"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "story"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "story"
+                  ]
+                },
+                {
+                  "required": [
+                    "story_adapter"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "inputs": {
+                "maxItems": 209
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "story_adapter"
+            ]
+          },
+          "then": {
+            "properties": {
+              "story_adapter": {
+                "properties": {
+                  "root_tree": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{40}$"
+                  }
+                }
+              },
+              "transition": {
+                "const": "high-risk-nfr-story-done"
+              }
+            }
+          }
+        }
+      ]
     },
     "approval_payload": {
       "type": "object",
@@ -421,7 +528,13 @@
               "WORKFLOW_MISMATCH",
               "ARTIFACT_INVALID",
               "RESULT_MISMATCH",
-              "SELF_SEAL_FORBIDDEN"
+              "SELF_SEAL_FORBIDDEN",
+              "STORY_IDENTITY_MISSING",
+              "COVERAGE_AMBIGUOUS",
+              "COVERAGE_MISMATCH",
+              "SEAL_MISSING",
+              "STORY_EVIDENCE_FAILED",
+              "STORY_EVIDENCE_LIMIT"
             ]
           },
           "minItems": 0,
@@ -577,8 +690,125 @@
               }
             }
           ]
+        },
+        "story_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/story_evidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "binding": {
+                "required": [
+                  "transition"
+                ],
+                "properties": {
+                  "transition": {
+                    "const": "high-risk-nfr-story-done"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "story_evidence"
+            ]
+          },
+          "else": {
+            "properties": {
+              "story_evidence": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "binding": {
+                "required": [
+                  "transition"
+                ],
+                "properties": {
+                  "transition": {
+                    "not": {
+                      "const": "high-risk-nfr-story-done"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "story_evidence"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "PASS"
+              },
+              "binding": {
+                "required": [
+                  "transition"
+                ],
+                "properties": {
+                  "transition": {
+                    "const": "high-risk-nfr-story-done"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "binding": {
+                "required": [
+                  "story_adapter"
+                ]
+              },
+              "story_evidence": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/story_evidence"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "result": {
+                        "const": "PASS"
+                      },
+                      "binding": {
+                        "type": "object",
+                        "properties": {
+                          "root_tree": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{40}$"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "gate_decision": {
       "type": "object",
@@ -703,6 +933,2106 @@
               },
               "seal": {
                 "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "story_claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "story_key",
+        "story_id",
+        "spec_path",
+        "target",
+        "scope",
+        "nfr_ids",
+        "high_risk_nfr_ids",
+        "coverage_sha256"
+      ],
+      "properties": {
+        "story_key": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*-[1-9][0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "story_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*\\.[1-9][0-9]*$"
+        },
+        "spec_path": {
+          "type": "string",
+          "pattern": "^_bmad-output/implementation-artifacts/[^\\\\]+\\.md$"
+        },
+        "target": {
+          "enum": [
+            "spec",
+            "tracker"
+          ]
+        },
+        "scope": {
+          "const": "slice"
+        },
+        "nfr_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^NFR(?:[1-9]|1[0-9])$"
+          },
+          "maxItems": 19,
+          "uniqueItems": true
+        },
+        "high_risk_nfr_ids": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "NFR1",
+              "NFR2",
+              "NFR3",
+              "NFR4",
+              "NFR7",
+              "NFR10",
+              "NFR11",
+              "NFR12",
+              "NFR14",
+              "NFR15",
+              "NFR16",
+              "NFR17"
+            ]
+          },
+          "maxItems": 12,
+          "uniqueItems": true
+        },
+        "coverage_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "story_completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "result",
+        "codes",
+        "disposition",
+        "claim",
+        "verification",
+        "message",
+        "story_evidence"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.phase-4-story-completion.v1"
+        },
+        "result": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        },
+        "codes": {
+          "$ref": "#/$defs/result/properties/codes"
+        },
+        "disposition": {
+          "enum": [
+            "refused",
+            "historical-unchanged",
+            "ordinary-slice",
+            "assured-story-slice"
+          ]
+        },
+        "claim": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/story_claim"
+            }
+          ]
+        },
+        "verification": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/result"
+            }
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "story_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/story_evidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "FAIL"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "codes": {
+                "minItems": 1
+              },
+              "disposition": {
+                "const": "refused"
+              },
+              "verification": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "codes": {
+                "maxItems": 0
+              },
+              "disposition": {
+                "enum": [
+                  "historical-unchanged",
+                  "ordinary-slice",
+                  "assured-story-slice"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "assured-story-slice"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "claim": {
+                "type": "object"
+              },
+              "verification": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/result"
+                  },
+                  {
+                    "properties": {
+                      "phase": {
+                        "const": "consume"
+                      },
+                      "result": {
+                        "const": "PASS"
+                      },
+                      "seal": {
+                        "type": "object"
+                      },
+                      "binding": {
+                        "required": [
+                          "story_adapter"
+                        ]
+                      },
+                      "story_evidence": {
+                        "properties": {
+                          "result": {
+                            "const": "PASS"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "story_evidence": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/story_evidence"
+                  },
+                  {
+                    "properties": {
+                      "result": {
+                        "const": "PASS"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "verification": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "story_adapter_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "inventory_sha256",
+        "root_tree",
+        "root_membership_sha256",
+        "submodule_membership_sha256",
+        "source_count",
+        "validator_sha256",
+        "plan_sha256"
+      ],
+      "properties": {
+        "adapter": {
+          "const": "story-5-3-auth-secrets-v1"
+        },
+        "inventory_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "root_tree": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "root_membership_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "submodule_membership_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 75000
+        },
+        "validator_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "plan_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "story_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "adapter",
+        "result",
+        "binding",
+        "lanes",
+        "capabilities",
+        "gaps",
+        "notes",
+        "execution_inputs",
+        "diagnostics"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.story-5-3-evidence.v1"
+        },
+        "adapter": {
+          "const": "story-5-3-auth-secrets-v1"
+        },
+        "result": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        },
+        "binding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/story_adapter_binding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lanes": {
+          "type": "array",
+          "maxItems": 21,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "result",
+              "counts"
+            ],
+            "properties": {
+              "id": {
+                "enum": [
+                  "gateway-auth-probes-secrets-build",
+                  "gateway-auth-probes-secrets",
+                  "admin-host-regression-build",
+                  "admin-host-regression",
+                  "sample-api-ui-build",
+                  "sample-api-ui",
+                  "apphost-credentials-model-build",
+                  "apphost-credentials-model",
+                  "admin-ui-token-channels-build",
+                  "admin-ui-token-channels",
+                  "integration-auth-build",
+                  "integration-auth",
+                  "load-token-build",
+                  "load-token",
+                  "packaging-auth-contract-build",
+                  "packaging-auth-contract",
+                  "provider-ephemeral-token-build",
+                  "provider-ephemeral-token",
+                  "scanner-capabilities",
+                  "script-smoke-preflight",
+                  "solution-release-build"
+                ]
+              },
+              "result": {
+                "enum": [
+                  "PASS",
+                  "FAIL"
+                ]
+              },
+              "counts": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "total",
+                      "passed",
+                      "failed",
+                      "skipped",
+                      "errors",
+                      "selectors",
+                      "not_run"
+                    ],
+                    "properties": {
+                      "total": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "passed": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "failed": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "skipped": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "errors": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "selectors": {
+                        "type": "object",
+                        "maxProperties": 64,
+                        "additionalProperties": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "not_run": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "gateway-auth-probes-secrets"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "Hexalith.EventStore.Server.Tests.Authentication.EventStoreAuthenticationOptionsTests",
+                            "Hexalith.EventStore.Server.Tests.Authentication.ConfigureJwtBearerOptionsTests",
+                            "Hexalith.EventStore.Server.Tests.Authentication.ProductionAuthorityAuthenticationTests",
+                            "Hexalith.EventStore.Server.Tests.HealthChecks.DefaultHealthEndpointResponseWriterTests",
+                            "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests"
+                          ],
+                          "properties": {
+                            "Hexalith.EventStore.Server.Tests.Authentication.EventStoreAuthenticationOptionsTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.Server.Tests.Authentication.ConfigureJwtBearerOptionsTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.Server.Tests.Authentication.ProductionAuthorityAuthenticationTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.Server.Tests.HealthChecks.DefaultHealthEndpointResponseWriterTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "admin-host-regression"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [],
+                          "properties": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "sample-api-ui"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "Hexalith.EventStore.Sample.Tests.HttpHostSecurityTests",
+                            "Hexalith.EventStore.Sample.Tests.SampleApi.SampleApiHostMiddlewareTests",
+                            "Hexalith.EventStore.Sample.Tests.BlazorUI.EventStoreApiAccessTokenProviderTests"
+                          ],
+                          "properties": {
+                            "Hexalith.EventStore.Sample.Tests.HttpHostSecurityTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.Sample.Tests.SampleApi.SampleApiHostMiddlewareTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.Sample.Tests.BlazorUI.EventStoreApiAccessTokenProviderTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "apphost-credentials-model"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "Hexalith.EventStore.AppHost.Tests.Configuration.AppHostAuthenticationModelTests",
+                            "Hexalith.EventStore.AppHost.Tests.Configuration.HexalithEventStoreJwtAuthenticationTests",
+                            "Hexalith.EventStore.AppHost.Tests.Configuration.LocalAuthenticationCredentialsTests",
+                            "Hexalith.EventStore.AppHost.Tests.Configuration.KeycloakRealmTemplateTests"
+                          ],
+                          "properties": {
+                            "Hexalith.EventStore.AppHost.Tests.Configuration.AppHostAuthenticationModelTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.AppHost.Tests.Configuration.HexalithEventStoreJwtAuthenticationTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.AppHost.Tests.Configuration.LocalAuthenticationCredentialsTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.AppHost.Tests.Configuration.KeycloakRealmTemplateTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "admin-ui-token-channels"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "Hexalith.EventStore.Admin.UI.Tests.Services.AdminApiAccessTokenProviderRoleTests",
+                            "Hexalith.EventStore.Admin.UI.Tests.Services.AdminApiAuthorizationHandlerTests"
+                          ],
+                          "properties": {
+                            "Hexalith.EventStore.Admin.UI.Tests.Services.AdminApiAccessTokenProviderRoleTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.Admin.UI.Tests.Services.AdminApiAuthorizationHandlerTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "integration-auth"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "Hexalith.EventStore.IntegrationTests.EventStore.JwtAuthenticationIntegrationTests",
+                            "Hexalith.EventStore.IntegrationTests.ContractTests.KeycloakAuthenticationTests",
+                            "Hexalith.EventStore.IntegrationTests.Security.KeycloakE2ESecurityTests",
+                            "Hexalith.EventStore.IntegrationTests.Security.KeycloakE2ESmokeTests"
+                          ],
+                          "properties": {
+                            "Hexalith.EventStore.IntegrationTests.EventStore.JwtAuthenticationIntegrationTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.IntegrationTests.ContractTests.KeycloakAuthenticationTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.IntegrationTests.Security.KeycloakE2ESecurityTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "Hexalith.EventStore.IntegrationTests.Security.KeycloakE2ESmokeTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "load-token"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "Hexalith.EventStore.LoadTests.Tests.LoadTestJwtTokenGeneratorTests"
+                          ],
+                          "properties": {
+                            "Hexalith.EventStore.LoadTests.Tests.LoadTestJwtTokenGeneratorTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "packaging-auth-contract"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests"
+                          ],
+                          "properties": {
+                            "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "provider-ephemeral-token"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "Hexalith.EventStore.ProviderVerification.Tests.RealKestrelPactTests"
+                          ],
+                          "properties": {
+                            "Hexalith.EventStore.ProviderVerification.Tests.RealKestrelPactTests": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "const": "script-smoke-preflight"
+                    },
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "passed": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "failed": {
+                          "const": 0
+                        },
+                        "skipped": {
+                          "const": 0
+                        },
+                        "errors": {
+                          "const": 0
+                        },
+                        "not_run": {
+                          "const": 0
+                        },
+                        "selectors": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [],
+                          "properties": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": {
+                      "enum": [
+                        "gateway-auth-probes-secrets-build",
+                        "admin-host-regression-build",
+                        "sample-api-ui-build",
+                        "apphost-credentials-model-build",
+                        "admin-ui-token-channels-build",
+                        "integration-auth-build",
+                        "load-token-build",
+                        "packaging-auth-contract-build",
+                        "provider-ephemeral-token-build",
+                        "scanner-capabilities",
+                        "solution-release-build"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "counts": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "uniqueItems": true,
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "gateway-auth-probes-secrets-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "gateway-auth-probes-secrets"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "admin-host-regression-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "admin-host-regression"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "sample-api-ui-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "sample-api-ui"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "apphost-credentials-model-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "apphost-credentials-model"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "admin-ui-token-channels-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "admin-ui-token-channels"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "integration-auth-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "integration-auth"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "load-token-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "load-token"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "packaging-auth-contract-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "packaging-auth-contract"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "provider-ephemeral-token-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "provider-ephemeral-token"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "scanner-capabilities"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "script-smoke-preflight"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "solution-release-build"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            }
+          ]
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "detected"
+            ],
+            "properties": {
+              "id": {
+                "enum": [
+                  "positive-assignment",
+                  "yaml-credential-sequence",
+                  "qualified-network-credential",
+                  "qualified-client-secret-credential",
+                  "xml-cdata",
+                  "space-separated-cli-secret",
+                  "private-octet-jwk"
+                ]
+              },
+              "detected": {
+                "type": "boolean"
+              }
+            }
+          },
+          "uniqueItems": true,
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "positive-assignment"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "yaml-credential-sequence"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "qualified-network-credential"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "qualified-client-secret-credential"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "xml-cdata"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "space-separated-cli-secret"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "private-octet-jwk"
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            }
+          ]
+        },
+        "gaps": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "notes": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string"
+          }
+        },
+        "execution_inputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "packages_sha256",
+            "toolchain_sha256"
+          ],
+          "properties": {
+            "packages_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "toolchain_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "lane",
+              "code",
+              "summary",
+              "compiler_codes",
+              "failed_tests",
+              "source_findings",
+              "log_sha256"
+            ],
+            "properties": {
+              "lane": {
+                "enum": [
+                  "gateway-auth-probes-secrets-build",
+                  "gateway-auth-probes-secrets",
+                  "admin-host-regression-build",
+                  "admin-host-regression",
+                  "sample-api-ui-build",
+                  "sample-api-ui",
+                  "apphost-credentials-model-build",
+                  "apphost-credentials-model",
+                  "admin-ui-token-channels-build",
+                  "admin-ui-token-channels",
+                  "integration-auth-build",
+                  "integration-auth",
+                  "load-token-build",
+                  "load-token",
+                  "packaging-auth-contract-build",
+                  "packaging-auth-contract",
+                  "provider-ephemeral-token-build",
+                  "provider-ephemeral-token",
+                  "scanner-capabilities",
+                  "script-smoke-preflight",
+                  "solution-release-build",
+                  "dependencies"
+                ]
+              },
+              "code": {
+                "enum": [
+                  "INPUT_INVALID",
+                  "API_UNAVAILABLE",
+                  "API_INVALID",
+                  "PAGINATION_INCOMPLETE",
+                  "SOURCE_MISMATCH",
+                  "REGISTRY_INVALID",
+                  "LEVEL_MISMATCH",
+                  "AUTHOR_INVALID",
+                  "SUBJECT_MISMATCH",
+                  "MATRIX_INVALID",
+                  "GATE_UNBOUND",
+                  "BUSINESS_PREREQUISITE_MISSING",
+                  "ADAPTER_UNAVAILABLE",
+                  "HISTORY_UNAVAILABLE",
+                  "APPROVAL_MISSING",
+                  "APPROVAL_INVALID",
+                  "APPROVAL_IDENTITY",
+                  "APPROVAL_ROLE",
+                  "APPROVAL_EDITED",
+                  "APPROVAL_WINDOW",
+                  "APPROVAL_FUTURE",
+                  "INDEPENDENT_REQUIRED",
+                  "PREDECESSOR_IDENTITY",
+                  "PREDECESSOR_FAILED",
+                  "PREDECESSOR_LIMIT",
+                  "RUN_INVALID",
+                  "RUN_NOT_SUCCESSFUL",
+                  "CI_UNAUTHENTICATED",
+                  "WORKFLOW_MISMATCH",
+                  "ARTIFACT_INVALID",
+                  "RESULT_MISMATCH",
+                  "SELF_SEAL_FORBIDDEN",
+                  "STORY_IDENTITY_MISSING",
+                  "COVERAGE_AMBIGUOUS",
+                  "COVERAGE_MISMATCH",
+                  "SEAL_MISSING",
+                  "STORY_EVIDENCE_FAILED",
+                  "STORY_EVIDENCE_LIMIT"
+                ]
+              },
+              "summary": {
+                "type": "string",
+                "maxLength": 2048
+              },
+              "compiler_codes": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9]{1,10}$"
+                }
+              },
+              "failed_tests": {
+                "type": "array",
+                "maxItems": 12,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_.+`]{0,500}$"
+                }
+              },
+              "source_findings": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_./@-]+:[1-9][0-9]{0,7}$"
+                }
+              },
+              "log_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "PASS"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "gaps": {
+                "maxItems": 0
+              },
+              "binding": {
+                "type": "object"
+              },
+              "lanes": {
+                "minItems": 21,
+                "items": {
+                  "properties": {
+                    "result": {
+                      "const": "PASS"
+                    }
+                  }
+                },
+                "allOf": [
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "gateway-auth-probes-secrets-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "gateway-auth-probes-secrets"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "admin-host-regression-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "admin-host-regression"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "sample-api-ui-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "sample-api-ui"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "apphost-credentials-model-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "apphost-credentials-model"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "admin-ui-token-channels-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "admin-ui-token-channels"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "integration-auth-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "integration-auth"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "load-token-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "load-token"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "packaging-auth-contract-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "packaging-auth-contract"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "provider-ephemeral-token-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "provider-ephemeral-token"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "scanner-capabilities"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "script-smoke-preflight"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "const": "solution-release-build"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  }
+                ]
+              },
+              "capabilities": {
+                "minItems": 7,
+                "items": {
+                  "properties": {
+                    "detected": {
+                      "const": true
+                    }
+                  }
+                },
+                "prefixItems": [
+                  {
+                    "properties": {
+                      "id": {
+                        "const": "positive-assignment"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "id": {
+                        "const": "yaml-credential-sequence"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "id": {
+                        "const": "qualified-network-credential"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "id": {
+                        "const": "qualified-client-secret-credential"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "id": {
+                        "const": "xml-cdata"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "id": {
+                        "const": "space-separated-cli-secret"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "id": {
+                        "const": "private-octet-jwk"
+                      }
+                    }
+                  }
+                ]
+              },
+              "diagnostics": {
+                "maxItems": 0
+              },
+              "execution_inputs": {
+                "properties": {
+                  "packages_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "toolchain_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "gaps": {
+                "minItems": 1
               }
             }
           }

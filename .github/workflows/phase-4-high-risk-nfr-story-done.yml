@@ -33,12 +33,33 @@ jobs:
   attempt:
     name: Phase 4 transition attempt
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           submodules: false
+      - name: Materialize exact root-declared evidence inputs
+        # Root gitlinks are already part of the authenticated approval subject.
+        # Never traverse a submodule's nested dependencies.
+        run: git -c submodule.recurse=false submodule update --init -- references/Hexalith.Builds references/Hexalith.Tenants references/Hexalith.FrontComposer
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          dotnet-version: 10.0.404
+      - name: Inspect existing Dapr evidence prerequisites
+        # The validator binds existing binaries and creates private configuration.
+        # This workflow never installs or upgrades the host's runtime.
+        shell: bash
+        run: |
+          if command -v dapr >/dev/null 2>&1; then
+            dapr --version
+          else
+            echo 'Dapr CLI prerequisite missing; integration evidence will refuse.'
+          fi
+          if [ ! -x "$HOME/.dapr/bin/daprd" ]; then
+            echo 'Dapr runtime prerequisite missing; integration evidence will refuse.'
+          fi
       - name: Verify this guarded attempt
         env:
           GH_TOKEN: ${{ github.token }}
@@ -51,7 +72,7 @@ jobs:
           output="$RUNNER_TEMP/phase-4-transition"
           mkdir -p "$output"
           if [ "$MODE" = consume ]; then
-            python3 -B tools/validate-phase-4-transition.py consume --expected-transition high-risk-nfr-story-done --request-env --run-id "$SEALED_RUN_ID" --attempt "$SEALED_ATTEMPT" --result "$output/result.json" >"$output/report.txt" 2>&1
+            python3 -B tools/validate-phase-4-story-completion.py --request-env --run-id "$SEALED_RUN_ID" --attempt "$SEALED_ATTEMPT" --result "$output/result.json" >"$output/report.txt" 2>&1
           else
             python3 -B tools/validate-phase-4-transition.py evaluate --expected-transition high-risk-nfr-story-done --request-env --result "$output/result.json" >"$output/report.txt" 2>&1
           fi

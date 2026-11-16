@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -306,6 +306,10 @@ development_status:
   # Mandatory G-OQ8 availability consumer adopted in both manual workflow entry points (spec-9-2-mandatory-oq8-gate-consumer).
   # Other actual consumers, missing business adapters and absent 3.19/3.20 consumers remain blocked; CI pending.
   # G-RUNTIME-PARITY remains follow-on; Story 9.2 stays in-progress and grants no lifecycle authority.
+  # 2026-11-16: Mandatory spec/tracker high-risk NFR completion guard delivered locally
+  # (spec-9-2-mandatory-high-risk-nfr-completion-guard). Coverage is independently derived;
+  # missing genuine NFR adapters refuse done even with assurance. No parent/NFR closure,
+  # live approval, delivery CI, readiness or 3.19/3.20 authority is claimed.
   9-2-phase-4-high-risk-gate-matrix-and-assurance-control: in-progress
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-BASELINE validator with the OR8
   # drift and OR15 lifecycle guards, G-CLAUSE, and G-MVP-COVERAGE. Each live gate result

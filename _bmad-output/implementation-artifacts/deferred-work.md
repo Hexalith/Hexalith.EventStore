@@ -6697,3 +6697,7 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
   summary: Reconcile the remaining planning text that still makes the deleted Story 9.1 tooling a prerequisite: PRD OR28 (`prd.md:763`, "Until this exists, no gate-closing implementation handoff is authorized") and the Epic 9 implementation note (`epics.md:397`, "or the Story 9.1 workflow").
   evidence: Review finding BH-12. Approved clarifications now exempt Stories 9.3 (2026-11-09) and 9.2 (2026-11-15), but OR28 and the epic note still state the old rule, and Stories 9.4 and 9.5 have no clarification. The text predates this change.
   status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-nfr-completion-adapter.md`
+  summary: Add guarded concurrent business-source edit tests for both completion targets before claiming any genuine complete Story 5.3 completion.
+  evidence: Review VG2 traced the final inventory check at the atomic write boundary; current genuine NFR4 evidence cannot reach a positive write. Do not replace this prerequisite with fabricated business PASS.

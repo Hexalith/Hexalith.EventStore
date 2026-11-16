@@ -1,0 +1,21 @@
+[workflow]
+persistent_facts = ["""
+Mandatory Phase 4 completion boundary (spec and tracker): before any newly written
+spec-frontmatter `done` in step-05-present or step-oneshot, run
+`python3 -B tools/validate-phase-4-story-completion.py --spec {spec_file} --target spec --write`
+from {project-root}, passing a repository-relative spec path. This command is the
+completion writer; do not write `done` directly or accept a saved PASS report.
+For any tracker `done` write use the same command with `--target tracker --write`.
+Use a canonical bound transition request and completed run coordinates when
+governed assurance is needed. Missing story identity, ambiguous coverage, genuine
+NFR adapter, approval or seal refuses completion. On refusal keep the label open
+and report the diagnostic; never downgrade or omit coverage. Primary and supporting
+coverage comes from the bound PRD and epics, never caller `nfr_ids` alone.
+Normal sync-sprint-status to `review` remains unchanged; this command does not turn
+review into done. Slice completion never establishes parent-story or whole-NFR
+closure. Story 9.2 remains in-progress until its separately owned work is complete.
+For this bounded Story 9.2 slice retain the parent tracker in-progress even when a
+finalize step would normally synchronize its story_key to review.
+Unchanged historical labels remain historical and provide no reusable evidence;
+new consumption always reruns authenticated verification.
+"""]

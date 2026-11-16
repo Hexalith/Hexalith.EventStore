@@ -25,3 +25,12 @@ jobs:
         run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_transition.py'
       - name: Verify actual G-OQ8 gate decision consumers
         run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_gate_decision.py'
+      - name: Verify spec and tracker completion boundaries
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_story_completion.py'
+      - name: Materialize pinned root build configuration for genuine scanner controls
+        run: git -c submodule.recurse=false submodule update --init -- references/Hexalith.Builds
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Verify fixed Story 5.3 adapter contracts and complete-source refusals
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_story_5_3.py'

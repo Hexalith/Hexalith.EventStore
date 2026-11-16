@@ -48,6 +48,9 @@ HIGH_RISK_NFRS = {f"NFR{n}" for n in (1, 2, 3, 4, 7, 10, 11, 12, 14, 15, 16, 17)
 CONTROL_FILES = ("tools/phase_4_transition.py", "tools/validate-phase-4-transition.py",
                  "tools/phase-4-transition.schema.json", "tools/validate-phase-4-gate-risk-matrix.py",
                  "tools/phase_4_gate_decision.py", "tools/validate-phase-4-gate-decision.py")
+STORY_CONTROL_FILES = ("tools/phase_4_story_completion.py", "tools/validate-phase-4-story-completion.py",
+                       "_bmad/custom/bmad-build.toml", "tools/phase_4_story_5_3.py",
+                       "tools/validate-story-5-3-nfr.py", "tools/tests/test_phase_4_story_5_3.py")
 OQ8_VALIDATOR = "tools/validate-oq8-governing-design.py"
 OQ8_FIXTURES = "tools/tests/test_oq8_governing_design.py"
 OQ8_INPUTS = (
@@ -71,6 +74,8 @@ CODES = (
     "APPROVAL_WINDOW", "APPROVAL_FUTURE", "INDEPENDENT_REQUIRED", "PREDECESSOR_IDENTITY",
     "PREDECESSOR_FAILED", "PREDECESSOR_LIMIT", "RUN_INVALID", "RUN_NOT_SUCCESSFUL", "CI_UNAUTHENTICATED",
     "WORKFLOW_MISMATCH", "ARTIFACT_INVALID", "RESULT_MISMATCH", "SELF_SEAL_FORBIDDEN")
+CODES += ("STORY_IDENTITY_MISSING", "COVERAGE_AMBIGUOUS", "COVERAGE_MISMATCH", "SEAL_MISSING")
+CODES += ("STORY_EVIDENCE_FAILED", "STORY_EVIDENCE_LIMIT")
 
 
 class Refusal(Exception):
@@ -134,7 +139,15 @@ def bindings(items, empty=False):
 
 
 def validate_request(request):
-    closed(request, REQUEST_KEYS)
+    require(isinstance(request, dict), "INPUT_INVALID", "request must be an object", 2)
+    story_completion = request.get("transition") == "high-risk-nfr-story-done"
+    if story_completion:
+        require("story" in request, "STORY_IDENTITY_MISSING", "story completion needs a canonical story claim")
+        closed(request, (REQUEST_KEYS - {"nfr_ids"}) | {"story"} | ({"nfr_ids"} & set(request)))
+        import phase_4_story_completion as S
+        S.validate_claim(request["story"])
+    else:
+        closed(request, REQUEST_KEYS)
     require(request["schema"] == REQUEST_SCHEMA and request["repository"] == REPOSITORY,
             "INPUT_INVALID", "unsupported schema or repository", 2)
     require(request["transition"] in M.TRANSITIONS and sha(request["head_sha"], 40),
@@ -148,9 +161,11 @@ def validate_request(request):
     for key, path in (("matrix", MATRIX), ("registry", REGISTRY)):
         bindings([request[key]])
         require(request[key]["path"] == path, "INPUT_INVALID", "fixed matrix/registry slot required", 2)
-    require(isinstance(request["nfr_ids"], list) and len(request["nfr_ids"]) <= 18
-            and all(isinstance(n, str) and re.fullmatch(r"NFR(?:[1-9]|1[0-8])", n) for n in request["nfr_ids"])
-            and len(set(request["nfr_ids"])) == len(request["nfr_ids"]), "INPUT_INVALID", "invalid NFR inventory", 2)
+    nfr_ids = request.get("nfr_ids", [])
+    maximum = 19 if story_completion else 18
+    require(isinstance(nfr_ids, list) and len(nfr_ids) <= maximum
+            and all(isinstance(n, str) and re.fullmatch(r"NFR(?:[1-9]|1[0-" + str(maximum - 10) + r"])", n) for n in nfr_ids)
+            and len(set(nfr_ids)) == len(nfr_ids), "INPUT_INVALID", "invalid NFR inventory", 2)
     require(isinstance(request["approvals"], list) and len(request["approvals"]) <= 30,
             "INPUT_INVALID", "invalid approval inventory", 2)
     for approval in request["approvals"]:
@@ -215,7 +230,10 @@ class GitHub:
                     raise
             with response:
                 require(response.status == 200, "API_UNAVAILABLE", "unexpected API response")
-                limit = MAX_ARCHIVE if binary else 2 * MAX_BYTES
+                # Complete story-source membership is larger than ordinary API
+                # documents; only the fixed Git tree endpoint gets this bound.
+                tree_inventory = url.startswith(self.prefix + "/git/trees/")
+                limit = MAX_ARCHIVE if binary else 16 * MAX_BYTES if tree_inventory else 2 * MAX_BYTES
                 content = response.read(limit + 1)
                 require(len(content) <= limit, "ARTIFACT_INVALID" if binary else "API_INVALID", "response too large", 2 if binary else 1)
                 links = response.headers.get("Link", "")
@@ -360,6 +378,8 @@ class Control:
         self.predecessors = []
         self.achieved = "none"
         self.minimum = "none"
+        self.story_evidence = None
+        self.story_inventory = None
 
     def local(self, path):
         require(M.repository_path(path) is not None, "INPUT_INVALID", "unsafe path", 2)
@@ -378,6 +398,13 @@ class Control:
         return content
 
     def subject_at(self, commit, allow_absent=False):
+        if self.request["transition"] == "high-risk-nfr-story-done":
+            import phase_4_story_5_3 as A
+            if A.supported(self.request["story"]):
+                # The complete authenticated root tree, including gitlinks, is
+                # the subject for current and historical pushes. Caller-selected
+                # coverage files cannot hide a recent auth/scanner/build edit.
+                return A.subject_at(self.api, commit, allow_absent)
         if self.request["subject_mode"] == "ad26":
             content = self.api.file(commit, ARCHITECTURE, allow_absent)
             return None if content is None else ad26_subject(content)
@@ -443,13 +470,18 @@ class Control:
             path = entry["path"]
             require(path not in paths or paths[path] == entry["sha256"], "INPUT_INVALID", "conflicting file bindings", 2)
             paths[path] = entry["sha256"]
-        for path in (*CONTROL_FILES, workflow_path(request["transition"])):
+        extra_controls = STORY_CONTROL_FILES if request["transition"] == "high-risk-nfr-story-done" else ()
+        for path in (*CONTROL_FILES, *extra_controls, workflow_path(request["transition"])):
             value = digest(self.local(path))
             require(path not in paths or paths[path] == value, "SOURCE_MISMATCH", "control file mismatch")
             paths[path] = value
+        require(len(paths) <= MAX_RESULT_INPUTS + len(extra_controls), "INPUT_INVALID", "binding inventory too large", 2)
         for path, expected in paths.items():
             require(digest(self.local(path)) == expected == digest(self.api.file(self.head, path)),
                     "SOURCE_MISMATCH", "input differs from exact head: " + path)
+        if request["transition"] == "high-risk-nfr-story-done":
+            import phase_4_story_completion as S
+            self.story = S.bind(self)
         registry = parse(self.local(REGISTRY))
         validator = M.Evaluation(self.root, MATRIX, dt.datetime.now(dt.timezone.utc))
         validator.check_registry(registry)
@@ -497,6 +529,8 @@ class Control:
                         "request_sha256": digest(canonical(request)), "subject_sha256": self.subject,
                         "workflow_sha256": paths[workflow_path(request["transition"])],
                         "inputs": [{"path": p, "sha256": value} for p, value in sorted(paths.items())]}
+        if request["transition"] == "high-risk-nfr-story-done":
+            self.binding["story"] = self.story
         self.payloads = [self.approval_payload(role) for role in self.roles]
 
     def approval_payload(self, role):
@@ -618,40 +652,95 @@ class Control:
                                   "assurance_level": predecessor["assurance_level"]})
 
     @staticmethod
-    def bounded_process(argv, scratch, filename):
+    def bounded_process(argv, scratch, filename, *, timeout_seconds=30, environment_extra=None,
+                        failure_code="PREDECESSOR_FAILED", limit_code="PREDECESSOR_LIMIT", accept_failure=False):
         environment = {"PATH": os.defpath, "HOME": str(scratch), "TMPDIR": str(scratch), "TMP": str(scratch),
                        "TEMP": str(scratch), "LANG": "C.UTF-8"}
+        environment.update(environment_extra or {})
         require(sys.platform.startswith("linux"), "ADAPTER_UNAVAILABLE", "bounded predecessor requires Linux child reaping")
         libc = ctypes.CDLL(None, use_errno=True)
         previous = ctypes.c_int()
         require(libc.prctl(37, ctypes.byref(previous), 0, 0, 0) == 0
                 and libc.prctl(36, 1, 0, 0, 0) == 0,
                 "ADAPTER_UNAVAILABLE", "cannot enable descendant reaping")
+
+        def processes():
+            result = {}
+            for path in Path("/proc").iterdir():
+                if path.name.isdigit():
+                    try:
+                        fields = (path / "stat").read_text().rpartition(")")[2].split()
+                        result[int(path.name)] = (int(fields[1]), fields[19])
+                    except (OSError, ValueError, IndexError):
+                        continue
+            return result
+
+        baseline = {pid for pid, (parent, _) in processes().items() if parent == os.getpid()}
+        tracked = {}
+
+        def discover(process):
+            current = processes()
+            parents = {process.pid, *tracked}
+            for pid, (parent, started) in current.items():
+                if parent == os.getpid() and pid not in baseline:
+                    tracked[pid] = started
+                    parents.add(pid)
+            while True:
+                found = {pid for pid, (parent, _) in current.items() if parent in parents} - parents
+                if not found:
+                    break
+                parents.update(found)
+            for pid in parents:
+                if pid in current:
+                    tracked[pid] = current[pid][1]
+            return current
+
         output = scratch / filename
-        with output.open("wb") as stream:
-            process = subprocess.Popen(argv, cwd=scratch, env=environment, stdin=subprocess.DEVNULL,
-                                       stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
-            deadline = time.monotonic() + 30
-            try:
-                while process.poll() is None:
-                    if time.monotonic() > deadline or output.stat().st_size > MAX_BYTES:
-                        raise Refusal("PREDECESSOR_LIMIT", "predecessor exceeded time/output bound")
-                    time.sleep(0.02)
-            finally:
+        try:
+            with output.open("wb") as stream:
+                process = subprocess.Popen(argv, cwd=scratch, env=environment, stdin=subprocess.DEVNULL,
+                                           stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
+                deadline, next_discovery = time.monotonic() + timeout_seconds, 0
                 try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                process.wait()
-                try:
-                    while True:
-                        os.waitpid(-process.pid, 0)
-                except ChildProcessError:
-                    pass
+                    while process.poll() is None:
+                        if time.monotonic() > deadline or output.stat().st_size > MAX_BYTES:
+                            raise Refusal(limit_code, "evidence exceeded time/output bound")
+                        if time.monotonic() >= next_discovery:
+                            discover(process)
+                            next_discovery = time.monotonic() + 0.2
+                        time.sleep(0.02)
                 finally:
-                    libc.prctl(36, previous.value, 0, 0, 0)
-        require(output.stat().st_size <= MAX_BYTES, "PREDECESSOR_LIMIT", "predecessor exceeded output bound")
-        require(process.returncode == 0, "PREDECESSOR_FAILED", "pinned predecessor rerun failed")
+                    # Subreaping and /proc parentage also catch a descendant that
+                    # calls setsid or double-forks away from the original group.
+                    for _ in range(20):
+                        current = discover(process)
+                        try:
+                            os.killpg(process.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        for pid, started in tracked.items():
+                            if pid in current and current[pid][1] == started:
+                                try:
+                                    os.kill(pid, signal.SIGKILL)
+                                except ProcessLookupError:
+                                    pass
+                        process.wait()
+                        for pid in tracked:
+                            if pid != process.pid:
+                                try:
+                                    os.waitpid(pid, os.WNOHANG)
+                                except ChildProcessError:
+                                    pass
+                        remaining = discover(process)
+                        if not any(pid in remaining and remaining[pid][1] == started for pid, started in tracked.items()):
+                            break
+                        time.sleep(0.02)
+                    require(not any(pid in remaining and remaining[pid][1] == started for pid, started in tracked.items()),
+                            limit_code, "evidence descendants did not terminate")
+        finally:
+            libc.prctl(36, previous.value, 0, 0, 0)
+        require(output.stat().st_size <= MAX_BYTES, limit_code, "evidence exceeded output bound")
+        require(process.returncode == 0 or accept_failure and process.returncode == 1, failure_code, "fixed evidence command failed")
         return output.read_bytes()
 
     def prerequisites(self):
@@ -664,8 +753,8 @@ class Control:
             require(len(request["predecessors"]) == 1 and request["predecessors"][0]["adapter"] == "oq8-governing-design-v1",
                     "BUSINESS_PREREQUISITE_MISSING", "G-OQ8 requires genuine governing-design validator success")
         elif transition == "high-risk-nfr-story-done":
-            require(set(request["nfr_ids"]) & HIGH_RISK_NFRS, "BUSINESS_PREREQUISITE_MISSING", "no guarded high-risk NFR claim")
-            raise Refusal("ADAPTER_UNAVAILABLE", "mandatory story-completion consumer is not implemented")
+            import phase_4_story_5_3 as A
+            A.evaluate(self)
         elif transition == "readiness":
             raise Refusal("BUSINESS_PREREQUISITE_MISSING", "readiness needs all mandatory business gates and its actual consumer")
         else:
@@ -682,10 +771,13 @@ class Control:
         return self.result("evaluate", [])
 
     def result(self, phase, codes, seal=None):
-        return {"schema": RESULT_SCHEMA, "phase": phase, "result": "FAIL" if codes else "PASS", "codes": codes,
+        result = {"schema": RESULT_SCHEMA, "phase": phase, "result": "FAIL" if codes else "PASS", "codes": codes,
                 "binding": self.binding, "required_level": self.required, "achieved_level": self.achieved,
                 "downstream_minimum": self.minimum, "approvals": self.approvals,
                 "approval_payloads": self.payloads, "predecessors": self.predecessors, "seal": seal}
+        if self.request["transition"] == "high-risk-nfr-story-done":
+            result["story_evidence"] = self.story_evidence
+        return result
 
     def authenticate_run(self, run_id, attempt):
         require(str(run_id) != os.environ.get("GITHUB_RUN_ID"), "SELF_SEAL_FORBIDDEN", "a running job cannot seal itself")
@@ -758,7 +850,8 @@ class Control:
     def consume(self, run_id, attempt):
         self.authenticate_run(run_id, attempt)
         candidate, artifact_id = self.artifact(run_id, attempt)
-        require(set(candidate) == RESULT_KEYS and candidate.get("phase") == "evaluate"
+        keys = RESULT_KEYS | ({"story_evidence"} if self.request["transition"] == "high-risk-nfr-story-done" else set())
+        require(set(candidate) == keys and candidate.get("phase") == "evaluate"
                 and candidate.get("result") == "PASS" and candidate.get("seal") is None,
                 "RESULT_MISMATCH", "artifact is not a passing candidate evaluation")
         expected = self.evaluate()

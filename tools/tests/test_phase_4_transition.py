@@ -372,7 +372,7 @@ class TransitionTests(unittest.TestCase):
                      'consumer-removal': ['consumer-owner']}[transition]
             self.approve(roles=roles)
             with self.subTest(transition=transition):
-                self.assert_refused('ADAPTER_UNAVAILABLE' if transition == 'high-risk-nfr-story-done' else 'BUSINESS_PREREQUISITE_MISSING')
+                self.assert_refused('STORY_IDENTITY_MISSING' if transition == 'high-risk-nfr-story-done' else 'BUSINESS_PREREQUISITE_MISSING')
         self.assertEqual({'NFR1','NFR2','NFR3','NFR4','NFR7','NFR10','NFR11','NFR12','NFR14','NFR15','NFR16','NFR17'}, C.HIGH_RISK_NFRS)
 
     def test_unbound_gate_and_runtime_parity_never_execute_caller_command(self):
@@ -662,7 +662,7 @@ class TransitionTests(unittest.TestCase):
         result = self.assert_refused('APPROVAL_MISSING')
         self.assertEqual(209, len(result['binding']['inputs']))
         schema = json.loads((ROOT / 'tools/phase-4-transition.schema.json').read_text())
-        self.assertEqual(209, schema['$defs']['binding']['properties']['inputs']['maxItems'])
+        self.assertEqual(209, schema['$defs']['binding']['allOf'][0]['else']['properties']['inputs']['maxItems'])
         self.request['subjects'].append({'path': 'boundary/too-many', 'sha256': '0' * 64})
         self.assert_refused('INPUT_INVALID', exit_code=2)
 
