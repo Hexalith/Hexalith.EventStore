@@ -197,6 +197,19 @@ public class DaprTestPrerequisiteDiagnosticsTests {
         finally { Directory.Delete(directory, recursive: true); }
     }
 
+    [Fact]
+    public void BareExecutableNameAbsentFromPathHasStableSupportSafeDiagnostic()
+    {
+        // ConversationGatewayLiveFixture falls back to a bare "daprd" when ~/.dapr/bin/daprd is absent.
+        string absent = "daprd-absent-" + Guid.NewGuid().ToString("N");
+        var pathDirectories = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator);
+        pathDirectories.Any(directory => File.Exists(Path.Combine(directory, absent))).ShouldBeFalse();
+        var error = Should.Throw<FileNotFoundException>(() => DaprDiagnostics.RequireDaprExecutable(absent));
+        error.Message.ShouldStartWith(DaprDiagnostics.DaprExecutableNotFound);
+        error.Message.ShouldNotContain(absent);
+        AssertSupportSafe(error.Message);
+    }
+
     private static void AssertSupportSafe(string value) {
         Regex compactJwt = new(@"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", RegexOptions.Compiled);
         Regex bearerToken = new(@"Bearer\s+[A-Za-z0-9._~+/=-]{20,}", RegexOptions.IgnoreCase | RegexOptions.Compiled);

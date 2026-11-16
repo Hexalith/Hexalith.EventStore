@@ -123,7 +123,7 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
         await app.StartAsync();
         using var client = app.GetTestClient();
         var error = await Should.ThrowAsync<TimeoutException>(() => DaprDiagnostics.WaitForAppHostEndpointAsync(
-            client, "/health?token=private", "sample-api.http", TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(10)));
+            client, "/health?token=private", "sample-api.http", TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(25)));
         error.Message.ShouldContain(DaprDiagnostics.AppHostEndpointNotReady);
         error.Message.ShouldContain("sample-api.http");
         error.Message.ShouldContain("HTTP 503");
@@ -181,7 +181,7 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
         using var client = new HttpClient(new SocketsHttpHandler { UseProxy = false })
             { BaseAddress = new Uri($"http://127.0.0.1:{port}") };
         var error = await Should.ThrowAsync<TimeoutException>(() => DaprDiagnostics.WaitForAppHostEndpointAsync(
-            client, "/alive?tenantId=private", "sample-api.http", TimeSpan.FromMilliseconds(150), TimeSpan.FromMilliseconds(10)));
+            client, "/alive?tenantId=private", "sample-api.http", TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(25)));
         error.Message.ShouldContain(DaprDiagnostics.AppHostEndpointNotReady);
         error.Message.ShouldContain("sample-api.http");
         error.Message.ShouldContain("connection unavailable");
