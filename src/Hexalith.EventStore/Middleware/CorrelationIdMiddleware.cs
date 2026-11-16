@@ -27,6 +27,12 @@ public partial class CorrelationIdMiddleware(RequestDelegate next) {
 
         context.Items[HttpContextKey] = correlationId;
         context.Response.Headers[HeaderName] = correlationId;
+        // Exception handlers may clear response headers after this middleware ran. Restore the
+        // validated caller correlation at the final response boundary, including safe errors.
+        context.Response.OnStarting(() => {
+            context.Response.Headers[HeaderName] = correlationId;
+            return Task.CompletedTask;
+        });
 
         await next(context).ConfigureAwait(false);
     }
