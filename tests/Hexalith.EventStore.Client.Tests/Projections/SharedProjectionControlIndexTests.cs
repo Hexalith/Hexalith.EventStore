@@ -7,6 +7,8 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Client.Tests.Projections;
 
+// Keep real-time admission assertions free of competing test collections.
+[Collection("GatewayNativeSourceMetadataAdmission")]
 public sealed class SharedProjectionControlIndexTests
 {
     private const string ControlIndexName = "widget-discovery";
