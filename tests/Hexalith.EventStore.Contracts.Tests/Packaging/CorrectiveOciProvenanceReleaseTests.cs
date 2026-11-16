@@ -40,6 +40,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 new[]
             {
                 "publish",
+                "--disable-build-servers",
                 fixture,
                 "--configuration", "Release",
                 "-t:PublishContainer",
@@ -124,6 +125,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             List<string> arguments =
             [
                 "publish",
+                "--disable-build-servers",
                 fixture,
                 "--configuration", "Release",
                 "--os", "linux",
