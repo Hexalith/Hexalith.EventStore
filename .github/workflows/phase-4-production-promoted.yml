@@ -39,6 +39,13 @@ jobs:
         with:
           persist-credentials: false
           submodules: false
+      - name: Materialize pinned root build configuration
+        run: git -c submodule.recurse=false submodule update --init -- references/Hexalith.Builds
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Verify fixed publication authority rejection controls
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_publication_authority.py'
       - name: Verify this guarded attempt
         env:
           GH_TOKEN: ${{ github.token }}

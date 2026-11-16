@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Phase 4 transition request, result, owner approval, G-OQ8 decision and story completion",
-  "description": "Runtime uses stdlib closed validation. evaluate is candidate evidence; consume authenticates a completed run. A PASS is an assurance subcondition only. Approval request_sha256 excludes approvals to permit posting references after approval. No caller-provided command is accepted. A gate decision reports one authenticated consumption for G-OQ8 governing-design availability only; saved decisions are never authority for later consumption.",
+  "description": "Runtime uses stdlib closed validation. evaluate is candidate evidence; consume authenticates a completed run. A PASS is an assurance subcondition only. Approval request_sha256 excludes approvals to permit posting references after approval. No caller-provided command is accepted. A gate decision reports one authenticated consumption for G-OQ8 governing-design availability only; saved decisions are never authority for later consumption. Release/promotion use the fixed publication-authority-v1 adapter, requiring exact record, sole profile, independent composing coverage and owner codec inputs; unavailable fixed prerequisites refuse.",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -319,7 +319,7 @@
             "$ref": "#/$defs/file"
           },
           "minItems": 1,
-          "maxItems": 215,
+          "maxItems": 260,
           "uniqueItems": true
         },
         "story": {
@@ -341,9 +341,38 @@
           "then": {
             "required": [
               "story"
-            ]
+            ],
+            "properties": {
+              "inputs": {
+                "maxItems": 215
+              }
+            }
           },
           "else": {
+            "if": {
+              "properties": {
+                "transition": {
+                  "enum": [
+                    "release-available",
+                    "production-promoted"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "maxItems": 260
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "inputs": {
+                  "maxItems": 209
+                }
+              }
+            },
             "not": {
               "anyOf": [
                 {
@@ -357,11 +386,6 @@
                   ]
                 }
               ]
-            },
-            "properties": {
-              "inputs": {
-                "maxItems": 209
-              }
             }
           }
         },

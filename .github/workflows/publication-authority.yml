@@ -1,0 +1,67 @@
+name: Publication authority
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    # Prepared required fixture check; repository settings remain owner-managed.
+    name: Publication authority fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Verify structural controls and authority refusals
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_publication_authority.py'
+      - name: Materialize pinned root build configuration
+        run: git -c submodule.recurse=false submodule update --init -- references/Hexalith.Builds
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Build genuine owner profile tests with package references
+        run: dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -m:1 --disable-build-servers
+      - name: Verify owner profile digest domains and external coverage
+        run: dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net11.0/Hexalith.EventStore.Contracts.Tests.dll -class '*ProductionProfileTests'
+      - name: Build read-only owner bridge with package references
+        run: dotnet build tools/production-profile.cs -c Release -p:UseHexalithProjectReferences=false -p:UseNuGetDeps=true -p:BuildInParallel=false --disable-build-servers
+
+      - name: Verify genuine bridge runtime and fixed token-free child
+        run: python3 -B tools/tests/check_production_profile_bridge.py
+
+  live-evaluation:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    name: Publication authority live evaluation (non-promoting)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Materialize pinned root build configuration
+        run: git -c submodule.recurse=false submodule update --init -- references/Hexalith.Builds
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Report actual missing prerequisites without granting authority
+        # Truthful FAIL reports evidence and never blocks main or creates a seal.
+        continue-on-error: true
+        run: python3 -B tools/validate-publication-authority.py evaluate --result "$RUNNER_TEMP/publication-authority-result.json"
+      - name: Retain non-promoting evaluation
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: publication-authority-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/publication-authority-result.json
+          if-no-files-found: error
+          retention-days: 30

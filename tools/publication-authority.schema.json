@@ -1,0 +1,635 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Publication authority v1 declarations; structural success grants no authority",
+  "description": "Runtime additionally checks linked digests, state/role relationships, validity and assurance. No proof or authority is inferred from this schema.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/chain"
+    },
+    {
+      "$ref": "#/$defs/composing_inventory"
+    },
+    {
+      "$ref": "#/$defs/approval_payload"
+    }
+  ],
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)[A-Za-z0-9_.@/-]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "owner",
+        "source_repository",
+        "source_sha",
+        "subject_sha256",
+        "packages",
+        "oci_index_sha256",
+        "server_package_sha256",
+        "extensions_sha256",
+        "catalog_sha256",
+        "runtime_sha256"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "eventstore-package",
+            "platform-composed-host"
+          ]
+        },
+        "owner": {
+          "enum": [
+            "Hexalith/Hexalith.EventStore",
+            "Hexalith/Hexalith.Platform"
+          ]
+        },
+        "source_repository": {
+          "enum": [
+            "Hexalith/Hexalith.EventStore",
+            "Hexalith/Hexalith.Platform"
+          ]
+        },
+        "source_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "subject_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/package"
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "oci_index_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "server_package_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "extensions_sha256": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "minItems": 0,
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "catalog_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "runtime_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "validator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "commit",
+        "path",
+        "sha256",
+        "result_sha256",
+        "receipt_set_sha256"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)[A-Za-z0-9_.@/-]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "result_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "receipt_set_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "issuer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "github_id",
+        "authentication_evidence_sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "role": {
+          "enum": [
+            "eventstore-owner",
+            "release-owner",
+            "test-owner",
+            "deployment-owner"
+          ]
+        },
+        "github_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "authentication_evidence_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "comment_id",
+        "body_sha256"
+      ],
+      "properties": {
+        "comment_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "body_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "validity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issued_at",
+        "expires_at",
+        "revoked",
+        "invalidated",
+        "invalidation_rules"
+      ],
+      "properties": {
+        "issued_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "invalidated": {
+          "type": "boolean"
+        },
+        "invalidation_rules": {
+          "const": [
+            "subject",
+            "source",
+            "workflow",
+            "inputs",
+            "profile",
+            "deployment",
+            "registry",
+            "revocation"
+          ]
+        }
+      }
+    },
+    "assurance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "achieved",
+        "inputs"
+      ],
+      "properties": {
+        "required": {
+          "enum": [
+            "single-maintainer-attested",
+            "independent"
+          ]
+        },
+        "achieved": {
+          "enum": [
+            "none",
+            "single-maintainer-attested",
+            "independent"
+          ]
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "none",
+              "single-maintainer-attested",
+              "independent"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 100
+        }
+      }
+    },
+    "publisher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "commit",
+        "gitlink_commit"
+      ],
+      "properties": {
+        "repository": {
+          "const": "Hexalith/Hexalith.Builds"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "gitlink_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "resolved_sha256",
+        "infrastructure_sha256"
+      ],
+      "properties": {
+        "path": {
+          "const": "deploy/dapr/production-profile.yaml"
+        },
+        "resolved_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "infrastructure_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment",
+        "profile",
+        "inventory",
+        "rendered_deployment",
+        "deployment_sha256"
+      ],
+      "properties": {
+        "environment": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "inventory": {
+          "$ref": "#/$defs/file"
+        },
+        "rendered_deployment": {
+          "$ref": "#/$defs/file"
+        },
+        "deployment_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "version",
+        "id",
+        "state",
+        "subject",
+        "candidate",
+        "validator",
+        "predecessor_sha256",
+        "issuer",
+        "approval",
+        "registry",
+        "outcome",
+        "validity",
+        "assurance",
+        "promotion",
+        "publisher"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.publication-authority.v1"
+        },
+        "version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "state": {
+          "enum": [
+            "built",
+            "evidence-candidate-published",
+            "evidence-validated",
+            "release-available",
+            "production-promoted"
+          ]
+        },
+        "subject": {
+          "$ref": "#/$defs/subject"
+        },
+        "candidate": {
+          "$ref": "#/$defs/candidate"
+        },
+        "validator": {
+          "$ref": "#/$defs/validator"
+        },
+        "predecessor_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issuer": {
+          "$ref": "#/$defs/issuer"
+        },
+        "approval": {
+          "$ref": "#/$defs/approval"
+        },
+        "registry": {
+          "$ref": "#/$defs/file"
+        },
+        "outcome": {
+          "enum": [
+            "built",
+            "evidence-candidate-published",
+            "evidence-validated",
+            "release-available",
+            "production-promoted"
+          ]
+        },
+        "validity": {
+          "$ref": "#/$defs/validity"
+        },
+        "assurance": {
+          "$ref": "#/$defs/assurance"
+        },
+        "promotion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/promotion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publisher": {
+          "$ref": "#/$defs/publisher"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "production-promoted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "promotion": {
+                "$ref": "#/$defs/promotion"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "promotion": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "records"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.publication-authority.v1"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/record"
+          },
+          "minItems": 1,
+          "maxItems": 5
+        }
+      }
+    },
+    "composing_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "source",
+        "expectedApplicationIds",
+        "expectedComponentIds"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.production-composing-inventory.v1"
+        },
+        "source": {
+          "$ref": "#/$defs/file"
+        },
+        "expectedApplicationIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true
+        },
+        "expectedComponentIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true
+        }
+      }
+    },
+    "approval_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "record_claim_sha256",
+        "role",
+        "subject_sha256",
+        "decision"
+      ],
+      "properties": {
+        "schema": {
+          "const": "hexalith.eventstore.publication-authority-approval.v1"
+        },
+        "record_claim_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "subject_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "decision": {
+          "const": "approved"
+        }
+      }
+    }
+  }
+}

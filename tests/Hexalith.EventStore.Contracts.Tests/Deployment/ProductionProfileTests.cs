@@ -43,6 +43,24 @@ public class ProductionProfileTests
         profile.Evidence.Single().SubjectDigests.Distinct(StringComparer.Ordinal).Count().ShouldBeGreaterThan(80);
     }
 
+    [Fact]
+    public void ExternalComposingCoverageRejectsAnUnderDeclaredInventory()
+    {
+        ProductionProfile profile = ProductionProfileCodec.Decode(FixtureBytes(), Context);
+        ProductionProfileValidationContext incomplete = Context with
+        {
+            ExpectedApplicationIds = ["app:eventstore"],
+            ExpectedComponentIds = Context.ExpectedComponentIds.Skip(1).ToArray(),
+        };
+        ProductionProfileValidationResult result = ProductionProfileValidator.Validate(profile, incomplete);
+        result.IsStructurallyValid.ShouldBeFalse();
+        result.Issues.ShouldContain(new ProductionProfileIssue("$.applications", "inventory-coverage-mismatch"));
+        result.Issues.ShouldContain(new ProductionProfileIssue("$.components", "inventory-coverage-mismatch"));
+        result.ResolvedDigest.ShouldBeNull();
+        result.Authorization.ShouldBe("unevaluated");
+        result.Qualification.ShouldBe("unevaluated");
+    }
+
     [Theory]
     [InlineData("release")]
     [InlineData("environment")]

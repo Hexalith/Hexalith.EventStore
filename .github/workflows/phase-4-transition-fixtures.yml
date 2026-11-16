@@ -21,6 +21,8 @@ jobs:
         with:
           persist-credentials: false
           submodules: false
+      - name: Verify publication lifecycle structural and refusal controls
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_publication_authority.py'
       - name: Verify authenticated transitions and rejection controls
         run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_transition.py'
       - name: Verify actual G-OQ8 gate decision consumers

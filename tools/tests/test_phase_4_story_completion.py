@@ -553,8 +553,10 @@ class StoryCompletionTests(unittest.TestCase):
         self.assertEqual(215, len(result['binding']['inputs']))
         schema = json.loads((T.ROOT / 'tools/phase-4-transition.schema.json').read_text())
         binding = schema['$defs']['binding']
-        self.assertEqual(215, binding['properties']['inputs']['maxItems'])
-        self.assertEqual(209, binding['allOf'][0]['else']['properties']['inputs']['maxItems'])
+        self.assertEqual(260, binding['properties']['inputs']['maxItems'])
+        self.assertEqual(215, binding['allOf'][0]['then']['properties']['inputs']['maxItems'])
+        self.assertEqual(209, binding['allOf'][0]['else']['else']['properties']['inputs']['maxItems'])
+        self.assertEqual(260, binding['allOf'][0]['else']['then']['properties']['inputs']['maxItems'])
 
 
 if __name__ == '__main__':

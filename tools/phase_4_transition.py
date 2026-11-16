@@ -398,6 +398,12 @@ class Control:
         return content
 
     def subject_at(self, commit, allow_absent=False):
+        if self.request["transition"] in ("release-available", "production-promoted") and self.request["subject_mode"] == "files":
+            import publication_authority as P
+            try:
+                return P.lifecycle_subject_at(self, commit, allow_absent)
+            except P.Refusal as error:
+                raise Refusal("SUBJECT_MISMATCH", error.code, error.exit_code) from error
         if self.request["transition"] == "high-risk-nfr-story-done":
             import phase_4_story_5_3 as A
             if A.supported(self.request["story"]):
@@ -471,6 +477,11 @@ class Control:
             require(path not in paths or paths[path] == entry["sha256"], "INPUT_INVALID", "conflicting file bindings", 2)
             paths[path] = entry["sha256"]
         extra_controls = STORY_CONTROL_FILES if request["transition"] == "high-risk-nfr-story-done" else ()
+        if request["transition"] in ("release-available", "production-promoted"):
+            import publication_authority as P
+            extra_controls = P.CONTROL_FILES + tuple(
+                p.relative_to(self.root).as_posix() for p in sorted(
+                    (self.root / "src/Hexalith.EventStore.Contracts/Deployment").glob("ProductionProfile*.cs")))
         for path in (*CONTROL_FILES, *extra_controls, workflow_path(request["transition"])):
             value = digest(self.local(path))
             require(path not in paths or paths[path] == value, "SOURCE_MISMATCH", "control file mismatch")
@@ -757,8 +768,11 @@ class Control:
             A.evaluate(self)
         elif transition == "readiness":
             raise Refusal("BUSINESS_PREREQUISITE_MISSING", "readiness needs all mandatory business gates and its actual consumer")
+        elif transition in ("release-available", "production-promoted"):
+            import publication_authority as P
+            P.evaluate_transition(self)
         else:
-            raise Refusal("BUSINESS_PREREQUISITE_MISSING", "Stories 3.19/3.20 lifecycle consumers remain absent")
+            raise Refusal("BUSINESS_PREREQUISITE_MISSING", "Story 3.20 consumer-removal adapter remains absent")
         levels = [self.achieved, *(entry["assurance_level"] for entry in self.predecessors)]
         self.minimum = min(levels, key=M.LEVELS.index)
         require(M.LEVELS.index(self.minimum) >= M.LEVELS.index(self.required), "LEVEL_MISMATCH", "downstream minimum below required assurance")

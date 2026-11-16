@@ -17,6 +17,7 @@ import struct
 import sys
 import tempfile
 import threading
+import types
 import unittest
 from unittest import mock
 import urllib.error
@@ -26,6 +27,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 import phase_4_transition as C
+import publication_authority as P
 
 # Independently pinned contract and platform fixture identities.
 REPO = 'Hexalith/Hexalith.EventStore'
@@ -95,7 +97,7 @@ class TransitionTests(unittest.TestCase):
         self.root = self.base / 'checkout'
         matrix = json.loads((ROOT / MATRIX).read_text())
         self.row = next(row for row in matrix['gates'] if row['gate'] == 'G-OQ8')
-        files = {*SCRIPTS, MATRIX, REGISTRY, OQ8, *INPUTS, *self.row['subject_paths'],
+        files = {*SCRIPTS, *P.CONTROL_FILES, MATRIX, REGISTRY, OQ8, *INPUTS, *self.row['subject_paths'],
                  *(f'.github/workflows/phase-4-{t}.yml' for t in TRANSITIONS)}
         for path in files:
             destination = self.root / path
@@ -154,6 +156,10 @@ class TransitionTests(unittest.TestCase):
         roles = roles or self.row['evaluator_roles']
         bound = hash_bytes(canonical({k: v for k, v in self.request.items() if k != 'approvals'}))
         value = subject([(b['path'], (self.root / b['path']).read_bytes()) for b in self.request['subjects']])
+        if self.request['transition'] in ('release-available', 'production-promoted') and self.request['subject_mode']=='files':
+            projection=types.SimpleNamespace(request=self.request,api=types.SimpleNamespace(
+                file=lambda commit,path,allow_absent=False:self.blobs.get((commit,path))))
+            value=P.lifecycle_subject_at(projection,HEAD)
         for index, role in enumerate(roles):
             payload = {'schema': 'hexalith.eventstore.phase-4-transition-approval.v1', 'repository': REPO,
                        'transition': self.request['transition'], 'head_sha': HEAD, 'role': role,
@@ -390,7 +396,7 @@ class TransitionTests(unittest.TestCase):
         self.blob(HEAD, INPUTS[1], self.blobs[(HEAD, INPUTS[1])] + b'broken')
         self.assert_refused('SOURCE_MISMATCH')
 
-    def test_all_six_transitions_and_absent_lifecycle_consumers_fail_closed(self):
+    def test_all_six_transitions_and_missing_lifecycle_prerequisites_fail_closed(self):
         self.assert_pass()
         for transition in TRANSITIONS[1:]:
             self.request['transition'] = transition
@@ -403,6 +409,114 @@ class TransitionTests(unittest.TestCase):
             with self.subTest(transition=transition):
                 self.assert_refused('STORY_IDENTITY_MISSING' if transition == 'high-risk-nfr-story-done' else 'BUSINESS_PREREQUISITE_MISSING')
         self.assertEqual({'NFR1','NFR2','NFR3','NFR4','NFR7','NFR10','NFR11','NFR12','NFR14','NFR15','NFR16','NFR17'}, C.HIGH_RISK_NFRS)
+
+    def prepare_publication_transport(self):
+        from test_publication_authority import chain
+        records=chain()
+        profile_bytes=(ROOT/'tests/Hexalith.EventStore.Contracts.Tests/Deployment/Fixtures/SyntheticProfile.v1.json').read_bytes()
+        profile=json.loads(profile_bytes)
+        rendered=b'synthetic rendered deployment'
+        rendered_path='deploy/dapr/synthetic-rendered.yaml'
+        source_path='deploy/dapr/synthetic-composition.json'
+        inventory={'schema':'hexalith.eventstore.production-composing-inventory.v1',
+                   'source':{'path':source_path,'sha256':hash_bytes(b'independent composition')},
+                   'expectedApplicationIds':[a['id'] for a in profile['applications']],
+                   'expectedComponentIds':[c['id'] for c in profile['components']]}
+        profile_bytes=profile_bytes.replace(('\"renderedDeploymentDigest\":\"'+profile['environment']['renderedDeploymentDigest']+'\"').encode(),
+            ('\"renderedDeploymentDigest\":\"'+hash_bytes(rendered)+'\"').encode())
+        release=profile['release']
+        packages=[{'id':a['id'],'version':a['version'],'sha256':a['digest']} for a in release['artifacts'] if a['kind']=='module-package']
+        for index,record in enumerate(records['records']):
+            record['subject'].update(packages=packages,server_package_sha256=packages[0]['sha256'],
+                oci_index_sha256=release['composedHostDigest'],extensions_sha256=release['extensionDigests'],
+                catalog_sha256=release['catalogContentDigest'],runtime_sha256=release['runtimeImageDigest'])
+            record['registry']=self.file(REGISTRY)
+            record['issuer'].update(id='github:jpiquot',github_id=6775094)
+            if record['promotion']:
+                promotion=record['promotion']
+                promotion.update(environment=profile['environment']['id'],profile={'path':P.PROFILE,
+                    'resolved_sha256':hash_bytes(profile_bytes),'infrastructure_sha256':profile['infrastructureDigest']},
+                    inventory={'path':P.INVENTORY,'sha256':hash_bytes(canonical(inventory))},
+                    rendered_deployment={'path':rendered_path,'sha256':hash_bytes(rendered)})
+                promotion['deployment_sha256']=P.digest(P.canonical({'purpose':'publication-rendered-deployment','schemaVersion':1,
+                    'oci_index_sha256':record['subject']['oci_index_sha256'],'profile_sha256':promotion['profile']['resolved_sha256'],
+                    'rendered_sha256':promotion['rendered_deployment']['sha256']}))
+            record['predecessor_sha256']=P.record_digest(records['records'][index-1]) if index else None
+            body=canonical({'schema':'hexalith.eventstore.publication-authority-approval.v1','record_claim_sha256':P.claim_digest(record),
+                'role':record['issuer']['role'],'subject_sha256':record['subject']['subject_sha256'],'decision':'approved'}).decode()
+            record['approval']['body_sha256']=record['issuer']['authentication_evidence_sha256']=hash_bytes(body.encode())
+            self.put('/issues/comments/'+str(record['approval']['comment_id']),{'id':record['approval']['comment_id'],'body':body,
+                'user':{'id':6775094,'login':'owner','type':'User'},'performed_via_github_app':None,
+                'created_at':'2026-01-02T00:00:00Z','updated_at':'2026-01-02T00:00:00Z','issue_url':API+'/issues/42'})
+        P.validate_chain(records)
+        contents={P.RECORDS:canonical(records),P.PROFILE:profile_bytes,P.INVENTORY:canonical(inventory),
+                  source_path:b'independent composition',rendered_path:rendered}
+        for source in (ROOT/'src/Hexalith.EventStore.Contracts/Deployment').glob('ProductionProfile*.cs'):
+            contents[source.relative_to(ROOT).as_posix()]=source.read_bytes()
+        for path,content in contents.items():
+            destination=self.root/path; destination.parent.mkdir(parents=True,exist_ok=True); destination.write_bytes(content)
+        paths=set(P.CONTROL_FILES)|set(contents)
+        self.request.update(transition='production-promoted',gate=None,predecessors=[],evidence=[],subjects=[self.file(path) for path in sorted(paths)])
+        for path in paths:
+            content=(self.root/path).read_bytes()
+            self.blob(HEAD,path,content); self.blob(BEFORE,path,content)
+        older=copy.deepcopy(records)
+        for record in older['records']: record['candidate']['sha256']='0'*64
+        self.blob(BEFORE,P.RECORDS,canonical(older))
+        self.approve(roles=['deployment-owner'])
+        return records,rendered_path
+
+    def test_fully_authenticated_publication_reaches_fixed_build_proof_and_checks_each_binding(self):
+        _,rendered_path=self.prepare_publication_transport()
+        result,document=self.run_cli(env_extra={'PATH':'/nonexistent'})
+        self.assertEqual(1,result.returncode,result.stderr)
+        self.assertIn(P.BUILD_INPUT_PROOF,result.stderr)
+        self.assertEqual(['BUSINESS_PREREQUISITE_MISSING'],document['codes'])
+        self.assertEqual(1,len(document['approvals']))
+        comments={item['url'] for item in self.state['observed'] if '/issues/comments/' in item['url']}
+        self.assertTrue({API+'/issues/comments/'+str(1000+i) for i in range(5)}<=comments)
+        self.assertIsNone(document['seal'])
+        for path in (P.PROFILE,P.INVENTORY,P.RECORDS,rendered_path,'tools/production-profile.cs'):
+            original=(self.root/path).read_bytes()
+            (self.root/path).write_bytes(original+b'\n')
+            with self.subTest(path=path): self.assert_refused('SOURCE_MISMATCH')
+            (self.root/path).write_bytes(original)
+
+    def test_real_control_lifecycle_subject_tracks_claim_history_and_keeps_raw_binding(self):
+        records,_=self.prepare_publication_transport()
+        pending=copy.deepcopy(records)
+        for record in pending['records']:
+            record['approval']={'comment_id':None,'body_sha256':None}
+            record['issuer']['authentication_evidence_sha256']=None
+        self.blobs[(BEFORE,P.RECORDS)]=canonical(pending)
+        older='c'*40
+        for item in self.request['subjects']:
+            self.blobs[(older,item['path'])]=self.blobs[(HEAD,item['path'])]
+        authored=copy.deepcopy(pending); authored['records'][-1]['candidate']['sha256']='0'*64
+        self.blobs[(older,P.RECORDS)]=canonical(authored)
+        api=types.SimpleNamespace(file=lambda commit,path,allow_absent=False:self.blobs.get((commit,path)),iter_pages=lambda _: [[
+            self.activity(HEAD,BEFORE,'2026-01-10T00:00:00Z'),self.activity(BEFORE,older,'2026-01-01T00:00:00Z')]])
+        control=C.Control(self.root,self.request,api)
+        control.subject=control.subject_at(HEAD)
+        self.assertEqual(control.subject,control.subject_at(BEFORE))
+        self.assertNotEqual(hash_bytes(self.blobs[(HEAD,P.RECORDS)]),hash_bytes(self.blobs[(BEFORE,P.RECORDS)]))
+        self.assertEqual('2026-01-01T00:00:00+00:00',control.changed_push().isoformat())
+        self.blobs[(BEFORE,P.RECORDS)]=canonical(authored)
+        self.assertEqual('2026-01-10T00:00:00+00:00',control.changed_push().isoformat())
+        bound=next(item for item in self.request['subjects'] if item['path']==P.RECORDS)
+        self.assertEqual(hash_bytes(self.blobs[(HEAD,P.RECORDS)]),bound['sha256'])
+
+    def test_fixed_publication_adapter_requires_bound_profile_inventory_records_and_owner_code(self):
+        self.assert_pass()
+        self.request['transition'] = 'release-available'
+        self.request['gate'] = None
+        self.approve(roles=['release-owner'])
+        document = self.assert_refused('BUSINESS_PREREQUISITE_MISSING')
+        bound = {item['path'] for item in document['binding']['inputs']}
+        self.assertTrue(set(P.CONTROL_FILES) <= bound)
+        self.assertEqual(1, len(document['approvals']))
+        self.assertEqual('none', document['downstream_minimum'])
+        self.assertIsNone(document['seal'])
 
     def test_unbound_gate_and_runtime_parity_never_execute_caller_command(self):
         self.assert_pass()
@@ -691,7 +805,7 @@ class TransitionTests(unittest.TestCase):
         result = self.assert_refused('APPROVAL_MISSING')
         self.assertEqual(209, len(result['binding']['inputs']))
         schema = json.loads((ROOT / 'tools/phase-4-transition.schema.json').read_text())
-        self.assertEqual(209, schema['$defs']['binding']['allOf'][0]['else']['properties']['inputs']['maxItems'])
+        self.assertEqual(209, schema['$defs']['binding']['allOf'][0]['else']['else']['properties']['inputs']['maxItems'])
         self.request['subjects'].append({'path': 'boundary/too-many', 'sha256': '0' * 64})
         self.assert_refused('INPUT_INVALID', exit_code=2)
 
