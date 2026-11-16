@@ -1,12 +1,14 @@
-"""Fixed adapter contracts and real CLI refusals; no synthetic business PASS.
+"""Fixed adapter contracts, guarded-driver controls and real CLI refusals.
 
 Platform HTTP facts are fixtures. Business positive controls are actual .NET
-execution recorded by the standalone validator; the current complete claim
-cannot pass while its executable scanner capabilities remain incomplete.
+execution recorded by the standalone validator and the explicit guarded driver;
+fast controls never manufacture business PASS evidence.
 """
 
 import copy
+import contextlib
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -24,6 +26,8 @@ import test_phase_4_transition as T
 import test_phase_4_story_completion as W
 import phase_4_story_5_3 as A
 import phase_4_transition as C
+import check_phase_4_story_5_3_guarded_write as G
+import phase_4_transport_fixture as HTTP
 
 
 class AdapterContracts(unittest.TestCase):
@@ -36,6 +40,103 @@ class AdapterContracts(unittest.TestCase):
         return {'story_key': A.STORY_IDENTITY, 'story_id': '5.3', 'spec_path': '_bmad-output/implementation-artifacts/spec-5-3-new-slice.md',
                 'target': 'spec', 'scope': 'slice', 'nfr_ids': ['NFR3', 'NFR4'], 'high_risk_nfr_ids': ['NFR3', 'NFR4'],
                 'coverage_sha256': '0' * 64}
+
+    def test_guarded_driver_stores_real_tree_blob_and_root_gitlink_identities(self):
+        entries = [self.file('business/auth.cs'), self.file('z.txt'), self.file('business.txt'),
+                   {'path': 'references/Dependency', 'mode': '160000', 'git_sha': 'a' * 40}]
+        A.write_index(self.root, entries)
+        tree = G.private_tree(self.root, entries)
+        self.assertEqual(tree, A.object_sha('tree', A.verified_object(self.root, 'tree', tree)))
+        actual = []
+        for row in A.git(self.root, 'ls-tree', '-r', '-z', tree).split(b'\0'):
+            if row:
+                metadata, path = row.split(b'\t')
+                mode, kind, oid = metadata.decode().split()
+                actual.append({'path': path.decode(), 'mode': mode, 'git_sha': oid})
+                self.assertEqual('commit' if mode == '160000' else 'blob', kind)
+        self.assertEqual(A.validate_entries(entries), actual)
+        self.assertFalse((self.root / 'references/Dependency/.git').exists())
+
+    def test_final_edit_ignores_other_temporary_directories_and_prefixes(self):
+        destination = self.root / 'destination.md'
+        source = self.root / 'business.cs'
+        source.write_bytes(b'original business\n')
+        other = self.root / 'other'
+        other.mkdir()
+        ready = mock.Mock(return_value=True)
+        edit = G.FinalPreparationEdit(tempfile.NamedTemporaryFile, destination, source, ready)
+        for directory, prefix in ((other, '.story-completion-'), (self.root, 'story-5-3-'),
+                                  (self.root, '.story-completion-report-')):
+            with edit(dir=directory, prefix=prefix) as stream:
+                self.assertTrue(Path(stream.name).exists())
+            self.assertEqual(b'original business\n', source.read_bytes())
+        self.assertEqual(0, edit.reached)
+        ready.assert_not_called()
+        with edit(dir=destination.parent, prefix='.story-completion-'):
+            self.assertEqual(edit.edited, source.read_bytes())
+            self.assertEqual(1, edit.reached)
+        ready.assert_called_once_with()
+
+    def test_final_edit_requires_fresh_evidence_and_removes_failed_hook_tempfile(self):
+        source = self.root / 'business.cs'
+        source.write_bytes(b'original business\n')
+        edit = G.FinalPreparationEdit(tempfile.NamedTemporaryFile, self.root / 'destination.md', source, lambda: False)
+        with self.assertRaises(C.Refusal) as caught:
+            edit(dir=self.root, prefix='.story-completion-', delete=False)
+        self.assertEqual('STORY_EVIDENCE_FAILED', caught.exception.code)
+        self.assertEqual(b'original business\n', source.read_bytes())
+        self.assertEqual([], list(self.root.glob('.story-completion-*')))
+
+    def test_preservation_control_rejects_lost_edit_changed_destination_or_tempfile(self):
+        destination = self.root / 'destination.md'
+        original = b'open lifecycle\n'
+        destination.write_bytes(original)
+        source = self.root / 'business.cs'
+        source.write_bytes(b'original business\n')
+        edit = G.FinalPreparationEdit(tempfile.NamedTemporaryFile, destination, source, lambda: True)
+        with edit(dir=self.root, prefix='.story-completion-', delete=False) as stream:
+            temporary = Path(stream.name)
+        with self.assertRaises(C.Refusal):
+            G.assert_preserved(edit, destination, original)
+        temporary.unlink()
+        G.assert_preserved(edit, destination, original)
+        destination.write_bytes(b'changed lifecycle\n')
+        with self.assertRaises(C.Refusal):
+            G.assert_preserved(edit, destination, original)
+        destination.write_bytes(original)
+        source.write_bytes(b'lost concurrent edit\n')
+        with self.assertRaises(C.Refusal):
+            G.assert_preserved(edit, destination, original)
+
+    def test_synthetic_artifact_refuses_unbound_candidate_before_packaging(self):
+        state = {'responses': {}}
+        with self.assertRaises(C.Refusal) as caught:
+            HTTP.bind_story_candidate(state, {'head_sha': 'a' * 40}, {'phase': 'evaluate', 'result': 'FAIL'})
+        self.assertEqual('RESULT_MISMATCH', caught.exception.code)
+        self.assertEqual({}, state['responses'])
+
+    def test_guarded_driver_missing_repository_input_fails_nonzero_without_success(self):
+        # An actual absent private Git authority reaches main's diagnostic path;
+        # no business result or prerequisite exception is substituted here.
+        scratch = self.root / 'wrapper-scratch'
+        scratch.mkdir()
+        source = self.root / 'missing-repository'
+        source.mkdir()
+        logs = self.root / 'retained-failure'
+        output = io.StringIO()
+        with mock.patch.object(G, 'ROOT', source), mock.patch.dict(os.environ, TMPDIR=str(scratch)), \
+             contextlib.redirect_stdout(output):
+            code = G.main(['--logs', str(logs)])
+        report = json.loads(output.getvalue())
+        self.assertNotEqual(0, code)
+        self.assertEqual('FAIL', report['result'])
+        self.assertEqual('SOURCE_MISMATCH', report['code'])
+        self.assertIn('cannot read adapter Git authority', report['diagnostic'])
+        self.assertNotIn('PASS', output.getvalue())
+        self.assertNotIn('skip', output.getvalue().lower())
+        self.assertEqual(report, json.loads((logs / 'guarded-write-result.json').read_text()))
+        self.assertEqual([], list(source.iterdir()))
+        self.assertEqual([], list(scratch.iterdir()))
 
     def test_exact_supported_coverage_and_spec_identity_only(self):
         claim = self.claim()

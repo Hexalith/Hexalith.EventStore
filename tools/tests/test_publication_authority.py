@@ -4,6 +4,7 @@ import datetime as dt
 import hashlib
 import json
 from pathlib import Path
+import secrets
 import subprocess
 import sys
 import tempfile
@@ -137,8 +138,14 @@ class PublicationAuthorityTests(unittest.TestCase):
         for content in (b'{"schema":1,"schema":2}', b'{"x":NaN}', b'\xff', b'['*40+b']'*40):
             with self.subTest(content=content[:20]):
                 with self.assertRaises(P.Refusal): P.parse(content)
-        document=chain(); document['records'][0]['untrusted-secret-value']='do-not-echo'
-        self.refusal('SCHEMA_INVALID', lambda: P.validate_chain(document, NOW))
+        document = chain()
+        record = document['records'][0]
+        record.update({'untrusted-secret-value': secrets.token_hex(32)})
+        canary = record['untrusted-secret-value']
+        with self.assertRaises(P.Refusal) as caught:
+            P.validate_chain(document, NOW)
+        self.assertEqual('SCHEMA_INVALID', caught.exception.code)
+        self.assertNotIn(canary, str(caught.exception))
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory); (root/'input').write_bytes(b'x'*(P.MAX_BYTES+1))
             self.refusal('INPUT_LIMIT', lambda: P.read(root,'input'))

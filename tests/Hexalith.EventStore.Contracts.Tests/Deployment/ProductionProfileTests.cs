@@ -170,6 +170,7 @@ public class ProductionProfileTests
     {
         ProductionProfileValidator.Validate(Profile(), Context).IsStructurallyValid.ShouldBeTrue();
         JsonNode node = Node();
+        string canary = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         JsonNode actor = Component(node, "component:actor-eventstore");
         JsonNode app = Application(node, "app:eventstore");
         switch (scenario)
@@ -201,8 +202,8 @@ public class ProductionProfileTests
             case "actor-missing": actor["actorStateStore"] = false; break;
             case "actor-credential": node["environment"]!["credentials"]!.AsArray().Single(c => c!["id"]!.GetValue<string>() == "credential:eventstore-database")!["consumerAppIds"]!.AsArray().Add("app:tenants"); break;
             case "inline-credential": node["environment"]!["credentials"]![0]!["store"] = "never-print-credential"; break;
-            case "endpoint-credential": node["environment"]!["endpoints"]![0]!["address"] = "amqps://user:never-print-credential@broker.invalid"; break;
-            case "endpoint-query": node["environment"]!["endpoints"]![0]!["address"] = "amqps://broker.invalid?password=never-print-credential"; break;
+            case "endpoint-credential": node["environment"]!["endpoints"]![0]!["address"] = "amqps://user:" + canary + "@broker.invalid"; break;
+            case "endpoint-query": node["environment"]!["endpoints"]![0]!["address"] = "amqps://broker.invalid?password=" + canary; break;
             case "runtime-floor": node["release"]!["runtimeVersion"] = "1.18.2"; break;
             case "runtime-minor": node["template"]!["runtimeMinor"] = "1.19"; break;
             case "runtime-image": app["sidecarImageDigest"] = new string('b', 64); break;
@@ -244,6 +245,7 @@ public class ProductionProfileTests
         result.Issues.ShouldBe(result.Issues.OrderBy(i => i.Path, StringComparer.Ordinal).ThenBy(i => i.Code, StringComparer.Ordinal));
         ProductionProfileValidationException failure = Should.Throw<ProductionProfileValidationException>(() => ProductionProfileCodec.Encode(invalid, Context));
         failure.Message.ShouldNotContain("never-print-credential");
+        failure.Message.ShouldNotContain(canary);
         failure.InnerException.ShouldBeNull();
     }
 
@@ -272,9 +274,10 @@ public class ProductionProfileTests
         string json = Encoding.UTF8.GetString(FixtureBytes());
         byte[] bytes;
         JsonNode node = Node();
+        string canary = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         switch (scenario)
         {
-            case "unknown-field": node["never-print-credential"] = "never-print-credential"; json = node.ToJsonString(); break;
+            case "unknown-field": node["never-print-credential"] = canary; json = node.ToJsonString(); break;
             case "duplicate-field": json = "{\"purpose\":\"never-print-credential\"," + json[1..]; break;
             case "nested-duplicate": json = json.Replace("\"mandatoryGuard\":true", "\"mandatoryGuard\":true,\"mandatoryGuard\":false", StringComparison.Ordinal); break;
             case "missing-section": node.AsObject().Remove("issuer"); json = node.ToJsonString(); break;
@@ -300,6 +303,7 @@ public class ProductionProfileTests
         ProductionProfileValidationException failure = Should.Throw<ProductionProfileValidationException>(() => ProductionProfileCodec.Decode(bytes, Context));
         failure.Issues.ShouldContain(i => i.Code == expectedCode);
         failure.Message.ShouldNotContain("never-print-credential");
+        failure.Message.ShouldNotContain(canary);
         failure.InnerException.ShouldBeNull();
     }
 
@@ -390,11 +394,11 @@ public class ProductionProfileTests
                 break;
             case "credential-alias":
                 foreach (string field in new[] { "store", "logicalName", "mapKey", "generation" })
-                    Credential(node, "credential:tenants-database")[field] = Credential(node, "credential:eventstore-database")[field]!.DeepClone();
+                    node["environment"]!["credentials"]!.AsArray().Single(c => c!["id"]!.GetValue<string>() == "credential:tenants-database")![field] = node["environment"]!["credentials"]!.AsArray().Single(c => c!["id"]!.GetValue<string>() == "credential:eventstore-database")![field]!.DeepClone();
                 break;
             case "credential-reverse-only":
             case "credential-reverse-shared":
-                JsonNode reverse = Credential(node, "credential:eventstore-database").DeepClone();
+                JsonNode reverse = node["environment"]!["credentials"]!.AsArray().Single(c => c!["id"]!.GetValue<string>() == "credential:eventstore-database")!.DeepClone();
                 reverse["id"] = "credential:reverse";
                 reverse["logicalName"] = "isolated/reverse";
                 if (scenario == "credential-reverse-shared") reverse["componentIds"] = new JsonArray("component:actor-tenants");
@@ -510,7 +514,6 @@ public class ProductionProfileTests
     private static ProductionProfile FromNode(JsonNode node) => node.Deserialize<ProductionProfile>(Options)!;
     private static JsonNode Component(JsonNode node, string id) => node["components"]!.AsArray().Single(c => c!["id"]!.GetValue<string>() == id)!;
     private static JsonNode Application(JsonNode node, string id) => node["applications"]!.AsArray().Single(a => a!["id"]!.GetValue<string>() == id)!;
-    private static JsonNode Credential(JsonNode node, string id) => node["environment"]!["credentials"]!.AsArray().Single(c => c!["id"]!.GetValue<string>() == id)!;
     private static JsonNode Provider(JsonNode node, string id) => node["infrastructure"]!["providers"]!.AsArray().Single(p => p!["id"]!.GetValue<string>() == id)!;
 
     private static void RemoveValue(JsonNode node, string value)
