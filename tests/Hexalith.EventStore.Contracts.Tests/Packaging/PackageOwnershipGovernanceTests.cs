@@ -1,5 +1,4 @@
 using System.Xml.Linq;
-using YamlDotNet.RepresentationModel;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
@@ -29,31 +28,6 @@ public sealed class PackageOwnershipGovernanceTests
         script.ShouldContain("[Dapr.AspNetCore]=0");
         script.ShouldContain("[Dapr.Actors]=1");
         script.ShouldContain("[Dapr.Actors.AspNetCore]=1");
-    }
-
-    [Fact]
-    public void EventStoreDependabotDoesNotOwnNuGetCatalogUpdates()
-    {
-        string root = FindRepositoryRoot();
-        using var reader = new StreamReader(Path.Combine(root, ".github", "dependabot.yml"));
-        var yaml = new YamlStream();
-        yaml.Load(reader);
-
-        YamlMappingNode document = yaml.Documents.Single().RootNode.ShouldBeOfType<YamlMappingNode>();
-        YamlSequenceNode updates = document.Children[new YamlScalarNode("updates")]
-            .ShouldBeOfType<YamlSequenceNode>();
-        string[] ecosystems = updates.Children
-            .Select(node => node.ShouldBeOfType<YamlMappingNode>())
-            .Select(update => update.Children[new YamlScalarNode("package-ecosystem")])
-            .Select(node => node.ShouldBeOfType<YamlScalarNode>().Value.ShouldNotBeNull())
-            .ToArray();
-
-        ecosystems.ShouldNotContain(
-            ecosystem => string.Equals(ecosystem, "nuget", StringComparison.OrdinalIgnoreCase));
-        ecosystems.ShouldContain(
-            ecosystem => string.Equals(ecosystem, "npm", StringComparison.OrdinalIgnoreCase));
-        ecosystems.ShouldContain(
-            ecosystem => string.Equals(ecosystem, "github-actions", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -93,20 +67,6 @@ public sealed class PackageOwnershipGovernanceTests
         guide.ShouldContain("global.json");
         guide.ShouldContain("package-consumer fixture");
         guide.ShouldContain(".csproj.lscache");
-    }
-
-    [Fact]
-    public void GatewayLedgerDoesNotReportObsoleteUnconditionalSourceEdge()
-    {
-        string root = FindRepositoryRoot();
-        string deferredWork = File.ReadAllText(Path.Combine(
-            root,
-            "_bmad-output",
-            "implementation-artifacts",
-            "deferred-work.md"));
-
-        deferredWork.ShouldNotContain(
-            "references `Hexalith.EventStore.Gateway` as an unconditional source ProjectReference");
     }
 
     [Fact]

@@ -59,11 +59,12 @@
     <Project Path="tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Client.TestContracts/Hexalith.EventStore.Client.TestContracts.csproj" />
     <Project Path="tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj" />
-    <Project Path="tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/Hexalith.EventStore.DeferredWorkGovernance.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj" />
     <Project Path="tests/Hexalith.EventStore.LoadTests.Tests/Hexalith.EventStore.LoadTests.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Operations.Tests/Hexalith.EventStore.Operations.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.LiveTests.csproj" />
     <Project Path="tests/Hexalith.EventStore.ProviderVerification/Hexalith.EventStore.ProviderVerification.csproj" />

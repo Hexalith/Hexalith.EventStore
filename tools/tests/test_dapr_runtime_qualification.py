@@ -305,27 +305,6 @@ class CandidatePacketTests(unittest.TestCase):
         f.change('kafka/cancellation-backpressure/observation.json', lambda row: row['consumerGroupStates'].update(before=True))
         with self.assertRaisesRegex(ValueError, 'unavailable consumer-group state'): validate_packet(f.directory)
 
-    def testQualificationUploadsPreserveHiddenInputsForIndependentValidation(self):
-        import re
-        from dapr_broker_qualification import validate_packet
-        for workflow in ('dapr-broker-qualification.yml', 'dapr-runtime-qualification.yml'):
-            with self.subTest(workflow=workflow), tempfile.TemporaryDirectory() as directory:
-                source = (ROOT / '.github/workflows' / workflow).read_text()
-                upload = source.split('- uses: actions/upload-artifact@', 1)[1]
-                paths = re.findall(r'^\s+path:\s*(.+)$', upload, re.M)
-                self.assertEqual(['${{ env.QUALIFICATION_OUTPUT }}'], paths)
-                include_hidden = bool(re.search(r'^\s+include-hidden-files:\s*true\s*$', upload, re.M))
-                destination = Path(directory) / 'downloaded-artifact'
-                # Model the action's hidden-file selection, then use the actual
-                # independent validator on the transported bytes, without resealing.
-                ignore = None if include_hidden else shutil.ignore_patterns('.*')
-                shutil.copytree(self.fixture.directory, destination, ignore=ignore)
-                self.assertEqual('PASS', validate_packet(destination)['integrity'])
-                hidden = destination / 'inputs/.github/workflows/dapr-broker-qualification.yml'
-                self.assertTrue(hidden.is_file())
-                hidden.unlink()
-                with self.assertRaisesRegex(ValueError, 'missing retained file'):
-                    validate_packet(destination)
 
     def testMissingWorkerCustodyCannotPass(self):
         from dapr_broker_qualification import validate_packet

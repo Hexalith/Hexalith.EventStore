@@ -46,8 +46,11 @@ class PairedCheckoutPreflightTests(unittest.TestCase):
             # The owning repository requires exact candidate validation even for disposable fixture history.
             messages = ('test(protection): seed paired checkout fixture', 'test(protection): advance paired checkout fixture')
             cli = Path(os.environ.get('EXT_PROTECTION_COMMITLINT_CLI', str(ROOT / 'node_modules/@commitlint/cli/cli.js'))).resolve()
-            config = Path(os.environ.get('EXT_PROTECTION_COMMITLINT_CONFIG', str(ROOT / 'commitlint.config.mjs'))).resolve()
-            if json.loads((cli.parent / 'package.json').read_bytes())['version'] != '21.2.4' or config.read_bytes() != (ROOT / 'commitlint.config.mjs').read_bytes():
+            policy = ROOT / 'commitlint.config.mjs'
+            if not policy.is_file():
+                policy = ROOT / 'references/Hexalith.Builds/Github/guard/commitlint.config.mjs'
+            config = Path(os.environ.get('EXT_PROTECTION_COMMITLINT_CONFIG', str(policy))).resolve()
+            if json.loads((cli.parent / 'package.json').read_bytes())['version'] != '21.2.4' or config.read_bytes() != policy.read_bytes():
                 raise AssertionError('Owning pinned commitlint CLI and exact configuration required')
             message_files = []
             for index, message in enumerate(messages):

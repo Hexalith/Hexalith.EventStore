@@ -25,6 +25,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", help="Directory that receives packed .nupkg files.")
     parser.add_argument("version", help="Semantic-release version to stamp into packages.")
+    parser.add_argument("--no-build", action="store_true", help="Pack existing Release outputs without restoring or rebuilding the module.")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -55,6 +56,8 @@ def main() -> int:
             "-p:GeneratePackageOnBuild=false",
             "-p:UseHexalithProjectReferences=false",
         ]
+        if args.no_build:
+            command.extend(("--no-build", "--no-restore"))
         print(" ".join(command), flush=True)
         if not args.dry_run:
             run(command)

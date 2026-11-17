@@ -76,3 +76,21 @@ Unknown, missing, invalid, stale, or overbroad decisions stay unresolved and can
 
 - **Next:** [Story 3.17 inventory and enforcement](../../_bmad-output/implementation-artifacts/3-17-dapr-boundary-inventory-and-enforcement.md) — close evaluated graph coverage and guard negatives before claiming conformance.
 - **Related:** [Architecture Overview](architecture-overview.md), [DAPR Component Reference](../guides/dapr-component-reference.md), [Story 2.13 qualification](../../_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md)
+
+## Managed CI fixture routing
+
+The approved CiCd migration preserves existing product fixtures until a validated
+Platform replacement exists. `after-integration-tests` uses fixture-owned Dapr
+1.18.2 sidecar/control-plane containers with unique names and loopback ports,
+original private 1.18.4 compatibility archives, isolated 1.18.7 payload/catalog
+executables, and the locked 1.19.1 Kubernetes crypto runtime with kind 0.31.0.
+These fixtures leave the shared CI 1.19.1 infrastructure intact and retain their
+existing ownership and cleanup obligations. The nightly broker matrix remains
+non-promoting and cannot issue production authority.
+
+Azure offline schema checks remain in ordinary CI with no Azure secrets. Real
+Azure conformance runs only on explicit manual selection after green same-source
+CI, using its designated private runner, approval environment, two named secrets
+and exact owner-authority digest. Existing source, expiry, private-network,
+resource/identity and custody checks remain authoritative; CI never provisions
+Azure faults or synthesizes owner authority. See [CI routing](../ci.md).

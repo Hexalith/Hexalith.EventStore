@@ -32,23 +32,17 @@ public class KeyedSemaphoreTests {
     [Fact]
     public async Task AcquireAsync_SameKeyConcurrentWaiters_SerializesAndReleasesAtBaseline() {
         var keyed = new KeyedSemaphore<string>();
-        var firstReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var firstReleased = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using IDisposable first = await keyed.AcquireAsync("a", CancellationToken.None);
+        Task<IDisposable> secondTask = keyed.AcquireAsync("a", CancellationToken.None);
 
-        var secondTask = Task.Run(async () => {
-            await firstReady.Task;
-            using IDisposable second = await keyed.AcquireAsync("a", CancellationToken.None);
-            firstReleased.Task.IsCompleted.ShouldBeTrue();
-        });
-
-        IDisposable first = await keyed.AcquireAsync("a", CancellationToken.None);
-        firstReady.SetResult();
-        await Task.Delay(50);
+        // The second waiter cannot acquire the same key while the first lease is held.
+        secondTask.IsCompleted.ShouldBeFalse();
         keyed.Count.ShouldBe(1);
         first.Dispose();
-        firstReleased.SetResult();
 
-        await secondTask;
+        using (IDisposable second = await secondTask) {
+            keyed.Count.ShouldBe(1);
+        }
         keyed.Count.ShouldBe(0);
     }
 

@@ -942,7 +942,7 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
     public static async Task<string> ReadObservedContainerImageAsync(string containerName)
         => await RunCapturedProcessAsync(
             "docker",
-            ["inspect", containerName, "--format", "{{.Config.Image}}"]).ConfigureAwait(false);
+            ["inspect", DaprTestInfrastructureContainers.Resolve(containerName, Environment.GetEnvironmentVariable), "--format", "{{.Config.Image}}"]).ConfigureAwait(false);
 
     /// <summary>
     /// Reads the local image <em>ID</em> of a running container. This is the content digest of the
@@ -954,7 +954,7 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
     public static async Task<string> ReadObservedContainerImageIdAsync(string containerName)
         => await RunCapturedProcessAsync(
             "docker",
-            ["inspect", containerName, "--format", "{{.Image}}"]).ConfigureAwait(false);
+            ["inspect", DaprTestInfrastructureContainers.Resolve(containerName, Environment.GetEnvironmentVariable), "--format", "{{.Image}}"]).ConfigureAwait(false);
 
     /// <summary>
     /// Reads the registry repository digests of a local image. These are the values that work in a
@@ -976,10 +976,10 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
         // Redis 6 CONFIG GET accepts one parameter per call; two probes keep the capture portable.
         string appendOnly = await RunCapturedProcessAsync(
             "docker",
-            ["exec", "dapr_redis", "redis-cli", "config", "get", "appendonly"]).ConfigureAwait(false);
+            ["exec", DaprTestInfrastructureContainers.Resolve("dapr_redis", Environment.GetEnvironmentVariable), "redis-cli", "config", "get", "appendonly"]).ConfigureAwait(false);
         string save = await RunCapturedProcessAsync(
             "docker",
-            ["exec", "dapr_redis", "redis-cli", "config", "get", "save"]).ConfigureAwait(false);
+            ["exec", DaprTestInfrastructureContainers.Resolve("dapr_redis", Environment.GetEnvironmentVariable), "redis-cli", "config", "get", "save"]).ConfigureAwait(false);
         return string.Join(
             " | ",
             appendOnly.ReplaceLineEndings(" ").Trim(),

@@ -501,7 +501,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         string observedRedisImageId = await DaprTestContainerFixture
             .ReadObservedContainerImageIdAsync("dapr_redis").ConfigureAwait(true);
         string observedRedisRepoDigests = await DaprTestContainerFixture
-            .ReadObservedRepositoryDigestsAsync("redis:6").ConfigureAwait(true);
+            .ReadObservedRepositoryDigestsAsync(observedRedisImageId).ConfigureAwait(true);
         string observedRedisPersistence = await DaprTestContainerFixture
             .ReadObservedRedisPersistenceAsync().ConfigureAwait(true);
         string observedPlacementImage = await DaprTestContainerFixture
@@ -564,7 +564,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 schedulerImageIdObserved = observedSchedulerImageId,
                 imageIdVersusRepositoryDigest =
                     "*ImageIdObserved is the local image ID from `docker inspect {{.Image}}`; it is NOT a registry repository digest and must not be used in `docker pull name@sha256:...`. redisRepoDigestsObserved carries the pullable digests.",
-                redisProbeSource = "docker inspect dapr_redis / docker image inspect redis:6 / redis-cli config get appendonly, save",
+                redisProbeSource = "docker inspect the selected Redis container / docker image inspect its observed image ID / redis-cli config get appendonly, save",
                 controlPlanePorts = new
                 {
                     placementProbeOrder = DaprTestContainerFixture.PlacementPortProbeOrder,

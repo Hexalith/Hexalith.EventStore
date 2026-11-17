@@ -13,6 +13,7 @@ using Shouldly;
 namespace Hexalith.EventStore.DomainService.Tests;
 
 /// <summary>Owned discovery proofs and bounded fair service survive races, abandonment and restart.</summary>
+[Collection("Process read slots")]
 public sealed class ReminderDiscoveryOwnershipTests
 {
     /// <summary>A competing failure inserted at completion CAS survives both old completion and cleanup.</summary>

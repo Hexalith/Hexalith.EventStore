@@ -4,8 +4,6 @@
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
     <RootNamespace>Hexalith.EventStore.Admin.UI.E2E</RootNamespace>
-    <!-- Playwright transitive dependencies may trigger NuGet audit -->
-    <NuGetAuditMode>direct</NuGetAuditMode>
   </PropertyGroup>
 
   <ItemGroup>

@@ -3,6 +3,7 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
+    <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
 </Project>
