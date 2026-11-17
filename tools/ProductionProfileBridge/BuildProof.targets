@@ -1,0 +1,28 @@
+<Project>
+  <Target Name="ProfileProofPlan" DependsOnTargets="ResolveReferences;FindReferenceAssembliesForReferences;GenerateGlobalUsings;GenerateAssemblyInfo;GenerateTargetFrameworkMonikerAttribute;GenerateMSBuildEditorConfigFile;ProfileProofObserve" />
+  <Target Name="ProfileProofObserve" BeforeTargets="CoreCompile" DependsOnTargets="AddGlobalAnalyzerConfigForPackage_MicrosoftCodeAnalysisNetAnalyzers">
+    <PropertyGroup>
+      <_ProofPackages>@(PackageReference)</_ProofPackages>
+      <_ProofProjects>@(ProjectReference)</_ProofProjects>
+    </PropertyGroup>
+    <ItemGroup>
+      <_ProfileProof Include="@(Compile->'source|%(FullPath)')" />
+      <_ProfileProof Include="@(ReferencePathWithRefAssemblies->'reference|%(FullPath)')" />
+      <_ProfileProof Include="@(Analyzer->'analyzer|%(FullPath)')" />
+      <_ProfileProof Include="@(AdditionalFiles->'additional|%(FullPath)')" />
+      <_ProfileProof Include="@(EditorConfigFiles->'config|%(FullPath)')" />
+      <_ProfileProof Include="@(AnalyzerConfigFiles->'config|%(FullPath)')" />
+      <_ProfileProofImport Include="$(MSBuildAllProjects)" />
+      <_ProfileProof Include="@(_ProfileProofImport->'import|%(FullPath)')" />
+      <_ProfileProof Include="response|$(CompilerResponseFile)" />
+      <_ProfileProof Include="arguments|$(AdditionalCompilerArguments)" />
+      <_ProfileProof Include="toolpath|$(CscToolPath)" />
+      <_ProfileProof Include="toolexe|$(CscToolExe)" />
+      <_ProfileProof Include="cscenvironment|$(CscEnvironment)" />
+      <_ProfileProof Include="package|$(_ProofPackages)" />
+      <_ProfileProof Include="project|$(_ProofProjects)" />
+      <_ProfileProof Include="complete|profile-bridge-v1" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(ProfileProofOutput)" Lines="@(_ProfileProof)" Overwrite="true" Encoding="UTF-8" />
+  </Target>
+</Project>

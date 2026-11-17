@@ -319,7 +319,7 @@
             "$ref": "#/$defs/file"
           },
           "minItems": 1,
-          "maxItems": 265,
+          "maxItems": 266,
           "uniqueItems": true
         },
         "story": {
@@ -362,7 +362,7 @@
             "then": {
               "properties": {
                 "inputs": {
-                  "maxItems": 265
+                  "maxItems": 266
                 }
               }
             },

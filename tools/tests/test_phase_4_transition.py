@@ -525,6 +525,7 @@ class TransitionTests(unittest.TestCase):
         document = self.assert_refused('BUSINESS_PREREQUISITE_MISSING')
         bound = {item['path'] for item in document['binding']['inputs']}
         self.assertTrue(set(P.CONTROL_FILES) <= bound)
+        self.assertIn(P.B.TARGETS,bound)
         self.assertEqual(1, len(document['approvals']))
         self.assertEqual('none', document['downstream_minimum'])
         self.assertIsNone(document['seal'])

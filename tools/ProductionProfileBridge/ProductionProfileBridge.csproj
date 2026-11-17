@@ -50,4 +50,5 @@
     <Compile Include="../../src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileValidator.cs" />
     <Compile Include="../../src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileWriter.cs" />
   </ItemGroup>
+  <Import Project="BuildProof.targets" />
 </Project>

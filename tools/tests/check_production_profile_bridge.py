@@ -7,6 +7,7 @@ Synthetic profile files are created exclusively under the private temporary chec
 import argparse
 import copy
 import json
+import inspect
 import os
 import runpy
 from pathlib import Path
@@ -14,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -59,7 +61,8 @@ def check_evaluated_restore_sources(root, data):
     names = ('RestoreSources', 'RestoreAdditionalProjectSources', 'RestoreFallbackFolders',
              'RestoreAdditionalProjectFallbackFolders')
     def observed(command, private, filename, **kwargs):
-        assert filename == 'restore.log'
+        if filename != 'restore.log': return bounded(command, private, filename, **kwargs)
+        command = P.B.fixed_command('restore', private, json.loads((private/'invocation.json').read_bytes()))
         library_packs = private / 'library-packs'
         library_packs.mkdir()
         flags = [flag for flag in command[command.index('--disable-build-servers'):]
@@ -94,10 +97,11 @@ def check_missing_targeting_pack(root, dotnet, scratch):
     incomplete.mkdir()
     shutil.copy2(dotnet, incomplete / 'dotnet')
     for name in ('host', 'shared'):
-        (incomplete / name).symlink_to(Path(dotnet).parent / name, target_is_directory=True)
+        shutil.copytree(Path(dotnet).parent/name, incomplete/name, copy_function=os.link)
+    (incomplete/'packs').mkdir()
     selected = run([dotnet, '--version'], root).stdout.strip()
     # Linking the SDK itself would resolve its original installation's packs.
-    shutil.copytree(Path(dotnet).parent / 'sdk' / selected, incomplete / 'sdk' / selected)
+    shutil.copytree(Path(dotnet).parent / 'sdk' / selected, incomplete / 'sdk' / selected, copy_function=os.link)
     diagnostics = []
     bounded = T.Control.bounded_process
     def observed(command, private, filename, **kwargs):
@@ -111,7 +115,7 @@ def check_missing_targeting_pack(root, dotnet, scratch):
         try:
             P.profile_check(root, None)
         except P.Refusal as error:
-            assert error.code == 'PROFILE_OWNER_VALIDATION_FAILED', error.code
+            assert error.code == P.BUILD_INPUT_PROOF, error.code
         else:
             raise AssertionError('missing installed targeting pack accepted or fetched')
     # .NET 11 can first refuse missing prune data from the reference pack;
@@ -120,6 +124,301 @@ def check_missing_targeting_pack(root, dotnet, scratch):
     code = next((value for value in (b'NETSDK1226', b'NETSDK1127') if value in content), None)
     assert code is not None, content.decode()
     print('missing-installed-targeting-pack-no-fallback: ' + code.decode() + ', PASS', flush=True)
+
+
+def check_resolution_controls(root, data, scratch):
+    """Poison real resolution channels and remove guards in disposable inputs."""
+    import publication_authority as P
+    import phase_4_transition as T
+    captured = P.B.capture(root, data)
+    bounded = T.Control.bounded_process
+    traces = []
+    poison = '<Project><Target Name="Poison" BeforeTargets="PrepareForBuild"><Error Text="uncontrolled-input" /></Target></Project>'
+    resolver = root / 'poison-resolvers'
+    resolver.mkdir()
+    (resolver / 'Bad.xml').write_text('<SdkResolver><Path>/uncontrolled/resolver.dll</Path></SdkResolver>')
+
+    def observed(command, private, filename, **kwargs):
+        if filename == 'sdk.log':
+            poison_build_ancestors((private,))
+            for kind in ('props', 'targets'):
+                for order in ('Before', 'After'):
+                    path = private / ('msbuild-user/Current/Imports/Microsoft.Common.' + kind) / ('Import' + order)
+                    path.mkdir(parents=True)
+                    (path / ('Poison.' + kind)).write_text(poison)
+            (private / 'csc.rsp').write_text('/reference:/uncontrolled/poison.dll')
+        output = bounded(command, private, filename, **kwargs)
+        receipt = json.loads((private / 'proof' / (filename[:-4] + '.trace')).read_bytes())
+        assert receipt['complete'] and receipt['network_attempts'] == 0 and receipt['syscall_stops'] > 0
+        traces.append(receipt)
+        return output
+
+    with mock.patch.dict(os.environ, {'MSBuildSDKsPath': str(resolver),
+            'MSBUILDADDITIONALSDKRESOLVERSFOLDER': str(resolver),
+            'DOTNET_MSBUILD_SDK_RESOLVER_SDKS_DIR': str(resolver),
+            'DOTNET_STARTUP_HOOKS': str(resolver / 'startup.dll')}), \
+         mock.patch.object(T.Control, 'bounded_process', side_effect=observed):
+        result = P.B.execute(captured, P.digest(data[P.INVENTORY]), P.digest(data[P.PROFILE]), '-')
+    assert P.B.proved(result) and len(traces) == 7
+    assert all('workload' not in ' '.join(execution) for receipt in traces for execution in receipt['executions'])
+    print('actual-private-user-ancestor-resolver-response-poisoning-and-first-use-traces: PASS', flush=True)
+
+    stages = []
+    def tampered(command, private, filename, **kwargs):
+        stages.append(filename)
+        if filename == 'build.log':
+            generated = list((private / 'obj').rglob('*.GlobalUsings.g.cs'))
+            assert len(generated) == 1
+            generated[0].write_bytes(b'#error changed after observed producer')
+        try:
+            return bounded(command, private, filename, **kwargs)
+        finally:
+            if filename == 'build.log':
+                assert not (private / 'proof/build.tasks').exists(), 'SDK build launched after generated input mutation'
+    with mock.patch.object(T.Control, 'bounded_process', side_effect=tampered):
+        try:
+            P.B.execute(captured, P.digest(data[P.INVENTORY]), P.digest(data[P.PROFILE]), '-')
+        except P.B.Refusal as error:
+            assert error.code == P.BUILD_INPUT_PROOF
+        else:
+            raise AssertionError('generated-input mutation passed')
+    assert stages[-1] == 'build.log' and 'run.log' not in stages
+    print('generated-input-tampering-refuses-before-sdk-build: PASS', flush=True)
+
+    def added_runtime_input(command, private, filename, **kwargs):
+        if filename == 'run.log':
+            (private / 'bin/ProductionProfileBridge.runtimeconfig.dev.json').write_bytes(b'{}')
+        try:
+            return bounded(command, private, filename, **kwargs)
+        finally:
+            if filename == 'run.log':
+                assert not (private / 'proof/run.trace').exists(), 'owner launched with an unproduced runtime input'
+    with mock.patch.object(T.Control, 'bounded_process', side_effect=added_runtime_input):
+        try:
+            P.B.execute(captured, P.digest(data[P.INVENTORY]), P.digest(data[P.PROFILE]), '-')
+        except P.B.Refusal as error:
+            assert error.code == P.BUILD_INPUT_PROOF
+        else:
+            raise AssertionError('added private runtime input passed')
+    print('added-private-runtime-input-refuses-before-owner-execution: PASS', flush=True)
+
+    environment = P.B.fixed_environment
+    refusals = []
+    launched = []
+    def no_advertising_guard(private, dotnet):
+        result = environment(private, dotnet)
+        del result['DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE']
+        return result
+    def advertised(command, private, filename, **kwargs):
+        launched.append(filename)
+        try:
+            return bounded(command, private, filename, **kwargs)
+        finally:
+            path = private / 'proof/refusal.json'
+            if path.exists(): refusals.append(json.loads(path.read_bytes()))
+    with mock.patch.object(P.B, 'fixed_environment', side_effect=no_advertising_guard), \
+         mock.patch.object(T.Control, 'bounded_process', side_effect=advertised):
+        try:
+            P.B.execute(captured, P.digest(data[P.INVENTORY]), P.digest(data[P.PROFILE]), '-')
+        except P.B.Refusal as error:
+            assert error.code == P.BUILD_INPUT_PROOF
+        else:
+            raise AssertionError('removed advertising opt-out did not fail observation')
+    assert not launched, launched
+    print('removed-workload-advertising-opt-out-refuses-before-preflight: PASS', flush=True)
+
+    helper = root / 'tools/profile_bridge_build.py'
+    original = helper.read_bytes()
+    try:
+        # Force the installed SDK's explicit advertising operation to a closed
+        # loopback endpoint. The syscall observer must stop the Internet socket
+        # before any connection or manifest download is possible.
+        helper.write_bytes(original.replace(b'return [dotnet, "--version"]',
+            b'return [dotnet, "workload", "update", "--advertising-manifests-only", "--source", "https://127.0.0.1:9"]'))
+        network_probe = P.B.capture(root, data)
+        with mock.patch.object(T.Control, 'bounded_process', side_effect=advertised):
+            try:
+                P.B.execute(network_probe, P.digest(data[P.INVENTORY]), P.digest(data[P.PROFILE]), '-')
+            except P.B.Refusal as error:
+                assert error.code == P.BUILD_INPUT_PROOF
+            else:
+                raise AssertionError('real SDK advertising network probe passed')
+        assert refusals and refusals[-1]['kind'] == 'internet-socket', refusals
+        print('real-sdk-workload-advertising-network-attempt-refused-before-connect: PASS', flush=True)
+        helper.write_bytes(original.replace(b'require(sys.platform == "linux" and platform.machine() == "x86_64", PROOF_UNAVAILABLE)',
+                                           b'require(False, PROOF_UNAVAILABLE)'))
+        unavailable = P.B.capture(root, data)
+        try:
+            P.B.execute(unavailable, P.digest(data[P.INVENTORY]), P.digest(data[P.PROFILE]), '-')
+        except P.B.Refusal as error:
+            assert error.code == P.BUILD_INPUT_PROOF
+        else:
+            raise AssertionError('unavailable tracing passed')
+    finally:
+        helper.write_bytes(original)
+    noop = scratch / 'noop-dotnet'
+    noop.write_bytes(b'#!/bin/sh\nexit 0\n')
+    noop.chmod(0o700)
+    for name in ('sdk','packs','shared','host'):(scratch/name).mkdir(exist_ok=True)
+    with mock.patch.object(P.B.shutil, 'which', return_value=str(noop)):
+        try:
+            P.B.execute(captured, P.digest(data[P.INVENTORY]), P.digest(data[P.PROFILE]), '-')
+        except P.B.Refusal as error:
+            assert error.code == P.BUILD_INPUT_PROOF
+        else:
+            raise AssertionError('no-op executable passed')
+    print('unavailable-tracing-and-real-noop-cannot-pass: PASS', flush=True)
+
+
+def check_authenticated_capability_handoff(root, data):
+    """Only the external authentication boundary is synthetic; SDK and handoff are real."""
+    import publication_authority as P
+    import phase_4_transition as T
+    from test_publication_authority import chain
+    records_path = root / P.RECORDS
+    original = records_path.read_bytes() if records_path.exists() else None
+    try:
+        head = P.git(root, 'rev-parse', 'HEAD')
+        publisher = P.publisher_identity(root, head)
+        document = chain()
+        document['records'] = document['records'][:4]
+        for index, record in enumerate(document['records']):
+            record['publisher'] = publisher
+            record['predecessor_sha256'] = P.record_digest(document['records'][index-1]) if index else None
+        records_path.write_bytes(P.canonical(document))
+        paths = set(P.CONTROL_FILES) | set(P.B.SOURCES) | set(data) | {P.RECORDS, P.REGISTRY}
+        contents = {path: P.B.read(root, path, P.MAX_PROFILE) for path in paths}
+        bindings = [{'path': path, 'sha256': P.digest(content)} for path, content in sorted(contents.items())]
+        def current_head():
+            assert P.git(root, 'rev-parse', 'HEAD') == head
+        def file(commit, path):
+            assert commit == head and path in contents
+            return contents[path]
+        control = types.SimpleNamespace(root=root, head=head, binding={'inputs': bindings}, seal=None,
+            request={'transition': 'release-available', 'subject_mode': 'files', 'subjects': bindings},
+            current_head=current_head, local=lambda path: P.B.read(root, path, P.MAX_PROFILE),
+            api=types.SimpleNamespace(file=file))
+        real_profile_check = P.profile_check
+        def evaluate(profile_check):
+            with mock.patch.object(P, 'authenticate_records') as external_authentication, \
+                 mock.patch.object(P, 'profile_check', wraps=profile_check) as fixed, \
+                 mock.patch.object(P.B, 'execute', wraps=P.B.execute) as genuine:
+                try:
+                    P.evaluate_transition(control)
+                except T.Refusal as error:
+                    assert error.code == 'BUSINESS_PREREQUISITE_MISSING'
+                    assert str(error) == 'RELEASE_EVIDENCE_CODEC_UNAVAILABLE', str(error)
+                else:
+                    raise AssertionError('synthetic caller unexpectedly obtained authority')
+                external_authentication.assert_called_once()
+                proofs = fixed.call_args.kwargs['proofs']
+                assert len(proofs) == 1 and P.B.proved(proofs[0], captured=genuine.call_args.args[0])
+                assert proofs[0].proof.stages == ('sdk','preprocess','evaluate','restore','plan','build','run')
+                assert control.seal is None
+        evaluate(real_profile_check)
+        namespace = {}
+        source = inspect.getsource(real_profile_check)
+        assert source.count('proofs.append(output)') == 1
+        exec(compile(source.replace('proofs.append(output)', 'pass  # missing-handoff mutant'),
+                     '<missing-handoff-mutant>', 'exec'), P.__dict__, namespace)
+        try:
+            evaluate(namespace['profile_check'])
+        except AssertionError as error:
+            assert P.BUILD_INPUT_PROOF in str(error), str(error)
+        else:
+            raise AssertionError('missing real capability handoff was not detected')
+    finally:
+        if original is None: records_path.unlink(missing_ok=True)
+        else: records_path.write_bytes(original)
+    print('genuine-synthetic-authenticated-capability-handoff-and-missing-handoff-mutant-no-seal: PASS', flush=True)
+
+
+def check_stopped_compiler_controls(root, data, scratch):
+    """Mutate the real SDK response/environment/inputs while csc exec is stopped."""
+    import publication_authority as P
+    import phase_4_transition as T
+    helper, targets = root / 'tools/profile_bridge_build.py', root / P.B.TARGETS
+    original_helper, original_targets = helper.read_text(), targets.read_text()
+    bounded = T.Control.bounded_process
+    def insert_before(source, needle, statements):
+        line = next(line for line in source.splitlines(keepends=True) if line.strip() == needle)
+        indent = line[:len(line)-len(line.lstrip())]
+        return source.replace(line, ''.join(indent+item+'\n' for item in statements)+line, 1)
+    def refused(source, kind, *, target_text=None, dotnet=None):
+        reasons, stages = [], []
+        if target_text is not None:
+            start = source.index('PROOF_TARGETS = ')
+            end = source.index('\n\n\nclass Refusal', start)
+            source = source[:start]+'PROOF_TARGETS = '+repr(target_text)+source[end:]
+        helper.write_text(source)
+        targets.write_text(target_text or original_targets)
+        def observed(command, private, filename, **kwargs):
+            stages.append(filename)
+            try:
+                return bounded(command, private, filename, **kwargs)
+            finally:
+                if filename == 'build.log':
+                    assert not list((private/'obj').rglob('ProductionProfileBridge.dll')), 'csc produced an assembly before refusal'
+                    assert not (private/'bin/ProductionProfileBridge.dll').exists(), 'csc produced an assembly before refusal'
+                    path = private/'proof/refusal.json'
+                    if path.exists(): reasons.append(json.loads(path.read_bytes()))
+        with mock.patch.object(P.B, 'PROOF_TARGETS', target_text or original_targets), \
+             mock.patch.object(T.Control, 'bounded_process', side_effect=observed), \
+             mock.patch.object(P.B.shutil, 'which', wraps=P.B.shutil.which) as executable:
+            if dotnet is not None: executable.return_value = str(dotnet)
+            try:
+                P.B.execute(P.B.capture(root,data),P.digest(data[P.INVENTORY]),P.digest(data[P.PROFILE]),'-')
+            except P.B.Refusal as error:
+                assert error.code == P.BUILD_INPUT_PROOF
+            else:
+                raise AssertionError('stopped compiler mutation passed')
+        assert 'build.log' in stages and 'run.log' not in stages
+        assert reasons and reasons[-1] == {'stage':'build','kind':kind}, reasons
+    try:
+        source_mutation = insert_before(original_helper,
+            'verify_stage_seals(scratch, settings, contract, captured, compiling=True)',
+            ['(snapshot / PROGRAM).write_bytes(read(snapshot, PROGRAM) + b"\\n")'])
+        refused(source_mutation, 'compiler-input-seal')
+        response_mutation = insert_before(original_helper,
+            'response_bytes = read(scratch, response.relative_to(scratch).as_posix())',
+            ['unbound = scratch / "unbound-additional.txt"', 'unbound.write_text("unbound compiler input")',
+             'response.write_bytes(response.read_bytes() + (" /additionalfile:" + str(unbound)).encode())'])
+        refused(response_mutation, 'compiler-response')
+        assert response_mutation.count('verify_compiler_response(response_bytes, scratch, plan_bytes)') == 1
+        try:
+            refused(response_mutation.replace('verify_compiler_response(response_bytes, scratch, plan_bytes)',
+                    'None  # response-guard-removal mutant'), 'compiler-response')
+        except AssertionError as error:
+            assert 'csc produced an assembly before refusal' in str(error), str(error)
+        else:
+            raise AssertionError('response-guard-removal mutant escaped the real response test')
+        injected = original_targets.replace('</Project>',
+            '<Target Name="InjectLateCompilerEnvironment" AfterTargets="ProfileProofObserve">'
+            '<PropertyGroup><CscEnvironment>DOTNET_STARTUP_HOOKS=/unbound/startup.dll</CscEnvironment>'
+            '</PropertyGroup></Target></Project>')
+        refused(original_helper, 'execution-environment', target_text=injected)
+        # Copy only the installed execution toolchain, not an OS inventory. A
+        # private metadata inode keeps this mutation away from the installation.
+        selected = run([str(Path(shutil.which('dotnet')).resolve()), '--version'], root).stdout.strip()
+        installed = Path(shutil.which('dotnet')).resolve().parent
+        relocated = scratch/'stopped-compiler-sdk'
+        relocated.mkdir()
+        shutil.copy2(installed/'dotnet', relocated/'dotnet')
+        for name in ('host','shared','packs'):
+            shutil.copytree(installed/name, relocated/name, symlinks=True, copy_function=os.link)
+        shutil.copytree(installed/'sdk'/selected, relocated/'sdk'/selected, symlinks=True, copy_function=os.link)
+        metadata = relocated/'sdk'/selected/'dotnet.runtimeconfig.json'
+        content = metadata.read_bytes(); metadata.unlink(); metadata.write_bytes(content)
+        installed_mutation = insert_before(original_helper,
+            'verify_stage_seals(scratch, settings, contract, captured, compiling=True)',
+            ['metadata = compiler.parents[2] / "dotnet.runtimeconfig.json"', 'before = metadata.stat()',
+             'content = metadata.read_bytes()', 'metadata.write_bytes(b"[" + content[1:])',
+             'os.utime(metadata, ns=(before.st_atime_ns, before.st_mtime_ns))'])
+        refused(installed_mutation, 'compiler-input-seal', dotnet=relocated/'dotnet')
+    finally:
+        helper.write_text(original_helper)
+        targets.write_text(original_targets)
+    print('real-stopped-csc-source-metadata-envp-response-tampering-and-response-guard-mutant: PASS', flush=True)
 
 
 def main():
@@ -193,8 +492,9 @@ def main():
                         with mock.patch.object(subprocess, 'Popen', side_effect=spawn):
                             return bounded(command, private, filename, **kwargs)
                     finally:
-                        if filename == 'profile-result.txt':
-                            outputs.append(((private / filename).read_bytes(), processes[-1].returncode))
+                        if filename == 'run.log':
+                            receipt=json.loads((private/'proof/run.trace').read_bytes())
+                            outputs.append(((private/filename).read_bytes(),receipt['exit_code']))
                 try:
                     with mock.patch.object(T.Control, 'bounded_process', side_effect=observed):
                         output = P.B.execute(P.B.capture(root, data), P.digest(inventory_path.read_bytes()),
@@ -211,6 +511,11 @@ def main():
                 if issue is not None:
                     assert issue in {item['Code'] for item in json.loads(diagnostic)}
                 if expected == 0:
+                    assert P.B.proved(output)
+                    assert output.proof.sdk and output.proof.toolchain
+                    assert output.proof.stages == ('sdk','preprocess','evaluate','restore','plan','build','run')
+                    if label == 'complete-synthetic':
+                        print(f'v{version}-resolved-sdk: ' + output.proof.sdk + '; seven observed stages', flush=True)
                     document = json.loads(diagnostic)
                     assert document['isStructurallyValid'] and document['authorization'] == document['qualification'] == 'unevaluated'
                     assert document['resolvedDigest'] == digests['resolved']
@@ -221,6 +526,12 @@ def main():
             if version == 1:
                 check_evaluated_restore_sources(root, {P.PROFILE: golden, P.INVENTORY: inventory_path.read_bytes(),
                     composition.relative_to(root).as_posix(): composition.read_bytes()})
+                check_resolution_controls(root, {P.PROFILE: golden, P.INVENTORY: inventory_path.read_bytes(),
+                    composition.relative_to(root).as_posix(): composition.read_bytes()}, scratch)
+                check_authenticated_capability_handoff(root, {P.PROFILE: golden, P.INVENTORY: inventory_path.read_bytes(),
+                    composition.relative_to(root).as_posix(): composition.read_bytes()})
+                check_stopped_compiler_controls(root, {P.PROFILE: golden, P.INVENTORY: inventory_path.read_bytes(),
+                    composition.relative_to(root).as_posix(): composition.read_bytes()}, scratch)
             bridge('complete-synthetic', 0)
             captured = P.B.capture(root, {P.PROFILE: golden, P.INVENTORY: inventory_path.read_bytes(),
                                          composition.relative_to(root).as_posix(): composition.read_bytes()})
@@ -349,7 +660,7 @@ def main():
                 try:
                     P.profile_check(root, None)
                 except P.Refusal as error:
-                    assert error.code == 'PROFILE_OWNER_VALIDATION_FAILED', error.code
+                    assert error.code == P.BUILD_INPUT_PROOF, error.code
                 else:
                     raise AssertionError('fixed Python child ignored the owner SDK pin')
             finally:

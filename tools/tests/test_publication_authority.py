@@ -255,25 +255,15 @@ class PublicationAuthorityTests(unittest.TestCase):
                            P.canonical({**valid,'authorization':'approved'}),
                            P.canonical({**valid,'qualification':'approved'})):
                 with self.subTest(output=output):
-                    stages=[]
-                    def child(command,scratch,filename,**kwargs):
-                        stages.append(filename)
-                        if filename=='build.log':
-                            (scratch/'bin').mkdir()
-                            (scratch/'bin/ProductionProfileBridge.dll').write_bytes(b'fresh child-produced assembly')
-                        if filename=='profile-result.txt':
-                            self.assertTrue((scratch/'bin/ProductionProfileBridge.dll').is_file())
-                            return output
-                        return b''
-                    # Exercise capture, verified copies, fresh-output checks and
-                    # the real caller; only the external process is substituted.
-                    with mock.patch.object(T.Control,'bounded_process',side_effect=child), \
-                         mock.patch.object(P.B.shutil,'which',return_value='/usr/bin/dotnet'):
+                    # Invocation closure is exercised by the dedicated snapshot
+                    # and genuine-SDK suites; this boundary must still validate
+                    # every owner-result field independently.
+                    with mock.patch.object(P.B,'execute',return_value=output) as child:
                         if output==P.canonical(valid):
                             self.assertEqual('composition.json',P.profile_check(root,None))
                         else:
                             self.refusal('PROFILE_OWNER_RESULT_INVALID',lambda:P.profile_check(root,None))
-                    self.assertEqual(['restore.log','build.log','profile-result.txt'],stages)
+                    self.assertEqual(1,child.call_count)
 
     def test_cli_structural_success_and_diagnostics_cannot_overwrite_input_or_profile(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -454,7 +444,7 @@ class PublicationAuthorityTests(unittest.TestCase):
             with self.assertRaises(T.Refusal) as caught:
                 P.evaluate_transition(candidate)
             self.assertEqual('BUSINESS_PREREQUISITE_MISSING',caught.exception.code)
-            self.assertEqual(P.BUILD_INPUT_PROOF,str(caught.exception))
+            self.assertEqual('PROFILE_MISSING',str(caught.exception))
             child.assert_not_called()
         for path in (*P.B.CONTROLS, 'docs/architecture/production-profile-v2.md',
                      'src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileV2Codec.cs',
@@ -475,6 +465,92 @@ class PublicationAuthorityTests(unittest.TestCase):
             with mock.patch.object(P.B,'execute') as child:
                 self.refusal('PROFILE_BUILD_INPUT_INVALID',lambda:P.transition_inputs(candidate))
                 child.assert_not_called()
+
+    def test_authenticated_capture_rechecks_all_controls_against_exact_head_before_preflight(self):
+        import phase_4_transition as T
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for path in set(P.CONTROL_FILES)|set(P.B.BUILD_INPUTS):
+                destination=root/path;destination.parent.mkdir(parents=True,exist_ok=True)
+                shutil.copyfile(ROOT/path,destination)
+            profile=(ROOT/'tests/Hexalith.EventStore.Contracts.Tests/Deployment/Fixtures/SyntheticProfile.v1.json').read_bytes()
+            model=json.loads(profile)
+            data={P.PROFILE:profile, 'composition.json':b'independent composition'}
+            data[P.INVENTORY]=P.canonical({'schema':'hexalith.eventstore.production-composing-inventory.v1',
+                'source':{'path':'composition.json','sha256':P.digest(data['composition.json'])},
+                'expectedApplicationIds':[a['id'] for a in model['applications']],
+                'expectedComponentIds':[c['id'] for c in model['components']]})
+            data[P.RECORDS]=P.canonical(chain())
+            for path,content in data.items():
+                destination=root/path;destination.parent.mkdir(parents=True,exist_ok=True);destination.write_bytes(content)
+            paths=set(P.CONTROL_FILES)|set(P.B.BUILD_INPUTS)|set(data)
+            original={path:(root/path).read_bytes() for path in paths}
+            bindings=[{'path':path,'sha256':P.digest(content)} for path,content in original.items()]
+            control=types.SimpleNamespace(root=root,head='a'*40,binding={'inputs':copy.deepcopy(bindings)},
+                request={'subjects':copy.deepcopy(bindings)},current_head=mock.Mock(),
+                local=lambda path:(root/path).read_bytes(),api=types.SimpleNamespace(file=lambda head,path:original[path]))
+            result=P.canonical({'isStructurallyValid':True,'issues':[],'authorization':'unevaluated','qualification':'unevaluated',
+                'resolvedDigest':P.digest(profile),'infrastructureDigest':model['infrastructureDigest']})
+            with mock.patch.object(P.B,'execute',return_value=result) as child:
+                self.assertEqual('composition.json',P.profile_check(root,None,authenticated=control))
+                child.assert_called_once()
+            for path in (*P.B.CONTROLS,'tools/publication_authority.py','global.json',P.B.SOURCES[0],P.PROFILE):
+                with self.subTest(path=path), mock.patch.object(T.Control,'bounded_process') as child:
+                    baseline=original[path]
+                    # Keep capture syntactically valid where possible: the
+                    # authenticated bindings still reject changed control bytes.
+                    (root/path).write_bytes(baseline+b'\n')
+                    with self.assertRaises(P.Refusal):P.profile_check(root,None,authenticated=control)
+                    child.assert_not_called()
+                    (root/path).write_bytes(baseline)
+            for key in ('binding','subject','head'):
+                candidate=copy.copy(control)
+                if key=='binding':candidate.binding={'inputs':[x for x in bindings if x['path']!=P.B.TARGETS]}
+                if key=='subject':candidate.request={'subjects':[x for x in bindings if x['path']!=P.B.TARGETS]}
+                if key=='head':candidate.api=types.SimpleNamespace(file=lambda head,path:b'stale authenticated head')
+                with self.subTest(key=key), mock.patch.object(T.Control,'bounded_process') as child:
+                    self.refusal(P.BUILD_INPUT_PROOF,lambda:P.profile_check(root,None,authenticated=candidate))
+                    child.assert_not_called()
+
+            # Exercise the actual profile_check guard through the adapter. If
+            # evaluate_transition drops authenticated=control, execution would
+            # be reached and this regression must fail.
+            document=chain();document['records']=document['records'][:4]
+            candidate=copy.copy(control)
+            candidate.request={**control.request,'transition':'release-available'}
+            candidate.api=types.SimpleNamespace(file=lambda head,path:b'changed authenticated head')
+            with mock.patch.object(P,'transition_inputs',return_value=document), \
+                 mock.patch.object(P,'authenticate_records'), \
+                 mock.patch.object(P.B,'execute',return_value=result) as child:
+                with self.assertRaises(T.Refusal) as caught:P.evaluate_transition(candidate)
+                self.assertEqual('BUSINESS_PREREQUISITE_MISSING',caught.exception.code)
+                self.assertEqual(P.BUILD_INPUT_PROOF,str(caught.exception))
+                self.assertEqual(0,child.call_count)
+
+    def test_evaluation_rejects_forged_proof_and_retains_other_barriers_after_fixed_success(self):
+        import phase_4_transition as T
+        document=chain();document['records']=document['records'][:4]
+        control=types.SimpleNamespace(root=ROOT,head=P.git(ROOT,'rev-parse','HEAD'),
+            request={'transition':'release-available'},current_head=mock.Mock())
+        def owner(root,record,**kwargs):
+            self.assertIs(control,kwargs.get('authenticated'))
+            kwargs['proofs'].append(b'caller-saved-output')
+        with mock.patch.object(P,'transition_inputs',return_value=document), \
+             mock.patch.object(P,'authenticate_records'), mock.patch.object(P,'profile_check',side_effect=owner), \
+             mock.patch.object(T.Control,'bounded_process') as child:
+            with self.assertRaises(T.Refusal) as caught:P.evaluate_transition(control)
+            self.assertEqual(P.BUILD_INPUT_PROOF,str(caught.exception))
+            child.assert_not_called()
+            # Isolate the authority adapter from the fixed verifier, whose
+            # genuine execution is required by the integration suite.
+            with mock.patch.object(P.B,'proved',return_value=True):
+                with self.assertRaises(T.Refusal) as caught:P.evaluate_transition(control)
+                self.assertIn(str(caught.exception),('RELEASE_EVIDENCE_CODEC_UNAVAILABLE','BUILDS_RECORD_IDENTITY_MISMATCH'))
+                _,missing=P.missing_prerequisites(ROOT,control.head,build_proof=b'synthetic')
+                self.assertNotIn(P.BUILD_INPUT_PROOF,missing)
+                self.assertTrue(set(P.FIXED_MISSING)<=set(missing))
+                self.assertIn('RELEASE_EVIDENCE_CODEC_UNAVAILABLE',missing)
+            child.assert_not_called()
 
     def test_schema_is_closed_and_has_explicit_state_grammar(self):
         schema=json.loads((ROOT/'tools/publication-authority.schema.json').read_text())

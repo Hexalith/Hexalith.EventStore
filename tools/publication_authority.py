@@ -40,7 +40,6 @@ MAX_PROFILE = 4 * MAX_BYTES
 MAX_DEPTH = 32
 BUILD_INPUT_PROOF = "PROFILE_BUILD_INPUT_PROOF_UNAVAILABLE"
 FIXED_MISSING = (
-    BUILD_INPUT_PROOF,
     "G_RUNTIME_PARITY_VERIFIER_UNAVAILABLE", "STORY_3_21_QUALIFICATION_VERIFIER_UNAVAILABLE",
     "STORY_5_7_COMPONENTS_VERIFIER_UNAVAILABLE", "STORY_5_13_ACTIVATION_VERIFIER_UNAVAILABLE",
     "STORY_7_22_RESTORE_VERIFIER_UNAVAILABLE", "AD26_RATIFICATION_VERIFIER_UNAVAILABLE",
@@ -284,7 +283,7 @@ def publisher_identity(root, head):
     return {"repository": "Hexalith/Hexalith.Builds", "commit": pins[0], "gitlink_commit": match[1]}
 
 
-def missing_prerequisites(root, head, records=()):
+def missing_prerequisites(root, head, records=(), build_proof=None):
     codes = []
     try:
         identity = publisher_identity(root, head)
@@ -295,6 +294,8 @@ def missing_prerequisites(root, head, records=()):
     # There is no approved owner codec API to invoke today. A file named like a
     # codec or ReleaseRecordCodec is never evidence of availability or verification.
     codes.append("RELEASE_EVIDENCE_CODEC_UNAVAILABLE")
+    if not B.proved(build_proof):
+        codes.append(BUILD_INPUT_PROOF)
     codes.extend(FIXED_MISSING)
     if any(r["subject"]["kind"] == "platform-composed-host" for r in records):
         codes += ["PLATFORM_ISSUER_APPROVAL_VERIFIER_UNAVAILABLE", "EXTENSION_API_APPROVAL_VERIFIER_UNAVAILABLE"]
@@ -407,14 +408,18 @@ def evaluate_transition(control):
         records = document["records"]
         require(records[-1]["state"] == control.request["transition"], "STATE_MISMATCH", 1)
         authenticate_records(control, records)
-        # The isolated application snapshot reduces the graph but does not prove
-        # installed SDK/import resolution. Keep authenticated .NET unevaluated.
-        raise Refusal(BUILD_INPUT_PROOF)
+        proofs = []
+        profile_check(control.root, records[-1], authenticated=control, proofs=proofs)
+        require(len(proofs) == 1 and B.proved(proofs[0]), BUILD_INPUT_PROOF, 1)
+        control.current_head()
+        _, missing = missing_prerequisites(control.root, control.head, records, build_proof=proofs[0])
+        # Every unrelated fixed authority prerequisite remains mandatory.
+        require(not missing, missing[0] if missing else BUILD_INPUT_PROOF, 1)
     except Refusal as error:
         raise T.Refusal("BUSINESS_PREREQUISITE_MISSING", error.code, error.exit_code) from error
 
 
-def profile_check(root, record):
+def profile_check(root, record, *, authenticated=None, proofs=None):
     require((root / PROFILE).exists(), "PROFILE_MISSING", 1)
     require((root / INVENTORY).exists(), "COMPOSING_INVENTORY_MISSING", 1)
     inventory_bytes = read(root, INVENTORY)
@@ -442,13 +447,30 @@ def profile_check(root, record):
         data[promotion["rendered_deployment"]["path"]] = rendered
     try:
         captured = B.capture(root, data)
+        if authenticated is not None:
+            # Recheck bytes captured after authentication, before even SDK
+            # preflight. Neither caller hashes nor a previous success suffice.
+            authenticated.current_head()
+            bindings = {item["path"]: item.get("sha256") for item in authenticated.binding["inputs"]}
+            subjects = {item["path"]: item.get("sha256") for item in authenticated.request["subjects"]}
+            captured_files = dict(captured.files)
+            for path in set(CONTROL_FILES) | set(captured_files) | {RECORDS}:
+                bound_content = captured_files.get(path)
+                if bound_content is None:
+                    bound_content = B.read(root, path)
+                require(digest(bound_content) == bindings.get(path) == subjects.get(path)
+                        == digest(authenticated.local(path))
+                        == digest(authenticated.api.file(authenticated.head, path)), BUILD_INPUT_PROOF, 1)
         output = B.execute(captured, digest(inventory_bytes), resolved,
                            promotion["profile"]["infrastructure_sha256"] if promotion else "-")
     except B.Refusal as error:
-        raise Refusal(error.code) from error
+        raise Refusal(BUILD_INPUT_PROOF if authenticated is not None else error.code) from error
     profile = parse(content)
     validate_owner_result(output, resolved, profile.get("infrastructureDigest"),
                           promotion["profile"]["infrastructure_sha256"] if promotion else None)
+    if proofs is not None:
+        require(B.proved(output, captured=captured), BUILD_INPUT_PROOF, 1)
+        proofs.append(output)
     if promotion:
         # These associations are interpreted only after the genuine owner result
         # attests canonical decoding and both digest domains.
@@ -489,6 +511,7 @@ def live(root):
     codes = []
     status = 1
     records = []
+    proofs = []
     for path, code in ((RECORDS, "AUTHORITY_RECORDS_MISSING"), (PROFILE, "PROFILE_MISSING"), (INVENTORY, "COMPOSING_INVENTORY_MISSING")):
         try:
             content = read(root, path, MAX_PROFILE if path == PROFILE else MAX_BYTES)
@@ -500,13 +523,13 @@ def live(root):
             codes.append(code if error.code == "INPUT_MISSING" else error.code)
             status = max(status, error.exit_code)
     if (root / PROFILE).exists() and (root / INVENTORY).exists():
-        try: profile_check(root, records[-1] if records else None)
+        try: profile_check(root, records[-1] if records else None, proofs=proofs)
         except Refusal as error:
             codes.append(error.code)
             status = max(status, error.exit_code)
     try: head = git(root, "rev-parse", "HEAD")
     except Refusal: head = "0" * 40
-    identity, missing = missing_prerequisites(root, head, records)
+    identity, missing = missing_prerequisites(root, head, records, build_proof=proofs[0] if len(proofs) == 1 else None)
     codes.extend(missing)
     codes.append("AUTHENTICATED_DEDICATED_CONSUMPTION_REQUIRED")
     return {"schema": RESULT_SCHEMA, "result": "FAIL", "authority": "unproven", "head_sha": head,

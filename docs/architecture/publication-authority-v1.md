@@ -79,7 +79,7 @@ or explicitly selected `ProductionProfileV2Codec.Decode` and
 `ProductionProfileV2Validator.Validate` for v2.
 It accepts no alternate profile path or generation mode. `tools/profile_bridge_build.py`
 captures bounded regular files with safe paths and no symbolic ancestors: the owner
-`global.json`, closed bridge project/configuration, unchanged bridge body, all 38
+`global.json`, closed bridge project/configuration and fixed observation target, unchanged bridge body, all 38
 explicit owner profile sources and separately validated profile/inventory/source
 bytes (plus rendered bytes when present). Capture requires complete fixed source and
 bridge membership. Before each child, the private snapshot must have exactly the
@@ -99,11 +99,66 @@ enabled. Exact owner SDK selection is retained; local builds use Debug and CI us
 Release. A zero-exit child must still produce a fresh assembly and a closed genuine
 owner result. No checkout project is built directly.
 
-The reduced application graph does not prove complete installed SDK/import resolution.
-The existing installed-toolchain trust boundary is unchanged.
-`PROFILE_BUILD_INPUT_PROOF_UNAVAILABLE` therefore still refuses the authenticated
-adapter before any .NET launch. There is no success override or complete-graph claim;
-the standalone structural bridge remains non-authorizing.
+The fixed verifier proves one invocation's input closure inside the existing
+installed SDK/runtime/OS trust boundary. Hashes authenticate no source or binary.
+Authenticated evaluation first compares all captured/control bytes with the
+request's exact-head input and subject bindings and current authenticated file
+bytes. It rechecks head before preflight and after owner validation.
+Unbound or changed controls cannot launch SDK preflight. Comparison uses raw
+bytes without EOL normalization: a verification checkout must preserve exact
+Git-blob bytes for bound controls, including `global.json`, even when a normal
+working checkout applies an EOL filter. The owner SDK selection policy is unchanged.
+
+Each invocation has a fresh private snapshot, nonce, outputs, home, package caches
+and stage contracts binding its captured membership, fixed arguments, exact
+filtered environment, installed file identities and preceding generated inputs.
+The unchanged owner `global.json`, including `latestPatch`, selects the SDK;
+the resolved SDK version is recorded rather than replacing its selection policy.
+Preprocessing observes imported files, and target-free MSBuild evaluation resolves
+declared task assemblies into that selected SDK before restore. Only the fixed
+`BuildProof.targets` is explicitly imported by the bridge. Ancestor build/package
+imports, user import wildcards, project-extension imports and workload resolution
+are disabled. Caller resolver properties, startup hooks and credentials are not
+inherited. The supported SDK workload advertising opt-out
+`DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=true` and telemetry opt-out also apply
+on first use with a fresh home. Microsoft documents the advertising opt-out in
+[.NET CLI environment variables](https://learn.microsoft.com/dotnet/core/tools/dotnet-environment-variables#dotnet_cli_workload_update_notify_disable).
+
+Offline restore precedes a fixed generation/reference-resolution plan. The plan
+observes every owner/generated source, reference assembly, analyzer, additional
+file, analyzer configuration and task/import input. Inputs must be captured
+snapshot bytes, files within the selected installed SDK/pack/runtime roots, or
+private outputs with an observed completed SDK producer. Installed identity and
+generated-byte checks run again before each stage. The native csc launch is
+stopped before exec: its actual SDK-produced response file must contain exactly
+the planned source/reference/analyzer/configuration/additional-file sets and
+supported compiler option names. Planned file inputs are closed; scalar settings
+come from the fixed project/CLI and trusted selected SDK. The verifier does not
+add a separate scalar-value configuration policy. Nested or uncontrolled response
+files refuse. SDK
+analyzers and source generators remain enabled; their private generated files and
+fresh assembly/runtime files are checked before owner execution. Post-build
+observations must agree with the plan. Preprocessing or exit zero alone cannot
+establish proof.
+
+Process and network observation currently requires Linux x86-64 with `/proc`,
+`ptrace` descendant tracing, seccomp observation filters and `PTRACE_GET_SYSCALL_INFO`. Temporary and SDK paths must be plain absolute paths without MSBuild property/list
+metacharacters. The supported SDK execution shape uses the selected SDK's native `Roslyn/bincore/csc` apphost.
+The observer follows every thread/fork/exec through termination; unexpected
+executables, Internet socket attempts, execveat and io_uring refuse. Only the
+fixed SDK command, csc and SDK first-use OS permission probes (`sh -c umask`,
+`ls -ld` on private paths) are supported. Runtime mappings identify installed
+shared-runtime roots. This observes the trusted toolchain; it is not a sandbox
+or binary attestation. Unsupported resolution/observation shapes, missing packs,
+unavailable tracing, incomplete receipts, mutations and no-op children retain
+`PROFILE_BUILD_INPUT_PROOF_UNAVAILABLE` before the affected SDK stage or its
+successor. The existing bounded child still controls time, output and descendant
+reaping unchanged.
+
+A successful genuine owner result carries an in-memory capability created only
+by that fresh verifier invocation. Caller JSON and saved results cannot supply
+it. Only this build-input prerequisite is discharged; structural validation
+remains non-authorizing and the remaining authority verifiers still refuse.
 `tools/tests/check_production_profile_bridge.py` exercises the real bridge and
 Python child in disposable source copies, with poisoned unrelated Contracts and
 ancestor build/package configuration and without Builds/Commons/Tenants sources;
@@ -165,8 +220,7 @@ identities are bound. A future approved integration must verify the Builds-owned
 Until an approved fixed integration exists, `RELEASE_EVIDENCE_CODEC_UNAVAILABLE`
 refuses all records beyond `evidence-validated`.
 
-A complete build-input proof is also unavailable as described above. The other
-fixed missing verifiers are G-RUNTIME-PARITY (3.15's historical closure
+After a complete invocation proof, the remaining fixed missing verifiers are G-RUNTIME-PARITY (3.15's historical closure
 is insufficient), 3.21 exact runtime/selected broker, 5.7 components/physical-target
 isolation, 5.13 activated catalogs, 7.22 complete scheduler/placement restore,
 AD-26 Architecture/Platform ratification, 4.16 append protection, workload issuer
