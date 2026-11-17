@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
+    <ProjectReference Include="../Hexalith.EventStore.FoldedSnapshotFixture/Hexalith.EventStore.FoldedSnapshotFixture.csproj" />
   </ItemGroup>
 
   <ItemGroup>
