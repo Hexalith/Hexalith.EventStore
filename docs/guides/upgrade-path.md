@@ -175,6 +175,24 @@ An interval configuration alone no longer enables automatic snapshots after an u
 
 Deploy and verify the domain-host qualification first, then enroll the actor host. Withdraw the actor-host qualification first before changing or removing the domain-host qualification. Manual creation trusts the actor-host declaration and does not negotiate a profile during its full-prefix replay request. Qualify changed state schemas again against the existing public-property JSON restore path; field-backed, get-only, or constructor-only state must not be assumed to round-trip.
 
+An existing `EventStoreAggregate<TState>` no longer needs to change its base or
+replace its command/replay registrations to expose a reviewed capture profile.
+Override `FoldedSnapshotCapture` with the complete module-owned profile, then
+register the matching typed domain qualification and bounded V1 serializers.
+Unenrolled aggregates keep their ordinary behavior and both replay contracts.
+Capture uses the same bounded engine as the typed processor base; no profile is
+invented from discovery or from an interval setting.
+
+The standard actor executable now accepts explicit deployment declarations under
+`EventStore:Snapshots:ActorQualifications` through `AddEventStoreServer`. No
+domain assembly is loaded. Absent configuration stays unenrolled; present empty,
+malformed, incomplete or duplicate declarations fail safely at registration.
+Each identity and all 18 finite capture limits are required. Do not register the
+same profile in both code and configuration. See the
+[configuration contract](configuration-reference.md#snapshots) for the complete
+shape, deployment ordering and support-safe failure tag. This seam does not
+qualify the application's state/serializers or retune its snapshot interval.
+
 The runnable [capture processor](../../tests/Hexalith.EventStore.DomainService.Tests/SnapshotCaptureTestProcessor.cs), [detached copier](../../tests/Hexalith.EventStore.DomainService.Tests/SnapshotCaptureTestProcessor.cs#L16), [finite limits](../../tests/Hexalith.EventStore.DomainService.Tests/SnapshotCaptureTestLimits.cs), and [bounded event serialization and capture tests](../../tests/Hexalith.EventStore.DomainService.Tests/FoldedSnapshotCaptureTests.cs) illustrate a matched declaration. These fixture declarations are examples; an application must review its own state restore, Apply behavior, serializer scratch, and simultaneous representations before enrollment.
 
 See [Configuration Reference — Snapshots](configuration-reference.md#snapshots) for enrollment, limits, safe skip reasons, and the 4096-byte envelope bound. No event rewrite or background snapshot migration is required.

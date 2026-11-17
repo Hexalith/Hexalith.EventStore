@@ -92,6 +92,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        _ = services.AddEventStoreConfiguredFoldedSnapshotActorQualifications(configuration);
         _ = Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogServiceCollectionExtensions.AddEventStoreRouteCatalog(services, configuration);
         if (!string.IsNullOrEmpty(configuration["EventStore:RouteCatalog:DevelopmentBootstrap:CatalogPath"]))
             _ = Hexalith.EventStore.Server.Routing.RunScopedRouteCatalogGateway.AddEventStoreRunScopedCatalogGateway(services, configuration);

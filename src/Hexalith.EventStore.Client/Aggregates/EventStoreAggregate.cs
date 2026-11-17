@@ -13,6 +13,7 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Serialization;
+using Hexalith.EventStore.Contracts.Snapshots;
 
 namespace Hexalith.EventStore.Client.Aggregates;
 /// <summary>
@@ -20,7 +21,7 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// and state rehydration so that concrete aggregates only declare typed Handle and Apply methods.
 /// </summary>
 /// <typeparam name="TState">The aggregate state type. Must be a reference type with a parameterless constructor.</typeparam>
-public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay, IAsyncDomainProcessor, IAsyncAggregateReplay, IAdmittedLegacyAggregateReplay, IEventPayloadEvolutionAware
+public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay, IAsyncDomainProcessor, IAsyncAggregateReplay, IAdmittedLegacyAggregateReplay, IEventPayloadEvolutionAware, IAsyncFoldedSnapshotProcessor
     where TState : class, new() {
     private static readonly ConcurrentDictionary<Type, AggregateCommandDispatchMetadata> _metadataCache = new();
 
@@ -33,6 +34,29 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
     /// <summary>Gets an optional owner declaration that detaches known typed command snapshots.</summary>
     /// <remarks>Undeclared legacy state retains its existing typed-reference behavior.</remarks>
     protected virtual DetachedStateCapture<TState>? SnapshotCapture => null;
+
+    /// <summary>Gets the optional reviewed state/serializer profile; absence preserves ordinary replay-only processing.</summary>
+    protected virtual FoldedSnapshotCaptureProfile<TState>? FoldedSnapshotCapture => null;
+
+    /// <inheritdoc/>
+    public bool IsQualified(Type stateType, string profileId, string parityEvidenceId, FoldedSnapshotCaptureLimits limits)
+    {
+        FoldedSnapshotCaptureProfile<TState>? profile = FoldedSnapshotCapture;
+        return stateType == typeof(TState) && profile is not null
+            && string.Equals(profile.ProfileId, profileId, StringComparison.Ordinal)
+            && string.Equals(profile.ParityEvidenceId, parityEvidenceId, StringComparison.Ordinal)
+            && Equals(profile.Limits, limits);
+    }
+
+    /// <inheritdoc/>
+    public Task<FoldedSnapshotProcessingResult> ProcessForSnapshotAsync(
+        DomainServiceRequest request, string qualifiedProfileId, FoldedSnapshotCaptureLimits limits,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ProcessCoreAsync(request.Command, request.CurrentState,
+            request.IncludePostCommandState ? qualifiedProfileId : null, limits, cancellationToken);
+    }
 
     /// <summary>
     /// Called once during cascade configuration resolution to allow subclasses to set per-domain options imperatively (Layer 3).
@@ -127,6 +151,33 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         DomainResult result = await DispatchCommandAsync(command, state, metadata, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         return result;
+    }
+
+    private Task<FoldedSnapshotProcessingResult> ProcessCoreAsync(
+        CommandEnvelope command, object? currentState, string? qualifiedProfileId,
+        FoldedSnapshotCaptureLimits? qualifiedLimits, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        cancellationToken.ThrowIfCancellationRequested();
+        AggregateCommandDispatchMetadata metadata = GetOrBuildMetadata();
+        return FoldedSnapshotProcessor<TState>.ProcessAsync(command, currentState, qualifiedProfileId, qualifiedLimits,
+            () => SnapshotCapture, () => FoldedSnapshotCapture,
+            (envelope, state, token) => DispatchRehydratedAsync(envelope, state, metadata, token),
+            () => metadata.ApplyMethods, EvolutionRegistry, cancellationToken);
+    }
+
+    private Task<DomainResult> DispatchRehydratedAsync(CommandEnvelope command, TState? state,
+        AggregateCommandDispatchMetadata metadata, CancellationToken cancellationToken)
+    {
+        bool terminated = state is ITerminatable { IsTerminated: true };
+        cancellationToken.ThrowIfCancellationRequested();
+        if (terminated)
+        {
+            return Task.FromResult(DomainResult.Rejection(new IRejectionEvent[] {
+                new AggregateTerminated(AggregateType: GetType().Name, AggregateId: command.AggregateId),
+            }));
+        }
+        return DispatchCommandAsync(command, state, metadata, cancellationToken);
     }
 
     private AggregateCommandDispatchMetadata GetOrBuildMetadata() =>

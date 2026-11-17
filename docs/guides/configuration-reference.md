@@ -180,6 +180,87 @@ services.AddEventStoreFoldedSnapshotActorQualification(
     "orders", "OrderAggregate", "orders-fold-v1", "orders-parity-v1", reviewedLimits);
 ```
 
+The standard actor executable consumes `EventStore:Snapshots:ActorQualifications`
+through its existing `AddEventStoreServer(configuration)` startup call. This is
+an explicit deployment declaration, with no domain assembly reference or dynamic
+type loading. An absent section retains the existing unenrolled behavior. A
+present section must be a nonempty, consecutively indexed array. Every entry must
+contain exactly `Domain`, `AggregateType`, `ProfileId`, `ParityEvidenceId`, and
+`Limits`; identities must be nonempty and have no surrounding whitespace.
+`Limits` must explicitly supply all 18 constructor values from
+`FoldedSnapshotCaptureLimits`. Unknown fields, missing or nonnumeric limits,
+invalid reservations, duplicate domain/aggregate or domain/profile identities,
+and collisions with code registrations fail before any configured declaration is
+registered, with `SnapshotActorQualificationConfigurationInvalid`. The failure
+does not retain private configuration values or inner binder exceptions. Choose
+either code or configuration for each declaration; do not register it twice.
+
+The following illustrates a structurally valid declaration, **not a reviewed
+profile for any application**. Replace the identities and every resource bound
+with the values established by that application's actual parity and serializer
+qualification, and use the same values on its domain host:
+
+```json
+{
+  "EventStore": {
+    "Snapshots": {
+      "ActorQualifications": [
+        {
+          "Domain": "orders",
+          "AggregateType": "OrderAggregate",
+          "ProfileId": "orders-fold-v1",
+          "ParityEvidenceId": "orders-parity-v1",
+          "Limits": {
+            "MaximumCaptureWorkspaceBytes": 4194304,
+            "MaximumPreCommandStateGraphBytes": 65536,
+            "MaximumWorkingStateGraphBytes": 65536,
+            "MaximumDetachedEventGraphBytes": 65536,
+            "MaximumEventCount": 8,
+            "MaximumEventBytes": 16384,
+            "MaximumStateJsonBytes": 16384,
+            "MaximumDomainParsedStateGraphBytes": 524288,
+            "MaximumEscapedWireStateBytes": 98306,
+            "MaximumActorParsedStateBytes": 16384,
+            "MaximumActorParsedGraphBytes": 524288,
+            "MaximumCanonicalStateMeasurementBytes": 16384,
+            "MaximumCanonicalEnvelopeBytes": 20480,
+            "MaximumNodeCount": 2048,
+            "MaximumDepth": 16,
+            "MaximumSerializerScratchBytes": 2097152,
+            "MaximumSimultaneousLiveBytes": 4194304,
+            "MaximumActorWorkspaceBytes": 4194304
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+Standard configuration providers also support these values, for example
+`EventStore__Snapshots__ActorQualifications__0__Domain`. Configuration does not
+prove that its parity evidence is true, create a domain-side bounded producer,
+enroll a state type, or change snapshot intervals. The deployment owner must
+complete the domain qualification first. The actor still checks serializer
+support, exact profile identity, state readability/digest, and every finite bound
+before staging a snapshot.
+
+Existing `EventStoreAggregate<TState>` subclasses can opt into capture by
+overriding the protected `FoldedSnapshotCapture` property with their reviewed
+`FoldedSnapshotCaptureProfile<TState>`. They retain convention discovery,
+reflection command dispatch, synchronous replay and asynchronous replay. Its
+default is `null`; implementing the capture interface does not confer eligibility.
+The shared bounded engine is also used by `DomainProcessorBase<TState>`.
+Applications still provide their complete detached-state copier and bounded V1
+event serializers, and may use the existing `SnapshotCapture` declaration for
+typed input isolation. Failed optional capture leaves a valid ordinary event
+batch intact, and caller cancellation remains a failure rather than snapshot
+evidence. The isolated
+[aggregate fixture](../../tests/Hexalith.EventStore.FoldedSnapshotFixture/FoldedOrderAggregate.cs)
+and [router/parity controls](../../tests/Hexalith.EventStore.DomainService.Tests/FoldedAggregateCaptureTests.cs)
+exercise that API with mutable collections, lifecycle, rejection and no-op paths;
+they are SDK examples, not consuming-module qualification.
+
 The declaration must reserve the built-in writer buffer, encoder scratch, and depth stack before optional serialization, including envelope probes and measurements. A positive scratch limit alone is insufficient; limits below the required serializer capacity skip automatic capture and refuse manual creation before reconstruction. Fixed output capacity bounds library-owned serialization growth while trusted callbacks remain part of the reviewed deployment contract.
 
 The actor serializer must write compact JSON and support the version-1 snapshot envelope. Both writers measure the folded state and final envelope before staging; unprotected and legacy no-op envelopes must fit within folded-state bytes plus 4096 bytes. A legacy or malformed snapshot never supplies stream authority on its own.
