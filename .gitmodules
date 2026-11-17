@@ -25,3 +25,6 @@
 [submodule "Hexalith.McpCli"]
 	path = references/Hexalith.McpCli
 	url = https://github.com/Hexalith/Hexalith.McpCli.git
+[submodule "Hexalith.CiCd"]
+	path = references/Hexalith.CiCd
+	url = https://github.com/Hexalith/Hexalith.CiCd.git
