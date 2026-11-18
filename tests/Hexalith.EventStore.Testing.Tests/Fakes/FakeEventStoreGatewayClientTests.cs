@@ -46,7 +46,20 @@ public class FakeEventStoreGatewayClientTests {
         SubmitCommandResponse response = await fake.SubmitCommandAsync(request);
 
         response.CorrelationId.ShouldBe("corr-1");
+        response.MessageId.ShouldBe(request.MessageId);
         fake.SubmittedCommands.Single().ShouldBe(request);
+    }
+
+    [Fact]
+    public async Task SubmitCommandAsync_PreservesConfiguredMessageId() {
+        var fake = new FakeEventStoreGatewayClient {
+            CommandResponse = new SubmitCommandResponse("corr-1", MessageId: "first-writer-message"),
+        };
+
+        SubmitCommandResponse response = await fake.SubmitCommandAsync(CreateCommandRequest());
+
+        response.CorrelationId.ShouldBe("corr-1");
+        response.MessageId.ShouldBe("first-writer-message");
     }
 
     [Fact]
@@ -93,6 +106,7 @@ public class FakeEventStoreGatewayClientTests {
         SubmitCommandResponse response = await fake.SubmitCommandAsync(CreateCommandRequest());
 
         response.CorrelationId.ShouldBe("corr-accepted");
+        response.MessageId.ShouldBe("message-1");
     }
 
     [Fact]

@@ -182,7 +182,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             new FakeCommandStatusLocationBuilder("https://gateway.example"));
         string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
         controller.Gateway.CommandHandler = (_, _) =>
-            Task.FromResult(new SubmitCommandResponse(statusId));
+            Task.FromResult(new SubmitCommandResponse(statusId, MessageId: statusId));
 
         IActionResult result = await InvokeIncrementCounterAsync(
             controller,
@@ -191,8 +191,8 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
         AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
         SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
-        response.CorrelationId.ShouldBe(statusId);
-        _ = UniqueIdHelper.ExtractTimestamp(response.CorrelationId);
+        response.MessageId.ShouldBe(statusId);
+        _ = UniqueIdHelper.ExtractTimestamp(response.MessageId!);
 
         controller.Gateway.CommandCallCount.ShouldBe(1);
         SubmitCommandRequest request = controller.Gateway.LastCommandRequest.ShouldNotBeNull();
@@ -217,7 +217,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
         GeneratedController controller = CreateController();
         string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
         controller.Gateway.CommandHandler = (_, _) =>
-            Task.FromResult(new SubmitCommandResponse(statusId));
+            Task.FromResult(new SubmitCommandResponse(statusId, MessageId: statusId));
 
         IActionResult result = await InvokeIncrementCounterAsync(
             controller,
@@ -226,7 +226,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
         AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
         SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
-        response.CorrelationId.ShouldBe(statusId);
+        response.MessageId.ShouldBe(statusId);
         controller.Gateway.CommandCallCount.ShouldBe(1);
 
         IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
@@ -242,8 +242,9 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             GeneratedController controller = CreateController(
                 new FakeCommandStatusLocationBuilder("https://gateway.example"));
             string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
+            string correlationId = UniqueIdHelper.GenerateSortableUniqueStringId();
             controller.Gateway.CommandHandler = (_, _) =>
-                Task.FromResult(new SubmitCommandResponse(statusId));
+                Task.FromResult(new SubmitCommandResponse(correlationId, MessageId: statusId));
 
             IActionResult result = await InvokeCommandAsync(
                 controller,
@@ -253,8 +254,8 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
             AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
             SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
-            response.CorrelationId.ShouldBe(statusId);
-            _ = UniqueIdHelper.ExtractTimestamp(response.CorrelationId);
+            response.MessageId.ShouldBe(statusId);
+            _ = UniqueIdHelper.ExtractTimestamp(response.MessageId!);
 
             controller.Gateway.CommandCallCount.ShouldBe(1);
             SubmitCommandRequest request = controller.Gateway.LastCommandRequest.ShouldNotBeNull();
@@ -272,6 +273,84 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             controller.Controller.HttpContext.Response.Headers[HeaderNames.Location].ToString()
                 .ShouldNotStartWith("/");
         }
+    }
+
+    [Fact]
+    public async Task CounterCommands_WhenGatewayReturnsCorrelationIdOnly_ReturnAcceptedWithoutLocation()
+    {
+        foreach (CommandCase commandCase in CommandCases())
+        {
+            GeneratedController controller = CreateController(
+                new FakeCommandStatusLocationBuilder("https://gateway.example"));
+            string correlationId = UniqueIdHelper.GenerateSortableUniqueStringId();
+            var submitted = new SubmitCommandResponse(correlationId);
+            controller.Gateway.CommandHandler = (_, _) => Task.FromResult(submitted);
+
+            IActionResult result = await InvokeCommandAsync(
+                controller,
+                commandCase.MethodName,
+                "counter-1",
+                commandCase.MatchingBody);
+
+            // The real filter publishes the Sample's declared v1 grammar; the correlation id is valid under it,
+            // so only a correlation fallback could have produced a Location.
+            AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+            accepted.Value.ShouldBeSameAs(submitted);
+            controller.Gateway.CommandCallCount.ShouldBe(1);
+            IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
+            headers[HeaderNames.RetryAfter].ToString().ShouldBe("1");
+            headers.ContainsKey(HeaderNames.Location).ShouldBeFalse();
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("-invalid-for-v1")]
+    [InlineData("invalid for v1")]
+    public async Task IncrementCounter_WhenMessageIdIsBlankOrInvalidForDeclaredVersion_ReturnsAcceptedWithoutLocation(string messageId)
+    {
+        GeneratedController controller = CreateController(
+            new FakeCommandStatusLocationBuilder("https://gateway.example"));
+        var submitted = new SubmitCommandResponse(UniqueIdHelper.GenerateSortableUniqueStringId(), MessageId: messageId);
+        controller.Gateway.CommandHandler = (_, _) => Task.FromResult(submitted);
+
+        IActionResult result = await InvokeIncrementCounterAsync(
+            controller,
+            "counter-1",
+            new IncrementCounter("counter-1"));
+
+        result.ShouldBeOfType<AcceptedResult>().Value.ShouldBeSameAs(submitted);
+        IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
+        headers[HeaderNames.RetryAfter].ToString().ShouldBe("1");
+        headers.ContainsKey(HeaderNames.Location).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("legacy-status-1")]
+    [InlineData("01arz3ndektsv4rrffq69g5fav")]
+    public async Task IncrementCounter_WhenMessageIdDiffersFromCorrelationId_LocationUsesDeclaredV1MessageIdOnly(string messageId)
+    {
+        GeneratedController controller = CreateController(
+            new FakeCommandStatusLocationBuilder("https://gateway.example"));
+        string correlationId = UniqueIdHelper.GenerateSortableUniqueStringId();
+        controller.Gateway.CommandHandler = (_, _) =>
+            Task.FromResult(new SubmitCommandResponse(correlationId, MessageId: messageId));
+        // A caller cannot switch the Sample's declared v1 grammar to v2, which would refuse both ids.
+        controller.Controller.HttpContext.Request.Headers["X-Hexalith-MessageId-Version"] = "2";
+        controller.Controller.HttpContext.Request.QueryString = new QueryString("?messageIdVersion=2");
+
+        IActionResult result = await InvokeIncrementCounterAsync(
+            controller,
+            "counter-1",
+            new IncrementCounter("counter-1"));
+
+        _ = result.ShouldBeOfType<AcceptedResult>();
+        string location = controller.Controller.HttpContext.Response.Headers[HeaderNames.Location].ToString();
+        location.ShouldBe($"https://gateway.example/api/v1/commands/status/{messageId}");
+        location.ShouldNotContain(correlationId);
+        controller.Controller.HttpContext.Items.ContainsKey(
+            Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.MessageIdVersionKey).ShouldBeFalse();
     }
 
     [Fact]

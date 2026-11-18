@@ -1009,7 +1009,9 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     {
         RestApiGeneratedController controller = CreateController();
         controller.Gateway.CommandHandler = (_, _) =>
-            Task.FromResult(new SubmitCommandResponse("01KTESTCOMMANDSTATUS000000"));
+            Task.FromResult(new SubmitCommandResponse(
+                "01KTESTCOMMANDCORRELATION000",
+                MessageId: "01KTESTCOMMANDSTATUS000000"));
         object body = Activator.CreateInstance(
             controller.Assembly.GetType("Smoke.IncrementCounter", throwOnError: true)!,
             "counter-1",
@@ -1019,7 +1021,7 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
 
         AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
         SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
-        response.CorrelationId.ShouldBe("01KTESTCOMMANDSTATUS000000");
+        response.MessageId.ShouldBe("01KTESTCOMMANDSTATUS000000");
         controller.Gateway.CommandCallCount.ShouldBe(1);
         IHeaderDictionary headers = controller.HttpContext.Response.Headers;
         headers["Retry-After"].ToString().ShouldBe("1");
@@ -1167,6 +1169,8 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
                 [new System.Security.Claims.Claim("eventstore:tenant", "tenant-a")], "test"));
         context.Items[Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.ValidatorKey] =
             (Func<Type, string, string, bool>)((_, _, _) => true);
+        // The isolated Smoke fixture runs under the v1 grammar, standing in for the real filter's publication.
+        context.Items[Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.MessageIdVersionKey] = 1;
         return context;
     }
 

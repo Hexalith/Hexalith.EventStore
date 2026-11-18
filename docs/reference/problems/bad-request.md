@@ -11,7 +11,7 @@ The request is malformed or missing a required parameter. This differs from [val
 
 ## Common Causes
 
-- The `correlationId` path parameter is missing or empty when querying command status
+- The `messageId` path segment is invalid when querying command status: it is not 1-128 ASCII letters, digits or hyphens with an alphanumeric first and last character
 - A required query parameter is absent
 
 ## Example
@@ -19,7 +19,7 @@ The request is malformed or missing a required parameter. This differs from [val
 ### Request
 
 ```http
-GET /api/v1/commands/status/ HTTP/1.1
+GET /api/v1/commands/status/-not-a-message-id HTTP/1.1
 Host: localhost:7275
 Authorization: Bearer <your-jwt-token>
 ```
@@ -34,24 +34,24 @@ Content-Type: application/problem+json
     "type": "https://hexalith.io/problems/bad-request",
     "title": "Bad Request",
     "status": 400,
-    "detail": "Correlation ID is required.",
-    "instance": "/api/v1/commands/status/",
-    "correlationId": ""
+    "detail": "Message or correlation identifier must be 1-128 characters of alphanumerics and hyphens (with alphanumeric anchors).",
+    "instance": "/api/v1/commands/status/-not-a-message-id",
+    "correlationId": "01HKQXYZ0000000000000000E5"
 }
 ```
 
 ## How to Fix
 
-1. Include the required `correlationId` in the request path:
+1. Put a valid `messageId` in the request path:
 
     ```text
-    GET /api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    GET /api/v1/commands/status/01HKQXYZ0000000000000000C3
     ```
 
-2. Use the `correlationId` returned in the `202 Accepted` response when you originally submitted the command.
+2. Use the `messageId` from the `202 Accepted` body returned when you submitted the command, or follow that response's `Location` header.
 
 ## Related
 
 - [Error Reference Index](./index.md)
 - [validation-error](./validation-error.md) -- for command payload validation failures
-- [command-status-not-found](./command-status-not-found.md) -- if the correlation ID is valid but no status exists
+- [command-status-not-found](./command-status-not-found.md) -- if the message ID is valid but no status exists

@@ -162,6 +162,8 @@ Content-Type: application/json
 
 `Location` uses the response `messageId`: the first writer's execution id, or the submitted `messageId` when the result has none. An idempotency-key retry can therefore return a different `messageId` than the request body. `X-Correlation-ID` identifies this HTTP request for tracing and support. Middleware copies a valid request header or generates one, and it never writes the command `correlationId`.
 
+Generated REST hosts emit `Location` only from a response `messageId` that is valid under the MessageId grammar the command contract declares. Version 1 accepts 1–128 ASCII letters, digits or hyphens with no leading or trailing hyphen. Version 2 accepts only a canonical 26-character uppercase Crockford ULID. The version comes from the contract declaration alone; no header, query or body value selects it. When the `messageId` is missing, blank or invalid for that version, when hosting validation published no declared version, or when no valid gateway status base is configured, the generated action still returns `202 Accepted` with `Retry-After: 1` and omits `Location`. A generated host never builds a status URI from `correlationId`.
+
 ### Error Responses
 
 > **See also:** [Error Reference](./problems/index.md) for detailed documentation on each error type, including example requests/responses and resolution steps.

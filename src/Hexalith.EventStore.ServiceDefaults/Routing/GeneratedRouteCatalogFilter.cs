@@ -22,6 +22,8 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
         ArgumentNullException.ThrowIfNull(next);
         RouteCatalogEndpointAttribute? metadata = context.ActionDescriptor.EndpointMetadata.OfType<RouteCatalogEndpointAttribute>().SingleOrDefault();
         if (metadata is null) { await next().ConfigureAwait(false); return; }
+        // Only hosting validation publishes the declared MessageId version; nothing earlier in the pipeline can.
+        context.HttpContext.Items.Remove(RouteCatalogGeneratedAction.MessageIdVersionKey);
         IActionResult? scopeFailure = ValidateRequestScope(context, metadata.TenantSource);
         if (scopeFailure is not null)
         {
@@ -64,6 +66,7 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
             context.HttpContext.Items.Remove(ValidatedKey);
             context.HttpContext.Items.Remove(EligibilityRefusedKey);
             context.HttpContext.Items.Remove(RouteCatalogGeneratedAction.ValidatorKey);
+            context.HttpContext.Items.Remove(RouteCatalogGeneratedAction.MessageIdVersionKey);
         }
     }
 
@@ -184,6 +187,9 @@ public sealed class GeneratedRouteCatalogFilter(IRouteCatalogAuthority authority
             else if (metadata.Kind != "query" || metadata.ContractType.GetProperty("ProjectionType", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as string
                 != selected.Declaration.ProjectionType)
                 throw new RouteCatalogUnavailableException("Generated contract differs from the committed query declaration.");
+            // The digest-matched compiled declaration is the sole MessageId version source for status selection.
+            if (metadata.Kind == "command" && compiled[0].MessageIdVersion is int messageIdVersion)
+                context.Items[RouteCatalogGeneratedAction.MessageIdVersionKey] = messageIdVersion;
             context.Items[ValidatedKey] = true;
             return true;
         }

@@ -40,6 +40,10 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     /// <summary>
     /// Gets or sets the command response returned by the fake.
     /// </summary>
+    /// <remarks>
+    /// Like the real gateway, a response whose <see cref="SubmitCommandResponse.MessageId"/> is <c>null</c> is returned
+    /// with the submitted request's <c>MessageId</c>; a configured <c>MessageId</c> is returned unchanged.
+    /// </remarks>
     public SubmitCommandResponse CommandResponse { get; set; } = new("test-correlation-id");
 
     /// <summary>
@@ -262,7 +266,8 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
             throw CommandException;
         }
 
-        return Task.FromResult(CommandResponse);
+        SubmitCommandResponse response = CommandResponse;
+        return Task.FromResult(response.MessageId is null ? response with { MessageId = request.MessageId } : response);
     }
 
     /// <summary>

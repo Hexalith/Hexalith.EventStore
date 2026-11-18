@@ -40,7 +40,9 @@ internal sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient
         LastCommandRequest = request;
         LastCommandCancellationToken = cancellationToken;
         return CommandHandler is null
-            ? Task.FromResult(new SubmitCommandResponse(Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId()))
+            ? Task.FromResult(new SubmitCommandResponse(
+                Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId(),
+                MessageId: request.MessageId))
             : CommandHandler(request, cancellationToken);
     }
 

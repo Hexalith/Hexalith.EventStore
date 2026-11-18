@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Sample.Counter.Commands;
+using Hexalith.EventStore.Sample.Counter.Queries;
 using Hexalith.EventStore.ServiceDefaults.Routing;
 
 using Microsoft.AspNetCore.Http;
@@ -78,5 +79,105 @@ public sealed class GeneratedCatalogDeclarationTests
         });
         effects.ShouldBe(accepted);
         if (!accepted) completed!.Result.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(503);
+    }
+
+    [Fact]
+    public void EveryCatalogCommandDeclaresExactlyOneMessageIdVersion()
+    {
+        // The drift-checked routing catalog is the version manifest; RouteCatalogCodec.Decode validates it.
+        RouteContractDeclaration[] commands = [.. new RouteCatalogTestFixture().Envelope.Declarations.Where(d => d.Kind == "command")];
+
+        commands.ShouldNotBeEmpty();
+        commands.ShouldAllBe(d => d.MessageIdVersion == 1 || d.MessageIdVersion == 2);
+        commands.GroupBy(d => (d.Domain, d.MessageType)).ShouldAllBe(group => group.Count() == 1);
+    }
+
+    [Fact]
+    public async Task GeneratedCommandPublishesOnlyTheCompiledDeclarationMessageIdVersionForTheAction()
+    {
+        const string key = RouteCatalogGeneratedAction.MessageIdVersionKey;
+        int declared = CompiledRouteCatalogDeclarations.Read([typeof(IncrementCounter).Assembly])
+            .Single(d => d.Kind == "command" && d.Domain == "counter" && d.MessageType == "increment-counter").MessageIdVersion
+            .ShouldNotBeNull();
+        declared.ShouldBe(1);
+        var httpContext = new DefaultHttpContext();
+        // Caller inputs claim v2, and an earlier pipeline stage pre-seeds v2; neither may select the version.
+        httpContext.Request.Headers["X-Hexalith-MessageId-Version"] = "2";
+        httpContext.Request.Headers[key] = "2";
+        httpContext.Request.QueryString = new QueryString("?messageIdVersion=2");
+        httpContext.Items[key] = 2;
+        (ActionExecutingContext executing, ActionContext actionContext) = CreateExecution(httpContext, typeof(IncrementCounter), "command");
+        bool presentBeforeValidation = true;
+        bool validated = false;
+        object? published = null;
+        bool legacySelected = false;
+        string? statusMessageId = null;
+        ActionExecutedContext? completed = null;
+
+        await new GeneratedRouteCatalogFilter(CreateAuthority()).OnActionExecutionAsync(executing, () =>
+        {
+            presentBeforeValidation = httpContext.Items.ContainsKey(key);
+            validated = RouteCatalogGeneratedAction.ValidateTenant(httpContext.Items, typeof(IncrementCounter), "command", "tenant-a");
+            published = httpContext.Items.TryGetValue(key, out object? value) ? value : null;
+            // A v1-only id is selected because the declaration, not the caller's v2 claim, decides.
+            legacySelected = RouteCatalogGeneratedAction.TrySelectStatusMessageId(httpContext.Items, "legacy-status-1", out statusMessageId);
+            completed = new ActionExecutedContext(actionContext, [], executing.Controller);
+            return Task.FromResult(completed);
+        });
+
+        presentBeforeValidation.ShouldBeFalse();
+        validated.ShouldBeTrue();
+        published.ShouldBeOfType<int>().ShouldBe(declared);
+        legacySelected.ShouldBeTrue();
+        statusMessageId.ShouldBe("legacy-status-1");
+        completed!.Result.ShouldBeNull();
+        httpContext.Items.ContainsKey(key).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GeneratedCommandPublishesNoMessageIdVersionWhenValidationRefusesOrForQueries()
+    {
+        const string key = RouteCatalogGeneratedAction.MessageIdVersionKey;
+        foreach ((Type contract, string kind, string tenant, bool expectedValid) in new[]
+        {
+            (typeof(IncrementCounter), "command", "Tenant-A", false),
+            (typeof(GetCounterStatusQuery), "query", "tenant-a", true),
+        })
+        {
+            var httpContext = new DefaultHttpContext();
+            httpContext.Items[key] = 1;
+            (ActionExecutingContext executing, ActionContext actionContext) = CreateExecution(httpContext, contract, kind);
+            bool validated = !expectedValid;
+            bool presentAfterValidation = true;
+
+            await new GeneratedRouteCatalogFilter(CreateAuthority()).OnActionExecutionAsync(executing, () =>
+            {
+                validated = RouteCatalogGeneratedAction.ValidateTenant(httpContext.Items, contract, kind, tenant);
+                presentAfterValidation = httpContext.Items.ContainsKey(key);
+                return Task.FromResult(new ActionExecutedContext(actionContext, [], executing.Controller));
+            });
+
+            validated.ShouldBe(expectedValid, kind);
+            presentAfterValidation.ShouldBeFalse(kind);
+            RouteCatalogGeneratedAction.TrySelectStatusMessageId(httpContext.Items, "legacy-status-1", out _).ShouldBeFalse(kind);
+            httpContext.Items.ContainsKey(key).ShouldBeFalse(kind);
+        }
+    }
+
+    private static IRouteCatalogAuthority CreateAuthority()
+    {
+        RouteCatalogEnvelope envelope = new RouteCatalogTestFixture().Envelope;
+        var snapshot = new CommittedRouteCatalogSnapshot(RouteCatalogCodec.Encode(envelope), RouteCatalogCodec.ComputeRootDigest(envelope), 1);
+        IRouteCatalogAuthority authority = Substitute.For<IRouteCatalogAuthority>();
+        authority.AcquireAsync(Arg.Any<CancellationToken>()).Returns(_ => new RouteCatalogDispatchLease(snapshot, () => Task.CompletedTask));
+        return authority;
+    }
+
+    private static (ActionExecutingContext Executing, ActionContext ActionContext) CreateExecution(HttpContext httpContext, Type contract, string kind)
+    {
+        var action = new ActionDescriptor { EndpointMetadata = [new RouteCatalogEndpointAttribute(contract, kind)] };
+        var actionContext = new ActionContext(httpContext, new RouteData(), action);
+        actionContext.RouteData.Values["tenant"] = "tenant-a";
+        return (new ActionExecutingContext(actionContext, [], new Dictionary<string, object?>(), new object()), actionContext);
     }
 }

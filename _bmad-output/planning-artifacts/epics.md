@@ -2105,6 +2105,8 @@ So that a correlation identifier can never address a status resource.
 
 **Dependencies:** Accepted Story 5.12 declaration/schema/codec delivery, subject to its package/validation delivery gate; a Story 9.1 authorization record for gate G-STATUS-ID. Each contract's `Contracts` declaration is the sole source of its MessageId version, and the manifest this story validates is derived from those declarations and fails on drift. Story 5.13 owns runtime authority, exhaustive runtime parity and activation; declaration consumption does not require that activation and does not waive NFR12 compatibility, assurance or this story's other gates. No automatic unblocking follows from the 2026-10-27 amendment.
 
+**Execution clarification (approved 2026-11-18):** The owner's `/bmad-build 2.15` request is the G-STATUS-ID authorization, recorded in `spec-2-15-messageid-only-command-status-identity.md`; deleted Story 9.1 tooling is not a prerequisite. The drift-checked `deploy/dapr/eventstore-routing-catalog.json` is the version manifest derived from the `Contracts` declarations; no second manifest is created.
+
 **Acceptance Criteria:**
 
 **Given** a versioned contract manifest

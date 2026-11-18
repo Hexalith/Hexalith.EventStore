@@ -6755,3 +6755,17 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Resolve intermittent concurrent-tenant authentication request timeouts within the fixed evidence bounds.
   evidence: Post-review run-7 passes five complete genuine executions, then its sixth KeycloakAuthenticationTests.ConcurrentTenantCommands_EventsRemainIsolated hits the unchanged 15-second HttpClient timeout under host contention. Other fresh cohorts, including run-8, pass 29/29. The final tracker race remains unproven on the patched subject; retain real persisted isolation assertions, selectors and budgets.
+
+## Deferred from: build of spec-2-15-messageid-only-command-status-identity.md (2026-11-18)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
+  summary: Reconcile the gateway status lookup's bounded correlation-index compatibility with AD-17/AD-32, which say a correlation identifier is never status identity (medium).
+  evidence: `src/Hexalith.EventStore/Controllers/CommandStatusController.cs` serves `GET /api/v1/commands/status/{messageId}` and, after an exact message-key miss, resolves the path value through `ICommandCorrelationIndex` (Story 4.2's documented compatibility). Story 2.15 removes every `MessageId ?? CorrelationId` fallback from generated REST hosts, so no generated `Location` addresses status by correlation, but a client that sends a correlation ID to the gateway endpoint can still resolve a status record.
+  reason: Owner decision on 2026-11-18: FR12 is the generated-REST slice, and the gateway lookup stays out of Story 2.15's scope. Its `CommandsController` and `CommandStatusController` are unchanged. Retiring or bounding the correlation path needs its own story with a consumer-compatibility decision.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
+  summary: Align `docs/reference/problems/command-status-not-found.md` with MessageId-only status identity; it still describes lookup by correlation ID with GUID examples (low).
+  evidence: Lines 10-54 say "No command status record was found for the correlation ID" and tell callers to retry with the `correlationId`, while `CommandStatusController` routes `{messageId}` and AD-17/AD-32 make `messageId` the status identity. This is pre-existing, outside Story 2.15's three cited docs, and tied to the open gateway correlation-lookup entry above.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
+  summary: Anchor the gateway's v1 identifier regexes with `\z` so a trailing newline is rejected, matching `Contracts.Identity.MessageIdGrammar` (low).
+  evidence: `src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs:109` and `src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs:50` use `^...$` without `RegexOptions.Multiline`; .NET `$` also matches before a final `\n`, so the gateway admits `"legacy\n"` as a `messageId`, which `MessageIdGrammar.IsValid(…, 1)` rejects. Pre-existing gateway code left unchanged by Story 2.15; a parity test between the two grammars would close it.

@@ -62,8 +62,9 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("Route value 'counterId' does not match the command body.");
         source.ShouldContain("new SubmitCommandRequest(");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
-        source.ShouldContain("string __hexalithStatusKey = __hexalithResponse.MessageId ?? __hexalithResponse.CorrelationId;");
-        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithStatusKey, out string? __hexalithStatusLocation)");
+        source.ShouldContain("RouteCatalogGeneratedAction.TrySelectStatusMessageId(HttpContext.Items, __hexalithResponse.MessageId, out string? __hexalithStatusMessageId)");
+        source.ShouldContain("&& statusLocationBuilder.TryBuild(__hexalithStatusMessageId, out string? __hexalithStatusLocation)");
+        ShouldEmitMessageIdOnlyStatusPaths(source, expectedCommandActions: 2);
         source.ShouldContain("Response.Headers[\"Location\"] = __hexalithStatusLocation;");
         source.ShouldNotContain("\"/api/v1/commands/status/\"");
         source.ShouldContain("[FromQuery(Name = \"page\")]");
@@ -516,7 +517,8 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("body.AggregateId");
         source.ShouldContain(".SubmitCommandAsync(__hexalithRequest, cancellationToken)");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
-        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithStatusKey, out");
+        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithStatusMessageId, out");
+        ShouldEmitMessageIdOnlyStatusPaths(source, expectedCommandActions: 4);
         source.ShouldNotContain("\"/api/v1/commands/status/\"");
         source.ShouldContain("StatusCodes.Status202Accepted");
         source.ShouldContain("ConfigureAwait(false)");
@@ -600,6 +602,32 @@ public sealed class RestApiControllerGenerationTests
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
         errors.ShouldBeEmpty(string.Join(Environment.NewLine, errors.Select(static diagnostic => diagnostic.ToString())));
+    }
+
+    // Every emitted status path (Retry-After through the accepted return) selects identity from the response
+    // MessageId alone: no CorrelationId token and no null-coalescing fallback may appear in it.
+    private static void ShouldEmitMessageIdOnlyStatusPaths(string source, int expectedCommandActions)
+    {
+        const string start = "Response.Headers[\"Retry-After\"] = \"1\";";
+        const string end = "return Accepted(__hexalithResponse);";
+        source.ShouldNotContain("__hexalithStatusKey");
+        source.ShouldNotContain("__hexalithResponse.CorrelationId");
+        CountOccurrences(source, start).ShouldBe(expectedCommandActions);
+        CountOccurrences(source, end).ShouldBe(expectedCommandActions);
+        int index = 0;
+        while ((index = source.IndexOf(start, index, StringComparison.Ordinal)) >= 0)
+        {
+            int stop = source.IndexOf(end, index, StringComparison.Ordinal);
+            stop.ShouldBeGreaterThan(index);
+            string statusPath = source[index..stop];
+            statusPath.ShouldNotContain("CorrelationId");
+            statusPath.ShouldNotContain("??");
+            CountOccurrences(statusPath, "TrySelectStatusMessageId(HttpContext.Items, __hexalithResponse.MessageId,").ShouldBe(1);
+            CountOccurrences(statusPath, "statusLocationBuilder.TryBuild(").ShouldBe(1);
+            statusPath.IndexOf("TrySelectStatusMessageId(", StringComparison.Ordinal)
+                .ShouldBeLessThan(statusPath.IndexOf("statusLocationBuilder.TryBuild(", StringComparison.Ordinal));
+            index = stop;
+        }
     }
 
     private static int CountOccurrences(string value, string search)

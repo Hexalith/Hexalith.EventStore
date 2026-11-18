@@ -289,8 +289,10 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("                .ConfigureAwait(false);");
         builder.AppendLine();
         builder.AppendLine("            Response.Headers[\"Retry-After\"] = \"1\";");
-        builder.AppendLine("            string __hexalithStatusKey = __hexalithResponse.MessageId ?? __hexalithResponse.CorrelationId;");
-        builder.AppendLine("            if (statusLocationBuilder.TryBuild(__hexalithStatusKey, out string? __hexalithStatusLocation))");
+        // Status identity is the response MessageId alone, valid under the version hosting validation published
+        // from the contract declaration. A correlation identifier never addresses a status resource.
+        builder.AppendLine("            if (global::Hexalith.EventStore.Contracts.Routing.RouteCatalogGeneratedAction.TrySelectStatusMessageId(HttpContext.Items, __hexalithResponse.MessageId, out string? __hexalithStatusMessageId)");
+        builder.AppendLine("                && statusLocationBuilder.TryBuild(__hexalithStatusMessageId, out string? __hexalithStatusLocation))");
         builder.AppendLine("            {");
         builder.AppendLine("                Response.Headers[\"Location\"] = __hexalithStatusLocation;");
         builder.AppendLine("            }");

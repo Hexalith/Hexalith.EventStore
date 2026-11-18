@@ -28,7 +28,7 @@ internal sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient
     {
         CommandCallCount++;
         return CommandHandler is null
-            ? Task.FromResult(new SubmitCommandResponse("01KTESTCOMMAND000000000000"))
+            ? Task.FromResult(new SubmitCommandResponse("01KTESTCOMMAND000000000000", MessageId: request.MessageId))
             : CommandHandler(request, cancellationToken);
     }
 
