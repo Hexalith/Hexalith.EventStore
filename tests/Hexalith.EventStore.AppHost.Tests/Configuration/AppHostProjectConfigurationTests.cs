@@ -44,7 +44,7 @@ public sealed class AppHostProjectConfigurationTests
         XElement noWarn = project
             .Descendants()
             .Single(element => string.Equals(element.Name.LocalName, "NoWarn", StringComparison.Ordinal));
-        noWarn.Value.ShouldBe("$(NoWarn);CS0618");
+        noWarn.Value.ShouldBe("$(NoWarn);CS0618;ASPIRE012");
         noWarn.Attribute("Condition").ShouldBeNull();
         noWarn.Parent.ShouldNotBeNull().Attribute("Condition").ShouldBeNull();
     }
