@@ -62,6 +62,8 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <!-- Aspire 17 keeps AddProject and Aspire.AppHost.Sdk available but obsolete. -->
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS0618;ASPIRE012</WarningsNotAsErrors>
 
         <!-- Audit direct and transitive packages at every severity. Vulnerability
              warnings follow the same warnings-as-errors policy as the normal build. -->
