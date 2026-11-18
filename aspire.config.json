@@ -1,5 +1,8 @@
 {
   "appHost": {
     "path": "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+  },
+  "sdk": {
+    "version": "17.0.0"
   }
 }
