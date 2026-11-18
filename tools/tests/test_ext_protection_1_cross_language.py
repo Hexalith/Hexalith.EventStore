@@ -38,7 +38,16 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
         if project_references == 'false':
             contracts_output = contracts.parent / 'bin' / configuration / 'net11.0/Hexalith.EventStore.Contracts.dll'
             if not contracts_output.is_file():
-                raise ValueError('Package-mode interop requires the shared prebuilt Contracts output: ' + str(contracts_output))
+                build = subprocess.run(
+                    ['dotnet', 'build', str(contracts), '--configuration', configuration,
+                     '-p:UseHexalithProjectReferences=false', '-m:1', '-nodeReuse:false', '--nologo'],
+                    capture_output=True, text=True, timeout=180)
+                print(json.dumps({'contractsBuildCommand': build.args, 'exitCode': build.returncode}))
+                print(build.stdout)
+                if build.returncode or not contracts_output.is_file():
+                    raise RuntimeError(
+                        'Package-mode interop requires Contracts output: '
+                        + str(contracts_output) + '\n' + build.stderr)
             reference = '<Reference Include="Hexalith.EventStore.Contracts"><HintPath>' + escape(str(contracts_output)) + '</HintPath></Reference>'
         else:
             reference = '<ProjectReference Include="' + escape(str(contracts)) + '" />'

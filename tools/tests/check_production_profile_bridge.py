@@ -42,6 +42,22 @@ def copy_repository(source, target):
             shutil.copy2(original, destination)
 
 
+def copy_installed_tree(source, destination, *, symlinks=False):
+    """Copy an installed toolchain tree, hard-linking when the runner allows it.
+
+    GitHub-hosted images can refuse ``os.link`` on files under ``/usr/share/dotnet``
+    (EPERM). Fall back to a real copy so the relocated SDK still cannot see the
+    original packs directory.
+    """
+    def link_or_copy(src, dst):
+        try:
+            os.link(src, dst)
+        except OSError:
+            shutil.copy2(src, dst)
+
+    shutil.copytree(source, destination, symlinks=symlinks, copy_function=link_or_copy)
+
+
 def poison_build_ancestors(ancestors):
     """Fail any accidental import or response-file use from these ancestors."""
     poison = '<Project><Target Name="Poison" BeforeTargets="PrepareForBuild"><Error Text="unrelated-build-input-executed" /></Target></Project>'
@@ -97,11 +113,11 @@ def check_missing_targeting_pack(root, dotnet, scratch):
     incomplete.mkdir()
     shutil.copy2(dotnet, incomplete / 'dotnet')
     for name in ('host', 'shared'):
-        shutil.copytree(Path(dotnet).parent/name, incomplete/name, copy_function=os.link)
+        copy_installed_tree(Path(dotnet).parent/name, incomplete/name)
     (incomplete/'packs').mkdir()
     selected = run([dotnet, '--version'], root).stdout.strip()
     # Linking the SDK itself would resolve its original installation's packs.
-    shutil.copytree(Path(dotnet).parent / 'sdk' / selected, incomplete / 'sdk' / selected, copy_function=os.link)
+    copy_installed_tree(Path(dotnet).parent / 'sdk' / selected, incomplete / 'sdk' / selected)
     diagnostics = []
     bounded = T.Control.bounded_process
     def observed(command, private, filename, **kwargs):
@@ -405,8 +421,8 @@ def check_stopped_compiler_controls(root, data, scratch):
         relocated.mkdir()
         shutil.copy2(installed/'dotnet', relocated/'dotnet')
         for name in ('host','shared','packs'):
-            shutil.copytree(installed/name, relocated/name, symlinks=True, copy_function=os.link)
-        shutil.copytree(installed/'sdk'/selected, relocated/'sdk'/selected, symlinks=True, copy_function=os.link)
+            copy_installed_tree(installed/name, relocated/name, symlinks=True)
+        copy_installed_tree(installed/'sdk'/selected, relocated/'sdk'/selected, symlinks=True)
         metadata = relocated/'sdk'/selected/'dotnet.runtimeconfig.json'
         content = metadata.read_bytes(); metadata.unlink(); metadata.write_bytes(content)
         installed_mutation = insert_before(original_helper,
