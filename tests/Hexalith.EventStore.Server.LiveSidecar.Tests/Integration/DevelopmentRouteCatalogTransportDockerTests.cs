@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Hexalith.EventStore.Aspire;
+using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 using Shouldly;
 
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
@@ -20,7 +21,7 @@ public sealed class DevelopmentRouteCatalogTransportDockerTests
         try
         {
             string identity = (await DockerAsync(DevelopmentRouteCatalogTransportDocker.ExtractionArguments(
-                owner, "redis:7.4-alpine", "redis-server", authenticationOwner), deadline.Token)).Trim();
+                owner, RouteCatalogDevelopmentRedis.Image, "redis-server", authenticationOwner), deadline.Token)).Trim();
             identity.Length.ShouldBe(64);
             (await DockerAsync(["inspect", "--format", "{{.State.Status}}", identity], deadline.Token)).Trim().ShouldBe("created");
             string[] selected = (await DockerAsync(["ps", "--all", "--filter", "label=" + label,
