@@ -201,7 +201,7 @@ env PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority
 
 **Important:** `EnableKeycloak=false` is **required**. The Kubernetes publisher does not support bind mounts used by Keycloak's realm import. Production Kubernetes deployments must use an external OIDC provider.
 
-**Warning:** The Aspire Kubernetes publisher (`Aspire.Hosting.Kubernetes`) is a preview package. Generated output may require manual adjustments.
+The Aspire Kubernetes publisher (`Aspire.Hosting.Kubernetes` 17.0.0) is stable. Inspect the generated Helm chart before deploying.
 
 ### Expected Generated Structure
 
@@ -249,7 +249,7 @@ sample:
             memory: "256Mi"
 ```
 
-> **Note:** Exact field names depend on the Aspire SDK version (currently 13.1.2). Always inspect the generated `values.yaml` before modifying.
+> **Note:** Exact field names depend on the Aspire SDK version (currently 17.0.0). Always inspect the generated `values.yaml` before modifying.
 
 ## Build and Push Container Images
 

@@ -142,7 +142,7 @@ az provider register -n Microsoft.OperationalInsights
 
 ## Generate Azure Deployment Artifacts
 
-The Aspire AppHost includes an Azure Container Apps publisher that generates Bicep modules from the Aspire topology definition. The `Aspire.Hosting.Azure.AppContainers` package (v13.1.2) is a **stable** (GA) package — unlike the Kubernetes and Docker publishers which are preview.
+The Aspire AppHost includes an Azure Container Apps publisher that generates Bicep modules from the Aspire topology definition. The `Aspire.Hosting.Azure.AppContainers` package (v17.0.0) is a **stable** (GA) package, as are the Kubernetes and Docker publishers.
 
 ```bash
 env PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__SampleUi__GrantType=password Authentication__JwtBearer__SampleUi__Scope="${OIDC_SCOPE}" Authentication__JwtBearer__AdminUi__GrantType=password Authentication__JwtBearer__AdminUi__Scope="${OIDC_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" "Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" aspire publish --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
@@ -176,7 +176,7 @@ publish-output/azure/
     law.module.bicep            # Log Analytics Workspace
 ```
 
-> **Note:** Exact structure depends on the Aspire SDK version (currently 13.1.x). Always inspect the generated output before deploying.
+> **Note:** Exact structure depends on the Aspire SDK version (currently 17.0.0). Always inspect the generated output before deploying.
 
 ### What Needs Manual Configuration
 

@@ -69,7 +69,7 @@ The AppHost supports publish targets via `PUBLISH_TARGET`:
 | `aca` | Azure Container Apps (Bicep) |
 
 Aspire packages referenced: `Aspire.Hosting.Docker`, `Aspire.Hosting.Kubernetes`,
-`Aspire.Hosting.Azure.AppContainers` and `Aspire.Hosting.Redis` use `13.5.3`; `Aspire.Hosting.Keycloak` uses `13.5.3-preview.1.26425.3`.
+`Aspire.Hosting.Azure.AppContainers` and `Aspire.Hosting.Redis` use `17.0.0`; `Aspire.Hosting.Keycloak` uses `17.0.0-preview.1.26567.5`.
 
 ## DAPR Component Configuration (the deployment contract)
 

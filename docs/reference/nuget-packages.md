@@ -578,6 +578,8 @@ audiences, requires HTTPS metadata for publishing, and clears the signing-key ov
 | Package                              | Version |
 | ------------------------------------ | ------- |
 | Aspire.Hosting                       | 17.0.0 |
+| Aspire.Hosting.Keycloak              | 17.0.0-preview.1.26567.5 |
+| Aspire.Hosting.Redis                 | 17.0.0 |
 | CommunityToolkit.Aspire.Hosting.Dapr | 17.0.0-beta.1052 |
 
 ```bash

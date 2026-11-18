@@ -167,7 +167,7 @@ services:
         image: ${DASHBOARD_IMAGE}
 ```
 
-> **Note:** Exact field names and structure depend on the Aspire SDK version (currently 13.1.x). Always use the generated output rather than copying this example verbatim. The generated output omits the run-only Keycloak service. One change is typically needed in the generated file:
+> **Note:** Exact field names and structure depend on the Aspire SDK version (currently 17.0.0). Always use the generated output rather than copying this example verbatim. The generated output omits the run-only Keycloak service. One change is typically needed in the generated file:
 >
 > 1. **Port mappings:** The generated file may use `expose` instead of `ports` for `eventstore`. Add `ports: ["8080:8080"]` to make the API accessible from the host.
 
