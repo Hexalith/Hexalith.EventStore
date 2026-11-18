@@ -1060,12 +1060,13 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
 
     private static async Task<IActionResult> InvokeQueryAsync(
         RestApiGeneratedController controller,
-        string? ifNoneMatch = null)
+        string? ifNoneMatch = null,
+        string routeTenant = "tenant-a")
     {
         MethodInfo method = controller.Controller.GetType().GetMethod("GetCounterStatusQueryQueryAsync")!;
         var task = (Task<IActionResult>)method.Invoke(
             controller.Controller,
-            ["tenant-a", "counter-1", ifNoneMatch, TestContext.Current.CancellationToken])!;
+            [routeTenant, "counter-1", ifNoneMatch, TestContext.Current.CancellationToken])!;
         return await task.ConfigureAwait(false);
     }
 

@@ -31,6 +31,36 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     }
 
     [Theory]
+    [InlineData("Route", "tenant-a")]
+    [InlineData("Claims", "Tenant-A")]
+    public async Task QueryAction_ExplicitTenantRouteBindings_UseCanonicalIdentityOnlyForTenantScope(
+        string tenantSource, string expectedIdentifier)
+    {
+        RestApiGeneratedController controller = CreateController(
+            tenantMode: tenantSource,
+            queryBinding: "RestQueryBindingSource.Route, \"tenant\", RestQueryBindingSource.Route, \"tenant\"");
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new("eventstore:tenant", "TENANT-A")], "test"));
+        if (tenantSource == "Claims")
+        {
+            controller.HttpContext.Request.Headers["X-Hexalith-Tenant"] = "TENANT-A";
+        }
+
+        SubmitQueryRequest? captured = null;
+        controller.Gateway.QueryHandler = (request, _, _) =>
+        {
+            captured = request;
+            return Task.FromResult(new EventStoreQueryResult("correlation", null, false, null));
+        };
+
+        IActionResult result = await InvokeQueryAsync(controller, routeTenant: "Tenant-A").ConfigureAwait(true);
+
+        result.ShouldBeOfType<OkObjectResult>();
+        captured.ShouldNotBeNull().Tenant.ShouldBe("tenant-a");
+        captured.AggregateId.ShouldBe(expectedIdentifier);
+        captured.EntityId.ShouldBe(expectedIdentifier);
+    }
+
+    [Theory]
     [InlineData("Route", "Inherit", "tenant-a")]
     [InlineData("Claims", "Inherit", "claimed-tenant")]
     [InlineData("Route", "Claims", "claimed-tenant")]

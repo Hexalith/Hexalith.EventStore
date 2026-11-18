@@ -328,7 +328,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("    {");
         AppendTenantResolution(builder, options, route, routeParameters);
         AppendQueryPayload(builder, queryParameters);
-        AppendQueryRouteValues(builder, message, routeParameters);
+        AppendQueryRouteValues(builder, message, routeParameters, RequiresRouteTenant(options, route));
         AppendCatalogTenantValidation(builder, message, "query");
         builder.AppendLine();
         builder.AppendLine("        var __hexalithRequest = new SubmitQueryRequest(");
@@ -1011,7 +1011,8 @@ internal static class RestApiControllerEmitter
     private static void AppendQueryRouteValues(
         StringBuilder builder,
         RestApiMessageDescriptor message,
-        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        bool usesRouteTenant)
     {
         string aggregateExpression;
         string entityExpression;
@@ -1022,6 +1023,7 @@ internal static class RestApiControllerEmitter
                 binding.AggregateSource,
                 binding.AggregateValue,
                 routeParameters,
+                usesRouteTenant,
                 Literal("index"));
             entityExpression = string.Equals(binding.EntitySource, "None", StringComparison.Ordinal)
                 ? "null"
@@ -1029,6 +1031,7 @@ internal static class RestApiControllerEmitter
                     binding.EntitySource,
                     binding.EntityValue ?? string.Empty,
                     routeParameters,
+                    usesRouteTenant,
                     "null");
         }
         else
@@ -1681,6 +1684,7 @@ internal static class RestApiControllerEmitter
         string source,
         string value,
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        bool usesRouteTenant,
         string fallbackExpression)
     {
         if (string.Equals(source, "Constant", StringComparison.Ordinal))
@@ -1691,6 +1695,11 @@ internal static class RestApiControllerEmitter
         if (string.Equals(source, "Route", StringComparison.Ordinal)
             && FindRouteParameter(routeParameters, value) is { } routeParameter)
         {
+            if (usesRouteTenant && IsTenantParameter(routeParameter))
+            {
+                return "__hexalithTenant";
+            }
+
             return ToStringExpression(routeParameter.Identifier, fallbackExpression);
         }
 
