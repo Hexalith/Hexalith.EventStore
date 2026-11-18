@@ -4,7 +4,7 @@
 
 ## Goal
 
-Give developers typed external REST APIs and interactive clients through supported EventStore gateway contracts. Keep generated controllers in dedicated API hosts, UI hosts on client libraries, tenant access fail closed, and query and notification evidence honest about projection state.
+Developers can expose typed external REST APIs and build interactive clients through gateway contracts, keeping metadata, tenant scoping, status identity, and projection truth intact. Generated controllers live only in external API hosts; UI hosts use client libraries. Stories 2.14–2.17 are corrective successors that tighten the tenant boundary, status identity, SignalR metadata bounds, and generator build quality.
 
 ## Stories
 
@@ -28,30 +28,46 @@ Give developers typed external REST APIs and interactive clients through support
 
 ## Requirements & Constraints
 
-- REST exposure is explicit in command/query contracts and API-host metadata. Generated controllers are typed, OpenAPI-visible, and delegate through `IEventStoreGatewayClient`; Sample and Tenants prove the pattern in dedicated external hosts. Interactive UI hosts use client libraries and host no per-message command/query MVC controllers.
-- Generated responses preserve safe gateway outcomes, including `304`, problem details, and present, bounded query metadata. Projection freshness, lifecycle, version, ETag, served-at, warnings, and paging come from platform metadata with route-bound provenance. Handler-computed, unknown, absent, or invalid provenance cannot become projection confirmation.
-- Generated controllers, Tenants routes, the gateway, and Admin Server must resolve one explicit authorized scope before routing or state access. Normalize request tenants and grants to lowercase through the shared `Contracts` canonicalizer, then apply the 1–64-character grammar `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`. Reject missing, duplicate, conflicting, invalid, unauthorized, or reserved `system` inputs, including for global administrators. Grants authorize scope but never supply it. Platform operations use a separate authenticated, cataloged namespace with grammar disjoint from tenant IDs; a request naming both scopes fails.
-- A generated command's `202` status `Location` is an absolute, gateway-authoritative URI only when a `MessageId` satisfies the endpoint-declared contract version. Otherwise omit the header or reject safely. `CorrelationId` is diagnostic only and cannot select status; callers cannot choose the grammar version.
-- Projection notifications preserve signal-only compatibility and add scoped, metadata-only detail. `Contracts` owns ceilings of 16 entries and 2,048 UTF-8 bytes of the compact default System.Text.Json metadata object, including punctuation and escaping. Options may lower those ceilings; broadcasters clip and receivers reject oversized detail. Keys are opaque and values appear in logs only at Debug or below. Tenant authorization precedes group membership and cross-replica delivery.
-- Generated output and source-generator packages must compile with zero warnings under the repository's nullable, code-style, identifier, and async rules. High-risk tenant, status, provenance, and notification claims need compiled/runtime and persisted-path evidence, including negative cases; earlier story completion labels do not close the corrective gates.
+- **Generated controllers.** OpenAPI-visible, gateway-delegating, forwarding query metadata headers, supporting `304`, returning safe Problem Details. UI hosts have no per-message controllers.
+- **Status `Location`.** A `202` may carry an absolute, gateway-authoritative `Location` only when a `MessageId` valid under the endpoint's declared version selects the status resource. An absent, blank, invalid-for-version, or version-ambiguous `MessageId` omits `Location` or rejects safely. It never falls back to `CorrelationId` and never yields a relative URI.
+- **Status tests.** Compiled and runtime tests cover v1/v2 positives; undeclared, ambiguous, or caller-selected versions; missing, invalid, or non-canonical v2 values; and a `CorrelationId` that differs from or lacks a `MessageId`.
+- **Tenant boundary.** Each request and `eventstore:tenant` grant must resolve one tenant through the shared canonicalizer, before routing, state access, or status lookup.
+  - The canonicalizer lowercases, then validates 1–64 characters matching `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, with no trimming.
+  - Missing, duplicate, conflicting, invalid, unauthorized, and `system` values are rejected.
+  - Each boundary takes one scope, a tenant or the platform-operation namespace (never both). Grants authorize but never set scope.
+- **SignalR detail metadata.** At most 16 entries and 2048 UTF-8 bytes. Keys are opaque, and values are logged only at Debug or below.
+- **Generated code.** It builds with zero warnings under warnings-as-errors, uses nullable annotations and `ConfigureAwait(false)`, and never calls `Guid.TryParse` on identifiers.
+- **Compatibility.** Every changed public surface needs a compatibility classification, and incompatible changes need an approved SemVer-major proposal.
+- **Earlier labels.** The `done` labels on 2.2, 2.4, 2.5, and 2.9 do not satisfy the corrected tenant or status contracts.
 
 ## Technical Decisions
 
-- The gateway owns authorization, tenant policy, idempotency, status, ETag, errors, and observability. External adapters use platform seams rather than reading or mutating operational state directly.
-- `Contracts` owns route metadata, tenant canonicalization, the platform-operation namespace, and MessageId contract versions. Catalog and generated-host identities derive from these declarations through one canonical codec. Existing `system` streams and topics must remain readable and attributable without rewriting events. Migration requires owner approval and public-surface compatibility classification; incompatible removal or behavior changes require an approved SemVer-major proposal.
-- Query metadata carries explicit `ProjectionBacked`, `HandlerComputed`, or `Unknown` provenance. Projection versions are opaque equality tokens scoped to their read-model lineage; consumers neither parse them nor infer lifecycle from ETags, payloads, HTTP success, or SignalR.
-- Projection signals are best-effort freshness hints; Dapr pub/sub is at-least-once and unordered. Consumers tolerate loss, duplicates, and reordering, then re-query for persisted projection evidence. Direct notification remains the only production-eligible transport. Story 2.13 closed on 2026-10-25 with an accepted, isolated opt-in Redis backplane exception; it is excluded from production profiles and grants no production multi-replica freshness claim. Extension or retirement requires the exception's review/removal trigger and renewed qualification.
-- The platform outbound Dapr handler replaces caller-supplied `dapr-app-id` and `dapr-api-token` with trusted configuration. AppHost and deployment Dapr components, scopes, ACLs, credentials, and tests change together when transport changes.
+- **Query metadata.** Only projection-backed routes assert freshness; the rest report `Unknown`.
+- **Status `Location` (from 2.9).** The format is `{gatewayStatusBase}/api/v1/commands/status/{escapedStatusKey}`, built from trusted request-time configuration.
+  - An invalid base (relative, non-HTTP(S), user-info, query, or fragment) fails closed.
+  - Generated hosts never map status endpoints.
+  - Gateway failure emits no `Location`.
+- **MessageId grammars.** `MessageId` is the sole status identity. `Contracts` owns two grammars:
+  - **v2:** 26 uppercase Crockford ULID characters. `Ulid.TryParse` must succeed and the canonical round-trip must be byte-identical.
+  - **v1:** legacy, 1–128 ASCII alphanumeric or hyphen characters with no edge hyphens. It is kept byte-for-byte and accepted only where explicitly declared.
+- **Version declaration.** Each command contract declares exactly one version in its `Contracts` declaration, which is the only source. Callers never select or override it.
+  - The route entry, generator metadata, and compatibility entry are derived from it mechanically.
+  - Each carries the declaration digest: the SHA-256 of its canonical bytes from the Story 5.12 codec.
+  - The `netstandard2.0` generator can't call the codec, so hosts compute digests at startup through it.
+- **2.15 manifest.** Derived from those declarations, it fails on drift and has no compatibility authority; Story 3.18 later imports and retires it.
+- **Correlation.** `X-Correlation-ID` (1–128 alphanumeric/hyphen, owned by `Contracts`) is diagnostic only: minted once, propagated, never parsed as a GUID or ULID, never status identity.
 
 ## UX & Interaction Patterns
 
-- Command acceptance and notification arrival mean evidence is pending. Show projection-confirmed success only after a query returns authoritative, projection-backed `Current` evidence; stale, rebuilding, degraded, unavailable, local-only, and unknown states stay distinct.
-- Reconnect and rejoin fetch authoritative typed evidence. Missing, delayed, duplicated, or reordered notifications cannot establish freshness or completion. Mutation actions remain unavailable without trusted current evidence.
+- **Mutation lifecycle.** Submit → accepted → evidence pending → projection-confirmed or failed. A `202` or SignalR signal is never completion, and UIs time out to pending, never success.
 
 ## Cross-Story Dependencies
 
-- The contract seam precedes generator emission; generated controllers precede Sample and Tenants external-host proofs. Tenants UI and generated REST provenance consumption depend on Epic 1's query metadata path.
-- Scoped notification contract and authorization behavior from 2.8 underpin 2.13's distribution qualification and 2.16's bounded-detail proof. A transport change must preserve both signal and detail behavior across replicas.
-- Stories 2.14 and 2.15 consume accepted Story 5.12 declaration/schema/codec delivery, subject to package/validation, migration, compatibility and assurance prerequisites. They do not require 5.13 runtime activation merely to consume declarations. Story 5.13 owns runtime authority, exhaustive parity, metadata-outage target stability or rejection, and cross-host agreement. Tenants changes belong to its repository owner; Admin endpoint policy remains with 5.2 and the managed-tenant provisioning guard with 5.10. Existing completion labels do not prove either corrected boundary.
-- Historical Story 9.1 authorization-record prerequisites refer to machinery retired by the owner-approved evidence-storage simplification. Proof now belongs in each story/spec's Verification section: commands, pass/fail counts, source commit and CI run link. Do not recreate deleted records, validators or workflows as an implementation prerequisite. Remaining assurance, compatibility and production gates still apply.
-- Epic 8, including Azure adapter conformance, is post-MVP and cannot block this epic's MVP work. The MVP staging/production destination is on-premises Kubernetes at `192.168.1.30`; Hexalith.Platform owns infrastructure preparation and deployment through its existing workflows. Local implementation and test results confer no deployment or production-readiness authority.
+- **FR12 owners.** C1 belongs to 2.2, C2 to 2.14, and C3/C4 to 2.15. No slice closes FR12 alone.
+- **2.9 fallback.** 2.9 stays done for absolute-or-absent `Location`. Its `MessageId ?? CorrelationId` fallback is superseded, and 2.15 removes it from the generator, tests, and docs.
+- **2.14 and 2.15 prerequisites.**
+  - Accepted Story 5.12 declaration/schema/codec delivery, which is still gated on package/validation.
+  - A Story 9.1 authorization record for G-TENANT or G-STATUS-ID.
+  - They do not need 5.13 runtime activation. 2.14 also depends on 2.12.
+- **Approval level.** High-risk gates approve at the computed Assurance Control level: `single-maintainer-attested`, meaning sealed CI plus owner attestation. Never label it `independent`.
+- **Gate validators.** The fixture suite blocks; the live gate reports PASS/FAIL without blocking merges. Use a new workflow file and never edit `.github/workflows/ci.yml`.
