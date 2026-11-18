@@ -261,7 +261,7 @@ internal sealed class DevelopmentRouteCatalogRuntimeSnapshot
         foreach (string file in files) Track(file);
     }
 
-    // Aspire 13.6.5's ordinary ProjectExecutableLaunchRecipe invokes literal "dotnet". Its
+    // Aspire's ordinary ProjectExecutableLaunchRecipe invokes literal "dotnet". Its
     // DCP process inherits the AppHost environment. Keep that lookup identical in either process;
     // custom executables and divergent resource host lookup are outside this finite contract.
     private static string RequireOrdinaryLaunchHost(IResourceBuilder<ProjectResource> project,

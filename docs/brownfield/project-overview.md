@@ -44,8 +44,8 @@ state.Apply(Event)                          // fold events back into state
 |----------|-----------|---------|------|
 | Runtime | .NET | `net10.0` (SDK 10.0.403) | Target framework |
 | Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.19.0` | State store, pub/sub, actors, service invocation |
-| Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.6.4` (Keycloak/K8s `13.6.4-preview.1.26523.11`) | Local topology + publish targets |
-| DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.6.2-beta.959` | DAPR sidecar wiring in AppHost |
+| Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `17.0.0` (Keycloak `17.0.0-preview.1.26567.5`) | Local topology + publish targets |
+| DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `17.0.0-beta.1052` | DAPR sidecar wiring in AppHost |
 | Mediation | MediatR | `14.2.0` | CQRS command/query pipeline |
 | Validation | FluentValidation (+ DI extensions) | `12.2.0` | Command/query/options validation |
 | Auth | `Microsoft.AspNetCore.Authentication.JwtBearer` | `10.0.14` | JWT bearer (Keycloak OIDC or symmetric-key fallback) |

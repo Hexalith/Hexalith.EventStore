@@ -577,8 +577,8 @@ audiences, requires HTTPS metadata for publishing, and clears the signing-key ov
 
 | Package                              | Version |
 | ------------------------------------ | ------- |
-| Aspire.Hosting                       | 13.6.4 |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.6.2-beta.959 |
+| Aspire.Hosting                       | 17.0.0 |
+| CommunityToolkit.Aspire.Hosting.Dapr | 17.0.0-beta.1052 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Aspire

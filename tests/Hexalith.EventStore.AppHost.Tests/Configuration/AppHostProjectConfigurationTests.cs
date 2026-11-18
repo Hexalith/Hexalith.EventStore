@@ -10,10 +10,10 @@ using Hexalith.EventStore.Aspire;
 public sealed class AppHostProjectConfigurationTests
 {
     /// <summary>
-    /// Verifies NuGet orchestration remains explicit and only the Aspire bundle reminder is suppressed.
+    /// Verifies the AppHost requires the Aspire 17 CLI bundle and keeps the obsolete AppHost SDK warning suppressed.
     /// </summary>
     [Fact]
-    public void AppHostProjectExplicitlyRetainsNuGetOrchestrationAndSuppressesOnlyAspire010()
+    public void AppHostProjectRequiresCliBundleAndSuppressesObsoleteAppHostSdkWarning()
     {
         XDocument project = XDocument.Load(Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
@@ -27,14 +27,24 @@ public sealed class AppHostProjectConfigurationTests
                 element.Name.LocalName,
                 "AspireUseCliBundle",
                 StringComparison.Ordinal));
-        aspireUseCliBundle.Value.ShouldBe("false");
+        aspireUseCliBundle.Value.ShouldBe("true");
         aspireUseCliBundle.Attribute("Condition").ShouldBeNull();
         aspireUseCliBundle.Parent.ShouldNotBeNull().Attribute("Condition").ShouldBeNull();
+
+        XElement suppressObsoleteSdk = project
+            .Descendants()
+            .Single(element => string.Equals(
+                element.Name.LocalName,
+                "SuppressAspireAppHostSdkObsoleteWarning",
+                StringComparison.Ordinal));
+        suppressObsoleteSdk.Value.ShouldBe("true");
+        suppressObsoleteSdk.Attribute("Condition").ShouldBeNull();
+        suppressObsoleteSdk.Parent.ShouldNotBeNull().Attribute("Condition").ShouldBeNull();
 
         XElement noWarn = project
             .Descendants()
             .Single(element => string.Equals(element.Name.LocalName, "NoWarn", StringComparison.Ordinal));
-        noWarn.Value.ShouldBe("$(NoWarn);ASPIRE010");
+        noWarn.Value.ShouldBe("$(NoWarn);CS0618");
         noWarn.Attribute("Condition").ShouldBeNull();
         noWarn.Parent.ShouldNotBeNull().Attribute("Condition").ShouldBeNull();
     }

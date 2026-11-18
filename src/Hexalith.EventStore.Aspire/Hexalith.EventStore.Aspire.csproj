@@ -5,7 +5,7 @@
     <!-- NU5104: this package depends on preview Aspire integrations (DAPR-on-Aspire and Keycloak).
          There are no stable versions to pin to, so a stable release of this package necessarily carries
          those prerelease dependencies. Suppress NU5104 here only (not globally). -->
-    <NoWarn>$(NoWarn);NU5104</NoWarn>
+    <NoWarn>$(NoWarn);NU5104;CS0618</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
