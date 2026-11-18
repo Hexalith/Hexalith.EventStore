@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <AspireUseCliBundle>true</AspireUseCliBundle>
+    <SkipAddAspireDefaultReferences>true</SkipAddAspireDefaultReferences>
     <SuppressAspireAppHostSdkObsoleteWarning>true</SuppressAspireAppHostSdkObsoleteWarning>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
@@ -28,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
     <PackageReference Include="Aspire.Hosting.Azure.AppContainers" />
     <PackageReference Include="Aspire.Hosting.Docker" />
     <PackageReference Include="Aspire.Hosting.Kubernetes" />
