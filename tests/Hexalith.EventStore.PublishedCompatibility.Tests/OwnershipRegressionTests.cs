@@ -239,13 +239,13 @@ public sealed class OwnershipRegressionTests
 
     /// <summary>The selected SDK must satisfy the exact copied latest-patch policy.</summary>
     [Theory]
-    [InlineData("10.0.403", true)]
-    [InlineData("10.0.401", false)]
-    [InlineData("10.0.500", false)]
-    [InlineData("11.0.402", false)]
+    [InlineData("11.0.103", true)]
+    [InlineData("11.0.100", false)]
+    [InlineData("11.0.200", false)]
+    [InlineData("10.0.402", false)]
     public void ExplicitSdkPolicyRefusesDrift(string selected, bool allowed)
     {
-        byte[] policy = "{\"sdk\":{\"version\":\"10.0.402\",\"rollForward\":\"latestPatch\"}}"u8.ToArray();
+        byte[] policy = "{\"sdk\":{\"version\":\"11.0.102\",\"rollForward\":\"latestPatch\"}}"u8.ToArray();
         if (allowed) ConsumerMaterializer.ValidateSdkPolicy(policy, selected);
         else Should.Throw<InvalidOperationException>(() => ConsumerMaterializer.ValidateSdkPolicy(policy, selected));
     }

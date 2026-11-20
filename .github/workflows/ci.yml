@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-          dotnet-version: 10.0.x
 
       - name: Verify published and current folded snapshot compatibility
         run: bash tools/folded-snapshot-compatibility/run.sh
@@ -56,7 +55,6 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-          dotnet-version: 10.0.x
 
       - name: Prove checkpointed process Release packages
         run: python3 scripts/verify-process-packages.py
@@ -68,7 +66,6 @@ jobs:
     uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@6ad5854aa14a9950e1fbfc32d7e27953a1c4b82b
     with:
       solution: Hexalith.EventStore.slnx
-      additional-sdk-version: '10.0.x'
       build-timeout-minutes: 180
       test-platform: microsoft-testing-platform
       run-consumer-validation: true
@@ -116,9 +113,6 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-          # The offline cross-framework API controls require the exact 10.0.15
-          # reference pack supplied by this SDK, alongside global.json's SDK11.
-          dotnet-version: 10.0.404
 
       - name: Run generated API smoke preflight regression
         run: bash scripts/tests/generated-api-smoke-preflight.test.sh
@@ -133,8 +127,19 @@ jobs:
           dotnet tool install Microsoft.DotNet.ApiCompat.Tool --version 11.0.100
           --tool-path "${RUNNER_TEMP}/release-api-tool"
 
+      - name: Stage historical API reference metadata
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/ApiReferenceMetadata.csproj" <<'XML'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup><TargetFramework>net11.0</TargetFramework></PropertyGroup>
+            <ItemGroup><PackageDownload Include="Microsoft.NETCore.App.Ref" Version="[10.0.15]" /></ItemGroup>
+          </Project>
+          XML
+          dotnet restore "$RUNNER_TEMP/ApiReferenceMetadata.csproj" --packages "$RUNNER_TEMP/api-control-packs" --source https://api.nuget.org/v3/index.json
       - name: Verify release API gate and real cross-framework refusal controls
         env:
+          RELEASE_API_CONTROL_PACKAGES: ${{ runner.temp }}/api-control-packs
           RELEASE_API_COMPAT_TOOL_DLL: ${{ runner.temp }}/release-api-tool/.store/microsoft.dotnet.apicompat.tool/11.0.100/microsoft.dotnet.apicompat.tool/11.0.100/tools/net10.0/any/Microsoft.DotNet.ApiCompat.Tool.dll
         run: python3 -m unittest discover -s tools/tests -p test_release_api_compatibility.py
 
@@ -244,7 +249,6 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-          dotnet-version: 10.0.x
 
       - name: Restore source-mode AppHost tests
         run: >-
