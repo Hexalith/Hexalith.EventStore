@@ -319,6 +319,15 @@ def resolve_context(package_id: str, project: Path, root: Path, version: str, fe
     return paths, framework
 
 
+def api_tool_command(dll: Path) -> list[str]:
+    runtimes = subprocess.check_output(["dotnet", "--list-runtimes"], text=True)
+    versions = re.findall(r"^Microsoft\.NETCore\.App (11\.0\.[0-9]+) ", runtimes, re.MULTILINE)
+    if not versions:
+        raise ValueError("API compatibility checks require the .NET 11 runtime.")
+    runtime = max(versions, key=lambda version: tuple(map(int, version.split("."))))
+    return ["dotnet", "exec", "--fx-version", runtime, str(dll)]
+
+
 def compare(tool: list[str], left: Path, right: Path, left_refs: Path, right_refs: Path, log: Path) -> dict:
     command = [*tool, "--left", str(left), "--right", str(right),
                "--left-assembly-references", str(left_refs), "--right-assembly-references", str(right_refs),
@@ -486,7 +495,7 @@ def verify(args: argparse.Namespace, work: Path) -> int:
                 path = scratch / "apicompat" / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(archive.read(name))
-    tool = ["dotnet", "exec", "--roll-forward", "Major", str(scratch / "apicompat/tools/net10.0/any/Microsoft.DotNet.ApiCompat.Tool.dll")]
+    tool = api_tool_command(scratch / "apicompat/tools/net10.0/any/Microsoft.DotNet.ApiCompat.Tool.dll")
     selected = run([*tool, "--version"], scratch, work / "tool-version.log").stdout.strip()
     if not re.match(r"^(?:Microsoft\.DotNet\.ApiCompat\s+v)?11\.0\.100(?:\+|$)", selected):
         raise ValueError(f"Wrong APICompat version: {selected}")

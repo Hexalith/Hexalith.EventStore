@@ -219,7 +219,7 @@ class RealApiCompatTests(unittest.TestCase):
         cache = Path(os.environ.get("NUGET_PACKAGES", str(Path.home() / ".nuget/packages")))
         tool = Path(os.environ.get("RELEASE_API_COMPAT_TOOL_DLL", str(cache / "microsoft.dotnet.apicompat.tool" / gate.APICOMPAT_VERSION / "tools/net10.0/any/Microsoft.DotNet.ApiCompat.Tool.dll")))
         self.assertTrue(tool.is_file(), "Offline real control requires Microsoft.DotNet.ApiCompat.Tool " + gate.APICOMPAT_VERSION)
-        command = ["dotnet", "exec", "--roll-forward", "Major", str(tool)]
+        command = gate.api_tool_command(tool)
         version = subprocess.check_output([*command, "--version"], text=True).strip()
         self.assertTrue(version.startswith(gate.APICOMPAT_VERSION), version)
         sdk = subprocess.check_output(["dotnet", "--version"], cwd=ROOT, text=True).strip()
@@ -229,7 +229,10 @@ class RealApiCompatTests(unittest.TestCase):
         frameworks = {}
         for tfm, package_version in gate.FRAMEWORK_VERSIONS.items():
             directory = dotnet_root / "packs/Microsoft.NETCore.App.Ref" / package_version / "ref" / tfm
-            self.assertTrue(directory.is_dir(), f"Offline real control requires reference pack {package_version}")
+            if tfm != "net11.0":
+                packages = Path(os.environ.get("RELEASE_API_CONTROL_PACKAGES", str(cache)))
+                directory = packages / "microsoft.netcore.app.ref" / package_version / "ref" / tfm
+            self.assertTrue(directory.is_dir(), f"Offline real control requires reference metadata {package_version}")
             frameworks[tfm] = list(directory.glob("*.dll"))
         with tempfile.TemporaryDirectory(prefix="release api real control ") as directory:
             root = Path(directory)

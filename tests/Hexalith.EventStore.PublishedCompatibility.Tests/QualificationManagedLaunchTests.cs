@@ -16,7 +16,7 @@ public sealed class QualificationManagedLaunchTests
         await using var runtime = new QualificationRuntime();
         string root = Directory.CreateDirectory(Path.Combine(runtime.Root, "consumer")).FullName;
         string project = Path.Combine(root, "Host.csproj"), output = Path.Combine(root, "output");
-        await File.WriteAllTextAsync(project, "<Project Sdk=\"Microsoft.NET.Sdk.Web\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup></Project>", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(project, "<Project Sdk=\"Microsoft.NET.Sdk.Web\"><PropertyGroup><TargetFramework>net11.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup></Project>", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), "var app = WebApplication.CreateBuilder(args).Build(); app.MapGet(\"/value\", () => Results.Text(\"owned-value\")); app.Run();", TestContext.Current.CancellationToken);
         string config = Path.Combine(root, "NuGet.Config");
         await File.WriteAllTextAsync(config, "<configuration><packageSources><clear/></packageSources></configuration>", TestContext.Current.CancellationToken);

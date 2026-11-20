@@ -815,7 +815,7 @@ internal sealed class HistoricalMatrixSyntheticFixture
         string configuration = source ? "Debug" : "Release";
         string[] names = new[] { "Client", "Contracts", "DomainService", "Server", "ServiceDefaults" }
             .Concat(role == "Host" && version == "3.128.2" ? ["Gateway"] : []).Select(name => "Hexalith.EventStore." + name).ToArray();
-        return new(role, version, configuration, root + "/" + role + ".csproj", root + "/bin/" + configuration + "/net10.0/" + role + ".dll", root + "/packages",
+        return new(role, version, configuration, root + "/" + role + ".csproj", root + "/bin/" + configuration + "/net11.0/" + role + ".dll", root + "/packages",
             Hash("assets"), Hash("lock"), source ? "935c21ac5ebc5e50738ae6ee79dc661acd2fd5a8" : null,
             names.ToDictionary(name => name, _ => "935c21ac5ebc5e50738ae6ee79dc661acd2fd5a8"), names.ToDictionary(name => name, _ => source ? "3.128.0" : version),
             Hash("project"), names.ToDictionary(name => name, Hash), Hash("sdk-policy"), "10.0.301", "/synthetic/global.json",
