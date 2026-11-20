@@ -1,0 +1,250 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>EventStore Phase 4 PRD validation</title><style>
+
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+
+code,.subtitle,.meta {overflow-wrap:anywhere} a {color:inherit;text-underline-offset:.18em}.finding-note,.finding-fix{margin-bottom:0} .dim-card{display:block;text-decoration:none}.dim-card:hover .dim-name{text-decoration:underline}@media(max-width:600px){.container{padding:16px 12px}.dim-name{overflow-wrap:anywhere}summary{flex-wrap:wrap}.reviewer-source{overflow-wrap:anywhere}}
+</style></head><body><main class="container">
+<header class="report-header"><div class="title"><h1>EventStore Phase 4 PRD validation</h1><div class="subtitle"><a href="../../../prd.md">_bmad-output/planning-artifacts/prd.md</a></div></div><div class="grade grade-fair">Fair</div></header>
+<div class="synthesis"><p><strong>Phase 4 readiness · Blocked (Reject)</strong></p>
+<p>The PRD is clear enough to explain why Phase 4 remains blocked. The seven November 20 audit findings have observable acceptance criteria, and Stories 2.14 and 2.15 distinguish passing technical checks from the approvals still owed. A maintainer using the full PRD to schedule work or accept an implementation, however, will encounter conflicting instructions about replay compatibility, story ownership and which evidence can be reproduced.</p>
+<p>First reconcile the gate table with the owning specifications. Then resolve differences that change product behavior or prevent the completion tool from reading a story’s requirements. Story 9.3 can use those decisions to reconcile the baseline before its owners approve new digests.</p>
+<p>0 critical · 9 high · 4 medium · 1 low</p></div>
+<div class="dimension-summary">
+<div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+<div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+<div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+<div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+</div>
+<section class="dimension" id="dimension-1"><details open><summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-thin">thin</span></summary><div class="dim-body"><div class="dim-judgment"><p>The blocked decision is supported. Several gate rows identify the wrong remaining action or cite retired verification commands.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Runtime parity relies on a retired verifier</h3><span class="finding-location">§§6.8, 10, 11.3–11.4 · lines 377, 573, 693, 730</span></header><p class="finding-note">The PRD treats the September three-receipt result as reproducible on this checkout. Its prescribed Python command exits 2 because the verifier was removed. The current gate matrix lists the business evidence binding as missing.</p><p class="finding-fix"><strong>Correction.</strong> Date the September result and its subject. Have the Story 3.15 owner define a current evaluator under AD-12 before anyone uses this gate to support a release or migration decision.</p><p class="finding-fix"><strong>Evidence.</strong> Story 3.15 tracker entry, evidence-storage simplification spec and <code>phase-4-gate-risk-matrix.json</code> lines 232–247.</p></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The publication validator already exists</h3><span class="finding-location">§11.4 G-PUBLICATION-AUTH and OR29 · lines 731, 786</span></header><p class="finding-note">The gate row says the validator is absent and Story 3.19 is backlog. The schema and evaluator exist. Local evaluation exited 1 with authority unproven and no seal. The parent story is in progress.</p><p class="finding-fix"><strong>Correction.</strong> Record the delivered validation work. Direct the release owner to the missing approved profile, authority records, bound prerequisites and authenticated consumption.</p><p class="finding-fix"><strong>Evidence.</strong> <code>tools/validate-publication-authority.py evaluate</code>, <code>docs/architecture/publication-authority-v1.md</code> and Story 3.19 validator spec lines 141–157.</p></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">The historical validation reference points to a different assessment</h3><span class="finding-location">PRD frontmatter · lines 12–16</span></header><p class="finding-note">The PRD identifies a September 10 review. The referenced report currently opens an October 7 review of a different commit and document digest. Their shared grade cannot identify which decision the PRD cites.</p><p class="finding-fix"><strong>Correction.</strong> Bind the September assessment to an immutable revision or update the metadata to identify the intended October report.</p><p class="finding-fix"><strong>Evidence.</strong> PRD validation frontmatter and the October 7 <code>validation-report.md</code> header.</p></article>
+</div></details></section>
+<section class="dimension" id="dimension-2"><details><summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>The audit cases specify visible outcomes, including an untagged HTTP 200 response, two durable subscriber effects after one redelivery, and unavailable Admin data when its tenant scope cannot be established.</p></div></div><div class="findings-list">
+</div></details></section>
+<section class="dimension" id="dimension-3"><details><summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>The platform reuse and operational trust goals have corresponding success metrics and counter-metrics. The November findings fit the existing MVP.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">The metrics heading and lifecycle examples imply the wrong status</h3><span class="finding-location">§10 · lines 563–572</span></header><p class="finding-note">The group labelled “achieved” includes SM3, which is unmet. SM4 also describes Story 8.2 as backlog although the tracker records it done.</p><p class="finding-fix"><strong>Correction.</strong> Use a neutral heading and date the historical decomposition. Keep the achievement distinct from the later execution status.</p><p class="finding-fix"><strong>Evidence.</strong> SM3, SM4 and the Story 7.14 and 8.2 tracker rows.</p></article>
+</div></details></section>
+<section class="dimension" id="dimension-4"><details open><summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-thin">thin</span></summary><div class="dim-body"><div class="dim-judgment"><p>The 49 stable acceptance clauses give engineers concrete tests. Conflicting statements about event identity, authorization and required evidence can still produce opposite acceptance decisions.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">FR33 can break historical replay</h3><span class="finding-location">§6.6 FR33 · line 344</span></header><p class="finding-note">FR33 requires identity components to be ULID-safe without distinguishing stored events from new writes. Story 6.6 supports reading legacy GUID MessageIds. Its correlation and causation rules apply on both reads and writes.</p><p class="finding-fix"><strong>Correction.</strong> Specify the rule for each field and direction. Add a positive case for replaying an existing event with a GUID MessageId and retain the stricter write rules.</p><p class="finding-fix"><strong>Evidence.</strong> Story 6.6 event versioning and upcasting implementation spec, lines 25–33.</p></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Story 6.4 has conflicting authorization and lifecycle instructions</h3><span class="finding-location">§§7, 11.1–11.4 · lines 405, 632, 655, 701, 727</span></header><p class="finding-note">One row describes the specification as absent and 6.4 as unauthorized. Another records the specification approval and calls 6.4 backlog. The tracker shows 6.2 and 6.3 done and 6.4 in progress.</p><p class="finding-fix"><strong>Correction.</strong> Use the approved projection-cost specification and current tracker states throughout the handoff. Keep runtime acceptance contingent on measured evidence.</p><p class="finding-fix"><strong>Evidence.</strong> <code>spec-projection-cost-sequence-guard.md</code> and the Epic 6 rows of <code>sprint-status.yaml</code>.</p></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The AOT gate asks the owner to recreate an existing reference</h3><span class="finding-location">NFR18, G-NFR18 and OR6 · lines 415, 734, 765</span></header><p class="finding-note">The AOT/trimming page exists and Story 6.7 is done. The recorded owner attestation covers digest <code>babd1cd1…</code>. The current page hashes to <code>99395b0a…</code> and the owning spec explicitly leaves re-attestation open.</p><p class="finding-fix"><strong>Correction.</strong> Direct the owner to review the current bytes, record the attestation and reconcile the gate row. A standard-control classification does not settle this requirement.</p><p class="finding-fix"><strong>Evidence.</strong> <code>docs/reference/aot-and-trimming-posture.md</code> and Story 6.7 spec lines 123–141.</p></article>
+</div></details></section>
+<section class="dimension" id="dimension-5"><details><summary><h2>Scope honesty</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>The separate post-MVP gate for payload protection is explicit. The MVP scope list omits its governance epic, and the post-MVP handoff understates verified progress.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The post-MVP handoff understates Story 8.12 completion</h3><span class="finding-location">§§6.9, 8.4, 11.3 and OR31 · lines 392, 519, 697, 793</span></header><p class="finding-note">The PRD calls the Dapr/Kubernetes work pending. The tracker and spec mark the bounded story done. Revision 4 approved SDK 1.19.1, and the spec records 14/14 isolated Kubernetes cases passing for its pinned cohort.</p><p class="finding-fix"><strong>Correction.</strong> Record the bounded handoff to Story 8.7. Keep activation, fleet and capacity qualification, release and G5 approval with their respective owners.</p><p class="finding-fix"><strong>Evidence.</strong> Story 8.12 supplement and implementation spec lines 310–317. The sprint tracker records completion at line 305.</p></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">The MVP scope list omits Epic 9</h3><span class="finding-location">§9.1 · lines 527–540</span></header><p class="finding-note">The list names Epics 1–7. The epic plan also classifies Epic 9 as MVP governance, and several mandatory exit controls depend on it.</p><p class="finding-fix"><strong>Correction.</strong> List Epic 9 with its assurance and baseline responsibilities. Continue to describe Epic 8 as separately gated post-MVP work.</p><p class="finding-fix"><strong>Evidence.</strong> <code>epics.md</code> lines 393–407 and its Epic 9 story sections.</p></article>
+</div></details></section>
+<section class="dimension" id="dimension-6"><details open><summary><h2>Downstream usability</h2><span class="verdict-pill verdict-thin">thin</span></summary><div class="dim-body"><div class="dim-judgment"><p>All 56 requirement IDs are present in both documents. Some definitions differ in meaning, and three current story mappings fail the repository’s coverage check.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The two inventories allow different acceptance decisions</h3><span class="finding-location">§§6–7 and epic requirements inventory</span></header><p class="finding-note">Both inventories contain the same 56 IDs. After removing Markdown row delimiters, 38 definitions match and 18 differ. The epic summary of FR12 omits important constraints on status identity and tenant checks. Its FR36 summary omits separate release, promotion and consumer-removal conditions. Some differences, including the FR37 cross-reference, are editorial.</p><p class="finding-fix"><strong>Correction.</strong> Through Story 9.3, reconcile FR12, FR36, NFR2 and NFR3 first. Classify the remaining differences by their effect on acceptance before rebinding the documents.</p><p class="finding-fix"><strong>Evidence.</strong> PRD FR12, FR36, NFR2 and NFR3. Epic inventory lines 64, 112, 120 and 122, and the epic completion rule at line 405.</p></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Three current story mappings fail the completion reader</h3><span class="finding-location">§11.2 · lines 654, 663, 666</span></header><p class="finding-note">The PRD omits NFR7 for Story 4.16 and omits NFR7 and NFR16 for Story 4.17. Its Story 6.6 mapping adds post-MVP NFR19 to the story’s declared requirements. The reader refuses to derive completion from these disagreements.</p><p class="finding-fix"><strong>Correction.</strong> Align each primary or supporting mapping with its approved story. Rerun the coverage reader and preserve the historical dispositions for Stories 3.22, 3.23 and 4.8.</p><p class="finding-fix"><strong>Evidence.</strong> <code>tools/phase_4_story_completion.py</code> and epic declarations at lines 4215, 4255 and 5431. The traceability review includes the reproduction command.</p></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The UX baseline register conflicts with the current gate row</h3><span class="finding-location">§§11.3–11.4 · lines 687–689, 721</span></header><p class="finding-note">The register describes the detailed UX as draft and records a matching UX handoff digest. DESIGN, EXPERIENCE and the UX handoff have final frontmatter. All five recorded epic input digests differ from their files, as the later gate row already recognizes.</p><p class="finding-fix"><strong>Correction.</strong> Label the earlier register as historical and link its current replacement. Reconcile the source changes and obtain baseline approval before updating the digests.</p><p class="finding-fix"><strong>Evidence.</strong> Epic frontmatter <code>inputDocumentDigests</code>, UX frontmatter and the November 9 readiness-recovery proposal.</p></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Subscriber identity needs an explicit boundary</h3><span class="finding-location">§6.4 and NFR6 · lines 320, 403</span></header><p class="finding-note">The new acceptance case uses the received CloudEvents <code>(source, id)</code> within a subscription. NFR6 uses <code>MessageId</code> without stating whether it refers to an external subscriber or platform processing.</p><p class="finding-fix"><strong>Correction.</strong> Name the consumer and scope at both sites. Retain the publisher’s mapping from persisted <code>MessageId</code> to CloudEvents <code>id</code> and the test with two distinct events plus one replay.</p><p class="finding-fix"><strong>Evidence.</strong> Story 7.1 audit acceptance and the November 20 sprint proposal.</p></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">OR25 and OR26 still request owners for delivered stories</h3><span class="finding-location">§12 · lines 782–783</span></header><p class="finding-note">Stories 2.16 and 2.17 appear as backlog in these rows. The tracker and owning specs mark the bounded SignalR and generator-quality stories done.</p><p class="finding-fix"><strong>Correction.</strong> Use the existing ownership and evidence. Identify any separate verification needed for the coverage or readiness decision.</p><p class="finding-fix"><strong>Evidence.</strong> <code>spec-2-16-bounded-signalr-detail-metadata.md</code>, <code>spec-2-17-generated-code-and-generator-build-quality.md</code> and the sprint tracker.</p></article>
+</div></details></section>
+<section class="dimension" id="dimension-7"><details><summary><h2>Shape fit</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>Capabilities, five named user journeys and clause ownership suit a brownfield platform. Undated status claims alongside historical decisions make the current handoff harder to use.</p></div></div><div class="findings-list">
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Readiness evidence review</h2><span class="reviewer-source">review-readiness.md</span></summary><div class="dim-body"><p>The offline assurance result supports the blocked decision. Gate rows for runtime parity, publication and AOT name retired tooling or work already delivered. The UX register and historical review reference also need reconciliation.</p><a href="review-readiness.md">Read the source review</a></div></details></section>
+<section class="reviewer-section"><details><summary><h2>Scope and traceability review</h2><span class="reviewer-source">review-traceability.md</span></summary><div class="dim-body"><p>All seven November findings have story-level acceptance cases. The full inventory comparison and completion reader expose semantic differences and three current mapping failures. The review includes reproduction commands and direct sources.</p><a href="review-traceability.md">Read the source review</a></div></details></section>
+<section class="mechanical"><h3>Verification</h3><ul>
+<li>Validated the uncommitted November 20 PRD on repository commit <code>607072c68</code>. The October 6 implementation-readiness assessment remains the last formal decision. The October 7 PRD quality review remains a separate historical artifact.</li>
+<li>The offline gate-risk-matrix CLI exited 1. All 12 high-risk gates achieved <code>none</code> against required <code>single-maintainer-attested</code>. Five standard-control rows passed their classification checks. Those checks confer no product acceptance or release authority.</li>
+<li>The OQ8 governing-design verifier exited 0 for authority availability. Runtime conformance and an assured gate decision still require separate evidence.</li>
+<li>All 80 frontmatter source paths resolve locally. The normative inventory contains 37 functional and 19 non-functional requirements. The clause ledger contains 49 unique IDs. All five epic input digests differ from the current planning files.</li>
+<li>The November 20 proposal’s seven outcomes and four new backlog rows agree with the ten affected story mappings. The broader coverage walk examined all 142 numeric story headings and found six refusals. Three concern current mappings, two concern superseded stories, and one is a historical ledger.</li>
+<li>The earlier update recorded 32/32 story-completion tests in an isolated checkout and 42/43 transition fixtures. This validation reran the document, coverage, OQ8 and gate-matrix checks. Those earlier suite totals are historical evidence.</li>
+</ul></section>
+<footer class="report-footer"><p><a href="validation-report.md">Markdown report</a> · <a href="review-rubric.md">Full rubric review</a></p><p>Working-tree PRD on EventStore main at 607072c682be05885fccf9aefcf9f92289c4e98b</p><div class="meta"><span>PRD SHA-256 709069aa88cb92b08f9b51252f3ce63bef0aa351b904f6f72e5e64beef4d1d9e</span><span>2026-11-20T15:24:43+01:00</span><span>.agents/skills/bmad-prd/assets/prd-validation-checklist.md</span></div></footer></main></body></html>
