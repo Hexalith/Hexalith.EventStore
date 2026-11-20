@@ -31,6 +31,8 @@ inputDocumentDigests:
 
 ## Overview
 
+The [20 November audit course correction](sprint-change-proposal-2026-11-20.md) gives the delivery order for Stories 5.15, 2.18, 2.19 and 7.23 and the audit acceptance cases added to Stories 5.9, 7.1, 7.13 and 9.2.
+
 This document provides the complete epic and story breakdown for eventstore, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
 
 ## Requirements Inventory
@@ -2182,6 +2184,30 @@ So that consuming the generator never introduces warnings, nullability gaps, or 
 **And** byte-stable or deterministic generator output is out of scope.
 
 **Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the NFR13 primary owner required by OR26.
+
+### Story 2.18: Bind Conditional Queries To The Returned Representation
+
+As a query client, I want to reuse a cached result only when its validator identifies the selected representation.
+
+**Requirements coverage:** Supports FR4, NFR8 and NFR12. Builds on the query provenance contract in Stories 1.2 and 2.11.
+
+#### Acceptance criteria
+
+- Exercise the gateway with a projection returning revision 1 and no validator while the current projection advances to revision 2. The response carries the revision 1 payload, HTTP 200 and no ETag in either the header or the body. A subsequent conditional request cannot receive 304 on the strength of the later lookup.
+- For an eligible projection query, a strong validator bound by the producer to the selected payload survives a 200. Repeating that query with a matching tag may yield 304 after authorization and routing. A changed representation yields 200. Preserve existing paging, provenance and freshness restrictions, including handler-computed and unknown routes.
+- Replace tests that expect the post-read lookup to authenticate an untagged payload. Verify through the controller and gateway client that omitting a tag preserves the response body, independent projection metadata and legacy client behavior.
+
+### Story 2.19: Classify And Redact Query Adapter Failures
+
+As an API consumer, I want a stable failure code and correlation ID that support can use without exposing adapter diagnostics.
+
+**Requirements coverage:** Supports FR4 and NFR12. Covers the server adapter, gateway error handler and compatibility with existing producers.
+
+#### Acceptance criteria
+
+- Map supported adapter reason codes to the documented status, problem type and safe detail. Map legacy sentinels through an explicit allowlist. Treat arbitrary legacy text as an internal failure even when it contains words such as “not found”. Carry the correlation ID through both paths.
+- Drive a known reason, a legacy sentinel and an unknown failure containing a synthetic marker through the ordinary handler and HTTP error pipeline. Verify the expected status and reason. Inspect both serialized ProblemDetails and captured structured log properties for the marker. Neither surface may contain the marker or the original free text.
+- Run the existing paging, authorization, unsupported-query and missing-resource cases alongside the new cases. Preserve their documented status and safe diagnostic fields when the producer supplies recognized evidence.
 
 ## Epic 3: Maintainers Can Release Reproducible, Verifiable Artifacts
 
@@ -4810,6 +4836,12 @@ So that runbooks do not direct me toward stale app IDs, components, topics, ACLs
 **Then** the docs accurately describe the completed 5.6–5.8 behavior and every retained limitation
 **And** no runtime, YAML, test, application, release, deployment, or Story 7.6 status change is hidden in this documentation-only child.
 
+#### Audit acceptance additions (2026-11-20)
+
+- Correct the subscriber example in `deploy/README.md` and align it with the event-envelope guide and Story 7.1. Show a consumer deduplicating within its subscription on the received CloudEvents `(source, id)`. The publisher puts the persisted event `MessageId` in `id`. Demonstrate two aggregates with the same correlation ID and sequence and one redelivery. This guidance can ship before the full topology walkthrough.
+- Replace the README's blanket backend-swap claim with the Dapr contract, the named profile tested and its limits. Distinguish Redis development evidence, configured templates, target-specific qualification and production approval. Link to the existing broker ordering/partition/session limitations and restore requirements. Reconcile claims against the results accepted under Stories 3.21, 7.22 and 3.19 before upgrading any label.
+- Correct the broken sample and workflow-badge targets, reconcile the four documented Dapr pin mismatches with their owning manifests, and run docs lint, version checks and link checks with a supported Lychee version. Record any separately owned external link failures with the affected page and owner. Story 7.13 owns how CI reports these results.
+
 ### Story 5.10: Reserved System Tenant Provisioning Guard
 
 As a platform security owner,
@@ -5027,6 +5059,19 @@ So that endpoint mapping order, peer invocation, or a forged caller header can n
 **And** valid sidecar deliveries, actor callbacks, and probes still work.
 
 **Current reconciliation (2026-11-09):** In progress, matching the owning spec and tracker. The EventStore-owned host-security milestone is recorded as implemented; parent completion, actor-context/protocol qualification, resumable audit, cross-owner and UI conformance remain pending. Earlier descriptions are historical and do not negate the implemented milestone or establish a new test result.
+
+### Story 5.15: Isolate Tenant And Global Admin Storage Indexes
+
+As a tenant administrator, I want storage totals, hot streams and policy or job listings that can only be read from my authorized scope.
+
+**Requirements coverage:** Supports FR26, NFR2 and NFR16. Story 5.2 owns endpoint authorization. This story owns the index readers, writers and upgrade path behind those endpoints.
+
+#### Acceptance criteria
+
+- Inventory all storage index families using the global `all` suffix, including overview, optional stream count, hot streams, compaction jobs and snapshot policies. Make global and canonical-tenant keys disjoint under a versioned namespace across readers and writers. Keep `all` a valid tenant. A tenant read must reject data whose scope cannot be established, including inconsistent rows or totals.
+- Contain the legacy collision before cutover. For tenant `all`, never fall back to the ambiguous legacy bucket. Withhold unverifiable data using the existing unavailable or missing-evidence contract. Document reader/writer rollout order, how mixed versions are constrained and how rollback keeps the unsafe legacy read disabled.
+- Rebuild ambiguous derived values from authoritative tenant-scoped sources through supported Dapr paths. Re-running or resuming after interruption must produce the same totals and rows. If a family has no authoritative source, expose its unavailable state and record how it can be repopulated. Do not copy the ambiguous bucket into either scope.
+- Seed two tenants including `all`, issue scoped and authorized global requests through Admin, and inspect persisted index keys and returned rows/totals. Repeat with poisoned legacy data, missing versioned data and an interrupted migration. Verify exact per-tenant counts and the global union without double counting.
 
 <!-- Epic 5 story set confirmed complete for planning. -->
 
@@ -5624,6 +5669,8 @@ So that subscriber failures cannot become infinite retry storms or hidden data-l
 **When** duplicate, active duplicate, out-of-order, late, conflicting, handler-failure, retry/max-age exhaustion, dead-letter-transfer failure, restart, marker-capacity, cross-tenant denial, and recovery-contract scenarios run through the production subscriber, marker store, DAPR subscription, broker, dead-letter store/topic, and persisted readback
 **Then** handler effects, marker state, live/dead-letter acknowledgement, attempt evidence, and tenant-scoped metadata match the single-delivery baseline with no lost or multiply handled event
 **And** focused Client/Server/Admin contract tests, structured DAPR configuration tests, a real-sidecar/broker lane, and Release build pass with no unexpected skips, warnings, errors, or leaked processes.
+
+**Audit acceptance addition (2026-11-20).** Publish two events from separate aggregates in the same tenant and domain with equal correlation IDs and sequence numbers and distinct persisted message IDs. Capture the emitted CloudEvents metadata, feed both deliveries and a repeat of the first through a subscriber, and assert two distinct durable handling effects. Use the received source and ID for the external subscriber example in Story 5.9. Retain subscription scoping and the existing processor's persisted-message identity contract.
 
 ### Story 7.2: Admin Claims Normalization
 
@@ -6430,6 +6477,12 @@ So that non-release-blocking evidence cannot quietly decay into permanent green-
 **Then** every advisory/performance scope is runnable or transparently quarantined, exact outcomes remain visible despite non-blocking semantics, and any quantitative claim is reproducible and baseline-authorized
 **And** retained run evidence identifies the exact revision and toolchain with no hidden exclusions, invented UI budget, leaked data, or advisory result masquerading as a release gate.
 
+#### Audit acceptance additions (2026-11-20)
+
+- Reconcile the advisory project list with actual project files and identify the successor or retirement of `Hexalith.EventStore.DeferredWorkGovernance.Tests`. Exercise a passing suite, a failing suite and a missing project. Require an accurate job conclusion and per-suite summary in each case while release continues to depend on its designated CI workflow.
+- Exercise the same docs lint, pinned compatible link checker and version checks locally and in the delivered CI configuration. Verify that the badge points to a real check and a broken local target is reported. Track the observed registration-cost timeout with repeated isolated and concurrent runs before assigning a performance budget.
+- With Hexalith.CiCd, inventory shared workflow refs against FR25 and Story 3.8. Record the resolved revision for governed moving refs and verify the release caller's lock. Assess pinning plus automated updates where policy allows. Refer any change to mandated `@main` security callers to the policy owner and verify the rendered callers after upstream delivery.
+
 ### Story 7.14: Admin Shell And Canonical Route Migration
 
 As an EventStore operator,
@@ -6966,6 +7019,18 @@ So that a restore never re-admits a consumed idempotency key, repeats a global p
 **And** until that record exists, the validator reports a truthful FAIL and the story is not `done`.
 
 **Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 2). No restore-posture artifact exists.
+
+### Story 7.23: Preserve Stream Identity And Committed Activity Counts
+
+As an operator, I want recent activity to show a stream's actual head even after its summary leaves the bounded list.
+
+**Requirements coverage:** Supports FR34 and NFR16. Story 5.15 owns storage scope keys and their migration. Share that contract when updating the same tracker.
+
+#### Acceptance criteria
+
+- Compare aggregate IDs with their case-sensitive identity semantics across recent and hot-stream lists. Use authoritative committed sequence and count evidence for the addressed stream, retaining the existing tenant and domain normalization. A missing list entry is insufficient evidence of a new stream.
+- Test two case-only aggregate IDs, a stream at sequence 7 evicted from a small bounded list and re-entering at 8, a repeated notification and an older notification after a newer one. Compare the summaries and relevant totals against persisted stream truth. Re-entry and replay must neither reset the head nor inflate counts.
+- Measure Dapr operations and command-path latency using the same workload and named profile before and after the targeted change. Record workload, sample size and latency distribution. Consider asynchronous projection only if measured command-path cost warrants the delivery, replay and observability work.
 
 <!-- Epic 7 story set confirmed complete for planning. -->
 
@@ -7967,6 +8032,8 @@ So that no high-risk result overstates the assurance behind it.
 **When** the Assurance Control evaluation completes
 **Then** that evaluation is follow-on work that reopens Story 3.15 only if it rejects the evidence
 **And** any new receipt set follows the G-RUNTIME-PARITY re-mint rule.
+
+**Audit acceptance addition (2026-11-20).** Separate the fixture inputs for a genuinely unbound gate, the G-RUNTIME-PARITY follow-on and a bound G-TENANT request missing required subjects. Assert the applicable refusal for each, including `GATE_UNBOUND` and `SUBJECT_MISMATCH`, and prove refusal precedes command execution. Run the complete transition fixture suite and report the live matrix separately. A passing fixture suite supplies no seal or attestation.
 
 ### Story 9.3: Planning Baseline Manifest And Drift Guard
 

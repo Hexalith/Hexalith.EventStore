@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-11-18
+# last_updated: 2026-11-20
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-18
+last_updated: 2026-11-20
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -49,6 +49,8 @@ story_location:
   /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
 
 development_status:
+  # Delivery order and owners for the seven audit findings are in
+  # ../planning-artifacts/sprint-change-proposal-2026-11-20.md.
   epic-1: done
   1-1-canonical-domain-service-sdk-host: done
   1-2-domain-query-routing-and-response-provenance: done
@@ -104,6 +106,8 @@ development_status:
   # 2026-11-14 code review (owned paths 37f0b65ef..2bd75f6b2): 1 test patch applied (UnconditionalSuppressMessage ban), 201/201;
   # 2 existing deferrals kept, 20 rejected. 2bd75f6b2 is green in CI 43531295585.
   2-17-generated-code-and-generator-build-quality: done
+  2-18-bind-conditional-queries-to-the-returned-representation: backlog
+  2-19-classify-and-redact-query-adapter-failures: backlog
   epic-2-retrospective: done
 
   epic-3: in-progress
@@ -216,6 +220,7 @@ development_status:
   5-13-route-catalog-activation-and-topology-binding: done
   # Bounded HTTP-policy milestone reviewed; actor/audit and cross-owner conformance remain open.
   5-14-authenticated-fallback-and-dapr-framework-route-protection: in-progress
+  5-15-isolate-tenant-and-global-admin-storage-indexes: backlog
   epic-5-retrospective: optional
 
   epic-6: in-progress
@@ -266,6 +271,7 @@ development_status:
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07-architecture-routing): AD-26 restore
   # posture including scheduler state; a Story 3.19 issue-step prerequisite.
   7-22-production-restore-posture-including-scheduler-state: backlog
+  7-23-preserve-stream-identity-and-committed-activity-counts: backlog
   epic-7-retrospective: optional
 
   # Post-MVP: Epic 8 cannot block Phase 4 MVP completion.
