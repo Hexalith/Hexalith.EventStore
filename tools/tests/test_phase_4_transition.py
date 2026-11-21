@@ -533,14 +533,14 @@ class TransitionTests(unittest.TestCase):
         self.assertEqual(maximum,schema['$defs']['binding']['properties']['inputs']['maxItems'])
         self.assertEqual(maximum,schema['$defs']['binding']['allOf'][0]['else']['then']['properties']['inputs']['maxItems'])
 
-    def test_unbound_gate_and_runtime_parity_never_execute_caller_command(self):
+    def test_runtime_parity_is_unbound_and_tenant_gate_requires_its_subjects(self):
         self.assert_pass()
         self.request['gate'] = 'G-RUNTIME-PARITY'
         self.approve()
         self.assert_refused('GATE_UNBOUND')
         self.request['gate'] = 'G-TENANT'
         self.approve()
-        self.assert_refused('GATE_UNBOUND')
+        self.assert_refused('SUBJECT_MISMATCH')
 
     def test_independent_numeric_roster_self_approval_and_aliasing(self):
         self.assert_pass()
