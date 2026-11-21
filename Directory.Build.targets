@@ -131,6 +131,25 @@
     </ItemGroup>
   </Target>
 
+  <!-- Explicit EventStore selections stay authoritative. The catalog file text is only
+       the default used when HexalithEventStoreVersion was not supplied. -->
+  <Target Name="ValidateHexalithEventStoreSelection" BeforeTargets="CollectPackageReferences" Condition="'$(ManagePackageVersionsCentrally)' == 'true'">
+    <ItemGroup>
+      <_HexalithEventStoreDependency Include="@(PackageReference)" Condition="$([System.String]::Copy('%(PackageReference.Identity)').StartsWith('Hexalith.EventStore.', System.StringComparison.OrdinalIgnoreCase))" />
+      <_HexalithEventStoreRow Include="@(PackageVersion)" Condition="$([System.String]::Copy('%(PackageVersion.Identity)').StartsWith('Hexalith.EventStore.', System.StringComparison.OrdinalIgnoreCase))" />
+    </ItemGroup>
+    <Error Condition="'@(_HexalithEventStoreDependency)' != '' and '%(_HexalithEventStoreRow.Version)' != '$(HexalithEventStoreVersion)'"
+           Text="$(MSBuildProjectName) selects %(_HexalithEventStoreRow.Identity) %(_HexalithEventStoreRow.Version). Restore EventStore $(HexalithEventStoreVersion)." />
+  </Target>
+  <Target Name="ValidateHexalithEventStoreReferences" AfterTargets="ResolveReferences"
+          Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <_HexalithResolvedEventStore Include="@(ReferencePath)" Condition="$([System.String]::Copy('%(ReferencePath.NuGetPackageId)').StartsWith('Hexalith.EventStore.', System.StringComparison.OrdinalIgnoreCase))" />
+    </ItemGroup>
+    <Error Condition="'@(_HexalithResolvedEventStore)' != '' and '%(_HexalithResolvedEventStore.NuGetPackageVersion)' != '$(HexalithEventStoreVersion)'"
+           Text="$(MSBuildProjectName) resolved %(_HexalithResolvedEventStore.NuGetPackageId) %(_HexalithResolvedEventStore.NuGetPackageVersion). The selected EventStore version is $(HexalithEventStoreVersion)." />
+  </Target>
+
   <!-- Package consumers need the same generator selection as source-catalog builds. -->
   <ItemGroup Condition="'$(IsPackable)' == 'true' and '$(MSBuildProjectName)' != 'Hexalith.EventStore.RestApi.Generators'">
     <None Include="$(MSBuildThisFileDirectory)buildTransitive/Hexalith.EventStore.Logging.targets"
