@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>EventStore architecture validation · 21 November 2026</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <style>
+  :root { color-scheme:light; --ink:#172e36; --line:#c7d3d6; --muted:#425b64; --action:#08596b }
+  * {box-sizing:border-box}
+  html { background:#edf2f2; scroll-behavior:smooth }
+  body {margin:0 auto 48px; max-width:960px; background:white; color:var(--ink); font:17px/1.57 system-ui,sans-serif; padding:48px clamp(20px,5vw,70px); overflow-wrap:anywhere; border-top:6px solid var(--action)}
+  h1,h2,h3 {line-height:1.2; text-wrap:balance}
+  h1 {font-size:clamp(2rem,5vw,3.35rem); letter-spacing:-.045em; margin:0 0 16px}
+  h2 {font-size:1.55rem; margin:36px 0 12px; border-top:1px solid var(--line); padding-top:20px}
+  h3 {font-size:1.15rem; margin:24px 0 6px}
+  p {margin:8px 0 12px}
+  ul,ol {padding-left:1.4em}
+  td,th {padding:8px 10px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line)}
+  table {border-collapse:collapse; width:100%; font-size:.9rem; margin:12px 0}
+  thead {background:#e8f2f3}
+  code {font: .88em/1.5 ui-monospace,monospace; background:#eff3f4; border-radius:.2em; padding:.02em .22em; white-space:normal; overflow-wrap:anywhere}
+  a {color:var(--action); text-underline-offset:3px}
+  strong {font-weight:650}
+  blockquote {margin:14px 0 24px; padding:10px 17px; border-left:5px solid #ab492f; background:#fff4eb}
+  nav {font-size:.94rem; padding-bottom:15px; margin-bottom:22px; border-bottom:1px solid var(--line)}
+  @media(max-width:640px){body{font-size:15px}table{font-size:.84rem}td,th{padding:6px}}
+  @media print{html,body{background:white;margin:0;max-width:100%;padding:0}nav{display:none}h2,h3{break-after:avoid}tr{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<nav aria-label="Report navigation"><a href="#high-priority-findings">High-priority findings</a> &nbsp; · &nbsp; <a href="#medium-and-low-findings">Other findings</a> &nbsp; · &nbsp; <a href="#what-the-checks-established">Checks</a><br><a href="validate-report-2026-11-21.md" download>Download Markdown</a> &nbsp; · &nbsp; <a href="validate-report-2026-11-21.html" download>Download HTML</a></nav>
+<h1 id="eventstore-architecture-validation">EventStore architecture
+validation</h1>
+<p><strong>21 November 2026 · Phase 4 · Full-spine review</strong></p>
+<blockquote>
+<p><strong>Changes required before baseline approval.</strong> All 36
+decision entries pass the structural lint. Four independent reviews
+found <strong>8 high, 4 medium and 1 low</strong> distinct findings,
+with no critical findings. Phase 4 readiness remains
+<strong>Reject</strong>. The publication evaluator reports no authority
+or seal.</p>
+</blockquote>
+<h2 id="high-priority-findings">High-priority findings</h2>
+<h3 id="1-the-credential-rules-reject-an-approved-platform-command">1.
+The credential rules reject an approved platform command</h3>
+<p><strong>AD-18 and AD-36, lines 285–288 and 432.</strong> The sending
+and receiving rules allow a single credential kind. Story 2.14 records a
+narrowly scoped platform command that requires a workload assertion and
+separately validates the forwarded human identity against the bound
+subject. Implementations following the spine would reject this approved
+operation. Document the exact route and its two independent checks in
+the outbound, inbound and catalog rules. Preserve single-kind admission
+for ordinary operations. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/implementation-artifacts/spec-2-14-canonical-tenant-boundary.md#L120">Story
+2.14</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/src/Hexalith.EventStore/Controllers/CommandsController.cs#L118">Command
+handler</a></p>
+<h3
+id="2-a-protected-app-channel-needs-the-receiver-token-in-development">2.
+A protected app channel needs the receiver token in Development</h3>
+<p><strong>AD-28, line 380.</strong> The spine mandates token validation
+outside Development. The frozen Story 5.14 contract and the shared
+validator require a real receiver token on channel-protected routes in
+every environment. A Development host and its caller can therefore
+disagree before any business operation runs. Align AD-28 and the
+environment guidance with the shared validator and its Development
+tests. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/implementation-artifacts/spec-5-14-authenticated-fallback-and-dapr-framework-route-protection.md#L31">Story
+5.14</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprAppChannelToken.cs#L49">Channel
+validator</a></p>
+<h3
+id="3-authentication-alone-cannot-authorize-an-unclassified-endpoint">3.
+Authentication alone cannot authorize an unclassified endpoint</h3>
+<p><strong>AD-16, line 261.</strong> “Authenticated fallback” admits an
+interpretation in which any signed-in user can reach a route lacking
+policy metadata. Story 5.14 and the installed fallback deny an
+unclassified endpoint for every caller. Specify that default explicitly,
+alongside named route policies and the enumerated anonymous exceptions.
+Verify the negative case with an authenticated caller. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/implementation-artifacts/spec-5-14-authenticated-fallback-and-dapr-framework-route-protection.md#L37">Story
+5.14 acceptance cases</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreHttpHostSecurityExtensions.cs#L41">Host
+policy registration</a></p>
+<h3 id="4-the-openbao-floor-predates-published-security-fixes">4. The
+OpenBao floor predates published security fixes</h3>
+<p><strong>AD-24/AD-26 stack entry, line 469.</strong> Both the spine
+and profile comparator accept the October floors of <code>2.7.1</code>
+and <code>2.6.4</code>. Two October 26 advisories identify
+<code>2.7.2</code> and <code>2.6.5</code> as the first patched releases
+for those advisories. OpenBao published 2.7.3 and 2.6.6 on November 19.
+Security and Platform should review the supported branch and candidate,
+then align the spine and profile check with the approved floor. The
+production profile still requires ratification. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/src/Hexalith.EventStore.Contracts/Deployment/ProductionProfileValidator.cs#L501">Profile
+comparator</a> · <a
+href="https://github.com/openbao/openbao/security/advisories/GHSA-5pmx-2p74-x478">October
+advisory 1</a> · <a
+href="https://github.com/openbao/openbao/security/advisories/GHSA-q824-44ff-f5j5">October
+advisory 2</a> · <a
+href="https://github.com/openbao/openbao/releases/tag/v2.7.3">Release
+2.7.3</a> · <a
+href="https://github.com/openbao/openbao/releases/tag/v2.6.6">Release
+2.6.6</a></p>
+<h3 id="5-the-erasure-verifier-has-conflicting-key-custody-rules">5. The
+erasure verifier has conflicting key-custody rules</h3>
+<p><strong>AD-24 and the Story 4.16 handoff, lines 326, 576 and
+600.</strong> AD-24 assigns dedicated keys to internal proofs and
+includes the erasure capability. The approved Story 4.16 integration
+uses existing HMAC key generations and explicitly treats a verifier
+holding them as signing-capable. The two rules imply different trust and
+rotation boundaries. Name the present custody model, the approved 4.16
+scope, and the transition to any future dedicated keys. Keep key
+distribution gated on qualification and owner-controlled migration. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/implementation-artifacts/spec-4-16-append-write-once-conformance-through-enforced-envelope.md#L87">Story
+4.16 approved integration</a></p>
+<h3
+id="6-the-assurance-rule-conflates-required-and-achieved-independence">6.
+The assurance rule conflates required and achieved independence</h3>
+<p><strong>AD-11 and the approval convention, lines 226 and
+442.</strong> Roster size sets the required assurance level. Achieving
+independent approval also requires an authorized human whose numeric
+identity differs from the author’s. The 24-hour interval starts at the
+authenticated push to <code>main</code> that last changed the bound
+subject. “Last authored change” can be days earlier. State both checks
+in the common rule and have downstream records consume the achieved
+level. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/planning-artifacts/prd.md#L224">PRD
+assurance control</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/tools/phase_4_transition.py#L604">Approval
+window</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/tools/phase_4_transition.py#L620">Approver
+identity check</a></p>
+<h3 id="7-release-appears-to-depend-on-its-own-successor">7. Release
+appears to depend on its own successor</h3>
+<p><strong>AD-11, line 222.</strong> The final sentence asks for both
+release and deployment records and seals before <em>either</em>
+transition can pass. The evaluator checks the chain ending at the
+requested transition. Requiring the later promotion record would block a
+valid release. Specify separate inputs for each step. Release consumes
+its verified predecessor, release-owner record and applicable seal.
+Promotion subsequently consumes that release plus the qualified
+deployment, deployment-owner record and its own seal. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/docs/architecture/publication-authority-v1.md#L17">Publication
+chain contract</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/tools/publication_authority.py#L409">Terminal-state
+check</a></p>
+<h3 id="8-consumer-removal-crosses-two-distinct-publication-subjects">8.
+Consumer removal crosses two distinct publication subjects</h3>
+<p><strong>AD-11 and AD-22, lines 224 and 312.</strong> EventStore
+publishes a package and Platform promotes a separately composed host.
+AD-22’s “same immutable subject” wording can make a verifier reject that
+valid two-chain arrangement or apply a package receipt to a host.
+Specify how the promoted profile binds the exact package identity, how
+the host retains its own chain, and how a consumer-owner receipt binds
+the profile and the exact proposed removal. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/docs/architecture/publication-authority-v1.md#L34">Subject
+ownership</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/docs/architecture/publication-authority-v1.md#L185">Package-to-profile
+binding</a></p>
+<h2 id="medium-and-low-findings">Medium and low findings</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Priority</th>
+<th>Decision and consequence</th>
+<th>Proposed disposition</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Medium</td>
+<td><strong>AD-6, line 169.</strong> The global sequence can contain a
+gap when a reserved range outlives a failed aggregate commit. A reader
+waiting for every integer can stall.</td>
+<td>State that global positions are unique and monotonic while each
+aggregate has its own gapless sequence. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md#L71">Story
+global ordering</a></td>
+</tr>
+<tr class="even">
+<td>Medium</td>
+<td><strong>AD-11, line 205.</strong> With the primary property unset,
+MSBuild and the spine accept the legacy <code>UseNuGetDeps=false</code>
+source-selection alias. The approved FR21 contract requires explicitly
+setting <code>UseHexalithProjectReferences=true</code>.</td>
+<td>Ask the build and product owners to resolve the contract and align
+the decision, evaluation conditions and tests. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/Directory.Build.props#L48">Source-selection
+logic</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md#L84">Story
+3.5 owner decision</a></td>
+</tr>
+<tr class="odd">
+<td>Medium</td>
+<td><strong>AD-12, line 234.</strong> The spine describes every fixture
+job as merge-blocking. Of the three named fixture jobs checked, the
+accessible active <code>main</code> rules list only the Phase 4
+risk-matrix fixtures. Classic branch-protection details returned HTTP
+403.</td>
+<td>Distinguish required policy from verified enforcement. Confirm any
+additional required contexts with the repository owner. Preserve
+separate live evaluations and per-transition seals. <a
+href="https://api.github.com/repos/Hexalith/Hexalith.EventStore/rules/branches/main">Active
+rules</a></td>
+</tr>
+<tr class="even">
+<td>Medium</td>
+<td><strong>Status table, line 602.</strong> G-NFR8 is described as
+waiting on runtime evidence from Story 6.4. The PRD records Story 6.3’s
+specification gate as approved and assigns runtime acceptance to Story
+6.4.</td>
+<td>Record the specification decision as passed for its bound digest and
+keep runtime NFR8 acceptance open. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/planning-artifacts/prd.md#L737">PRD
+gate and scope</a></td>
+</tr>
+<tr class="odd">
+<td>Low</td>
+<td><strong>AD-25 companion.</strong> The provenance README still
+describes hosted OQ8 evidence as pending. The spine correctly records
+successful fixture and live jobs on the committed revision.</td>
+<td>Date the historical note or point to the revision-specific run.
+Preserve the immutable design bytes and the separate assured-decision
+status. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/docs/architecture/oq8/README.md#L37">Provenance
+README</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/actions/runs/44892480313">Hosted
+run</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-the-checks-established">What the checks established</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Check</th>
+<th>Observed result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>BMAD structural lint</td>
+<td>Zero findings. AD-1 through AD-36 retain their IDs. All 50 local
+source references resolve.</td>
+</tr>
+<tr class="even">
+<td>OQ8 governing design</td>
+<td>Offline identity validator passed. All 111 OQ8 fixture tests passed.
+Hosted fixtures and live evaluation passed for committed
+<code>df5dc226a</code>, and the manual assured-decision job was skipped.
+The uncommitted spine has a different file digest.</td>
+</tr>
+<tr class="odd">
+<td>Production profile</td>
+<td>AD-26 is the only decision tagged as an assumption. Its ratification
+subject matches the committed subject,
+<code>d49f8a061eb6a0faf1d31577d571ceae497a38d67404c4901151d1dc4ea90e16</code>.
+Ratification and profile qualification remain open.</td>
+</tr>
+<tr class="even">
+<td>Phase 4 risk matrix</td>
+<td>Evaluator exited 1. All 12 high-risk rows lack the required
+authenticated CI seal and owner attestation. The five standard-control
+rows passed their classification checks. All transition decisions retain
+their separate requirements.</td>
+</tr>
+<tr class="odd">
+<td>Publication authority</td>
+<td>Evaluator exited 1 with <code>authority: unproven</code> and
+<code>seal: null</code>. The required owner records, qualified profile,
+verified predecessors and other listed prerequisites remain
+outstanding.</td>
+</tr>
+<tr class="even">
+<td>Phase 4 transition fixtures</td>
+<td>42 of 43 passed. The G-TENANT fixture at line 543 expects
+<code>GATE_UNBOUND</code>. The evaluator returned
+<code>SUBJECT_MISMATCH</code> because the request omitted bound
+subjects. The isolated test reproduced the same failure. Story 9.2 owns
+the fixture correction. <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/tools/tests/test_phase_4_transition.py#L543">Failing
+assertion</a> · <a
+href="https://github.com/Hexalith/Hexalith.EventStore/blob/df5dc226af69292b13dc0676e408e56081e0ff2a/_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-20.md#L28">November
+audit</a></td>
+</tr>
+</tbody>
+</table>
+<p>The catalog check confirmed the documented .NET SDK, Aspire and Dapr
+SDK selections against their recorded and refreshed sources. The scoped
+OQ8 availability results and the separate production qualification
+requirements are accurately described. The architecture already
+identifies that the first readiness seal needs an owner-defined input
+contract. These existing gates remain open independently of the 13
+findings above.</p>
+<h2 id="reviewed-revision-and-evidence">Reviewed revision and
+evidence</h2>
+<p>The subject is the uncommitted <a
+href="../../../architecture.md">EventStore architecture spine</a> on
+branch <code>work</code> at
+<code>df5dc226af69292b13dc0676e408e56081e0ff2a</code>. Its SHA-256 is
+<code>7ad8fe0af4e9eb42903b3a2d08577b07eef21112f2a9f8a8a64fd01c15a921f6</code>.
+The repository records Builds <code>e303acd8</code>. The working
+checkout has Builds <code>e1380b81</code>, with CiCd, McpCli, Platform
+and Tenants also ahead of their recorded revisions.</p>
+<p>The four independent reviews cover the decision rubric, technology
+and implementation facts, disagreements between implementers, and
+assurance and release governance. Overlapping findings count once at
+their highest verified severity. <a
+href="review-validate-2026-11-21-rubric.md">Rubric</a> · <a
+href="review-validate-2026-11-21-technology.md">Technology</a> · <a
+href="review-validate-2026-11-21-divergence.md">Implementation
+divergence</a> · <a
+href="review-validate-2026-11-21-assurance.md">Assurance</a></p>
+<h3 id="reproduce-the-local-checks">Reproduce the local checks</h3>
+<p>Run from the EventStore repository root.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run .agents/skills/bmad-architecture/scripts/lint_spine.py <span class="at">--workspace</span> _bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-B</span> tools/validate-oq8-governing-design.py</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-B</span> <span class="at">-m</span> unittest discover <span class="at">-s</span> tools/tests <span class="at">-p</span> test_oq8_governing_design.py</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-B</span> <span class="at">-m</span> unittest discover <span class="at">-s</span> tools/tests <span class="at">-p</span> test_phase_4_transition.py</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-B</span> tools/validate-phase-4-gate-risk-matrix.py _bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-B</span> tools/validate-publication-authority.py evaluate</span></code></pre></div>
+</body>
+</html>
