@@ -2,7 +2,7 @@
 title: 'Story 4.5: Append Durability Race Evidence'
 type: 'chore'
 created: '2026-08-08'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 4
 story_key: '4-5-append-durability-race-evidence'
 baseline_commit: '0776785f494fcefc8ad933b5b17b9c8d5cbe0513'
@@ -398,6 +398,8 @@ ADD-fencing decision still has no owner story, alongside the historical
 - [ ] [Review][Patch] Private support records violate the repository baseline requiring one C# type per file [`ActorConcurrencyConflictTests.cs:304`; `AppendDurabilityRaceLiveSidecarTests.cs:1004`]
 
 ## Spec Change Log
+
+- 2026-11-21 — Reopened the current evidence work under OR15. Review loop 4 accepted the historical Redis race observation. The source-binding drift and outstanding runtime attribution in the review findings require a fresh live run. Record the exact source revision, provider and runtime identities, invocation, result and CI run here under AD-12. Story 4.16 owns prevention.
 
 - **Review loop 1 (2026-08-08, `bad_spec`):** Review showed the first derivation could claim a durable lost write from HTTP 204 without reading Redis while the actor was held, rejected valid retry/serialization or no-writer outcomes by requiring sequence 1, inferred catch/retry reachability without telemetry, called an unverified token `0` stale, accepted unrelated generic-state failures, mutation-checked only aggregate assertions, and retained machine/workspace identifiers in evidence. The tasks and acceptance criteria now require intermediate and final persisted-state proof, outcome-neutral consistency checks, bounded/quiesced work, exact generic ETag semantics, per-session retry telemetry, per-invariant mutation receipts, and documented redaction. **KEEP:** the post-metadata-read test-only gate; distinct actor/raw identities; Redis-authoritative capture; generic-state control; hash-bound evidence/report structure; evidence-bounded documentation; Deferred add-fencing decision; four unexercised catches classified `inconclusive`; and zero production/workflow behavior changes.
 

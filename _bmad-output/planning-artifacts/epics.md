@@ -35,6 +35,8 @@ The [20 November audit course correction](sprint-change-proposal-2026-11-20.md) 
 
 This document provides the complete epic and story breakdown for eventstore, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
 
+The [21 November course correction](sprint-change-proposal-2026-11-21.md) records the current input digests and outstanding decisions for Story 9.3. The five digests in the frontmatter identify the previous planning inputs. OR14 governs their renewal after architecture review and owner ratification.
+
 ## Requirements Inventory
 
 ### Functional Requirements
@@ -61,7 +63,7 @@ FR10: The EventStore package set must include the domain-service and service-def
 
 FR11: The platform must provide a REST API source-generator contract seam with `ICommandContract`, `IQueryContract`, optional `RestRouteAttribute`, and assembly-level `RestApiAttribute`.
 
-FR12: The REST API generator must discover command and query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient` and forward canonical query metadata headers when the gateway supplies them. Every generated controller must enforce the canonical tenant boundary in NFR2 before routing or state access. The generator test suite must cover discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, safe problem-detail behavior, and compiled-controller tenant negatives. An accepted generated command must emit an absolute command-status `Location` when the configured gateway base is valid and the response supplies a `MessageId` valid for the endpoint’s declared contract version. The gateway base and that identifier determine the URI. Omit `Location` when the base is unavailable or invalid. The endpoint or generated contract, not caller input, selects the version. The generator must never use `CorrelationId` to build that link. An absent, blank, invalid-for-version, unavailable, or version-ambiguous `MessageId` must omit `Location` or cause a safe rejection; it must never fall back to `CorrelationId` or emit a relative or dangling external-host URI.
+FR12: The REST API generator must discover command and query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient` and forward canonical query metadata headers when the gateway supplies them. Every generated controller must enforce the canonical tenant boundary in NFR2 before routing or state access. The generator test suite must cover discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, safe problem-detail behavior, and compiled-controller tenant negatives. An accepted generated command must emit an absolute command-status `Location` when the configured gateway base is valid and the response supplies a `MessageId` valid for the endpoint’s declared contract version. The gateway base and that identifier determine the URI. Use the endpoint's declaration and ignore caller-supplied versions. After acceptance, return HTTP 202 with `Retry-After: 1`. Omit `Location` if the gateway base or declared version is unusable, or if the response lacks a version-valid `MessageId`. Never substitute `CorrelationId` or emit a relative or dangling URI.
 
 FR13: Generated REST controllers must live in dedicated external-facing API hosts, not interactive UI hosts; interactive UI hosts must consume EventStore client libraries directly.
 
@@ -452,7 +454,7 @@ Gate evaluators can prove which failed gate a corrective change is authorized to
 **FRs covered:** none (governance). **Refinements owned:** OR7, OR8, OR10, OR13, OR27, OR28; gates G-HIGH-RISK, G-CLAUSE, and G-MVP-COVERAGE; the G-BASELINE validator with the OR15 lifecycle guard; and the corrective-work authorization input to G-BASELINE
 **Story set:** 9.1–9.5
 **Cross-cutting coverage:** supporting NFR7, NFR12, NFR16 as listed by G-HIGH-RISK; closes none of them
-**Implementation notes:** Added by `sprint-change-proposal-2026-09-26.md`. MVP epic, independent of Epic 8. Story 9.1 bootstraps the PRD §0 corrective-work authorization; While the registry names one human, Story 9.2 closes on sealed CI plus a time-separated owner attestation and is labelled `single-maintainer-attested` (Assurance Control, `sprint-change-proposal-2026-09-26-solo-maintainer-assurance.md`). Stories 9.3–9.5 were added by `sprint-change-proposal-2026-10-07.md`. No Epic 9 story grants readiness, release, deployment, or migration authority. **Truthful-FAIL CI rule (2026-10-07):** A gate validator's fixture suite runs as a blocking check. Its live gate evaluation runs on every push to `main` and publishes a retrievable PASS/FAIL result without blocking merges, so a truthful FAIL never blocks unrelated work. Gate validators use a new workflow file or the Story 9.1 workflow, and never edit `.github/workflows/ci.yml` or `docs/ci.md` unless a Story 4.15 reseal is planned.
+**Implementation notes:** Added by `sprint-change-proposal-2026-09-26.md`. MVP epic, independent of Epic 8. AD-12 and PRD §0 require the owner to record corrective scope and evidence in the owning spec. Story 9.1 is historical. While the registry names one human, Story 9.2 closes on sealed CI plus a time-separated owner attestation and is labelled `single-maintainer-attested` (Assurance Control, `sprint-change-proposal-2026-09-26-solo-maintainer-assurance.md`). Stories 9.3–9.5 were added by `sprint-change-proposal-2026-10-07.md`. No Epic 9 story grants readiness, release, deployment, or migration authority. **Truthful-FAIL CI rule (2026-10-07):** A gate validator's fixture suite runs as a blocking check. Its live gate evaluation runs on every push to `main` and publishes a retrievable PASS/FAIL result without blocking merges, so a truthful FAIL never blocks unrelated work. Gate validators use their dedicated workflows and never edit `.github/workflows/ci.yml` or `docs/ci.md` unless a Story 4.15 reseal is planned.
 
 **Sequencing rule:** Epic numbers organize product outcomes; they do not grant blanket execution authority. Architecture decisions, safety prerequisites, exact evidence gates, and backward-only story dependencies govern implementation order. Relevant Epic 5 Phase 0 protections must precede exposed or administrative surfaces even when those surfaces have lower epic numbers.
 
@@ -719,7 +721,7 @@ As a domain author,
 I want platform seams for projection dispatch and domain-event consumption,
 So that I can keep projection and subscription behavior domain-specific while reusing platform plumbing.
 
-**Requirements coverage:** Supports primary FR7; NFR6 is completed by Story 1.18.
+**Requirements coverage:** Primary FR7-C2 (domain-event consumer seam). Story 1.18 completes NFR6.
 
 **Architecture constraints:** AD-2 and AD-9; Client remains ASP.NET-free and endpoint mapping remains in the DomainService SDK.
 
@@ -1088,7 +1090,7 @@ As a projection author,
 I want coordinated detail and index writes,
 So that a projection cannot expose an updated detail model with a missing or inconsistent index entry.
 
-**Requirements coverage:** Primary FR5; supporting FR36, NFR7, and NFR16.
+**Requirements coverage:** Primary FR5 and FR7-C3 (coordinated persistence). Supports FR36, NFR7 and NFR16.
 
 **Architecture constraints:** AD-2, AD-7, AD-8, and AD-12; batching is additive, same-component, and truthfully qualified by backend evidence.
 
@@ -1199,7 +1201,7 @@ As a domain projection author,
 I want asynchronous named projection handlers with one-to-many dispatch,
 So that one domain can durably maintain detail and index projections through platform seams.
 
-**Requirements coverage:** Primary FR7 and NFR12; supporting FR36, NFR7, and NFR16.
+**Requirements coverage:** Primary FR7-C1 (named asynchronous projections) and NFR12. Supports FR36, NFR7 and NFR16.
 
 **Architecture constraints:** AD-2, AD-7, AD-8, AD-12, AD-19, and AD-20; dispatch identity, route catalogs, outcomes, retries, and checkpoint advancement are explicit platform contracts.
 
@@ -1255,7 +1257,7 @@ As an operator,
 I want projection delivery to be duplicate-safe and order-safe through the real handler path,
 So that at-least-once unordered delivery cannot corrupt detail or index state.
 
-**Requirements coverage:** Primary NFR6; supporting FR7, FR36, NFR7, and NFR16.
+**Requirements coverage:** Primary NFR6 and FR7-C4 (duplicate and out-of-order delivery). Supports FR36, NFR7 and NFR16.
 
 **Architecture constraints:** AD-7, AD-8, AD-10, AD-12, AD-19, and AD-20; persisted projection-scoped identity and conditional state transitions are authoritative.
 
@@ -1311,7 +1313,7 @@ As an operator,
 I want paged projection rebuilds to be replay-equivalent,
 So that rebuilding a long stream cannot replace correct state with a partial-page model.
 
-**Requirements coverage:** Primary NFR8; supporting FR7, FR33, FR36, NFR7, and NFR16.
+**Requirements coverage:** Primary NFR8 and FR7-C5 (paged rebuild equivalence). Supports FR33, FR36, NFR7 and NFR16.
 
 **Architecture constraints:** AD-2, AD-5–AD-8, AD-12–AD-15, AD-19, and AD-20; pages are bounded transport units, never complete-state claims.
 
@@ -2149,7 +2151,7 @@ So that mixed-case, missing, conflicting, or reserved tenants can never cross a 
 **Then** mixed-case positives and every fail-closed negative above pass in each
 **And** approval uses the G-HIGH-RISK Assurance Control at its computed level.
 
-**Current reconciliation (2026-11-20).** The spec and sprint tracker record Story 2.14 as in progress. G-TENANT still blocks closure. The October 7 proposal assigned OR20 to this story. Scope extended 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 4) to the gateway `ClaimsTenantValidator`, Admin Server's tenant checks (owner option 4b), and the migration of existing `system` usage.
+**Current reconciliation (2026-11-20).** The spec and tracker record Story 2.14 as in progress. The 21 November spec records the passing 5.4.0 consumer runs. The Story 2.14 owner supplies the NFR2 completion adapter. Story 9.2 integrates the G-TENANT business check and verifies the exact-subject CI seal and human attestation. Both spec and tracker completion require the applicable evidence. The October 7 proposal assigned OR20 to this story. Scope extended 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 4) to the gateway `ClaimsTenantValidator`, Admin Server's tenant checks (owner option 4b), and the migration of existing `system` usage.
 
 ### Story 2.15: MessageId-Only Command-Status Identity
 
@@ -2179,7 +2181,8 @@ So that the generator never builds a status link from a correlation identifier.
 
 **Given** compiled and runtime tests for both grammars
 **When** they run in the CI lane this story binds
-**Then** an undeclared, ambiguous or caller-selected version, or a missing, blank or invalid-for-version `MessageId` (including noncanonical v2), omits `Location` or fails safely, even if a `CorrelationId` is present
+**Then** the accepted response keeps HTTP 202 and `Retry-After: 1`. An unusable endpoint declaration or a missing, blank or invalid-for-version `MessageId` (including noncanonical v2) omits `Location`, even if `CorrelationId` is present
+**And** caller-supplied versions are ignored. A valid endpoint declaration and response identity still select the link when the caller supplies a conflicting version
 **And** with a configured valid gateway status base and a version-valid `MessageId`, the link uses that `MessageId` even when `CorrelationId` differs
 **And** explicit v1 compatibility is preserved, the manifest records an NFR12 compatibility classification for every changed public surface, and approval uses the G-HIGH-RISK Assurance Control at its computed level.
 
@@ -2195,7 +2198,7 @@ So that notification payloads stay small and support-safe.
 
 **Architecture constraints:** None new.
 
-**Dependencies:** A Story 9.1 authorization record for gate G-NFR-OWNERSHIP.
+**Dependencies:** The owner’s scoped authorization recorded in the owning spec under AD-12 for gate G-NFR-OWNERSHIP.
 
 **Acceptance Criteria:**
 
@@ -2226,7 +2229,7 @@ So that consuming the generator never introduces warnings, nullability gaps, or 
 
 **Architecture constraints:** None new.
 
-**Dependencies:** A Story 9.1 authorization record for gate G-NFR-OWNERSHIP.
+**Dependencies:** The owner’s scoped authorization recorded in the owning spec under AD-12 for gate G-NFR-OWNERSHIP.
 
 **Acceptance Criteria:**
 
@@ -3272,7 +3275,7 @@ So that no evidence result is ever relabelled as release or promotion authority.
 
 **Architecture constraints:** AD-26 (once ratified) and AD-11.
 
-**Dependencies:** Owner ratification of AD-26 or an approved replacement; Story 5.7 for the production component contents; Story 3.15 (`done` for FR36-C2); Story 9.2 for the Assurance Control; a Story 9.1 authorization record for gate G-PUBLICATION-AUTH. **Issue-step prerequisites** (`sprint-change-proposal-2026-10-07-architecture-routing.md`): the build step does not wait for them, but no `release-available` or `production-promoted` record is issued until each is met. They are Story 3.21 (DAPR runtime pin and selected broker); Story 7.22 (restore posture including scheduler state); Story 5.13 (activated route and idempotency catalog digests); and `ReleaseEvidenceCodec`, which the Hexalith.Builds owner delivers in the SHA-pinned shared Builds publisher/validator and EventStore consumes at a pinned gitlink, and which was absent everywhere on 2026-10-07.
+**Dependencies:** Owner ratification of AD-26 or an approved replacement; Story 5.7 for the production component contents; Story 3.15 (`done` for FR36-C2); Story 9.2 for the Assurance Control; the owner’s scoped authorization recorded in the owning spec under AD-12 for gate G-PUBLICATION-AUTH. **Issue-step prerequisites** (`sprint-change-proposal-2026-10-07-architecture-routing.md`): the build step does not wait for them, but no `release-available` or `production-promoted` record is issued until each is met. They are Story 3.21 (DAPR runtime pin and selected broker); Story 7.22 (restore posture including scheduler state); Story 5.13 (activated route and idempotency catalog digests); and `ReleaseEvidenceCodec`, which the Hexalith.Builds owner delivers in the SHA-pinned shared Builds publisher/validator and EventStore consumes at a pinned gitlink, and which was absent everywhere on 2026-10-07.
 
 **Acceptance Criteria:**
 
@@ -3349,7 +3352,7 @@ So that the AD-26 owner decision and canonical production profile bind exactly w
 
 **Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5 (append/conflict-protection re-proof on a runtime minor-version change), AD-8, AD-9, AD-12, AD-24, AD-31 and AD-34.
 
-**Dependencies and ownership:** Story 3.17 accepts inventory rows; gate-closing implementation requires a valid current-subject Story 9.1 record for G-PUBLICATION-AUTH. EventStore owns backend-neutral Dapr requirements, reusable contract tests, application assertions and evaluation of Platform qualification results; Platform owns concrete infrastructure composition and lifecycle, provider/component configuration and execution of local/CI qualification, disposable self-hosted Kubernetes rehearsal through its existing Story 4.17/shared-runtime work, and the later exact deployment/restore bundle. Builds owns CLI/runtime/control-plane catalog, embedded tool and runner alignment. EventStore's own AppHost/fixture proves repository behavior only; Platform tests consume its runner-owned descriptor. Only authenticated Architecture and Platform deployment AD-26 records explicitly select an eligible broker/runtime. Sealed `.github/workflows/integration.yml` and `.github/workflows/ci.yml` pins change only through a planned Story 4.15 reseal; otherwise use the new non-promoting qualification workflow.
+**Dependencies and ownership:** Story 3.17 accepts inventory rows; gate-closing implementation requires the G-PUBLICATION-AUTH owner’s approval for the current subject recorded in the owning spec under AD-12. EventStore owns backend-neutral Dapr requirements, reusable contract tests, application assertions and evaluation of Platform qualification results; Platform owns concrete infrastructure composition and lifecycle, provider/component configuration and execution of local/CI qualification, disposable self-hosted Kubernetes rehearsal through its existing Story 4.17/shared-runtime work, and the later exact deployment/restore bundle. Builds owns CLI/runtime/control-plane catalog, embedded tool and runner alignment. EventStore's own AppHost/fixture proves repository behavior only; Platform tests consume its runner-owned descriptor. Only authenticated Architecture and Platform deployment AD-26 records explicitly select an eligible broker/runtime. Sealed `.github/workflows/integration.yml` and `.github/workflows/ci.yml` pins change only through a planned Story 4.15 reseal; otherwise use the new non-promoting qualification workflow.
 
 **Acceptance Criteria:**
 
@@ -3417,7 +3420,7 @@ So that repeatable proof does not make every source checkout grow with raw run v
 
 **Architecture constraints:** AD-11 and AD-12; existing sealed subjects and approvals keep their original identities. The 2026-10-21 storage amendment is recorded in the spine without refreshing the older `inputDocumentDigests`; Story 9.3 owns substantive planning-baseline reconciliation.
 
-**Dependencies and ownership:** Approved [2026-10-21 Sprint Change Proposal](sprint-change-proposal-2026-10-21.md); applicable current corrective-work authorization under Story 9.1; coordinated Hexalith.AI.Tools `/pushall` rollout described in proposal P5. EventStore owns its producer/readers, tests, ignores and bounded guidance. Hexalith.AI.Tools owns the distributable skill selection change; do not edit or execute a skill under `references/`.
+**Dependencies and ownership:** Approved [2026-10-21 Sprint Change Proposal](sprint-change-proposal-2026-10-21.md); applicable owner authorization documented in the owning spec under AD-12; coordinated Hexalith.AI.Tools `/pushall` rollout described in proposal P5. EventStore owns its producer/readers, tests, ignores and bounded guidance. Hexalith.AI.Tools owns the distributable skill selection change; do not edit or execute a skill under `references/`.
 
 **Acceptance Criteria:**
 
@@ -3687,7 +3690,7 @@ So that provider-portable concurrency design is based on observed production-pat
 
 **Dependencies:** Completed Stories 4.1 and 4.4 provide stable event identity, production allocator behavior, and recovery seams; the live evidence lane remains outside deterministic release gates.
 
-**Current reconciliation:** Story 4.5 is done (`spec-4-5` status `done` at review loop 4, sealed 2026-08-26; reconciled 2026-09-08, correct-course OR3 - this paragraph previously said "remains in progress" and was stale). Its delivered outcome is race evidence only. The initial DAPR 1.18.1 `state.redis`/Redis 6 capture observed `same-key-overwrite-raw-durable-write-lost`: a raw same-sequence write was proven durable, then silently replaced by the accepted actor write without an exception or retry. The sealed packet later drifted from its bound source files, is not enforced by CI, and cannot be refreshed until the DAPR test fixture's placement/scheduler ports and actual runtime identity are reconciled. **Story completion grants no fencing authority.** No fencing implementation is authorized by this evidence; the provider-portable fence remains a separately approved implementation story tracked as an unowned gap by DW-326, and NFR7 class (c) stays undelivered in the Phase 4 MVP.
+**Current reconciliation (2026-11-21).** The August 26 review accepted the FR31 race observation for Dapr 1.18.1 and Redis 6. The raw second write became durable and the accepted actor write silently replaced it. The current evidence work is `in-progress` under OR15. The spec records source drift and unresolved runtime attribution. Re-run the live-sidecar lane with attributable runtime, provider and source identities and record the result in the owning spec under AD-12. Story 4.16 owns the separate conflict-prevention proof for G-APPEND.
 
 **Acceptance Criteria:**
 
@@ -4484,10 +4487,10 @@ So that development-only credentials or insecure token validation cannot leak in
 
 **Given** the EventStore gateway or Admin Server Host starts outside Development
 **When** no trusted authority is configured, symmetric-key validation is selected, HTTPS metadata is disabled where metadata retrieval applies, or required issuer/audience values are missing
-**Then** validated startup fails before the host becomes ready unless `Authentication:JwtBearer:AllowInsecureSymmetricKey` explicitly permits the symmetric-key mode
+**Then** startup fails before readiness. Only an otherwise-valid symmetric configuration in a non-Production environment such as Staging may use the explicit override. In Production, symmetric mode fails startup with either flag value
 **And** the bounded failure identifies the unsafe configuration field and remediation without printing secret values.
 
-**Given** `Authentication:JwtBearer:AllowInsecureSymmetricKey` is enabled outside Development
+**Given** `Authentication:JwtBearer:AllowInsecureSymmetricKey` is enabled in Staging with an otherwise-valid symmetric configuration
 **When** startup and authentication occur
 **Then** the override emits a support-safe structured startup warning or equivalent audit signal and is limited to HS256 symmetric-key acceptance rather than bypassing issuer, audience, lifetime, signature, role, or tenant validation
 **And** documentation and tests state that it is non-production/trusted-deployment behavior rather than a conforming production posture.
@@ -4995,7 +4998,7 @@ So that declared executable targets and policies share deterministic bytes that 
 
 **Architecture constraints:** AD-33 (`Contracts` owns the schema and codec), AD-25 (idempotency facet), AD-9, AD-17, and AD-27.
 
-**Dependencies:** A Story 9.1 authorization record for gates G-TENANT and G-STATUS-ID, whose owning Stories 2.14 and 2.15 consume the accepted declaration/schema/codec delivery, subject to remaining package, migration, compatibility and assurance gates. The Platform deployment owner owns the signed or content-bound production instance. The owner-resolved fields include each command's MessageId version/declaration digest, the platform-operation namespace and required human permission, and the target hop's credential kind/operation; Contracts owns identifiers and ServiceDefaults retains authentication and compatible forwarding constants. Package/validation delivery remains open; no runtime authority or automatic downstream unblocking follows from construction.
+**Dependencies:** The owner’s scoped authorization recorded in the owning spec under AD-12 for gates G-TENANT and G-STATUS-ID, whose owning Stories 2.14 and 2.15 consume the accepted declaration/schema/codec delivery, subject to remaining package, migration, compatibility and assurance gates. The Platform deployment owner owns the signed or content-bound production instance. The owner-resolved fields include each command's MessageId version/declaration digest, the platform-operation namespace and required human permission, and the target hop's credential kind/operation; Contracts owns identifiers and ServiceDefaults retains authentication and compatible forwarding constants. Package/validation delivery remains open; no runtime authority or automatic downstream unblocking follows from construction.
 
 **Acceptance Criteria:**
 
@@ -5038,7 +5041,7 @@ So that the gateway, admission, dispatchers, AppHost, and deployment ACLs can ne
 
 **Architecture constraints:** AD-33 (activation), AD-9, AD-12, AD-25, and AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`).
 
-**Dependencies:** Story 5.12; Stories 5.6 and 5.7 for the AppHost and production ACL models it compares; a Story 9.1 authorization record for gate G-PUBLICATION-AUTH. Signing the production instance belongs to the Platform deployment owner and the Story 3.19 issue step.
+**Dependencies:** Story 5.12; Stories 5.6 and 5.7 for the AppHost and production ACL models it compares; the owner’s scoped authorization recorded in the owning spec under AD-12 for gate G-PUBLICATION-AUTH. Signing the production instance belongs to the Platform deployment owner and the Story 3.19 issue step.
 
 **Acceptance Criteria:**
 
@@ -5086,7 +5089,7 @@ So that endpoint mapping order, peer invocation, or a forged caller header can n
 
 **Architecture constraints:** AD-16, AD-28, AD-10, AD-29, and AD-31.
 
-**Dependencies:** Story 5.3 (probe anonymity); Story 5.5 (sidecar-channel policy and workload assertions); a Story 9.1 authorization record for gate G-AUTH-HOSTS. Tenants hosts land in the Tenants repository under its owner, as in Story 5.11. PRD NFR1 already permits the explicitly enumerated, data-free UI-host asset/callback exception class; AD-16 is reconciled to it in the same planning change. Interactive UI-host conformance requires exact endpoint inventories and real-host tests under that contract. These hosts remain outside the canonical MVP production profile until human login exists. Tenants changes remain with its repository owner. Story 7.1 keeps Operations delivery, capture, and acknowledgement semantics; this story owns only the authentication and authorization of the Operations endpoints.
+**Dependencies:** Story 5.3 (probe anonymity); Story 5.5 (sidecar-channel policy and workload assertions); the owner’s scoped authorization recorded in the owning spec under AD-12 for gate G-AUTH-HOSTS. Tenants hosts land in the Tenants repository under its owner, as in Story 5.11. PRD NFR1 already permits the explicitly enumerated, data-free UI-host asset/callback exception class; AD-16 is reconciled to it in the same planning change. Interactive UI-host conformance requires exact endpoint inventories and real-host tests under that contract. These hosts remain outside the canonical MVP production profile until human login exists. Tenants changes remain with its repository owner. Story 7.1 keeps Operations delivery, capture, and acknowledgement semantics; this story owns only the authentication and authorization of the Operations endpoints.
 
 **Acceptance Criteria:**
 
@@ -5632,7 +5635,7 @@ So that no package claims AOT or trimming compatibility while reflection convent
 
 **Architecture constraints:** None new.
 
-**Dependencies:** A Story 9.1 authorization record for gate G-NFR18.
+**Dependencies:** The owner’s scoped authorization recorded in the owning spec under AD-12 for gate G-NFR18.
 
 **Acceptance Criteria:**
 
@@ -7023,7 +7026,7 @@ So that no MVP surface claims crypto-shred guarantees that only post-MVP payload
 
 **Architecture constraints:** None new.
 
-**Dependencies:** A Story 9.1 authorization record for gate G-NFR-OWNERSHIP.
+**Dependencies:** The owner’s scoped authorization recorded in the owning spec under AD-12 for gate G-NFR-OWNERSHIP.
 
 **Acceptance Criteria:**
 
@@ -7051,7 +7054,7 @@ So that a restore never re-admits a consumed idempotency key, repeats a global p
 
 **Execution ownership (2026-11-09 course correction).** EventStore owns this story's module semantics, logical Dapr capability requirements, declarations, code/configuration consumption and application assertions. Hexalith.Platform owns concrete shared infrastructure composition, provisioning/lifecycle, provider/component configuration and execution of profile-specific qualification, fault injection, custody/restore and migration rehearsal as applicable. Module tests consume Platform-supplied run-owned endpoints and exact loaded identities, and acceptance readback uses the supported Dapr/owning-actor boundary. This clarifies earlier execution-ownership wording without completing the story, accepting a missing capability, changing a provider/pin or authorizing migration/deployment; separately governed production execution remains gated.
 
-**Dependencies:** Restore design and disposable drills consume Story 3.21's exact candidate runtime/scheduler/placement evidence without waiting for the parent to be done; Story 3.17 and a valid Story 9.1 record still apply. The owner binds the accepted restore-posture digest only in AD-26 ratification or an approved replacement. Story 7.22 completion and Story 3.19 issuance retain their authority/profile gates. Candidate component/render preparation may precede selection, but selected parity and Story 4.16's final append/conflict-protection proof use the ratified profile. No restore invariant or production gate is removed.
+**Dependencies:** Restore design and disposable drills consume Story 3.21's exact candidate runtime/scheduler/placement evidence without waiting for the parent to be done; Story 3.17 and the gate owner’s scoped authorization recorded in the Story 7.22 spec under AD-12 still apply. The owner binds the accepted restore-posture digest only in AD-26 ratification or an approved replacement. Story 7.22 completion and Story 3.19 issuance retain their authority/profile gates. Candidate component/render preparation may precede selection, but selected parity and Story 4.16's final append/conflict-protection proof use the ratified profile. No restore invariant or production gate is removed.
 
 **Acceptance Criteria:**
 
@@ -8087,6 +8090,8 @@ So that no high-risk result overstates the assurance behind it.
 **Then** a missing or failing seal, a non-required live result offered as a seal, an author-supplied result file, an unauthenticated CI identity, a wrong transition, stale head SHA, changed workflow-file digest, changed subject or evidence identity, and mismatched or failing predecessor validation are each proven rejected by an observed failing negative fixture beside a positive control
 **And** a truthful live FAIL leaves merges unblocked while the attempted guarded transition remains blocked; no guard is green by construction.
 
+**Readiness and tenant handoff (21 November 2026).** For G-TENANT, consume the exact EventStore/Tenants workflow subjects and fresh-backend receipts recorded by Story 2.14. Exercise the NFR2 story-completion adapter for both spec and tracker, including a mismatched subject and missing attestation. For G-READINESS, the Product and Test owners must define the first sealable request and the subsequent authenticated consumption under PRD §11.4. Specify the 15 business and coverage inputs, subject identities, approvals, and the order for computing G-HIGH-RISK, G-READINESS and `READY`. A missing predecessor, approval or successful authenticated run must refuse the transition.
+
 **Given** G-RUNTIME-PARITY is evaluated under this control
 **When** the Assurance Control evaluation completes
 **Then** that evaluation is follow-on work that reopens Story 3.15 only if it rejects the evidence
@@ -8110,9 +8115,10 @@ So that the PRD, architecture, UX, epics, tracker, and story records cannot sile
 
 **Acceptance Criteria:**
 
-**Given** the manifest at `_bmad-output/implementation-artifacts/evidence/phase-4-planning-baseline.json`
+**Given** a candidate baseline manifest generated from one revision by the Story 9.3 validation lane and retained as CI output under AD-12
 **When** the validator command bound by this story runs
-**Then** it binds the SHA-256 of `prd.md`, `architecture.md`, the detailed DESIGN and EXPERIENCE documents, `ux.md`, `epics.md`, `sprint-status.yaml`, every story record it names, the relevant evidence digests, and the Story 9.1 authorization registry
+**Then** it binds the SHA-256 of `prd.md`, `architecture.md`, the detailed DESIGN and EXPERIENCE documents, `ux.md`, `epics.md`, `sprint-status.yaml`, every story record it names, the relevant evidence digests, and the corrective scope and approval provenance in each owning spec under AD-12 and PRD §0
+**And** the Story 9.3 spec records the source revision, invocation, manifest digest, findings and CI run so reviewers can verify that exact subject
 **And** it rejects any digest mismatch, `draft` status, open `[ASSUMPTION]`, active or unreconciled corrective-work authorization, and any approval that predates the bytes it binds.
 
 **Given** a manifest that binds an architecture digest different from the one `epics.md` records
@@ -8152,14 +8158,14 @@ So that no parent requirement closes on a status label or on a partial set of cl
 
 **Architecture constraints:** None new.
 
-**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-CLAUSE. The clause owners assigned by `sprint-change-proposal-2026-10-07.md` (FR12-C2 to 2.14; FR12-C3 and FR12-C4 to 2.15; FR36-C3 to 3.19; FR36-C4 and FR36-C5 to 3.20; NFR17-C5 to 7.21) are present in `epics.md`.
+**Dependencies:** The G-CLAUSE owner records the corrective scope, authorized subject and evidence in the Story 9.4 spec under AD-12 and PRD §0. The clause owners assigned by `sprint-change-proposal-2026-10-07.md` (FR12-C2 to 2.14; FR12-C3 and FR12-C4 to 2.15; FR36-C3 to 3.19; FR36-C4 and FR36-C5 to 3.20; NFR17-C5 to 7.21) are present in `epics.md`.
 
 **Acceptance Criteria:**
 
 **Given** PRD §7.1
 **When** the story completes
 **Then** `epics.md` contains a Stable Clause Ledger listing every clause ID with exactly one primary slice and an evidence-identity field that reads `pending` until passing evidence exists
-**And** the FR12, FR15, and FR36 completion rules name the same slices as the ledger.
+**And** each clause's primary story declares the same clause as PRD §7.1 and the epic ledger, including all five FR7 clauses. Check FR12 and FR36 against those ledgers. Check FR15’s six slices against PRD §11.1 and the epic FR15 completion rule.
 
 **Given** the validator command bound by this story
 **When** it runs

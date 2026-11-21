@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-11-20
+# last_updated: 2026-11-21
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -20,6 +20,7 @@
 #   - backlog: Story only exists in epic file
 #   - ready-for-dev: Story file created in stories folder
 #   - in-progress: Developer actively working on implementation
+#   - awaiting-operator: An operator decision is required before work can proceed
 #   - review: Ready for code review (via Dev's code-review workflow)
 #   - done: Story completed
 #
@@ -31,6 +32,7 @@
 #   - open: Committed during a retrospective, not yet addressed
 #   - in-progress: Actively being worked on
 #   - done: Completed
+#   - rejected: The retrospective declined the action
 #
 # WORKFLOW NOTES:
 # ===============
@@ -41,7 +43,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-20
+last_updated: 2026-11-21
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -163,7 +165,7 @@ development_status:
   4-2-resume-and-idempotency-integrity: done
   4-3-deterministic-replay-dispatch-and-serialization: done
   4-4-committed-event-publication-recovery: done
-  4-5-append-durability-race-evidence: done
+  4-5-append-durability-race-evidence: in-progress
   4-6-global-position-sharding-spec-renegotiation: awaiting-operator
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   # Corrected 2026-09-09 (code review, Story 4.15 Group C). The row read 'done'
