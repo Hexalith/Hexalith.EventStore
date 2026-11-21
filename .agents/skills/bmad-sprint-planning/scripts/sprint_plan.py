@@ -56,11 +56,14 @@ EPIC_KEY_RE = re.compile(r"^epic-(\d+)$")
 RETRO_KEY_RE = re.compile(r"^epic-(\d+)-retrospective$")
 STORY_KEY_RE = re.compile(r"^(\d+)-(\d+)([a-z]?)-.+")
 
-STORY_RANK = {"backlog": 0, "ready-for-dev": 1, "in-progress": 2, "review": 3, "done": 4}
+STORY_RANK = {
+    "backlog": 0, "ready-for-dev": 1, "in-progress": 2,
+    "awaiting-operator": 2, "review": 3, "done": 4,
+}
 EPIC_RANK = {"backlog": 0, "in-progress": 1, "done": 2}
 RETRO_RANK = {"optional": 0, "done": 1}
 RANKS = {"epic": EPIC_RANK, "story": STORY_RANK, "retro": RETRO_RANK}
-ACTION_STATUSES = ("open", "in-progress", "done")
+ACTION_STATUSES = ("open", "in-progress", "done", "rejected")
 
 # v6 wrote these; they still exist in the wild (v6-shims/bmad-create-story
 # actively writes 'contexted'). Normalized on every read so no subcommand ever
@@ -88,6 +91,7 @@ Story Status:
   - backlog: Story only exists in epic file
   - ready-for-dev: Story file created, ready for development
   - in-progress: Developer actively working on implementation
+  - awaiting-operator: An operator decision is required before work can proceed
   - review: Implementation complete, ready for review
   - done: Story completed
 
@@ -99,6 +103,7 @@ Action Item Status:
   - open: Committed during a retrospective, not yet addressed
   - in-progress: Actively being worked on
   - done: Completed
+  - rejected: The retrospective declined the action
 
 WORKFLOW NOTES:
 ===============
@@ -471,14 +476,25 @@ def cmd_generate(args):
 
 
 def _parse_stamp(value):
-    from datetime import datetime
+    from datetime import datetime, timezone
 
+    # Compare offset-aware records and local CLI dates on the same timeline.
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc)
+    stamp = str(value)
     for fmt in STAMP_FORMATS:
         try:
-            return datetime.strptime(str(value), fmt)
+            return datetime.strptime(stamp, fmt).astimezone(timezone.utc)
         except ValueError:
             continue
-    return None
+    if "T" not in stamp and " " not in stamp:
+        return None
+    if stamp.endswith("Z"):
+        stamp = stamp[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(stamp).astimezone(timezone.utc)
+    except ValueError:
+        return None
 
 
 def cmd_status(args):
@@ -556,6 +572,9 @@ def cmd_status(args):
     for num, status in epic_status.items():
         if status == "in-progress" and num not in story_epic_nums:
             risks.append(f"in-progress epic 'epic-{num}' has no stories")
+    held_stories = by_status.get("awaiting-operator", [])
+    for key in held_stories:
+        risks.append(f"{key} is waiting for an operator decision")
     if by_status.get("review"):
         risks.append(f"{len(by_status['review'])} story(ies) in review — run bmad-code-review")
     if unrecognized:
@@ -574,7 +593,7 @@ def cmd_status(args):
     elif by_status.get("backlog"):
         recommendation = {"skill": "bmad-build", "story_key": by_status["backlog"][0],
                           "reason": "start the first backlog story"}
-    else:
+    elif not held_stories:
         optional_retros = sorted(num for num, status in retro_status.items() if status == "optional")
         if optional_retros:
             recommendation = {"skill": "bmad-retrospective", "story_key": None,
@@ -589,7 +608,7 @@ def cmd_status(args):
         "legacy_mapped": legacy_mapped, "illegal": illegal, "unrecognized": unrecognized,
         "open_action_items": open_items, "risks": risks, "warnings": warnings,
         "recommendation": recommendation,
-        "all_done": recommendation is None,
+        "all_done": recommendation is None and not held_stories,
     }, default=str))
 
 

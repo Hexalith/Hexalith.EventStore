@@ -30,7 +30,7 @@ STORY_RE = re.compile(r"^(\d+)-\d+[a-z]?-")  # trailing [a-z]? matches split-sto
 DATE_FORMAT = "%m-%d-%Y %H:%M"
 # The authoritative action-item vocabulary, mirrored from bmad-sprint-planning's
 # SKILL.md. Anything outside it would render as unknown in the status dashboard.
-ACTION_STATUSES = ("open", "in-progress", "done")
+ACTION_STATUSES = ("open", "in-progress", "done", "rejected")
 # The retro-document frontmatter vocabulary. --verdict is only echoed back, but
 # orchestrators branch on the echo, so a free-spelled value ("accepted with open
 # items") would silently fall through every branch they write.

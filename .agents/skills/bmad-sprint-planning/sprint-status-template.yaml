@@ -19,6 +19,7 @@
 #   - backlog: Story only exists in epic file
 #   - ready-for-dev: Story file created, ready for development
 #   - in-progress: Developer actively working on implementation
+#   - awaiting-operator: An operator decision is required before work can proceed
 #   - review: Implementation complete, ready for review
 #   - done: Story completed
 #
@@ -30,6 +31,7 @@
 #   - open: Committed during a retrospective, not yet addressed
 #   - in-progress: Actively being worked on
 #   - done: Completed
+#   - rejected: The retrospective declined the action
 #
 # WORKFLOW NOTES:
 # ===============

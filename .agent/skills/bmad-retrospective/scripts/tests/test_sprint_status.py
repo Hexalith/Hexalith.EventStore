@@ -1505,10 +1505,13 @@ def test_status_write_preserves_every_scalar_style(tmp_path):
     ], changed
 
 
-def test_action_status_vocabulary_is_exactly_the_three():
-    # bmad-sprint-planning is the authority. Widening this tuple would let the
-    # script write a value sprint-planning's status view reports as illegal.
-    assert _module().ACTION_STATUSES == ("open", "in-progress", "done")
+def test_rejected_action_is_recorded_without_completing_it(tmp_path):
+    assert _module().ACTION_STATUSES == ("open", "in-progress", "done", "rejected")
+    target = _write_action_fixture(tmp_path)
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--set-action-status",
+                 '[{"id":"epic-1-retro-item-1-x","status":"rejected"}]'])
+    assert proc.returncode == 0
+    assert _load(target)["action_items"][0]["status"] == "rejected"
 
 
 def test_empty_status_array_is_a_no_op(tmp_path):

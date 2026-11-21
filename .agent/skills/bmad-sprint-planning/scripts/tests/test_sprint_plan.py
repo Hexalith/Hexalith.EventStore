@@ -491,6 +491,33 @@ def run_validate(tmp_path, capsys, content):
     return json.loads(capsys.readouterr().out)
 
 
+def test_operator_hold_and_rejected_action_survive_refresh(tmp_path, capsys):
+    existing = (EXISTING
+                .replace("1-2-account-management: backlog", "1-2-account-management: awaiting-operator")
+                .replace("status: open", "status: rejected"))
+    path = run_generate(tmp_path, existing=existing, stories=("1-2-account-management",))
+    assert out_json(capsys)["illegal"] == []
+    data = load(path)
+    assert data["development_status"]["1-2-account-management"] == "awaiting-operator"
+    assert data["action_items"][0]["status"] == "rejected"
+
+
+def test_operator_hold_is_pending_and_offset_timestamps_validate(tmp_path, capsys):
+    fixture = (STATUS_FIXTURE
+               .replace("generated: 01-01-2026 09:00", "generated: '2026-07-05T20:01:46+02:00'")
+               .replace("last_updated: 07-30-2026 09:00", "last_updated: 2026-07-05T18:01:46Z")
+               .replace("1-2-account-management: drafted", "1-2-account-management: awaiting-operator")
+               .replace("2-1-personality-system: backlog", "2-1-personality-system: done")
+               .replace("status: open", "status: rejected"))
+    assert run_validate(tmp_path, capsys, fixture)["valid"]
+    result = run_status(tmp_path, capsys, fixture=fixture)
+    assert result["stories"]["awaiting-operator"] == 1
+    assert result["recommendation"] is None and result["all_done"] is False
+    assert result["open_action_items"] == [] and result["warnings"] == []
+    assert any("1-2-account-management" in risk for risk in result["risks"])
+    assert mod._parse_stamp("2026-07-05T20:01:46+02:00") == mod._parse_stamp("2026-07-05T18:01:46Z")
+
+
 def test_validate_clean_file(tmp_path, capsys):
     clean = STATUS_FIXTURE.replace("1-2-account-management: drafted", "1-2-account-management: backlog")
     result = run_validate(tmp_path, capsys, clean)
