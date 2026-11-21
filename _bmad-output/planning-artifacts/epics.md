@@ -61,7 +61,7 @@ FR10: The EventStore package set must include the domain-service and service-def
 
 FR11: The platform must provide a REST API source-generator contract seam with `ICommandContract`, `IQueryContract`, optional `RestRouteAttribute`, and assembly-level `RestApiAttribute`.
 
-FR12: The REST API generator must discover command and query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient` and forward canonical query metadata headers when the gateway supplies them. Every generated controller must enforce the canonical tenant boundary in NFR2 before routing or state access. The generator test suite must cover discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, safe problem-detail behavior, and compiled-controller tenant negatives. An accepted generated command must emit an absolute command-status `Location` when the configured gateway base is valid and the response supplies a `MessageId` valid for the endpoint’s declared contract version. The gateway base and that identifier determine the URI. Omit `Location` when the base is unavailable or invalid. The endpoint or generated contract, not caller input, selects the version. `CorrelationId` remains diagnostic and must never select that resource. An absent, blank, invalid-for-version, unavailable, or version-ambiguous `MessageId` must omit `Location` or cause a safe rejection; it must never fall back to `CorrelationId` or emit a relative or dangling external-host URI.
+FR12: The REST API generator must discover command and query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient` and forward canonical query metadata headers when the gateway supplies them. Every generated controller must enforce the canonical tenant boundary in NFR2 before routing or state access. The generator test suite must cover discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, safe problem-detail behavior, and compiled-controller tenant negatives. An accepted generated command must emit an absolute command-status `Location` when the configured gateway base is valid and the response supplies a `MessageId` valid for the endpoint’s declared contract version. The gateway base and that identifier determine the URI. Omit `Location` when the base is unavailable or invalid. The endpoint or generated contract, not caller input, selects the version. The generator must never use `CorrelationId` to build that link. An absent, blank, invalid-for-version, unavailable, or version-ambiguous `MessageId` must omit `Location` or cause a safe rejection; it must never fall back to `CorrelationId` or emit a relative or dangling external-host URI.
 
 FR13: Generated REST controllers must live in dedicated external-facing API hosts, not interactive UI hosts; interactive UI hosts must consume EventStore client libraries directly.
 
@@ -105,7 +105,7 @@ FR32: Runtime topology remediation must make the AppHost-loaded DAPR pub/sub, AC
 
 FR33: Cost and evolution remediation must introduce folded snapshots, reduce projection replay cost so that replaying an already-current projection performs zero event reads, add projection sequence guards, support event schema versioning and upcasting, and expose cancellation tokens on published processing, query and projection interfaces. Validate event metadata before staging a new write or applying a stored event. New writes require a ULID `MessageId`. Stored-event reads also accept a historical hyphenated GUID `MessageId`. Replaying a version-1 event with that identifier must preserve its identity and stored bytes. Both reads and writes enforce the AD-32 trace grammar for `CorrelationId` and `CausationId` and the declared rules for the remaining identity fields and sequence number.
 
-FR34: Delivery, admin, and deployment remediation must document at-least-once unordered delivery; add poison/dead-letter handling; bound in-memory deduplication; normalize admin claims; audit every state-mutating admin action; hide deferred admin operations; provide the typed Admin boundary and consolidated FrontComposer/Fluent UI shell with required evidence, governance, and accessibility; add OpenBao-backed DAPR secret-store configuration for production operational and application secrets; require application retrieval through the DAPR Secrets API; restrict Kubernetes Secrets to documented bootstrap credentials when no approved mounted or projected credential mechanism is available, plus the separately approved FR37 Dapr/Kubernetes payload-KEK profile; the latter permits only operator-owned versioned crypto-key Secrets consumed by the scoped Dapr cryptography component and grants no application-secret retrieval exception; add readiness/app-health checks; apply the declared DAPR resiliency policies; require immutable image identity; and restore IntegrationTests CI coverage such that the lane runs on every push to `main` and asserts persisted state for at least the FR23, FR27, and FR30 paths.
+FR34: Delivery, admin, and deployment remediation must document at-least-once unordered delivery; add poison/dead-letter handling; bound in-memory deduplication; normalize admin claims; audit every state-mutating admin action; enforce the deferred Admin UI and endpoint rules in NFR15; provide the typed Admin boundary and consolidated FrontComposer/Fluent UI shell with required evidence, governance, and accessibility; add OpenBao-backed DAPR secret-store configuration for production operational and application secrets; require application retrieval through the DAPR Secrets API; restrict Kubernetes Secrets to documented bootstrap credentials when no approved mounted or projected credential mechanism is available, plus the separately approved FR37 Dapr/Kubernetes payload-KEK profile; the latter permits only operator-owned versioned crypto-key Secrets consumed by the scoped Dapr cryptography component and grants no application-secret retrieval exception; add readiness/app-health checks; apply the declared DAPR resiliency policies; require immutable image identity; and restore IntegrationTests CI coverage such that the lane runs on every push to `main` and asserts persisted state for at least the FR23, FR27, and FR30 paths.
 
 FR35: Backlog capabilities must be tracked for GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, an aggregate test kit, and REST generator hardening.
 
@@ -143,7 +143,7 @@ NFR13: Generated code and source-generator packages must build cleanly under war
 
 NFR14: Interactive UI hosts must not expose generated or hand-written per-message MVC command/query controllers; UI command/query flows consume client libraries.
 
-NFR15: Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional; unavailable operations must be hidden/disabled or return `501`.
+NFR15: Admin must hide restore and import actions, including forms, file pickers and command-palette entries. Backup and compaction routes may show only read-only history or tracking with “Unavailable in this release.” For other deferred capabilities, hide actions without useful tracking context. Where tracking is visible, the action must be disabled or absent. On a retained deferred endpoint, authentication, tenant authorization and bounded request validation precede capability disclosure. Failures return their ordinary safe responses. Only a request that passes all three checks receives typed HTTP `501 Not Implemented` with the safe reason, message, correlation and tracking context. No deferred request invokes a downstream operation, admits a mutation audit, creates a job or changes state.
 
 NFR16: Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. Durable-admission evidence must inspect production-path state and prove restart survival, multi-host serialization, inclusive expiry boundaries, atomic tombstone compaction, leakage constraints, and zero downstream execution for replay, conflict, expired, corrupt, and unsafe legacy outcomes.
 
@@ -289,7 +289,7 @@ UX-DR42: Keep the Sample UI as an accepted-submission demonstration and the Tena
 FR1: Epic 1 - Domain modules remain domain-centric while EventStore supplies reusable platform infrastructure.
 FR2: Epic 1 - Domain authors receive the canonical domain-service SDK host shape.
 FR3: Epic 1 - Domain services expose the canonical DAPR-facing endpoints.
-FR4: Epic 1 - Queries use handler discovery, gateway routing, canonical metadata, provenance, and lifecycle evidence.
+FR4: Epic 1 owns handler discovery, gateway routing, response metadata, provenance and lifecycle. Epic 2 owns consumer use of authoritative provenance.
 FR5: Epic 1 - Read models use generic lifecycle, erasure, ETag-aware write, and coordinated batch contracts.
 FR6: Epic 1 - Query paging uses a reusable protected cursor codec.
 FR7: Epic 1 - Domains receive asynchronous multi-projection and domain-event consumer seams.
@@ -324,6 +324,62 @@ FR35: Epic 7 - Deferred GDPR erasure, Admin OIDC, aggregate test kit, and genera
 FR36: Epics 1 and 3 - Epic 1 closes source/package projection-query parity; Epic 3 closes exact-lineage deployed-runtime parity without treating rejected `v3.94.1` as authorization. Stories 3.19 and 3.20 own the FR36-C3 to FR36-C5 release, promotion, and consumer-removal authority slices.
 FR37: Epic 8 - Domains can opt into the shared payload-protection engine only after specification, implementation, production-backend, compatibility, release, rollback, and G5 evidence.
 
+### Stable Clause Ledger
+
+One primary story is accountable for each outcome in [PRD §7.1](prd.md#71-stable-clause-acceptance-and-closure). Listed supporting stories retain responsibility for their own deliverables. Story 9.4 must review these assignments and bind exact passing evidence for each complete clause. `pending` means that the clause-level evidence identity has yet to be recorded here. Individual story records retain their existing technical results.
+
+| Clause | Primary story | Named supporting stories | Evidence identity |
+| --- | --- | --- | --- |
+| FR4-C1 | 1.2 | — | pending |
+| FR4-C2 | 1.2 | 1.16, 2.7 | pending |
+| FR4-C3 | 1.2 | 2.7, 2.11 | pending |
+| FR4-C4 | 1.2 | 2.11 | pending |
+| FR4-C5 | 1.16 | 2.7, 2.11 | pending |
+| FR4-C6 | 2.11 | 1.2, 1.16 | pending |
+| FR5-C1 | 1.3 | — | pending |
+| FR5-C2 | 1.14 | — | pending |
+| FR5-C3 | 1.15 | — | pending |
+| FR7-C1 | 1.17 | — | pending |
+| FR7-C2 | 1.6 | — | pending |
+| FR7-C3 | 1.15 | — | pending |
+| FR7-C4 | 1.18 | — | pending |
+| FR7-C5 | 1.19 | — | pending |
+| FR12-C1 | 2.2 | — | pending |
+| FR12-C2 | 2.14 | — | pending |
+| FR12-C3 | 2.15 | 2.9 | pending |
+| FR12-C4 | 2.15 | 2.9 | pending |
+| FR26-C1 | 5.1 | — | pending |
+| FR26-C2 | 5.2 | — | pending |
+| FR26-C3 | 5.3 | — | pending |
+| FR26-C4 | 5.4 | — | pending |
+| FR33-C1 | 6.1 | — | pending |
+| FR33-C2 | 6.2 | — | pending |
+| FR33-C3 | 6.3 | — | pending |
+| FR33-C4 | 6.4 | — | pending |
+| FR33-C5 | 6.5 | 6.5a, 6.5b, 6.5c, 6.5d | pending |
+| FR33-C6 | 6.6 | — | pending |
+| FR34-C1 | 7.1 | — | pending |
+| FR34-C2 | 7.2 | — | pending |
+| FR34-C3 | 7.3 | — | pending |
+| FR34-C4 | 7.4 | — | pending |
+| FR34-C5 | 7.5 | — | pending |
+| FR34-C6 | 7.6 | — | pending |
+| FR34-C7 | 7.7 | — | pending |
+| FR34-C8 | 7.8 | — | pending |
+| FR34-C9 | 7.9 | — | pending |
+| FR34-C10 | 7.10 | 7.11 | pending |
+| FR34-C11 | 7.20 | 7.14, 7.19 | pending |
+| FR36-C1 | 1.20 | — | pending |
+| FR36-C2 | 3.15 | — | pending |
+| FR36-C3 | 3.19 | — | pending |
+| FR36-C4 | 3.20 | — | pending |
+| FR36-C5 | 3.20 | — | pending |
+| NFR17-C1 | 7.6 | — | pending |
+| NFR17-C2 | 7.7 | — | pending |
+| NFR17-C3 | 7.8 | — | pending |
+| NFR17-C4 | 7.9 | — | pending |
+| NFR17-C5 | 7.21 | — | pending |
+
 ## Epic List
 
 ### Epic 1: Domain Authors Can Ship Domain-Centric Services
@@ -337,7 +393,7 @@ Domain authors can build complete EventStore-backed services without recreating 
 Developers can expose typed external REST APIs and build interactive clients through supported gateway contracts while preserving metadata, scoping, and projection truth.
 **Primary users:** External API host developers, interactive UI developers, and domain integrators
 **FRs covered:** FR11-FR16
-**Story set:** 2.1–2.17; 2.13 (done 2026-10-25 by an accepted SignalR Redis exception) supports FR16/NFR5/NFR12/NFR15/NFR16 and PRD §8.4 without replacing 2.8 contract ownership; NFR5 primary ownership is Story 2.16. Backlog 2.14 and 2.15 are the corrective successors for G-TENANT (FR12-C2 and the FR15 platform-operation and tenant-boundary slice) and G-STATUS-ID (FR12-C3, FR12-C4); 2.16 and 2.17 are the primary owners of NFR5 and NFR13 (`sprint-change-proposal-2026-10-07.md`).
+**Story set.** 2.1–2.19. Story 2.13 closed on 2026-10-25 under the accepted SignalR Redis exception. It supports FR16, NFR5, NFR12, NFR15, NFR16 and PRD §8.4. Story 2.8 owns the notification contract. Story 2.14 owns G-TENANT for FR12-C2 and FR15's platform-operation and tenant-boundary slice. Story 2.15 owns G-STATUS-ID for FR12-C3 and FR12-C4. Stories 2.16 and 2.17 own NFR5 and NFR13 respectively. On 2026-11-20 the tracker records 2.14 as `in-progress`, 2.15 as `review`, and both 2.18 (conditional query validators) and 2.19 (query failure classification and redaction) as `backlog`. [October assignments](sprint-change-proposal-2026-10-07.md) · [Sprint tracker](../implementation-artifacts/sprint-status.yaml)
 **Cross-cutting coverage:** NFR2, NFR5, NFR12-NFR16; UX-DR42, with shared consumer-flow acceptance coverage for UX-DR20, UX-DR25-UX-DR27, UX-DR30, UX-DR38, and UX-DR40
 **Implementation notes:** Build on the completed gateway and metadata seams from Epic 1, but deliver dedicated external API hosts and client-only interactive hosts as a complete, independently usable integration pattern. Preserve route-bound query provenance, gateway-authoritative absolute-or-absent command-status locations, and handler-owned replacement of outbound DAPR control-plane headers.
 
@@ -363,7 +419,7 @@ Operators can rely on stable event identity, durable idempotency admission, dete
 Tenants and administrators receive consistent fail-closed authentication, authorization, tenant isolation, internal endpoint protection, and runtime topology enforcement.
 **Primary users:** Tenant administrators, security engineers, and platform operators
 **FRs covered:** FR26, FR28, FR32
-**Story set:** 5.1–5.14; backlog 5.11 owns G-AUTH-HOSTS and NFR3's all-host conformance slice (`sprint-change-proposal-2026-10-07.md`). Stories 5.12 and 5.13 own the AD-33 route and idempotency catalog: declaration/schema/codec delivery and declared-target parity ahead of Stories 2.14 and 2.15, subject to their remaining gates, then runtime enforcement, exhaustive runtime parity and activation; 5.14 owns NFR1's AD-16 authenticated-fallback and Dapr framework-route slice (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
+**Story set.** 5.1–5.15. Story 5.11 owns G-AUTH-HOSTS and NFR3's all-host conformance. For the AD-33 route and idempotency catalog, Story 5.12 owns declarations, schema, codec and declared-target parity for Stories 2.14 and 2.15, subject to their remaining gates. Story 5.13 owns runtime enforcement, exhaustive runtime parity and activation. Story 5.14 owns the NFR1 authenticated fallback and protection of Dapr framework routes under AD-16. On 2026-11-20 the tracker records 5.11 and 5.15 (isolating tenant and global Admin storage indexes) as `backlog`. [October routing](sprint-change-proposal-2026-10-07-architecture-routing.md) · [Sprint tracker](../implementation-artifacts/sprint-status.yaml)
 **Cross-cutting coverage:** NFR1-NFR4, NFR16-NFR17
 **Implementation notes:** Land Phase 0 safe fixes before any dependent surface regardless of epic numbering. Treat application authorization, AppHost topology, DAPR YAML, scopes, ACLs, and denial evidence as one aligned security posture.
 
@@ -379,7 +435,7 @@ Platform users can operate growing event streams with bounded snapshot/projectio
 Operators can inspect delivery and projection evidence, recover poison events, use an accessible consolidated Admin UI, retrieve production secrets safely, and distinguish implemented, unavailable, accepted, and confirmed operations.
 **Primary users:** Administrators, platform operators, support engineers, and incident responders
 **FRs covered:** FR34, FR35
-**Story set:** 7.1–7.22; backlog 7.21 owns NFR17-C5 crypto-shred boundaries (`sprint-change-proposal-2026-10-07.md`). Backlog 7.22 owns the AD-26 restore-posture input (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
+**Story set.** 7.1–7.23. Story 7.21 owns NFR17-C5 crypto-shred boundaries, 7.22 owns the AD-26 restore-posture input, and 7.23 owns stream identity and committed activity counts. The 2026-11-20 tracker records all three as `backlog`. [October routing](sprint-change-proposal-2026-10-07-architecture-routing.md) · [Sprint tracker](../implementation-artifacts/sprint-status.yaml)
 **Cross-cutting coverage:** NFR1-NFR2, NFR4-NFR6, NFR14-NFR17; primary implementation ownership for UX-DR1-UX-DR41
 **Implementation notes:** Retain one cohesive operator outcome, but decompose it into small journey-focused stories for delivery, recovery, Admin UI, OpenBao, deployment, integration evidence, and backlog visibility. Each story owns one operator journey or one bounded infrastructure/evidence contract that fits a single development-agent context. Never recreate an oversized multi-concern story or render deferred work as functional.
 
@@ -486,7 +542,7 @@ As a domain author,
 I want domain query handlers discovered and invoked with trustworthy response provenance,
 So that consumers receive results through the correct route without mistaking handler-computed data for projection-backed evidence.
 
-**Requirements coverage:** Primary FR4; supporting FR36, NFR8, and NFR16; supports UX-DR20, UX-DR21, UX-DR25, UX-DR26, and UX-DR31 at the platform-contract boundary.
+**Requirements coverage:** Primary FR4-C1 through FR4-C4 for discovery, routing, metadata propagation and authoritative response classification. Supports FR4-C6, FR36, NFR8 and NFR16; supports UX-DR20, UX-DR21, UX-DR25, UX-DR26, and UX-DR31 at the platform-contract boundary.
 
 **Architecture constraints:** AD-2, AD-3, AD-12, AD-14, and AD-15.
 
@@ -1088,7 +1144,7 @@ As a projection and query consumer,
 I want a complete, provenance-safe projection lifecycle contract,
 So that operational states are not collapsed into a stale Boolean or inferred from an ETag.
 
-**Requirements coverage:** Supports FR4, FR36, NFR8, NFR15, UX-DR20, UX-DR21, UX-DR25, UX-DR26, and UX-DR31.
+**Requirements coverage:** Primary FR4-C5 for lifecycle representation and transport. Supports FR4-C2 and FR4-C6 with route-specific lifecycle checks, as well as FR36, NFR8, NFR15, UX-DR20, UX-DR21, UX-DR25, UX-DR26, and UX-DR31.
 
 **Architecture constraints:** AD-8, AD-12, AD-14, and AD-15; lifecycle is explicit evidence transported only with authoritative projection provenance.
 
@@ -1464,7 +1520,7 @@ As an external API host developer,
 I want a Roslyn generator to emit typed REST controllers from domain contracts,
 So that external applications get OpenAPI-visible endpoints without hand-written per-message controllers.
 
-**Requirements coverage:** Primary ownership of FR12's generator discovery, controller-emission, gateway-delegation, and query-metadata-header slice; supports UX-DR42 and the shared query-evidence presentation boundary. Does not own FR12's command-status `Location` clause, which is Story 2.9.
+**Requirements coverage:** Primary ownership of FR12's generator discovery, controller-emission, gateway-delegation, and query-metadata-header slice; supports UX-DR42 and the shared query-evidence presentation boundary. Story 2.9 supplies the historical absolute-or-absent link behavior. Story 2.15 owns the current status-link identity requirements, FR12-C3 and FR12-C4.
 
 **Architecture constraints:** AD-3, AD-4, AD-14, and AD-17; emitted controllers use only the gateway client and support-safe HTTP contracts.
 
@@ -1520,7 +1576,7 @@ So that I can see the intended integration pattern without coupling it to the in
 
 **Dependencies:** Stories 2.1 and 2.2.
 
-**Historical reconciliation:** Retained as Story 2.3 and recorded as done with deliberate follow-up-review acceptance. Generated status-location and outbound DAPR header ownership remain Stories 2.9 and 2.10; the Tier-1 proof does not claim a live Aspire run occurred.
+**Historical reconciliation:** Retained as Story 2.3 and recorded as done with deliberate follow-up-review acceptance. Story 2.9 supplied the absolute-or-absent link behavior, and Story 2.10 supplied the outbound DAPR header policy. Story 2.15 owns the current status-link identity requirements. The Tier-1 proof covered no live Aspire run.
 
 **Acceptance Criteria:**
 
@@ -1711,7 +1767,7 @@ As an EventStore platform maintainer,
 I want configured domain bindings and the live proof harness to reflect the domains actually hosted,
 So that runtime selection can rely on valid handler-routing and provenance evidence without prematurely migrating a consumer.
 
-**Requirements coverage:** Supports FR4 and FR15; supporting NFR12 and NFR16.
+**Requirements coverage:** Supports FR4-C2, FR4-C3 and FR4-C5 through persisted handler-route and provenance checks. Also supports FR15, NFR12 and NFR16.
 
 **Architecture constraints:** AD-2, AD-12, AD-14, and AD-15; operational metadata remains atomic and fail-closed, and authoritative query provenance must be proved through the persisted production path.
 
@@ -1803,7 +1859,7 @@ As an external API consumer,
 I want a generated command's `202 Accepted` response to point to a status resource I can actually reach—or to omit the link,
 So that I never poll a dangling route or use the external host as the wrong authority.
 
-**Requirements coverage:** Primary ownership of FR12's accepted-command `Location` clause – the absolute, gateway-authoritative command-status URI and its fail-closed omission; supports FR27 without claiming its re-keying scope, NFR13, UX-DR26, and UX-DR42. Does not own FR12's generator discovery/emission slice, which is Story 2.2.
+**Requirements coverage:** Historical supporting evidence for FR12-C3 and FR12-C4 covers the absolute gateway-authoritative status link and its omission when unavailable. Story 2.15 owns current identity selection. Story 2.9 also supports FR27, NFR13, UX-DR26 and UX-DR42. Story 2.2 owns generator discovery and emission.
 
 **Architecture constraints:** AD-3, AD-4, AD-12, and AD-17; generated status locations are absolute, runtime-resolved, gateway-authoritative, and fail-closed.
 
@@ -1900,7 +1956,7 @@ As an external API and Tenants UI consumer,
 I want route provenance preserved and classified safely across generated REST and interactive workflows,
 So that opaque validators or handler-computed responses are never presented as projection-backed lifecycle evidence.
 
-**Requirements coverage:** Primary ownership of FR15's Tenants query-provenance consumption slice; supporting FR12, FR4, FR34, NFR8, NFR14–NFR16, UX-DR20, UX-DR21, UX-DR25–UX-DR27, UX-DR38, and UX-DR40. FR12's two primary slices stay with Stories 2.2 and 2.9.
+**Requirements coverage:** Primary FR4-C6 and the FR15 Tenants query-provenance consumption slice. Supplies generated REST and Tenants consumer evidence for FR4-C3, FR4-C4 and FR4-C5. Supports FR12, FR34, NFR8, NFR14–NFR16, UX-DR20, UX-DR21, UX-DR25–UX-DR27, UX-DR38, and UX-DR40. The generated status-identity clauses remain with Story 2.15.
 
 **Architecture constraints:** AD-3, AD-4, AD-12, AD-14, and AD-15; this is consumer-only scope and never infers lifecycle from ETag, HTTP success, payload fields, or SignalR.
 
@@ -2064,7 +2120,7 @@ So that mixed-case, missing, conflicting, or reserved tenants can never cross a 
 
 **Architecture constraints:** AD-27 (`Contracts` owns the canonicalizer and grammar), AD-10, AD-28, and AD-11 (NFR12 classification of the `system` migration).
 
-**Dependencies:** Story 2.12; accepted Story 5.12 declaration/schema/codec delivery for the cataloged platform-operation scope, subject to its package/validation delivery gate; a Story 9.1 authorization record for gate G-TENANT. Story 5.13 owns runtime authority, exhaustive runtime parity and activation; consuming accepted declarations does not require that activation. Owner-approved migration/inventory, NFR12 compatibility and assurance prerequisites remain open, so this amendment does not automatically unblock Story 2.14. Tenants-host changes land in the Tenants repository under its owner. Boundary with Story 5.10: Story 5.10 keeps the guard against provisioning `system` as a managed tenant; this story owns request-boundary rejection, the distinct platform-operation scope, and the migration of existing `system` usage. Boundary with Story 5.2: Story 5.2 keeps Admin endpoint authorization and tenant-filter behavior; this story replaces only the tenant comparison with the shared canonicalizer (owner option 4b).
+**Dependencies:** Story 2.12; accepted Story 5.12 declaration/schema/codec delivery for the cataloged platform-operation scope, subject to its package/validation delivery gate; the owner’s scoped authorization for G-TENANT in the owning spec under AD-12. Story 5.13 owns runtime authority, exhaustive runtime parity and activation; consuming accepted declarations does not require that activation. Owner-approved migration/inventory, NFR12 compatibility and assurance prerequisites remain open, so this amendment does not automatically unblock Story 2.14. Tenants-host changes land in the Tenants repository under its owner. Boundary with Story 5.10: Story 5.10 keeps the guard against provisioning `system` as a managed tenant; this story owns request-boundary rejection, the distinct platform-operation scope, and the migration of existing `system` usage. Boundary with Story 5.2: Story 5.2 keeps Admin endpoint authorization and tenant-filter behavior; this story replaces only the tenant comparison with the shared canonicalizer (owner option 4b).
 
 **Acceptance Criteria:**
 
@@ -2093,19 +2149,19 @@ So that mixed-case, missing, conflicting, or reserved tenants can never cross a 
 **Then** mixed-case positives and every fail-closed negative above pass in each
 **And** approval uses the G-HIGH-RISK Assurance Control at its computed level.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the approved corrective successor for OR20. Scope extended 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 4) to the gateway `ClaimsTenantValidator`, Admin Server's tenant checks (owner option 4b), and the migration of existing `system` usage.
+**Current reconciliation (2026-11-20).** The spec and sprint tracker record Story 2.14 as in progress. G-TENANT still blocks closure. The October 7 proposal assigned OR20 to this story. Scope extended 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 4) to the gateway `ClaimsTenantValidator`, Admin Server's tenant checks (owner option 4b), and the migration of existing `system` usage.
 
 ### Story 2.15: MessageId-Only Command-Status Identity
 
 As an API consumer,
-I want command status to be selected only by a `MessageId` valid under my endpoint's declared contract version,
-So that a correlation identifier can never address a status resource.
+I want a generated command response to link to status only with a `MessageId` valid under my endpoint's declared contract version,
+So that the generator never builds a status link from a correlation identifier.
 
 **Requirements coverage:** Primary FR12-C3, FR12-C4, and OR21; gate G-STATUS-ID. Supporting: Story 2.9, which remains `done` for the absolute-or-absent `Location` behavior while its `MessageId ?? CorrelationId` fallback is superseded.
 
-**Architecture constraints:** AD-17 and AD-32 (correlation is never status identity).
+**Architecture constraints:** AD-17 and AD-32 govern the generated status link. The November 18 decision leaves the gateway GET's bounded correlation lookup to a separate consumer-compatibility story under OR21.
 
-**Dependencies:** Accepted Story 5.12 declaration/schema/codec delivery, subject to its package/validation delivery gate; a Story 9.1 authorization record for gate G-STATUS-ID. Each contract's `Contracts` declaration is the sole source of its MessageId version, and the manifest this story validates is derived from those declarations and fails on drift. Story 5.13 owns runtime authority, exhaustive runtime parity and activation; declaration consumption does not require that activation and does not waive NFR12 compatibility, assurance or this story's other gates. No automatic unblocking follows from the 2026-10-27 amendment.
+**Dependencies:** Accepted Story 5.12 declaration/schema/codec delivery, subject to its package/validation delivery gate; the owner’s scoped authorization for G-STATUS-ID recorded in the owning spec under AD-12. Each contract's `Contracts` declaration is the sole source of its MessageId version, and the manifest this story validates is derived from those declarations and fails on drift. Story 5.13 owns runtime authority, exhaustive runtime parity and activation; declaration consumption does not require that activation and does not waive NFR12 compatibility, assurance or this story's other gates. No automatic unblocking follows from the 2026-10-27 amendment.
 
 **Execution clarification (approved 2026-11-18):** The owner's `/bmad-build 2.15` request is the G-STATUS-ID authorization, recorded in `spec-2-15-messageid-only-command-status-identity.md`; deleted Story 9.1 tooling is not a prerequisite. The drift-checked `deploy/dapr/eventstore-routing-catalog.json` is the version manifest derived from the `Contracts` declarations; no second manifest is created.
 
@@ -2123,10 +2179,11 @@ So that a correlation identifier can never address a status resource.
 
 **Given** compiled and runtime tests for both grammars
 **When** they run in the CI lane this story binds
-**Then** undeclared, ambiguous, or caller-selected versions; missing, blank, invalid-for-version, or non-canonical v2 `MessageId` values; and a `CorrelationId` that differs from or appears without `MessageId` each omit `Location` or reject safely
+**Then** an undeclared, ambiguous or caller-selected version, or a missing, blank or invalid-for-version `MessageId` (including noncanonical v2), omits `Location` or fails safely, even if a `CorrelationId` is present
+**And** with a configured valid gateway status base and a version-valid `MessageId`, the link uses that `MessageId` even when `CorrelationId` differs
 **And** explicit v1 compatibility is preserved, the manifest records an NFR12 compatibility classification for every changed public surface, and approval uses the G-HIGH-RISK Assurance Control at its computed level.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the approved corrective successor for OR21.
+**Current reconciliation (2026-11-20).** The tracker records `review` and the spec records `in-review`. G-STATUS-ID still requires assurance for the generated-link contract. OR21 tracks the separate gateway GET compatibility decision.
 
 ### Story 2.16: Bounded SignalR Detail Metadata
 
@@ -3179,7 +3236,7 @@ So that no release can break consumers silently.
 
 **Architecture constraints:** AD-11.
 
-**Dependencies:** A Story 9.1 authorization record for gate G-COMPAT.
+**Dependencies:** The gate owner authorizes the scope of corrective work in the Story 3.18 spec under AD-12 and PRD §0.
 
 **Acceptance Criteria:**
 
@@ -3203,7 +3260,7 @@ So that no release can break consumers silently.
 **Then** exact affected signatures, returned metadata, endpoint meaning, failure behavior, lookup-source values and serialized payloads are inventoried; existing general SemVer/deprecation/removal rules govern every incompatible change
 **And** no provider-dependent compatibility shim, fabricated legacy metadata, silent endpoint reinterpretation, forced package/catalog update or broadened actor-state grant is accepted as migration; unresolved compatibility keeps the affected implementation/release blocked.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-COMPAT owner required by OR22.
+**Current reconciliation (2026-11-20):** Story 3.18 remains backlog. Release preparation already runs the assembly API comparison against signed 4.2.0 baselines for all 14 manifest packages, resolving an isolated package-only reference context for each. Extend that lane to cover the remaining source, generated and wire surfaces, representative consumer builds and runtime behavior, migration rules, and exact-candidate assurance required by G-COMPAT.
 
 ### Story 3.19: Publication Authority Record And Canonical Production Profile
 
@@ -3256,12 +3313,12 @@ So that no consumer removes local projection or query infrastructure without val
 
 **Architecture constraints:** AD-22 and AD-26.
 
-**Dependencies:** Story 3.19; a Story 9.1 authorization record for gate G-CONSUMER.
+**Dependencies:** Story 3.19 supplies the publication and production-promotion authority. The gate owner records any scoped corrective authorization in the Story 3.20 spec under AD-12 and PRD §0.
 
 **Acceptance Criteria:**
 
-**Given** `_bmad-output/implementation-artifacts/evidence/consumer-removal-manifest.json`
-**When** `python3 tools/validate-consumer-removal-authority.py _bmad-output/implementation-artifacts/evidence/consumer-removal-manifest.json` runs
+**Given** the machine-readable consumer-removal manifest generated for the bound source and removal subjects in CI
+**When** CI runs `python3 tools/validate-consumer-removal-authority.py <manifest>` and Story 3.20 records the exact command, source and subject identities, manifest digest, pass/fail counts, result and CI run link in its Verification section
 **Then** the manifest enumerates every root-declared or Phase-4-referenced consumer, whether or not removal is proposed
 **And** each entry binds repository and commit, the canonical production-profile digest, mode matrix, removal-subject digest, role-registry identity, consumer-owner receipt, decision, issuance, validity, and invalidation.
 
@@ -4290,7 +4347,7 @@ local-design: docs/architecture/oq8/oq8-idempotency-design.md
 **Then** only the verified availability gap closes, conditional on a passing dedicated CI run on delivered source
 **And** runtime conformance, G-BASELINE, G-HIGH-RISK and other gates retain their dispositions; no readiness, release, deployment, consumer migration or Folders closure authority is granted.
 
-**Current reconciliation (2026-11-10):** Story 4.17 implements the approved immutable-copy path; availability is locally verified, with CI confirmation pending a separately authorized push. The spec records actual commands and counts. Completion of this bounded import does not advance Epic 4 or any broader authority gate.
+**Current reconciliation (2026-11-20).** The dedicated fixture and live evaluation jobs passed for the committed revision identified in PRD §1.1. The manual assured-decision job was skipped. Each changed candidate needs fresh hosted checks. Runtime conformance, assurance and Epic 4 completion remain open.
 
 <!-- Epic 4 story set confirmed complete for planning. -->
 
@@ -4907,14 +4964,14 @@ So that no host validates tokens with a weaker, hand-rolled subset.
 
 **Architecture constraints:** AD-10 and AD-28.
 
-**Dependencies:** Story 5.3; a Story 9.1 authorization record for gate G-AUTH-HOSTS. Tenants changes land in the Tenants repository under its owner.
+**Dependencies.** Story 5.3 and owner authorization for corrective work under G-AUTH-HOSTS, recorded in the owning spec under AD-12. The Tenants owner controls changes in the Tenants repository.
 
 **Acceptance Criteria:**
 
 **Given** one versioned JWT contract with a fingerprint
 **When** EventStore, Admin, Sample, Tenants, and generated-host fixtures start
 **Then** each consumes that contract and reports its fingerprint
-**And** Tenants no longer uses a hand-rolled validation subset.
+**And** the Tenants API uses the shared contract in every supported mode and supplies a fingerprint and negative-test results for each mode.
 
 **Given** the host inventory
 **When** the conformance test runs
@@ -4926,7 +4983,7 @@ So that no host validates tokens with a weaker, hand-rolled subset.
 **Then** Production, break-glass, algorithm, issuer, audience, signature, lifetime, role, and tenant violations are rejected
 **And** the story binds the exact release evidence, and approval uses the G-HIGH-RISK Assurance Control at its computed level.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-AUTH-HOSTS owner required by OR23.
+**Current reconciliation (2026-11-20).** Story 5.11 remains in backlog. The Tenants Production API uses the shared validation and configuration methods. Its non-Production path still binds bearer options locally. PRD G-AUTH-HOSTS identifies the reviewed Tenants revision and the all-host fingerprint, discovery, release and approval evidence still due.
 
 ### Story 5.12: Route And Idempotency Catalog Schema, Codec, And Envelope
 
@@ -5600,7 +5657,7 @@ Operators can inspect delivery and projection evidence, recover poison events, u
 **Independent delivery tracks:**
 
 - **7A Delivery semantics:** Story 7.1.
-- **7B Admin trust and UX:** Stories 7.2–7.5, 7.14, 7.19, and 7.20.
+- **7B Admin trust and UX:** Stories 7.2–7.5, 7.14, 7.19, 7.20 and 7.23.
 - **7C Production operations:** Stories 7.6–7.9.
 - **7D Test evidence:** Stories 7.10–7.13.
 - **7E Planning backlog:** Stories 7.15–7.18.
@@ -5801,7 +5858,7 @@ So that backup, restore, import, compaction, and other deferred capabilities can
 
 **Requirements coverage:** Primary ownership of FR34's deferred-Admin-operation slice, NFR15, and UX-DR22. Supporting NFR1–NFR2 ensure capability responses never bypass authentication or tenant scope.
 
-**Architecture constraints:** AD-10 and AD-21. Authorization remains fail closed, `Admin.UI` remains the single eventual presentation host, and an unavailable capability is hidden, disabled/read-only, or returns `501`—never modeled as a successful or accepted mutation.
+**Architecture constraints:** AD-10 and AD-21. Authorization remains fail closed, `Admin.UI` remains the single eventual presentation host, and restore/import actions stay hidden, and backup/compaction routes show only read-only tracking. A retained deferred endpoint returns the typed `501` only after authentication, tenant authorization and bounded request validation. Denials and invalid requests keep their ordinary safe responses.
 
 **UX coverage:** Primary UX-DR22. Every visible deferred affordance uses the exact message **“Unavailable in this release.”** plus tracking context only; fake forms, submit buttons, progress, job creation, optimistic toasts, or synthetic completion evidence are forbidden.
 
@@ -5853,7 +5910,7 @@ So that backup, restore, import, compaction, and other deferred capabilities can
 
 **Given** Story 7.4 completion is requested
 **When** automated route/control inventory scans and focused Admin.Server/Admin.UI/Admin.Cli tests exercise every matrix row, legacy deep link, direct endpoint, role/tenant case, malformed input, and response category
-**Then** all unavailable surfaces are hidden or honest/read-only, every retained endpoint returns the approved `501`, and downstream mutation/audit/provider calls remain zero
+**Then** restore/import actions are hidden and backup/compaction history is read-only. On retained deferred endpoints, boundary failures keep their ordinary safe responses and only a request that passes authentication, tenant authorization and validation receives the approved typed `501`. Downstream service, audit and provider calls remain zero
 **And** fake forms, deferred-submit controls, synthetic operation identifiers, optimistic completion copy, and noncanonical messages are absent from source/rendered output while affected Release builds pass.
 
 ### Story 7.5: Shared Typed Admin Client
@@ -5925,7 +5982,7 @@ As a production operator,
 I want operational and application secrets resolved through an OpenBao-backed DAPR component,
 So that applications remain provider-independent and Kubernetes Secrets are not the system of record.
 
-**Requirements coverage:** Primary ownership of FR34's OpenBao-backed production secret-store, DAPR Secrets API, and bootstrap-only Kubernetes Secret slice; primary NFR4 committed-secret exclusion and supporting NFR17 operational hardening and NFR16 real-provider evidence.
+**Requirements coverage:** Primary ownership of FR34's OpenBao-backed production secret-store, DAPR Secrets API, and bootstrap-only Kubernetes Secret slice; primary NFR4 for committed-secret exclusion and NFR17-C1 for operational secrets. Supports NFR16 with real-provider evidence.
 
 **Architecture constraints:** AD-9, AD-10, AD-12, and AD-24. The deployment overlay owns one canonical `openbao` component and value-free secret contract; applications use DAPR only; configuration, scopes, policies, readiness, rotation, and tests change as one coherent slice.
 
@@ -6012,7 +6069,7 @@ As an operator,
 I want explicit readiness and DAPR app-health behavior,
 So that orchestration removes unhealthy traffic without weakening endpoint authorization.
 
-**Requirements coverage:** Primary ownership of FR34's readiness and DAPR app-health slice; primary NFR17 probe/app-health operational hardening and supporting NFR1 fail-closed authorization and NFR16 real-host evidence.
+**Requirements coverage:** Primary ownership of FR34's readiness and DAPR app-health slice; primary NFR17-C2 for probe and app-health hardening and supporting NFR1 fail-closed authorization and NFR16 real-host evidence.
 
 **Architecture constraints:** AD-9, AD-10, AD-12, and AD-16. AppHost, sidecar options, deployment annotations, host endpoints, and tests form one topology contract; `/health`, `/alive`, and `/ready` are the only anonymous endpoints.
 
@@ -6070,7 +6127,7 @@ As an operator,
 I want DAPR resiliency policies to cover the exact application and component targets used at runtime,
 So that invocation and infrastructure failures have bounded, documented behavior.
 
-**Requirements coverage:** Primary ownership of FR34's DAPR resiliency deployment slice; supporting NFR7 recovery safety, NFR16 runtime evidence, and NFR17 operational hardening.
+**Requirements coverage:** Primary FR34-C8 and NFR17-C3 for the complete DAPR resiliency policy set. Supports NFR7 recovery safety and NFR16 runtime evidence.
 
 **Architecture constraints:** AD-6, AD-9, and AD-12. AppHost/runtime app IDs and loaded resiliency targets remain one topology contract, retry safety depends on stable identities and recovery semantics, and YAML shape alone is not execution evidence.
 
@@ -6133,7 +6190,7 @@ As a deployment operator,
 I want production workloads to reference immutable image identities,
 So that every deployed EventStore version can be traced to one approved build and rolled back without tag drift.
 
-**Requirements coverage:** Primary ownership of FR34's immutable production-promotion slice; supporting NFR11 manifest-governed release inventory, NFR16 provenance evidence, and NFR17 deployment hardening.
+**Requirements coverage:** Primary FR34-C9 and NFR17-C4 for immutable image identity. Supports NFR11 release inventory and NFR16 provenance evidence.
 
 **Architecture constraints:** AD-9, AD-11, AD-12, and AD-22. Production topology and image identity change together, the canonical validated OCI index digest—not a tag—is deployment authority, and every EventStore lineage edge derives from retained release evidence.
 
@@ -6201,7 +6258,7 @@ As a quality maintainer,
 I want every integration suite assigned to a runnable CI lane,
 So that high-risk behavior is not left as an undocumented local-only promise.
 
-**Requirements coverage:** Primary ownership of FR34's meaningful IntegrationTests CI-coverage slice and NFR10's deterministic-versus-live lane separation; supporting NFR16 high-risk evidence visibility and NFR17 pinned infrastructure.
+**Requirements coverage:** Primary ownership of FR34-C10 for IntegrationTests on every push to `main` with persisted-state proof and NFR10's deterministic-versus-live lane separation; supporting NFR16 high-risk evidence visibility and NFR17 pinned infrastructure.
 
 **Architecture constraints:** AD-9 and AD-12. Integration topology matches AppHost/deployment contracts, release-gate semantics remain distinct from live infrastructure signal, and high-risk outcomes retain inspectable artifacts rather than only a workflow conclusion.
 
@@ -6264,7 +6321,7 @@ As an integration-test author,
 I want shared read-back helpers and mandatory persisted end-state evidence,
 So that success cannot be inferred only from HTTP status, polling text, or mock calls.
 
-**Requirements coverage:** Primary ownership of NFR16's shared persisted-evidence/readback slice; supporting FR34 IntegrationTests recovery and NFR7 no-silent-loss verification.
+**Requirements coverage:** Primary ownership of NFR16's shared persisted-evidence/readback slice; supports FR34-C10 with persisted readback and NFR7 with no-silent-loss verification.
 
 **Architecture constraints:** AD-1, AD-3, AD-6, AD-7, AD-8, AD-12 and PRD §8.4. Helpers preserve stable identity and projection scope, distinguish freshness signals from durable truth, and expose evidence for assertions without replacing the production path or hiding provider assumptions.
 
@@ -6489,7 +6546,7 @@ As an EventStore operator,
 I want the existing Admin UI to become one canonical dashboard shell,
 So that operational navigation and legacy deep links remain coherent without creating another host.
 
-**Requirements coverage:** Primary ownership of FR34's Admin shell/navigation slice, NFR14, and UX-DR1–UX-DR5 plus UX-DR23; supporting FR13's typed-client UI boundary.
+**Requirements coverage:** Primary NFR14 and UX-DR1–UX-DR5 plus UX-DR23. Owns the canonical shell, route inventory and navigation evidence for FR34-C11. Supports FR13’s typed-client UI boundary.
 
 **Architecture constraints:** AD-11 and AD-21. `Admin.UI` remains the single UI host, FrontComposer dependencies use one catalog-governed family version in both source and package modes, and the UI remains a typed-client consumer with no per-message MVC command/query controllers.
 
@@ -6776,7 +6833,7 @@ As an EventStore operator,
 I want every dashboard flow to use typed clients and authoritative evidence states,
 So that acceptance, freshness signals, and unavailable operations are never presented as completed work.
 
-**Requirements coverage:** Primary ownership of FR34's integrated Admin operator-experience slice, NFR15, and UX-DR10–UX-DR21, UX-DR24–UX-DR31, and UX-DR38–UX-DR41; supporting FR13/FR15 typed-client boundaries, NFR1–NFR2 security, and NFR16 high-risk evidence.
+**Requirements coverage:** Primary NFR15 and UX-DR10–UX-DR21, UX-DR24–UX-DR31 and UX-DR38–UX-DR41. Owns typed-client and evidence-state integration for FR34-C11; supporting FR13/FR15 typed-client boundaries, NFR1–NFR2 security, and NFR16 high-risk evidence.
 
 **Architecture constraints:** AD-3, AD-8, AD-10, AD-12, AD-14, AD-15, AD-20, and AD-21. The UI is an external typed-client adapter, notifications are freshness signals only, lifecycle claims require route-bound provenance, rebuilds preserve the last complete model, and mutation success requires authoritative evidence.
 
@@ -6874,7 +6931,7 @@ As an EventStore operator,
 I want the canonical dashboard usable across accessibility, locale, and supported viewport conditions,
 So that operational evidence remains understandable without a parallel UI implementation.
 
-**Requirements coverage:** Primary ownership of FR34's cross-cutting Admin conformance slice and UX-DR6–UX-DR9 plus UX-DR32–UX-DR37; supporting NFR15 operational honesty and NFR16 testable high-risk evidence.
+**Requirements coverage:** Primary FR34-C11 and UX-DR6–UX-DR9 plus UX-DR32–UX-DR37. At clause closure, bind Story 7.14’s shell and route evidence, Story 7.19’s operator journeys and evidence states, and Story 7.20’s governance, accessibility, localization and responsive conformance results. Supports NFR15 operational honesty and NFR16 high-risk evidence.
 
 **Architecture constraints:** AD-12 and AD-21. Conformance applies to the one existing Admin.UI host and closed canonical route/component inventories, uses FrontComposer/Fluent UI V5 rather than a local design system, and preserves authoritative evidence semantics under assistive technology, localization, and layout changes.
 
@@ -7984,6 +8041,8 @@ So that no high-risk result overstates the assurance behind it.
 
 **Bounded G-OQ8 consumer adoption (2026-11-15):** `spec-9-2-mandatory-oq8-gate-consumer.md` adds `tools/validate-phase-4-gate-decision.py` to both actual manual entry points: OQ8 `assured-decision` and dedicated `high-risk-gate-pass` consume mode. Only G-OQ8 governing-design availability can PASS, after fresh shared authenticated consumption, genuine validator/rejection-suite reruns and approval checks. Consumer module/CLI and the closed decision contract are sealed control inputs. Saved decisions are invocation reports and cannot replace platform verification. Ordinary push/PR/manual availability diagnostics retain their meaning and approval-free behavior. Local synthetic approval proves behavior only; delivery CI and live assured evidence are not claimed. Other business adapters, story completion, readiness, Stories 3.19/3.20 consumers and G-RUNTIME-PARITY keep Story 9.2 `in-progress`. Verification commands/results are recorded in the consumer spec; no readiness, release, deployment, migration or removal permission follows.
 
+**Completion control (2026-11-20):** The shared [completion writer](../../tools/phase_4_story_completion.py) derives high-risk NFR coverage and consumes authenticated approval and sealed CI evidence before a guarded write. Its [Story 5.3 adapter](../../tools/phase_4_story_5_3.py) covers the NFR3/NFR4 slice for that exact story. Other high-risk stories require their own business adapters, evidence and authenticated decisions. Story 9.2 remains in progress.
+
 **Acceptance Criteria:**
 
 **Given** `_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json`
@@ -8129,12 +8188,12 @@ So that MVP completion and readiness are computed rather than asserted.
 
 **Architecture constraints:** None new.
 
-**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-MVP-COVERAGE; Story 9.4 for the clause inventory; Story 9.2 for approval at the Assurance Control level.
+**Dependencies:** Story 9.4 supplies the clause inventory. Story 9.2 supplies the Assurance Control. The gate owner records any scoped corrective authorization in the Story 9.5 spec under AD-12 and PRD §0.
 
 **Acceptance Criteria:**
 
-**Given** `_bmad-output/implementation-artifacts/evidence/phase-4-mvp-coverage.json`
-**When** `python3 tools/validate-phase-4-mvp-coverage.py _bmad-output/implementation-artifacts/evidence/phase-4-mvp-coverage.json` runs
+**Given** the machine-readable MVP coverage manifest generated for the baseline in CI
+**When** CI runs `python3 tools/validate-phase-4-mvp-coverage.py <manifest>` and Story 9.5 records the exact command, source and subject identities, manifest digest, pass/fail counts, result and CI run link in its Verification section
 **Then** the manifest enumerates FR1-FR36, NFR1-NFR18, every stable §7.1 clause, and the `interactive_ui_hosts`, `nfr1_surfaces`, and `high_tier_evidence_cases` inventories
 **And** each entry binds its primary owner, lifecycle state, exact evidence digest, validator command and result, approval, and the mandatory gate that blocks it when not passed.
 
@@ -8142,6 +8201,11 @@ So that MVP completion and readiness are computed rather than asserted.
 **When** it evaluates the manifest
 **Then** it rejects omissions, duplicate ownership, `done` unsupported by passing evidence, stale identities, unapproved or failed evidence, incomplete metric inventories, and `N/A` for any MVP ID
 **And** it rejects any FR37 or NFR19 entry counted toward the MVP.
+
+**Given** the complete `nfr1_surfaces` inventory
+**When** the validator computes SM10
+**Then** it reports protected MVP production surfaces with passing bound denial tests divided by all protected MVP production surfaces, counting each surface once
+**And** it verifies the metadata and support-safe response for each claimed anonymous exception, requires a scope reason for every excluded UI surface, and omits both groups from the fraction. Unclassified entries, unexpected anonymous exceptions and failing exception checks fail validation.
 
 **Given** the current baseline
 **When** the validator first runs on `main`

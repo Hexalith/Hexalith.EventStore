@@ -1,0 +1,422 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EventStore Phase 4 PRD validation</title><style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+
+table{border-collapse:collapse;width:100%;font-size:.95rem}th,td{padding:.55rem .65rem;text-align:left;border-bottom:1px solid #c6cbd1;vertical-align:top}th{background:#f3f4f6}a{color:#174d79}code,.subtitle{overflow-wrap:anywhere}li{margin:.55rem 0} .container{max-width:1050px}.synthesis p:last-child{margin-bottom:0} .table-scroll{overflow:auto} .finding p{margin:.55rem 0} .dimension-summary{margin-top:1rem} .dim-card{text-decoration:none}.dim-body p{margin:.4rem 0}.meta{font-size:.88rem;color:#475569} h2{margin-top:1.4rem} summary h2{margin-top:0} @media print {details::details-content{display:block}}</style></head><body><main class="container">
+<header class="report-header"><div class="title"><h1>EventStore Phase 4 PRD validation</h1><div class="subtitle">November 20, 2026 · working-tree review</div></div><div class="grade grade-fair">Fair</div></header>
+<div class="synthesis"><p><strong>Implementation readiness · Blocked (Reject)</strong></p><p>Prior review · 16 resolved, 3 partially resolved, 0 open. Current review · 0 critical, 6 high, 5 medium, 2 low.</p>
+<p>The PRD supports continued corrective work. The latest update fixed the deferred Admin response rules, the SM10 denominator, and the specific story assignments flagged in the prior review. Three prior findings remain partially resolved: the first readiness seal, the Production JWT exception in Story 5.3, and the evidence underlying the SM11 count.</p>
+<p>The broader review found additional discrepancies between the PRD, governing specifications, and detailed stories. An accepted command can still be described as rejected. FR7 clause ownership and the authorization needed to start Story 9.4 also depend on which document a team reads. The October 6 readiness rejection remains in force.</p>
+</div>
+<p><a href="#prior">All 19 prior findings</a> · <a href="#verification">Verification</a> · <a href="validation-report.md">Markdown report</a></p>
+<div class="dimension-summary">
+<a href="#decision-readiness" class="dim-card"><span class="dim-name">Decision-readiness</span><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></a>
+<a href="#substance-over-theater" class="dim-card"><span class="dim-name">Substance over theater</span><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></a>
+<a href="#strategic-coherence" class="dim-card"><span class="dim-name">Strategic coherence</span><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></a>
+<a href="#done-ness-clarity" class="dim-card"><span class="dim-name">Done-ness clarity</span><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></a>
+<a href="#scope-honesty" class="dim-card"><span class="dim-name">Scope honesty</span><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></a>
+<a href="#downstream-usability" class="dim-card"><span class="dim-name">Downstream usability</span><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></a>
+<a href="#shape-fit" class="dim-card"><span class="dim-name">Shape fit</span><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></a>
+</div>
+<section class="dimension" id="decision-readiness"><details><summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><p>The stop decision, the 15 business gates and the publication order are clear. The first sealed readiness evaluation still lacks a defined input set.</p>
+</div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">The first readiness seal has no defined inputs</h3></header><div class="meta">PRD §11.4 and OR1, lines 723, 743, 747 and 809</div><p>G-HIGH-RISK needs authenticated evidence for the readiness transition. G-READINESS consumes a passing G-HIGH-RISK result. The transition verifier checks prerequisites before issuing the evaluation that can later be authenticated. Starting with 15 passing business and coverage gates, the document never identifies an evaluation that can produce the first seal.</p>
+<p><strong>Correction.</strong> Define the provisional evaluation, its exact inputs, and the artifact the assurance check can authenticate. Specify how the final writer consumes all 16 results. Test that the first valid decision can complete without a prior readiness seal. <a href="../../../../../tools/phase_4_transition.py">Transition evaluator</a> · <a href="../../../../../_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json">Risk matrix</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">The architecture still prescribes a check that blocks main</h3></header><div class="meta">PRD glossary line 224; Architecture line 567; October 7 architecture-routing decision</div><p>The architecture’s active status table calls for one blocking required check on <code>main</code>. The owner-approved rule binds each seal to its guarded transition. A branch-wide blocking implementation would also prevent corrective changes from landing while the gates are red.</p>
+<p><strong>Correction.</strong> Replace the active branch-check instruction with the per-transition rule and cite the October 7 decision. <a href="../../../../../_bmad-output/planning-artifacts/sprint-change-proposal-2026-10-07-architecture-routing.md">October 7 owner decision</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-low">Low</span><h3 class="finding-title">The architecture still lists all OQ8 hosted evidence as pending</h3></header><div class="meta">Architecture AD-25 at line 338 and implementation-status table at line 584; PRD §1.1</div><p>Two committed revisions have successful hosted fixtures and live availability checks. The architecture’s blanket pending status obscures which committed inputs were checked and which candidate still needs a new run.</p>
+<p><strong>Correction.</strong> Point the current architecture status to the revision-specific evidence in §1.1 and keep the separate assured-decision requirement explicit. <a href="../../../../../_bmad-output/planning-artifacts/architecture.md">Architecture handoff</a> · <a href="https://github.com/Hexalith/Hexalith.EventStore/actions/runs/44775644088">Committed PRD run</a></p>
+</article>
+</div></details></section>
+<section class="dimension" id="substance-over-theater"><details><summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">Strong</span></summary><div class="dim-body"><p>The PRD specifies observable outcomes, including subscriber effect counts, deferred Admin responses and the negative tests for protected surfaces.</p>
+</div><div class="findings-list">
+</div></details></section>
+<section class="dimension" id="strategic-coherence"><details><summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><p>Adoption and operational risk have distinct measures. The loss-prevention numerator still requires evidence for each credited class.</p>
+</div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">SM11 credits staged-state recovery without the required production-path evidence</h3></header><div class="meta">PRD NFR7 at line 405 and SM11 at line 584; Story 5.1 specification, line 431</div><p>SM11 credits class (a) toward three of five prevented loss classes. Story 5.1 identifies a deterministic in-memory state manager as its completion oracle. The cited result establishes a guard and its behavior in that test. It does not demonstrate prevention through the process, sidecar and durable component that NFR7 requires for current credit.</p>
+<p><strong>Correction.</strong> Keep the historical Story 5.1 result. For every class counted as currently qualified, bind the qualifying run, source revision, operating profile and result. Report the qualified count as unverified until those records exist. <a href="../../../../../_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md">Story 5.1 evidence</a></p>
+</article>
+</div></details></section>
+<section class="dimension" id="done-ness-clarity"><details><summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><p>Stable clauses define most outcomes precisely. Production JWT startup, accepted command responses and tenant-free requests still receive inconsistent instructions across handoffs.</p>
+</div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">Story 5.3 permits a Production configuration the PRD rejects</h3></header><div class="meta">PRD §6.5 and NFR3; Epic Story 5.3, lines 4476 and 4485–4493</div><p>The story calls its own acceptance criteria authoritative and permits the symmetric-key override “outside Development.” Production falls within that wording. The ratified NFR, frozen Story 5.3 specification and shared JWT implementation all require Production startup to fail.</p>
+<p><strong>Correction.</strong> Give Production its own unconditional startup-refusal case. Exercise the override in an explicitly permitted non-Production environment, with its normal issuer, audience, signature and lifetime checks. <a href="../../../../../_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md">Frozen JWT specification</a> · <a href="../../../../../src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtBearerAuthenticationContract.cs">Shared JWT validator</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">An accepted command can be reported to the caller as rejected</h3></header><div class="meta">PRD UJ2, FR12 and FR12-C3; Epic Story 2.15 at line 2182</div><p>The PRD permits safe rejection after command acceptance when the response lacks a usable MessageId. The frozen Story 2.15 contract preserves HTTP 202 and <code>Retry-After: 1</code> and omits <code>Location</code>. The epic also allows a caller’s version claim to suppress the link even when the declared version and the returned ID yield a valid URI. Either outcome can mislead a caller about a successful submission.</p>
+<p><strong>Correction.</strong> For accepted commands, require 202 and preserve Retry-After. Omit the link for a missing or invalid identity or unusable declaration. Ignore caller version claims and use the endpoint’s declared grammar for valid IDs. Keep submission failures as a separate case. <a href="../../../../../_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md">Frozen status-link contract</a> · <a href="../../../../../tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedControllerErrorSemanticsTests.StatusIdentity.cs">Generated response tests</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">The tenant instruction omits cataloged platform operations</h3></header><div class="meta">PRD UJ2 at line 193 and §8.2 at line 494; NFR2, FR12-C2 and Story 2.14</div><p>UJ2 and §8.2 each require one explicit authorized tenant for generated requests. The approved platform-operation case authorizes an operation and credential without a tenant. A conforming global request therefore cannot satisfy the general instruction literally.</p>
+<p><strong>Correction.</strong> Limit the one-tenant requirement to tenant-scoped requests. Describe the authorized platform scope and its rejection of mixed scopes alongside it. <a href="../../../../../_bmad-output/implementation-artifacts/spec-2-14-canonical-tenant-boundary.md">Authorized scope cases</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">The Admin correlation-ID handoff omits an observed failing case</h3></header><div class="meta">PRD FR26-C4 at line 446 and §8.2; Epic Story 5.4, lines 4549–4552</div><p>The story calls for an incoming canonical ULID to survive the Admin host. The registered correlation middleware uses <code>Guid.TryParse</code> and generates a GUID on a miss. The epic ledger still shows the evidence as pending, but the handoff gives the owner no indication of this concrete failing case.</p>
+<p><strong>Correction.</strong> Record the observed mismatch against FR26-C4, preserve the historical story result, and assign the host-level correction and regression proof needed before clause closure. <a href="../../../../../src/Hexalith.EventStore.Admin.Server.Host/Program.cs">Registered middleware</a> · <a href="../../../../../src/Hexalith.EventStore.Admin.Server.Host/Middleware/CorrelationIdMiddleware.cs">Admin correlation handling</a></p>
+</article>
+</div></details></section>
+<section class="dimension" id="scope-honesty"><details><summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">Strong</span></summary><div class="dim-body"><p>The approved Dapr append protection, deferred gateway GET decision and post-MVP Epic 8 each have explicit scope and separate approval boundaries.</p>
+</div><div class="findings-list">
+</div></details></section>
+<section class="dimension" id="downstream-usability"><details open><summary><h2>Downstream usability</h2><span class="verdict-pill verdict-thin">Thin</span></summary><div class="dim-body"><p>The two requirement inventories match, but individual stories conflict with the ledgers on responsibility, evidence and prerequisites for mandatory work.</p>
+</div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">FR7 clause owners disagree with the detailed stories</h3></header><div class="meta">PRD §7.1, lines 436–438; Epics lines 1091, 1202, 1258 and 1314</div><p>Both ledgers assign FR7-C3/C4/C5 to Stories 1.15/1.18/1.19. The first story omits FR7, the other two declare supporting roles, and Story 1.17 claims primary FR7. A team can complete the technical work and still have two incompatible answers about who closes it.</p>
+<p><strong>Correction.</strong> Confirm the disjoint clause assignments, update each story declaration and make the Story 9.4 check compare the detailed declarations with both ledgers. <a href="../../../../../_bmad-output/planning-artifacts/epics.md">Clause ledger and story declarations</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">Mandatory corrective stories still require retired authorization tooling</h3></header><div class="meta">PRD §0 and OR28; Architecture line 561; Epic Stories 3.19, 5.13, 7.21 and 9.4</div><p>AD-12 assigns scoped corrective authorization to the owning spec. The architecture and several epic dependencies still require a Story 9.1 record. Story 9.4 even requires Story 9.1 to pass, although its validator and workflow were retired. The G-CLAUSE owner receives incompatible instructions about when work may start.</p>
+<p><strong>Correction.</strong> Point active dependencies to the scope, owner, subject and CI evidence recorded in each owning spec. Label retained Story 9.1 instructions as historical and preserve the independent assurance requirements. <a href="../../../../../_bmad-output/implementation-artifacts/spec-evidence-storage-simplification.md">Evidence policy</a> · <a href="../../../../../_bmad-output/planning-artifacts/architecture.md">Architecture handoff</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">Story 9.4 compares FR15 against a ledger with no FR15 rows</h3></header><div class="meta">PRD §7.1 and §11.1; Epics lines 327–381, 475 and 8162</div><p>The validator story asks for FR15’s completion rule to name the same slices as the stable-clause ledger. FR15’s six approved slices live in §11.1 and the epic completion rule. The closed 49-row ledger contains no FR15 clause.</p>
+<p><strong>Correction.</strong> Point the FR15 comparison to §11.1 and the six-way epic completion rule. Retain the stable-clause comparison for FR12 and FR36. <a href="../../../../../_bmad-output/planning-artifacts/epics.md">Story 9.4 and FR15 completion rule</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-low">Low</span><h3 class="finding-title">Epic 3’s overview sends an active qualification story back to backlog</h3></header><div class="meta">Epics line 404; sprint tracker line 152; Story 3.21 spec line 5</div><p>The overview describes Story 3.21 as backlog. Its tracker and parent specification both say in progress. The difference matters to the release owner coordinating the Dapr and broker qualification work.</p>
+<p><strong>Correction.</strong> Update or date the overview entry and link it to the current tracker or parent specification. <a href="../../../../../_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md">Story 3.21 qualification spec</a> · <a href="../../../../../_bmad-output/implementation-artifacts/sprint-status.yaml">Sprint tracker</a></p>
+</article>
+<article class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">The FR4 closure check omits conditional-query evidence</h3></header><div class="meta">PRD §6.1, line 271, and FR4-C3 at line 427; Epic Story 2.18</div><p>The clause tests lossless ETag propagation. A response can propagate a tag intact even when it belongs to a later revision. Story 2.18 owns the correct-revision and wrong-revision cases, but neither closure ledger names that contribution.</p>
+<p><strong>Correction.</strong> Bind Story 2.18’s stale-tag refusal and matching-tag success to FR4 closure or to a mandatory MVP manifest entry. Keep the existing primary owner. <a href="../../../../../_bmad-output/planning-artifacts/epics.md">Story 2.18 and FR4 ledger</a> · <a href="../../../../../_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-20.md">November 20 audit decision</a></p>
+</article>
+</div></details></section>
+<section class="dimension" id="shape-fit"><details><summary><h2>Shape fit</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><p>Named journeys, clause tables and a decision register suit a brownfield platform. Several active summaries need to point to the current authority.</p>
+</div><div class="findings-list">
+</div></details></section>
+<h2 id="prior">Disposition of all 19 prior findings</h2><div class="table-scroll"><table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Prior finding</th>
+<th>Disposition</th>
+<th>Evidence and boundary</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Order of the final readiness decision</td>
+<td>Partially resolved</td>
+<td>PRD §11.4 and OR1 put 16 results before G-READINESS and G-READINESS before READY. The contract still needs an input set for the first authenticated readiness evaluation.</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Production JWT override</td>
+<td>Partially resolved</td>
+<td>PRD §6.5 and NFR3 forbid symmetric mode in Production. Story 5.3 still admits an HS256 override “outside Development.” The frozen specification requires Production startup to fail.</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Deferred Admin operations</td>
+<td>Resolved</td>
+<td>FR34, NFR15, FR34-C4, §8.3 and Story 7.4 put authentication, scope and input checks before a typed 501 with no side effects. UX hides restore/import and shows backup/compaction as read-only.</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Four primary story assignments and NFR17 roles</td>
+<td>Resolved</td>
+<td>The named FR4 and FR34 clauses each have one accountable story. NFR17-C1/C3/C4 agree with §11.2 and the detailed stories. The separate FR7 discrepancies are current findings.</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>SM11 credit for duplicate effects</td>
+<td>Partially resolved</td>
+<td>SM11 removes the historical class (e) credit and keeps (c) open. Its remaining numerator still includes class (a) without binding qualifying production-path evidence. Story 5.1 records an in-memory completion oracle.</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Existing package compatibility check</td>
+<td>Resolved</td>
+<td>G-COMPAT, OR22 and Story 3.18 credit the signed 4.2.0 baseline comparison for all 14 package families. Wire, generated surface, application and release evidence remain due.</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Tenants Production authentication implementation</td>
+<td>Resolved</td>
+<td>G-AUTH-HOSTS and OR23 describe the shared Production validator and the local non-Production path at Tenants <code>3bb4b818</code>. Host inventory, fingerprints, negative tests and approvals remain due.</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Dependency version for the license decision</td>
+<td>Resolved</td>
+<td>OR30 distinguishes the historical MediatR 14.2.0 review from 15.0.0 in Builds and the restored Server/Gateway assets. The release owner must bind the product owner’s disposition to the candidate.</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>SM10 coverage denominator</td>
+<td>Resolved</td>
+<td>SM10 and Story 9.5 measure protected surfaces in the MVP production profile. Permitted anonymous checks and excluded UI surfaces are accounted for separately.</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>Historical Story 6.5 mappings</td>
+<td>Resolved</td>
+<td>The repository reader recovers NFR7 for 6.5c and NFR7/NFR12 for 6.5d through §11.2.2. Story 6.5 retains its numeric approval key and its four NFRs.</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>Durable consumer and coverage records</td>
+<td>Resolved</td>
+<td>§8.1, G-CONSUMER, G-MVP-COVERAGE, OR24 and OR27 bind the CI-generated inventories and digests to the owning spec and run. Story 3.20 and Story 9.5 match.</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>Committed OQ8 availability runs</td>
+<td>Resolved</td>
+<td>§1.1, G-OQ8 and OR11 identify the fixture and live successes on committed revisions and distinguish the skipped assured decision. A separate architecture status entry still needs correction.</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>Repeated owner assignment and tracker repair</td>
+<td>Resolved</td>
+<td>OR7/OR24 recognize the assignments to 3.19, 3.20 and 7.21. OR19 records Story 2.12 as done under its full key and Epic 2 as in progress.</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>November stories and lifecycle in the overviews</td>
+<td>Resolved</td>
+<td>Epic 2 reaches 2.19, Epic 5 reaches 5.15 and Epic 7 reaches 7.23. All four additions are in backlog. Stories 2.14 and 2.15 agree with the tracker.</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>Tenants host wiring and UJ1</td>
+<td>Resolved</td>
+<td>UJ1 puts the outstanding host plumbing under FR9/SM8 and the affected FR1 guardrails. Other requirements close against their own evidence.</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>UX design status</td>
+<td>Resolved</td>
+<td>§3.3 points to §11.3, which records DESIGN and EXPERIENCE as final. Common-baseline approval remains outstanding.</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>Existing high-risk story-completion control</td>
+<td>Resolved</td>
+<td>OR13 names the completion writer and the bounded 5.3 adapter for NFR3/NFR4. Other affected stories still need their business adapters and exact evidence.</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td>Generated links versus gateway GET lookup</td>
+<td>Resolved</td>
+<td>FR12-C4, §8.2, OR21 and Story 2.15 distinguish generated MessageId-only links from the separately owned GET compatibility decision. A different defect concerns the HTTP result after command acceptance.</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td>Story 4.16 append protection in the MVP</td>
+<td>Resolved</td>
+<td>§6.4 and G-APPEND distinguish the Story 4.5 observation, the approved Story 4.16 Dapr conflict guard and general activation fencing. Prevention evidence remains outstanding.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="verification">Verification</h2><ul>
+<li>Compared all 37 FR and 19 NFR definitions and the 49 stable clause IDs, primary stories and supporting lists. Both ledgers match. All 49 epic evidence identities are still pending. The reader accepted 143 of 146 story headings, including all four historical Story 6.5 contributors. The three recorded exceptions are superseded Stories 3.22 and 3.23 and historical evidence ledger 4.8.</li>
+<li>All 80 PRD source references exist. All five content digests recorded as epic inputs differ from the working files. Baseline reconciliation and owner approval remain outstanding.</li>
+<li>Ran 305 focused tests covering the gate matrix, publication authority, release API compatibility, OQ8 design availability and the story coverage reader. All passed. The offline OQ8 validator also passed.</li>
+<li>The live gate-matrix command exited 1 on the reviewed PRD bytes. It enumerated 17 mandatory gates. Every one of the 12 high-risk rows reported achieved assurance <code>none</code>, with both the CI seal and the owner attestation missing. The live publication evaluator also exited 1 with <code>authority: unproven</code> and a null seal.</li>
+<li>GitHub reported successful fixture and live availability jobs on committed revision <code>d677fba671</code>; the assured-decision job was skipped. On the synchronized main revision <code>db5db2470</code>, the live availability job had succeeded, the fixture was queued and the assured decision was skipped at the time checked. These runs apply only to their identified commits. <a href="https://github.com/Hexalith/Hexalith.EventStore/actions/runs/44775644088">Committed PRD run</a> · <a href="https://github.com/Hexalith/Hexalith.EventStore/actions/runs/44780280952">Synchronized main run</a></li>
+<li>The prior findings are tracked at the scope of their original correction. Finding 5 includes the instruction to bind the numerator to its evidence. The historical duplicate-effects credit was removed, but the remaining class (a) credit lacks that binding. The original four named ownership assignments in finding 4 are corrected. The FR7 ownership conflict is a separate finding.</li>
+</ul>
+
+
+<section class="reviewer-section"><details><summary><h2>PRD quality rubric</h2><span class="reviewer-source">review-rubric.md</span></summary><div class="dim-body"><p>Seven dimensions, with supporting evidence for the SM11 count, Admin correlation IDs and conditional-query acceptance.</p>
+<p><a href="review-rubric.md">Open reviewer file</a></p>
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Readiness and evidence</h2><span class="reviewer-source">review-readiness.md</span></summary><div class="dim-body"><p>The first readiness seal, signed package baselines, dependency licensing, OQ8 runs, and current versus retired authorization rules.</p>
+<p><a href="review-readiness.md">Open reviewer file</a></p>
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Product acceptance</h2><span class="reviewer-source">review-acceptance.md</span></summary><div class="dim-body"><p>Frozen specifications, generated HTTP status behavior, tenant scope, Production JWT startup and deferred Admin operations.</p>
+<p><a href="review-acceptance.md">Open reviewer file</a></p>
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Traceability</h2><span class="reviewer-source">review-traceability.md</span></summary><div class="dim-body"><p>Detailed story declarations, both ledgers, the FR15 comparison and the story reader’s full inventory.</p>
+<p><a href="review-traceability.md">Open reviewer file</a></p>
+</div></details></section>
+<footer><p>Reviewed 2026-11-20T18:26:27+01:00 on the working tree of EventStore <code>main</code> at <code>db5db24707a2468e69cf86016c3bba2f3fb5d516</code>. PRD SHA-256 <code>4644f2b282a3ee7ff860869fd49a620cd32316284cdb594b32d45a6fea663a4b</code>. Epic plan SHA-256 <code>9d488d02e056d656b33c2316cde4c06a00dbc424ce9ea50172c8ad5ecbbcda76</code>. <a href="../../../../../_bmad-output/planning-artifacts/prd.md">PRD</a> · <a href="../../../../../_bmad-output/planning-artifacts/epics.md">Epics</a> · <a href="../../../../../_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-2026-11-20-post-update/validation-report.md">Prior validation</a> · <a href="../../../../../_bmad-output/planning-artifacts/implementation-readiness.md">October readiness decision</a></p>
+<p><a href="../../../../../.agents/skills/bmad-prd/assets/prd-validation-checklist.md">Rubric</a></p>
+</footer></main></body></html>
