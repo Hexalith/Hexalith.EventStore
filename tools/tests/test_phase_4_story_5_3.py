@@ -334,6 +334,33 @@ class AdapterContracts(unittest.TestCase):
         with self.assertRaises(C.Refusal):
             A.dependency_inventory(cache)
 
+    def test_nuget_cli_archive_copy_requires_the_verified_canonical_archive(self):
+        cache = self.root / 'packages'
+        package = cache / 'aspire.cli/17.0.0'
+        package.mkdir(parents=True)
+        archive = package / 'aspire.cli.17.0.0.nupkg'
+        with zipfile.ZipFile(archive, 'w') as document:
+            document.writestr('readme.md', b'verified package content')
+        original = archive.read_bytes()
+        archive.with_suffix('.nupkg.sha512').write_bytes(base64.b64encode(hashlib.sha512(original).digest()))
+        bundled_copy = package / 'Aspire.Cli.nupkg'
+        bundled_copy.write_bytes(original)
+        records = {item['path']: item['sha256'] for item in A.dependency_inventory(cache)}
+        self.assertEqual(C.digest(original), records[bundled_copy.relative_to(cache).as_posix()])
+
+        bundled_copy.write_bytes(original + b'changed')
+        with self.assertRaisesRegex(C.Refusal, 'archive copy differs'):
+            A.dependency_inventory(cache)
+        bundled_copy.write_bytes(original)
+        unexpected = package / 'other.nupkg'
+        unexpected.write_bytes(original)
+        with self.assertRaisesRegex(C.Refusal, 'unverified extracted dependency input'):
+            A.dependency_inventory(cache)
+        unexpected.unlink()
+        archive.unlink()
+        with self.assertRaisesRegex(C.Refusal, 'canonical dependency archive missing'):
+            A.dependency_inventory(cache)
+
     def test_nuget_redundant_separators_preserve_byte_binding_and_reject_collisions(self):
         cache = self.root / 'packages'
         package = cache / 'fixture/1.0.0'

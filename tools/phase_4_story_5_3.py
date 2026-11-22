@@ -64,7 +64,7 @@ LANES = (
         "EventStore.JwtAuthenticationIntegrationTests", "ContractTests.KeycloakAuthenticationTests",
         "Security.KeycloakE2ESecurityTests", "Security.KeycloakE2ESmokeTests")),
     ("load-token", "Hexalith.EventStore.LoadTests.Tests", ("LoadTestJwtTokenGeneratorTests",)),
-    ("packaging-auth-contract", "Hexalith.EventStore.Contracts.Tests", ("Packaging.ContainerPublishingGovernanceTests",)),
+    ("packaging-auth-contract", "Hexalith.EventStore.Contracts.Tests", ("Packaging.PublishedProductionAuthenticationTests",)),
     ("provider-ephemeral-token", "Hexalith.EventStore.ProviderVerification.Tests", ("RealKestrelPactTests",)),
 )
 CAPABILITIES = ("positive-assignment", "yaml-credential-sequence", "qualified-network-credential",
@@ -623,16 +623,19 @@ def dependency_inventory(cache):
     for package in sorted(cache.glob("*/*")):
         if not package.is_dir():
             continue
-        archives = list(package.glob("*.nupkg"))
-        C.require(len(archives) == 1, "STORY_EVIDENCE_FAILED", "dependency archive missing or ambiguous")
-        archive = archives[0]
+        package_id = package.parent.name
+        archive = package / f"{package_id}.{package.name}.nupkg"
+        C.require(archive.is_file() and not archive.is_symlink(), "STORY_EVIDENCE_FAILED", "canonical dependency archive missing")
         checksum = archive.with_suffix(archive.suffix + ".sha512")
         expected = base64.b64decode(checksum.read_text().strip(), validate=True)
         digest = hashlib.sha512()
+        archive_digest = hashlib.sha256()
         with archive.open("rb") as stream:
             for block in iter(lambda: stream.read(C.MAX_BYTES), b""):
                 digest.update(block)
+                archive_digest.update(block)
         C.require(digest.digest() == expected, "SOURCE_MISMATCH", "dependency archive checksum mismatch")
+        archive_sha256 = archive_digest.hexdigest()
         with zipfile.ZipFile(archive) as document:
             members = {}
             for row in document.infolist():
@@ -659,12 +662,18 @@ def dependency_inventory(cache):
                     member = members.get(name)
                     if member is None and name.endswith(".nuspec"):
                         member = next((row for key, row in members.items() if key.lower() == name), None)
-                    C.require(member is not None, "SOURCE_MISMATCH", "unverified extracted dependency input")
-                    original = hashlib.sha256()
-                    with document.open(member) as stream:
-                        for block in iter(lambda: stream.read(C.MAX_BYTES), b""):
-                            original.update(block)
-                    C.require(original.hexdigest() == value, "SOURCE_MISMATCH", "extracted dependency differs from verified archive")
+                    if member is None and name.lower() == f"{package_id}.nupkg":
+                        # Aspire's CLI bundle keeps an unversioned copy beside the restored package.
+                        C.require(value == archive_sha256, "SOURCE_MISMATCH", "dependency archive copy differs from verified archive")
+                    else:
+                        C.require(member is not None, "SOURCE_MISMATCH", "unverified extracted dependency input")
+                        original = hashlib.sha256()
+                        with document.open(member) as stream:
+                            for block in iter(lambda: stream.read(C.MAX_BYTES), b""):
+                                original.update(block)
+                        C.require(original.hexdigest() == value, "SOURCE_MISMATCH", "extracted dependency differs from verified archive")
+                elif path == archive:
+                    C.require(value == archive_sha256, "SOURCE_MISMATCH", "dependency archive changed during verification")
                 entries.append({"path": path.relative_to(cache).as_posix(), "sha256": value})
     C.require(len(entries) <= 150000, "STORY_EVIDENCE_LIMIT", "dependency inventory limit")
     return entries
@@ -775,7 +784,8 @@ def capability_probe(scratch, source_root, dotnet, fallback):
     properties = ET.SubElement(project, "PropertyGroup")
     for name, value in {"OutputType": "Exe", "TargetFramework": "net11.0", "ImplicitUsings": "enable", "Nullable": "enable",
                         "IsTestProject": "false", "StartupObject": "CompletionCapabilityProbe", "GenerateProgramFile": "false",
-                        "NuGetAudit": "false"}.items():
+                        "NuGetAudit": "true", "NuGetAuditMode": "all", "NuGetAuditLevel": "low",
+                        "WarningsAsErrors": "NU1900;NU1901;NU1902;NU1903;NU1904;NU1905"}.items():
         ET.SubElement(properties, name).text = value
     items = ET.SubElement(project, "ItemGroup")
     ET.SubElement(items, "Using", Include="Xunit")
@@ -855,7 +865,7 @@ def execute(scratch, manifest, dotnet, fallback):
                    "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "NUGET_PACKAGES": str(work / "packages"),
                    "MSBUILDDISABLENODEREUSE": "1"}
     build_options = ["--configuration", "Release", "--disable-build-servers", "-m:1", "-p:UseSharedCompilation=false",
-                     "-p:NuGetAudit=false", "-p:MinVerVersionOverride=1.0.0", "-p:UseNuGetDeps=true",
+                     "-p:MinVerVersionOverride=1.0.0", "-p:UseNuGetDeps=true",
                      "-p:RestoreFallbackFolders="]
     package_inputs = {}
     authentication_owner = os.environ.get(AUTH_OWNER_ENV) or os.urandom(16).hex()

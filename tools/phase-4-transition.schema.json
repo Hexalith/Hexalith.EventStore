@@ -1878,10 +1878,10 @@
                           "type": "object",
                           "additionalProperties": false,
                           "required": [
-                            "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests"
+                            "Hexalith.EventStore.Contracts.Tests.Packaging.PublishedProductionAuthenticationTests"
                           ],
                           "properties": {
-                            "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests": {
+                            "Hexalith.EventStore.Contracts.Tests.Packaging.PublishedProductionAuthenticationTests": {
                               "type": "integer",
                               "minimum": 1
                             }
