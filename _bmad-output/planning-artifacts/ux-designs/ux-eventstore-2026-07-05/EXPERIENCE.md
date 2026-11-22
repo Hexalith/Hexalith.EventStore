@@ -15,6 +15,9 @@ sources:
 
 # Hexalith.EventStore Admin — Experience Spine
 
+> **Current McpCli disposition (Story 5.11 candidate):** Remote Admin A1–A4 are confidential-UI-only under adopted AD-23; local Admin A5–A8 are withdrawn from the public migration target. No generic Admin contract or transport is required or admitted. EventStore and platform/operator maintainers retain Admin G1–G6, G4 route/scope, token/URL safety fixes, human authorization, bounded behavior, audit and persisted-effect proof before removal.
+
+
 ## Foundation
 
 The product is a responsive operations web app inside the Hexalith module shell. The UI system is `Hexalith.FrontComposer.Shell` plus `Hexalith.FrontComposer.Contracts.UI`, with Blazor Fluent UI V5. `DESIGN.md` is the visual identity reference; this spine owns information architecture, behavior, states, interactions, accessibility, localization, and journeys.
@@ -399,7 +402,7 @@ Existing decisions reject a custom EventStore palette or type ramp, duplicate sh
 | AD-10 / AD-16 / AD-36 — human relay and host authentication | Credential-kind separation; explicit NFR1 UI-host exception class; honest login/unavailable boundary | 5.5 / 5.11 JWT and trust closure; 5.14 ingress; 7.16 human login; AD-16 aligned, UI conformance pending |
 | AD-13 / AD-34 — evolution and ambiguous saves | Immutable retained payload, typed refusal/capability loss, status-only Dapr reconciliation | 6.6 current amendments; 3.17 infrastructure qualification; 7.5/7.19 presentation |
 | AD-11 / AD-26 — release identity and authority | Approved OCI identity; five distinct publication states; assurance-preserving read-only display | 7.9 display; 3.19 authority schema/validator and owner records; production-profile gates remain open |
-| AD-35 — McpCli ownership | Sole target CLI/MCP, preserved Admin semantics and UI client boundary | Approved McpCli contract/inventory/parity before legacy removal |
+| AD-35 — McpCli ownership | Sole target CLI/MCP, preserved Admin semantics and UI client boundary | Approved inventory, confidential UI coverage and independent authorization/behavior proof before legacy removal |
 | AD-7 / AD-30 — projection removal and full erasure | Separate projection-removal result and per-facet erasure status; no premature completion | 1.14 projection removal; post-MVP legal-policy and erasure workflow gates |
 | NFR17-C5 / production restore posture | Bounded crypto-shred wording and deferred Admin restore | 7.21 claim boundary; 7.22 production restore/drill; Operations/data owner supplies numeric targets |
 | UX-DR24–30, 38 | Typed Admin outcomes, denial, validation, support safety | 7.5 and 7.19 |

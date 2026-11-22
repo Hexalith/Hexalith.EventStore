@@ -161,8 +161,8 @@ Full documentation index: [Documentation](docs/index.md)
 
 These are versioned compatibility binaries. They are not retired and stay outside every Hexalith.Platform composition.
 
-- `Hexalith.EventStore.Admin.Cli` (.NET tool `eventstore-admin`): removal gate "Admin 1.0.2 G1–G6: confidential UI coverage and authorization/effect proof; retained G4 safety fixes before retirement" ([technical-tools inventory 1.0.3](https://github.com/Hexalith/Hexalith.McpCli/blob/main/_bmad-output/implementation-artifacts/technical-tools-migration-inventory-v1.0.3.md) PS01; [EventStore Admin inventory 1.0.2](https://github.com/Hexalith/Hexalith.McpCli/blob/main/_bmad-output/implementation-artifacts/eventstore-admin-migration-inventory-v1.0.2.md)). Remote Admin capabilities are withdrawn from the public agent target; confidential UI coverage and retained G4 safety fixes precede retirement. No Admin Gateway replacement is admitted. Technical inventory SHA-256: `7f2810174ae929e569d9affaccabe745565dcfe4f0487b71847806f3eda1ef8c`. Admin inventory SHA-256: `ec388eae1b2c17cf1634f7b9b422b50124d2281bd0dfc445bfa11c9ad7a03cc2`.
-- `Hexalith.EventStore.Admin.Mcp` (stdio MCP server): removal gate "Admin 1.0.2 G1–G6: confidential UI coverage and authorization/effect proof; retained G4 safety fixes before retirement" ([technical-tools inventory 1.0.3](https://github.com/Hexalith/Hexalith.McpCli/blob/main/_bmad-output/implementation-artifacts/technical-tools-migration-inventory-v1.0.3.md) PS02; [EventStore Admin inventory 1.0.2](https://github.com/Hexalith/Hexalith.McpCli/blob/main/_bmad-output/implementation-artifacts/eventstore-admin-migration-inventory-v1.0.2.md)). Remote Admin capabilities are withdrawn from the public agent target; confidential UI coverage and retained G4 safety fixes precede retirement. No Admin Gateway replacement is admitted. Technical inventory SHA-256: `7f2810174ae929e569d9affaccabe745565dcfe4f0487b71847806f3eda1ef8c`. Admin inventory SHA-256: `ec388eae1b2c17cf1634f7b9b422b50124d2281bd0dfc445bfa11c9ad7a03cc2`.
+- `Hexalith.EventStore.Admin.Cli` (.NET tool `eventstore-admin`): removal gate "Admin 1.0.2 G1–G6: confidential UI coverage and authorization/effect proof; retained G4 safety fixes before retirement" ([technical-tools inventory 1.0.4](https://github.com/Hexalith/Hexalith.McpCli/blob/main/_bmad-output/implementation-artifacts/technical-tools-migration-inventory-v1.0.4.md) PS01; [EventStore Admin inventory 1.0.3](https://github.com/Hexalith/Hexalith.McpCli/blob/main/_bmad-output/implementation-artifacts/eventstore-admin-migration-inventory-v1.0.3.md)). Remote Admin capabilities are withdrawn from the public agent target; confidential UI coverage and retained G4 safety fixes precede retirement. No Admin Gateway replacement is admitted. Technical inventory SHA-256: `94985d72232864ab8f40ba212cd0fc73dbd0c5497856073cfd19c2972b89e8b8`. Admin inventory SHA-256: `6ddf91de9f48b52a5bfe1cae666c704a732c88334e9268a8dd528b64cfc8aa1c`.
+- `Hexalith.EventStore.Admin.Mcp` (stdio MCP server): removal gate "Admin 1.0.2 G1–G6: confidential UI coverage and authorization/effect proof; retained G4 safety fixes before retirement" ([technical-tools inventory 1.0.4](https://github.com/Hexalith/Hexalith.McpCli/blob/main/_bmad-output/implementation-artifacts/technical-tools-migration-inventory-v1.0.4.md) PS02; [EventStore Admin inventory 1.0.3](https://github.com/Hexalith/Hexalith.McpCli/blob/main/_bmad-output/implementation-artifacts/eventstore-admin-migration-inventory-v1.0.3.md)). Remote Admin capabilities are withdrawn from the public agent target; confidential UI coverage and retained G4 safety fixes precede retirement. No Admin Gateway replacement is admitted. Technical inventory SHA-256: `94985d72232864ab8f40ba212cd0fc73dbd0c5497856073cfd19c2972b89e8b8`. Admin inventory SHA-256: `6ddf91de9f48b52a5bfe1cae666c704a732c88334e9268a8dd528b64cfc8aa1c`.
 
 ## Contributing
 
@@ -208,3 +208,20 @@ settlement before adding another active registration. Both store profiles retain
 matching participant counts, terminal fences and content-free manifest barriers;
 all discoverable batches obey the hard recovery limits even when guarded ownership
 permits `RetainManifestForRecovery=false`.
+
+## Shared McpCli access (reconciliation candidate)
+
+Remote Admin A1–A4 are confidential-UI-only under adopted AD-23; local Admin A5–A8 are withdrawn from the public migration target. No generic Admin contract or transport is required or admitted. EventStore and platform/operator maintainers retain Admin G1–G6, G4 route/scope, token/URL safety fixes, human authorization, bounded behavior, audit and persisted-effect proof before removal.
+
+For the verified 2.0.1 examples, install `dotnet tool install --global Hexalith.McpCli --version 2.0.1`.
+Run `hexalith modules`, `hexalith operations tenants` or
+`hexalith operations parties`, and `hexalith describe tenants.list-tenants`
+for offline discovery of the installed cohort. Start the MCP server with
+`hexalith mcp --transport stdio`; it offers five generic tools, never a tool or
+CLI subcommand per operation. Configure a McpCli profile with the documented
+`hexalith config --help` flow before authorized `query` or `send` submission.
+Do not copy the Admin `profiles.json`. Offline Catalog discovery proves neither
+Gateway authorization, live availability nor retirement. A missing operation
+fails safely; confidential human actions hand off to the owning UI, never to
+an alternative module endpoint. No Gateway call is needed for this setup check.
+

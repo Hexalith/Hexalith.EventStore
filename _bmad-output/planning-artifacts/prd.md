@@ -106,9 +106,12 @@ source_artifacts:
 
 # PRD: eventstore Phase 4 Implementation Readiness Recovery
 
+> **Current McpCli disposition (Story 5.11 candidate):** Remote Admin A1–A4 are confidential-UI-only under adopted AD-23; local Admin A5–A8 are withdrawn from the public migration target. No generic Admin contract or transport is required or admitted. EventStore and platform/operator maintainers retain Admin G1–G6, G4 route/scope, token/URL safety fixes, human authorization, bounded behavior, audit and persisted-effect proof before removal.
+
+
 **Phase 4 implementation readiness remains blocked.** The October 6 assessment rejected the baseline. The product owner can declare the MVP ready only after the §11.4 assessment records G-READINESS against one approved baseline. Release, production promotion and each consumer removal have separate, ordered decisions for their exact subjects. The second November 20 PRD review graded the previous revision **Fair** and identified 19 findings. Its source commit and document digest are in the frontmatter. [Readiness decision](implementation-readiness.md) · [PRD quality review](prds/prd-eventstore-2026-07-05/validation-2026-11-20-post-update/validation-report.md)
 
-**Approved McpCli course correction (2026-09-27):** `Hexalith.McpCli` is the target Hexalith-owned CLI/MCP surface. `Hexalith.EventStore.Admin.Cli` and `.Admin.Mcp` are obsolete migration sources, including for infrastructure administration. Their destructive, stream, subscription, and cluster operations require an approved generic McpCli administration contract, authorization, and parity evidence before removal. Existing admin descriptions below are compatibility and historical implementation requirements, not a permanent separate transport target.
+**Approved McpCli course correction (2026-09-27):** `Hexalith.McpCli` is the target Hexalith-owned CLI/MCP surface. `Hexalith.EventStore.Admin.Cli` and `.Admin.Mcp` are obsolete migration sources, including for infrastructure administration. Their destructive, stream, subscription, and cluster operations require confidential UI coverage, explicit withdrawal and independent authorization, audit and behavior evidence before removal under adopted AD-23. Existing admin descriptions below are compatibility and historical implementation requirements, not a permanent separate transport target.
 
 
 ## 0. Document Purpose
@@ -443,7 +446,7 @@ The top-level FR/NFR IDs remain stable. The clause IDs below expose existing ind
 | FR26-C1 | 5.1 | — | Infrastructure failure clears staged state and cannot leak it into later work. |
 | FR26-C2 | 5.2 | — | Admin authorization, tenant filtering, safe queries, and the `1_048_576`/`10 * 1024 * 1024` byte limits fail before upstream invocation. |
 | FR26-C3 | 5.3 | — | Production authentication fails closed and committed forgeable administrator secrets are absent. |
-| FR26-C4 | 5.4 | — | Swagger gating, destructive confirmation for the legacy EventStore Admin CLI, ULID-safe correlation, and test-baseline guidance are verified. `Hexalith.McpCli` is the target administrator CLI/MCP surface after a generic admin contract and equivalent safety evidence are approved. |
+| FR26-C4 | 5.4 | — | Swagger gating, destructive confirmation for the legacy EventStore Admin CLI, ULID-safe correlation, and test-baseline guidance are verified. `Hexalith.McpCli` is the target administrator CLI/MCP surface for eligible decorated Gateway operations; Admin requires confidential UI coverage and equivalent safety evidence. |
 | FR33-C1 | 6.1 | — | The folded-snapshot specification is approved and content-bound before runtime work. |
 | FR33-C2 | 6.2 | — | Folded snapshot runtime behavior conforms to the approved specification. |
 | FR33-C3 | 6.3 | — | The projection-cost and sequence-guard specification binds quantitative budgets and authorization. |
