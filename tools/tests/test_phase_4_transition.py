@@ -204,7 +204,7 @@ class TransitionTests(unittest.TestCase):
                     self.blob(BEFORE,path,content)
         self.state_path.write_text(json.dumps(self.state))
         self.request_path.write_bytes(raw if raw is not None else canonical(self.request))
-        env = {k: v for k, v in os.environ.items() if not k.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
+        env = {k: v for k, v in os.environ.items() if k != 'PHASE4_TENANTS_READ_TOKEN' and not k.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
         env.update({'PYTHONPATH': str(self.site) + os.pathsep + str(ROOT / 'tools/tests'),
                     'PHASE4_FIXTURE_STATE': str(self.state_path), 'GH_TOKEN': self.fixture_token})
         env.update(env_extra or {})
@@ -219,6 +219,12 @@ class TransitionTests(unittest.TestCase):
         self.assertNotIn('Traceback', result.stderr)
         self.assertTrue(self.result_path.exists(), result.stderr)
         return result, json.loads(self.result_path.read_text())
+
+    def observe_commands(self):
+        log = self.base / 'commands.jsonl'
+        with (self.site / 'sitecustomize.py').open('a') as startup:
+            startup.write(f'phase_4_transport_fixture.observe_commands({str(log)!r})\n')
+        return log
 
     def assert_pass(self, phase='evaluate'):
         result, document = self.run_cli(phase)
@@ -251,7 +257,12 @@ class TransitionTests(unittest.TestCase):
 
     def test_real_oq8_evaluation_then_authenticated_consumption(self):
         self.artifact()
+        command_log = self.observe_commands()
         result = self.assert_pass('consume')
+        commands = [json.loads(line) for line in command_log.read_text().splitlines()]
+        scripts = [Path(argv[3]).name for argv in commands
+                   if len(argv) >= 4 and argv[:3] == [sys.executable, '-I', '-B']]
+        self.assertCountEqual([Path(OQ8).name, 'test_oq8_governing_design.py'], scripts)
         self.assertEqual({'run_id': 7, 'attempt': 2, 'artifact_id': 16, 'ci_app_id': 15368}, result['seal'])
         self.assertEqual(5, len(result['approvals']))
         self.assertTrue(result['predecessors'])
@@ -533,14 +544,309 @@ class TransitionTests(unittest.TestCase):
         self.assertEqual(maximum,schema['$defs']['binding']['properties']['inputs']['maxItems'])
         self.assertEqual(maximum,schema['$defs']['binding']['allOf'][0]['else']['then']['properties']['inputs']['maxItems'])
 
-    def test_runtime_parity_is_unbound_and_tenant_gate_requires_its_subjects(self):
-        self.assert_pass()
-        self.request['gate'] = 'G-RUNTIME-PARITY'
-        self.approve()
-        self.assert_refused('GATE_UNBOUND')
-        self.request['gate'] = 'G-TENANT'
-        self.approve()
-        self.assert_refused('SUBJECT_MISMATCH')
+    def assert_gate_refused_before_command(self, gate, code):
+        self.request['gate'] = gate
+        matrix = json.loads((self.root / MATRIX).read_text())
+        row = next(row for row in matrix['gates'] if row['gate'] == gate)
+        self.approve(roles=row['evaluator_roles'])
+        command_log = self.observe_commands()
+        self.assert_refused(code)
+        self.assertEqual('', command_log.read_text())
+
+    def test_unbound_append_gate_refuses_before_command(self):
+        self.assert_gate_refused_before_command('G-APPEND', 'GATE_UNBOUND')
+
+    def test_runtime_parity_follow_on_refuses_before_command(self):
+        self.assert_gate_refused_before_command('G-RUNTIME-PARITY', 'GATE_UNBOUND')
+
+    def test_bound_tenant_gate_missing_required_subjects_refuses_before_command(self):
+        path = '.gitmodules'
+        content = (ROOT / path).read_bytes()
+        (self.root / path).write_bytes(content)
+        self.blob(HEAD, path, content)
+        self.request['subjects'].append(self.file(path))
+        self.assert_gate_refused_before_command('G-TENANT', 'SUBJECT_MISMATCH')
+
+    def test_tenant_current_four_lane_evidence_and_exact_approval(self):
+        import phase_4_tenant_fixture as F
+        q = F.Qualification(self)
+        transport = F.Transport(self.state)
+        with mock.patch("urllib.request.build_opener", return_value=transport):
+            def evaluate():
+                return C.Control(self.root, self.request, C.GitHub()).evaluate()
+
+            candidate = evaluate()
+            self.assertEqual(q.claim, candidate["binding"]["tenant_qualification"])
+            self.assertEqual(self.row["evaluator_roles"], [a["role"] for a in candidate["approvals"]])
+            self.assertEqual(SINGLE, candidate["downstream_minimum"])
+            original = copy.deepcopy(self.state["responses"])
+            for lane in ("eventstore_ci", "eventstore_integration", "tenants_source", "tenants_package"):
+                run = q.claim["runs"][lane]
+                url = "/actions/runs/" + str(run["run_id"])
+                for path, key, value, code in (
+                    (url, "run_attempt", 2, "RUN_NOT_SUCCESSFUL"),
+                    (url + "/attempts/1", "head_sha", BEFORE, "RUN_INVALID"),
+                    (url + "/attempts/1", "repository", {"full_name": "other/repository"}, "RUN_INVALID"),
+                    (url + "/attempts/1", "path", ".github/workflows/other.yml", "WORKFLOW_MISMATCH"),
+                    (url + "/attempts/1", "conclusion", "failure", "RUN_NOT_SUCCESSFUL"),
+                ):
+                    with self.subTest(lane=lane, key=key):
+                        self.state["responses"] = copy.deepcopy(original)
+                        q.document(lane, path)[key] = value
+                        with self.assertRaises(C.Refusal) as refused:
+                            evaluate()
+                        self.assertEqual(code, refused.exception.code)
+            self.state["responses"] = copy.deepcopy(original)
+            q.document("tenants_source", "/git/trees/" + F.TREE + "?recursive=1")["tree"][0]["sha"] = BEFORE
+            with self.assertRaisesRegex(C.Refusal, "gitlink"):
+                evaluate()
+            self.state["responses"] = copy.deepcopy(original)
+            del self.request["approvals"][-1]
+            with self.assertRaisesRegex(C.Refusal, "every evaluator"):
+                evaluate()
+
+    def test_tenant_pull_request_requires_original_target_and_actual_checkout(self):
+        import phase_4_tenant_fixture as F
+        q = F.Qualification(self)
+        lane = "tenants_source"
+        run = q.claim["runs"][lane]
+        attempt = q.document(lane, f"/actions/runs/{run['run_id']}/attempts/1")
+        attempt.update(event="pull_request", head_branch="qualify", pull_requests=[])
+        pr = {"head": {"ref": "qualify", "sha": F.TENANTS_HEAD, "repo": {"full_name": F.TENANTS}},
+              "base": {"ref": "main", "repo": {"full_name": F.TENANTS}}}
+        wrong_base = {**pr, "base": {**pr["base"], "ref": "elsewhere"}}
+        q.put(F.TENANTS, "/commits/" + F.TENANTS_HEAD + "/pulls?per_page=100", [pr])
+        transport = F.Transport(self.state)
+        with mock.patch("urllib.request.build_opener", return_value=transport):
+            def evaluate():
+                return C.Control(self.root, self.request, C.GitHub()).evaluate()
+            attempt["pull_requests"] = [pr]
+            self.assertEqual("PASS", evaluate()["result"])
+            for invalid in ([], [wrong_base], [pr, wrong_base],
+                            [{**pr, "head": {**pr["head"], "sha": BEFORE}}],
+                            [{**pr, "head": {**pr["head"], "ref": "another-branch"}}],
+                            [{**pr, "head": {**pr["head"], "repo": {"full_name": "another/repo"}}}]):
+                with self.subTest(invalid=invalid):
+                    attempt["pull_requests"] = invalid
+                    with self.assertRaises(C.Refusal) as refusal:
+                        evaluate()
+                    self.assertEqual("RUN_INVALID", refusal.exception.code)
+            self.assertFalse(any("/pulls?" in url for url in transport.auth))
+            log_url = F.prefix(F.TENANTS) + "/actions/jobs/300/logs"
+            record = self.state["responses"][log_url]
+            original = base64.b64decode(record["binary"]).decode()
+            attempt["pull_requests"] = [pr]
+            q.set_log(F.TENANTS, 300, original.replace(F.TENANTS_HEAD, "7" * 40))
+            with self.assertRaisesRegex(C.Refusal, "actual checkout"):
+                evaluate()
+            attempt["pull_requests"] = []
+            steps = q.document(lane, f"/actions/runs/{run['run_id']}/attempts/1/jobs?per_page=100")["jobs"][0]["steps"]
+            steps.append({"name": "Run printenv GITHUB_BASE_REF", "started_at": F.END, "completed_at": F.END,
+                          "status": "completed", "conclusion": "success"})
+            lines = ["##[group]Run printenv GITHUB_BASE_REF", "printenv GITHUB_BASE_REF",
+                     "shell: /usr/bin/bash -e {0}", "##[endgroup]", "main"]
+            q.set_log(F.TENANTS, 300, original + q.log_lines(F.END, lines))
+            self.assertEqual("PASS", evaluate()["result"])
+            q.set_log(F.TENANTS, 300, original + q.log_lines(F.END, [*lines[:-1], "other"]))
+            with self.assertRaisesRegex(C.Refusal, "ineligible original PR base"):
+                evaluate()
+
+    def test_tenant_modified_business_evidence_refuses_even_with_new_approval(self):
+        import phase_4_tenant_fixture as F
+        import phase_4_tenant_gate as A
+        q = F.Qualification(self)
+        transport = F.Transport(self.state)
+        with mock.patch("urllib.request.build_opener", return_value=transport):
+            def evaluate():
+                return C.Control(self.root, self.request, C.GitHub()).evaluate()
+
+            evaluate()
+            for lane, name, file, path, value in (
+                ("tenants_source", A.SOURCE_PROFILE, A.RUNTIME, ("persistedTenant",), False),
+                ("tenants_source", A.SOURCE_PROFILE, A.RUNTIME, ("outstandingLeases",), False),
+                ("tenants_source", A.SOURCE_PROFILE, A.RUNTIME, ("distinctAuditOwnerReadback",), False),
+                ("tenants_source", A.SOURCE_PROFILE, A.RUNTIME, ("sdkSource",), BEFORE),
+                ("tenants_source", A.SOURCE_PROFILE, A.BACKEND, ("backend", "initialDatabaseSize"), 1),
+                ("tenants_source", A.SOURCE_PROFILE, A.BACKEND, ("identity", "runAttempt"), "2"),
+                ("tenants_source", A.SOURCE_PROFILE, A.BACKEND, ("backend", "created"), "2019-01-01T00:00:00Z"),
+                ("tenants_package", A.REST_RESULTS, A.PACKAGE,
+                 ("runtimeManifests", "Hexalith.Tenants.Api", "packages", "Hexalith.McpCli.Abstractions"), "6.0.0"),
+            ):
+                with self.subTest(file=file, path=path):
+                    original = q.files[name][file]
+                    data = json.loads(original)
+                    target = data
+                    for key in path[:-1]:
+                        target = target[key]
+                    target[path[-1]] = value
+                    q.files[name][file] = canonical(data)
+                    artifact_id = q.claim["runs"][lane]["artifacts"][name]["id"]
+                    q.publish(lane, name, artifact_id)
+                    with self.assertRaises(C.Refusal) as stale_approval:
+                        evaluate()
+                    self.assertEqual("APPROVAL_INVALID", stale_approval.exception.code)
+                    self.approve()
+                    with self.assertRaises(C.Refusal) as refusal:
+                        evaluate()
+                    self.assertEqual("BUSINESS_PREREQUISITE_MISSING", refusal.exception.code)
+                    q.files[name][file] = original
+                    q.publish(lane, name, artifact_id)
+                    self.approve()
+            # Keep the method, count and status, but replace the one mixed-case
+            # request/grant with another passing theory row in the same class.
+            name = "aspire-test-results"
+            file = "aspire-results.trx"
+            original = q.files[name][file]
+            self.assertIn(b"TENANT-ALPHA", original)
+            q.files[name][file] = original.replace(b"TENANT-ALPHA", b"other-grant")
+            artifact_id = q.claim["runs"]["tenants_package"]["artifacts"][name]["id"]
+            q.publish("tenants_package", name, artifact_id)
+            self.approve()
+            with self.assertRaisesRegex(C.Refusal, "missing required case"):
+                evaluate()
+            q.files[name][file] = original
+            q.publish("tenants_package", name, artifact_id)
+            self.approve()
+            trx = "authenticated-rest-rest.trx"
+            artifact_id = q.claim["runs"]["tenants_package"]["artifacts"][A.REST_RESULTS]["id"]
+            original = q.files[A.REST_RESULTS][trx]
+            for modified in (original.replace(b"SixAuthenticatedDaprRestReadsMatchPersistedState", b"UnrelatedRead"),
+                             original.replace(b'outcome="Passed"', b'outcome="NotExecuted"', 1)):
+                q.files[A.REST_RESULTS][trx] = modified
+                q.publish("tenants_package", A.REST_RESULTS, artifact_id)
+                self.approve()
+                with self.assertRaisesRegex(C.Refusal, "AuthenticatedTenantsRouteTests"):
+                    evaluate()
+
+    def test_tenant_jobs_and_artifact_are_bound_to_their_attempt_and_digest(self):
+        import phase_4_tenant_fixture as F
+        import phase_4_tenant_gate as A
+        q = F.Qualification(self)
+        transport = F.Transport(self.state)
+        lane = "tenants_source"
+        run = q.claim["runs"][lane]
+        base = "/actions/runs/" + str(run["run_id"])
+        artifacts = q.document(lane, base + "/artifacts?per_page=100")["artifacts"]
+        job = q.document(lane, base + "/attempts/1/jobs?per_page=100")["jobs"][0]
+        check = q.document(lane, "/check-suites/3/check-runs?filter=all&per_page=100")["check_runs"][0]
+        with mock.patch("urllib.request.build_opener", return_value=transport):
+            for obj, key, wrong, code in (
+                (artifacts[0], "expired", True, "ARTIFACT_INVALID"),
+                (artifacts[0], "expires_at", F.END, "ARTIFACT_INVALID"),
+                (artifacts[0], "created_at", "2019-01-01T00:00:00Z", "ARTIFACT_INVALID"),
+                (artifacts[0], "id", 999, "ARTIFACT_INVALID"),
+                (artifacts[0], "digest", "sha256:" + "0" * 64, "ARTIFACT_INVALID"),
+                (job, "run_attempt", 2, "CI_UNAUTHENTICATED"),
+                (next(s for s in job["steps"] if s["name"] == "Require actual cohort binding, owned bootstrap, persisted effects and refusal"),
+                 "conclusion", "skipped", "BUSINESS_PREREQUISITE_MISSING"),
+                (check, "app", {"id": 999}, "CI_UNAUTHENTICATED"),
+            ):
+                with self.subTest(key=key):
+                    original, obj[key] = obj[key], wrong
+                    with self.assertRaises(C.Refusal) as refusal:
+                        C.Control(self.root, self.request, C.GitHub()).evaluate()
+                    self.assertEqual(code, refusal.exception.code)
+                    obj[key] = original
+            q.files[A.SOURCE_PROFILE].pop(A.RUNTIME)
+            q.publish(lane, A.SOURCE_PROFILE, run["artifacts"][A.SOURCE_PROFILE]["id"])
+            self.approve()
+            with self.assertRaisesRegex(C.Refusal, "missing required report"):
+                C.Control(self.root, self.request, C.GitHub()).evaluate()
+
+    def test_tenant_authentication_tracks_each_repository_and_rechecks_live_attempts(self):
+        import phase_4_tenant_fixture as F
+        q = F.Qualification(self)
+        transport = F.Transport(self.state)
+        with mock.patch("urllib.request.build_opener", return_value=transport), mock.patch.dict(os.environ, {
+                "GH_TOKEN": "test-only-sdk", "PHASE4_TENANTS_READ_TOKEN": "test-only-owner"}):
+            def evaluate():
+                return C.Control(self.root, self.request, C.GitHub()).evaluate()
+
+            self.assertEqual("PASS", evaluate()["result"])
+            for repo, credential in ((REPO, "test-only-sdk"), (F.TENANTS, "test-only-owner")):
+                observed = [token for url, token in transport.auth.items() if url.startswith(F.prefix(repo) + "/")]
+                self.assertGreater(len(observed), 5)
+                self.assertEqual({"Bearer " + credential}, set(observed))
+            url = API + "/actions/runs/" + str(q.claim["runs"]["eventstore_ci"]["run_id"])
+            original = self.state["responses"][url]
+            for mutation in ({"run_attempt": 2}, {"head_sha": BEFORE}, {"conclusion": "failure"}):
+                self.state["responses"][url] = {"sequence": [original, {"json": {**original["json"], **mutation}}]}
+                with self.assertRaises(C.Refusal) as refused:
+                    evaluate()
+                self.assertEqual("RUN_NOT_SUCCESSFUL", refused.exception.code)
+
+    def test_tenant_artifact_pins_job_upload_and_download_bytes(self):
+        import phase_4_tenant_fixture as F
+        q = F.Qualification(self)
+        lane, name = "tenants_source", "tenants-source-catalog-owner-profile"
+        run = q.claim["runs"][lane]
+        inventory = q.document(lane, f"/actions/runs/{run['run_id']}/artifacts?per_page=100")
+        inventory["artifacts"].append({**inventory["artifacts"][0], "id": 808, "expired": True})
+        inventory["total_count"] = 2
+        with mock.patch("urllib.request.build_opener", return_value=F.Transport(self.state)):
+            def evaluate():
+                return C.Control(self.root, self.request, C.GitHub()).evaluate()
+
+            self.assertEqual("PASS", evaluate()["result"])
+            pin = run["artifacts"][name]
+            archive = self.state["responses"][F.prefix(F.TENANTS) + f"/actions/artifacts/{pin['id']}/zip"]
+            b64 = archive["binary"]
+            data = base64.b64decode(b64)
+            archive["binary"] = base64.b64encode(data[:-1] + bytes([data[-1] ^ 1])).decode()
+            with self.assertRaisesRegex(C.Refusal, "downloaded artifact differs"):
+                evaluate()
+            archive["binary"] = b64
+            record = self.state["responses"][F.prefix(F.TENANTS) + "/actions/jobs/300/logs"]
+            original = base64.b64decode(record["binary"]).decode()
+            # The other job ran concurrently and has the expected upload text,
+            # but cannot establish that job 300 produced the archive.
+            q.set_log(F.TENANTS, 301, original)
+            for changed in (original.replace("Artifact ID is 300", "Artifact ID is 808"),
+                            original.replace("/work/tenants-source-catalog-result.json", "/tmp/other.json")):
+                q.set_log(F.TENANTS, 300, changed)
+                with self.assertRaises(C.Refusal) as refused:
+                    evaluate()
+                self.assertEqual("ARTIFACT_INVALID", refused.exception.code)
+            del self.state["responses"][F.prefix(F.TENANTS) + "/actions/jobs/300/logs"]
+            with self.assertRaises(C.Refusal) as unavailable:
+                evaluate()
+            self.assertEqual("API_UNAVAILABLE", unavailable.exception.code)
+
+    def test_tenant_release_assembly_required_methods_arguments_and_malformed_receipts(self):
+        import phase_4_tenant_fixture as F
+        import phase_4_tenant_gate as A
+        import xml.etree.ElementTree as ET
+        server = "Hexalith.EventStore.Server.Tests.trx"
+        original = F.trx(server)
+        signed = b"Bound_command_requires_exact_signed_requester_and_domain"
+        self.assertIn(signed, original)
+        with self.assertRaisesRegex(C.Refusal, signed.decode()):
+            A.check_cases(server, original.replace(signed, b"AnotherWorkloadTest"))
+        for attribute in ("storage", "codeBase"):
+            trx = ET.fromstring(original)
+            for elem in trx.iter():
+                if attribute in elem.attrib:
+                    elem.set(attribute, elem.get(attribute).replace("/Release/", "/Debug/"))
+            with self.assertRaisesRegex(C.Refusal, "wrong Release assembly"):
+                A.check_cases(server, ET.tostring(trx))
+        admin = "Hexalith.EventStore.Admin.Server.Tests.trx"
+        original = F.trx(admin)
+        wrong_arguments = original.replace(b"permitted: False", b"permitted: Other")
+        self.assertNotEqual(original, wrong_arguments)
+        with self.assertRaisesRegex(C.Refusal, "missing required case"):
+            A.check_cases(admin, wrong_arguments)
+        rest = "authenticated-rest-rest.trx"
+        original = F.trx(rest)
+        for required in (b"AnonymousRestRequestCannotReadCommandSeededTenant",
+                         b"InvalidProtectedCursorHasRealSentinelAndRecoversPageOneThroughProductionGateway"):
+            self.assertIn(required, original)
+            with self.assertRaisesRegex(C.Refusal, required.decode()):
+                A.check_cases(rest, original.replace(required, b"AnotherPassingRestTest"))
+        for content in (b'<?xml version="1.0" encoding="unsupported-encoding"?>' + original, b"<NotAReport"):
+            with self.assertRaisesRegex(C.Refusal, "malformed TRX"):
+                A.check_cases(rest, content)
+        with self.assertRaisesRegex(C.Refusal, "invalid evidence timestamp"):
+            A.timestamp("2025-99-99T25:99:99Z")
 
     def test_independent_numeric_roster_self_approval_and_aliasing(self):
         self.assert_pass()

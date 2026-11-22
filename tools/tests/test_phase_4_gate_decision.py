@@ -34,7 +34,7 @@ class GateDecisionTests(unittest.TestCase):
     def environment(self, **extra):
         f = self.f
         f.state_path.write_text(json.dumps(f.state))
-        environment = {k: v for k, v in os.environ.items() if not k.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
+        environment = {k: v for k, v in os.environ.items() if k != 'PHASE4_TENANTS_READ_TOKEN' and not k.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
         environment.update(PYTHONPATH=str(f.site) + os.pathsep + str(T.ROOT / 'tools/tests'),
                            PHASE4_FIXTURE_STATE=str(f.state_path), GH_TOKEN=f.fixture_token,
                            PHASE4_REQUEST_JSON=T.canonical(f.request).decode(), SEALED_RUN_ID='7', SEALED_ATTEMPT='2')
@@ -99,7 +99,7 @@ class GateDecisionTests(unittest.TestCase):
         environment = self.environment(RUNNER_TEMP=str(directory))
         for key in ('GH_TOKEN', 'PHASE4_REQUEST_JSON', 'SEALED_RUN_ID', 'SEALED_ATTEMPT', 'MODE'):
             environment.pop(key, None)
-        context = {'github.token': f.fixture_token, 'inputs.mode': mode,
+        context = {'github.token': f.fixture_token, 'secrets.PHASE4_TENANTS_READ_TOKEN': f.fixture_token, 'inputs.mode': mode,
                    'inputs.request': T.canonical(f.request).decode(),
                    'inputs.decision_request': T.canonical(f.request).decode(),
                    'inputs.sealed_run_id': '7', 'inputs.sealed_attempt': '2'}
@@ -120,7 +120,7 @@ class GateDecisionTests(unittest.TestCase):
         if path == OQ8_WORKFLOW:
             expected['PHASE4_REQUEST_JSON'] = '${{ inputs.decision_request }}'
         else:
-            expected.update(MODE='${{ inputs.mode }}', PHASE4_REQUEST_JSON='${{ inputs.request }}')
+            expected.update(PHASE4_TENANTS_READ_TOKEN='${{ secrets.PHASE4_TENANTS_READ_TOKEN }}', MODE='${{ inputs.mode }}', PHASE4_REQUEST_JSON='${{ inputs.request }}')
         self.assertEqual(expected, bindings)
         return bindings
 
@@ -211,6 +211,60 @@ class GateDecisionTests(unittest.TestCase):
             self.assertEqual(1, process.returncode)
             self.assert_contract(document, process.returncode)
             self.assertEqual(['APPROVAL_EDITED'], document['codes'])
+
+    def test_dedicated_tenant_decision_rechecks_business_proof_and_oq8_stays_scoped(self):
+        import phase_4_tenant_fixture as F
+        f = self.f
+        q = F.Qualification(f)
+        process, candidate = self.workflow(GATE_WORKFLOW, "evaluate")
+        self.assertEqual(0, process.returncode, candidate)
+        f.artifact(candidate)
+        process, decision = self.workflow(GATE_WORKFLOW)
+        self.assertEqual(0, process.returncode, decision)
+        self.assertEqual(("G-TENANT", "canonical-tenant-boundary"), (decision["gate"], decision["scope"]))
+        self.assertEqual(q.claim, decision["binding"]["tenant_qualification"])
+        self.assertEqual(T.SINGLE, decision["achieved_level"])
+        self.assertEqual(16, decision["seal"]["artifact_id"])
+        process, refused = self.workflow(OQ8_WORKFLOW)
+        self.assertEqual(["ADAPTER_UNAVAILABLE"], refused["codes"])
+        self.assertEqual(1, process.returncode)
+        pin = q.claim["runs"]["tenants_source"]
+        url = F.prefix(F.TENANTS) + "/actions/runs/" + str(pin["run_id"])
+        f.state["responses"][url]["json"]["run_attempt"] = 2
+        process, refused = self.workflow(GATE_WORKFLOW)
+        self.assertEqual(1, process.returncode)
+        self.assertEqual(["RUN_NOT_SUCCESSFUL"], refused["codes"])
+        self.assertIsNone(refused["seal"])
+        self.assertEqual("none", refused["achieved_level"])
+        del f.state["responses"][T.API + "/actions/runs/7/attempts/2"]
+        process, refused = self.workflow(GATE_WORKFLOW)
+        self.assertEqual(1, process.returncode)
+        self.assertEqual(["API_UNAVAILABLE"], refused["codes"])
+        f.request = decision
+        process, refused = self.workflow(GATE_WORKFLOW)
+        self.assertEqual(2, process.returncode)
+        self.assertEqual(["INPUT_INVALID"], refused["codes"])
+
+    def test_dedicated_tenant_failures_keep_scope_for_bad_pin_or_coordinates(self):
+        import phase_4_tenant_fixture as F
+        f = self.f
+        F.Qualification(f)
+        for malformed in ("pin", "coordinates"):
+            raw = copy.deepcopy(f.request)
+            if malformed == "pin":
+                raw["tenant_qualification"]["tenants_head"] = "invalid"
+            f.request_path.write_bytes(T.canonical(raw))
+            for allowed in (False, True):
+                argv = ["--request", str(f.request_path), "--run-id", "7", "--attempt",
+                        "invalid" if malformed == "coordinates" else "1", "--result", str(f.result_path)]
+                if allowed:
+                    argv.append("--allow-tenant")
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    self.assertNotEqual(0, D.main(argv))
+                result = json.loads(f.result_path.read_text())
+                self.assertEqual("G-TENANT" if allowed else "G-OQ8", result["gate"])
+                self.assertEqual("canonical-tenant-boundary" if allowed else "governing-design-availability", result["scope"])
+                self.assertIsNone(result["seal"])
 
     def test_availability_success_cannot_issue_a_gate_decision(self):
         f = self.f

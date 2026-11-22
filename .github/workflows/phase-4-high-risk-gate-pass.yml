@@ -42,6 +42,7 @@ jobs:
       - name: Verify this guarded attempt
         env:
           GH_TOKEN: ${{ github.token }}
+          PHASE4_TENANTS_READ_TOKEN: ${{ secrets.PHASE4_TENANTS_READ_TOKEN }}
           MODE: ${{ inputs.mode }}
           PHASE4_REQUEST_JSON: ${{ inputs.request }}
           SEALED_RUN_ID: ${{ inputs.sealed_run_id }}
@@ -51,7 +52,7 @@ jobs:
           output="$RUNNER_TEMP/phase-4-transition"
           mkdir -p "$output"
           if [ "$MODE" = consume ]; then
-            python3 -B tools/validate-phase-4-gate-decision.py --request-env --run-id "$SEALED_RUN_ID" --attempt "$SEALED_ATTEMPT" --result "$output/result.json" >"$output/report.txt" 2>&1
+            python3 -B tools/validate-phase-4-gate-decision.py --request-env --run-id "$SEALED_RUN_ID" --attempt "$SEALED_ATTEMPT" --allow-tenant --result "$output/result.json" >"$output/report.txt" 2>&1
           else
             python3 -B tools/validate-phase-4-transition.py evaluate --expected-transition high-risk-gate-pass --request-env --result "$output/result.json" >"$output/report.txt" 2>&1
           fi
