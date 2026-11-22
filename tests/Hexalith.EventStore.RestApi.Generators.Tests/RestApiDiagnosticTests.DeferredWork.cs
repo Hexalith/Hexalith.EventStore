@@ -8,6 +8,32 @@ namespace Hexalith.EventStore.RestApi.Generators.Tests;
 public sealed partial class RestApiDiagnosticTests
 {
     [Theory]
+    [InlineData("Claims", "Inherit", "tenantId")]
+    [InlineData("Platform", "Inherit", "tenant")]
+    [InlineData("System", "Inherit", "tenantId")]
+    [InlineData("Route", "Claims", "tenantId")]
+    public void Run_UnmappedTenantNamedCommandSegmentOutsideRouteSource_ReportsDiagnostic(
+        string assemblyTenantSource, string routeTenantSource, string tenantSegment)
+    {
+        string template = "{" + tenantSegment + "}/{aggregateId}";
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run($$"""
+            using Hexalith.EventStore.Contracts.Commands;
+            using Hexalith.EventStore.Contracts.Rest;
+            [assembly: RestApi("api/counter", "counter", RestTenantSource.{{assemblyTenantSource}})]
+            namespace Smoke;
+            [RestRoute(RestVerb.Post, "{{template}}", TenantSource = RestTenantSource.{{routeTenantSource}})]
+            public sealed record ResetCounter(string AggregateId) : ICommandContract
+            {
+                public static string Domain => "counter";
+                public static string CommandType => "reset-counter";
+            }
+            """);
+
+        ShouldContainError(result, "HESREST009").GetMessage().ShouldContain(tenantSegment);
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(result, ".Controller.g.cs").ShouldBeFalse();
+    }
+
+    [Theory]
     [InlineData("(RestTenantSource)999", "Inherit")]
     [InlineData("(RestTenantSource)(-2)", "Claims")]
     [InlineData("Claims", "(RestTenantSource)999")]

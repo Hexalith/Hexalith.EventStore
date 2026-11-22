@@ -1,12 +1,171 @@
 using System.Collections.Immutable;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Reflection;
+using System.Text.Json;
+
+using Hexalith.EventStore.Client.Gateway;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.RestApi.Generators.Tests;
 
 public sealed class TypedGatewayQueryGenerationTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EffectivelyPublicNestedQueriesAreGenerated(bool referenced)
+    {
+        const string source = """
+            using Hexalith.EventStore.Contracts.Queries;
+            namespace Owner;
+            public static class Operations
+            {
+                public sealed class Reads
+                {
+                    [QueryResultContract(typeof(string), "owner", "owner.nested")]
+                    public sealed record NestedQuery;
+                }
+
+                [QueryResultContract(typeof(string), "owner", "owner.private")]
+                private sealed record PrivateQuery;
+            }
+            internal static class InternalOwner
+            {
+                [QueryResultContract(typeof(string), "owner", "owner.internal")]
+                public sealed record InternalQuery;
+            }
+            public class GenericOwner<T>
+            {
+                [QueryResultContract(typeof(string), "owner", "owner.generic")]
+                public sealed record GenericQuery;
+            }
+            file static class FileOwner
+            {
+                [QueryResultContract(typeof(string), "owner", "owner.file")]
+                public sealed record FileQuery;
+            }
+            """;
+        CSharpCompilation input = RestApiGeneratorTestHarness.CreateCompilation(source);
+        if (referenced)
+        {
+            MetadataReference reference = RestApiGeneratorTestHarness.EmitToMetadataReference(input.WithAssemblyName("Owner.Contracts"));
+            input = RestApiGeneratorTestHarness.CreateCompilation([reference], "namespace Consumer; public sealed class Marker;");
+        }
+
+        CSharpCompilation output = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            input, out GeneratorDriverRunResult generated, out ImmutableArray<Diagnostic> diagnostics);
+
+        diagnostics.ShouldBeEmpty();
+        output.GetDiagnostics(TestContext.Current.CancellationToken).Where(static item => item.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        string binding = RestApiGeneratorTestHarness.GetGeneratedSource(generated, "TypedGatewayQueries.g.cs");
+        binding.ShouldContain("global::Owner.Operations.Reads.NestedQuery query");
+        binding.ShouldNotContain("PrivateQuery");
+        binding.ShouldNotContain("InternalQuery");
+        binding.ShouldNotContain("GenericQuery");
+        binding.ShouldNotContain("FileQuery");
+    }
+
+    [Fact]
+    public void AliasOnlyReferencedNestedQueriesDoNotGenerateUnresolvableBindings()
+    {
+        CSharpCompilation contracts = RestApiGeneratorTestHarness.CreateCompilation("""
+            using Hexalith.EventStore.Contracts.Queries;
+            namespace Owner;
+            public static class Operations
+            {
+                [QueryResultContract(typeof(string), "owner", "owner.aliased")]
+                public sealed record AliasedQuery;
+            }
+            """).WithAssemblyName("Owner.Contracts");
+        MetadataReference reference = RestApiGeneratorTestHarness.EmitToMetadataReference(contracts).WithAliases(["ownerAlias"]);
+        CSharpCompilation input = RestApiGeneratorTestHarness.CreateCompilation([reference], """
+            extern alias ownerAlias;
+            namespace Consumer;
+            public sealed record Reading(ownerAlias::Owner.Operations.AliasedQuery Query);
+            """);
+
+        CSharpCompilation output = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            input, out GeneratorDriverRunResult generated, out ImmutableArray<Diagnostic> diagnostics);
+
+        diagnostics.ShouldBeEmpty();
+        output.GetDiagnostics(TestContext.Current.CancellationToken).Where(static item => item.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(generated, "TypedGatewayQueries.g.cs").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TypedBindingSendsDeclaredGatewayRequestAndReturnsTypedPayloadAsync()
+    {
+        CSharpCompilation input = RestApiGeneratorTestHarness.CreateCompilation("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using Hexalith.EventStore.Client.Gateway;
+            using Hexalith.EventStore.Contracts.Queries;
+            using TypedQueryWireFixture.Generated;
+            namespace Owner;
+            public sealed record QueryResult(string DisplayLabel, int Total);
+            [QueryResultContract(typeof(QueryResult), "owner-domain", "Owner.Queries.Read.v2")]
+            public sealed record OwnerQuery(string OpaqueId, int PageLimit);
+
+            public static class QueryCaller
+            {
+                public static async Task<(string?, string?, int?)> CallAsync(
+                    IEventStoreGatewayClient gateway, CancellationToken cancellationToken)
+                {
+                    var result = await gateway.QueryAsync("tenant-42", "aggregate-17", new OwnerQuery("opaque-9", 7), cancellationToken);
+                    return (result.CorrelationId, result.Payload?.DisplayLabel, result.Payload?.Total);
+                }
+            }
+            """).WithAssemblyName("TypedQueryWireFixture");
+        CSharpCompilation output = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            input, out _, out ImmutableArray<Diagnostic> diagnostics);
+        diagnostics.ShouldBeEmpty();
+        Assembly assembly = RestApiGeneratorTestHarness.EmitToAssembly(output);
+        MethodInfo call = assembly.GetType("Owner.QueryCaller", throwOnError: true)!.GetMethod("CallAsync")!;
+        int requests = 0;
+        using var handler = new GatewayTestHttpMessageHandler(async (request, cancellationToken) =>
+        {
+            requests++;
+            request.Method.ShouldBe(HttpMethod.Post);
+            request.RequestUri.ShouldBe(new Uri("https://gateway.example/api/v1/queries"));
+            request.Headers.IfNoneMatch.ShouldBeEmpty();
+            request.Headers.Authorization.ShouldBe(new AuthenticationHeaderValue("Bearer", "caller-credential"));
+            JsonElement json = await request.Content.ShouldNotBeNull().ReadFromJsonAsync<JsonElement>(cancellationToken);
+            JsonElement expectedRequest = JsonSerializer.SerializeToElement(new
+            {
+                tenant = "tenant-42",
+                domain = "owner-domain",
+                aggregateId = "aggregate-17",
+                queryType = "Owner.Queries.Read.v2",
+                payload = new { opaqueId = "opaque-9", pageLimit = 7 },
+            });
+            JsonElement.DeepEquals(json, expectedRequest).ShouldBeTrue(json.GetRawText());
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new
+                {
+                    correlationId = "query-correlation",
+                    success = true,
+                    payload = new { displayLabel = "Read from gateway", total = 12 },
+                }),
+            };
+        });
+        using var httpClient = new HttpClient(handler, disposeHandler: false)
+        {
+            BaseAddress = new Uri("https://gateway.example"),
+        };
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "caller-credential");
+        var gateway = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        var execution = (Task<(string?, string?, int?)>)call.Invoke(null, [gateway, TestContext.Current.CancellationToken])!;
+        (await execution).ShouldBe(("query-correlation", "Read from gateway", 12));
+        requests.ShouldBe(1);
+    }
+
     [Fact]
     public void ReferencedContractsExportTypedBindingsWithoutRestEnrollment()
     {

@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Contracts.Problems;
+
 namespace Hexalith.EventStore.ErrorHandling;
 
 /// <summary>
@@ -13,7 +15,7 @@ public static class ProblemTypeUris {
     public const string NotFound = "https://hexalith.io/problems/not-found";
     public const string NotImplemented = "https://hexalith.io/problems/not-implemented";
     public const string UnsupportedApiVersion = "https://hexalith.io/problems/unsupported-api-version";
-    public const string DomainRejection = "https://hexalith.io/problems/domain-rejections";
+    public const string DomainRejection = DomainRejectionProblemDetails.TypeUri;
     public const string ConcurrencyConflict = "https://hexalith.io/problems/concurrency-conflict";
     public const string CommandIdentityConflict = "https://hexalith.io/problems/command-identity-conflict";
     public const string IdempotencyConflict = "https://hexalith.io/problems/idempotency-conflict";

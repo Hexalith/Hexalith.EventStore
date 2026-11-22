@@ -27,7 +27,11 @@ internal static class TypedGatewayQueryEmitter
             return null;
         }
 
-        var referencedQueries = compilation.SourceModule.ReferencedAssemblySymbols
+        var referencedQueries = compilation.References
+            .Where(static reference => reference.Properties.Aliases.IsDefaultOrEmpty
+                || reference.Properties.Aliases.Contains("global", StringComparer.Ordinal))
+            .Select(compilation.GetAssemblyOrModuleSymbol)
+            .OfType<IAssemblySymbol>()
             .Where(static assembly => assembly.Name.EndsWith(".Contracts", StringComparison.Ordinal))
             .SelectMany(assembly => Collect(assembly.GlobalNamespace, cancellationToken));
         var queries = Collect(compilation.Assembly.GlobalNamespace, cancellationToken)
@@ -155,12 +159,33 @@ internal static class TypedGatewayQueryEmitter
 
         foreach (INamedTypeSymbol type in scope.GetTypeMembers())
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (type.DeclaredAccessibility == Accessibility.Public
-                && type.Arity == 0
-                && type.GetAttributes().FirstOrDefault(static attribute => attribute.AttributeClass?.ToDisplayString() == AttributeName) is { } contract)
+            foreach (var query in Collect(type, cancellationToken))
             {
-                yield return (type, contract);
+                yield return query;
+            }
+        }
+    }
+
+    private static IEnumerable<(INamedTypeSymbol Query, AttributeData Contract)> Collect(
+        INamedTypeSymbol type,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (type.DeclaredAccessibility != Accessibility.Public || type.Arity != 0 || type.IsFileLocal)
+        {
+            yield break;
+        }
+
+        if (type.GetAttributes().FirstOrDefault(static attribute => attribute.AttributeClass?.ToDisplayString() == AttributeName) is { } contract)
+        {
+            yield return (type, contract);
+        }
+
+        foreach (INamedTypeSymbol nestedType in type.GetTypeMembers())
+        {
+            foreach (var query in Collect(nestedType, cancellationToken))
+            {
+                yield return query;
             }
         }
     }

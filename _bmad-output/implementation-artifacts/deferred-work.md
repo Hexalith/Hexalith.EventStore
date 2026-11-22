@@ -311,7 +311,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of D-7-proof-tenants-ui-host-submodule (2026-07-04)"), 2026-08-30
 location: src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:1143
 reason: MEDIUM — Generator: `{tenantId}` route parameter is unvalidated under `RestTenantSource.System`. `IsTenantParameter` (`src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:1143`) is name-based and not gated on tenant source, so the tenant-named route segment is excluded from route/body mismatch checks and, under System source, is decorative — a URL/body tenant mismatch silently executes against the body tenant (still bearer-authorized, so no escalation). Recommend validating tenant-named route params against the body when tenant source ≠ Route.
-status: open
+status: done 2026-11-22
+resolution: The generator applies the effective tenant source to command route diagnostics and body reconciliation. HESREST009 covers unmapped tenant-named segments, and executing fixtures cover mapped values under a Claims override.
 
 ### DW-48: MEDIUM — External REST error-semantics coverage gap. The 2054-line `TenantsQueryControllerIntegrationTests` was replaced by a 296-line generated-controller test covering 401/request-shape/freshness/ETag-304 but not 403/RBAC, gateway-failure → problem-details, or invalid-cursor at the generated surface. Add once the transport-fault and 400-vs-500 patches land.
 
@@ -469,7 +470,8 @@ resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Generat
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: rejectionType
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md` summary: Generated command problem mapping drops safe domain-rejection extensions such as `rejectionType` and `correctiveAction`. evidence: `DomainCommandRejectedExceptionHandler` emits `GatewayProblemDetailsExtensions.RejectionType` and `CorrectiveAction`, and `EventStoreGatewayClient` captures arbitrary non-standard ProblemDetails extensions in `EventStoreGatewayException.Extensions`, but generated controllers currently forward only correlation, tenant, reason, reasonCode, and filtered validation errors. The omission pre-dates this review pass and needs a deliberate generated API extension allowlist.
-status: open
+status: done 2026-11-22
+resolution: Generated command adapters preserve bounded rejection event IDs and the applicable published corrective action for a canonical domain rejection. Tests exercise the real Gateway client and verify that malformed and unrelated extensions are omitted.
 
 ### DW-71: Generated command success responses hard-code `/api/v1/commands/status/{id}` as a relative status `Location`.
 
@@ -689,7 +691,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
 location: QueriesController.cs:127
 reason: Single-source the canonical provenance-name formatter — `QueriesController.cs:127` emits the `X-Hexalith-Query-Provenance` header via `Provenance.ToString()` while the client (`GetProvenanceHeader`) and generated controller use an explicit canonical `nameof` switch. Safe today only because provenance is normalized to a defined value before that line; a future path that reaches it with an out-of-range value would emit a numeric string the strict parser maps to `Unknown`. [blind-hunter+acceptance-auditor]
-status: open
+status: done 2026-11-22
+resolution: The shared Contracts policy supplies canonical provenance names and normalization to the Gateway, generated controller, JSON converter, and client. Undefined values emit Unknown.
 
 ### DW-104: Duplicated projection-evidence sanitization across two assemblies — server `QueriesController.NormalizeProducerMetadata` and client `EventStoreGatewayClient.NormalizeMetadata` independently null `{ETag, IsNotModified, IsStale, ProjectionVersion}` for non-projection routes. Any future field added to "projection evidence" must be cleared in both, in two assemblies, or a leak/asymmetry appears. Consider a shared helper.
 
@@ -6745,6 +6748,8 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Traverse accessible nested query declarations or diagnose their unsupported shape.
   evidence: BH6: Collect visits namespace members but never containing types; a public Outer.Query receives no binding. Parent confirmed the traversal and reviewer reproduced omission. Separately owned generator work.
+  status: done 2026-11-22
+  resolution: Public nested requests in accessible nongeneric containers now generate typed bindings for source and globally available Contracts. Compilation tests cover accessible and inaccessible enclosing types and alias-only references.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Confirm the permitted referenced-assembly enrollment for typed Gateway query declarations.
@@ -6753,6 +6758,8 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Execute a generated typed Gateway binding and assert its complete request mapping.
   evidence: VG1 preverified: both new generator tests compile and inspect strings without invoking QueryAsync. Swapping tenantId and aggregateId still compiles and preserves all asserted substrings. Add runtime request/payload and typed-result assertions through the real Gateway HTTP boundary. Separately committed generator behavior, outside guarded-write intent.
+  status: done 2026-11-22
+  resolution: The compiled binding runs through the real Gateway HTTP client. The test checks the complete request envelope, endpoint, caller authorization and typed response.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Assert the Gateway correlation response header after handled exceptions.

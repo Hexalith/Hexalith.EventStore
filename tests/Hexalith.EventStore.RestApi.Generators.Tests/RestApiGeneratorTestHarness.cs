@@ -48,16 +48,22 @@ internal static class RestApiGeneratorTestHarness
     }
 
     internal static MetadataReference EmitToMetadataReference(CSharpCompilation compilation)
+        => MetadataReference.CreateFromImage(EmitToImage(compilation));
+
+    internal static Assembly EmitToAssembly(CSharpCompilation compilation)
+        => Assembly.Load(EmitToImage(compilation));
+
+    private static byte[] EmitToImage(CSharpCompilation compilation)
     {
         using var stream = new MemoryStream();
         EmitResult result = compilation.Emit(stream, cancellationToken: TestContext.Current.CancellationToken);
         if (!result.Success)
         {
             string diagnostics = string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => diagnostic.ToString()));
-            throw new InvalidOperationException("Referenced compilation failed:" + Environment.NewLine + diagnostics);
+            throw new InvalidOperationException("Test compilation failed:" + Environment.NewLine + diagnostics);
         }
 
-        return MetadataReference.CreateFromImage(stream.ToArray());
+        return stream.ToArray();
     }
 
     internal static GeneratorDriverRunResult Run(params string[] sources)

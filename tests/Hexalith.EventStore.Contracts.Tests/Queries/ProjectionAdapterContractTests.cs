@@ -305,6 +305,14 @@ public class ProjectionAdapterContractTests {
     }
 
     [Fact]
+    public void QueryResponseProvenance_UndefinedValue_UsesUnknownWireName() {
+        var undefined = (QueryResponseProvenance)999;
+
+        QueryResponseProvenancePolicy.Format(undefined).ShouldBe("Unknown");
+        JsonSerializer.Serialize(undefined).ShouldBe("\"Unknown\"");
+    }
+
+    [Fact]
     public void ProjectionLifecycleState_PublicValues_AreExplicitAndStable() {
         Enum.GetNames<ProjectionLifecycleState>()
             .ShouldBe(["Unknown", "Current", "Stale", "Rebuilding", "Degraded", "Unavailable", "LocalOnly"]);

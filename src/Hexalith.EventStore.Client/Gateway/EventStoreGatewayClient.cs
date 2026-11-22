@@ -615,11 +615,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     }
 
     private static QueryResponseProvenance GetProvenanceHeader(HttpResponseMessage response) {
-        return GetBoundedSingleHeaderValue(response, "X-Hexalith-Query-Provenance") switch {
-            nameof(QueryResponseProvenance.ProjectionBacked) => QueryResponseProvenance.ProjectionBacked,
-            nameof(QueryResponseProvenance.HandlerComputed) => QueryResponseProvenance.HandlerComputed,
-            _ => QueryResponseProvenance.Unknown,
-        };
+        return QueryResponseProvenancePolicy.Parse(GetBoundedSingleHeaderValue(response, QueryResponseProvenancePolicy.HeaderName));
     }
 
     private static ProjectionLifecycleState GetLifecycleHeader(HttpResponseMessage response) {

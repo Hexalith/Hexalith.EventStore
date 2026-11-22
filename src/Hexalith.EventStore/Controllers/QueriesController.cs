@@ -421,7 +421,7 @@ public partial class QueriesController : ControllerBase {
             && currentETag is not null
             && ETagMatches(ifNoneMatch, currentETag, hasProducerETag);
 
-        Response.Headers["X-Hexalith-Query-Provenance"] = metadata.Provenance.ToString();
+        Response.Headers[QueryResponseProvenancePolicy.HeaderName] = QueryResponseProvenancePolicy.Format(metadata.Provenance);
         _ = Response.Headers.Remove(ProjectionLifecyclePolicy.HeaderName);
         if (metadata.Lifecycle != ProjectionLifecycleState.Unknown) {
             Response.Headers[ProjectionLifecyclePolicy.HeaderName] = metadata.Lifecycle.ToString();
@@ -494,7 +494,7 @@ public partial class QueriesController : ControllerBase {
 
     private static QueryResponseMetadata NormalizeProducerMetadata(QueryResponseMetadata? metadata) {
         QueryResponseMetadata source = metadata ?? new QueryResponseMetadata();
-        QueryResponseProvenance provenance = NormalizeProvenance(source.Provenance);
+        QueryResponseProvenance provenance = QueryResponseProvenancePolicy.Normalize(source.Provenance);
         ProjectionLifecycleState lifecycle = ProjectionLifecyclePolicy.Normalize(source.Lifecycle, provenance);
         QueryResponseMetadata normalized = source with {
             Provenance = provenance,
@@ -511,13 +511,6 @@ public partial class QueriesController : ControllerBase {
                 ProjectionVersion = null,
             };
     }
-
-    private static QueryResponseProvenance NormalizeProvenance(QueryResponseProvenance provenance)
-        => provenance switch {
-            QueryResponseProvenance.ProjectionBacked => QueryResponseProvenance.ProjectionBacked,
-            QueryResponseProvenance.HandlerComputed => QueryResponseProvenance.HandlerComputed,
-            _ => QueryResponseProvenance.Unknown,
-        };
 
     private static QueryResponseMetadata MergeQueryMetadata(
         QueryResponseMetadata? producerMetadata,

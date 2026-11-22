@@ -1,5 +1,8 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
 
@@ -12,7 +15,7 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Emit;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.RestApi.Generators.Tests;
 
@@ -257,6 +260,7 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     [Theory]
     [InlineData(QueryResponseProvenance.HandlerComputed, "HandlerComputed")]
     [InlineData(QueryResponseProvenance.Unknown, "Unknown")]
+    [InlineData((QueryResponseProvenance)999, "Unknown")]
     public async Task QueryAction_NonProjectionProvenance_OmitsProjectionEvidenceAndPreservesSafeMetadata(
         QueryResponseProvenance provenance,
         string expectedHeader)
@@ -917,6 +921,36 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         controller.Gateway.CommandCallCount.ShouldBe(0);
     }
 
+    [Theory]
+    [InlineData("Claims", "Inherit", "other-domain-tenant", false)]
+    [InlineData("Route", "Claims", "other-domain-tenant", false)]
+    [InlineData("Route", "Claims", "tenant-a", true)]
+    public async Task CommandAction_ClaimsTenantMode_ReconcilesTenantNamedRouteValueWithBody(
+        string assemblyMode, string commandMode, string routeTenant, bool matches)
+    {
+        RestApiGeneratedController controller = CreateController(tenantMode: assemblyMode, commandTenantMode: commandMode);
+        controller.HttpContext.Request.Headers["X-Hexalith-Tenant"] = "tenant-a";
+        object body = Activator.CreateInstance(
+            controller.Assembly.GetType("Smoke.IncrementCounter", throwOnError: true)!,
+            "counter-1",
+            5)!;
+
+        IActionResult result = await InvokeCommandAsync(controller, "counter-1", body, routeTenant);
+
+        if (matches)
+        {
+            _ = result.ShouldBeOfType<AcceptedResult>();
+        }
+        else
+        {
+            ObjectResult response = result.ShouldBeOfType<ObjectResult>();
+            response.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+            response.Value.ShouldBeOfType<ProblemDetails>().Detail.ShouldBe("Route value 'tenant' does not match the command body.");
+        }
+
+        controller.Gateway.CommandCallCount.ShouldBe(matches ? 1 : 0);
+    }
+
     [Fact]
     public async Task CommandAction_NullBody_ReturnsBadRequestBeforeGatewayCall()
     {
@@ -1004,6 +1038,122 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         headers["Location"].ToString().ShouldNotStartWith("/");
     }
 
+    [Theory]
+    [InlineData(StatusCodes.Status404NotFound, "tenant-not-found", "tenant-not-found", "Verify the identifier and tenant context, then retry with an existing resource.")]
+    [InlineData(StatusCodes.Status409Conflict, "Sample.Commands.Events+CounterAlreadyExists", "events-counter-already-exists", "Use a different identifier or treat the existing resource as the current state.")]
+    [InlineData(StatusCodes.Status422UnprocessableEntity, "invalid-payload", "invalid-payload", "Correct the command payload and retry.")]
+    [InlineData(StatusCodes.Status422UnprocessableEntity, "Sample.CounterRejected", "counter-rejected", "Review the rejection detail, correct the request, and retry when appropriate.")]
+    public async Task CommandAction_DomainRejection_ForwardsPublishedExtensions(
+        int status, string rejectionType, string reasonCode, string correctiveAction)
+    {
+        string problemType = "https://hexalith.io/problems/domain-rejections/" + reasonCode;
+        using var http = new HttpClient(new GatewayTestHttpMessageHandler((_, _) =>
+            Task.FromResult(new HttpResponseMessage((HttpStatusCode)status)
+            {
+                Content = JsonContent.Create(new
+                {
+                    status,
+                    title = "Counter Rejected",
+                    type = problemType,
+                    reasonCode,
+                    rejectionType,
+                    correctiveAction,
+                    internalDetail = "not public",
+                }, mediaType: new MediaTypeHeaderValue("application/problem+json")),
+            })))
+        {
+            BaseAddress = new Uri("https://gateway.example"),
+        };
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions()));
+        RestApiGeneratedController controller = CreateController();
+        controller.Gateway.CommandHandler = gateway.SubmitCommandAsync;
+        object body = Activator.CreateInstance(
+            controller.Assembly.GetType("Smoke.IncrementCounter", throwOnError: true)!,
+            "counter-1",
+            5)!;
+
+        ObjectResult response = (await InvokeCommandAsync(controller, "counter-1", body)).ShouldBeOfType<ObjectResult>();
+
+        response.StatusCode.ShouldBe(status);
+        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Type.ShouldBe(problemType);
+        problem.Extensions["reasonCode"].ShouldBe(reasonCode);
+        problem.Extensions["rejectionType"].ShouldBe(rejectionType);
+        problem.Extensions["correctiveAction"].ShouldBe(correctiveAction);
+        problem.Extensions.ContainsKey("internalDetail").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(true, StatusCodes.Status422UnprocessableEntity, "https://hexalith.io/problems/domain-rejections/counter-rejected", "counter-rejected", "\"Unsafe\\r\\nType\"", "\"Unpublished action\"")]
+    [InlineData(true, StatusCodes.Status422UnprocessableEntity, "https://hexalith.io/problems/domain-rejections/counter-rejected", "counter-rejected", "123", "{}")]
+    [InlineData(true, StatusCodes.Status409Conflict, "https://hexalith.io/problems/concurrency-conflict", "counter-already-exists", "\"Sample.CounterRejected\"", "\"Correct the command payload and retry.\"")]
+    [InlineData(true, StatusCodes.Status422UnprocessableEntity, "https://hexalith.io/problems/domain-rejections/", "", "\"Sample.CounterRejected\"", "\"Correct the command payload and retry.\"")]
+    [InlineData(true, StatusCodes.Status422UnprocessableEntity, "https://hexalith.io/problems/domain-rejections/---", "---", "\"Sample.CounterRejected\"", "\"Correct the command payload and retry.\"")]
+    [InlineData(true, StatusCodes.Status422UnprocessableEntity, "https://hexalith.io/problems/domain-rejections/Counter--Rejected", "Counter--Rejected", "\"Sample.CounterRejected\"", "\"Correct the command payload and retry.\"")]
+    [InlineData(true, StatusCodes.Status422UnprocessableEntity, "https://hexalith.io/problems/domain-rejections/counter-rejected/extra", "counter-rejected", "\"Sample.CounterRejected\"", "\"Correct the command payload and retry.\"")]
+    [InlineData(true, StatusCodes.Status503ServiceUnavailable, "https://hexalith.io/problems/domain-rejections/counter-rejected", "counter-rejected", "\"Sample.CounterRejected\"", "\"Correct the command payload and retry.\"")]
+    [InlineData(false, StatusCodes.Status404NotFound, "https://hexalith.io/problems/domain-rejections/counter-not-found", "counter-not-found", "\"Sample.CounterRejected\"", "\"Verify the identifier and tenant context, then retry with an existing resource.\"")]
+    public async Task GeneratedAction_OmitsRejectionExtensionsOutsidePublishedContract(
+        bool command, int status, string type, string reasonCode, string rejectionTypeJson, string correctiveActionJson)
+    {
+        RestApiGeneratedController controller = CreateController();
+        var exception = new EventStoreGatewayException(
+            status,
+            "Gateway Error",
+            type: type,
+            extensions: new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["rejectionType"] = JsonSerializer.Deserialize<JsonElement>(rejectionTypeJson),
+                ["correctiveAction"] = JsonSerializer.Deserialize<JsonElement>(correctiveActionJson),
+            },
+            reasonCode: reasonCode);
+        controller.Gateway.CommandHandler = (_, _) => Task.FromException<SubmitCommandResponse>(exception);
+        controller.Gateway.QueryHandler = (_, _, _) => Task.FromException<EventStoreQueryResult>(exception);
+        object body = Activator.CreateInstance(
+            controller.Assembly.GetType("Smoke.IncrementCounter", throwOnError: true)!,
+            "counter-1",
+            5)!;
+
+        IActionResult result = command ? await InvokeCommandAsync(controller, "counter-1", body) : await InvokeQueryAsync(controller);
+
+        ObjectResult response = result.ShouldBeOfType<ObjectResult>();
+        response.StatusCode.ShouldBe(status);
+        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions.ContainsKey("rejectionType").ShouldBeFalse();
+        problem.Extensions.ContainsKey("correctiveAction").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("Sample/CounterRejected", "Correct the command payload and retry.", false, true)]
+    [InlineData(null, "Correct the command payload and retry.", false, true)]
+    [InlineData("Sample.CounterRejected", "Verify the identifier and tenant context, then retry with an existing resource.", true, false)]
+    public async Task CommandAction_ValidatesEachDomainRejectionExtensionIndependently(
+        string? rejectionType, string correctiveAction, bool keepsType, bool keepsAction)
+    {
+        RestApiGeneratedController controller = CreateController();
+        controller.Gateway.CommandHandler = (_, _) =>
+            throw new EventStoreGatewayException(
+                StatusCodes.Status422UnprocessableEntity,
+                "Invalid Command",
+                type: "https://hexalith.io/problems/domain-rejections/invalid-command",
+                extensions: new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+                {
+                    ["rejectionType"] = JsonSerializer.SerializeToElement(rejectionType ?? new string('x', QueryPolicyLimits.MaxCursorLength + 1)),
+                    ["correctiveAction"] = JsonSerializer.SerializeToElement(correctiveAction),
+                },
+                reasonCode: "invalid-command");
+        object body = Activator.CreateInstance(
+            controller.Assembly.GetType("Smoke.IncrementCounter", throwOnError: true)!,
+            "counter-1",
+            5)!;
+
+        ObjectResult response = (await InvokeCommandAsync(controller, "counter-1", body)).ShouldBeOfType<ObjectResult>();
+        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
+
+        problem.Extensions.ContainsKey("rejectionType").ShouldBe(keepsType);
+        problem.Extensions.ContainsKey("correctiveAction").ShouldBe(keepsAction);
+    }
+
     [Fact]
     public async Task CommandAction_ValidBody_WithoutConfiguredStatusBase_ReturnsAcceptedAndOmitsLocation()
     {
@@ -1028,9 +1178,15 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         headers.ContainsKey("Location").ShouldBeFalse();
     }
 
-    private static RestApiGeneratedController CreateController(ICommandStatusLocationBuilder? statusLocationBuilder = null, string tenantMode = "Route", string routeTenantMode = "Inherit", string? queryBinding = null)
+    private static RestApiGeneratedController CreateController(
+        ICommandStatusLocationBuilder? statusLocationBuilder = null,
+        string tenantMode = "Route",
+        string routeTenantMode = "Inherit",
+        string? queryBinding = null,
+        string commandTenantMode = "Inherit")
     {
         string source = ControllerExerciseSource.Replace("RestTenantSource.Route", "RestTenantSource." + tenantMode, StringComparison.Ordinal)
+            .Replace("[RestRoute(RestVerb.Post, \"{counterId}/increment\")]", "[RestRoute(RestVerb.Post, \"{counterId}/increment\", TenantSource = RestTenantSource." + commandTenantMode + ")]", StringComparison.Ordinal)
             .Replace("[RestRoute(RestVerb.Get, \"{entityId}\")]", "[RestRoute(RestVerb.Get, \"{entityId}\", TenantSource = RestTenantSource." + routeTenantMode + ")]"
                 + (queryBinding is null ? string.Empty : Environment.NewLine + "[RestQueryBinding(" + queryBinding + ")]"), StringComparison.Ordinal);
         CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(source);
@@ -1041,7 +1197,7 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         ShouldHaveNoErrors(updateDiagnostics);
         ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
 
-        Assembly assembly = EmitToAssembly(outputCompilation);
+        Assembly assembly = RestApiGeneratorTestHarness.EmitToAssembly(outputCompilation);
         Type controllerType = assembly
             .GetTypes()
             .Single(static type => string.Equals(type.Name, "CounterRestController", StringComparison.Ordinal));
@@ -1073,26 +1229,14 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     private static async Task<IActionResult> InvokeCommandAsync(
         RestApiGeneratedController controller,
         string counterId,
-        object? body)
+        object? body,
+        string routeTenant = "tenant-a")
     {
         MethodInfo method = controller.Controller.GetType().GetMethod("IncrementCounterCommandAsync")!;
         var task = (Task<IActionResult>)method.Invoke(
             controller.Controller,
-            ["tenant-a", counterId, body, TestContext.Current.CancellationToken])!;
+            [routeTenant, counterId, body, TestContext.Current.CancellationToken])!;
         return await task.ConfigureAwait(false);
-    }
-
-    private static Assembly EmitToAssembly(CSharpCompilation compilation)
-    {
-        using var stream = new MemoryStream();
-        EmitResult result = compilation.Emit(stream, cancellationToken: TestContext.Current.CancellationToken);
-        if (!result.Success)
-        {
-            string diagnostics = string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => diagnostic.ToString()));
-            throw new InvalidOperationException("Generated controller compilation failed:" + Environment.NewLine + diagnostics);
-        }
-
-        return Assembly.Load(stream.ToArray());
     }
 
     private static void AssertMetadataHeadersAbsent(IHeaderDictionary headers)
@@ -1152,6 +1296,7 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
             public static string Domain => "counter";
             public static string CommandType => "increment-counter";
             public string AggregateId => CounterId;
+            public string Tenant { get; init; } = "tenant-a";
         }
 
         [RestRoute(RestVerb.Get, "{entityId}")]

@@ -87,7 +87,10 @@ internal static class RestApiControllerEmitter
             }
 
             if (message.IsCommand
-                && TryFindUnmappedCommandRouteParameter(message, effectiveRouteParameters, out RestApiRouteParameterDescriptor unmappedParameter))
+                && TryFindUnmappedCommandRouteParameter(
+                    message,
+                    GetCommandBodyRouteParameters(options, route, effectiveRouteParameters),
+                    out RestApiRouteParameterDescriptor unmappedParameter))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateUnmappedRouteParameter(message, unmappedParameter));
                 continue;
@@ -210,6 +213,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("using Hexalith.Commons.UniqueIds;");
         builder.AppendLine("using Hexalith.EventStore.Client.Gateway;");
         builder.AppendLine("using Hexalith.EventStore.Contracts.Commands;");
+        builder.AppendLine("using Hexalith.EventStore.Contracts.Problems;");
         builder.AppendLine("using Hexalith.EventStore.Contracts.Queries;");
         builder.AppendLine();
         builder.AppendLine("using Microsoft.AspNetCore.Authorization;");
@@ -477,7 +481,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        Response.Headers.Remove(ProjectionLifecyclePolicy.HeaderName);");
         builder.AppendLine("        QueryResponseProvenance provenance = metadata?.Provenance ?? QueryResponseProvenance.Unknown;");
-        builder.AppendLine("        Response.Headers[\"X-Hexalith-Query-Provenance\"] = GetCanonicalQueryProvenanceName(provenance);");
+        builder.AppendLine("        Response.Headers[QueryResponseProvenancePolicy.HeaderName] = QueryResponseProvenancePolicy.Format(provenance);");
         builder.AppendLine();
         builder.AppendLine("        if (metadata is null)");
         builder.AppendLine("        {");
@@ -549,14 +553,6 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("            Response.Headers[\"X-Hexalith-Next-Cursor\"] = nextCursor;");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
-        builder.AppendLine();
-        builder.AppendLine("    private static string GetCanonicalQueryProvenanceName(QueryResponseProvenance provenance)");
-        builder.AppendLine("        => provenance switch");
-        builder.AppendLine("        {");
-        builder.AppendLine("            QueryResponseProvenance.ProjectionBacked => nameof(QueryResponseProvenance.ProjectionBacked),");
-        builder.AppendLine("            QueryResponseProvenance.HandlerComputed => nameof(QueryResponseProvenance.HandlerComputed),");
-        builder.AppendLine("            _ => nameof(QueryResponseProvenance.Unknown),");
-        builder.AppendLine("        };");
         builder.AppendLine();
         builder.AppendLine("    private static string GetCanonicalProjectionLifecycleName(ProjectionLifecycleState lifecycle)");
         builder.AppendLine("        => lifecycle switch");
@@ -662,11 +658,22 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("            Response.Headers[\"Retry-After\"] = retryAfter;");
         builder.AppendLine("        }");
         builder.AppendLine();
+        builder.AppendLine("        string? expectedCorrectiveAction = null;");
+        builder.AppendLine("        if (includeCommandOnlyStatusCodes");
+        builder.AppendLine("            && statusCode is (StatusCodes.Status404NotFound or StatusCodes.Status409Conflict or StatusCodes.Status422UnprocessableEntity)");
+        builder.AppendLine("            && TryGetBoundedHeaderValue(exception.Type, out string? rejectionProblemType)");
+        builder.AppendLine("            && TryGetBoundedHeaderValue(exception.ReasonCode, out string? rejectionReason)");
+        builder.AppendLine("            && DomainRejectionProblemDetails.IsCanonicalReasonCode(rejectionReason)");
+        builder.AppendLine("            && string.Equals(rejectionProblemType, DomainRejectionProblemDetails.TypeUri + \"/\" + rejectionReason, StringComparison.Ordinal))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            expectedCorrectiveAction = DomainRejectionProblemDetails.GetCorrectiveAction(statusCode, rejectionReason);");
+        builder.AppendLine("        }");
+        builder.AppendLine();
         builder.AppendLine("        var problem = new ProblemDetails");
         builder.AppendLine("        {");
         builder.AppendLine("            Status = statusCode,");
         builder.AppendLine("            Title = GetSafeProblemDisplayText(exception.Title) ?? \"Gateway Error\",");
-        builder.AppendLine("            Type = GetSafeProblemDisplayText(exception.Type) ?? \"about:blank\",");
+        builder.AppendLine("            Type = expectedCorrectiveAction is not null ? exception.Type : GetSafeProblemDisplayText(exception.Type) ?? \"about:blank\",");
         builder.AppendLine("            Detail = GetSafeProblemDisplayText(exception.Detail),");
         builder.AppendLine("        };");
         builder.AppendLine();
@@ -674,6 +681,12 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        AddSafeProblemTokenExtension(problem, \"tenantId\", exception.TenantId);");
         builder.AppendLine("        AddSafeProblemTokenExtension(problem, \"reason\", exception.Reason);");
         builder.AppendLine("        AddSafeProblemTokenExtension(problem, \"reasonCode\", exception.ReasonCode);");
+        builder.AppendLine();
+        builder.AppendLine("        if (expectedCorrectiveAction is not null)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            AppendDomainRejectionExtensions(problem, exception.Extensions, expectedCorrectiveAction);");
+        builder.AppendLine("        }");
+        builder.AppendLine();
             builder.AppendLine("        IReadOnlyDictionary<string, string> __hexalithSafeErrors = FilterSafeErrors(exception.Errors);");
             builder.AppendLine("        if (__hexalithSafeErrors.Count > 0)");
             builder.AppendLine("        {");
@@ -685,6 +698,25 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("            StatusCode = problem.Status,");
         builder.AppendLine("            ContentTypes = { \"application/problem+json\" },");
         builder.AppendLine("        };");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    private static void AppendDomainRejectionExtensions(");
+        builder.AppendLine("        ProblemDetails problem, IReadOnlyDictionary<string, JsonElement> extensions, string expectedCorrectiveAction)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (extensions.TryGetValue(GatewayProblemDetailsExtensions.RejectionType, out JsonElement type)");
+        builder.AppendLine("            && type.ValueKind == JsonValueKind.String");
+        builder.AppendLine("            && TryGetBoundedHeaderValue(type.GetString(), out string? rejectionType)");
+        builder.AppendLine("            && rejectionType.All(static character => char.IsLetterOrDigit(character) || character is '.' or '_' or '+' or '-' or '`'))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            problem.Extensions[GatewayProblemDetailsExtensions.RejectionType] = rejectionType;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        if (extensions.TryGetValue(GatewayProblemDetailsExtensions.CorrectiveAction, out JsonElement action)");
+        builder.AppendLine("            && action.ValueKind == JsonValueKind.String");
+        builder.AppendLine("            && string.Equals(action.GetString(), expectedCorrectiveAction, StringComparison.Ordinal))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            problem.Extensions[GatewayProblemDetailsExtensions.CorrectiveAction] = expectedCorrectiveAction;");
+        builder.AppendLine("        }");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    private static ObjectResult CreateProblem(int statusCode, string title, string detail)");
@@ -944,9 +976,7 @@ internal static class RestApiControllerEmitter
         // a route/body id mismatch such as POST /api/tenants/acme/disable {"tenantId":"other"} would
         // silently dispatch against the body id. AC2 requires a 400 problem detail on such a mismatch.
         ImmutableArray<RestApiRouteParameterDescriptor> reconciledParameters =
-            RequiresRouteTenant(options, GetRoute(message))
-                ? GetNonTenantParameters(routeParameters)
-                : routeParameters;
+            GetCommandBodyRouteParameters(options, GetRoute(message), routeParameters);
         foreach (RestApiRouteParameterDescriptor parameter in reconciledParameters)
         {
             string routeValue = "Convert.ToString(" + parameter.Identifier + ", CultureInfo.InvariantCulture)";
@@ -1472,11 +1502,10 @@ internal static class RestApiControllerEmitter
 
     private static bool TryFindUnmappedCommandRouteParameter(
         RestApiMessageDescriptor message,
-        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        ImmutableArray<RestApiRouteParameterDescriptor> bodyRouteParameters,
         out RestApiRouteParameterDescriptor unmappedParameter)
     {
-        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
-        foreach (RestApiRouteParameterDescriptor parameter in nonTenantParameters)
+        foreach (RestApiRouteParameterDescriptor parameter in bodyRouteParameters)
         {
             if (string.Equals(parameter.Name, "aggregateId", StringComparison.OrdinalIgnoreCase))
             {
@@ -1494,7 +1523,7 @@ internal static class RestApiControllerEmitter
                 return true;
             }
 
-            if (nonTenantParameters.Length <= 1)
+            if (bodyRouteParameters.Length == 1)
             {
                 continue;
             }
@@ -1553,6 +1582,12 @@ internal static class RestApiControllerEmitter
         => routeParameters
             .Where(static parameter => !IsTenantParameter(parameter))
             .ToImmutableArray();
+
+    private static ImmutableArray<RestApiRouteParameterDescriptor> GetCommandBodyRouteParameters(
+        RestApiOptions options,
+        RestApiRouteDescriptor route,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
+        => RequiresRouteTenant(options, route) ? GetNonTenantParameters(routeParameters) : routeParameters;
 
     private static RestApiRouteParameterDescriptor? GetAggregateParameter(ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters)
     {

@@ -27,13 +27,7 @@ public sealed class QueryResponseProvenanceJsonConverter : JsonConverter<QueryRe
             return QueryResponseProvenance.Unknown;
         }
 
-        string? value = reader.GetString();
-        return value switch
-        {
-            nameof(QueryResponseProvenance.ProjectionBacked) => QueryResponseProvenance.ProjectionBacked,
-            nameof(QueryResponseProvenance.HandlerComputed) => QueryResponseProvenance.HandlerComputed,
-            _ => QueryResponseProvenance.Unknown,
-        };
+        return QueryResponseProvenancePolicy.Parse(reader.GetString());
     }
 
     /// <inheritdoc />
@@ -44,11 +38,6 @@ public sealed class QueryResponseProvenanceJsonConverter : JsonConverter<QueryRe
     {
         ArgumentNullException.ThrowIfNull(writer);
 
-        writer.WriteStringValue(value switch
-        {
-            QueryResponseProvenance.ProjectionBacked => nameof(QueryResponseProvenance.ProjectionBacked),
-            QueryResponseProvenance.HandlerComputed => nameof(QueryResponseProvenance.HandlerComputed),
-            _ => nameof(QueryResponseProvenance.Unknown),
-        });
+        writer.WriteStringValue(QueryResponseProvenancePolicy.Format(value));
     }
 }

@@ -1,5 +1,7 @@
 using System.Text;
 
+using Hexalith.EventStore.Contracts.Problems;
+
 namespace Hexalith.EventStore.ErrorHandling;
 
 /// <summary>
@@ -35,7 +37,7 @@ public static class DomainRejectionProblemCatalog {
             Title: ToTitle(SplitReasonCode(reasonCode)),
             StatusCode: statusCode,
             Explanation: GetExplanation(statusCode),
-            CorrectiveAction: GetCorrectiveAction(reasonCode, statusCode),
+            CorrectiveAction: DomainRejectionProblemDetails.GetCorrectiveAction(statusCode, reasonCode),
             RejectionName: rejectionName);
     }
 
@@ -57,17 +59,6 @@ public static class DomainRejectionProblemCatalog {
             StatusCodes.Status404NotFound => "The command referenced a domain resource that does not exist in the requested tenant context.",
             StatusCodes.Status409Conflict => "The command conflicts with the current domain state and was not applied.",
             _ => "The command was syntactically valid but rejected by domain business rules or validation.",
-        };
-
-    private static string GetCorrectiveAction(string reasonCode, int statusCode)
-        => statusCode switch {
-            StatusCodes.Status404NotFound => "Verify the identifier and tenant context, then retry with an existing resource.",
-            StatusCodes.Status409Conflict => "Use a different identifier or treat the existing resource as the current state.",
-            _ when reasonCode.Contains("cannot", StringComparison.Ordinal)
-                || reasonCode.Contains("invalid", StringComparison.Ordinal)
-                || reasonCode.Contains("mismatch", StringComparison.Ordinal)
-                => "Correct the command payload and retry.",
-            _ => "Review the rejection detail, correct the request, and retry when appropriate.",
         };
 
     private static string GetShortRejectionName(string rejectionType) {

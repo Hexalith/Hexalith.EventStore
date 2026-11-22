@@ -59,7 +59,7 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
             observed.Add((kind, tenant));
             return tenant == (conflicting ? "unselected-tenant" : selectedTenant);
         });
-        object body = Activator.CreateInstance(controller.Assembly.GetType("Smoke.IncrementCounter")!, "counter-1", 2)!;
+        object body = CreateCatalogCommandBody(controller, "counter-1", routeIdentifier);
         var command = (Task<IActionResult>)controller.Controller.GetType().GetMethod("IncrementCounterCommandAsync")!
             .Invoke(controller.Controller, [routeIdentifier, "counter-1", body, TestContext.Current.CancellationToken])!;
         IActionResult commandResult = await command;
@@ -93,7 +93,7 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     public async Task ClaimsModeWithoutExplicitTenantRejectsBeforeCatalogAndGateway()
     {
         RestApiGeneratedController controller = CreateController(tenantMode: "Claims");
-        object body = Activator.CreateInstance(controller.Assembly.GetType("Smoke.IncrementCounter")!, "counter-1", 2)!;
+        object body = CreateCatalogCommandBody(controller, "counter-1", "aggregate-route-identifier");
         var command = (Task<IActionResult>)controller.Controller.GetType().GetMethod("IncrementCounterCommandAsync")!
             .Invoke(controller.Controller, ["aggregate-route-identifier", "counter-1", body, TestContext.Current.CancellationToken])!;
         (await command).ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -112,12 +112,20 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         if (mode == "Claims") controller.HttpContext.Request.Headers["X-Hexalith-Tenant"] = "claimed-tenant";
         int inspections = 0;
         controller.HttpContext.Items[RouteCatalogGeneratedAction.ValidatorKey] = (Func<Type, string, string, bool>)((_, _, _) => { inspections++; return true; });
-        object body = Activator.CreateInstance(controller.Assembly.GetType("Smoke.IncrementCounter")!, "body-id", 2)!;
+        object body = CreateCatalogCommandBody(controller, "body-id", "route-tenant");
         var command = (Task<IActionResult>)controller.Controller.GetType().GetMethod("IncrementCounterCommandAsync")!
             .Invoke(controller.Controller, ["route-tenant", "different-route-id", body, TestContext.Current.CancellationToken])!;
         (await command).ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(
             StatusCodes.Status400BadRequest);
         inspections.ShouldBe(0);
         controller.Gateway.CommandCallCount.ShouldBe(0);
+    }
+
+    private static object CreateCatalogCommandBody(RestApiGeneratedController controller, string aggregateId, string routeTenant)
+    {
+        Type bodyType = controller.Assembly.GetType("Smoke.IncrementCounter", throwOnError: true)!;
+        object body = Activator.CreateInstance(bodyType, aggregateId, 2)!;
+        bodyType.GetProperty("Tenant")!.SetValue(body, routeTenant);
+        return body;
     }
 }
