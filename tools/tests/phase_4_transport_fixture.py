@@ -4,6 +4,7 @@ import base64
 import json
 import os
 from pathlib import Path
+import sys
 import urllib.error
 import urllib.request
 
@@ -42,6 +43,19 @@ class Transport:
 
 def install():
     urllib.request.build_opener = lambda *handlers: Transport()
+
+
+def observe_commands(log):
+    """Record real child launches from this fixture interpreter and its inheriting children."""
+    path = Path(log)
+    path.touch()
+
+    def observe(event, args):
+        if event == 'subprocess.Popen':
+            with path.open('a') as stream:
+                stream.write(json.dumps(args[1]) + '\n')
+
+    sys.addaudithook(observe)
 
 
 def story_completion_facts(root, spec, target, head, tree, before, before_tree, entries):

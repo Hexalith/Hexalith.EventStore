@@ -220,6 +220,12 @@ class TransitionTests(unittest.TestCase):
         self.assertTrue(self.result_path.exists(), result.stderr)
         return result, json.loads(self.result_path.read_text())
 
+    def observe_commands(self):
+        log = self.base / 'commands.jsonl'
+        with (self.site / 'sitecustomize.py').open('a') as startup:
+            startup.write(f'phase_4_transport_fixture.observe_commands({str(log)!r})\n')
+        return log
+
     def assert_pass(self, phase='evaluate'):
         result, document = self.run_cli(phase)
         self.assertEqual(0, result.returncode, result.stderr)
@@ -251,7 +257,12 @@ class TransitionTests(unittest.TestCase):
 
     def test_real_oq8_evaluation_then_authenticated_consumption(self):
         self.artifact()
+        command_log = self.observe_commands()
         result = self.assert_pass('consume')
+        commands = [json.loads(line) for line in command_log.read_text().splitlines()]
+        scripts = [Path(argv[3]).name for argv in commands
+                   if len(argv) >= 4 and argv[:3] == [sys.executable, '-I', '-B']]
+        self.assertCountEqual([Path(OQ8).name, 'test_oq8_governing_design.py'], scripts)
         self.assertEqual({'run_id': 7, 'attempt': 2, 'artifact_id': 16, 'ci_app_id': 15368}, result['seal'])
         self.assertEqual(5, len(result['approvals']))
         self.assertTrue(result['predecessors'])
@@ -533,14 +544,28 @@ class TransitionTests(unittest.TestCase):
         self.assertEqual(maximum,schema['$defs']['binding']['properties']['inputs']['maxItems'])
         self.assertEqual(maximum,schema['$defs']['binding']['allOf'][0]['else']['then']['properties']['inputs']['maxItems'])
 
-    def test_runtime_parity_is_unbound_and_tenant_gate_requires_its_subjects(self):
-        self.assert_pass()
-        self.request['gate'] = 'G-RUNTIME-PARITY'
-        self.approve()
-        self.assert_refused('GATE_UNBOUND')
-        self.request['gate'] = 'G-TENANT'
-        self.approve()
-        self.assert_refused('SUBJECT_MISMATCH')
+    def assert_gate_refused_before_command(self, gate, code):
+        self.request['gate'] = gate
+        matrix = json.loads((self.root / MATRIX).read_text())
+        row = next(row for row in matrix['gates'] if row['gate'] == gate)
+        self.approve(roles=row['evaluator_roles'])
+        command_log = self.observe_commands()
+        self.assert_refused(code)
+        self.assertEqual('', command_log.read_text())
+
+    def test_unbound_append_gate_refuses_before_command(self):
+        self.assert_gate_refused_before_command('G-APPEND', 'GATE_UNBOUND')
+
+    def test_runtime_parity_follow_on_refuses_before_command(self):
+        self.assert_gate_refused_before_command('G-RUNTIME-PARITY', 'GATE_UNBOUND')
+
+    def test_bound_tenant_gate_missing_required_subjects_refuses_before_command(self):
+        path = '.gitmodules'
+        content = (ROOT / path).read_bytes()
+        (self.root / path).write_bytes(content)
+        self.blob(HEAD, path, content)
+        self.request['subjects'].append(self.file(path))
+        self.assert_gate_refused_before_command('G-TENANT', 'SUBJECT_MISMATCH')
 
     def test_independent_numeric_roster_self_approval_and_aliasing(self):
         self.assert_pass()
