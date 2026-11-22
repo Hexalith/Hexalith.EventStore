@@ -2,6 +2,7 @@
 
 import base64
 import copy
+import contextlib
 import hashlib
 import importlib.util
 import io
@@ -27,6 +28,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 import phase_4_transition as C
+import phase_4_readiness as R
 import publication_authority as P
 
 # Independently pinned contract and platform fixture identities.
@@ -97,7 +99,7 @@ class TransitionTests(unittest.TestCase):
         self.root = self.base / 'checkout'
         matrix = json.loads((ROOT / MATRIX).read_text())
         self.row = next(row for row in matrix['gates'] if row['gate'] == 'G-OQ8')
-        files = {*SCRIPTS, *P.CONTROL_FILES, MATRIX, REGISTRY, OQ8, *INPUTS, *self.row['subject_paths'],
+        files = {*SCRIPTS, R.VERIFIER, *P.CONTROL_FILES, MATRIX, REGISTRY, OQ8, *INPUTS, *self.row['subject_paths'],
                  *(f'.github/workflows/phase-4-{t}.yml' for t in TRANSITIONS)}
         for path in files:
             destination = self.root / path
@@ -151,41 +153,47 @@ class TransitionTests(unittest.TestCase):
     def activity(self, after, before, timestamp):
         return {'ref': 'refs/heads/main', 'activity_type': 'push', 'after': after, 'before': before, 'timestamp': timestamp}
 
-    def approve(self, user_id=6775094, created='2026-01-02T00:00:00Z', roles=None):
+    def approve(self, user_id=6775094, created='2026-01-02T00:00:00Z', roles=None, first_id=100):
         self.request['approvals'] = []
         roles = roles or self.row['evaluator_roles']
         bound = hash_bytes(canonical({k: v for k, v in self.request.items() if k != 'approvals'}))
         value = subject([(b['path'], (self.root / b['path']).read_bytes()) for b in self.request['subjects']])
+        if self.request['transition'] == 'readiness' and 'readiness' in self.request:
+            value = hash_bytes(canonical({'baseline_tree': self.request['readiness']['baseline_tree']}))
         if self.request['transition'] in ('release-available', 'production-promoted') and self.request['subject_mode']=='files':
             projection=types.SimpleNamespace(request=self.request,api=types.SimpleNamespace(
                 file=lambda commit,path,allow_absent=False:self.blobs.get((commit,path))))
             value=P.lifecycle_subject_at(projection,HEAD)
         for index, role in enumerate(roles):
             payload = {'schema': 'hexalith.eventstore.phase-4-transition-approval.v1', 'repository': REPO,
-                       'transition': self.request['transition'], 'head_sha': HEAD, 'role': role,
+                       'transition': self.request['transition'], 'head_sha': self.request['head_sha'], 'role': role,
                        'subject_sha256': value, 'request_sha256': bound, 'required_level': self.request['required_level'],
                        'traceability_sha256': None, 'decision': 'approved'}
             body = canonical(payload).decode()
-            self.request['approvals'].append({'comment_id': 100 + index, 'body_sha256': hash_bytes(body.encode()), 'role': role})
-            self.put('/issues/comments/' + str(100 + index),
-                     {'id': 100 + index, 'body': body, 'user': {'id': user_id, 'login': 'arbitrary-login', 'type': 'User'},
+            self.request['approvals'].append({'comment_id': first_id + index, 'body_sha256': hash_bytes(body.encode()), 'role': role})
+            self.put('/issues/comments/' + str(first_id + index),
+                     {'id': first_id + index, 'body': body, 'user': {'id': user_id, 'login': 'arbitrary-login', 'type': 'User'},
                       'created_at': created, 'updated_at': created, 'issue_url': API + '/issues/42',
                       'performed_via_github_app': None})
 
-    def add_run(self):
-        self.put('/actions/runs/7/attempts/2', {'id': 7, 'run_attempt': 2, 'event': 'workflow_dispatch', 'head_sha': HEAD,
-                 'head_branch': 'main', 'repository': {'full_name': REPO}, 'head_repository': {'full_name': REPO},
-                 'status': 'completed', 'conclusion': 'success', 'path': '.github/workflows/phase-4-high-risk-gate-pass.yml',
-                 'workflow_id': 12, 'check_suite_id': 13})
-        self.put('/actions/workflows/12', {'id': 12, 'path': '.github/workflows/phase-4-high-risk-gate-pass.yml', 'state': 'active'})
-        self.put('/check-suites/13', {'id': 13, 'head_sha': HEAD, 'status': 'completed', 'conclusion': 'success',
-                                   'app': {'id': 15368, 'slug': 'github-actions'}})
-        self.put('/actions/runs/7/attempts/2/jobs?per_page=100', {'total_count': 1, 'jobs': [
-            {'id': 14, 'name': 'Phase 4 transition attempt', 'run_id': 7, 'head_sha': HEAD,
-             'status': 'completed', 'conclusion': 'success', 'check_run_url': API + '/check-runs/15'}]})
-        self.put('/check-suites/13/check-runs?per_page=100', {'total_count': 1, 'check_runs': [
-            {'id': 15, 'url': API + '/check-runs/15', 'head_sha': HEAD, 'app': {'id': 15368},
-             'check_suite': {'id': 13}, 'status': 'completed', 'conclusion': 'success'}]})
+    def add_run(self, run_id=7):
+        head = self.request['head_sha']
+        workflow = '.github/workflows/phase-4-high-risk-gate-pass.yml'
+        base = f'/actions/runs/{run_id}'
+        workflow_id, suite, job, check = range(run_id + 5, run_id + 9)
+        success = {'status': 'completed', 'conclusion': 'success'}
+        run = dict(success, id=run_id, run_attempt=2, event='workflow_dispatch', head_sha=head, head_branch='main',
+                   repository={'full_name': REPO}, head_repository={'full_name': REPO}, path=workflow,
+                   workflow_id=workflow_id, check_suite_id=suite)
+        self.put(base + '/attempts/2', run)
+        self.put(base, dict(run))
+        self.put(f'/actions/workflows/{workflow_id}', {'id': workflow_id, 'path': workflow, 'state': 'active'})
+        self.put(f'/check-suites/{suite}', dict(success, id=suite, head_sha=head, app={'id': 15368, 'slug': 'github-actions'}))
+        url = API + f'/check-runs/{check}'
+        self.put(base + '/attempts/2/jobs?per_page=100', {'total_count': 1, 'jobs': [
+            dict(success, id=job, name='Phase 4 transition attempt', run_id=run_id, head_sha=head, check_run_url=url)]})
+        self.put(f'/check-suites/{suite}/check-runs?per_page=100', {'total_count': 1, 'check_runs': [
+            dict(success, id=check, url=url, head_sha=head, app={'id': 15368}, check_suite={'id': suite})]})
 
     def api_document(self, endpoint):
         return self.state['responses'][API + endpoint]['json']
@@ -241,7 +249,7 @@ class TransitionTests(unittest.TestCase):
         self.assertEqual([code], document['codes'], result.stderr)
         return document
 
-    def artifact(self, candidate=None, extra=None):
+    def artifact(self, candidate=None, extra=None, run_id=7):
         if candidate is None:
             candidate = self.assert_pass()
         buffer = io.BytesIO()
@@ -250,10 +258,10 @@ class TransitionTests(unittest.TestCase):
             for path, content in (extra or {}).items():
                 archive.writestr(path, content)
         content = buffer.getvalue()
-        self.put('/actions/runs/7/artifacts?per_page=100', {'total_count': 1, 'artifacts': [
-            {'id': 16, 'name': 'phase-4-transition-result-7-2', 'expired': False, 'size_in_bytes': len(content),
-             'workflow_run': {'id': 7, 'head_sha': HEAD}, 'digest': 'sha256:' + hash_bytes(content)}]})
-        self.state['responses'][API + '/actions/artifacts/16/zip'] = {'binary': base64.b64encode(content).decode()}
+        self.put(f'/actions/runs/{run_id}/artifacts?per_page=100', {'total_count': 1, 'artifacts': [
+            {'id': run_id + 9, 'name': f'phase-4-transition-result-{run_id}-2', 'expired': False, 'size_in_bytes': len(content),
+             'workflow_run': {'id': run_id, 'head_sha': self.request['head_sha']}, 'digest': 'sha256:' + hash_bytes(content)}]})
+        self.state['responses'][API + f'/actions/artifacts/{run_id + 9}/zip'] = {'binary': base64.b64encode(content).decode()}
 
     def test_real_oq8_evaluation_then_authenticated_consumption(self):
         self.artifact()
@@ -431,6 +439,368 @@ class TransitionTests(unittest.TestCase):
             with self.subTest(transition=transition):
                 self.assert_refused('STORY_IDENTITY_MISSING' if transition == 'high-risk-nfr-story-done' else 'BUSINESS_PREREQUISITE_MISSING')
         self.assertEqual({'NFR1','NFR2','NFR3','NFR4','NFR7','NFR10','NFR11','NFR12','NFR14','NFR15','NFR16','NFR17'}, C.HIGH_RISK_NFRS)
+
+    def prepare_readiness(self):
+        """A private clean commit and independently supplied synthetic owner outcomes."""
+        import phase_4_tenant_fixture as F
+        oq8 = copy.deepcopy(self.request)
+        F.Qualification(self)
+        tenant = copy.deepcopy(self.request)
+        matrix = json.loads((self.root / MATRIX).read_text())
+        rows = {row['gate']: row for row in matrix['gates']}
+        for gate in R.GATES:
+            row = rows[gate]
+            if row['classification'] == 'high-risk' and row['command'] is None:
+                row.update(command=f'owner validator for {gate}', trigger='owner CI', subject_paths=[C.M.PRD],
+                           evidence_identity=f'{gate} CI evidence', pass_condition='owner validator passes',
+                           binding_owner=None)
+        (self.root / MATRIX).write_bytes(canonical(matrix))
+        def git(*args):
+            return subprocess.check_output(['git', '-C', str(self.root), *args], text=True).strip()
+        git('init', '-q')
+        git('add', '.')
+        git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+            'commit', '-qm', 'test: prepare isolated readiness fixture')
+        head, tree = git('rev-parse', 'HEAD'), git('rev-parse', 'HEAD^{tree}')
+        for path in (*SCRIPTS, *R.CONTROL_FILES, MATRIX, REGISTRY, C.M.PRD, C.workflow_path('readiness')):
+            self.blob(head, path, (self.root / path).read_bytes())
+        self.put('/git/commits/' + head, {'sha': head, 'tree': {'sha': tree}})
+        self.put('/git/ref/heads/main', {'object': {'sha': head}})
+        self.put('/activity?ref=refs%2Fheads%2Fmain&per_page=100', [self.activity(head, '0' * 40, '2026-01-01T00:00:00Z')])
+        workflow = C.workflow_path('readiness')
+        run = self.api_document('/actions/runs/7/attempts/2')
+        run.update(head_sha=head, path=workflow)
+        self.put('/actions/runs/7', dict(run))
+        self.api_document('/actions/workflows/12')['path'] = workflow
+        self.api_document('/check-suites/13')['head_sha'] = head
+        self.api_document('/actions/runs/7/attempts/2/jobs?per_page=100')['jobs'][0]['head_sha'] = head
+        self.api_document('/check-suites/13/check-runs?per_page=100')['check_runs'][0]['head_sha'] = head
+        self.owner_facts = {}
+        claims = {}
+        for i, gate in enumerate(R.GATES, 20):
+            identities = {f'{name}_sha256': hash_bytes(f'{gate}/{name}'.encode())
+                          for name in ('command', 'subject', 'evidence', 'result', 'approvals')}
+            command = rows[gate].get('command')
+            if command:
+                identities['command_sha256'] = hash_bytes(command.encode())
+            claims[gate] = dict(identities, run_id=i, attempt=1)
+            if rows[gate]['classification'] == 'standard-control':
+                claims[gate].update(run_id=None, attempt=None)
+            self.owner_facts[gate] = dict(claims[gate], gate=gate, head_sha=head, result='PASS',
+                                          approvers=[{'role': role, 'github_id': 6775094} for role in
+                                                     rows[gate].get('evaluator_roles', ['product-owner'])],
+                                          assurance_level=SINGLE if rows[gate]['classification'] == 'high-risk' else 'none')
+        for gate, owner in [('G-OQ8', oq8), ('G-TENANT', tenant)]:
+            owner.update(head_sha=head, matrix=self.file(MATRIX))
+            claims[gate]['owner_request'] = owner
+        for run in tenant['tenant_qualification']['runs'].values():
+            if run['repository'] == REPO:
+                run['head_sha'] = head
+        claims['G-OQ8']['availability_run'] = {'run_id': 120, 'attempt': 1}
+        self.request.update(transition='readiness', head_sha=head, gate=None, subjects=[self.file(C.M.PRD)],
+                            evidence=[], matrix=self.file(MATRIX), predecessors=[], nfr_ids=[])
+        del self.request['tenant_qualification']
+        self.request['readiness'] = {'baseline_tree': tree, 'workflow_sha256': self.file(workflow)['sha256'],
+                                     'verifier_sha256': hash_bytes(canonical({p: self.file(p)['sha256']
+                                                       for p in (*SCRIPTS, *R.CONTROL_FILES)})), 'gates': claims}
+        self.approve(roles=['product-owner'])
+        self.start_patch(mock.patch('urllib.request.build_opener', return_value=F.Transport(self.state)))
+
+    def start_patch(self, patcher):
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def install_synthetic_owners(self):
+        return self.start_patch(mock.patch.object(R, 'owner_evidence',
+                                side_effect=lambda control, gate, claim: self.owner_facts[gate]))
+
+    def readiness_cli(self, phase='evaluate', *, raw=None, success=True, coordinates=('7', '2')):
+        self.request_path.write_bytes(canonical(self.request) if raw is None else raw)
+        argv = [phase, '--root', str(self.root), '--request', str(self.request_path),
+                '--expected-transition', 'readiness', '--result', str(self.result_path)]
+        if phase == 'consume':
+            argv += ['--run-id', coordinates[0], '--attempt', coordinates[1]]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+            code = C.main(argv)
+        doc = json.loads(self.result_path.read_text())
+        self.assertEqual(success, code == 0, err.getvalue())
+        if not success:
+            self.assertEqual('Reject', doc['readiness_decision']['disposition'])
+            self.assertEqual([], doc['readiness_decision']['records'])
+            self.assertEqual('none', doc['downstream_minimum'])
+            self.assertIsNone(doc['seal'])
+        return doc
+
+    def test_readiness_sealed_order_source_hashes_and_minimum(self):
+        self.prepare_readiness()
+        owners = self.install_synthetic_owners()
+        candidate = self.readiness_cli()
+        self.assertNotIn('readiness_decision', candidate)
+        self.assertIsNone(candidate['seal'])
+        self.assertEqual(self.owner_facts, candidate['binding']['readiness']['gates'])
+        self.artifact(candidate)
+        result = self.readiness_cli('consume')
+        self.assertEqual(30, owners.call_count)
+        self.assertEqual('READY', result['readiness_decision']['disposition'])
+        records = result['readiness_decision']['records']
+        self.assertEqual(['G-HIGH-RISK', 'G-READINESS', 'READY'], [r['record'] for r in records])
+        inputs = {g: hash_bytes(canonical(v)) for g, v in self.owner_facts.items()}
+        seal_digest = hash_bytes(canonical({'candidate_sha256': hash_bytes(canonical(candidate)), 'seal': result['seal']}))
+        self.assertEqual({**inputs, 'readiness-attempt': seal_digest}, records[0]['inputs'])
+        for previous, current in zip(records, records[1:]):
+            inputs[previous['record']] = hash_bytes(canonical(previous))
+            self.assertEqual(inputs, current['inputs'])
+        self.assertEqual(17, len(records[-1]['inputs']))
+        self.assertEqual({SINGLE}, {r['assurance_level'] for r in records})
+        self.assertEqual({hash_bytes(canonical(candidate['binding']))}, {r['source_sha256'] for r in records})
+        self.artifact(result)
+        refused = self.readiness_cli('consume', success=False)
+        self.assertIn('RESULT_MISMATCH', refused['codes'])
+
+    def test_readiness_inventory_rejects_omission_duplicate_and_downstream_input(self):
+        self.prepare_readiness()
+        gates = self.request['readiness']['gates']
+        with mock.patch.dict(gates['G-NFR8'], attempt=1):
+            self.assertEqual(['INPUT_INVALID'], self.readiness_cli(success=False)['codes'])
+        with mock.patch.dict(gates['G-APPEND'], run_id=None, attempt=None):
+            self.assertEqual(['INPUT_INVALID'], self.readiness_cli(success=False)['codes'])
+        missing = gates.pop('G-MVP-COVERAGE')
+        refused = self.readiness_cli(success=False)
+        self.assertEqual('G-MVP-COVERAGE', refused['readiness_decision']['refusals'][0]['gate'])
+        gates['G-MVP-COVERAGE'] = missing
+        raw = canonical(self.request).replace(b'"G-BASELINE":', b'"G-BASELINE":{},"G-BASELINE":', 1)
+        refused = self.readiness_cli(raw=raw, success=False)
+        self.assertIn('G-BASELINE', refused['readiness_decision']['refusals'][0]['message'])
+        gates['READY'] = missing
+        self.assertIn('READY', self.readiness_cli(success=False)['readiness_decision']['refusals'][0]['message'])
+
+    def test_readiness_rechecks_changed_subject_stale_evidence_failed_result_and_gate_approval(self):
+        self.prepare_readiness()
+        self.install_synthetic_owners()
+        self.artifact(self.readiness_cli())
+        for field, gate, value, code in [('subject_sha256', 'G-BASELINE', '0' * 64, 'PREDECESSOR_IDENTITY'),
+                                        ('head_sha', 'G-MVP-COVERAGE', BEFORE, 'PREDECESSOR_IDENTITY'),
+                                        ('attempt', 'G-OQ8', 2, 'PREDECESSOR_IDENTITY'),
+                                        ('approvals_sha256', 'G-NFR18', '0' * 64, 'PREDECESSOR_IDENTITY'),
+                                        ('result', 'G-CLAUSE', 'FAIL', 'PREDECESSOR_FAILED'),
+                                        ('assurance_level', 'G-APPEND', 'none', 'LEVEL_MISMATCH')]:
+            with self.subTest(field=field, gate=gate), mock.patch.dict(self.owner_facts[gate], {field: value}):
+                refused = self.readiness_cli('consume', success=False)
+                self.assertEqual([(gate, code)], [(r['gate'], r['code']) for r in refused['readiness_decision']['refusals']])
+        (self.root / 'untracked').touch()
+        self.assertEqual('G-BASELINE', self.readiness_cli('consume', success=False)['readiness_decision']['refusals'][0]['gate'])
+
+    def test_readiness_lost_product_approval_and_unsuccessful_or_wrong_seal(self):
+        self.prepare_readiness()
+        self.install_synthetic_owners()
+        self.artifact(self.readiness_cli())
+        for endpoint, field, value, code in [
+                ('/issues/comments/100', 'updated_at', '2026-02-02T00:00:00Z', 'APPROVAL_EDITED'),
+                ('/actions/runs/7', 'run_attempt', 3, 'RUN_NOT_SUCCESSFUL'),
+                ('/actions/runs/7/attempts/2', 'conclusion', 'failure', 'RUN_NOT_SUCCESSFUL'),
+                ('/actions/runs/7/attempts/2', 'run_attempt', 1, 'RUN_INVALID')]:
+            with self.subTest(field=field), mock.patch.dict(self.api_document(endpoint), {field: value}):
+                self.assertEqual([code], self.readiness_cli('consume', success=False)['codes'])
+        self.approve(created='2026-01-01T23:59:59Z', roles=['product-owner'])
+        self.assertEqual(['APPROVAL_WINDOW'], self.readiness_cli(success=False)['codes'])
+        self.request['approvals'] = []
+        self.assertEqual(['APPROVAL_MISSING'], self.readiness_cli(success=False)['codes'])
+
+    def test_live_readiness_resolvers_refuse_unavailable_owners_and_evidence(self):
+        self.prepare_readiness()
+        refusals = self.readiness_cli(success=False)['readiness_decision']['refusals']
+        self.assertEqual(set(R.GATES), {r['gate'] for r in refusals})
+        for row in refusals:
+            self.assertEqual('API_UNAVAILABLE' if row['gate'] in ('G-OQ8', 'G-TENANT') else 'ADAPTER_UNAVAILABLE', row['code'])
+
+    def verified_owner_gate(self, gate, claim, *, issue=False):
+        """Use the production owner consumer against the fixture's authenticated endpoints."""
+        import phase_4_tenant_fixture as F
+        with mock.patch('urllib.request.build_opener', return_value=F.Transport(self.state)):
+            current = C.Control(self.root, self.request, C.GitHub())
+            current.rows = {row['gate']: row for row in json.loads((self.root / MATRIX).read_text())['gates']}
+            if issue:
+                self.artifact(current.evaluate())
+                self.put('/actions/runs/7', dict(self.api_document('/actions/runs/7/attempts/2')))
+            return R.owner_evidence(current, gate, dict(claim, owner_request=self.request, run_id=7, attempt=2))
+
+    def add_oq8_availability_run(self):
+        import phase_4_tenant_fixture as F
+        workflow = '.github/workflows/oq8-governing-design.yml'
+        run = dict(self.api_document('/actions/runs/7/attempts/2'), id=77, run_attempt=1, workflow_id=72,
+                   check_suite_id=73, path=workflow, event='push')
+        self.put('/actions/runs/77', dict(run))
+        self.put('/actions/runs/77/attempts/1', run)
+        self.put('/actions/workflows/72', {'id': 72, 'state': 'active', 'path': workflow})
+        self.put('/check-suites/73', dict(self.api_document('/check-suites/13'), id=73))
+        jobs, checks = [], []
+        checkout = 'actions/checkout@' + '1' * 40
+        success = {'status': 'completed', 'conclusion': 'success'}
+        for index, (name, step) in enumerate([
+                ('OQ8 governing-design fixtures', 'Test exact identity and rejection paths'),
+                ('OQ8 governing-design live evaluation', 'Evaluate and report current authority availability')], 80):
+            url = API + '/check-runs/' + str(index)
+            jobs.append(dict(success, id=index, name=name, run_attempt=1, run_id=77, head_sha=HEAD, check_run_url=url,
+                             steps=[dict(success, name='Run ' + checkout, started_at=F.START, completed_at=F.START),
+                                    dict(success, name=step)]))
+            checks.append(dict(success, id=index, name=name, head_sha=HEAD, check_suite={'id': 73}, app={'id': 15368}, url=url))
+            log = F.Qualification.log_lines(F.START, ['##[group]Run ' + checkout, 'with:', '  repository: ' + REPO,
+                      '##[endgroup]', 'Syncing repository: ' + REPO, '[command]/usr/bin/git log -1 --format=%H', HEAD])
+            self.state['responses'][API + f'/actions/jobs/{index}/logs'] = {'binary': base64.b64encode(log.encode()).decode()}
+        self.put('/actions/runs/77/attempts/1/jobs?per_page=100', {'total_count': 2, 'jobs': jobs})
+        self.put('/check-suites/73/check-runs?filter=all&per_page=100', {'total_count': 2, 'check_runs': checks})
+
+    def test_readiness_oq8_needs_both_hosted_jobs_and_its_separate_owner_seal(self):
+        self.add_oq8_availability_run()
+        claim = {'availability_run': {'run_id': 77, 'attempt': 1}}
+        gate = self.verified_owner_gate('G-OQ8', claim, issue=True)
+        self.assertEqual(('G-OQ8', HEAD, SINGLE), (gate['gate'], gate['head_sha'], gate['assurance_level']))
+        job = self.api_document('/actions/runs/77/attempts/1/jobs?per_page=100')['jobs'][0]
+        with mock.patch.dict(job, conclusion='skipped'), self.assertRaisesRegex(C.Refusal, 'missing successful job'):
+            self.verified_owner_gate('G-OQ8', claim)
+
+    def test_readiness_tenant_reconsumes_the_owner_qualification(self):
+        import phase_4_tenant_fixture as F
+        qualification = F.Qualification(self)
+        record = self.verified_owner_gate('G-TENANT', {}, issue=True)
+        self.assertEqual(('G-TENANT', HEAD, SINGLE), (record['gate'], record['head_sha'], record['assurance_level']))
+        run = qualification.claim['runs']['tenants_source']['run_id']
+        with mock.patch.dict(qualification.document('tenants_source', f'/actions/runs/{run}'), run_attempt=9):
+            with self.assertRaisesRegex(C.Refusal, 'superseded'):
+                self.verified_owner_gate('G-TENANT', {})
+
+    def bind_real_readiness_owners(self):
+        import phase_4_tenant_fixture as F
+        parent = self.request
+        head = parent['head_sha']
+        claims = parent['readiness']['gates']
+        rows = {row['gate']: row for row in json.loads((self.root / MATRIX).read_text())['gates']}
+        self.add_oq8_availability_run()
+        for gate, run_id in [('G-OQ8', 51), ('G-TENANT', 61)]:
+            claim = claims[gate]
+            self.request = claim['owner_request']
+            if gate == 'G-OQ8':
+                self.request['predecessors'][0]['commit'] = head
+                claim['availability_run'] = {'run_id': 77, 'attempt': 1}
+            else:
+                # Generate the four real qualification lanes on the private Git head.
+                F.Qualification(self)
+            self.approve(roles=rows[gate]['evaluator_roles'], first_id=run_id * 10)
+            self.add_run(run_id)
+            for entry in [*self.request['subjects'], *self.request['evidence']]:
+                self.blob(head, entry['path'], (self.root / entry['path']).read_bytes())
+            self.blob(head, C.workflow_path('high-risk-gate-pass'), (self.root / C.workflow_path('high-risk-gate-pass')).read_bytes())
+            verifier = C.Control(self.root, self.request, C.GitHub())
+            self.artifact(verifier.evaluate(), run_id=run_id)
+            claim.update(run_id=run_id, attempt=2)
+            record = R.owner_evidence(verifier, gate, claim)
+            claim.update({key: record[key] for key in R.IDENTITIES})
+        self.request = parent
+        self.approve(roles=['product-owner'])
+
+    def test_readiness_enrolled_owners_revalidated_together_through_consumption(self):
+        self.prepare_readiness()
+        # The tenant qualification fixture uses its module's HEAD for checkout logs,
+        # package/receipt source and gitlinks. Point all of them at this clean commit.
+        with mock.patch('test_phase_4_transition.HEAD', self.request['head_sha']):
+            self.bind_real_readiness_owners()
+        enrolled = R.owner_evidence
+        late_change = None
+        def resolve(control, gate, claim):
+            if gate in ('G-OQ8', 'G-TENANT'):
+                return enrolled(control, gate, claim)
+            if gate == 'G-MVP-COVERAGE' and late_change:
+                late_change()
+            return self.owner_facts[gate]
+        with mock.patch.object(R, 'owner_evidence', side_effect=resolve):
+            candidate = self.readiness_cli()
+            self.artifact(candidate)
+            self.assertEqual('READY', self.readiness_cli('consume')['readiness_decision']['disposition'])
+            tenant_run = self.request['readiness']['gates']['G-TENANT']['owner_request']['tenant_qualification']['runs']['tenants_source']
+            tenants_url = f"https://api.github.com/repos/{tenant_run['repository']}/actions/runs/{tenant_run['run_id']}"
+            for gate, endpoint, field, value, code in [
+                    ('G-OQ8', '/actions/runs/51', 'run_attempt', 3, 'RUN_NOT_SUCCESSFUL'),
+                    ('G-OQ8', '/actions/runs/77', 'run_attempt', 2, 'RUN_NOT_SUCCESSFUL'),
+                    ('G-TENANT', tenants_url, 'run_attempt', 2, 'RUN_NOT_SUCCESSFUL'),
+                    ('G-TENANT', '/issues/comments/610', 'updated_at', '2026-02-02T00:00:00Z', 'APPROVAL_EDITED'),
+                    ('G-READINESS', '/issues/comments/100', 'updated_at', '2026-02-02T00:00:00Z', 'APPROVAL_EDITED'),
+                    ('G-READINESS', '/actions/runs/7', 'run_attempt', 3, 'RUN_NOT_SUCCESSFUL')]:
+                with self.subTest(endpoint=endpoint):
+                    url = API + endpoint if endpoint.startswith('/') else endpoint
+                    doc = self.state['responses'][url]['json']
+                    original = doc[field]
+                    late_change = lambda: doc.update({field: value})
+                    refused = self.readiness_cli('consume', success=False)
+                    self.assertEqual([(gate, code)], [(r['gate'], r['code']) for r in refused['readiness_decision']['refusals']])
+                    doc[field] = original
+            late_change = None
+            jobs = self.api_document('/actions/runs/77/attempts/1/jobs?per_page=100')['jobs']
+            old_id = jobs[0]['id']
+            jobs[0]['id'] = 800
+            self.state['responses'][API + '/actions/jobs/800/logs'] = self.state['responses'][API + f'/actions/jobs/{old_id}/logs']
+            refused = self.readiness_cli('consume', success=False)
+            finding, = refused['readiness_decision']['refusals']
+            self.assertEqual(('G-OQ8', 'PREDECESSOR_IDENTITY'), (finding['gate'], finding['code']))
+            self.assertIn('evidence_sha256', finding['message'])
+
+    def test_readiness_structural_downstream_checks_and_numeric_aggregate_author(self):
+        self.prepare_readiness()
+        self.install_synthetic_owners()
+        control = C.Control(self.root, self.request, C.GitHub())
+        candidate = control.evaluate()
+        matrix = json.loads((self.root / MATRIX).read_text())
+        paths = {entry['path']: entry['sha256'] for entry in candidate['binding']['inputs']}
+        for record in [{'record': 'release-available'}, dict(matrix['downstream'][0], record='unrecognized')]:
+            with self.subTest(record=record), self.assertRaisesRegex(C.Refusal, 'downstream'):
+                validator = C.M.Evaluation(self.root, MATRIX, C.dt.datetime.now(C.dt.timezone.utc))
+                R.bind(control, paths, dict(matrix, downstream=[*matrix['downstream'], record]), validator)
+        for label in ('invented', SINGLE):
+            with self.subTest(label=label), self.assertRaisesRegex(C.Refusal, 'downstream'):
+                validator = C.M.Evaluation(self.root, MATRIX, C.dt.datetime.now(C.dt.timezone.utc))
+                R.bind(control, paths, dict(matrix, downstream=[dict(matrix['downstream'][0], assurance_level=label)]), validator)
+        control.required = control.achieved = INDEPENDENT
+        # All evaluator roles are covered by one numeric identity, the aggregate
+        # author. Another registered person must actually approve each required role.
+        control.registry['identities']['github:other'] = {'kind': 'human', 'github_id': 17}
+        for role in control.registry['roles'].values():
+            role.append('github:other')
+        with self.assertRaises(C.Refusal) as refused:
+            R.decide(control, candidate, {})
+        self.assertEqual(('G-HIGH-RISK', 'INDEPENDENT_REQUIRED'), (refused.exception.gate, refused.exception.code))
+        for record in control.binding['readiness']['gates'].values():
+            if record['gate'] in C.M.HIGH_RISK_GATES:
+                record['assurance_level'] = INDEPENDENT
+            for approver in record['approvers']:
+                approver['github_id'] = 17
+        self.assertEqual('READY', R.decide(control, candidate, {})['disposition'])
+        with mock.patch.dict(control.rows['G-HIGH-RISK'], author='github:other'), self.assertRaises(C.Refusal) as refused:
+            R.decide(control, candidate, {})
+        self.assertEqual('INDEPENDENT_REQUIRED', refused.exception.code)
+
+    def test_readiness_sealed_gate_drift_tree_failure_duplicate_fields_and_invalid_coordinates(self):
+        self.prepare_readiness()
+        self.install_synthetic_owners()
+        candidate = self.readiness_cli()
+        candidate['binding']['readiness']['gates']['G-NFR18']['result_sha256'] = '0' * 64
+        self.artifact(candidate)
+        failed = self.readiness_cli('consume', success=False)
+        self.assertEqual(('G-NFR18', 'RESULT_MISMATCH'), tuple(failed['readiness_decision']['refusals'][0][k] for k in ('gate', 'code')))
+        for coordinates in [('', '2'), ('7', ''), ('abc', '2'), ('7', 'one')]:
+            with self.subTest(coordinates=coordinates):
+                err = self.readiness_cli('consume', success=False, coordinates=coordinates)
+                self.assertEqual(['INPUT_INVALID'], err['codes'])
+        with mock.patch.dict(os.environ, PHASE4_REQUEST_JSON=canonical(self.request).decode()), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            code = C.main(['consume', '--root', str(self.root), '--request-env', '--expected-transition', 'readiness',
+                           '--run-id=--invalid', '--attempt=', '--result', str(self.result_path)])
+        self.assertEqual(2, code)
+        self.assertEqual('Reject', json.loads(self.result_path.read_text())['readiness_decision']['disposition'])
+        raw = canonical(self.request).replace(b'"G-CONSUMER":{"approvals_sha256":',
+                                              b'"G-CONSUMER":{"approvals_sha256":"","approvals_sha256":', 1)
+        self.assertEqual('G-CONSUMER', self.readiness_cli(raw=raw, success=False)['readiness_decision']['refusals'][0]['gate'])
+        del self.state['responses'][API + '/git/commits/' + self.request['head_sha']]
+        err = self.readiness_cli(success=False)
+        self.assertEqual('G-BASELINE', err['readiness_decision']['refusals'][0]['gate'])
 
     def prepare_publication_transport(self):
         from test_publication_authority import chain
@@ -1126,7 +1496,8 @@ class TransitionTests(unittest.TestCase):
         result = self.assert_refused('APPROVAL_MISSING')
         self.assertEqual(209, len(result['binding']['inputs']))
         schema = json.loads((ROOT / 'tools/phase-4-transition.schema.json').read_text())
-        self.assertEqual(209, schema['$defs']['binding']['allOf'][0]['else']['else']['properties']['inputs']['maxItems'])
+        fallback = schema['$defs']['binding']['allOf'][0]['else']['else']
+        self.assertEqual(209, fallback['else']['properties']['inputs']['maxItems'])
         self.request['subjects'].append({'path': 'boundary/too-many', 'sha256': '0' * 64})
         self.assert_refused('INPUT_INVALID', exit_code=2)
 

@@ -98,6 +98,9 @@ def main(argv=None):
                 content = stream.read(C.MAX_BYTES + 1)
         C.require(len(content) <= C.MAX_BYTES, "INPUT_INVALID", "request too large", 2)
         request = C.parse(content)
+        if request.get("transition") in C.M.TRANSITIONS:
+            C.require(request["transition"] == "high-risk-gate-pass", "ADAPTER_UNAVAILABLE",
+                      "request is outside the supported decision scope")
         if args.allow_tenant and isinstance(request, dict) and request.get("gate") == "G-TENANT":
             gate = "G-TENANT"
         request = C.validate_request(request)

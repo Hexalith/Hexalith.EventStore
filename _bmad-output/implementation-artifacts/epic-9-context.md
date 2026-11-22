@@ -114,3 +114,7 @@ The owner approved replacing the retired packaging selector with a real Release 
 ### Tenant gate decision on 2026-11-22
 
 The dedicated high-risk gate workflow now accepts G-TENANT. It verifies the tested EventStore and Tenants revisions across four CI attempts and checks their job logs, compiled tests, package evidence and backend receipts again when consuming a seal. The historical Tenants jobs checked out `fbc30e4f` while the PR run reported `50f9a4ac`, so that qualification cannot supply a decision for the reported revision. A live decision still needs current qualifying runs, a registered owner's attestation and a completed seal. Story 2.14 owns the NFR2 completion adapter. Parent Story 9.2 remains in progress. [Tenant gate implementation and verification](spec-9-2-tenant-gate-business-evidence.md)
+
+### Staged readiness decision on 2026-11-22
+
+The readiness workflow evaluates 15 prerequisite gates for one approved source tree. Consumption authenticates the completed attempt, rechecks the evidence and approvals, and derives G-HIGH-RISK, G-READINESS and READY in order. G-OQ8 and G-TENANT have enrolled verifiers. The other 13 gate inputs refuse until their owners supply an evidence binding. Local fixtures exercised a positive decision and late revocation. Live readiness remains rejected and Story 9.2 remains in progress. [Readiness decision and verification](spec-9-2-readiness-decision.md)

@@ -345,11 +345,16 @@ def verify_job_log(api, job, pin, uploads, branches):
 
 
 def authenticate_jobs(api, lane, pin):
+    repository, workflow = LANES[lane]
+    return authenticate_workflow_jobs(api, lane, pin, repository, workflow, JOBS[lane], ARTIFACT_JOBS[lane])
+
+
+def authenticate_workflow_jobs(api, lane, pin, repository, workflow, required_jobs, artifact_jobs):
+    """Authenticate an owner's fixed workflow, actual job checkouts, steps and uploads."""
     run_id, attempt, head = pin["run_id"], pin["attempt"], pin["head_sha"]
     base = f"/actions/runs/{run_id}"
     latest_attempt(api, lane, pin)
     record = api.get(base + f"/attempts/{attempt}")
-    repository, workflow = LANES[lane]
     branches = ("main", "release/parties-sdk-3.130.2") if repository == C.REPOSITORY else ("main",)
     event = record.get("event")
     if event == "pull_request":
@@ -392,7 +397,7 @@ def authenticate_jobs(api, lane, pin):
     jobs = api.pages(base + f"/attempts/{attempt}/jobs?per_page=100", "jobs")
     verified = {}
     logged_base = False
-    for name, steps in JOBS[lane].items():
+    for name, steps in required_jobs.items():
         matches = [j for j in jobs if j.get("name") == name]
         C.require(len(matches) == 1 and completed(matches[0]), "CI_UNAUTHENTICATED", "missing successful job " + name)
         job = matches[0]
@@ -406,7 +411,7 @@ def authenticate_jobs(api, lane, pin):
         for step in steps:
             found = [s for s in job.get("steps", []) if s.get("name") == step]
             evidence(len(found) == 1 and completed(found[0]), "missing successful step " + step)
-        uploads = [artifact for artifact, producer in ARTIFACT_JOBS[lane].items() if producer == name]
+        uploads = [artifact for artifact, producer in artifact_jobs.items() if producer == name]
         base_proven = verify_job_log(api, job, pin, uploads, branches)
         logged_base = logged_base or base_proven
         verified[name] = job

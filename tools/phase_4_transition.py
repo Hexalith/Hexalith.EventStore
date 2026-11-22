@@ -1,4 +1,4 @@
-"""Authenticated Phase 4 assurance subconditions; never grants business authority.
+"""Authenticated Phase 4 transitions and the ordered Phase 4 readiness decision.
 
 Only fixed adapters execute, with pinned code/inputs in a token-free scratch process.
 Evaluation is candidate evidence. Consumption independently fetches a completed run
@@ -128,6 +128,40 @@ def parse(content):
         raise Refusal("INPUT_INVALID", str(error), 2) from error
 
 
+def parse_transition_document(content):
+    try:
+        return parse(content)
+    except Refusal as error:
+        if "duplicate key" in str(error):
+            # Only locate the gate after strict parsing has already refused the
+            # document. Preserve object members so nested duplicates survive.
+            class Members(list):
+                pass
+
+            def repeated(node):
+                if isinstance(node, Members):
+                    return len(dict(node)) != len(node) or any(repeated(v) for _, v in node)
+                return isinstance(node, list) and any(repeated(v) for v in node)
+
+            def fields(node):
+                return dict(node) if isinstance(node, Members) else {}
+
+            try:
+                doc = fields(json.loads(content, object_pairs_hook=Members, parse_constant=M._reject_constant))
+                source = doc if "transition" in doc else fields(doc.get("binding"))
+                gates = fields(source.get("readiness")).get("gates")
+                if source.get("transition") == "readiness" and isinstance(gates, Members):
+                    seen = set()
+                    for gate, item in gates:
+                        if gate in seen or repeated(item):
+                            error.gate = gate
+                            break
+                        seen.add(gate)
+            except (ValueError, RecursionError):
+                pass
+        raise
+
+
 def bindings(items, empty=False):
     require(isinstance(items, list) and len(items) <= 100 and (empty or items), "INPUT_INVALID", "invalid file inventory", 2)
     paths = []
@@ -152,6 +186,10 @@ def validate_request(request):
         if "tenant_qualification" in request:
             import phase_4_tenant_gate as T
             T.validate_claim(request["tenant_qualification"], request["head_sha"])
+    elif request.get("transition") == "readiness":
+        import phase_4_readiness as R
+        closed(request, REQUEST_KEYS | ({"readiness"} & request.keys()))
+        R.validate(request)
     else:
         closed(request, REQUEST_KEYS)
     require(request["schema"] == REQUEST_SCHEMA and request["repository"] == REPOSITORY,
@@ -391,6 +429,7 @@ class Control:
         self.story_evidence = None
         self.story_inventory = None
         self.tenant_gate = request["gate"] == "G-TENANT" and request["transition"] == "high-risk-gate-pass"
+        self.readiness_owners = {}
 
     def local(self, path):
         require(M.repository_path(path) is not None, "INPUT_INVALID", "unsafe path", 2)
@@ -409,6 +448,9 @@ class Control:
         return content
 
     def subject_at(self, commit, allow_absent=False):
+        if self.request["transition"] == "readiness":
+            import phase_4_readiness as R
+            return digest(canonical({"baseline_tree": R.tree_at(self.api, commit)}))
         if self.request["transition"] in ("release-available", "production-promoted") and self.request["subject_mode"] == "files":
             import publication_authority as P
             try:
@@ -436,6 +478,9 @@ class Control:
     def current_head(self):
         require(self.api.get("/git/ref/heads/main").get("object", {}).get("sha") == self.head,
                 "SOURCE_MISMATCH", "attempt must bind the current main head")
+        if self.request["transition"] == "readiness":
+            import phase_4_readiness as R
+            R.check_checkout(self)
 
     def matrix_invariants(self, validator, rows):
         for gate, row in rows.items():
@@ -488,6 +533,9 @@ class Control:
             require(path not in paths or paths[path] == entry["sha256"], "INPUT_INVALID", "conflicting file bindings", 2)
             paths[path] = entry["sha256"]
         extra_controls = STORY_CONTROL_FILES if request["transition"] == "high-risk-nfr-story-done" else ()
+        if request["transition"] == "readiness":
+            import phase_4_readiness as R
+            extra_controls = R.CONTROL_FILES
         if request["transition"] in ("release-available", "production-promoted"):
             import publication_authority as P
             extra_controls = P.CONTROL_FILES + P.B.SOURCES
@@ -520,6 +568,8 @@ class Control:
         require(not validator.findings, "MATRIX_INVALID", "invalid pinned gate inventory")
         self.matrix_invariants(validator, rows)
         self.rows = rows
+        if request["transition"] == "readiness":
+            R.bind(self, paths, matrix, validator)
         if request["gate"] is not None:
             row = rows[request["gate"]]
             if request["gate"] == "G-OQ8":
@@ -790,7 +840,8 @@ class Control:
             import phase_4_story_5_3 as A
             A.evaluate(self)
         elif transition == "readiness":
-            raise Refusal("BUSINESS_PREREQUISITE_MISSING", "readiness needs all mandatory business gates and its actual consumer")
+            import phase_4_readiness as R
+            R.verify_gates(self)
         elif transition in ("release-available", "production-promoted"):
             import publication_authority as P
             P.evaluate_transition(self)
@@ -839,16 +890,18 @@ class Control:
                 and app.get("id") == ACTIONS_APP_ID and app.get("slug") == "github-actions",
                 "CI_UNAUTHENTICATED", "check suite lacks authenticated successful GitHub Actions identity")
         jobs = self.api.pages(f"/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100", "jobs")
-        require(len(jobs) == 1 and jobs[0].get("name") == "Phase 4 transition attempt"
+        require(len(jobs) == 1 and positive(jobs[0].get("id")) and jobs[0].get("name") == "Phase 4 transition attempt"
                 and jobs[0].get("run_id") == run_id and jobs[0].get("head_sha") == self.head
+                and jobs[0].get("run_attempt", attempt) == attempt
                 and jobs[0].get("status") == "completed" and jobs[0].get("conclusion") == "success",
                 "CI_UNAUTHENTICATED", "missing successful attempt job")
         checks = self.api.pages(f"/check-suites/{suite['id']}/check-runs?per_page=100", "check_runs")
-        require(any(check.get("app", {}).get("id") == ACTIONS_APP_ID
+        require(any(positive(check.get("id")) and check.get("app", {}).get("id") == ACTIONS_APP_ID
                     and check.get("check_suite", {}).get("id") == suite["id"]
                     and check.get("head_sha") == self.head
                     and check.get("status") == "completed" and check.get("conclusion") == "success"
-                    and check.get("url") == jobs[0].get("check_run_url") for check in checks),
+                    and check.get("url") == self.api.prefix + f"/check-runs/{check['id']}" == jobs[0].get("check_run_url")
+                    for check in checks),
                 "CI_UNAUTHENTICATED", "attempt job is not linked to the Actions check suite")
         return run
 
@@ -880,11 +933,15 @@ class Control:
                         "ARTIFACT_INVALID", "artifact has no unique result.json")
                 require(archive.getinfo("result.json").file_size <= MAX_BYTES,
                         "INPUT_INVALID", "oversized result", 2)
-                return parse(archive.read("result.json")), artifact["id"]
+                return parse_transition_document(archive.read("result.json")), artifact["id"]
         except (zipfile.BadZipFile, RuntimeError, NotImplementedError, OSError, zlib.error) as error:
             raise Refusal("INPUT_INVALID", "malformed artifact archive", 2) from error
 
     def consume(self, run_id, attempt):
+        readiness = self.request["transition"] == "readiness"
+        if readiness:
+            import phase_4_readiness as R
+            R.current_attempt(self, run_id, attempt)
         self.authenticate_run(run_id, attempt)
         candidate, artifact_id = self.artifact(run_id, attempt)
         keys = RESULT_KEYS | ({"story_evidence"} if self.request["transition"] == "high-risk-nfr-story-done" else set())
@@ -892,10 +949,20 @@ class Control:
                 and candidate.get("result") == "PASS" and candidate.get("seal") is None,
                 "RESULT_MISMATCH", "artifact is not a passing candidate evaluation")
         expected = self.evaluate()
-        require(candidate == expected, "RESULT_MISMATCH", "completed result differs from current bound inputs/approvals/predecessors")
+        if canonical(candidate) != canonical(expected):
+            if readiness:
+                R.diagnose_candidate(candidate, expected)
+            raise Refusal("RESULT_MISMATCH", "completed result differs from current bound inputs/approvals/predecessors")
+        if readiness:
+            R.reconfirm(self)
+            R.current_attempt(self, run_id, attempt)
         self.current_head()
-        return self.result("consume", [], {"run_id": run_id, "attempt": attempt, "artifact_id": artifact_id,
-                                          "ci_app_id": ACTIONS_APP_ID})
+        seal = {"run_id": run_id, "attempt": attempt, "artifact_id": artifact_id, "ci_app_id": ACTIONS_APP_ID}
+        result = self.result("consume", [], seal)
+        if readiness:
+            result["readiness_decision"] = R.decide(self, expected, seal)
+            result["downstream_minimum"] = result["readiness_decision"]["records"][-1]["assurance_level"]
+        return result
 
 
 def main(argv=None):
@@ -906,11 +973,12 @@ def main(argv=None):
     source.add_argument("--request", type=Path)
     source.add_argument("--request-env", action="store_true", help="read PHASE4_REQUEST_JSON without shell interpolation")
     parser.add_argument("--expected-transition", choices=M.TRANSITIONS)
-    parser.add_argument("--run-id", type=int)
-    parser.add_argument("--attempt", type=int)
+    parser.add_argument("--run-id")
+    parser.add_argument("--attempt")
     parser.add_argument("--result", type=Path, required=True)
     args = parser.parse_args(argv)
     control = None
+    readiness = args.expected_transition == "readiness"
     try:
         if args.request_env:
             content = os.environ.get("PHASE4_REQUEST_JSON", "").encode()
@@ -919,13 +987,16 @@ def main(argv=None):
             with args.request.open("rb") as stream:
                 content = stream.read(MAX_BYTES + 1)
         require(len(content) <= MAX_BYTES, "INPUT_INVALID", "request too large", 2)
-        request = validate_request(parse(content))
+        request = parse_transition_document(content)
+        readiness = readiness or request.get("transition") == "readiness"
+        request = validate_request(request)
         require(args.expected_transition is None or args.expected_transition == request["transition"],
                 "INPUT_INVALID", "request differs from dedicated transition", 2)
         control = Control(args.root.resolve(), request, GitHub())
         if args.phase == "consume":
-            require(positive(args.run_id) and positive(args.attempt), "INPUT_INVALID", "consume requires run-id and attempt", 2)
-            result = control.consume(args.run_id, args.attempt)
+            require(all(isinstance(value, str) and re.fullmatch(r"[1-9][0-9]*", value)
+                        for value in (args.run_id, args.attempt)), "INPUT_INVALID", "consume requires positive run-id and attempt", 2)
+            result = control.consume(int(args.run_id), int(args.attempt))
         else:
             require(args.run_id is None and args.attempt is None, "INPUT_INVALID", "evaluation cannot supply seal coordinates", 2)
             result = control.evaluate()
@@ -938,6 +1009,9 @@ def main(argv=None):
             "schema": RESULT_SCHEMA, "phase": args.phase, "result": "FAIL", "codes": [error.code], "binding": {},
             "required_level": "none", "achieved_level": "none", "downstream_minimum": "none", "approvals": [],
             "approval_payloads": [], "predecessors": [], "seal": None}
+        if readiness or getattr(error, "gate", None) is not None:
+            import phase_4_readiness as R
+            result.update(achieved_level="none", downstream_minimum="none", readiness_decision=R.reject(error))
         code = error.exit_code
     try:
         args.result.parent.mkdir(parents=True, exist_ok=True)
