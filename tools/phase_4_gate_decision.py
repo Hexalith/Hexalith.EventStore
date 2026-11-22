@@ -1,4 +1,4 @@
-"""Issue one assured G-OQ8 availability decision through authenticated consumption.
+"""Issue a gate decision through fresh authenticated consumption.
 
 The saved document reports this invocation only. Every later consumer must call
 the platform verifier again; neither a local PASS nor an earlier decision seals it.
@@ -20,22 +20,22 @@ GATE = "G-OQ8"
 SCOPE = "governing-design-availability"
 
 
-def decide(control, run_id, attempt):
+def decide(control, run_id, attempt, allow_tenant=False):
     """Accept only this gate/transition and require a freshly authenticated seal."""
-    C.require(control.request["gate"] == GATE
+    C.require(control.request["gate"] in ((GATE, "G-TENANT") if allow_tenant else (GATE,))
               and control.request["transition"] == "high-risk-gate-pass"
               and control.request["subject_mode"] == "files"
               and not control.request["nfr_ids"],
-              "ADAPTER_UNAVAILABLE", "decision supports only G-OQ8 governing-design availability")
+              "ADAPTER_UNAVAILABLE", "request is outside the supported decision scope")
     C.require(C.positive(run_id) and C.positive(attempt), "INPUT_INVALID",
               "decision requires a positive evaluation run-id and attempt", 2)
-    return report(control.consume(run_id, attempt))
+    return report(control.consume(run_id, attempt), control.request["gate"])
 
 
-def report(result):
+def report(result, gate=GATE):
     """Retain computed assurance, exact inputs and seal without broadening scope."""
     return {**{key: value for key, value in result.items() if key != "phase"},
-            "schema": DECISION_SCHEMA, "gate": GATE, "scope": SCOPE}
+            "schema": DECISION_SCHEMA, "gate": gate, "scope": "canonical-tenant-boundary" if gate == "G-TENANT" else SCOPE}
 
 
 class Parser(argparse.ArgumentParser):
@@ -69,6 +69,7 @@ def main(argv=None):
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--request", type=Path)
     source.add_argument("--request-env", action="store_true", help="read PHASE4_REQUEST_JSON")
+    parser.add_argument("--allow-tenant", action="store_true", help="enable the dedicated G-TENANT decision")
     parser.add_argument("--run-id")
     parser.add_argument("--attempt")
     parser.add_argument("--result", type=Path)
@@ -81,6 +82,7 @@ def main(argv=None):
         elif argument.startswith("--result="):
             destination = Path(argument.split("=", 1)[1])
     control = None
+    gate = GATE
     try:
         args = parser.parse_args(arguments)
         destination = args.result
@@ -95,12 +97,15 @@ def main(argv=None):
             with path.open("rb") as stream:
                 content = stream.read(C.MAX_BYTES + 1)
         C.require(len(content) <= C.MAX_BYTES, "INPUT_INVALID", "request too large", 2)
-        request = C.validate_request(C.parse(content))
+        request = C.parse(content)
+        if args.allow_tenant and isinstance(request, dict) and request.get("gate") == "G-TENANT":
+            gate = "G-TENANT"
+        request = C.validate_request(request)
         C.require(all(isinstance(value, str) and re.fullmatch(r"[1-9][0-9]{0,18}", value)
                       for value in (args.run_id, args.attempt)),
                   "INPUT_INVALID", "decision requires positive run-id and attempt", 2)
         control = C.Control(args.root.resolve(), request, C.GitHub())
-        result = decide(control, int(args.run_id), int(args.attempt))
+        result = decide(control, int(args.run_id), int(args.attempt), args.allow_tenant)
         code = 0
     except (C.Refusal, OSError, UnicodeError, ValueError, KeyError, TypeError, AttributeError, RecursionError) as error:
         if not isinstance(error, C.Refusal):
@@ -110,7 +115,7 @@ def main(argv=None):
         result = report(control.result("consume", [error.code]) if control else {
             "schema": C.RESULT_SCHEMA, "result": "FAIL", "codes": [error.code], "binding": {},
             "required_level": "none", "achieved_level": "none", "downstream_minimum": "none",
-            "approvals": [], "approval_payloads": [], "predecessors": [], "seal": None})
+            "approvals": [], "approval_payloads": [], "predecessors": [], "seal": None}, gate)
         result.update(achieved_level="none", downstream_minimum="none", seal=None)
         code = error.exit_code
     try:

@@ -34,6 +34,7 @@ _SPEC = importlib.util.spec_from_file_location(
 M = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(M)
 REPOSITORY = "Hexalith/Hexalith.EventStore"
+TENANTS = "Hexalith/Hexalith.Tenants"
 MATRIX = "_bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json"
 REGISTRY = M.REGISTRY
 ARCHITECTURE = "_bmad-output/planning-artifacts/architecture.md"
@@ -146,6 +147,11 @@ def validate_request(request):
         closed(request, (REQUEST_KEYS - {"nfr_ids"}) | {"story"} | ({"nfr_ids"} & set(request)))
         import phase_4_story_completion as S
         S.validate_claim(request["story"])
+    elif request.get("gate") == "G-TENANT" and request.get("transition") == "high-risk-gate-pass":
+        closed(request, REQUEST_KEYS | ({"tenant_qualification"} & request.keys()))
+        if "tenant_qualification" in request:
+            import phase_4_tenant_gate as T
+            T.validate_claim(request["tenant_qualification"], request["head_sha"])
     else:
         closed(request, REQUEST_KEYS)
     require(request["schema"] == REQUEST_SCHEMA and request["repository"] == REPOSITORY,
@@ -197,16 +203,20 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 class GitHub:
     """Read-only bounded GitHub transport. Tests replace the opener, never identity logic."""
 
-    def __init__(self):
-        self.prefix = f"https://api.github.com/repos/{REPOSITORY}"
+    def __init__(self, repository=REPOSITORY):
+        require(repository in (REPOSITORY, TENANTS), "API_INVALID", "unsupported evidence repository")
+        self.repository = repository
+        self.prefix = f"https://api.github.com/repos/{repository}"
         self.opener = urllib.request.build_opener(NoRedirect())
         self.cache = {}
         self.calls = 0
 
-    def fetch(self, url, binary=False):
+    def fetch(self, url, binary=False, binary_limit=MAX_ARCHIVE):
         require(url.startswith(self.prefix + "/"), "API_INVALID", "API URL outside repository")
         headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
         token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+        if self.repository == TENANTS:
+            token = os.environ.get("PHASE4_TENANTS_READ_TOKEN") or token
         if token:
             headers["Authorization"] = "Bearer " + token
         self.calls += 1
@@ -233,7 +243,7 @@ class GitHub:
                 # Complete story-source membership is larger than ordinary API
                 # documents; only the fixed Git tree endpoint gets this bound.
                 tree_inventory = url.startswith(self.prefix + "/git/trees/")
-                limit = MAX_ARCHIVE if binary else 16 * MAX_BYTES if tree_inventory else 2 * MAX_BYTES
+                limit = binary_limit if binary else 16 * MAX_BYTES if tree_inventory else 2 * MAX_BYTES
                 content = response.read(limit + 1)
                 require(len(content) <= limit, "ARTIFACT_INVALID" if binary else "API_INVALID", "response too large", 2 if binary else 1)
                 links = response.headers.get("Link", "")
@@ -380,6 +390,7 @@ class Control:
         self.minimum = "none"
         self.story_evidence = None
         self.story_inventory = None
+        self.tenant_gate = request["gate"] == "G-TENANT" and request["transition"] == "high-risk-gate-pass"
 
     def local(self, path):
         require(M.repository_path(path) is not None, "INPUT_INVALID", "unsafe path", 2)
@@ -480,6 +491,8 @@ class Control:
         if request["transition"] in ("release-available", "production-promoted"):
             import publication_authority as P
             extra_controls = P.CONTROL_FILES + P.B.SOURCES
+        if self.tenant_gate and "tenant_qualification" in request:
+            extra_controls = ("tools/phase_4_tenant_gate.py",)
         for path in (*CONTROL_FILES, *extra_controls, workflow_path(request["transition"])):
             value = digest(self.local(path))
             require(path not in paths or paths[path] == value, "SOURCE_MISMATCH", "control file mismatch")
@@ -517,6 +530,14 @@ class Control:
             require(all(row.get(key) for key in M.BINDINGS), "GATE_UNBOUND", "gate lacks business bindings")
             require(set(row["subject_paths"]) <= {entry["path"] for entry in request["subjects"]},
                     "SUBJECT_MISMATCH", "subjects omit matrix paths")
+            if self.tenant_gate:
+                require(request["subject_mode"] == "files" and not request["nfr_ids"]
+                        and set(row["subject_paths"]) == {s["path"] for s in request["subjects"]},
+                        "SUBJECT_MISMATCH", "G-TENANT requires exactly its declared file subjects")
+                require("tenant_qualification" in request and not request["predecessors"],
+                        "BUSINESS_PREREQUISITE_MISSING", "G-TENANT requires its four qualification lanes")
+                import phase_4_tenant_gate as T
+                T.check_declaration(row, request["tenant_qualification"], paths)
             require(request["author"] in self.registry["roles"].get(row.get("author_role"), []),
                     "AUTHOR_INVALID", "author does not hold the matrix author role")
             self.roles = row["evaluator_roles"]
@@ -757,7 +778,11 @@ class Control:
         for predecessor in request["predecessors"]:
             self.rerun(predecessor)
         transition = request["transition"]
-        if transition == "high-risk-gate-pass":
+        if self.tenant_gate:
+            import phase_4_tenant_gate as T
+            T.verify(self)
+            self.binding["tenant_qualification"] = request["tenant_qualification"]
+        elif transition == "high-risk-gate-pass":
             require(request["gate"] == "G-OQ8", "ADAPTER_UNAVAILABLE", "gate has no approved business adapter (runtime parity is follow-on)")
             require(len(request["predecessors"]) == 1 and request["predecessors"][0]["adapter"] == "oq8-governing-design-v1",
                     "BUSINESS_PREREQUISITE_MISSING", "G-OQ8 requires genuine governing-design validator success")
