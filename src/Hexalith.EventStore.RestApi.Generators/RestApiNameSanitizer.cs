@@ -49,7 +49,7 @@ internal static class RestApiNameSanitizer
         var sanitized = new List<string>(parts.Length);
         foreach (string part in parts)
         {
-            sanitized.Add(ToPascalIdentifier(part, "Generated"));
+            sanitized.Add(EscapeIdentifier(ToPascalIdentifier(part, "Generated")));
         }
 
         return string.Join(".", sanitized);

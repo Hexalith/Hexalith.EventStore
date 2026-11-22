@@ -116,6 +116,14 @@ internal static class RestApiDiagnosticDescriptors
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor InvalidTypedGatewayQuery = new(
+        "HESREST015",
+        "Typed Gateway query contract is invalid",
+        "Typed Gateway query '{0}' cannot be generated: {1}",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static Diagnostic CreateUnsupportedTenantSource(string tenantSource, string owner)
         => Diagnostic.Create(UnsupportedTenantSource, Location.None, owner, tenantSource);
 

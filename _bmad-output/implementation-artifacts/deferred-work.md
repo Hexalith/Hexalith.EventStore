@@ -6715,22 +6715,32 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Respect the existing namespace resolver in the typed Gateway query emitter.
   evidence: BH1: directly appending AssemblyName produces invalid C# for Owner-Client and ignores RootNamespace. RestApiNamespaceResolver already provides the sanitizer. Separately committed generator behavior predates this guarded-write resumption.
+  status: done 2026-11-22
+  resolution: Typed Gateway bindings share the REST namespace resolver. Compilation tests cover the configured root, sanitized assembly fallback, and a reserved namespace segment.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Validate null attribute result arguments before emitting typed Gateway bindings.
   evidence: BH2: TypedGatewayQueryEmitter dereferences a nullable Roslyn typed constant, aborting generation for otherwise valid declarations. Reviewer reproduced NullReferenceException in scratch; parent confirmed the unguarded dereference. Separately owned generator work.
+  status: done 2026-11-22
+  resolution: HESREST015 reports null and missing attribute arguments. Source and referenced-contract tests verify that valid bindings still compile.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Reject unsupported typed Gateway result shapes with diagnostics.
   evidence: BH3: void and unbound generic result symbols become illegal generated generic arguments; reviewer reproduced compiler errors and parent confirmed emission lacks shape validation. Separately owned generator work.
+  status: done 2026-11-22
+  resolution: HESREST015 rejects unsupported result shapes before emission. Tests cover void, unbound generics, ref-like types, and static result types.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Validate effective result accessibility before emitting public typed Gateway methods.
   evidence: BH4: an internal result exposed by the public generated method creates CS0050; the emitter has no accessibility guard. Separately owned generator work.
+  status: done 2026-11-22
+  resolution: The emitter checks visibility through containing types, generic arguments, and array elements. Tests cover source and referenced internal results and preserve a public nested result inside a static class.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Diagnose static query request declarations before typed Gateway emission.
   evidence: BH5: Collect admits attributed public static classes, which emission uses as parameter and generic argument types; reviewer reproduced CS0721/CS0718. Separately owned generator work.
+  status: done 2026-11-22
+  resolution: HESREST015 reports static requests before method generation. The regression compiles the valid sibling without emitting a method for the static request.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Traverse accessible nested query declarations or diagnose their unsupported shape.

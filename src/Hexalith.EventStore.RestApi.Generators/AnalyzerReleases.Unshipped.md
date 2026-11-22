@@ -16,3 +16,4 @@ HESREST011 | Hexalith.EventStore.RestApi | Error | Query binding route parameter
 HESREST012 | Hexalith.EventStore.RestApi | Error | Query binding metadata is invalid.
 HESREST013 | Hexalith.EventStore.RestApi | Error | REST route parameter matches multiple properties.
 HESREST014 | Hexalith.EventStore.RestApi | Error | REST tenant source is not supported.
+HESREST015 | Hexalith.EventStore.RestApi | Error | Typed Gateway query contract is invalid.

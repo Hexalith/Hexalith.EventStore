@@ -11,15 +11,6 @@ public sealed class RestApiGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterSourceOutput(context.CompilationProvider, static (production, compilation) =>
-        {
-            string? typedQueries = TypedGatewayQueryEmitter.Emit(compilation, production.CancellationToken);
-            if (typedQueries is not null)
-            {
-                production.AddSource("TypedGatewayQueries.g.cs", SourceText.From(typedQueries, Encoding.UTF8));
-            }
-        });
-
         IncrementalValuesProvider<RestApiMessageDescriptor> messages = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (node, cancellationToken) => RestApiMessageParser.IsCandidate(node, cancellationToken),
@@ -36,6 +27,15 @@ public sealed class RestApiGenerator : IIncrementalGenerator
             .Combine(context.AnalyzerConfigOptionsProvider)
             .Select(static (source, _) => RestApiNamespaceResolver.Resolve(source.Left, source.Right))
             .WithTrackingName("RestApiControllerNamespace");
+
+        context.RegisterSourceOutput(context.CompilationProvider.Combine(controllerNamespace), static (production, source) =>
+        {
+            string? typedQueries = TypedGatewayQueryEmitter.Emit(source.Left, source.Right, production.ReportDiagnostic, production.CancellationToken);
+            if (typedQueries is not null)
+            {
+                production.AddSource("TypedGatewayQueries.g.cs", SourceText.From(typedQueries, Encoding.UTF8));
+            }
+        });
 
         IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> collectedMessages = messages
             .Collect()

@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Net.Http.Headers;
@@ -78,10 +79,11 @@ internal static class RestApiGeneratorTestHarness
     internal static CSharpCompilation RunAndUpdateCompilation(
         CSharpCompilation compilation,
         out GeneratorDriverRunResult runResult,
-        out ImmutableArray<Diagnostic> updateDiagnostics)
+        out ImmutableArray<Diagnostic> updateDiagnostics,
+        AnalyzerConfigOptionsProvider? optionsProvider = null)
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        GeneratorDriver driver = CreateDriver();
+        GeneratorDriver driver = CreateDriver(optionsProvider);
         driver = driver.RunGeneratorsAndUpdateCompilation(
             compilation,
             out Compilation outputCompilation,
@@ -116,10 +118,11 @@ internal static class RestApiGeneratorTestHarness
     internal static ImmutableArray<Diagnostic> GetDiagnostics(GeneratorDriverRunResult runResult)
         => runResult.Results.SelectMany(static result => result.Diagnostics).ToImmutableArray();
 
-    private static GeneratorDriver CreateDriver()
+    private static GeneratorDriver CreateDriver(AnalyzerConfigOptionsProvider? optionsProvider = null)
         => CSharpGeneratorDriver.Create(
             [new RestApiGenerator().AsSourceGenerator()],
             parseOptions: ParseOptions,
+            optionsProvider: optionsProvider,
             driverOptions: new GeneratorDriverOptions(
                 disabledOutputs: IncrementalGeneratorOutputKind.None,
                 trackIncrementalGeneratorSteps: true));
