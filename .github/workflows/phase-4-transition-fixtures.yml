@@ -36,3 +36,14 @@ jobs:
           global-json-file: global.json
       - name: Verify fixed Story 5.3 adapter contracts and complete-source refusals
         run: python3 -B -m unittest discover -s tools/tests -p 'test_phase_4_story_5_3.py'
+      - name: Verify the actual Release status-link case identities
+        run: |
+          dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj \
+            --configuration Release -p:UseHexalithProjectReferences=false \
+            --results-directory "$RUNNER_TEMP/status-id" --report-xunit-trx --report-xunit-trx-filename generators.trx
+          python3 -B tools/tests/check_phase_4_status_id_report.py "$RUNNER_TEMP/status-id/generators.trx"
+      - name: Validate Phase 4 readiness requests and decisions against Draft 2020-12
+        run: |
+          python3 -m venv "$RUNNER_TEMP/readiness-schema"
+          "$RUNNER_TEMP/readiness-schema/bin/python" -m pip install jsonschema==4.26.0
+          "$RUNNER_TEMP/readiness-schema/bin/python" -B tools/tests/check_phase_4_readiness_schema.py

@@ -100,64 +100,70 @@ class Qualification:
             for name, sha in (("EventStore", T.HEAD), ("Builds", BUILDS))]})
         self.producer = {"id": "Hexalith.EventStore.Aspire", "version": "8.2.1", "revision": T.HEAD,
                          "sha512": base64.b64encode(bytes(range(64))).decode()}
+        self.runs = self.claim["runs"]
         for i, (lane, (repo, workflow)) in enumerate(A.LANES.items(), 1):
-            run_id = 1000 + i
-            head = T.HEAD if repo == T.REPO else TENANTS_HEAD
-            content = (f.root / workflow).read_bytes() if repo == T.REPO else ("workflow fixture " + workflow).encode()
-            if repo == TENANTS:
-                self.put(repo, "/contents/" + workflow + "?ref=" + head, {
-                    "type": "file", "path": workflow, "encoding": "base64", "content": base64.b64encode(content).decode(),
-                    "size": len(content), "sha": hashlib.sha1(b"blob " + str(len(content)).encode() + b"\0" + content).hexdigest()})
-            pin = {"repository": repo, "head_sha": head, "workflow": workflow, "workflow_sha256": T.hash_bytes(content),
-                   "run_id": run_id, "attempt": 1, "artifacts": {}}
-            self.claim["runs"][lane] = pin
-            success = {"status": "completed", "conclusion": "success"}
-            record = {**success, "id": run_id, "run_attempt": 1, "head_sha": head, "head_branch": "main", "event": "push",
-                      "repository": {"full_name": repo}, "head_repository": {"full_name": repo}, "path": workflow,
-                      "workflow_id": i, "check_suite_id": i}
-            self.put(repo, f"/actions/runs/{run_id}", copy.deepcopy(record))
-            self.put(repo, f"/actions/runs/{run_id}/attempts/1", record)
-            self.put(repo, f"/actions/workflows/{i}", {"id": i, "path": workflow, "state": "active"})
-            action = {"id": 15368, "slug": "github-actions"}
-            self.put(repo, f"/check-suites/{i}", {**success, "id": i, "head_sha": head, "app": action})
-            jobs, checks = [], []
-            required = A.JOBS[lane].copy()
-            if lane == "tenants_source":
-                required["Actual source catalog owner profile"] = (
-                    "Record the actual selected SDK source and producer version",
-                    "Prove fresh backend ownership before provisioning private owner material",
-                    "Require bootstrap bearer validation and bound workload refusals",
-                    "Require actual cohort binding, owned bootstrap, persisted effects and refusal")
-            for j, (job, steps) in enumerate(required.items(), i * 100):
-                check_url = prefix(repo) + f"/check-runs/{j}"
-                checkout_name = {"live-sidecar": "Checkout repository", "published-compatibility": "Checkout exact executor and comparison tags"}.get(
-                    job, "Run actions/checkout@" + "1" * 40)
-                jobs.append({**success, "id": j, "run_attempt": 1, "run_id": run_id, "head_sha": head, "name": job,
-                             "check_run_url": check_url, "started_at": START, "completed_at": END,
-                             "steps": [{**success, "name": checkout_name, "number": 3, "started_at": START,
-                                        "completed_at": START}, *[{**success, "name": s} for s in steps]]})
-                self.logs[j] = self.log_lines(START, ["##[group]Run actions/checkout@" + "1" * 40, "with:",
-                              "  repository: " + repo, "##[endgroup]", "Syncing repository: " + repo,
-                              "[command]/usr/bin/git log -1 --format=%H", head])
-                self.set_log(repo, j, self.logs[j])
-                checks.append({**success, "id": j, "name": job, "url": check_url, "app": action,
-                               "head_sha": head, "check_suite": {"id": i}})
-            self.put(repo, f"/actions/runs/{run_id}/attempts/1/jobs?per_page=100", {"total_count": len(jobs), "jobs": jobs})
-            self.put(repo, f"/check-suites/{i}/check-runs?filter=all&per_page=100", {"total_count": len(checks), "check_runs": checks})
-            self.put(repo, f"/actions/runs/{run_id}/artifacts?per_page=100", {"artifacts": [], "total_count": 0})
-            for j, name in enumerate(A.ARTIFACT_JOBS[lane], i * 100):
-                files = {file: trx(file) for file in A.REPORTS.get(name, ())}
-                if name == A.SOURCE_PROFILE:
-                    files.update(self.receipts(T.HEAD, run_id))
-                if name == A.REST_RESULTS:
-                    manifests = {host: {"runtimeTarget": ".NETCoreApp,Version=v11.0", "manifestSha256": DIGEST,
-                                 "packages": {"Hexalith.EventStore.Contracts": "8.2.1", "Hexalith.McpCli.Abstractions": "6.3.1"}}
-                                 for host in SERVICES}
-                    manifests["Hexalith.Tenants.AppHost"]["packages"][self.producer["id"]] = "8.2.1"
-                    files[A.PACKAGE] = T.canonical({"sdkSource": T.HEAD, "sdkPackageProducer": self.producer, "runtimeManifests": manifests})
-                self.files[name] = files
-                self.publish(lane, name, j)
+            self.install_lane(i, lane, repo, workflow)
         f.approve()
+
+    def install_lane(self, i, lane, repo, workflow, report_files=None):
+        import test_phase_4_transition as T
+        f = self.f
+        run_id = 1000 + i
+        head = T.HEAD if repo == T.REPO else TENANTS_HEAD
+        content = (f.root / workflow).read_bytes() if repo == T.REPO else ("workflow fixture " + workflow).encode()
+        if repo == TENANTS:
+            self.put(repo, "/contents/" + workflow + "?ref=" + head, {
+                "type": "file", "path": workflow, "encoding": "base64", "content": base64.b64encode(content).decode(),
+                "size": len(content), "sha": hashlib.sha1(b"blob " + str(len(content)).encode() + b"\0" + content).hexdigest()})
+        pin = {"repository": repo, "head_sha": head, "workflow": workflow, "workflow_sha256": T.hash_bytes(content),
+               "run_id": run_id, "attempt": 1, "artifacts": {}}
+        self.runs[lane] = pin
+        success = {"status": "completed", "conclusion": "success"}
+        record = {**success, "id": run_id, "run_attempt": 1, "head_sha": head, "head_branch": "main", "event": "push",
+                  "repository": {"full_name": repo}, "head_repository": {"full_name": repo}, "path": workflow,
+                  "workflow_id": i, "check_suite_id": i}
+        self.put(repo, f"/actions/runs/{run_id}", copy.deepcopy(record))
+        self.put(repo, f"/actions/runs/{run_id}/attempts/1", record)
+        self.put(repo, f"/actions/workflows/{i}", {"id": i, "path": workflow, "state": "active"})
+        action = {"id": 15368, "slug": "github-actions"}
+        self.put(repo, f"/check-suites/{i}", {**success, "id": i, "head_sha": head, "app": action})
+        jobs, checks = [], []
+        required = A.JOBS[lane].copy()
+        if lane == "tenants_source":
+            required["Actual source catalog owner profile"] = (
+                "Record the actual selected SDK source and producer version",
+                "Prove fresh backend ownership before provisioning private owner material",
+                "Require bootstrap bearer validation and bound workload refusals",
+                "Require actual cohort binding, owned bootstrap, persisted effects and refusal")
+        for j, (job, steps) in enumerate(required.items(), i * 100):
+            check_url = prefix(repo) + f"/check-runs/{j}"
+            checkout_name = {"live-sidecar": "Checkout repository", "published-compatibility": "Checkout exact executor and comparison tags"}.get(
+                job, "Run actions/checkout@" + "1" * 40)
+            jobs.append({**success, "id": j, "run_attempt": 1, "run_id": run_id, "head_sha": head, "name": job,
+                         "check_run_url": check_url, "started_at": START, "completed_at": END,
+                         "steps": [{**success, "name": checkout_name, "number": 3, "started_at": START,
+                                    "completed_at": START}, *[{**success, "name": s} for s in steps]]})
+            self.logs[j] = self.log_lines(START, ["##[group]Run actions/checkout@" + "1" * 40, "with:",
+                          "  repository: " + repo, "##[endgroup]", "Syncing repository: " + repo,
+                          "[command]/usr/bin/git log -1 --format=%H", head])
+            self.set_log(repo, j, self.logs[j])
+            checks.append({**success, "id": j, "name": job, "url": check_url, "app": action,
+                           "head_sha": head, "check_suite": {"id": i}})
+        self.put(repo, f"/actions/runs/{run_id}/attempts/1/jobs?per_page=100", {"total_count": len(jobs), "jobs": jobs})
+        self.put(repo, f"/check-suites/{i}/check-runs?filter=all&per_page=100", {"total_count": len(checks), "check_runs": checks})
+        self.put(repo, f"/actions/runs/{run_id}/artifacts?per_page=100", {"artifacts": [], "total_count": 0})
+        for j, name in enumerate(A.ARTIFACT_JOBS[lane], i * 100):
+            files = report_files[name] if report_files else {file: trx(file) for file in A.REPORTS.get(name, ())}
+            if name == A.SOURCE_PROFILE:
+                files.update(self.receipts(T.HEAD, run_id))
+            if name == A.REST_RESULTS:
+                manifests = {host: {"runtimeTarget": ".NETCoreApp,Version=v11.0", "manifestSha256": DIGEST,
+                             "packages": {"Hexalith.EventStore.Contracts": "8.2.1", "Hexalith.McpCli.Abstractions": "6.3.1"}}
+                             for host in SERVICES}
+                manifests["Hexalith.Tenants.AppHost"]["packages"][self.producer["id"]] = "8.2.1"
+                files[A.PACKAGE] = T.canonical({"sdkSource": T.HEAD, "sdkPackageProducer": self.producer, "runtimeManifests": manifests})
+            self.files[name] = files
+            self.publish(lane, name, j)
 
     def put(self, repo, endpoint, document):
         self.f.state["responses"][prefix(repo) + endpoint] = {"json": document}
@@ -183,7 +189,7 @@ class Qualification:
         return {A.BACKEND: json.dumps(backend).encode(), A.RUNTIME: json.dumps(runtime).encode()}
 
     def publish(self, lane, name, artifact_id):
-        pin = self.claim["runs"][lane]
+        pin = self.runs[lane]
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for path, content in self.files[name].items():

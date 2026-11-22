@@ -244,10 +244,18 @@ UPLOAD_STEPS = {
 }
 
 
-def latest_attempt(api, lane, pin):
+def finished(record, require_run_success):
+    if require_run_success:
+        return completed(record)
+    # A job-scoped gate can credit its successful checks after the owner run finishes.
+    return record.get("status") == "completed" and record.get("conclusion") in (
+        "success", "failure", "cancelled", "timed_out", "neutral", "skipped", "action_required", "stale")
+
+
+def latest_attempt(api, lane, pin, *, require_run_success=True):
     latest = api.get(f"/actions/runs/{pin['run_id']}")
     C.require(latest.get("id") == pin["run_id"] and latest.get("run_attempt") == pin["attempt"]
-              and latest.get("head_sha") == pin["head_sha"] and completed(latest),
+              and latest.get("head_sha") == pin["head_sha"] and finished(latest, require_run_success),
               "RUN_NOT_SUCCESSFUL", "superseded, changed or unsuccessful " + lane)
 
 
@@ -349,11 +357,11 @@ def authenticate_jobs(api, lane, pin):
     return authenticate_workflow_jobs(api, lane, pin, repository, workflow, JOBS[lane], ARTIFACT_JOBS[lane])
 
 
-def authenticate_workflow_jobs(api, lane, pin, repository, workflow, required_jobs, artifact_jobs):
+def authenticate_workflow_jobs(api, lane, pin, repository, workflow, required_jobs, artifact_jobs, *, require_run_success=True):
     """Authenticate an owner's fixed workflow, actual job checkouts, steps and uploads."""
     run_id, attempt, head = pin["run_id"], pin["attempt"], pin["head_sha"]
     base = f"/actions/runs/{run_id}"
-    latest_attempt(api, lane, pin)
+    latest_attempt(api, lane, pin, require_run_success=require_run_success)
     record = api.get(base + f"/attempts/{attempt}")
     branches = ("main", "release/parties-sdk-3.130.2") if repository == C.REPOSITORY else ("main",)
     event = record.get("event")
@@ -380,7 +388,7 @@ def authenticate_workflow_jobs(api, lane, pin, repository, workflow, required_jo
               and record.get("repository", {}).get("full_name") == repository
               and record.get("head_repository", {}).get("full_name") == repository and trigger,
               "RUN_INVALID", "wrong run identity in " + lane)
-    C.require(completed(record), "RUN_NOT_SUCCESSFUL", lane + " did not pass")
+    C.require(finished(record, require_run_success), "RUN_NOT_SUCCESSFUL", lane + " did not qualify")
     C.require(record.get("path") == workflow and C.positive(record.get("workflow_id")),
               "WORKFLOW_MISMATCH", "wrong workflow in " + lane)
     metadata = api.get("/actions/workflows/" + str(record["workflow_id"]))
@@ -390,7 +398,7 @@ def authenticate_workflow_jobs(api, lane, pin, repository, workflow, required_jo
     suite_id = record.get("check_suite_id")
     C.require(C.positive(suite_id), "CI_UNAUTHENTICATED", "missing check suite for " + lane)
     suite = api.get(f"/check-suites/{suite_id}")
-    C.require(suite.get("id") == suite_id and suite.get("head_sha") == head and completed(suite)
+    C.require(suite.get("id") == suite_id and suite.get("head_sha") == head and finished(suite, require_run_success)
               and suite.get("app", {}).get("id") == C.ACTIONS_APP_ID and suite["app"].get("slug") == "github-actions",
               "CI_UNAUTHENTICATED", "wrong Actions check suite in " + lane)
     checks = api.pages(f"/check-suites/{suite_id}/check-runs?filter=all&per_page=100", "check_runs")
@@ -410,7 +418,8 @@ def authenticate_workflow_jobs(api, lane, pin, repository, workflow, required_jo
         C.require(len(checks_for_job) == 1, "CI_UNAUTHENTICATED", "unlinked job " + name)
         for step in steps:
             found = [s for s in job.get("steps", []) if s.get("name") == step]
-            evidence(len(found) == 1 and completed(found[0]), "missing successful step " + step)
+            C.require(len(found) == 1 and completed(found[0]), "BUSINESS_PREREQUISITE_MISSING",
+                      lane + " missing successful step " + step)
         uploads = [artifact for artifact, producer in artifact_jobs.items() if producer == name]
         base_proven = verify_job_log(api, job, pin, uploads, branches)
         logged_base = logged_base or base_proven
@@ -438,24 +447,31 @@ def gitlinks(api, head):
 
 
 def timestamp(value):
-    evidence(isinstance(value, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}(?:\.[0-9]{1,9})?Z", value),
-             "invalid evidence timestamp")
+    C.require(isinstance(value, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}(?:\.[0-9]{1,9})?Z", value),
+              "BUSINESS_PREREQUISITE_MISSING", "invalid evidence timestamp")
     try:
         return dt.datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError as error:
-        raise C.Refusal("BUSINESS_PREREQUISITE_MISSING", "G-TENANT invalid evidence timestamp") from error
+        raise C.Refusal("BUSINESS_PREREQUISITE_MISSING", "invalid evidence timestamp") from error
 
 
-def artifact_files(api, inventory, name, pin, run, job, filenames):
+def live_artifact(inventory, name, pin, run):
     matches = [a for a in inventory if a.get("name") == name and a.get("id") == pin["id"]]
     C.require(len(matches) == 1, "ARTIFACT_INVALID", "missing or ambiguous " + name)
     a = matches[0]
-    start, end = timestamp(job.get("started_at")), timestamp(job.get("completed_at"))
-    C.require(a.get("id") == pin["id"] and a.get("expired") is False and a.get("digest") == "sha256:" + pin["sha256"]
-              and C.positive(a.get("size_in_bytes")) and a["size_in_bytes"] == job["verified_upload_sizes"][name] <= MAX_ARCHIVE
+    C.require(a.get("expired") is False and a.get("digest") == "sha256:" + pin["sha256"]
+              and C.positive(a.get("size_in_bytes")) and a["size_in_bytes"] <= MAX_ARCHIVE
               and a.get("workflow_run", {}).get("id") == run["run_id"] and a["workflow_run"].get("head_sha") == run["head_sha"]
-              and start <= timestamp(a.get("created_at")) <= end and timestamp(a.get("expires_at")) > dt.datetime.now(dt.timezone.utc),
-              "ARTIFACT_INVALID", "wrong artifact identity, attempt interval or expiry for " + name)
+              and timestamp(a.get("expires_at")) > dt.datetime.now(dt.timezone.utc),
+              "ARTIFACT_INVALID", "wrong artifact identity, source or expiry for " + name)
+    return a
+
+
+def artifact_files(api, inventory, name, pin, run, job, filenames, *, project_paths=False):
+    a = live_artifact(inventory, name, pin, run)
+    start, end = timestamp(job.get("started_at")), timestamp(job.get("completed_at"))
+    C.require(a["size_in_bytes"] == job["verified_upload_sizes"][name] and start <= timestamp(a.get("created_at")) <= end,
+              "ARTIFACT_INVALID", "wrong artifact size or attempt interval for " + name)
     data, _ = api.fetch(api.prefix + f"/actions/artifacts/{pin['id']}/zip", binary=True, binary_limit=MAX_ARCHIVE)
     C.require(len(data) == a["size_in_bytes"] and C.digest(data) == pin["sha256"],
               "ARTIFACT_INVALID", "downloaded artifact differs from pin: " + name)
@@ -473,6 +489,9 @@ def artifact_files(api, inventory, name, pin, run, job, filenames):
                 basename = PurePosixPath(path).name
                 if entry.is_dir() or basename not in filenames:
                     continue
+                if project_paths:
+                    C.require(path == basename.removesuffix(".trx") + "/" + basename,
+                              "ARTIFACT_INVALID", "wrong Release report path: " + path)
                 C.require(basename not in files and 0 < entry.file_size <= (C.MAX_BYTES if basename.endswith(".json") else MAX_REPORT),
                           "ARTIFACT_INVALID", "duplicate or oversized " + basename)
                 files[basename] = archive.read(entry)

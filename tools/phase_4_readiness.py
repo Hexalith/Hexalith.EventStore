@@ -3,9 +3,9 @@
 import phase_4_transition as C
 
 VERIFIER = "tools/phase_4_readiness.py"
-CONTROL_FILES = (VERIFIER, "tools/phase_4_tenant_gate.py")
+CONTROL_FILES = (VERIFIER, "tools/phase_4_tenant_gate.py", "tools/phase_4_status_id_gate.py")
 GATES = tuple(g for g in C.M.GATES if g not in ("G-HIGH-RISK", "G-READINESS"))
-GATE_DECISIONS = ("G-OQ8", "G-TENANT")
+GATE_DECISIONS = ("G-OQ8", "G-TENANT", "G-STATUS-ID")
 IDENTITIES = ("command_sha256", "subject_sha256", "evidence_sha256", "result_sha256", "approvals_sha256")
 DECLARATIONS = {"G-HIGH-RISK": "866882467b50a46efc18d0384a190f68325b060a5e1d1903e91366322ae95f61",
                 "G-READINESS": "ecee0774b6ac67086fe3e348a170d77a981dff96c87c2aa4fdc4277330bd943d"}
@@ -117,13 +117,6 @@ def bind(control, paths, matrix, validator):
               "MATRIX_INVALID", "invalid offline downstream inventory or assurance declaration")
 
 
-def current_attempt(control, run_id, attempt):
-    run = control.api.get(f"/actions/runs/{run_id}")
-    C.require(run.get("id") == run_id and run.get("run_attempt") == attempt and run.get("head_sha") == control.head and
-              run.get("status") == "completed" and run.get("conclusion") == "success",
-              "RUN_NOT_SUCCESSFUL", "bound evidence attempt is no longer the current successful run")
-
-
 def owner_evidence(control, gate, claim):
     """Only enrolled owner consumers can supply facts. Every invocation authenticates anew."""
     if gate not in GATE_DECISIONS:
@@ -132,10 +125,10 @@ def owner_evidence(control, gate, claim):
     owner = claim["owner_request"]
     C.require(all(owner[key] == control.request[key] for key in ("head_sha", "matrix", "registry", "required_level")),
               "PREDECESSOR_IDENTITY", "gate owner request is for another source or control set")
-    current_attempt(control, claim["run_id"], claim["attempt"])
+    control.current_attempt(claim["run_id"], claim["attempt"])
     verifier = C.Control(control.root, owner, control.api)
-    decision = D.decide(verifier, claim["run_id"], claim["attempt"], allow_tenant=True)
-    current_attempt(control, claim["run_id"], claim["attempt"])
+    decision = D.decide(verifier, claim["run_id"], claim["attempt"], allow_tenant=True, allow_status_id=True)
+    control.current_attempt(claim["run_id"], claim["attempt"])
     binding = decision["binding"]
     evidence = {"binding": binding, "predecessors": decision["predecessors"], "seal": decision["seal"]}
     if gate == "G-OQ8":
@@ -145,7 +138,7 @@ def owner_evidence(control, gate, claim):
         jobs = T.authenticate_workflow_jobs(control.api, gate, pin, C.REPOSITORY, OQ8_WORKFLOW, OQ8_JOBS, {})
         T.latest_attempt(control.api, gate, pin)
         evidence["availability"] = {**pin, "jobs": {name: job["id"] for name, job in jobs.items()}}
-    control.readiness_owners[gate] = verifier
+    control.readiness_owners[gate] = (verifier, decision["seal"]["artifact_id"])
     return {"gate": decision["gate"], "head_sha": binding["head_sha"], "result": decision["result"],
             "assurance_level": decision["downstream_minimum"], "run_id": decision["seal"]["run_id"],
             "attempt": decision["seal"]["attempt"], "subject_sha256": binding["subject_sha256"],
@@ -200,33 +193,30 @@ def diagnose_candidate(candidate, expected):
             raise problem(gate, "RESULT_MISMATCH", "sealed gate differs from current owner evidence")
 
 
-def reconfirm_approvals(verifier):
-    previous = verifier.approvals
-    verifier.approvals = []
-    verifier.check_approvals()
-    C.require(verifier.approvals == previous, "APPROVAL_INVALID", "authenticated approvals changed during consumption")
-
-
 def reconfirm(control):
     """Re-read mutable platform facts after all potentially long business validators."""
     import phase_4_tenant_gate as T
-    for gate, verifier in control.readiness_owners.items():
+    for gate, (verifier, artifact_id) in control.readiness_owners.items():
         claim = control.request["readiness"]["gates"][gate]
         try:
-            current_attempt(control, claim["run_id"], claim["attempt"])
+            control.current_attempt(claim["run_id"], claim["attempt"])
             if gate == "G-OQ8":
                 run = claim["availability_run"]
-                current_attempt(control, run["run_id"], run["attempt"])
+                control.current_attempt(run["run_id"], run["attempt"])
             elif gate == "G-TENANT":
                 tenants = C.GitHub(C.TENANTS)
                 for lane, pin in verifier.request["tenant_qualification"]["runs"].items():
                     api = control.api if pin["repository"] == C.REPOSITORY else tenants
                     T.latest_attempt(api, lane, pin)
-            reconfirm_approvals(verifier)
+            elif gate == "G-STATUS-ID":
+                import phase_4_status_id_gate as S
+                verifier.reconfirm_candidate(claim["run_id"], claim["attempt"], verifier.result("evaluate", []), artifact_id)
+                S.reconfirm(verifier)
+            verifier.reconfirm_approvals()
         except C.Refusal as error:
             error.gate = gate
             raise
-    reconfirm_approvals(control)
+    control.reconfirm_approvals()
 
 
 def decide(control, candidate, seal):

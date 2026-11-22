@@ -18,11 +18,13 @@ import phase_4_transition as C
 DECISION_SCHEMA = "hexalith.eventstore.phase-4-gate-decision.v1"
 GATE = "G-OQ8"
 SCOPE = "governing-design-availability"
+SCOPES = {GATE: SCOPE, "G-TENANT": "canonical-tenant-boundary", "G-STATUS-ID": "generated-command-status-link"}
 
 
-def decide(control, run_id, attempt, allow_tenant=False):
+def decide(control, run_id, attempt, allow_tenant=False, allow_status_id=False):
     """Accept only this gate/transition and require a freshly authenticated seal."""
-    C.require(control.request["gate"] in ((GATE, "G-TENANT") if allow_tenant else (GATE,))
+    gate = control.request["gate"]
+    C.require((gate == GATE or gate == "G-TENANT" and allow_tenant or gate == "G-STATUS-ID" and allow_status_id)
               and control.request["transition"] == "high-risk-gate-pass"
               and control.request["subject_mode"] == "files"
               and not control.request["nfr_ids"],
@@ -35,7 +37,7 @@ def decide(control, run_id, attempt, allow_tenant=False):
 def report(result, gate=GATE):
     """Retain computed assurance, exact inputs and seal without broadening scope."""
     return {**{key: value for key, value in result.items() if key != "phase"},
-            "schema": DECISION_SCHEMA, "gate": gate, "scope": "canonical-tenant-boundary" if gate == "G-TENANT" else SCOPE}
+            "schema": DECISION_SCHEMA, "gate": gate, "scope": SCOPES[gate]}
 
 
 class Parser(argparse.ArgumentParser):
@@ -70,6 +72,7 @@ def main(argv=None):
     source.add_argument("--request", type=Path)
     source.add_argument("--request-env", action="store_true", help="read PHASE4_REQUEST_JSON")
     parser.add_argument("--allow-tenant", action="store_true", help="enable the dedicated G-TENANT decision")
+    parser.add_argument("--allow-status-id", action="store_true", help="enable the dedicated G-STATUS-ID decision")
     parser.add_argument("--run-id")
     parser.add_argument("--attempt")
     parser.add_argument("--result", type=Path)
@@ -98,17 +101,19 @@ def main(argv=None):
                 content = stream.read(C.MAX_BYTES + 1)
         C.require(len(content) <= C.MAX_BYTES, "INPUT_INVALID", "request too large", 2)
         request = C.parse(content)
+        if args.allow_tenant and isinstance(request, dict) and request.get("gate") == "G-TENANT":
+            gate = "G-TENANT"
+        if args.allow_status_id and request.get("gate") == "G-STATUS-ID":
+            gate = "G-STATUS-ID"
         if request.get("transition") in C.M.TRANSITIONS:
             C.require(request["transition"] == "high-risk-gate-pass", "ADAPTER_UNAVAILABLE",
                       "request is outside the supported decision scope")
-        if args.allow_tenant and isinstance(request, dict) and request.get("gate") == "G-TENANT":
-            gate = "G-TENANT"
         request = C.validate_request(request)
         C.require(all(isinstance(value, str) and re.fullmatch(r"[1-9][0-9]{0,18}", value)
                       for value in (args.run_id, args.attempt)),
                   "INPUT_INVALID", "decision requires positive run-id and attempt", 2)
         control = C.Control(args.root.resolve(), request, C.GitHub())
-        result = decide(control, int(args.run_id), int(args.attempt), args.allow_tenant)
+        result = decide(control, int(args.run_id), int(args.attempt), args.allow_tenant, args.allow_status_id)
         code = 0
     except (C.Refusal, OSError, UnicodeError, ValueError, KeyError, TypeError, AttributeError, RecursionError) as error:
         if not isinstance(error, C.Refusal):

@@ -212,6 +212,73 @@ class GateDecisionTests(unittest.TestCase):
             self.assert_contract(document, process.returncode)
             self.assertEqual(['APPROVAL_EDITED'], document['codes'])
 
+    def test_status_link_workflow_reconsumes_two_jobs_on_a_completed_failed_ci_run(self):
+        import phase_4_status_id_fixture as F
+        q = F.Qualification(self.f)
+        for endpoint in ('/actions/runs/1009', '/actions/runs/1009/attempts/1', '/check-suites/9'):
+            self.f.api_document(endpoint)['conclusion'] = 'failure'
+        process, candidate = self.workflow(GATE_WORKFLOW, 'evaluate')
+        self.assertEqual(0, process.returncode, candidate)
+        self.f.artifact(candidate)
+        process, decision = self.workflow(GATE_WORKFLOW)
+        self.assertEqual(0, process.returncode, decision)
+        self.assertEqual(('G-STATUS-ID', 'generated-command-status-link'), (decision['gate'], decision['scope']))
+        proof = decision['binding']['status_qualification']
+        self.assertEqual(q.claim, proof['claim'])
+        self.assertEqual({'ci / contracts', 'ci / build-and-test'}, {p['job'] for p in proof['producers'].values()})
+        # Independently fingerprinted from the actual xUnit Release TRXs, including typed and length labels.
+        expected_cases = {
+            'Contracts': (65, '44e8b15485a3e4e23a051ec38c65f2e542e0c9a6c4f18985aa296d8de491ae4b'),
+            'RestApi.Generators': (73, 'd4ad86e398c0f6eb1c90118714fd3c8e0582a47de8f95c372586d31709f0a492'),
+            'Sample': (20, '27cae0b9c72b75a1653d5bb56b848c11038851106176edfebad1026862983c1e'),
+            'Server': (8, 'b5a1b60781d15048ef3e694f43b631618bd46a08698ef57273118ba7d1baf5dd'),
+        }
+        for project, identity in expected_cases.items():
+            cases = proof['reports'][f'Hexalith.EventStore.{project}.Tests.trx']['passing_cases']
+            self.assertEqual(identity, (len(cases), T.hash_bytes(T.canonical(cases))))
+        self.assertEqual(['ADAPTER_UNAVAILABLE'], self.workflow(OQ8_WORKFLOW)[1]['codes'])
+        original_request = self.f.request
+        self.f.request = dict(original_request, transition='readiness')
+        process, refusal = self.workflow(GATE_WORKFLOW)
+        self.assertEqual(1, process.returncode)
+        self.assertEqual(('G-STATUS-ID', ['ADAPTER_UNAVAILABLE']), (refusal['gate'], refusal['codes']))
+        self.f.request = original_request
+        endpoint = T.API + '/actions/runs/1009/artifacts?per_page=100'
+        initial = self.f.state['responses'][endpoint]
+        for name, mutation in [('blocking-test-results', 'delete'), ('contracts-test-results', 'expire')]:
+            updated = copy.deepcopy(initial)
+            listing = updated['json']
+            target = next(row for row in listing['artifacts'] if row['name'] == name)
+            if mutation == 'delete':
+                listing['artifacts'].remove(target)
+                listing['total_count'] -= 1
+            else:
+                target['expires_at'] = '2020-01-01T00:00:00Z'
+            self.f.state['responses'][endpoint] = {'sequence': [initial, updated]}
+            process, refusal = self.workflow(GATE_WORKFLOW)
+            self.assertEqual(1, process.returncode)
+            self.assertEqual(['ARTIFACT_INVALID'], refusal['codes'])
+            self.assertIsNone(refusal['seal'])
+        self.f.state['responses'][endpoint] = initial
+        changed = copy.deepcopy(candidate)
+        changed['binding']['status_qualification']['producers']['blocking-test-results']['job_id'] += 1
+        self.f.artifact(changed)
+        self.assertEqual(['RESULT_MISMATCH'], self.workflow(GATE_WORKFLOW)[1]['codes'])
+        self.f.artifact(candidate)
+        for endpoint, field, value, code in [
+            ('/actions/runs/7', 'run_attempt', 3, 'RUN_NOT_SUCCESSFUL'),
+            ('/actions/runs/1009', 'run_attempt', 2, 'RUN_NOT_SUCCESSFUL'),
+            ('/actions/runs/7/attempts/2', 'conclusion', 'failure', 'RUN_NOT_SUCCESSFUL'),
+            ('/issues/comments/101', 'updated_at', '2026-02-01T00:00:00Z', 'APPROVAL_EDITED'),
+        ]:
+            original = self.f.api_document(endpoint)[field]
+            self.f.api_document(endpoint)[field] = value
+            process, refusal = self.workflow(GATE_WORKFLOW)
+            self.assertEqual(1, process.returncode)
+            self.assertEqual([code], refusal['codes'])
+            self.assertIsNone(refusal['seal'])
+            self.f.api_document(endpoint)[field] = original
+
     def test_dedicated_tenant_decision_rechecks_business_proof_and_oq8_stays_scoped(self):
         import phase_4_tenant_fixture as F
         f = self.f

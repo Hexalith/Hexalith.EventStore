@@ -32,7 +32,7 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         { 1, "Mixed-Case-Legacy-42" },
         { 1, CanonicalUlid },
         { 1, "01arz3ndektsv4rrffq69g5fav" },
-        { 1, new string('a', 128) },
+        LengthBoundary(new string('a', 128)),
         { 1, "3f2504e0-4f89-11d3-9a0c-0305e82c3301" },
         { 2, CanonicalUlid },
         { 2, OtherCanonicalUlid },
@@ -62,7 +62,7 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         { 1, "-legacy" },
         { 1, "legacy-" },
         { 1, "-" },
-        { 1, new string('a', 129) },
+        LengthBoundary(new string('a', 129)),
         { 1, "legacy status" },
         { 1, " legacy" },
         { 1, "legacy_status" },
@@ -90,17 +90,23 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
         { true, null },
         { true, "1" },
         { true, "2" },
-        { true, 1L },
-        { true, 2L },
-        { true, 1.0 },
-        { true, (short)1 },
-        { true, (byte)2 },
+        NumericVersion(1L),
+        NumericVersion(2L),
+        NumericVersion(1.0),
+        NumericVersion((short)1),
+        NumericVersion((byte)2),
         { true, true },
         { true, 0 },
         { true, 3 },
         { true, -1 },
         { true, int.MaxValue },
     };
+
+    private static TheoryDataRow<int, string> LengthBoundary(string messageId)
+        => new(1, messageId) { Label = $"v1 length {messageId.Length}" };
+
+    private static TheoryDataRow<bool, object?> NumericVersion(object version)
+        => new(true, version) { Label = $"published {version.GetType().Name} {version}" };
 
     [Theory]
     [MemberData(nameof(MessageIdsValidForVersion))]

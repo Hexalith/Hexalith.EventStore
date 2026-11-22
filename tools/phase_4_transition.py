@@ -186,6 +186,11 @@ def validate_request(request):
         if "tenant_qualification" in request:
             import phase_4_tenant_gate as T
             T.validate_claim(request["tenant_qualification"], request["head_sha"])
+    elif request.get("gate") == "G-STATUS-ID" and request.get("transition") == "high-risk-gate-pass":
+        import phase_4_status_id_gate as S
+        require("status_qualification" in request, "BUSINESS_PREREQUISITE_MISSING", "G-STATUS-ID needs its EventStore CI qualification")
+        closed(request, REQUEST_KEYS | {"status_qualification"})
+        S.validate_claim(request["status_qualification"], request["head_sha"])
     elif request.get("transition") == "readiness":
         import phase_4_readiness as R
         closed(request, REQUEST_KEYS | ({"readiness"} & request.keys()))
@@ -429,6 +434,7 @@ class Control:
         self.story_evidence = None
         self.story_inventory = None
         self.tenant_gate = request["gate"] == "G-TENANT" and request["transition"] == "high-risk-gate-pass"
+        self.status_gate = request["gate"] == "G-STATUS-ID" and request["transition"] == "high-risk-gate-pass"
         self.readiness_owners = {}
 
     def local(self, path):
@@ -474,6 +480,18 @@ class Control:
                 return None
             files.append((binding["path"], digest(content)))
         return M.subject_digest(files)
+
+    def current_attempt(self, run_id, attempt):
+        run = self.api.get(f"/actions/runs/{run_id}")
+        require(run.get("id") == run_id and run.get("run_attempt") == attempt and run.get("head_sha") == self.head and
+                run.get("status") == "completed" and run.get("conclusion") == "success",
+                "RUN_NOT_SUCCESSFUL", "bound evidence attempt is no longer the current successful run")
+
+    def reconfirm_approvals(self):
+        previous = self.approvals
+        self.approvals = []
+        self.check_approvals()
+        require(self.approvals == previous, "APPROVAL_INVALID", "authenticated approvals changed during consumption")
 
     def current_head(self):
         require(self.api.get("/git/ref/heads/main").get("object", {}).get("sha") == self.head,
@@ -541,6 +559,9 @@ class Control:
             extra_controls = P.CONTROL_FILES + P.B.SOURCES
         if self.tenant_gate and "tenant_qualification" in request:
             extra_controls = ("tools/phase_4_tenant_gate.py",)
+        if self.status_gate:
+            import phase_4_status_id_gate as S
+            extra_controls = (S.PATH, "tools/phase_4_tenant_gate.py")
         for path in (*CONTROL_FILES, *extra_controls, workflow_path(request["transition"])):
             value = digest(self.local(path))
             require(path not in paths or paths[path] == value, "SOURCE_MISMATCH", "control file mismatch")
@@ -588,6 +609,13 @@ class Control:
                         "BUSINESS_PREREQUISITE_MISSING", "G-TENANT requires its four qualification lanes")
                 import phase_4_tenant_gate as T
                 T.check_declaration(row, request["tenant_qualification"], paths)
+            if self.status_gate:
+                require(request["subject_mode"] == "files" and not request["nfr_ids"]
+                        and set(row["subject_paths"]) == {s["path"] for s in request["subjects"]},
+                        "SUBJECT_MISMATCH", "G-STATUS-ID requires exactly its declared file subjects")
+                require(not request["predecessors"] and not request["evidence"], "INPUT_INVALID",
+                        "G-STATUS-ID uses only its fixed CI qualification", 2)
+                S.check_declaration(row, request["status_qualification"], paths)
             require(request["author"] in self.registry["roles"].get(row.get("author_role"), []),
                     "AUTHOR_INVALID", "author does not hold the matrix author role")
             self.roles = row["evaluator_roles"]
@@ -832,6 +860,9 @@ class Control:
             import phase_4_tenant_gate as T
             T.verify(self)
             self.binding["tenant_qualification"] = request["tenant_qualification"]
+        elif self.status_gate:
+            import phase_4_status_id_gate as S
+            self.binding["status_qualification"] = S.verify(self)
         elif transition == "high-risk-gate-pass":
             require(request["gate"] == "G-OQ8", "ADAPTER_UNAVAILABLE", "gate has no approved business adapter (runtime parity is follow-on)")
             require(len(request["predecessors"]) == 1 and request["predecessors"][0]["adapter"] == "oq8-governing-design-v1",
@@ -937,11 +968,17 @@ class Control:
         except (zipfile.BadZipFile, RuntimeError, NotImplementedError, OSError, zlib.error) as error:
             raise Refusal("INPUT_INVALID", "malformed artifact archive", 2) from error
 
+    def reconfirm_candidate(self, run_id, attempt, candidate, artifact_id):
+        current, current_id = self.artifact(run_id, attempt)
+        require(current_id == artifact_id and canonical(current) == canonical(candidate),
+                "RESULT_MISMATCH", "sealed gate result changed during consumption")
+
     def consume(self, run_id, attempt):
         readiness = self.request["transition"] == "readiness"
         if readiness:
             import phase_4_readiness as R
-            R.current_attempt(self, run_id, attempt)
+        if readiness or self.status_gate:
+            self.current_attempt(run_id, attempt)
         self.authenticate_run(run_id, attempt)
         candidate, artifact_id = self.artifact(run_id, attempt)
         keys = RESULT_KEYS | ({"story_evidence"} if self.request["transition"] == "high-risk-nfr-story-done" else set())
@@ -955,7 +992,13 @@ class Control:
             raise Refusal("RESULT_MISMATCH", "completed result differs from current bound inputs/approvals/predecessors")
         if readiness:
             R.reconfirm(self)
-            R.current_attempt(self, run_id, attempt)
+        if self.status_gate:
+            import phase_4_status_id_gate as S
+            self.reconfirm_candidate(run_id, attempt, expected, artifact_id)
+            self.reconfirm_approvals()
+            S.reconfirm(self)
+        if readiness or self.status_gate:
+            self.current_attempt(run_id, attempt)
         self.current_head()
         seal = {"run_id": run_id, "attempt": attempt, "artifact_id": artifact_id, "ci_app_id": ACTIONS_APP_ID}
         result = self.result("consume", [], seal)

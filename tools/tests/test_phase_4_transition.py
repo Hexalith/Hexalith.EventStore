@@ -446,6 +446,10 @@ class TransitionTests(unittest.TestCase):
         oq8 = copy.deepcopy(self.request)
         F.Qualification(self)
         tenant = copy.deepcopy(self.request)
+        import phase_4_status_id_fixture as SF
+        del self.request['tenant_qualification']
+        SF.Qualification(self)
+        status = copy.deepcopy(self.request)
         matrix = json.loads((self.root / MATRIX).read_text())
         rows = {row['gate']: row for row in matrix['gates']}
         for gate in R.GATES:
@@ -490,16 +494,17 @@ class TransitionTests(unittest.TestCase):
                                           approvers=[{'role': role, 'github_id': 6775094} for role in
                                                      rows[gate].get('evaluator_roles', ['product-owner'])],
                                           assurance_level=SINGLE if rows[gate]['classification'] == 'high-risk' else 'none')
-        for gate, owner in [('G-OQ8', oq8), ('G-TENANT', tenant)]:
+        for gate, owner in [('G-OQ8', oq8), ('G-TENANT', tenant), ('G-STATUS-ID', status)]:
             owner.update(head_sha=head, matrix=self.file(MATRIX))
             claims[gate]['owner_request'] = owner
         for run in tenant['tenant_qualification']['runs'].values():
             if run['repository'] == REPO:
                 run['head_sha'] = head
+        status['status_qualification']['run']['head_sha'] = head
         claims['G-OQ8']['availability_run'] = {'run_id': 120, 'attempt': 1}
         self.request.update(transition='readiness', head_sha=head, gate=None, subjects=[self.file(C.M.PRD)],
                             evidence=[], matrix=self.file(MATRIX), predecessors=[], nfr_ids=[])
-        del self.request['tenant_qualification']
+        del self.request['status_qualification']
         self.request['readiness'] = {'baseline_tree': tree, 'workflow_sha256': self.file(workflow)['sha256'],
                                      'verifier_sha256': hash_bytes(canonical({p: self.file(p)['sha256']
                                                        for p in (*SCRIPTS, *R.CONTROL_FILES)})), 'gates': claims}
@@ -611,7 +616,7 @@ class TransitionTests(unittest.TestCase):
         refusals = self.readiness_cli(success=False)['readiness_decision']['refusals']
         self.assertEqual(set(R.GATES), {r['gate'] for r in refusals})
         for row in refusals:
-            self.assertEqual('API_UNAVAILABLE' if row['gate'] in ('G-OQ8', 'G-TENANT') else 'ADAPTER_UNAVAILABLE', row['code'])
+            self.assertEqual('API_UNAVAILABLE' if row['gate'] in R.GATE_DECISIONS else 'ADAPTER_UNAVAILABLE', row['code'])
 
     def verified_owner_gate(self, gate, claim, *, issue=False):
         """Use the production owner consumer against the fixture's authenticated endpoints."""
@@ -676,12 +681,15 @@ class TransitionTests(unittest.TestCase):
         claims = parent['readiness']['gates']
         rows = {row['gate']: row for row in json.loads((self.root / MATRIX).read_text())['gates']}
         self.add_oq8_availability_run()
-        for gate, run_id in [('G-OQ8', 51), ('G-TENANT', 61)]:
+        for gate, run_id in [('G-OQ8', 51), ('G-TENANT', 61), ('G-STATUS-ID', 81)]:
             claim = claims[gate]
             self.request = claim['owner_request']
             if gate == 'G-OQ8':
                 self.request['predecessors'][0]['commit'] = head
                 claim['availability_run'] = {'run_id': 77, 'attempt': 1}
+            elif gate == 'G-STATUS-ID':
+                import phase_4_status_id_fixture as SF
+                SF.Qualification(self)
             else:
                 # Generate the four real qualification lanes on the private Git head.
                 F.Qualification(self)
@@ -704,10 +712,13 @@ class TransitionTests(unittest.TestCase):
         # package/receipt source and gitlinks. Point all of them at this clean commit.
         with mock.patch('test_phase_4_transition.HEAD', self.request['head_sha']):
             self.bind_real_readiness_owners()
+        refusals = self.readiness_cli(success=False)['readiness_decision']['refusals']
+        self.assertIn('G-APPEND', {r['gate'] for r in refusals})
+        self.assertFalse(any(r['gate'] in R.GATE_DECISIONS for r in refusals), refusals)
         enrolled = R.owner_evidence
         late_change = None
         def resolve(control, gate, claim):
-            if gate in ('G-OQ8', 'G-TENANT'):
+            if gate in R.GATE_DECISIONS:
                 return enrolled(control, gate, claim)
             if gate == 'G-MVP-COVERAGE' and late_change:
                 late_change()
@@ -723,6 +734,9 @@ class TransitionTests(unittest.TestCase):
                     ('G-OQ8', '/actions/runs/77', 'run_attempt', 2, 'RUN_NOT_SUCCESSFUL'),
                     ('G-TENANT', tenants_url, 'run_attempt', 2, 'RUN_NOT_SUCCESSFUL'),
                     ('G-TENANT', '/issues/comments/610', 'updated_at', '2026-02-02T00:00:00Z', 'APPROVAL_EDITED'),
+                    ('G-STATUS-ID', '/actions/runs/81', 'run_attempt', 3, 'RUN_NOT_SUCCESSFUL'),
+                    ('G-STATUS-ID', '/actions/runs/1009', 'run_attempt', 2, 'RUN_NOT_SUCCESSFUL'),
+                    ('G-STATUS-ID', '/issues/comments/810', 'updated_at', '2026-02-02T00:00:00Z', 'APPROVAL_EDITED'),
                     ('G-READINESS', '/issues/comments/100', 'updated_at', '2026-02-02T00:00:00Z', 'APPROVAL_EDITED'),
                     ('G-READINESS', '/actions/runs/7', 'run_attempt', 3, 'RUN_NOT_SUCCESSFUL')]:
                 with self.subTest(endpoint=endpoint):
@@ -733,6 +747,29 @@ class TransitionTests(unittest.TestCase):
                     refused = self.readiness_cli('consume', success=False)
                     self.assertEqual([(gate, code)], [(r['gate'], r['code']) for r in refused['readiness_decision']['refusals']])
                     doc[field] = original
+            listing = self.api_document('/actions/runs/1009/artifacts?per_page=100')
+            artifacts = listing['artifacts']
+            for name, mutation in [('contracts-test-results', 'disappear'), ('blocking-test-results', 'expire')]:
+                changed = copy.deepcopy(artifacts)
+                target = next(row for row in changed if row['name'] == name)
+                if mutation == 'disappear':
+                    changed.remove(target)
+                else:
+                    target['expires_at'] = '2020-01-01T00:00:00Z'
+                late_change = lambda: listing.update(artifacts=changed, total_count=len(changed))
+                refused = self.readiness_cli('consume', success=False)
+                self.assertEqual([('G-STATUS-ID', 'ARTIFACT_INVALID')],
+                                 [(r['gate'], r['code']) for r in refused['readiness_decision']['refusals']])
+                listing.update(artifacts=artifacts, total_count=len(artifacts))
+            # The other gates have already consumed the status decision when its archive changes.
+            status_listing = API + '/actions/runs/81/artifacts?per_page=100'
+            status_archive = API + '/actions/artifacts/90/zip'
+            originals = {url: self.state['responses'][url] for url in (status_listing, status_archive)}
+            late_change = lambda: self.artifact({'result': 'FAIL'}, run_id=81)
+            refused = self.readiness_cli('consume', success=False)
+            self.assertEqual([('G-STATUS-ID', 'RESULT_MISMATCH')],
+                             [(r['gate'], r['code']) for r in refused['readiness_decision']['refusals']])
+            self.state['responses'].update(originals)
             late_change = None
             jobs = self.api_document('/actions/runs/77/attempts/1/jobs?per_page=100')['jobs']
             old_id = jobs[0]['id']
@@ -936,6 +973,154 @@ class TransitionTests(unittest.TestCase):
         self.blob(HEAD, path, content)
         self.request['subjects'].append(self.file(path))
         self.assert_gate_refused_before_command('G-TENANT', 'SUBJECT_MISMATCH')
+
+    def test_status_id_checks_each_compiled_release_case_even_with_new_artifact_pins(self):
+        import xml.etree.ElementTree as ET
+        import phase_4_status_id_fixture as F
+        S = F.S
+        q = F.Qualification(self)
+        for assembly, fragment, mutation in [
+            (S.CONTRACTS, 'CanonicalUppercaseUlidIsValidUnderVersionTwo', 'duplicate'),
+            (S.GENERATORS, 'Run_ReferencedCommandContract_GeneratesRouteTenantPostAction', 'omit'),
+            (S.GENERATORS, '[v1 length 128]', 'skip'),
+            (S.GENERATORS, '[v1 length 129]', 'omit'),
+            (S.GENERATORS, '[published Double 1]', 'rename'),
+            (S.GENERATORS, '[published Int64 2]', 'wrong-definition'),
+            (S.SAMPLE, 'IncrementCounter_WhenMessageIdDiffersFromCorrelationId', 'fail'),
+            (S.SERVER, 'EveryCatalogCommandDeclaresExactlyOneMessageIdVersion', 'debug-assembly'),
+        ]:
+            with self.subTest(fragment=fragment, mutation=mutation):
+                artifact = 'contracts-test-results' if assembly == S.CONTRACTS else 'blocking-test-results'
+                path = assembly + '/' + assembly + '.trx'
+                original = q.files[artifact][path]
+                tree = ET.fromstring(original)
+                results = tree.find('{*}Results')
+                row = next(r for r in results if fragment in r.get('testName'))
+                unit = tree.find(f"./{{*}}TestDefinitions/{{*}}UnitTest[@id='{row.get('testId')}']")
+                if mutation == 'duplicate':
+                    other = next(r for r in results if fragment in r.get('testName') and r is not row)
+                    row.attrib.update(other.attrib)
+                elif mutation == 'omit':
+                    results.remove(row)
+                elif mutation == 'rename':
+                    label = row.get('testName').replace('[published Double 1]', '[published Int16 1]')
+                    row.set('testName', label)
+                    unit.set('name', label)
+                elif mutation == 'wrong-definition':
+                    row.set('executionId', 'another-execution')
+                elif mutation == 'debug-assembly':
+                    path_to_dll = unit.get('storage').replace('/Release/', '/Debug/')
+                    unit.set('storage', path_to_dll)
+                    unit.find('{*}TestMethod').set('codeBase', path_to_dll)
+                else:
+                    row.set('outcome', 'NotExecuted' if mutation == 'skip' else 'Failed')
+                summary = ET.SubElement(tree, '{' + S.TRX_NAMESPACE + '}ResultSummary', outcome='Completed')
+                ET.SubElement(summary, '{' + S.TRX_NAMESPACE + '}Counters', passed=str(len(tree.find('{*}TestDefinitions'))))
+                q.files[artifact][path] = ET.tostring(tree)
+                q.publish('eventstore_ci', artifact, q.pin['artifacts'][artifact]['id'])
+                self.approve()
+                self.assert_refused('BUSINESS_PREREQUISITE_MISSING')
+                q.files[artifact][path] = original
+                q.publish('eventstore_ci', artifact, q.pin['artifacts'][artifact]['id'])
+        self.approve()
+        self.assert_pass()
+
+    def test_status_id_reporter_requires_its_namespace_encoding_assembly_and_unique_executions(self):
+        import xml.etree.ElementTree as ET
+        import phase_4_status_id_fixture as F
+        S = F.S
+        data = F.trx(S.GENERATORS)
+        self.assertEqual(73, len(S.check_cases(S.GENERATORS, data)['passing_cases']))
+        foreign = data.replace(S.TRX_NAMESPACE.encode(), b'urn:foreign')
+        mixed = data.replace(b'<TestMethod ', b'<TestMethod xmlns="urn:foreign" ', 1)
+        dtd = '<!DOCTYPE TestRun [<!ENTITY case "text">]>'
+        for raw in [foreign, mixed, (dtd + data.decode()).encode('utf-16'),
+                    (dtd + data.decode()).encode('utf-16le'), (dtd + data.decode()).encode()]:
+            with self.subTest(prefix=raw[:20]), self.assertRaises(C.Refusal):
+                S.check_cases(S.GENERATORS, raw)
+        for mutation in ('framework', 'other checkout', 'unrelated execution'):
+            tree = ET.fromstring(data)
+            defs = tree.find('{*}TestDefinitions')
+            unit = defs[0]
+            path = unit.get('storage')
+            if mutation == 'unrelated execution':
+                spare = copy.deepcopy(unit)
+                spare.set('id', 'other')
+                spare.find('{*}TestMethod').set('className', 'UnrelatedTest')
+                spare.find('{*}Execution').set('id', 'other')
+                defs.append(spare)
+                results = tree.find('{*}Results')
+                row = copy.deepcopy(results[0])
+                row.set('testId', 'other')
+                row.set('testName', 'UnrelatedTest.Example')
+                results.insert(0, row)
+            else:
+                target = path.replace('net11.0', 'net8.0') if mutation == 'framework' else '/different-checkout' + path
+                unit.set('storage', target)
+                unit.find('{*}TestMethod').set('codeBase', target)
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(C.Refusal, 'assembly paths|execution ID reused'):
+                S.check_cases(S.GENERATORS, ET.tostring(tree))
+
+    def test_status_id_rejects_repinned_report_from_wrong_project_directory(self):
+        import phase_4_status_id_fixture as F
+        q = F.Qualification(self)
+        name = 'contracts-test-results'
+        files = q.files[name]
+        path, = files
+        files['wrong-project/' + path.split('/')[-1]] = files.pop(path)
+        q.publish('eventstore_ci', name, q.pin['artifacts'][name]['id'])
+        self.approve()
+        self.assert_refused('ARTIFACT_INVALID')
+
+    def test_status_id_authenticates_the_declared_workflow_both_jobs_and_artifact_producers(self):
+        import phase_4_status_id_fixture as F
+        q = F.Qualification(self)
+        self.approve(created='2026-01-01T23:59:59Z')
+        self.assert_refused('APPROVAL_WINDOW')
+        self.approve()
+        for endpoint, field, value, code in [
+            ('/actions/runs/1009', 'status', 'in_progress', 'RUN_NOT_SUCCESSFUL'),
+            ('/actions/runs/1009/attempts/1', 'head_sha', BEFORE, 'RUN_INVALID'),
+            ('/actions/runs/1009/attempts/1', 'path', '.github/workflows/integration.yml', 'WORKFLOW_MISMATCH'),
+            ('/check-suites/9', 'app', {'id': 12, 'slug': 'other'}, 'CI_UNAUTHENTICATED'),
+        ]:
+            old = self.api_document(endpoint)[field]
+            self.api_document(endpoint)[field] = value
+            self.assert_refused(code)
+            self.api_document(endpoint)[field] = old
+        for index in (0, 1):
+            jobs = '/actions/runs/1009/attempts/1/jobs?per_page=100'
+            self.api_document(jobs)['jobs'][index]['conclusion'] = 'failure'
+            self.assert_refused('CI_UNAUTHENTICATED')
+            self.api_document(jobs)['jobs'][index]['conclusion'] = 'success'
+            endpoint = API + '/actions/jobs/' + str(900 + index) + '/logs'
+            original = self.state['responses'][endpoint]['binary']
+            for before, after, code in [(HEAD, BEFORE, 'SOURCE_MISMATCH'), ('Artifact ID is 9', 'Artifact ID is 1', 'ARTIFACT_INVALID')]:
+                log = base64.b64decode(original).decode().replace(before, after)
+                self.state['responses'][endpoint]['binary'] = base64.b64encode(log.encode()).decode()
+                self.assert_refused(code)
+            self.state['responses'][endpoint]['binary'] = original
+        artifact = q.pin['artifacts']['blocking-test-results']['id']
+        self.state['responses'][API + f'/actions/artifacts/{artifact}/zip']['binary'] = base64.b64encode(b'other bytes').decode()
+        self.assert_refused('ARTIFACT_INVALID')
+
+    def test_status_id_refuses_declaration_and_verifier_substitutions(self):
+        import phase_4_status_id_fixture as F
+        q = F.Qualification(self)
+        for obj, field, value in [(q.claim, 'adapter_sha256', '1' * 64), (q.pin, 'workflow_sha256', '2' * 64)]:
+            original = obj[field]
+            obj[field] = value
+            self.approve()
+            self.assert_refused('SOURCE_MISMATCH')
+            obj[field] = original
+        matrix = json.loads((self.root / MATRIX).read_bytes())
+        row = next(row for row in matrix['gates'] if row['gate'] == 'G-STATUS-ID')
+        row['guarded_transitions'].remove('readiness')
+        (self.root / MATRIX).write_bytes(canonical(matrix))
+        self.blob(HEAD, MATRIX, canonical(matrix))
+        self.request['matrix'] = self.file(MATRIX)
+        self.approve()
+        self.assert_refused('MATRIX_INVALID')
 
     def test_tenant_current_four_lane_evidence_and_exact_approval(self):
         import phase_4_tenant_fixture as F

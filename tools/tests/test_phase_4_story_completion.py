@@ -556,7 +556,7 @@ class StoryCompletionTests(unittest.TestCase):
         self.assertEqual(266, binding['properties']['inputs']['maxItems'])
         self.assertEqual(215, binding['allOf'][0]['then']['properties']['inputs']['maxItems'])
         readiness_or_other = binding['allOf'][0]['else']['else']
-        self.assertEqual(211, readiness_or_other['then']['properties']['inputs']['maxItems'])
+        self.assertEqual(212, readiness_or_other['then']['properties']['inputs']['maxItems'])
         self.assertEqual(209, readiness_or_other['else']['properties']['inputs']['maxItems'])
         self.assertEqual(266, binding['allOf'][0]['else']['then']['properties']['inputs']['maxItems'])
 
