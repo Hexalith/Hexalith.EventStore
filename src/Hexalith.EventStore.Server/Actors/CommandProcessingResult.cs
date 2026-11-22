@@ -28,4 +28,9 @@ public record CommandProcessingResult(
     [property: DataMember] int? BackpressureThreshold = null,
     [property: DataMember] string? RejectionEventType = null,
     [property: DataMember] string? FailureReason = null,
-    [property: DataMember] bool ResultPayloadWithheld = false);
+    [property: DataMember] bool ResultPayloadWithheld = false)
+{
+    /// <summary>The owner authenticated a pre-processing refusal. No domain effects or terminal receipt were staged.</summary>
+    [DataMember(EmitDefaultValue = false)]
+    public bool AdmissionDeferredBeforeProcessing { get; init; }
+}

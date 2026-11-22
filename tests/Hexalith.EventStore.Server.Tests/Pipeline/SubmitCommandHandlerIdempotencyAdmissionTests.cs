@@ -77,6 +77,40 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
     }
 
     [Fact]
+    public async Task Handle_OnlyPreProcessingDeferralKeepsSameKeyExecutable()
+    {
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
+        var session = (await context.Coordinator.AdmitAsync(context.Command, default))!;
+        var retry = session with { Decision = IdempotencyAdmissionDecision.Recoverable };
+        context.Coordinator.AdmitAsync(context.Command, default).Returns(session, retry);
+        var deferred = new CommandProcessingResult(false) { AdmissionDeferredBeforeProcessing = true };
+        context.Router.RouteFencedCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<IdempotencyExecutionContext>(), Arg.Any<CancellationToken>())
+            .Returns(deferred, new CommandProcessingResult(true, EventCount: 1));
+        var error = await Should.ThrowAsync<IdempotencyAdmissionFailureException>(() => context.Handler.Handle(context.Command, default));
+        error.StatusCode.ShouldBe(503);
+        await context.Coordinator.Received(1).MarkRecoveryAsync(Arg.Any<IdempotencyAdmissionSession>(), IdempotencyAdmissionState.Recoverable, default);
+        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+        var recovered = await context.Handler.Handle(context.Command, default);
+        recovered.MessageId.ShouldBe(context.Command.MessageId);
+        var originalExecution = context.Command with { IdempotencyKey = null };
+        await context.Coordinator.Received().ValidateExecutionAsync(retry, originalExecution, default);
+        await context.Router.Received(2).RouteFencedCommandAsync(originalExecution, session.ExecutionContext!, default);
+        await context.Coordinator.Received(1).CompleteAsync(Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Is<CommandProcessingResult>(result => result.Accepted && result.EventCount == 1), default);
+    }
+
+    [Fact]
+    public async Task Handle_RecoverableContenderLosingBeginCannotResetWinningFence()
+    {
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Recoverable);
+        context.Coordinator.BeginAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Already pending")));
+        await Should.ThrowAsync<InvalidOperationException>(() => context.Handler.Handle(context.Command, default));
+        await context.Coordinator.DidNotReceiveWithAnyArgs().MarkRecoveryAsync(default!, default, default);
+        await context.Router.DidNotReceiveWithAnyArgs().RouteFencedCommandAsync(default!, default!, default);
+    }
+
+    [Fact]
     public async Task Handle_Conflict_DeniesBeforeAggregateAndAdvisoryStores()
     {
         TestContext context = CreateContext(IdempotencyAdmissionDecision.Conflict);

@@ -33,6 +33,30 @@ public class AggregateActorTests {
     }
 
     [Fact]
+    public async Task ProcessCommandAsync_PreProcessingDeferralLeavesExecutionAvailableWithoutTerminalEvidence()
+    {
+        ActorTestContext ctx = CreateActor();
+        ConfigureNoDuplicate(ctx.StateManager);
+        var command = CreateTestEnvelope();
+        ctx.Invoker.InvokeAsync(command, null, Arg.Any<CancellationToken>()).Returns(
+            Task.FromException<Hexalith.EventStore.Contracts.Results.DomainResult>(
+                new Hexalith.EventStore.Server.DomainServices.DomainServiceAdmissionDeferredException()),
+            Task.FromResult(Hexalith.EventStore.Contracts.Results.DomainResult.NoOp()));
+        var refusal = await ctx.Actor.ProcessCommandAsync(command);
+        refusal.AdmissionDeferredBeforeProcessing.ShouldBeTrue();
+        refusal.EventCount.ShouldBe(0);
+        refusal.Accepted.ShouldBeFalse();
+        ctx.EventPublisher.ReceivedCalls().ShouldBeEmpty();
+        ctx.DeadLetterPublisher.ReceivedCalls().ShouldBeEmpty();
+        await ctx.StatusStore.DidNotReceive().WriteStatusAsync(command.TenantId, command.MessageId,
+            Arg.Is<CommandStatusRecord>(s => s.Status == CommandStatus.Completed || s.Status == CommandStatus.Rejected),
+            Arg.Any<CancellationToken>());
+        var retry = await ctx.Actor.ProcessCommandAsync(command);
+        retry.Accepted.ShouldBeTrue();
+        await ctx.Invoker.Received(2).InvokeAsync(command, null, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ProcessCommandAsync_ValidCommand_ReturnsAccepted() {
         // Arrange
         ActorTestContext ctx = CreateActor();

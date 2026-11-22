@@ -363,6 +363,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
 
             CommandProcessingResult processingResult;
             bool sideEffectBoundaryCrossed = false;
+            bool executionBegan = false;
             try
             {
                 IdempotencyExecutionContext? executionContext = null;
@@ -372,6 +373,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                     await idempotencyAdmissionCoordinator
                         .BeginAsync(admissionSession, cancellationToken)
                         .ConfigureAwait(false);
+                    executionBegan = true;
                     beginStage?.Complete();
                     executionContext = admissionSession.ExecutionContext
                         ?? throw new InvalidOperationException("Executable idempotency admission returned no execution fence.");
@@ -414,7 +416,10 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                 if (await RestoreAcceptedActivationAsync(executionRequest, processingResult, diagnostics).ConfigureAwait(false))
                     cancellationToken.ThrowIfCancellationRequested();
             }
-            catch (Exception) when (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
+            // Two equivalent recoverable submissions can race Begin. A losing contender never
+            // owns the Pending execution and must not move the winner back to Recoverable.
+            catch (Exception) when (admissionSession is not null && idempotencyAdmissionCoordinator is not null
+                && (admissionSession.Decision != IdempotencyAdmissionDecision.Recoverable || executionBegan))
             {
                 await MarkRecoveryStateAsync(
                     idempotencyAdmissionCoordinator,
@@ -424,6 +429,18 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                         : IdempotencyAdmissionState.Recoverable,
                     logger, diagnostics).ConfigureAwait(false);
                 throw;
+            }
+
+            if (processingResult is { AdmissionDeferredBeforeProcessing: true, Accepted: false, EventCount: 0, RejectionEventType: null })
+            {
+                if (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
+                {
+                    await idempotencyAdmissionCoordinator.ValidateExecutionAsync(admissionSession, executionRequest, CancellationToken.None).ConfigureAwait(false);
+                    await idempotencyAdmissionCoordinator.MarkRecoveryAsync(admissionSession, IdempotencyAdmissionState.Recoverable,
+                        CancellationToken.None).ConfigureAwait(false);
+                }
+                throw AdmissionFailure(request.CorrelationId, DomainServices.DomainServiceAdmissionDeferredException.Reason,
+                    "service_unavailable", true, "retry_later", 503, "The owner could not establish current command authority.");
             }
 
             if (!processingResult.Accepted

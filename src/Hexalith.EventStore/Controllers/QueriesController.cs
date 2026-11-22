@@ -209,6 +209,7 @@ public partial class QueriesController : ControllerBase {
     }
 
     [HttpPost]
+    [HttpPost("submit")]
     [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(SubmitQueryResponse), StatusCodes.Status200OK)]

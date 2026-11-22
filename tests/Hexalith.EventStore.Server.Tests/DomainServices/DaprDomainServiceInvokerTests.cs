@@ -46,6 +46,40 @@ public partial class DaprDomainServiceInvokerTests {
         UserId: "system",
         Extensions: null);
 
+    [Theory]
+    [InlineData("conversation", "process", "AppendMessage", true, true)]
+    [InlineData("conversation", "process", "CreateHumanConversation", true, true)]
+    [InlineData("conversation", "process", "AppendMessage", false, false)]
+    [InlineData("conversation", "other-method", "AppendMessage", true, false)]
+    [InlineData("conversation", "process", "CreateConversation", true, false)]
+    [InlineData("other-app", "process", "AppendMessage", true, false)]
+    public async Task InvokeAsync_RecognizesOnlyExactOwnerPreProcessingRefusal(string app, string method,
+        string commandType, bool marker, bool recoverable)
+    {
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        var envelope = CreateTestEnvelope(domain: "conversation") with { CommandType = commandType };
+        _resolver.ResolveAsync(envelope.TenantId, envelope.Domain, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration(app, method, envelope.TenantId, envelope.Domain, null));
+        using var httpClient = new HttpClient(new AdmissionRefusalHandler(marker));
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(httpClient);
+        var invoker = new DaprDomainServiceInvoker(daprClient, factory, _resolver, _options, TimeProvider.System, _logger);
+        if (recoverable)
+            await Should.ThrowAsync<DomainServiceAdmissionDeferredException>(() => invoker.InvokeAsync(envelope, null));
+        else
+            await Should.ThrowAsync<DomainServiceException>(() => invoker.InvokeAsync(envelope, null));
+    }
+
+    private sealed class AdmissionRefusalHandler(bool marker) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { Content = new ByteArrayContent([]) };
+            if (marker) response.Headers.Add("X-Hexalith-Command-Admission", "before-processing-v1");
+            return Task.FromResult(response);
+        }
+    }
+
     [Fact]
     public async Task InvokeAsync_ServiceNotFound_ThrowsDomainServiceNotFoundException() {
         // Arrange

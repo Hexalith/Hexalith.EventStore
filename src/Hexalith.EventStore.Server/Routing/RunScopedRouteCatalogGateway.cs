@@ -36,8 +36,8 @@ public static class RunScopedRouteCatalogGateway
         if (!policies.Contains(EventStoreHttpHostSecurityExtensions.HumanPolicy, StringComparer.Ordinal)) return null;
         return path switch
         {
-            "api/v1/commands" => EventStoreOperationIdentifiers.GatewayCommandSubmit,
-            "api/v1/queries" => "eventstore:query-read",
+            "api/v1/commands" or "api/v1/commands/submit" => EventStoreOperationIdentifiers.GatewayCommandSubmit,
+            "api/v1/queries" or "api/v1/queries/submit" => "eventstore:query-read",
             "api/v1/routing/catalog" => "eventstore:catalog-metadata-read",
             "api/v1/streams/read" => EventStoreOperationIdentifiers.GatewayStreamRead,
             _ => null,

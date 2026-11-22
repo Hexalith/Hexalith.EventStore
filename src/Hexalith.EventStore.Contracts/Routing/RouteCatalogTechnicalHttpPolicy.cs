@@ -70,9 +70,9 @@ public static class RouteCatalogTechnicalHttpPolicy
         if (endpoint.Anonymous || !endpoint.Admitted || endpoint.IsPattern || !endpoint.Methods.SequenceEqual(["POST"], StringComparer.Ordinal)) return false;
         string? operation = endpoint.Pattern switch
         {
-            "/api/v1/commands" or "/api/v1/commands/workload" or "/api/v1/commands/bound/workload"
+            "/api/v1/commands" or "/api/v1/commands/submit" or "/api/v1/commands/workload" or "/api/v1/commands/bound/workload"
                 => Authorization.EventStoreOperationIdentifiers.GatewayCommandSubmit,
-            "/api/v1/queries" => "eventstore:query-read",
+            "/api/v1/queries" or "/api/v1/queries/submit" => "eventstore:query-read",
             "/api/v1/queries/owner-authority/workload" => Authorization.EventStoreOperationIdentifiers.GatewayOwnerAuthorityQuery,
             "/api/v1/streams/scan/workload" => Authorization.EventStoreOperationIdentifiers.GatewayNativeSourceScan,
             "/api/v1/streams/read" or "/api/v1/streams/read/workload"

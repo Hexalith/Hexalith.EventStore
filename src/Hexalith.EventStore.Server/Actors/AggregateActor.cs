@@ -1528,6 +1528,15 @@ public partial class AggregateActor(
 
                         _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     }
+                    catch (DomainServiceAdmissionDeferredException) {
+                        // Only the pre-processing owner response reaches this branch. No events or
+                        // terminal receipt have been staged. Later persistence failures use normal reconciliation.
+                        await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+                        await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId).ConfigureAwait(false);
+                        await StateManager.SaveStateAsync(CancellationToken.None).ConfigureAwait(false);
+                        return new CommandProcessingResult(false, CorrelationId: command.CorrelationId)
+                        { AdmissionDeferredBeforeProcessing = true };
+                    }
                     catch (DomainServiceSafeDenialException denial) {
                         _ = (activity?.SetStatus(ActivityStatusCode.Error, denial.SafeResultCode));
                         return await CompleteTerminalAsync(

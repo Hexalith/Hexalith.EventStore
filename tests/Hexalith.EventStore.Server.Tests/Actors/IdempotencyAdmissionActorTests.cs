@@ -1120,6 +1120,7 @@ public class IdempotencyAdmissionActorTests
                 IdempotencyAdmissionState.Recoverable));
 
         recoverable.ShouldNotBeNull().State.ShouldBe(IdempotencyAdmissionState.Recoverable);
+        recoverable.IntentDigest.ShouldBe(pending.IntentDigest);
         recoverable.FencingToken.ShouldBe(pending.FencingToken);
         recoverable.ExecutionMessageId.ShouldBe(pending.ExecutionMessageId);
         recoverable.ExecutionCorrelationId.ShouldBe(pending.ExecutionCorrelationId);

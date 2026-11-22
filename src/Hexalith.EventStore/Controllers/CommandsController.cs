@@ -70,6 +70,7 @@ public class CommandsController(
     /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
     /// <response code="503">Service unavailable. The processing pipeline is temporarily down.</response>
     [HttpPost]
+    [HttpPost("submit")]
     [Authorize(Policy = Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreHttpHostSecurityExtensions.HumanPolicy)]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]

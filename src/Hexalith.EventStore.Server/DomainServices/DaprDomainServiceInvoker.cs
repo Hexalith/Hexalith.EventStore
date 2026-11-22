@@ -184,6 +184,14 @@ public partial class DaprDomainServiceInvoker : IDomainServiceInvoker {
             using HttpResponseMessage httpResponse = await httpClient
                 .SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, invocationCancellation.Token)
                 .ConfigureAwait(false);
+            if (httpResponse.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable
+                && registration.AppId == "conversation" && registration.MethodName == "process" && command.Domain == "conversation"
+                && command.CommandType is "CreateHumanConversation" or "AppendMessage"
+                && httpResponse.Content.Headers.ContentLength == 0
+                && httpResponse.Headers.TryGetValues(DomainServiceAdmissionDeferredException.Header, out var deferred)
+                && deferred.SequenceEqual(["before-processing-v1"], StringComparer.Ordinal))
+                throw new DomainServiceAdmissionDeferredException();
+
             if (!httpResponse.IsSuccessStatusCode
                 && string.Equals(command.Domain, "folders", StringComparison.Ordinal)
                 && (httpResponse.StatusCode is System.Net.HttpStatusCode.Unauthorized
@@ -240,6 +248,7 @@ public partial class DaprDomainServiceInvoker : IDomainServiceInvoker {
             // Preserve configuration-store corruption diagnostics from the resolver.
             throw;
         }
+        catch (DomainServiceAdmissionDeferredException) { throw; }
         catch (DomainServiceSafeDenialException) {
             throw;
         }
