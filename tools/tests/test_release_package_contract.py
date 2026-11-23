@@ -1,6 +1,8 @@
 """Keep unpublished preparation dependencies outside publishable package metadata."""
 
+import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -36,6 +38,46 @@ class PublicationDependencyGuardTests(unittest.TestCase):
                 with self.subTest(version=version):
                     with self.assertRaisesRegex(ValueError, "unpublished catalog candidate dependency"):
                         self.read_dependency(directory, version)
+
+    def test_resolved_references_distinguish_project_outputs_from_nuget_packages(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            (root / "global.json").write_bytes((ROOT / "global.json").read_bytes())
+            feed = root / "feed"
+            feed.mkdir()
+            (root / "NuGet.Config").write_text(
+                '<configuration><packageSources><clear/><add key="test" value="feed"/></packageSources></configuration>'
+            )
+            env = {**os.environ, "NUGET_PACKAGES": str(root / "packages")}
+
+            def project(name, content=""):
+                folder = root / name
+                folder.mkdir()
+                path = folder / (name + ".csproj")
+                path.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
+                                '<TargetFramework>net11.0</TargetFramework></PropertyGroup>'
+                                + content + '</Project>')
+                return path
+
+            package = project("Hexalith.EventStore.Packaged")
+            source = project("Hexalith.EventStore.FromSource", '<PropertyGroup><Version>9.0.0</Version></PropertyGroup>')
+            middle = project("Middle", f'<ItemGroup><ProjectReference Include="{source}"/></ItemGroup>')
+            consumer = project("Consumer", f'<ItemGroup><ProjectReference Include="{middle}"/>'
+                               '<PackageReference Include="Hexalith.EventStore.Packaged" Version="1.2.3"/></ItemGroup>'
+                               f'<Import Project="{ROOT / "Directory.Build.targets"}"/>')
+            subprocess.run(["dotnet", "pack", str(package), "-o", str(feed), "-p:Version=1.2.3"],
+                           cwd=root, env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            for selected, valid in (("1.2.3", True), ("1.2.4", False)):
+                with self.subTest(selected=selected):
+                    result = subprocess.run(["dotnet", "build", str(consumer), "-c", "Release",
+                                             "-p:HexalithEventStoreVersion=" + selected],
+                                            cwd=root, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    if valid:
+                        self.assertEqual(0, result.returncode, result.stdout)
+                    else:
+                        self.assertNotEqual(0, result.returncode)
+                        self.assertIn("resolved Hexalith.EventStore.Packaged 1.2.3. "
+                                      "The selected EventStore version is 1.2.4.", result.stdout)
 
 
 if __name__ == "__main__":

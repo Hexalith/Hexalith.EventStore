@@ -144,7 +144,8 @@
   <Target Name="ValidateHexalithEventStoreReferences" AfterTargets="ResolveReferences"
           Condition="'$(Configuration)' == 'Release'">
     <ItemGroup>
-      <_HexalithResolvedEventStore Include="@(ReferencePath)" Condition="$([System.String]::Copy('%(ReferencePath.NuGetPackageId)').StartsWith('Hexalith.EventStore.', System.StringComparison.OrdinalIgnoreCase))" />
+      <!-- The SDK can also put package identity and the producer version on transitive project outputs. -->
+      <_HexalithResolvedEventStore Include="@(ReferencePath)" Condition="'%(ReferencePath.ReferenceSourceTarget)' != 'ProjectReference' and $([System.String]::Copy('%(ReferencePath.NuGetPackageId)').StartsWith('Hexalith.EventStore.', System.StringComparison.OrdinalIgnoreCase))" />
     </ItemGroup>
     <Error Condition="'@(_HexalithResolvedEventStore)' != '' and '%(_HexalithResolvedEventStore.NuGetPackageVersion)' != '$(HexalithEventStoreVersion)'"
            Text="$(MSBuildProjectName) resolved %(_HexalithResolvedEventStore.NuGetPackageId) %(_HexalithResolvedEventStore.NuGetPackageVersion). The selected EventStore version is $(HexalithEventStoreVersion)." />
