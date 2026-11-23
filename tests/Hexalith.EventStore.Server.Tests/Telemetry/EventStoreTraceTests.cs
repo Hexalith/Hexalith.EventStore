@@ -141,7 +141,7 @@ public class EventStoreTraceTests {
         };
 
         // Act
-        IActionResult action = await controller.GetStatus(correlationId, CancellationToken.None);
+        IActionResult action = await controller.GetStatus("missing-command", CancellationToken.None);
 
         // Assert
         ObjectResult result = action.ShouldBeOfType<ObjectResult>();
@@ -154,10 +154,12 @@ public class EventStoreTraceTests {
     public async Task Replay_Controller_CreatesReplayActivity_OnSuccessAsync() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
+        string requestCorrelation = $"replay-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
         using ActivityListener listener = CreateEventStoreListener((activity) => {
-            if (activity.OperationName == EventStoreActivitySources.Replay) {
+            if (activity.OperationName == EventStoreActivitySources.Replay
+                && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), requestCorrelation)) {
                 capturedActivity = activity;
             }
         });
@@ -192,7 +194,7 @@ public class EventStoreTraceTests {
         var controller = new ReplayController(archiveStore, statusStore, mediator, logger) {
             ControllerContext = new ControllerContext {
                 HttpContext = CreateHttpContext(
-                    correlationId,
+                    requestCorrelation,
                     ["tenant-a"]),
             },
         };

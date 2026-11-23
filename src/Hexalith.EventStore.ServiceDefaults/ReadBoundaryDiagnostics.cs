@@ -1,5 +1,7 @@
 using System.Diagnostics;
 
+using Hexalith.EventStore.Contracts.Identity;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +20,7 @@ internal static partial class ReadBoundaryDiagnostics
     internal static Task CompleteAsync(HttpContext context, ILoggerFactory loggers)
     {
         string? correlation = context.Items["CorrelationId"] as string;
-        if (string.IsNullOrEmpty(correlation) || correlation.Length > 128 || !correlation.All(static value => char.IsAsciiLetterOrDigit(value) || value == '-'))
+        if (!CorrelationIdGrammar.IsValid(correlation))
         {
             correlation = ActivityTraceId.CreateRandom().ToHexString();
         }

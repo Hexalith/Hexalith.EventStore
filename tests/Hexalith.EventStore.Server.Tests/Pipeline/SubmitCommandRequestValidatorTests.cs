@@ -1,6 +1,8 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Validation;
 
@@ -10,6 +12,48 @@ namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 public class SubmitCommandRequestValidatorTests {
     private readonly SubmitCommandRequestValidator _validator = new();
+
+    [Theory]
+    [InlineData("legacy-A9", true, true)]
+    [InlineData("-trace-", false, true)]
+    [InlineData("-", false, true)]
+    [InlineData("legacy\n", false, false)]
+    [InlineData("é", false, false)]
+    public void CommandValidationDistinguishesMessageAndCorrelationIdentifiers(string value, bool validMessage, bool validCorrelation)
+    {
+        var request = new SubmitCommandRequest(value, "tenant", "orders", "order-1", "PlaceOrder",
+            JsonSerializer.SerializeToElement(new { }), CorrelationId: value);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        MessageIdGrammar.IsValid(value, version: 1).ShouldBe(validMessage);
+        CorrelationIdMiddleware.IsValidIdentifier(value).ShouldBe(validCorrelation);
+        result.Errors.Any(error => error.PropertyName == nameof(request.MessageId)).ShouldBe(!validMessage);
+        result.Errors.Any(error => error.PropertyName == nameof(request.CorrelationId)).ShouldBe(!validCorrelation);
+    }
+
+    [Theory]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public void GatewayIdentifiersHonorTheLengthLimit(int length, bool valid)
+    {
+        string value = new('a', length);
+        var request = new SubmitCommandRequest(value, "tenant", "orders", "order-1", "PlaceOrder",
+            JsonSerializer.SerializeToElement(new { }), CorrelationId: value);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        CorrelationIdMiddleware.IsValidIdentifier(value).ShouldBe(valid);
+        if (valid)
+        {
+            result.Errors.ShouldBeEmpty();
+        }
+        else
+        {
+            result.Errors.Select(error => error.ErrorMessage).ShouldBe([
+                "MessageId cannot exceed 128 characters", "CorrelationId cannot exceed 128 characters"]);
+        }
+    }
 
     [Fact]
     public void SubmitCommandRequestValidator_CanonicalPlatformScope_Passes() {

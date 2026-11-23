@@ -5689,7 +5689,8 @@ origin: bmad-review of Story 6.6 (epics.md), 2026-10-09
 location: src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs:IsValidIdentifier; SubmitCommandRequestValidator
 severity: low
 reason: Optional. The gateway predicate also requires an alphanumeric first and last character, which is stricter than AD-32 (1-128 ASCII alphanumeric or hyphen characters). Story 6.6 AC6 implements the AD-32 rule in Contracts for event identity, so two definitions remain until the gateway reuses the Contracts predicate. Outside the Story 6.6 acceptance criteria.
-status: open
+status: done 2026-11-23
+resolution: Gateway header and command-body correlation validation reuse the Contracts AD-32 grammar, including edge hyphens. Status and replay path values retain their v1 lookup rules.
 
 - source_spec: `_bmad-output/planning-artifacts/epics.md` (Story 6.6)
   summary: Consolidate the gateway correlation-ID predicate with the AD-32 rule
@@ -6680,7 +6681,8 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-dw-234-119-483-203-158-fail-closed-hardening.md`
   summary: `deploy/README.md:46` documents the event `cloudevent.id` as `{correlationId}:{sequenceNumber}`, but events publish the persisted `messageId` (low).
   evidence: Review triage row 17. `docs/concepts/event-envelope.md:253` and `:276` state that `cloudevent.id` is the persisted EventStore `messageId` and warn against deriving identity from correlation ID and sequence; `EventPublisher` keys `cloudevent.id` on `MessageId`. Pre-existing, not caused by this change.
-  status: open
+  status: done 2026-11-23
+  resolution: The deployment guide identifies the stable CloudEvent source and persisted event message ID. EventPublisherTests verify the published metadata.
 
 ## Deferred from: bmad-build intake of Story 9.2 (2026-11-15)
 
@@ -6764,6 +6766,8 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Assert the Gateway correlation response header after handled exceptions.
   evidence: BH10/VG2: DefaultHttpContext middleware tests never start the response; the real authorization-unavailable 503 test asserts only body correlation and Retry-After. Removing the added OnStarting block remains unobserved. Add a known caller correlation and exact completed-response header assertion. Separately committed middleware behavior, outside guarded-write intent.
+  status: done 2026-11-23
+  resolution: The hosted authorization-outage test checks the single final X-Correlation-ID header and the problem body against the exact caller value, along with the existing 503 and Retry-After checks.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Resolve the sample API HTTPS-metadata startup assertion before complete Story 5.3 evidence can pass.
@@ -6783,9 +6787,13 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
   summary: Align `docs/reference/problems/command-status-not-found.md` with MessageId-only status identity; it still describes lookup by correlation ID with GUID examples (low).
   evidence: Lines 10-54 say "No command status record was found for the correlation ID" and tell callers to retry with the `correlationId`, while `CommandStatusController` routes `{messageId}` and AD-17/AD-32 make `messageId` the status identity. This is pre-existing, outside Story 2.15's three cited docs, and tied to the open gateway correlation-lookup entry above.
+  status: done 2026-11-23
+  resolution: The 404 reference and index direct callers to the command message ID. The example uses an authorized tenant scope and a distinct request correlation that matches the response.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
   summary: Anchor the gateway's v1 identifier regexes with `\z` so a trailing newline is rejected, matching `Contracts.Identity.MessageIdGrammar` (low).
   evidence: `src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs:109` and `src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs:50` use `^...$` without `RegexOptions.Multiline`; .NET `$` also matches before a final `\n`, so the gateway admits `"legacy\n"` as a `messageId`, which `MessageIdGrammar.IsValid(…, 1)` rejects. Pre-existing gateway code left unchanged by Story 2.15; a parity test between the two grammars would close it.
+  status: done 2026-11-23
+  resolution: Submission and persisted lookups use MessageIdGrammar v1 directly. Regression cases exercise the trailing newline at submission, status, workload status, replay and the HTTP correlation boundary.
 
 ## Deferred from the Story 9.2 audited proof review on 2026-11-21
 

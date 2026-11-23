@@ -63,11 +63,11 @@ public static class EventIdentityValidator
         {
             throw new EventIdentityValidationException("MessageId");
         }
-        if (!IsTraceId(correlationId))
+        if (!CorrelationIdGrammar.IsValid(correlationId))
         {
             throw new EventIdentityValidationException("CorrelationId");
         }
-        if (!(optionalCausation && causationId is null) && !IsTraceId(causationId))
+        if (!(optionalCausation && causationId is null) && !CorrelationIdGrammar.IsValid(causationId))
         {
             throw new EventIdentityValidationException("CausationId");
         }
@@ -101,18 +101,5 @@ public static class EventIdentityValidator
         {
             return false;
         }
-    }
-
-    private static bool IsTraceId(string? value)
-    {
-        if (value is null || value.Length is < 1 or > 128) { return false; }
-        foreach (char character in value)
-        {
-            if (character is not (>= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '-'))
-            {
-                return false;
-            }
-        }
-        return true;
     }
 }

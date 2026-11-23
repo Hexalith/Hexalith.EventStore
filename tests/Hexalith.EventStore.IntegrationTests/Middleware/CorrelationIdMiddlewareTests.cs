@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Microsoft.AspNetCore.Http;
 
 using Shouldly;
@@ -46,7 +47,31 @@ public class CorrelationIdMiddlewareTests {
     }
 
     [Fact]
-    public async Task InvokeAsync_WithInvalidHeader_GeneratesNewId() {
+    public async Task InvokeAsync_WithMultipleValues_UsesOneGeneratedCorrelationForResponseAndDenialTelemetry()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers[CorrelationIdMiddleware.HeaderName] = new[] { "first-id", "second-id" };
+        string? denialCorrelation = null;
+        var middleware = new CorrelationIdMiddleware(context =>
+        {
+            denialCorrelation = WorkloadAuthenticationTelemetry.GetCorrelationId(context);
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context);
+
+        string assigned = context.Items[CorrelationIdMiddleware.HttpContextKey].ShouldBeOfType<string>();
+        CorrelationIdMiddleware.IsValidIdentifier(assigned).ShouldBeTrue();
+        assigned.ShouldNotBe("first-id");
+        assigned.ShouldNotBe("second-id");
+        context.Response.Headers[CorrelationIdMiddleware.HeaderName].ShouldHaveSingleItem().ShouldBe(assigned);
+        denialCorrelation.ShouldBe(assigned);
+    }
+
+    [Theory]
+    [InlineData("not_a_valid_id")]
+    [InlineData("legacy\n")]
+    public async Task InvokeAsync_WithInvalidHeader_GeneratesNewId(string invalidId) {
         // Arrange
         string? capturedCorrelationId = null;
         var middleware = new CorrelationIdMiddleware(next: context => {
@@ -54,13 +79,13 @@ public class CorrelationIdMiddlewareTests {
             return Task.CompletedTask;
         });
         var context = new DefaultHttpContext();
-        context.Request.Headers[CorrelationIdMiddleware.HeaderName] = "not_a_valid_id";
+        context.Request.Headers[CorrelationIdMiddleware.HeaderName] = invalidId;
 
         // Act
         await middleware.InvokeAsync(context);
 
         // Assert
-        capturedCorrelationId.ShouldNotBe("not_a_valid_id");
+        capturedCorrelationId.ShouldNotBe(invalidId);
         CorrelationIdMiddleware.IsValidIdentifier(capturedCorrelationId).ShouldBeTrue();
     }
 }

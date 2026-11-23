@@ -75,13 +75,16 @@ public class ReplayController(
 
         using Activity? activity = EventStoreActivitySources.EventStore.StartActivity(
             EventStoreActivitySources.Replay, ActivityKind.Server);
-        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId));
 
         string requestCorrelationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? correlationId;
+        if (CorrelationIdGrammar.IsValid(requestCorrelationId))
+        {
+            _ = activity?.SetTag(EventStoreActivitySource.TagCorrelationId, requestCorrelationId);
+        }
 
         try {
-            if (!CorrelationIdMiddleware.IsValidIdentifier(correlationId)) {
+            if (!MessageIdGrammar.IsValid(correlationId, version: 1)) {
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,

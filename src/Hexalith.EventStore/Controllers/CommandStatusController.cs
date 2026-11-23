@@ -74,13 +74,16 @@ public class CommandStatusController(
 
         using Activity? activity = EventStoreActivitySources.EventStore.StartActivity(
             EventStoreActivitySources.QueryStatus, ActivityKind.Server);
-        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, messageId));
 
         string requestCorrelationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? messageId;
+        if (CorrelationIdGrammar.IsValid(requestCorrelationId))
+        {
+            _ = activity?.SetTag(EventStoreActivitySource.TagCorrelationId, requestCorrelationId);
+        }
 
         try {
-            if (!CorrelationIdMiddleware.IsValidIdentifier(messageId)) {
+            if (!MessageIdGrammar.IsValid(messageId, version: 1)) {
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
@@ -230,7 +233,7 @@ public class CommandStatusController(
             return Forbid();
         }
 
-        if (!CorrelationIdMiddleware.IsValidIdentifier(messageId))
+        if (!MessageIdGrammar.IsValid(messageId, version: 1))
         {
             return BadRequest();
         }

@@ -43,11 +43,13 @@ public class ServiceUnavailableIntegrationTests(JwtAuthenticatedWebApplicationFa
                 _ = services.AddSingleton<ITenantValidator, ThrowingTenantValidator>();
             }));
 
-        HttpClient client = CreateAuthenticatedClient(customFactory);
+        const string callerCorrelation = "-caller-outage-503-";
+        using HttpClient client = CreateAuthenticatedClient(customFactory);
+        client.DefaultRequestHeaders.Add("X-Correlation-ID", callerCorrelation);
         object request = CreateCommandRequest();
 
         // Act
-        HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
         // Assert — response shape (UX-DR5, UX-DR7).
         response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
@@ -85,7 +87,8 @@ public class ServiceUnavailableIntegrationTests(JwtAuthenticatedWebApplicationFa
         // include a request correlation ID for operator traceability. tenantId is still omitted
         // because this path fails before controller-level request tenant context exists.
         body.TryGetProperty("correlationId", out JsonElement correlationId).ShouldBeTrue();
-        correlationId.GetString().ShouldNotBeNullOrWhiteSpace();
+        correlationId.GetString().ShouldBe(callerCorrelation);
+        response.Headers.GetValues("X-Correlation-ID").ShouldHaveSingleItem().ShouldBe(callerCorrelation);
         body.TryGetProperty("tenantId", out _).ShouldBeFalse();
 
         // No domain side effect — AuthorizationBehavior throws before SubmitCommandHandler runs,

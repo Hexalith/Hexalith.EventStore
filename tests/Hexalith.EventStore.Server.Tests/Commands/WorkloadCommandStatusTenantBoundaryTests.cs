@@ -21,6 +21,21 @@ public sealed class WorkloadCommandStatusTenantBoundaryTests
 {
     private const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
+    /// <summary>Rejects a malformed lookup key before touching an authorized workload's status store.</summary>
+    [Theory]
+    [InlineData("legacy\n")]
+    [InlineData("-edge-")]
+    public async Task InvalidMessageIdNeverReadsStatus(string messageId)
+    {
+        ICommandStatusStore store = Substitute.For<ICommandStatusStore>();
+        CommandStatusController controller = CreateController(store, "acme");
+
+        (await controller.GetWorkloadStatus("acme", messageId, TestContext.Current.CancellationToken))
+            .ShouldBeOfType<BadRequestResult>();
+
+        store.ReceivedCalls().ShouldBeEmpty();
+    }
+
     /// <summary>Rejects malformed and reserved route tenants even when the signed binding agrees.</summary>
     /// <param name="tenant">The invalid route tenant and resource binding.</param>
     /// <returns>A task representing the asynchronous test.</returns>

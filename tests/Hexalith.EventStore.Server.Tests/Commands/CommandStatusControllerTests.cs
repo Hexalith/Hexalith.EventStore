@@ -477,13 +477,16 @@ public class CommandStatusControllerTests {
         response.RejectionEventType.ShouldBeNull();
     }
 
-    [Fact]
-    public async Task GetStatus_WhitespaceCorrelationId_Returns400() {
+    [Theory]
+    [InlineData("   ")]
+    [InlineData("-edge-")]
+    [InlineData("legacy\n")]
+    public async Task GetStatus_InvalidLookupIdentifier_Returns400(string identifier) {
         // Arrange
         SetupHttpContext("tenant-a");
 
         // Act
-        IActionResult result = await _controller.GetStatus("   ", CancellationToken.None);
+        IActionResult result = await _controller.GetStatus(identifier, CancellationToken.None);
 
         // Assert
         ObjectResult objResult = result.ShouldBeOfType<ObjectResult>();

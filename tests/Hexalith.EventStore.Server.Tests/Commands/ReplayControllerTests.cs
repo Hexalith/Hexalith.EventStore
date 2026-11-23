@@ -284,13 +284,16 @@ public class ReplayControllerTests {
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
-    public async Task Replay_WhitespaceCorrelationId_Returns400ProblemDetails() {
+    [Theory]
+    [InlineData("   ")]
+    [InlineData("-edge-")]
+    [InlineData("legacy\n")]
+    public async Task Replay_InvalidLookupIdentifier_Returns400ProblemDetails(string identifier) {
         // Arrange
         ReplayController controller = CreateController();
 
         // Act
-        IActionResult result = await controller.Replay("   ", CancellationToken.None);
+        IActionResult result = await controller.Replay(identifier, CancellationToken.None);
 
         // Assert
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();

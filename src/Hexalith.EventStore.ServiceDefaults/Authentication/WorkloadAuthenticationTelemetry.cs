@@ -1,5 +1,7 @@
 using System.Diagnostics;
 
+using Hexalith.EventStore.Contracts.Identity;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
@@ -22,7 +24,6 @@ public static partial class WorkloadAuthenticationTelemetry
     public const string DenialReasonTagName = "eventstore.auth.denial_reason";
 
     private const string CorrelationHeaderName = "X-Correlation-ID";
-    private const int MaximumCorrelationLength = 128;
 
     /// <summary>
     /// Records one denial.
@@ -54,26 +55,26 @@ public static partial class WorkloadAuthenticationTelemetry
     }
 
     /// <summary>
-    /// Gets a bounded correlation value: an accepted <c>X-Correlation-ID</c> or the current trace identifier.
+    /// Gets the assigned gateway correlation, a valid incoming header, or the current trace identifier.
     /// </summary>
     /// <param name="context">The request.</param>
     /// <returns>The correlation value.</returns>
     public static string GetCorrelationId(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        if (context.Items["CorrelationId"] is string assigned && CorrelationIdGrammar.IsValid(assigned))
+        {
+            return assigned;
+        }
+
         StringValues values = context.Request.Headers[CorrelationHeaderName];
-        if (values.Count == 1 && IsBoundedCorrelationId(values[0]))
+        if (values.Count == 1 && CorrelationIdGrammar.IsValid(values[0]))
         {
             return values[0]!;
         }
 
         return Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
     }
-
-    private static bool IsBoundedCorrelationId(string? value)
-        => !string.IsNullOrEmpty(value)
-            && value.Length <= MaximumCorrelationLength
-            && value.All(static character => char.IsAsciiLetterOrDigit(character) || character == '-');
 
     [LoggerMessage(
         EventId = 5501,

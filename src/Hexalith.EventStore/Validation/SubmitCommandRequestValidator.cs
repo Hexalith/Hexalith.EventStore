@@ -21,9 +21,6 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
     private const int MaxTotalExtensionBytes = 65_536; // 64KB
     private const int MaxIdempotencyKeyBytes = 4_096;
 
-    // Identifiers (MessageId, CorrelationId): alphanumeric + hyphens (covers GUID and ULID formats)
-    private static readonly Regex _identifierRegex = IdentifierPattern();
-
     // Consistent with AggregateIdentity: lowercase alphanumeric + hyphens
     private static readonly Regex _tenantDomainRegex = TenantDomainPattern();
 
@@ -35,11 +32,11 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
 
     public SubmitCommandRequestValidator() {
         _ = RuleFor(x => x.MessageId)
+            .Cascade(CascadeMode.Stop)
             .NotNull().WithMessage("MessageId is required")
             .NotEmpty().WithMessage("MessageId cannot be empty")
             .MaximumLength(128).WithMessage("MessageId cannot exceed 128 characters")
-            .Matches(_identifierRegex).WithMessage("MessageId must contain only alphanumeric characters and hyphens")
-            .When(x => !string.IsNullOrEmpty(x.MessageId), ApplyConditionTo.CurrentValidator);
+            .Must(id => MessageIdGrammar.IsValid(id, version: 1)).WithMessage("MessageId must contain ASCII letters, digits, or hyphens and start and end with a letter or digit");
 
         _ = RuleFor(x => x.Tenant)
             .NotNull().WithMessage("Tenant is required")
@@ -74,8 +71,9 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .When(x => !string.IsNullOrEmpty(x.CommandType), ApplyConditionTo.CurrentValidator);
 
         _ = RuleFor(x => x.CorrelationId)
+            .Cascade(CascadeMode.Stop)
             .MaximumLength(128).WithMessage("CorrelationId cannot exceed 128 characters")
-            .Matches(_identifierRegex).WithMessage("CorrelationId must contain only alphanumeric characters and hyphens")
+            .Must(CorrelationIdGrammar.IsValid).WithMessage("CorrelationId must contain only ASCII letters, digits, or hyphens")
             .When(x => !string.IsNullOrWhiteSpace(x.CorrelationId));
 
         _ = RuleFor(x => x.Payload)
@@ -105,9 +103,6 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
 
     private static bool ContainsDangerousCharacters(string value) =>
         value.AsSpan().IndexOfAny(_dangerousChars) >= 0;
-
-    [GeneratedRegex(@"^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$", RegexOptions.Compiled)]
-    private static partial Regex IdentifierPattern();
 
     [GeneratedRegex(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled)]
     private static partial Regex TenantDomainPattern();
