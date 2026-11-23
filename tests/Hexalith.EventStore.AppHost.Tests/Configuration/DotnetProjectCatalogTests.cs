@@ -61,13 +61,13 @@ public sealed class DotnetProjectCatalogTests
             foreach (var project in new[] { gateway, domain })
             {
                 string name = project.Resource.Name;
-                var token = builder.Resources.OfType<ParameterResource>().Single(parameter => parameter.Name == name + "-app-api-token");
-                token.Secret.ShouldBeTrue();
+                ParameterResource channelParameter = builder.Resources.OfType<ParameterResource>().Single(parameter => parameter.Name == name + "-app-api-token");
+                channelParameter.Secret.ShouldBeTrue();
                 var sidecar = project.Resource.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
                 var callbackContext = new EnvironmentCallbackContext(builder.ExecutionContext, sidecar, cancellationToken: TestContext.Current.CancellationToken);
                 foreach (var callback in sidecar.Annotations.OfType<EnvironmentCallbackAnnotation>())
                     await callback.Callback(callbackContext);
-                callbackContext.EnvironmentVariables["APP_API_TOKEN"].ShouldBeSameAs(token);
+                callbackContext.EnvironmentVariables["APP_API_TOKEN"].ShouldBeSameAs(channelParameter);
                 File.Exists(Path.Combine(catalog.Directory, name + ".configuration.json")).ShouldBeTrue();
             }
         }

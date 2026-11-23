@@ -120,7 +120,11 @@ class GateDecisionTests(unittest.TestCase):
         if path == OQ8_WORKFLOW:
             expected['PHASE4_REQUEST_JSON'] = '${{ inputs.decision_request }}'
         else:
-            expected.update(PHASE4_TENANTS_READ_TOKEN='${{ secrets.PHASE4_TENANTS_READ_TOKEN }}', MODE='${{ inputs.mode }}', PHASE4_REQUEST_JSON='${{ inputs.request }}')
+            expected.update({
+                'PHASE4_TENANTS_READ_TOKEN': '${{ secrets.PHASE4_TENANTS_READ_TOKEN }}',
+                'MODE': '${{ inputs.mode }}',
+                'PHASE4_REQUEST_JSON': '${{ inputs.request }}',
+            })
         self.assertEqual(expected, bindings)
         return bindings
 

@@ -126,6 +126,7 @@ public sealed class TypedGatewayQueryGenerationTests
         diagnostics.ShouldBeEmpty();
         Assembly assembly = RestApiGeneratorTestHarness.EmitToAssembly(output);
         MethodInfo call = assembly.GetType("Owner.QueryCaller", throwOnError: true)!.GetMethod("CallAsync")!;
+        string callerAccessToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
         int requests = 0;
         using var handler = new GatewayTestHttpMessageHandler(async (request, cancellationToken) =>
         {
@@ -133,7 +134,7 @@ public sealed class TypedGatewayQueryGenerationTests
             request.Method.ShouldBe(HttpMethod.Post);
             request.RequestUri.ShouldBe(new Uri("https://gateway.example/api/v1/queries"));
             request.Headers.IfNoneMatch.ShouldBeEmpty();
-            request.Headers.Authorization.ShouldBe(new AuthenticationHeaderValue("Bearer", "caller-credential"));
+            request.Headers.Authorization.ShouldBe(new AuthenticationHeaderValue("Bearer", callerAccessToken));
             JsonElement json = await request.Content.ShouldNotBeNull().ReadFromJsonAsync<JsonElement>(cancellationToken);
             JsonElement expectedRequest = JsonSerializer.SerializeToElement(new
             {
@@ -158,7 +159,7 @@ public sealed class TypedGatewayQueryGenerationTests
         {
             BaseAddress = new Uri("https://gateway.example"),
         };
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "caller-credential");
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", callerAccessToken);
         var gateway = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
 
         var execution = (Task<(string?, string?, int?)>)call.Invoke(null, [gateway, TestContext.Current.CancellationToken])!;
