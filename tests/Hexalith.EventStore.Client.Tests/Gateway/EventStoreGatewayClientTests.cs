@@ -24,6 +24,42 @@ public class EventStoreGatewayClientTests {
         response.ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task GetCommandStatusAsync_RejectsMissingIdentifierOnLegacyAndHttpClients(string? messageId) {
+        using HttpClient httpClient = CreateClient(_ => throw new InvalidOperationException("Unexpected status request."));
+        IEventStoreGatewayClient[] clients = [
+            new LegacyGatewayClient(),
+            new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions())),
+        ];
+
+        foreach (IEventStoreGatewayClient client in clients) {
+            Task<CommandStatusQueryResponse?> read = client.GetCommandStatusAsync(messageId!);
+            ArgumentException error = await Assert.ThrowsAnyAsync<ArgumentException>(() => read);
+
+            error.GetType().ShouldBe(messageId is null ? typeof(ArgumentNullException) : typeof(ArgumentException));
+            error.ParamName.ShouldBe("messageId");
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData("/")]
+    [InlineData("///")]
+    public async Task GetCommandStatusAsync_RejectsMissingPathBeforeSending(string? path) {
+        using HttpClient httpClient = CreateClient(_ => throw new InvalidOperationException("Unexpected status request."));
+        var options = new EventStoreGatewayClientOptions { CommandStatusPath = path! };
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(options));
+
+        ArgumentException error = await Assert.ThrowsAnyAsync<ArgumentException>(() => client.GetCommandStatusAsync("message-1"));
+
+        error.ParamName.ShouldBe(nameof(EventStoreGatewayClientOptions.CommandStatusPath));
+    }
+
     [Fact]
     public async Task GetCommandStatusAsync_UsesConfiguredPathAndDeserializesRejectedStatus() {
         HttpRequestMessage? observedRequest = null;
@@ -41,16 +77,21 @@ public class EventStoreGatewayClientTests {
         observedRequest.ShouldNotBeNull().RequestUri!.AbsolutePath.ShouldBe("/custom/status/message%2F1");
         response.TenantId.ShouldBe("tenant-a");
         response.MessageId.ShouldBe("message/1");
+        response.RejectionEventType.ShouldBe("OrderRejected");
         response.IsRejected.ShouldBeTrue();
     }
 
     [Fact]
     public async Task GetCommandStatusAsync_ReturnsNullForMissingStatus() {
-        using HttpClient httpClient = CreateClient(_ =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)));
+        using HttpClient httpClient = CreateClient(request => {
+            request.Method.ShouldBe(HttpMethod.Get);
+            request.RequestUri!.AbsolutePath.ShouldBe("/gateway/api/v1/commands/status/message%2F1");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        });
+        httpClient.BaseAddress = new Uri("https://eventstore.local/gateway/");
         var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
 
-        CommandStatusQueryResponse? response = await client.GetCommandStatusAsync("message-1");
+        CommandStatusQueryResponse? response = await client.GetCommandStatusAsync("message/1");
 
         response.ShouldBeNull();
     }
@@ -152,6 +193,40 @@ public class EventStoreGatewayClientTests {
         CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message-1")).ShouldNotBeNull();
 
         response.FailureReason.ShouldBe("BackpressureExceeded");
+        response.Retryable.ShouldBe(true);
+        response.IsRejected.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(CommandStatus.Received)]
+    [InlineData(CommandStatus.Processing)]
+    [InlineData(CommandStatus.EventsStored)]
+    [InlineData(CommandStatus.EventsPublished)]
+    [InlineData(CommandStatus.Completed)]
+    [InlineData(CommandStatus.TimedOut)]
+    public async Task GetCommandStatusAsync_RejectsUnexpectedRejectionEventType(CommandStatus status) {
+        string json = JsonSerializer.Serialize(new {
+            correlationId = "corr-1",
+            messageId = "message-1",
+            status = status.ToString(),
+            statusCode = (int)status,
+            rejectionEventType = "OrderRejected",
+        });
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, json)));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        await Should.ThrowAsync<EventStoreGatewayException>(() => client.GetCommandStatusAsync("message-1"));
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_PreservesFailedPublicationOfARejectionEvent() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK,
+            """{"correlationId":"corr-1","messageId":"message-1","status":"PublishFailed","statusCode":6,"rejectionEventType":"OrderRejected","failureReason":"PublishFailed","retryable":true}""")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message-1")).ShouldNotBeNull();
+
+        response.RejectionEventType.ShouldBe("OrderRejected");
         response.Retryable.ShouldBe(true);
         response.IsRejected.ShouldBeFalse();
     }

@@ -162,6 +162,37 @@ public sealed class EventStoreGatewayWorkloadClientTests
         ]);
     }
 
+    [Theory]
+    [InlineData(CommandStatus.Completed)]
+    [InlineData(CommandStatus.PublishFailed)]
+    public async Task WorkloadStatusValidatesRejectionEventAgainstLifecycle(CommandStatus status)
+    {
+        string json = JsonSerializer.Serialize(new
+        {
+            correlationId = "corr-1",
+            messageId = "message-1",
+            tenantId = "tenant-a",
+            status = status.ToString(),
+            statusCode = (int)status,
+            rejectionEventType = "OrderRejected",
+        });
+        using var http = new HttpClient(new Handler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
+        })) { BaseAddress = new Uri("https://eventstore.test/") };
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions()), new StubAssertions());
+
+        Task<CommandStatusQueryResponse?> read = gateway.GetWorkloadCommandStatusAsync("tenant-a", "message-1");
+        if (status == CommandStatus.Completed)
+        {
+            await Should.ThrowAsync<EventStoreGatewayException>(() => read);
+        }
+        else
+        {
+            (await read).ShouldNotBeNull().RejectionEventType.ShouldBe("OrderRejected");
+        }
+    }
+
     [Fact]
     public async Task Missing_assertion_fails_before_transport()
     {

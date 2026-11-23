@@ -270,9 +270,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
+        string? statusPath = _options.CommandStatusPath?.Trim('/');
+        ArgumentException.ThrowIfNullOrWhiteSpace(statusPath, nameof(EventStoreGatewayClientOptions.CommandStatusPath));
+
         using HttpResponseMessage response = await SendTranslatingAsync(
             () => _httpClient.GetAsync(
-                CreateRelativeUri($"{_options.CommandStatusPath.TrimEnd('/')}/{Uri.EscapeDataString(messageId)}"),
+                CreateRelativeUri($"{statusPath}/{Uri.EscapeDataString(messageId)}"),
                 cancellationToken),
             cancellationToken).ConfigureAwait(false);
 
@@ -322,7 +325,10 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             return false;
         }
 
-        return response.StatusCode == (int)parsed;
+        // Publication can fail after the domain has already produced a rejection event.
+        return response.StatusCode == (int)parsed
+            && (string.IsNullOrWhiteSpace(response.RejectionEventType)
+                || parsed is CommandStatus.Rejected or CommandStatus.PublishFailed);
     }
 
     /// <inheritdoc />

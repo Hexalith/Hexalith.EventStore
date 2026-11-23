@@ -24,6 +24,18 @@ public sealed partial class RestApiGeneratedControllerErrorSemanticsTests
     // One compilation serves every status row; each row still gets a fresh controller, gateway and HTTP context.
     private static readonly Lazy<Assembly> StatusIdentityAssembly = new(() => CreateController().Assembly);
 
+    [Fact]
+    public async Task StatusReadOnFakeHonorsCallerCancellation()
+    {
+        IEventStoreGatewayClient gateway = new FakeEventStoreGatewayClient();
+        var cancellation = new CancellationToken(canceled: true);
+
+        OperationCanceledException error = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => gateway.GetCommandStatusAsync("message-1", cancellation));
+
+        Assert.Equal(cancellation, error.CancellationToken);
+    }
+
     public static TheoryData<int, string> MessageIdsValidForVersion => new()
     {
         { 1, LegacyMessageId },

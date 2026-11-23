@@ -25,11 +25,6 @@ internal sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient
 
     public Func<SubmitQueryRequest, string?, CancellationToken, Task<EventStoreQueryResult>>? QueryHandler { get; set; }
 
-    public Task<CommandStatusQueryResponse?> GetCommandStatusAsync(
-        string messageId,
-        CancellationToken cancellationToken = default)
-        => Task.FromResult<CommandStatusQueryResponse?>(null);
-
     public Task<SubmitCommandResponse> SubmitCommandAsync(
         SubmitCommandRequest request,
         CancellationToken cancellationToken = default)

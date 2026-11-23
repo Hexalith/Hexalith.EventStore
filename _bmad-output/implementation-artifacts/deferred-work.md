@@ -4192,6 +4192,8 @@ resolution: Resolved 2026-10-09 by Story 8.4's format-aware route (`spec-8-4-com
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Validate `EventStoreGatewayClientOptions.CommandStatusPath` before command-status requests are constructed.
   evidence: Separately authored command-status code accepts null, whitespace, and slash-only paths, which can produce a null dereference or identifier-only request route; Story 8.3 explicitly excludes public Client work.
+  status: done 2026-11-23
+  resolution: Status reads reject null, empty, whitespace and slash-only configured paths before transport. The test exercises the HTTP client directly. See `spec-five-gateway-status-polling-fixes.md`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Restore source compatibility for external `IEventStoreGatewayClient` implementers after adding command-status reads.
@@ -4216,6 +4218,8 @@ resolution: Resolved 2026-10-09 by Story 8.4's format-aware route (`spec-8-4-com
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Reject contradictory command-status bodies that carry rejection-only metadata for a non-rejected state.
   evidence: `EventStoreGatewayClient.IsValidCommandStatus` checks only correlation, message identity, and the status name/code pair, so a completed response with `RejectionEventType` is accepted; this belongs to separately authored Client work outside Story 8.3.
+  status: done 2026-11-23
+  resolution: Ordinary and workload reads reject a rejection event on an incompatible lifecycle state. The actor can record it on Rejected and on PublishFailed when a domain rejection could not be published. Both forms remain readable. See `spec-five-gateway-status-polling-fixes.md`.
 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Reject case-distinct duplicate trusted-extension keys before policy evaluation and dictionary insertion.
@@ -4260,12 +4264,16 @@ resolution: Resolved 2026-10-09 by Story 8.4's format-aware route (`spec-8-4-com
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Align invalid message-identifier validation between the legacy default and concrete command-status Client implementations.
   evidence: `EventStoreGatewayClient.GetCommandStatusAsync` rejects null or whitespace identifiers, while the compatibility default on `IEventStoreGatewayClient` silently returns no status for the same values. This low-severity public Client consistency issue is separately authored outside Story 8.3.
+  status: done 2026-11-23
+  resolution: Both implementations return a faulted task for an invalid identifier, with the same argument exception type and parameter. Valid unsupported reads still return null. See `spec-five-gateway-status-polling-fixes.md`.
 
 ## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-17, fifth pass)
 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Add a command-status Client regression that pins the default request route.
   evidence: The only URI assertion overrides `CommandStatusPath`; default-configured response handlers do not inspect the request URI, so the separately authored default can drift away from `api/v1/commands/status/{messageId}` while all current Client tests remain green.
+  status: done 2026-11-23
+  resolution: The default-path test observes the GET method and complete escaped route under a gateway base-address prefix, and verifies the 404 result. See `spec-five-gateway-status-polling-fixes.md`.
 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Verify trusted-extension policies receive the authenticated principal and exact submitted command.
@@ -4278,6 +4286,8 @@ resolution: Resolved 2026-10-09 by Story 8.4's format-aware route (`spec-8-4-com
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Preserve caller cancellation in the REST-generator and sample command-status gateway fakes.
   evidence: Both separately authored fake overrides ignore their `CancellationToken`, so a pre-cancelled status read returns a value instead of cancellation and tests using those fakes can mask cancellation-contract regressions.
+  status: done 2026-11-23
+  resolution: Both fakes inherit the interface status read. Each suite checks cancellation with the exact caller token. See `spec-five-gateway-status-polling-fixes.md`.
 
 ## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-17, sixth pass)
 
@@ -4367,6 +4377,8 @@ status: open
 - source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Pin the default command-status request route in the gateway Client test suite.
   evidence: Existing URI coverage overrides `CommandStatusPath`, so a typo in the default `api/v1/commands/status/{id}` route can make all status polls look missing while tests remain green; this Client work is unrelated to Story 4.15.
+  status: done 2026-11-23
+  resolution: The default-path regression also covers this duplicate report. It checks the outgoing method and URI with default client options. See `spec-five-gateway-status-polling-fixes.md`.
 
 - source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Run the advanced-elicitation picker pytest suite in normal CI.
@@ -4626,6 +4638,8 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Validate the gateway command-status path before constructing status requests.
   evidence: An explicitly blank or null `CommandStatusPath` can construct the wrong URI or fail at runtime in `GetCommandStatusAsync`; this gateway feature belongs to separate command-status work in the mixed baseline window.
+  status: done 2026-11-23
+  resolution: The same configured-path fix covers this duplicate report. Missing and slash-only paths are rejected before the HTTP handler runs. See `spec-five-gateway-status-polling-fixes.md`.
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Exercise oversized unknown-length OIDC discovery and token responses.
   evidence: Story 5.3 tests use `StringContent` and cover only the known-length precheck, so a chunked-response regression in bounded buffering would remain undetected; token acquisition is outside Story 5.4.

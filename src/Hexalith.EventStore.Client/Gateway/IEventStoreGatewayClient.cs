@@ -55,6 +55,13 @@ public interface IEventStoreGatewayClient {
     Task<CommandStatusQueryResponse?> GetCommandStatusAsync(
         string messageId,
         CancellationToken cancellationToken = default) {
+        if (string.IsNullOrWhiteSpace(messageId)) {
+            ArgumentException error = messageId is null
+                ? new ArgumentNullException(nameof(messageId))
+                : new ArgumentException("A command message identifier is required.", nameof(messageId));
+            return Task.FromException<CommandStatusQueryResponse?>(error);
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult<CommandStatusQueryResponse?>(null);
     }
