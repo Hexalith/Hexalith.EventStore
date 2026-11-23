@@ -103,10 +103,17 @@ public static class RouteCatalogCodec
         }
         byte[] ownedBytes = bytes.ToArray();
         bytes = ownedBytes;
-        RouteCatalogEnvelope envelope = ReadClosedDocument<RouteCatalogEnvelope>(bytes);
+        RouteCatalogEnvelope envelope;
         ValidatedRouteCatalogEncoding? validated = Volatile.Read(ref _validatedEncoding);
-        if (validated is null || !validated.Matches(bytes.Span))
+        if (validated is not null && validated.Matches(bytes.Span))
         {
+            // These exact privately owned bytes already passed closed-schema, duplicate-field
+            // and canonical checks. Return a fresh graph from the same closed deserializer.
+            envelope = ReadValidatedDocument(bytes);
+        }
+        else
+        {
+            envelope = ReadClosedDocument<RouteCatalogEnvelope>(bytes);
             byte[] canonical = Encode(envelope);
             if (!bytes.Span.SequenceEqual(canonical))
             {

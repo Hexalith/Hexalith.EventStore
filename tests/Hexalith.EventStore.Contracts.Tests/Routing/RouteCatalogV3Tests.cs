@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Routing;
@@ -7,6 +8,25 @@ namespace Hexalith.EventStore.Contracts.Tests.Routing;
 
 public class RouteCatalogV3Tests
 {
+    [Fact]
+    public void ChangedRequestSchemaWithDuplicateFieldIsRejectedBeforeCheckingTheExpectedRoot()
+    {
+        var catalog = VersionedRouteCatalogBuilder.Build(Input(8));
+        byte[] bytes = RouteCatalogCodec.Encode(catalog);
+        string root = RouteCatalogCodec.ComputeRootDigest(catalog);
+        RouteCatalogCodec.Decode(bytes, root);
+
+        string document = Encoding.UTF8.GetString(bytes);
+        const string schemaPrefix = "\"requestSchema\":{";
+        int schemaStart = document.IndexOf(schemaPrefix, StringComparison.Ordinal);
+        schemaStart.ShouldBeGreaterThanOrEqualTo(0);
+        string changed = document.Insert(schemaStart + schemaPrefix.Length, "\"type\":\"object\",");
+
+        Should.Throw<RouteCatalogValidationException>(() => RouteCatalogCodec.Decode(Encoding.UTF8.GetBytes(changed), root))
+            .Diagnostics.Single().Code.ShouldBe("duplicate-field");
+        RouteCatalogCodec.Encode(RouteCatalogCodec.Decode(bytes, root)).ShouldBe(bytes);
+    }
+
     [Theory]
     [InlineData("missing-operation")]
     [InlineData("missing-eligibility")]
