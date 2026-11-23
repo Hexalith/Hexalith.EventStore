@@ -774,11 +774,18 @@ public class EventStoreGatewayClientTests {
         exception.StatusCode.ShouldBe(502);
     }
 
-    [Fact]
-    public async Task SubmitQueryAsync_WithWildcardNotModifiedETag_ThrowsGatewayException() {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("*")]
+    [InlineData("W/\"etag-unsafe\"")]
+    public async Task SubmitQueryAsync_WithoutStrongNotModifiedETag_ThrowsGatewayException(string? etag) {
         using HttpClient httpClient = CreateClient(_ => {
             var response = new HttpResponseMessage(HttpStatusCode.NotModified);
-            response.Headers.ETag = EntityTagHeaderValue.Any;
+            response.Headers.ETag = etag switch {
+                null => null,
+                "*" => EntityTagHeaderValue.Any,
+                _ => EntityTagHeaderValue.Parse(etag),
+            };
             response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
             return Task.FromResult(response);
         });
@@ -816,7 +823,7 @@ public class EventStoreGatewayClientTests {
             HttpResponseMessage response = Json(
                 HttpStatusCode.OK,
                 "{\"correlationId\":\"corr-safe\",\"payload\":{\"count\":3},\"metadata\":{\"provenance\":\"ProjectionBacked\",\"etag\":\"body-etag\",\"isNotModified\":true,\"isStale\":false,\"isDegraded\":true,\"projectionVersion\":\"v9\"}}");
-            response.Headers.ETag = new EntityTagHeaderValue("\"http-etag\"");
+            response.Headers.ETag = new EntityTagHeaderValue("\"http-etag\"", isWeak: true);
             if (headerProvenance is not null) {
                 response.Headers.Add("X-Hexalith-Query-Provenance", headerProvenance);
             }
@@ -869,7 +876,7 @@ public class EventStoreGatewayClientTests {
             HttpResponseMessage response = Json(
                 HttpStatusCode.OK,
                 $$$"""{"correlationId":"corr-safe","payload":{"count":3},"metadata":{"provenance":"{{{provenance}}}","etag":"body-etag","isNotModified":true,"isStale":false,"isDegraded":true,"projectionVersion":"v9","warningCodes":["degraded_search"]}}""");
-            response.Headers.ETag = new EntityTagHeaderValue("\"http-etag\"");
+            response.Headers.ETag = new EntityTagHeaderValue("\"http-etag\"", isWeak: true);
             response.Headers.Add("X-Hexalith-Query-Provenance", provenance);
             return Task.FromResult(response);
         });
@@ -886,6 +893,25 @@ public class EventStoreGatewayClientTests {
         result.Metadata.ProjectionVersion.ShouldBeNull();
         result.Metadata.IsDegraded.ShouldBe(true);
         result.Metadata.WarningCodes.ShouldBe([QueryWarningCodes.DegradedSearch]);
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithProjectionProvenanceAndBodyOnlyETag_LeavesValidatorAbsent() {
+        using HttpClient httpClient = CreateClient(_ => {
+            HttpResponseMessage response = Json(HttpStatusCode.OK, """
+                {"correlationId":"corr-2","payload":{"count":3},"metadata":{"provenance":"ProjectionBacked","etag":"body-etag","projectionVersion":"v9"}}
+                """);
+            response.Headers.Add(QueryResponseProvenancePolicy.HeaderName, "ProjectionBacked");
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest());
+
+        result.ETag.ShouldBeNull();
+        result.Metadata.ShouldNotBeNull().ETag.ShouldBeNull();
+        result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        result.Metadata.ProjectionVersion.ShouldBe("v9");
     }
 
     [Fact]
@@ -1143,9 +1169,12 @@ public class EventStoreGatewayClientTests {
     }
 
     [Fact]
-    public async Task SubmitQueryAsync_WithWeakResponseETag_ThrowsGatewayException() {
+    public async Task SubmitQueryAsync_WithProjectionProvenanceAndWeakResponseETag_ThrowsGatewayException() {
         using HttpClient httpClient = CreateClient(_ => {
-            HttpResponseMessage response = Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}");
+            HttpResponseMessage response = Json(HttpStatusCode.OK, """
+                {"correlationId":"corr-2","payload":{"count":3},"metadata":{"provenance":"ProjectionBacked"}}
+                """);
+            response.Headers.Add(QueryResponseProvenancePolicy.HeaderName, "ProjectionBacked");
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-2\"", isWeak: true);
             return Task.FromResult(response);
         });
@@ -1156,6 +1185,22 @@ public class EventStoreGatewayClientTests {
 
         ex.StatusCode.ShouldBe(200);
         ex.Detail.ShouldBe("Query response contained an unsupported weak ETag.");
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithLegacyResponseAndWeakETag_IgnoresValidator() {
+        using HttpClient httpClient = CreateClient(_ => {
+            HttpResponseMessage response = Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}");
+            response.Headers.ETag = new EntityTagHeaderValue("\"etag-2\"", isWeak: true);
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest());
+
+        result.ETag.ShouldBeNull();
+        result.Metadata.ShouldNotBeNull().Provenance.ShouldBe(QueryResponseProvenance.Unknown);
+        result.Payload.ShouldNotBeNull().GetProperty("count").GetInt32().ShouldBe(3);
     }
 
     [Fact]

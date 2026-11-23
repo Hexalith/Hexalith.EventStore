@@ -389,14 +389,15 @@ public partial class QueriesController : ControllerBase {
 
         QueryResponseMetadata producerMetadata = NormalizeProducerMetadata(result.Metadata);
         bool projectionBacked = producerMetadata.Provenance == QueryResponseProvenance.ProjectionBacked;
-        bool hasProducerETag = projectionBacked && !string.IsNullOrWhiteSpace(producerMetadata.ETag);
+        string? projectionType = projectionBacked ? result.ProjectionType : null;
+        bool hasProducerETag = !string.IsNullOrWhiteSpace(projectionType) && !string.IsNullOrWhiteSpace(producerMetadata.ETag);
         string? currentETag = hasProducerETag
             ? producerMetadata.ETag
             : null;
-        if (currentETag is null && projectionBacked && !string.IsNullOrWhiteSpace(result.ProjectionType)) {
+        if (currentETag is null && !string.IsNullOrWhiteSpace(projectionType)) {
             try {
                 currentETag = await eTagService
-                    .GetCurrentETagAsync(result.ProjectionType, request.Tenant, cancellationToken)
+                    .GetCurrentETagAsync(projectionType, request.Tenant, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception ex) {
@@ -492,25 +493,11 @@ public partial class QueriesController : ControllerBase {
         return true;
     }
 
-    private static QueryResponseMetadata NormalizeProducerMetadata(QueryResponseMetadata? metadata) {
-        QueryResponseMetadata source = metadata ?? new QueryResponseMetadata();
-        QueryResponseProvenance provenance = QueryResponseProvenancePolicy.Normalize(source.Provenance);
-        ProjectionLifecycleState lifecycle = ProjectionLifecyclePolicy.Normalize(source.Lifecycle, provenance);
-        QueryResponseMetadata normalized = source with {
-            Provenance = provenance,
-            Lifecycle = lifecycle,
-            IsStale = ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, source.IsStale),
-            IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, source.IsDegraded),
-        };
-        return normalized.Provenance == QueryResponseProvenance.ProjectionBacked
-            ? normalized
-            : normalized with {
-                ETag = null,
-                IsNotModified = null,
-                IsStale = null,
-                ProjectionVersion = null,
-            };
-    }
+    private static QueryResponseMetadata NormalizeProducerMetadata(QueryResponseMetadata? metadata)
+        => QueryResponseProvenancePolicy.NormalizeMetadata(
+            metadata,
+            metadata?.Provenance ?? QueryResponseProvenance.Unknown,
+            metadata?.Lifecycle ?? ProjectionLifecycleState.Unknown);
 
     private static QueryResponseMetadata MergeQueryMetadata(
         QueryResponseMetadata? producerMetadata,
@@ -518,7 +505,7 @@ public partial class QueriesController : ControllerBase {
         bool isNotModified,
         DateTimeOffset servedAt)
         => new(
-            ETag: gatewayETag ?? producerMetadata?.ETag,
+            ETag: gatewayETag,
             IsNotModified: producerMetadata?.Provenance == QueryResponseProvenance.ProjectionBacked
                 ? isNotModified
                 : null,

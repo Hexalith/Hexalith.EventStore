@@ -701,6 +701,27 @@ public partial class QueriesControllerTests {
     }
 
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task Submit_ProducerETagWithoutProjectionTarget_IsOmitted(string? projectionType) {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: "opaque-producer", ProjectionVersion: "v42"))
+                with { ProjectionType = projectionType });
+        IETagService eTagService = Substitute.For<IETagService>();
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        IActionResult result = await controller.Submit(CreateTestRequest(), "\"opaque-producer\"", CancellationToken.None);
+
+        SubmitQueryResponse response = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<SubmitQueryResponse>();
+        response.Metadata.ShouldNotBeNull().ETag.ShouldBeNull();
+        response.Metadata.ProjectionVersion.ShouldBe("v42");
+        controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
+        _ = await eTagService.DidNotReceiveWithAnyArgs().GetCurrentETagAsync(default!, default!, default);
+    }
+
+    [Theory]
     [InlineData("whitespace")]
     [InlineData("oversized")]
     [InlineData("control")]
@@ -1892,6 +1913,30 @@ public partial class QueriesControllerTests {
         SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
         _ = response.Metadata.ShouldNotBeNull();
         response.Metadata.IsStale.ShouldBe(false);
+    }
+
+    [Theory]
+    [InlineData(QueryResponseProvenance.HandlerComputed)]
+    [InlineData(QueryResponseProvenance.Unknown)]
+    public async Task Submit_RequireFreshWithoutProjectionProvenance_RejectsApparentFreshness(QueryResponseProvenance provenance) {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", JsonSerializer.SerializeToElement(new { count = 1 }), Metadata:
+                new QueryResponseMetadata(IsStale: false, ProjectionVersion: "v1") {
+                    Provenance = provenance,
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(RequireFresh: true),
+        };
+
+        QueryExecutionFailedException exception = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => controller.Submit(request, null, CancellationToken.None));
+
+        exception.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        exception.ReasonCode.ShouldBe(QueryProblemReasonCodes.ProjectionStale);
+        controller.Response.Headers.ContainsKey(ProjectionLifecyclePolicy.HeaderName).ShouldBeFalse();
     }
 
     [Fact]

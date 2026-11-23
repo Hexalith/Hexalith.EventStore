@@ -395,10 +395,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         // P2: check 304 and non-success BEFORE extracting ETag so a weak ETag on an error
         // response does not shadow the real ProblemDetails exception.
         if (response.StatusCode == HttpStatusCode.NotModified) {
-            string? notModifiedETag = GetETag(response);
             QueryResponseProvenance provenance = GetProvenanceHeader(response);
-            if (provenance != QueryResponseProvenance.ProjectionBacked
-                || string.IsNullOrWhiteSpace(notModifiedETag)) {
+            string? notModifiedETag = provenance == QueryResponseProvenance.ProjectionBacked
+                && response.Headers.ETag is { IsWeak: false }
+                ? GetETag(response)
+                : null;
+            if (string.IsNullOrWhiteSpace(notModifiedETag)) {
                 throw new EventStoreGatewayException(
                     StatusCodes.BadGateway,
                     "Bad Gateway",
@@ -428,8 +430,6 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
         }
 
-        string? eTag = GetETag(response);
-
         SubmitQueryResponse? result = await ReadQueryResponseAsync(response, cancellationToken)
             .ConfigureAwait(false);
 
@@ -451,14 +451,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         QueryResponseMetadata metadata = NormalizeMetadata(
             result.Metadata,
             GetProvenanceHeader(response),
-            GetLifecycleHeader(response),
-            eTag,
-            isNotModified: false);
+            GetLifecycleHeader(response));
+        if (metadata.Provenance == QueryResponseProvenance.ProjectionBacked) {
+            metadata = metadata with { ETag = GetETag(response), IsNotModified = false };
+        }
 
-        string? normalizedETag = metadata.Provenance == QueryResponseProvenance.ProjectionBacked
-            ? metadata.ETag
-            : null;
-        return new EventStoreQueryResult(result.CorrelationId, result.Payload, IsNotModified: false, normalizedETag) {
+        return new EventStoreQueryResult(result.CorrelationId, result.Payload, IsNotModified: false, metadata.ETag) {
             Metadata = metadata,
         };
     }
@@ -583,9 +581,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     private static QueryResponseMetadata NormalizeMetadata(
         QueryResponseMetadata? metadata,
         QueryResponseProvenance headerProvenance,
-        ProjectionLifecycleState headerLifecycle,
-        string? eTag,
-        bool isNotModified) {
+        ProjectionLifecycleState headerLifecycle) {
         QueryResponseProvenance bodyProvenance = metadata?.Provenance ?? QueryResponseProvenance.Unknown;
         QueryResponseProvenance provenance = bodyProvenance == headerProvenance
             ? bodyProvenance
@@ -599,25 +595,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         ProjectionLifecycleState lifecycle = bodyLifecycle == normalizedHeaderLifecycle
             ? bodyLifecycle
             : ProjectionLifecycleState.Unknown;
-        QueryResponseMetadata normalized = (metadata ?? new QueryResponseMetadata()) with {
-            Provenance = provenance,
-            Lifecycle = lifecycle,
-            IsStale = ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, metadata?.IsStale),
-            IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, metadata?.IsDegraded),
-        };
-
-        return provenance == QueryResponseProvenance.ProjectionBacked
-            ? normalized with {
-                ETag = eTag ?? normalized.ETag,
-                IsNotModified = isNotModified,
-            }
-            : normalized with {
-                ETag = null,
-                IsNotModified = null,
-                IsStale = null,
-                ProjectionVersion = null,
-                Lifecycle = ProjectionLifecycleState.Unknown,
-            };
+        return QueryResponseProvenancePolicy.NormalizeMetadata(metadata, provenance, lifecycle);
     }
 
     private static QueryResponseProvenance GetProvenanceHeader(HttpResponseMessage response) {

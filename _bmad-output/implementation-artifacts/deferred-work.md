@@ -677,14 +677,16 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
 location: QueriesController.cs:210
 reason: Body-ETag fallback can surface a non-gateway validator on a `ProjectionBacked` route with no gateway ETag (`QueriesController.cs:210` `ETag: gatewayETag ?? producerMetadata?.ETag`; `EventStoreGatewayClient.cs:343` `ETag = eTag ?? normalized.ETag`). Reachable only when a non-conformant producer claims `ProjectionBacked`, omits `ProjectionType` (skipping the gateway ETag fetch) AND fabricates an ETag; the platform projection actor never sets `metadata.ETag`, and the leaked value cannot drive a false 304 (that needs the gateway-computed `currentETag`). Hardening: only surface the gateway-issued ETag as the opaque validator; do not fall back to producer body ETag. [edge-case-hunter]
-status: open
+status: done 2026-11-23
+resolution: The gateway publishes only its selected validator and requires a named projection to promote a producer ETag. The client uses the HTTP header as its sole ETag authority. Gateway and client tests cover missing projection targets and body-only validators.
 
 ### DW-102: Real-path handler-vs-projection route→provenance proof (`QueryResponseProvenanceE2ETests`) runs in no CI workflow — it is Tier-3 (gated out; the dev ran it manually in source-debug mode), and the Tier-2 persistence test injects the route result rather than exercising `HandlerAwareQueryRouter`'s real handler-vs-projection selection. Pre-existing Tier-3-not-gated constraint tracked by Epic 3 Story 3.1. Lighter-weight guard: a Tier-2 `Server.Tests` test that resolves the real `HandlerAwareQueryRouter` + handler registry and asserts stamped provenance per route.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
 location: QueryResponseProvenanceE2ETests
 reason: Real-path handler-vs-projection route→provenance proof (`QueryResponseProvenanceE2ETests`) runs in no CI workflow — it is Tier-3 (gated out; the dev ran it manually in source-debug mode), and the Tier-2 persistence test injects the route result rather than exercising `HandlerAwareQueryRouter`'s real handler-vs-projection selection. Pre-existing Tier-3-not-gated constraint tracked by Epic 3 Story 3.1. Lighter-weight guard: a Tier-2 `Server.Tests` test that resolves the real `HandlerAwareQueryRouter` + handler registry and asserts stamped provenance per route. [verification-gap+blind-hunter+acceptance-auditor]
-status: open
+status: done 2026-11-23
+resolution: The Server.Tests composition lane resolves the production router, the concrete projection router, and the Dapr registry from DI. Tests verify both committed route targets, their payload and provenance, and the advisory state read against contradictory index data.
 
 ### DW-103: Single-source the canonical provenance-name formatter — `QueriesController.cs:127` emits the `X-Hexalith-Query-Provenance` header via `Provenance.ToString()` while the client (`GetProvenanceHeader`) and generated controller use an explicit canonical `nameof` switch. Safe today only because provenance is normalized to a defined value before that line; a future path that reaches it with an out-of-range value would emit a numeric string the strict parser maps to `Unknown`.
 
@@ -699,21 +701,24 @@ resolution: The shared Contracts policy supplies canonical provenance names and 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
 location: QueriesController.NormalizeProducerMetadata
 reason: Duplicated projection-evidence sanitization across two assemblies — server `QueriesController.NormalizeProducerMetadata` and client `EventStoreGatewayClient.NormalizeMetadata` independently null `{ETag, IsNotModified, IsStale, ProjectionVersion}` for non-projection routes. Any future field added to "projection evidence" must be cleared in both, in two assemblies, or a leak/asymmetry appears. Consider a shared helper. [blind-hunter]
-status: open
+status: done 2026-11-23
+resolution: The gateway and client now use the same Contracts policy to normalize provenance and lifecycle and remove projection evidence while retaining operational metadata.
 
 ### DW-105: Minor test-hardening — the converter `Write` out-of-range default branch (`QueryResponseProvenanceJsonConverter.Write` → `nameof(Unknown)`) and the `EnforceFreshnessPolicy` non-`ProjectionBacked` → 400 branch lack direct assertions; both are fail-safe downstream (values normalized before serialization; freshness fails closed regardless), so low reachability.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
 location: QueryResponseProvenanceJsonConverter.Write
 reason: Minor test-hardening — the converter `Write` out-of-range default branch (`QueryResponseProvenanceJsonConverter.Write` → `nameof(Unknown)`) and the `EnforceFreshnessPolicy` non-`ProjectionBacked` → 400 branch lack direct assertions; both are fail-safe downstream (values normalized before serialization; freshness fails closed regardless), so low reachability. [verification-gap]
-status: open
+status: done 2026-11-23
+resolution: The Contracts test directly confirms undefined provenance serializes as Unknown. Gateway tests confirm HandlerComputed and Unknown results with apparent freshness fail a RequireFresh request with the ProjectionStale reason and HTTP 400.
 
 ### DW-106: Weak-ETag rejection is not route-aware — `EventStoreGatewayClient.GetETag` (called at `:174` on the 200 path, `:404` throw) rejects a weak `ETag` before provenance is known, failing the whole query even for a non-projection route that would discard the ETag. The EventStore server only ever emits strong ETags, so this is robustness against a header-rewriting intermediary, not a live path.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
 location: EventStoreGatewayClient.GetETag
 reason: Weak-ETag rejection is not route-aware — `EventStoreGatewayClient.GetETag` (called at `:174` on the 200 path, `:404` throw) rejects a weak `ETag` before provenance is known, failing the whole query even for a non-projection route that would discard the ETag. The EventStore server only ever emits strong ETags, so this is robustness against a header-rewriting intermediary, not a live path. [edge-case-hunter]
-status: open
+status: done 2026-11-23
+resolution: The client evaluates effective provenance before reading the ETag on a successful response. Weak ETags on non-projection 200 responses are ignored. Weak validators are rejected on projection-backed 200 responses, and weak or missing validators on 304 produce 502.
 
 ### DW-107: `HasFailures` blast radius on named-metadata rejection — a single domain service returning malformed/version-skewed named-projection metadata sets `hasFailures`, which makes `AdminOperationalIndexHostedService.StartAsync` skip ALL admin index writes AND the named-route catalog `Replace` for every app in the refresh; this is a once-at-startup load with no periodic retry, so named dispatch is disabled process-wide until restart. The atomic all-or-nothing publish is spec-mandated (§2); the cross-app coupling + missing refresh cadence is the broader concern.
 
@@ -6838,3 +6843,8 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-story-5-3-guarded-concurrent-write-proof.md`
   summary: Provision exact reference metadata and the legacy runtime for the separate CI compatibility checks.
   evidence: R2-EC5 found that the offline hook invokes a real ApiCompat test without the explicit reference cache provisioned in the separate legacy job. R2-EC6 found a net10.0 consumer in a job that installs the SDK from global.json.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-five-query-provenance-deferred-fixes.md`
+  summary: Validate producer-supplied ETag syntax before the gateway writes its HTTP validator.
+  evidence: The gateway accepts a nonblank producer token for a named projection and then adds HTTP quotes. A producer that returns an already quoted or malformed token can yield a malformed header. This pre-existing gap is separate from the route and header authority fixes.
+  status: open

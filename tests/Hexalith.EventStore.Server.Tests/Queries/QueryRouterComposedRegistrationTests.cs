@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using Dapr.Client;
+
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Routing;
@@ -56,12 +58,18 @@ public sealed class QueryRouterComposedRegistrationTests
         actor.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>()).Returns(
             QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { count = 1 }), route,
                 new QueryResponseMetadata(ProjectionVersion: "version-1", IsStale: false, IsDegraded: degraded ? false : null)
-                { Lifecycle = degraded ? ProjectionLifecycleState.Degraded : ProjectionLifecycleState.Current }));
-        IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
-        registry.SupportsQueryAsync(fixture.Identity.Domain, "query-counter", Arg.Any<CancellationToken>()).Returns(declaredHandler);
+                {
+                    Provenance = QueryResponseProvenance.HandlerComputed,
+                    Lifecycle = degraded ? ProjectionLifecycleState.Degraded : ProjectionLifecycleState.Current,
+                }));
+        DaprClient dapr = Substitute.For<DaprClient>();
+        List<string> advisoryTypes = declaredHandler ? [] : ["query-counter"];
+        _ = dapr.GetStateAsync<List<string>>(Arg.Any<string>(), $"admin:query-types:{fixture.Identity.Domain}",
+            cancellationToken: Arg.Any<CancellationToken>()).Returns(advisoryTypes);
         IDomainQueryInvoker handler = Substitute.For<IDomainQueryInvoker>();
         handler.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>()).Returns(
-            QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { count = 2 }), projectionType: null, metadata: new QueryResponseMetadata()));
+            QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { count = 2 }), projectionType: null,
+                metadata: new QueryResponseMetadata { Provenance = QueryResponseProvenance.ProjectionBacked }));
         IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
         lifecycle.ReadSnapshotAsync(fixture.Identity, route, Arg.Any<CancellationToken>()).Returns(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1));
         var services = new ServiceCollection();
@@ -69,7 +77,7 @@ public sealed class QueryRouterComposedRegistrationTests
         services.AddSingleton(actor);
         services.AddSingleton(lifecycle);
         services.AddSingleton<IProjectionSourceGuardDelivery>(fixture.Probe);
-        services.AddSingleton(registry);
+        services.AddSingleton(dapr);
         services.AddSingleton(handler);
         // Isolate persisted source/lifecycle protocol assertions with an explicit, canonical catalog snapshot.
         // Activation/CAS and actual-host guards are exercised independently in Routing and LiveSidecar tests.
@@ -103,11 +111,17 @@ public sealed class QueryRouterComposedRegistrationTests
         using IServiceScope scope = provider.CreateScope();
         IQueryRouter router = scope.ServiceProvider.GetRequiredService<IQueryRouter>();
         router.ShouldBeOfType<HandlerAwareQueryRouter>();
-        scope.ServiceProvider.GetRequiredService<QueryRouter>().ShouldBeSameAs(scope.ServiceProvider.GetRequiredService<QueryRouter>());
+        DaprDomainQueryHandlerRegistry registry = scope.ServiceProvider.GetRequiredService<IDomainQueryHandlerRegistry>()
+            .ShouldBeOfType<DaprDomainQueryHandlerRegistry>();
+        (await registry.SupportsQueryAsync(fixture.Identity.Domain, "query-counter")).ShouldBe(declaredHandler);
+        _ = await dapr.Received(1).GetStateAsync<List<string>>(Arg.Any<string>(),
+            $"admin:query-types:{fixture.Identity.Domain}", cancellationToken: Arg.Any<CancellationToken>());
         using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
         QueryRouterResult result = await router.RouteQueryAsync(new SubmitQuery(fixture.Identity.TenantId, fixture.Identity.Domain,
             fixture.Identity.AggregateId, "query-counter", [], "correlation-1", "user-1", ProjectionType: declaredHandler ? null : route));
         result.Success.ShouldBeTrue();
+        result.Payload.ShouldNotBeNull().GetProperty("count").GetInt32().ShouldBe(declaredHandler ? 2 : 1);
+        result.ProjectionType.ShouldBe(declaredHandler ? null : route);
         result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(expected);
         result.Metadata.Provenance.ShouldBe(declaredHandler ? QueryResponseProvenance.HandlerComputed : QueryResponseProvenance.ProjectionBacked);
         result.Metadata.IsStale.ShouldBe(ProjectionLifecyclePolicy.ProjectIsStale(expected));
