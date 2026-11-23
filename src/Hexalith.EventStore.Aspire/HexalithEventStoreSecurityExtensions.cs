@@ -156,6 +156,13 @@ public static class HexalithEventStoreSecurityExtensions
     public static IResourceBuilder<ProjectResource> WithSecurityDependency(
         this IResourceBuilder<ProjectResource> resource,
         HexalithEventStoreSecurityResources security)
+        => WithSecurityDependency<ProjectResource>(resource, security);
+
+    /// <summary>Configures the security resource dependency for the selected .NET application.</summary>
+    public static IResourceBuilder<TProject> WithSecurityDependency<TProject>(
+        this IResourceBuilder<TProject> resource,
+        HexalithEventStoreSecurityResources security)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment, IResourceWithWaitSupport
     {
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentNullException.ThrowIfNull(security);
@@ -178,6 +185,15 @@ public static class HexalithEventStoreSecurityExtensions
         HexalithEventStoreSecurityResources security,
         string? audience = null,
         bool? requireHttpsMetadata = null)
+        => WithJwtBearerSecurity<ProjectResource>(resource, security, audience, requireHttpsMetadata);
+
+    /// <summary>Configures JWT bearer validation for the selected .NET application.</summary>
+    public static IResourceBuilder<TProject> WithJwtBearerSecurity<TProject>(
+        this IResourceBuilder<TProject> resource,
+        HexalithEventStoreSecurityResources security,
+        string? audience = null,
+        bool? requireHttpsMetadata = null)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment, IResourceWithWaitSupport
     {
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentNullException.ThrowIfNull(security);
@@ -261,11 +277,11 @@ public static class HexalithEventStoreSecurityExtensions
             new EventStoreJwtAuthenticationAnnotation(),
             ResourceAnnotationMutationBehavior.Append);
 
-        if (isRunMode)
+        if (isRunMode && localSecurity is not null)
         {
             return AddLocalJwtAuthenticationEnvironment(
-                resource.WithSecurityDependency(localSecurity!),
-                localSecurity!.RealmUrl,
+                resource.WithSecurityDependency(localSecurity),
+                localSecurity.RealmUrl,
                 audiences,
                 allowedAlgorithms,
                 requireHttpsMetadata);
@@ -553,6 +569,16 @@ public static class HexalithEventStoreSecurityExtensions
         string clientId,
         string clientSecret,
         string? audience = null)
+        => WithOpenIdConnectSecurity<ProjectResource>(resource, security, clientId, clientSecret, audience);
+
+    /// <summary>Configures OpenID Connect authentication for the selected .NET application.</summary>
+    public static IResourceBuilder<TProject> WithOpenIdConnectSecurity<TProject>(
+        this IResourceBuilder<TProject> resource,
+        HexalithEventStoreSecurityResources security,
+        string clientId,
+        string clientSecret,
+        string? audience = null)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment, IResourceWithWaitSupport
     {
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentNullException.ThrowIfNull(security);

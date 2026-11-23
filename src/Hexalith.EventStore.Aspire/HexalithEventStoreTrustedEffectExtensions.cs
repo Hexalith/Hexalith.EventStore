@@ -83,6 +83,14 @@ public static class HexalithEventStoreTrustedEffectExtensions
         this IResourceBuilder<ProjectResource> workload,
         IResourceBuilder<ParameterResource> clientId,
         IResourceBuilder<ParameterResource> clientSecret)
+        => WithEventStoreWorkloadClientCredentials<ProjectResource>(workload, clientId, clientSecret);
+
+    /// <summary>Configures the workload client credentials for the selected .NET application.</summary>
+    public static IResourceBuilder<TProject> WithEventStoreWorkloadClientCredentials<TProject>(
+        this IResourceBuilder<TProject> workload,
+        IResourceBuilder<ParameterResource> clientId,
+        IResourceBuilder<ParameterResource> clientSecret)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment
     {
         ArgumentNullException.ThrowIfNull(workload);
         ArgumentNullException.ThrowIfNull(clientId);
@@ -109,6 +117,14 @@ public static class HexalithEventStoreTrustedEffectExtensions
         this IResourceBuilder<ProjectResource> workload,
         string clientId,
         IResourceBuilder<ParameterResource> clientSecret)
+        => WithEventStoreWorkloadClientCredentials<ProjectResource>(workload, clientId, clientSecret);
+
+    /// <summary>Configures the workload client credentials for the selected .NET application.</summary>
+    public static IResourceBuilder<TProject> WithEventStoreWorkloadClientCredentials<TProject>(
+        this IResourceBuilder<TProject> workload,
+        string clientId,
+        IResourceBuilder<ParameterResource> clientSecret)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment
     {
         ArgumentNullException.ThrowIfNull(workload);
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);

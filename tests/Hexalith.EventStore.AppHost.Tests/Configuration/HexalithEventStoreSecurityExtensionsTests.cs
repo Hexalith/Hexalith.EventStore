@@ -255,9 +255,7 @@ public class HexalithEventStoreSecurityExtensionsTests {
         consumerEnvironment["EventStore__Authentication__ClientSecret"].ShouldBe(string.Empty);
         consumerEnvironment["EventStore__Authentication__SigningKey"].ShouldBe(string.Empty);
 
-        string realmPath = Path.Combine(
-            RepositoryProjectPaths.GetRepositoryRoot(),
-            "references",
+        string realmPath = RepositoryProjectPaths.GetReferencedModuleProjectPath(
             "Hexalith.Tenants",
             "src",
             "Hexalith.Tenants.AppHost",

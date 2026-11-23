@@ -19,6 +19,12 @@ public static partial class DevelopmentRouteCatalogAspireExtensions
     /// <returns>The existing builder.</returns>
     public static IDistributedApplicationBuilder AddEventStoreDevelopmentSqliteStartupOrdering(
         this IDistributedApplicationBuilder builder, params IResourceBuilder<ProjectResource>[] peers)
+        => AddEventStoreDevelopmentSqliteStartupOrdering<ProjectResource>(builder, peers);
+
+    /// <summary>Orders the selected .NET applications' native SQLite discovery sidecars.</summary>
+    public static IDistributedApplicationBuilder AddEventStoreDevelopmentSqliteStartupOrdering<TProject>(
+        this IDistributedApplicationBuilder builder, params IResourceBuilder<TProject>[] peers)
+        where TProject : class, IDotnetProgramResource
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(peers);
@@ -28,7 +34,7 @@ public static partial class DevelopmentRouteCatalogAspireExtensions
             throw new InvalidOperationException("SQLite startup ordering requires distinct real local Development peers.");
 
         string? registry = null;
-        List<(ProjectResource Owner, string ResourceName, string AppId, string HealthKey)> selected = [];
+        List<(IDotnetProgramResource Owner, string ResourceName, string AppId, string HealthKey)> selected = [];
         foreach (var peer in peers)
         {
             if (!builder.Resources.Contains(peer.Resource))

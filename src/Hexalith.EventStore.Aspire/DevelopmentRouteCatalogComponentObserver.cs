@@ -12,11 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>Binds observations to the ordinary toolkit-rendered authority after all modeled backend overrides and before any child starts.</summary>
-internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentResource authority, IReadOnlyList<ProjectResource> participants,
-    IReadOnlyDictionary<ProjectResource, string> selectedAppIds, IReadOnlyDictionary<ProjectResource, string> accessControlPaths,
+internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentResource authority, IReadOnlyList<IDotnetProgramResource> participants,
+    IReadOnlyDictionary<IDotnetProgramResource, string> selectedAppIds, IReadOnlyDictionary<IDotnetProgramResource, string> accessControlPaths,
     string custodyRunDirectory, byte[]? retainedBackend) : IDistributedApplicationEventingSubscriber
 {
-    private readonly Dictionary<ProjectResource, ExecutableResource> _executables = [];
+    private readonly Dictionary<IDotnetProgramResource, ExecutableResource> _executables = [];
     private readonly SemaphoreSlim _publication = new(1, 1);
     private byte[]? _currentBackend;
     private DistributedApplicationExecutionContext? _execution;
@@ -130,7 +130,7 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
             if (options.AppId != selectedAppIds[participant] || Path.GetFullPath(options.Config!) != accessControlPaths[participant]
                 || sidecar.Annotations.OfType<DaprComponentReferenceAnnotation>().Count(reference => ReferenceEquals(reference.Component, authority)) != 1)
                 throw new InvalidOperationException("The selected receiver identity, ACL or authority reference changed after catalog composition.");
-            var executable = startup.Model.Resources.OfType<ExecutableResource>().Single(resource => resource.Name == sidecar.Name + "-cli");
+            var executable = DevelopmentRouteCatalogAspireExtensions.GetGeneratedSidecar(startup.Model, participant, sidecar.Name + "-cli");
             _executables[participant] = executable;
             List<object> arguments = [];
             foreach (var callback in executable.Annotations.OfType<CommandLineArgsCallbackAnnotation>())
@@ -171,7 +171,7 @@ internal sealed class DevelopmentRouteCatalogComponentObserver(IDaprComponentRes
         else foreach (var participant in participants)
         {
             var sidecar = participant.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
-            var executable = startup.Model.Resources.OfType<ExecutableResource>().Single(resource => resource.Name == sidecar.Name + "-cli");
+            var executable = DevelopmentRouteCatalogAspireExtensions.GetGeneratedSidecar(startup.Model, participant, sidecar.Name + "-cli");
             // Resolve only referenced backend values in the actual sidecar's environment stage.
             // Running every callback here would force mTLS/issuer credential reads before their
             // resources exist. Necessary endpoint/parameter providers may also await allocation.

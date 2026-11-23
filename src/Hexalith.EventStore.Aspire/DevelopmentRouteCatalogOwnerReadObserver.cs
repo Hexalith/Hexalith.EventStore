@@ -17,20 +17,21 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>Retains actual selected owner coordinates without publishing their private API credentials.</summary>
-internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApplicationEventingSubscriber
+internal sealed class DevelopmentRouteCatalogOwnerReadObserver<TProject> : IDistributedApplicationEventingSubscriber
+    where TProject : class, IDotnetProgramResource, IResourceWithEnvironment
 {
     private readonly DistributedApplicationExecutionContext _execution;
-    private readonly Dictionary<ProjectResource, (string AppId, int Port)> _owners = [];
-    private readonly ConcurrentDictionary<ProjectResource, string> _credentials = [];
-    private readonly Dictionary<ProjectResource, SemaphoreSlim> _credentialInitialization = [];
-    private readonly Dictionary<ProjectResource, EnvironmentCallbackAnnotation[]> _credentialCallbacks = [];
-    private readonly Dictionary<ProjectResource, ExecutableResource> _executables = [];
-    private readonly Dictionary<ProjectResource, Task> _publications = [];
-    private readonly List<(ProjectResource Receiver, ProjectResource[] Owners, string Path)> _receivers = [];
+    private readonly Dictionary<IDotnetProgramResource, (string AppId, int Port)> _owners = [];
+    private readonly ConcurrentDictionary<IDotnetProgramResource, string> _credentials = [];
+    private readonly Dictionary<IDotnetProgramResource, SemaphoreSlim> _credentialInitialization = [];
+    private readonly Dictionary<IDotnetProgramResource, EnvironmentCallbackAnnotation[]> _credentialCallbacks = [];
+    private readonly Dictionary<IDotnetProgramResource, ExecutableResource> _executables = [];
+    private readonly Dictionary<IDotnetProgramResource, Task> _publications = [];
+    private readonly List<(IDotnetProgramResource Receiver, IDotnetProgramResource[] Owners, string Path)> _receivers = [];
     private ResourceNotificationService? _notifications;
 
-    internal DevelopmentRouteCatalogOwnerReadObserver(IDistributedApplicationBuilder builder, IReadOnlyList<DevelopmentRouteCatalogReceiver> receivers,
-        IReadOnlyDictionary<ProjectResource, string> apps, string directory)
+    internal DevelopmentRouteCatalogOwnerReadObserver(IDistributedApplicationBuilder builder, IReadOnlyList<DevelopmentRouteCatalogReceiver<TProject>> receivers,
+        IReadOnlyDictionary<IDotnetProgramResource, string> apps, string directory)
     {
         _execution = builder.ExecutionContext;
         foreach (var receiver in receivers.Where(receiver => receiver.ActorStateOwners.Count > 0))
@@ -112,7 +113,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
         {
             var sidecar = Sidecar(owner.Key);
             var options = sidecar.Annotations.OfType<DaprSidecarOptionsAnnotation>().Single().Options;
-            var executable = startup.Model.Resources.OfType<ExecutableResource>().Single(resource => resource.Name == sidecar.Name + "-cli");
+            var executable = DevelopmentRouteCatalogAspireExtensions.GetGeneratedSidecar(startup.Model, owner.Key, sidecar.Name + "-cli");
             _executables[owner.Key] = executable;
             if (options.AppId != owner.Value.AppId || options.DaprHttpPort != owner.Value.Port
                 || !executable.Annotations.OfType<EndpointAnnotation>().Any(endpoint => endpoint.Port == owner.Value.Port))
@@ -151,7 +152,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
 
     private async Task ObserveTargetAsync(BeforeResourceStartedEvent startup, CancellationToken token)
     {
-        ProjectResource[] owners = [.. _owners.Keys.Where(owner => ReferenceEquals(owner, startup.Resource)
+        IDotnetProgramResource[] owners = [.. _owners.Keys.Where(owner => ReferenceEquals(owner, startup.Resource)
             || _executables.TryGetValue(owner, out var executable) && ReferenceEquals(executable, startup.Resource))];
         var receivers = _receivers.Where(receiver => ReferenceEquals(receiver.Receiver, startup.Resource)).ToArray();
         if (owners.Length == 0 && receivers.Length == 0) return;
@@ -181,7 +182,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
         }
     }
 
-    private async Task RequireActualAsync(ProjectResource owner, CancellationToken token)
+    private async Task RequireActualAsync(IDotnetProgramResource owner, CancellationToken token)
     {
         var executable = await SelectedExecutableAsync(owner, token).ConfigureAwait(false);
         var expected = _owners[owner];
@@ -211,7 +212,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
             throw new InvalidOperationException("The actual owner CLI API credential changed before execution.");
     }
 
-    private async Task PublishAsync(ProjectResource[] owners, string path, CancellationToken token)
+    private async Task PublishAsync(IDotnetProgramResource[] owners, string path, CancellationToken token)
     {
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(owners.Select(owner => new DevelopmentActorStateOwnerObservation(_owners[owner].AppId, Endpoint(_owners[owner].Port), true)).ToArray());
         var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None, Options = FileOptions.Asynchronous };
@@ -226,7 +227,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
         catch (IOException exception) { throw new InvalidOperationException("The owned owner-read receipt already exists or is not a new regular file.", exception); }
     }
 
-    private async Task<object> CredentialAsync(ProjectResource owner, CancellationToken token)
+    private async Task<object> CredentialAsync(IDotnetProgramResource owner, CancellationToken token)
     {
         _ = await SelectedExecutableAsync(owner, token).ConfigureAwait(false);
         string expected = await ExpectedCredentialAsync(owner, token).ConfigureAwait(false);
@@ -238,7 +239,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
         return value;
     }
 
-    private async Task<string> ExpectedCredentialAsync(ProjectResource owner, CancellationToken token)
+    private async Task<string> ExpectedCredentialAsync(IDotnetProgramResource owner, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         if (_credentials.TryGetValue(owner, out var retained)) return retained;
@@ -263,7 +264,7 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
         finally { initialization.Release(); }
     }
 
-    private async Task<ExecutableResource> SelectedExecutableAsync(ProjectResource owner, CancellationToken token)
+    private async Task<ExecutableResource> SelectedExecutableAsync(IDotnetProgramResource owner, CancellationToken token)
     {
         if (!_executables.TryGetValue(owner, out var executable)) throw new InvalidOperationException("The actual owner CLI has not been rendered.");
         await Notifications.WaitForDependenciesAsync(executable, token).ConfigureAwait(false);
@@ -286,5 +287,5 @@ internal sealed class DevelopmentRouteCatalogOwnerReadObserver : IDistributedApp
     private static async ValueTask<string?> ValueAsync(object value, CancellationToken token) => value is IValueProvider provider
         ? await provider.GetValueAsync(token).ConfigureAwait(false) : value.ToString();
     private static string Endpoint(int port) => "http://localhost:" + port.ToString(CultureInfo.InvariantCulture) + "/";
-    private static IDaprSidecarResource Sidecar(ProjectResource project) => project.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
+    private static IDaprSidecarResource Sidecar(IDotnetProgramResource project) => project.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
 }

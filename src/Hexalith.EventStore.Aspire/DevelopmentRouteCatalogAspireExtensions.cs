@@ -94,9 +94,37 @@ public static partial class DevelopmentRouteCatalogAspireExtensions
         return Compose(builder, gateway, owners, receivers, component, daprNamespace, options);
     }
 
+    /// <summary>Composes an explicitly owned backend for the selected .NET applications.</summary>
+    /// <remarks>The existing overload takes precedence for legacy target-typed owner and receiver collections.</remarks>
+    [System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
+    public static DevelopmentRouteCatalogComposition AddEventStoreDevelopmentRouteCatalog<TProject>(
+        this IDistributedApplicationBuilder builder, IResourceBuilder<TProject> gateway,
+        IReadOnlyList<DevelopmentRouteCatalogOwner<TProject>> owners, IReadOnlyList<DevelopmentRouteCatalogReceiver<TProject>> receivers,
+        string stateStoreComponentPath, DevelopmentRouteCatalogCompositionOptions options, string daprNamespace = "default")
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment, IResourceWithWaitSupport
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return Compose(builder, gateway, owners, receivers, ReadYamlOrJson(stateStoreComponentPath), daprNamespace, options);
+    }
+
     private static DevelopmentRouteCatalogComposition Compose(IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> gateway,
         IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyList<DevelopmentRouteCatalogReceiver> receivers,
         JsonObject stateComponent, string daprNamespace, DevelopmentRouteCatalogCompositionOptions? options)
+    {
+        ArgumentNullException.ThrowIfNull(owners);
+        ArgumentNullException.ThrowIfNull(receivers);
+        return Compose(builder, gateway,
+            owners.Select(owner => new DevelopmentRouteCatalogOwner<ProjectResource>(owner.Project, owner.Contracts, owner.Adapters)).ToArray(),
+            receivers.Select(receiver => new DevelopmentRouteCatalogReceiver<ProjectResource>(receiver.Project,
+                receiver.Invocations.Select(call => new DevelopmentRouteCatalogInvocation<ProjectResource>(call.Caller, call.Method, call.HttpMethods)).ToArray())
+            { TechnicalHttp = receiver.TechnicalHttp, ActorStateOwners = receiver.ActorStateOwners }).ToArray(),
+            stateComponent, daprNamespace, options);
+    }
+
+    private static DevelopmentRouteCatalogComposition Compose<TProject>(IDistributedApplicationBuilder builder, IResourceBuilder<TProject> gateway,
+        IReadOnlyList<DevelopmentRouteCatalogOwner<TProject>> owners, IReadOnlyList<DevelopmentRouteCatalogReceiver<TProject>> receivers,
+        JsonObject stateComponent, string daprNamespace, DevelopmentRouteCatalogCompositionOptions? options)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment, IResourceWithWaitSupport
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(gateway);
@@ -113,7 +141,7 @@ public static partial class DevelopmentRouteCatalogAspireExtensions
             || owners.Any(owner => !receivers.Any(receiver => ReferenceEquals(receiver.Project.Resource, owner.Project.Resource)))
             || owners.Select(owner => owner.Project.Resource).Distinct().Count() != owners.Count)
             throw new InvalidOperationException("An exact gateway, owner and receiver cohort is required.");
-        var selected = builder.Resources.OfType<ProjectResource>().Where(project => project.Annotations.OfType<DaprSidecarAnnotation>().Any()).ToArray();
+        var selected = builder.Resources.OfType<IDotnetProgramResource>().Where(project => project.Annotations.OfType<DaprSidecarAnnotation>().Any()).ToArray();
         var apps = selected.ToDictionary(project => project, project => AppId(project));
         if (receivers.Any(receiver => !apps.ContainsKey(receiver.Project.Resource))
             || receivers.SelectMany(receiver => receiver.Invocations).Any(invocation => !apps.ContainsKey(invocation.Caller.Resource)))
@@ -164,11 +192,11 @@ public static partial class DevelopmentRouteCatalogAspireExtensions
                 authority.WithMetadata(item!["name"]!.GetValue<string>(), literal);
             }
             var observer = new DevelopmentRouteCatalogComponentObserver(authority.Resource, receivers.Select(receiver => receiver.Project.Resource).ToArray(), apps,
-                receivers.ToDictionary(receiver => receiver.Project.Resource, receiver => Path.Combine(directory, receiver.Project.Resource.Name + ".configuration.json")),
+                receivers.ToDictionary(receiver => (IDotnetProgramResource)receiver.Project.Resource, receiver => Path.Combine(directory, receiver.Project.Resource.Name + ".configuration.json")),
                 directory, custody.BackendBytes);
             builder.Services.AddSingleton<IDistributedApplicationEventingSubscriber>(observer);
             if (receivers.Any(receiver => receiver.ActorStateOwners.Count > 0))
-                builder.Services.AddSingleton<IDistributedApplicationEventingSubscriber>(new DevelopmentRouteCatalogOwnerReadObserver(builder, receivers, apps, directory));
+                builder.Services.AddSingleton<IDistributedApplicationEventingSubscriber>(new DevelopmentRouteCatalogOwnerReadObserver<TProject>(builder, receivers, apps, directory));
             var componentPath = new DevelopmentRouteCatalogComponentPath(observer);
             var keys = options.DigestKeys.ToDictionary(pair => pair.Key, pair =>
                 builder.AddParameter("catalog-" + instance + "-digest-" + pair.Key, () => pair.Value, secret: true), StringComparer.Ordinal);
@@ -245,8 +273,9 @@ public static partial class DevelopmentRouteCatalogAspireExtensions
         catch { custody?.Dispose(); Directory.Delete(directory, recursive: true); throw; }
     }
 
-    private static RouteCatalogEnvelope BuildCatalog(string gatewayAppId, IReadOnlyList<DevelopmentRouteCatalogOwner> owners, IReadOnlyDictionary<ProjectResource, string> apps,
+    private static RouteCatalogEnvelope BuildCatalog<TProject>(string gatewayAppId, IReadOnlyList<DevelopmentRouteCatalogOwner<TProject>> owners, IReadOnlyDictionary<IDotnetProgramResource, string> apps,
         DevelopmentRouteCatalogCompositionOptions options, DevelopmentRouteCatalogCustody custody)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment, IResourceWithWaitSupport
     {
         long generation = custody.PredecessorBytes is { } predecessor ? checked(RouteCatalogCodec.Decode(predecessor, custody.PredecessorRootDigest).Generation + 1) : 1;
         List<RouteContractDeclaration> declarations = []; List<RouteOperationContract> operations = [];
@@ -286,8 +315,18 @@ public static partial class DevelopmentRouteCatalogAspireExtensions
             custody.PredecessorBytes, custody.PredecessorRootDigest));
     }
 
-    private static IDaprSidecarResource Sidecar(ProjectResource project) => project.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
-    private static string AppId(ProjectResource project) => Sidecar(project).Annotations.OfType<DaprSidecarOptionsAnnotation>().Single().Options.AppId
+    /// <summary>Finds the toolkit executable whose parent is the selected application.</summary>
+    internal static ExecutableResource GetGeneratedSidecar(DistributedApplicationModel model, IDotnetProgramResource owner, string name)
+    {
+        var executable = model.Resources.OfType<ExecutableResource>().Single(resource => resource.Name == name);
+        if (executable is IDotnetProgramResource || !executable.Annotations.OfType<ResourceRelationshipAnnotation>()
+            .Any(relation => relation.Type == "Parent" && ReferenceEquals(relation.Resource, owner)))
+            throw new InvalidOperationException("A selected .NET application's generated Dapr executable must belong to that application.");
+        return executable;
+    }
+
+    private static IDaprSidecarResource Sidecar(IDotnetProgramResource project) => project.Annotations.OfType<DaprSidecarAnnotation>().Single().Sidecar;
+    private static string AppId(IDotnetProgramResource project) => Sidecar(project).Annotations.OfType<DaprSidecarOptionsAnnotation>().Single().Options.AppId
         ?? throw new InvalidOperationException("A selected sidecar lacks its actual AppId.");
     internal static JsonObject ReadYamlOrJson(string path)
     {

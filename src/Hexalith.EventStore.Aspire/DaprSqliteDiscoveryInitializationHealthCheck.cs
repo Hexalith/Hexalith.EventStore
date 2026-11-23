@@ -19,7 +19,7 @@ internal sealed class DaprSqliteDiscoveryInitializationHealthCheck(
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var resources = model.Resources.OfType<ExecutableResource>().Where(resource => resource.Name == resourceName).ToArray();
+        var resources = model.Resources.OfType<ExecutableResource>().Where(resource => resource is not IDotnetProgramResource && resource.Name == resourceName).ToArray();
         if (resources.Length != 1) return HealthCheckResult.Unhealthy("NativeSqliteSidecarUnconfirmed");
         await foreach (var batch in logs.WatchAsync(resources[0]).WithCancellation(cancellationToken).ConfigureAwait(false))
         {

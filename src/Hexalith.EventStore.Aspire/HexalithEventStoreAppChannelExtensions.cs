@@ -28,6 +28,12 @@ public static class HexalithEventStoreAppChannelExtensions
     /// <returns>The project resource builder.</returns>
     public static IResourceBuilder<ProjectResource> WithGeneratedEventStoreAppChannelToken(
         this IResourceBuilder<ProjectResource> project)
+        => WithGeneratedEventStoreAppChannelToken<ProjectResource>(project);
+
+    /// <summary>Generates and binds a per-run app-channel token to the selected .NET application and its own sidecar.</summary>
+    public static IResourceBuilder<TProject> WithGeneratedEventStoreAppChannelToken<TProject>(
+        this IResourceBuilder<TProject> project)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment
     {
         ArgumentNullException.ThrowIfNull(project);
         IDaprSidecarResource sidecar = GetSidecar(project);
@@ -63,6 +69,13 @@ public static class HexalithEventStoreAppChannelExtensions
     public static IResourceBuilder<ProjectResource> WithEventStoreAppChannelToken(
         this IResourceBuilder<ProjectResource> project,
         IResourceBuilder<ParameterResource> token)
+        => WithEventStoreAppChannelToken<ProjectResource>(project, token);
+
+    /// <summary>Configures the private application-channel token for the selected .NET application.</summary>
+    public static IResourceBuilder<TProject> WithEventStoreAppChannelToken<TProject>(
+        this IResourceBuilder<TProject> project,
+        IResourceBuilder<ParameterResource> token)
+        where TProject : class, IDotnetProgramResource, IResourceWithEnvironment
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(token);
@@ -82,7 +95,7 @@ public static class HexalithEventStoreAppChannelExtensions
     /// <summary>Finds the one sidecar that shares the project's private application channel.</summary>
     /// <param name="project">The project whose sidecar is required.</param>
     /// <returns>The project's sidecar.</returns>
-    private static IDaprSidecarResource GetSidecar(IResourceBuilder<ProjectResource> project)
+    private static IDaprSidecarResource GetSidecar(IResourceBuilder<IDotnetProgramResource> project)
         => project.Resource.Annotations.OfType<DaprSidecarAnnotation>().SingleOrDefault()?.Sidecar
             ?? throw new InvalidOperationException(
                 $"Resource '{project.Resource.Name}' must have a Dapr sidecar before its app-channel token is wired.");

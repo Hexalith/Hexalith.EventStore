@@ -63,7 +63,7 @@ public sealed class DevelopmentActorStateOwnerModelTests
             var notifications = application.Services.GetRequiredService<ResourceNotificationService>();
             var model = application.Services.GetRequiredService<DistributedApplicationModel>();
             foreach (var subscriber in application.Services.GetServices<IDistributedApplicationEventingSubscriber>().Where(subscriber =>
-                subscriber.GetType().Name == "DaprDistributedApplicationLifecycleHook" || subscriber is DevelopmentRouteCatalogComponentObserver or DevelopmentRouteCatalogOwnerReadObserver))
+                subscriber.GetType().Name == "DaprDistributedApplicationLifecycleHook" || subscriber is DevelopmentRouteCatalogComponentObserver or DevelopmentRouteCatalogOwnerReadObserver<ProjectResource>))
                 await subscriber.SubscribeAsync(eventing, builder.ExecutionContext, TestContext.Current.CancellationToken);
             await eventing.PublishAsync(new BeforeStartEvent(application.Services, model), TestContext.Current.CancellationToken);
             foreach (var component in model.Resources.OfType<IDaprComponentResource>())
@@ -181,7 +181,7 @@ public sealed class DevelopmentActorStateOwnerModelTests
             var notifications = application.Services.GetRequiredService<ResourceNotificationService>();
             var model = application.Services.GetRequiredService<DistributedApplicationModel>();
             foreach (var subscriber in application.Services.GetServices<IDistributedApplicationEventingSubscriber>().Where(subscriber =>
-                subscriber.GetType().Name == "DaprDistributedApplicationLifecycleHook" || subscriber is DevelopmentRouteCatalogComponentObserver or DevelopmentRouteCatalogOwnerReadObserver))
+                subscriber.GetType().Name == "DaprDistributedApplicationLifecycleHook" || subscriber is DevelopmentRouteCatalogComponentObserver or DevelopmentRouteCatalogOwnerReadObserver<ProjectResource>))
                 await subscriber.SubscribeAsync(eventing, builder.ExecutionContext, TestContext.Current.CancellationToken);
             await notifications.PublishUpdateAsync(credentialSource.Resource, snapshot => snapshot with { State = KnownResourceStates.Starting });
             await eventing.PublishAsync(new BeforeStartEvent(application.Services, model), TestContext.Current.CancellationToken);
@@ -357,7 +357,7 @@ public sealed class DevelopmentActorStateOwnerModelTests
             await using var readiness = await DevelopmentCatalogModelReadiness.StartAsync(application.Services, TestContext.Current.CancellationToken);
             var eventing = application.Services.GetRequiredService<IDistributedApplicationEventing>();
             foreach (var subscriber in application.Services.GetServices<IDistributedApplicationEventingSubscriber>().Where(subscriber =>
-                subscriber.GetType().Name == "DaprDistributedApplicationLifecycleHook" || subscriber is DevelopmentRouteCatalogComponentObserver or DevelopmentRouteCatalogOwnerReadObserver))
+                subscriber.GetType().Name == "DaprDistributedApplicationLifecycleHook" || subscriber is DevelopmentRouteCatalogComponentObserver or DevelopmentRouteCatalogOwnerReadObserver<ProjectResource>))
                 await subscriber.SubscribeAsync(eventing, builder.ExecutionContext, TestContext.Current.CancellationToken);
             async Task Render() => await eventing.PublishAsync(new BeforeStartEvent(application.Services, application.Services.GetRequiredService<DistributedApplicationModel>()), TestContext.Current.CancellationToken);
             if (scenario == "late-port")
