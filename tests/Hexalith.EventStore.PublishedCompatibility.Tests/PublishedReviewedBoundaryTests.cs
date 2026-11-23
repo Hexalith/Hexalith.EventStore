@@ -13,7 +13,8 @@ public sealed class PublishedReviewedBoundaryTests
     {
         await using var runtime = new QualificationRuntime();
         TestContext.Current.TestOutputHelper?.WriteLine("Invocation scratch: " + runtime.Root);
-        var materializer = new ConsumerMaterializer(runtime, PublishedScenarioTests.FindRepository());
+        string repository = PublishedScenarioTests.FindRepository();
+        var materializer = new ConsumerMaterializer(runtime, repository);
         await materializer.MaterializeAsync(selectedPairOnly: true);
         materializer.Failures.ShouldBeEmpty();
         materializer.Builds.Count.ShouldBe(6);
@@ -23,7 +24,12 @@ public sealed class PublishedReviewedBoundaryTests
             build.SdkPolicyHash.ShouldNotBeNullOrWhiteSpace();
             byte[] sdkPolicy = await File.ReadAllBytesAsync(Path.Combine(Path.GetDirectoryName(build.Project)!, "global.json"));
             QualificationRuntime.Hash(sdkPolicy).ShouldBe(build.SdkPolicyHash);
-            ConsumerMaterializer.ValidateSdkPolicy(sdkPolicy, build.SelectedSdk);
+            ConsumerMaterializer.ValidateSdkPolicy(sdkPolicy, build.SelectedSdk, taggedSource: build.Source is not null);
+            string expectedRoot = build.Source is null ? repository : Path.Combine(runtime.Root, "tagged-source");
+            string expectedPolicy = Path.Combine(expectedRoot, "global.json");
+            build.SdkPolicyOrigin.ShouldBe(expectedPolicy);
+            QualificationRuntime.Hash(await File.ReadAllBytesAsync(expectedPolicy)).ShouldBe(build.SdkPolicyHash);
+            Path.GetFileName(Path.GetDirectoryName(build.Assembly)).ShouldBe(build.Source is null ? "net11.0" : "net10.0");
         }
         var observations = new List<ScenarioObservation>();
         PublishedScenarioTests.RegisterObservationLog(observations, Path.Combine(runtime.Root, "scenarios.ndjson"));

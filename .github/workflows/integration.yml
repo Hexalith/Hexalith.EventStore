@@ -47,6 +47,8 @@ jobs:
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+          # The v3.128.2 tagged-source consumers use the SDK specified by that tag.
+          dotnet-version: '10.0.402'
       - name: Verify private runtime input preparation controls
         run: python3 -m unittest discover -s tools/tests -p 'test_published_runtime_archives.py'
       - name: Prepare the original pinned private runtime archives
@@ -236,6 +238,9 @@ jobs:
           PY
 
       - name: Run Live-Sidecar Integration Tests
+        id: live_sidecar
+        env:
+          HEXALITH_ACTOR_ADMISSION_EVIDENCE_DIRECTORY: ${{ runner.temp }}/actor-admission
         run: |
           dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ \
             --configuration Release \
@@ -259,6 +264,12 @@ jobs:
             --report-xunit-trx-filename integration-parallelization-results.trx \
             -p:UseHexalithProjectReferences=false
 
+      - name: Summarize actor admission qualification and cleanup
+        if: always() && steps.live_sidecar.outcome != 'skipped'
+        run: |
+          python3 -B -m unittest discover -s tools/tests -p test_actor_admission_diagnostics.py
+          python3 tools/actor_admission_diagnostics.py "$RUNNER_TEMP/actor-admission" TestResults/live-sidecar/actor-admission-diagnostics.json
+
       - name: Upload live-sidecar test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -267,6 +278,7 @@ jobs:
           path: |
             TestResults/**/*.trx
             TestResults/**/coverage.cobertura.xml
+            TestResults/live-sidecar/actor-admission-diagnostics.json
             ${{ env.BOUNDED_IDENTITY_EVIDENCE_DIR }}/
           if-no-files-found: error
           retention-days: 7

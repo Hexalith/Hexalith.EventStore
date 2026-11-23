@@ -194,6 +194,12 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
             File.Copy(origin, Path.Combine(root, Path.GetFileName(origin)));
         string project = Path.Combine(root, role + ".csproj");
         XDocument xml = XDocument.Load(project);
+        XElement framework = xml.Descendants("TargetFramework").Single();
+        if (source is not null)
+        {
+            // The immutable 3.128.2 source projects target .NET 10.
+            framework.Value = "net10.0";
+        }
         if (role == "Host" && version == SelectedVersion)
             xml.Root!.Add(new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "Hexalith.EventStore.Gateway"))));
         foreach (XElement reference in xml.Descendants("PackageReference").ToArray())
@@ -214,12 +220,12 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
         string cache = Path.Combine(root, "packages");
         var environment = new Dictionary<string, string> { ["CI"] = "true", ["NUGET_PACKAGES"] = cache };
         string configuration = source is null ? "Release" : "Debug";
-        string sdkOrigin = Path.Combine(repository, "global.json");
+        string sdkOrigin = Path.Combine(source ?? repository, "global.json");
         byte[] sdkPolicy = await File.ReadAllBytesAsync(sdkOrigin);
         await File.WriteAllBytesAsync(Path.Combine(root, "global.json"), sdkPolicy);
         string selectedSdk = (await runtime.RequireAsync("dotnet", ["--version"], root, environment: environment)).Trim();
-        ValidateSdkPolicy(sdkPolicy, selectedSdk);
-        string[] properties = ["-p:TargetFramework=net11.0", "-p:UseHexalithProjectReferences=false", "-p:MinVerVersionOverride=" + version];
+        ValidateSdkPolicy(sdkPolicy, selectedSdk, taggedSource: source is not null);
+        string[] properties = ["-p:UseHexalithProjectReferences=false", "-p:MinVerVersionOverride=" + version];
         await runtime.RequireAsync("dotnet", ["restore", project, "--configfile", Path.Combine(root, "NuGet.Config"), "--packages", cache,
             "--use-lock-file", "-p:Configuration=" + configuration, .. properties], root, TimeSpan.FromMinutes(5), environment);
         string assets = Path.Combine(root, "obj", "project.assets.json");
@@ -236,10 +242,11 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
         var resolvedVersions = resolved.RootElement.GetProperty("libraries").EnumerateObject()
             .Where(library => library.Name.StartsWith("Hexalith.EventStore.", StringComparison.Ordinal))
             .ToDictionary(library => library.Name.Split('/')[0], library => library.Name.Split('/')[1], StringComparer.Ordinal);
+        string outputDirectory = Path.Combine(root, "bin", configuration, framework.Value);
         var preparedAssemblyHashes = source is null ? null : Packages.Concat(role == "Host" && version == SelectedVersion ? ["Gateway"] : [])
             .Select(name => "Hexalith.EventStore." + name).ToDictionary(name => name,
-                name => QualificationRuntime.Hash(File.ReadAllBytes(Path.Combine(root, "bin", configuration, "net11.0", name + ".dll"))), StringComparer.Ordinal);
-        return new(role, version, configuration, project, Path.Combine(root, "bin", configuration, "net11.0", role + ".dll"), cache,
+                name => QualificationRuntime.Hash(File.ReadAllBytes(Path.Combine(outputDirectory, name + ".dll"))), StringComparer.Ordinal);
+        return new(role, version, configuration, project, Path.Combine(outputDirectory, role + ".dll"), cache,
             QualificationRuntime.Hash(await File.ReadAllBytesAsync(assets)),
             QualificationRuntime.Hash(await File.ReadAllBytesAsync(Path.Combine(root, "packages.lock.json"))),
             source is null ? null : SelectedSource,
@@ -247,16 +254,16 @@ internal sealed class ConsumerMaterializer(QualificationRuntime runtime, string 
             resolvedVersions, QualificationRuntime.Hash(await File.ReadAllBytesAsync(project)),
             source is null ? Coordinates.Single(coordinate => coordinate.Version == version).AssemblyHashes : null,
             QualificationRuntime.Hash(sdkPolicy), selectedSdk, sdkOrigin, preparedAssemblyHashes,
-            ConsumerBuild.ReadExecutableHashes(role, Path.Combine(root, "bin", configuration, "net11.0", role + ".dll")));
+            ConsumerBuild.ReadExecutableHashes(role, Path.Combine(outputDirectory, role + ".dll")));
     }
 
     /// <summary>Refuses an SDK outside the copied repository's explicit latest-patch policy.</summary>
-    internal static void ValidateSdkPolicy(byte[] policy, string selected)
+    internal static void ValidateSdkPolicy(byte[] policy, string selected, bool taggedSource)
     {
         using JsonDocument json = JsonDocument.Parse(policy);
         JsonElement sdk = json.RootElement.GetProperty("sdk");
         Version required = Version.Parse(sdk.GetProperty("version").GetString()!);
-        if (required.Major != 11 || sdk.GetProperty("rollForward").GetString() != "latestPatch" || !Version.TryParse(selected, out Version? actual)
+        if (required.Major != (taggedSource ? 10 : 11) || sdk.GetProperty("rollForward").GetString() != "latestPatch" || !Version.TryParse(selected, out Version? actual)
             || actual.Major != required.Major || actual.Minor != required.Minor
             || actual.Build / 100 != required.Build / 100 || actual.Build < required.Build)
             throw new InvalidOperationException("The selected SDK does not satisfy the copied repository latestPatch policy.");

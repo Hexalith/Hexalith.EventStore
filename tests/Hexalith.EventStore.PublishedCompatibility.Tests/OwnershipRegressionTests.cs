@@ -239,16 +239,22 @@ public sealed class OwnershipRegressionTests
 
     /// <summary>The selected SDK must satisfy the exact copied latest-patch policy.</summary>
     [Theory]
-    [InlineData("11.0.103", true)]
-    [InlineData("11.0.100", false)]
-    [InlineData("11.0.200", false)]
-    [InlineData("10.0.402", false)]
-    public void ExplicitSdkPolicyRefusesDrift(string selected, bool allowed)
+    [InlineData(false, "11.0.102", "11.0.103", true)]
+    [InlineData(false, "11.0.102", "11.0.100", false)]
+    [InlineData(false, "11.0.102", "11.0.200", false)]
+    [InlineData(false, "11.0.102", "10.0.402", false)]
+    [InlineData(false, "10.0.402", "10.0.402", false)]
+    [InlineData(true, "10.0.402", "10.0.402", true)]
+    [InlineData(true, "10.0.402", "10.0.404", true)]
+    [InlineData(true, "10.0.402", "11.0.100", false)]
+    [InlineData(true, "11.0.100", "11.0.100", false)]
+    public void ExplicitSdkPolicyRefusesDrift(bool taggedSource, string required, string selected, bool allowed)
     {
-        byte[] policy = "{\"sdk\":{\"version\":\"11.0.102\",\"rollForward\":\"latestPatch\"}}"u8.ToArray();
-        if (allowed) ConsumerMaterializer.ValidateSdkPolicy(policy, selected);
-        else Should.Throw<InvalidOperationException>(() => ConsumerMaterializer.ValidateSdkPolicy(policy, selected));
+        byte[] policy = JsonSerializer.SerializeToUtf8Bytes(new { sdk = new { version = required, rollForward = "latestPatch" } });
+        if (allowed) ConsumerMaterializer.ValidateSdkPolicy(policy, selected, taggedSource);
+        else Should.Throw<InvalidOperationException>(() => ConsumerMaterializer.ValidateSdkPolicy(policy, selected, taggedSource));
     }
+
     /// <summary>Foreign container environment and command values are absent from every retained inventory response.</summary>
     [Fact]
     public async Task ForeignContainerDiagnosticsContainOnlyIdentityStateAndOwnerAsync()

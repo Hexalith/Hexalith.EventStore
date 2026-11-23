@@ -30,6 +30,8 @@ $ dotnet --list-runtimes
 
 The output must include both `Microsoft.NETCore.App 11.x` and `Microsoft.AspNetCore.App 11.x`. The repository's retained historical package and wire-compatibility suites also require the [.NET 10 ASP.NET Core runtime](https://dotnet.microsoft.com/download/dotnet/10.0); it is not required to run current EventStore applications.
 
+The published compatibility suite builds v3.128.2 from its original source. Install the .NET 10.0.4xx SDK alongside .NET 11 for that suite. The tag selects 10.0.402 and allows later patches in the same feature band. Run `dotnet --list-sdks` to verify both SDKs are installed.
+
 Contributors running the full package-consumer checks also need the .NET 10.0.4xx SDK (10.0.403 or a later patch). A separate fixture uses that SDK to verify that the new REST generator refuses an unsupported compiler host with `HXRESTSDK001`.
 
 ## .NET Aspire CLI
