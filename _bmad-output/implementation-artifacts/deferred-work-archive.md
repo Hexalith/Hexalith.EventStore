@@ -1528,3 +1528,213 @@ archived: 2026-09-18
 evidence: Release `Hexalith.EventStore.Client.Tests.Indexes.AdminOperationalIndexHostedServiceTests` 12/12, 0 skipped, 0.586s. Live Story 4.7 proof `Generated_tenants_api_get_tenant_reads_verified_redis_state_without_projection_authority` 1/1, 0 skipped, 26.173s after Redis catalogs were deleted: Event 6104 persisted recovered query-type indexes for 2 domains while Event 6101 still skipped projection/type-catalog writes; EventStore invoked `tenants/method/query`; DAPR hash `eventstore||admin:query-types:tenants` contained `get-tenant`, `get-tenant-audit`, `get-tenant-users`, `get-user-tenants`, and `list-tenants`.
 resolution: `AdminOperationalIndexHostedService` now writes `admin:query-types:{domain}` for every domain whose metadata loaded successfully, including when sibling sources fail, and `RefreshAsync` rewrites that catalog when a binding recovers. Named-route `Replace` and projection/type-catalog indexes remain all-or-nothing.
 
+### DW-47: MEDIUM — Generator: `{tenantId}` route parameter is unvalidated under `RestTenantSource.System`. `IsTenantParameter` (`src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:1143`) is name-based and not gated on tenant source, so the tenant-named route segment is excluded from route/body mismatch checks and, under System source, is decorative — a URL/body tenant mismatch silently executes against the body tenant (still bearer-authorized, so no escalation). Recommend validating tenant-named route params against the body when tenant source ≠ Route.
+
+origin: migrated from legacy ledger ("Deferred from: code review of D-7-proof-tenants-ui-host-submodule (2026-07-04)"), 2026-08-30
+location: src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:1143
+reason: MEDIUM — Generator: `{tenantId}` route parameter is unvalidated under `RestTenantSource.System`. `IsTenantParameter` (`src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:1143`) is name-based and not gated on tenant source, so the tenant-named route segment is excluded from route/body mismatch checks and, under System source, is decorative — a URL/body tenant mismatch silently executes against the body tenant (still bearer-authorized, so no escalation). Recommend validating tenant-named route params against the body when tenant source ≠ Route.
+status: done 2026-11-22
+archived: 2026-11-23
+resolution: The generator applies the effective tenant source to command route diagnostics and body reconciliation. HESREST009 covers unmapped tenant-named segments, and executing fixtures cover mapped values under a Claims override.
+
+### DW-66: `RestQueryBindingAttribute` runtime construction permits `EntitySource = None` with a non-null entity value even though the generator rejects that shape.
+
+origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
+location: RestQueryBindingAttribute
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md` summary: `RestQueryBindingAttribute` runtime construction permits `EntitySource = None` with a non-null entity value even though the generator rejects that shape. evidence: The attribute stores `EntityValue` unchanged when `entitySource == RestQueryBindingSource.None`, while `RestApiControllerEmitter` treats a value with `None` as invalid metadata; the mismatch pre-dates Story 2.1 and needs generator/contract hardening rather than a contract-seam patch.
+status: done 2026-11-10
+archived: 2026-11-23
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Runtime construction now rejects every non-null entity value with None. Roslyn parsing preserves omitted and explicit null values; runtime and source/referenced-generator regressions cover these shapes.
+
+### DW-67: `RestQueryBindingAttribute` preserves padded route/constant binding values that can fail generator route-parameter lookup later.
+
+origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
+location: RestQueryBindingAttribute
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md` summary: `RestQueryBindingAttribute` preserves padded route/constant binding values that can fail generator route-parameter lookup later. evidence: `ValidateValue` accepts and preserves values such as `" tenantId "`, while the generator route lookup compares binding route names to parsed route parameters without trimming; the issue is real but existed before this story and belongs with REST generator binding hardening.
+status: done 2026-11-10
+archived: 2026-11-23
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Runtime attributes and HESREST012 reject leading/trailing whitespace on route and constant bindings without trimming literal identifiers. Tests cover both aggregate/entity values, runtime Unicode whitespace, referenced contracts and preserved internal spaces.
+
+### DW-68: Undefined `RestTenantSource` values can flow through the generator as non-standard tenant-source text.
+
+origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
+location: RestTenantSource
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md` summary: Undefined `RestTenantSource` values can flow through the generator as non-standard tenant-source text. evidence: `RoslynAttributeValueReader.GetEnumName` returns the numeric text for an out-of-range enum value, and generated `ResolveTenant` only handles `System` and `Route` specially before falling back to claims behavior; robust handling needs a generator diagnostic or explicit invalid-enum policy outside this contract-seam pass.
+status: done 2026-11-10
+archived: 2026-11-23
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. HESREST014 rejects undefined assembly and route tenant-source values before controller emission. Tests preserve all five defined values and existing inheritance behavior; the separate tenant-boundary migration is unchanged.
+
+### DW-69: Generated command endpoints do not emit the canonical 1 MiB request-body limit used by platform gateway command and query controllers.
+
+origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
+location: n/a
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md` summary: Generated command endpoints do not emit the canonical 1 MiB request-body limit used by platform gateway command and query controllers. evidence: `CommandsController.Submit`, `QueriesController.Submit`, validation controllers, replay, and stream endpoints declare `[RequestSizeLimit(1_048_576)]`, but generated command actions in `RestApiControllerEmitter.AppendCommandAction` accept `[FromBody]` contract payloads without a generated `RequestSizeLimit` attribute. The gap existed in the prior generator and was surfaced incidentally during the Story 2.2 follow-up review; fixing it needs a deliberate generated API-host payload-size policy.
+status: done 2026-11-10
+archived: 2026-11-23
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Generated command actions now declare RequestSizeLimit(1_048_576). An executing generated-controller fixture verifies the compiled IRequestSizeLimitMetadata limit.
+
+### DW-70: Generated command problem mapping drops safe domain-rejection extensions such as `rejectionType` and `correctiveAction`.
+
+origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
+location: rejectionType
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md` summary: Generated command problem mapping drops safe domain-rejection extensions such as `rejectionType` and `correctiveAction`. evidence: `DomainCommandRejectedExceptionHandler` emits `GatewayProblemDetailsExtensions.RejectionType` and `CorrectiveAction`, and `EventStoreGatewayClient` captures arbitrary non-standard ProblemDetails extensions in `EventStoreGatewayException.Extensions`, but generated controllers currently forward only correlation, tenant, reason, reasonCode, and filtered validation errors. The omission pre-dates this review pass and needs a deliberate generated API extension allowlist.
+status: done 2026-11-22
+archived: 2026-11-23
+resolution: Generated command adapters preserve bounded rejection event IDs and the applicable published corrective action for a canonical domain rejection. Tests exercise the real Gateway client and verify that malformed and unrelated extensions are omitted.
+
+### DW-72: Generated query actions map caught `ArgumentException` messages directly into client-facing ProblemDetails.
+
+origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
+location: ArgumentException
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md` summary: Generated query actions map caught `ArgumentException` messages directly into client-facing ProblemDetails. evidence: `RestApiControllerEmitter.AppendQueryAction` catches `ArgumentException` and calls `CreateProblem(..., ex.Message)`, bypassing the support-safe display-text filtering used for gateway exceptions. The catch existed before Story 2.2 and should be hardened separately with a fixed safe message or shared sanitizer.
+status: done 2026-11-10
+archived: 2026-11-23
+resolution: Implemented by `spec-five-rest-generator-deferred-fixes.md`. Generated query actions return a fixed safe 400 detail for ArgumentException. An executing generated-controller regression supplies credential/path-bearing exception text and verifies that only the fixed detail is returned.
+
+### DW-81: Public `AddEventStoreDaprServiceInvocation` does not format-validate `appId`
+
+origin: migrated from legacy ledger ("Deferred from: code review of 2-7-outbound-dapr-routing-header-ownership (2026-07-10)"), 2026-08-30
+location: EventStoreServiceCollectionExtensions.cs:68
+reason: **Public `AddEventStoreDaprServiceInvocation` does not format-validate `appId`** (`EventStoreServiceCollectionExtensions.cs:68`) — only `ThrowIfNullOrWhiteSpace`. On the published `Hexalith.EventStore.Client` package, an external consumer passing a whitespace/control-char `appId` gets fail-fast broken routing (a CR/LF value is dropped by `TryAddWithoutValidation`). In-repo callers pass safe literals, so no live impact. The one item on new public surface worth a later hardening patch (independent of the regex-guard disposition).
+status: done 2026-11-14
+archived: 2026-11-23
+resolution: Resolved by current code (`596de60e1`) and covered by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`: the fixed-value overload calls `DaprServiceInvocationHandler.ValidateAppId` at registration, which rejects blank ids and any character outside ASCII letters, digits, `-`, `.` and `_`. Tests: `DaprServiceInvocationRegistrationTests.AddEventStoreDaprServiceInvocation_WithMalformedAppId_ThrowsArgumentException` (`app\r\nid`, `app id`, `app/id`) and `AddEventStoreDaprServiceInvocation_WithBlankAppId_ThrowsArgumentException`.
+
+### DW-101: Body-ETag fallback can surface a non-gateway validator on a `ProjectionBacked` route with no gateway ETag (`QueriesController.cs:210` `ETag: gatewayETag ?? producerMetadata?.ETag`; `EventStoreGatewayClient.cs:343` `ETag = eTag ?? normalized.ETag`). Reachable only when a non-conformant producer claims `ProjectionBacked`, omits `ProjectionType` (skipping the gateway ETag fetch) AND fabricates an ETag; the platform projection actor never sets `metadata.ETag`, and the leaked value cannot drive a false 304 (that needs the gateway-computed `currentETag`). Hardening: only surface the gateway-issued ETag as the opaque validator; do not fall back to producer body ETag.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
+location: QueriesController.cs:210
+reason: Body-ETag fallback can surface a non-gateway validator on a `ProjectionBacked` route with no gateway ETag (`QueriesController.cs:210` `ETag: gatewayETag ?? producerMetadata?.ETag`; `EventStoreGatewayClient.cs:343` `ETag = eTag ?? normalized.ETag`). Reachable only when a non-conformant producer claims `ProjectionBacked`, omits `ProjectionType` (skipping the gateway ETag fetch) AND fabricates an ETag; the platform projection actor never sets `metadata.ETag`, and the leaked value cannot drive a false 304 (that needs the gateway-computed `currentETag`). Hardening: only surface the gateway-issued ETag as the opaque validator; do not fall back to producer body ETag. [edge-case-hunter]
+status: done 2026-11-23
+archived: 2026-11-23
+resolution: The gateway publishes only its selected validator and requires a named projection to promote a producer ETag. The client uses the HTTP header as its sole ETag authority. Gateway and client tests cover missing projection targets and body-only validators.
+
+### DW-102: Real-path handler-vs-projection route→provenance proof (`QueryResponseProvenanceE2ETests`) runs in no CI workflow — it is Tier-3 (gated out; the dev ran it manually in source-debug mode), and the Tier-2 persistence test injects the route result rather than exercising `HandlerAwareQueryRouter`'s real handler-vs-projection selection. Pre-existing Tier-3-not-gated constraint tracked by Epic 3 Story 3.1. Lighter-weight guard: a Tier-2 `Server.Tests` test that resolves the real `HandlerAwareQueryRouter` + handler registry and asserts stamped provenance per route.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
+location: QueryResponseProvenanceE2ETests
+reason: Real-path handler-vs-projection route→provenance proof (`QueryResponseProvenanceE2ETests`) runs in no CI workflow — it is Tier-3 (gated out; the dev ran it manually in source-debug mode), and the Tier-2 persistence test injects the route result rather than exercising `HandlerAwareQueryRouter`'s real handler-vs-projection selection. Pre-existing Tier-3-not-gated constraint tracked by Epic 3 Story 3.1. Lighter-weight guard: a Tier-2 `Server.Tests` test that resolves the real `HandlerAwareQueryRouter` + handler registry and asserts stamped provenance per route. [verification-gap+blind-hunter+acceptance-auditor]
+status: done 2026-11-23
+archived: 2026-11-23
+resolution: The Server.Tests composition lane resolves the production router, the concrete projection router, and the Dapr registry from DI. Tests verify both committed route targets, their payload and provenance, and the advisory state read against contradictory index data.
+
+### DW-103: Single-source the canonical provenance-name formatter — `QueriesController.cs:127` emits the `X-Hexalith-Query-Provenance` header via `Provenance.ToString()` while the client (`GetProvenanceHeader`) and generated controller use an explicit canonical `nameof` switch. Safe today only because provenance is normalized to a defined value before that line; a future path that reaches it with an out-of-range value would emit a numeric string the strict parser maps to `Unknown`.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
+location: QueriesController.cs:127
+reason: Single-source the canonical provenance-name formatter — `QueriesController.cs:127` emits the `X-Hexalith-Query-Provenance` header via `Provenance.ToString()` while the client (`GetProvenanceHeader`) and generated controller use an explicit canonical `nameof` switch. Safe today only because provenance is normalized to a defined value before that line; a future path that reaches it with an out-of-range value would emit a numeric string the strict parser maps to `Unknown`. [blind-hunter+acceptance-auditor]
+status: done 2026-11-22
+archived: 2026-11-23
+resolution: The shared Contracts policy supplies canonical provenance names and normalization to the Gateway, generated controller, JSON converter, and client. Undefined values emit Unknown.
+
+### DW-104: Duplicated projection-evidence sanitization across two assemblies — server `QueriesController.NormalizeProducerMetadata` and client `EventStoreGatewayClient.NormalizeMetadata` independently null `{ETag, IsNotModified, IsStale, ProjectionVersion}` for non-projection routes. Any future field added to "projection evidence" must be cleared in both, in two assemblies, or a leak/asymmetry appears. Consider a shared helper.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
+location: QueriesController.NormalizeProducerMetadata
+reason: Duplicated projection-evidence sanitization across two assemblies — server `QueriesController.NormalizeProducerMetadata` and client `EventStoreGatewayClient.NormalizeMetadata` independently null `{ETag, IsNotModified, IsStale, ProjectionVersion}` for non-projection routes. Any future field added to "projection evidence" must be cleared in both, in two assemblies, or a leak/asymmetry appears. Consider a shared helper. [blind-hunter]
+status: done 2026-11-23
+archived: 2026-11-23
+resolution: The gateway and client now use the same Contracts policy to normalize provenance and lifecycle and remove projection evidence while retaining operational metadata.
+
+### DW-105: Minor test-hardening — the converter `Write` out-of-range default branch (`QueryResponseProvenanceJsonConverter.Write` → `nameof(Unknown)`) and the `EnforceFreshnessPolicy` non-`ProjectionBacked` → 400 branch lack direct assertions; both are fail-safe downstream (values normalized before serialization; freshness fails closed regardless), so low reachability.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
+location: QueryResponseProvenanceJsonConverter.Write
+reason: Minor test-hardening — the converter `Write` out-of-range default branch (`QueryResponseProvenanceJsonConverter.Write` → `nameof(Unknown)`) and the `EnforceFreshnessPolicy` non-`ProjectionBacked` → 400 branch lack direct assertions; both are fail-safe downstream (values normalized before serialization; freshness fails closed regardless), so low reachability. [verification-gap]
+status: done 2026-11-23
+archived: 2026-11-23
+resolution: The Contracts test directly confirms undefined provenance serializes as Unknown. Gateway tests confirm HandlerComputed and Unknown results with apparent freshness fail a RequireFresh request with the ProjectionStale reason and HTTP 400.
+
+### DW-106: Weak-ETag rejection is not route-aware — `EventStoreGatewayClient.GetETag` (called at `:174` on the 200 path, `:404` throw) rejects a weak `ETag` before provenance is known, failing the whole query even for a non-projection route that would discard the ETag. The EventStore server only ever emits strong ETags, so this is robustness against a header-rewriting intermediary, not a live path.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 2-8-query-response-provenance-contract-and-route-aware-gateway-etag (2026-07-13)"), 2026-08-30
+location: EventStoreGatewayClient.GetETag
+reason: Weak-ETag rejection is not route-aware — `EventStoreGatewayClient.GetETag` (called at `:174` on the 200 path, `:404` throw) rejects a weak `ETag` before provenance is known, failing the whole query even for a non-projection route that would discard the ETag. The EventStore server only ever emits strong ETags, so this is robustness against a header-rewriting intermediary, not a live path. [edge-case-hunter]
+status: done 2026-11-23
+archived: 2026-11-23
+resolution: The client evaluates effective provenance before reading the ETag on a successful response. Weak ETags on non-projection 200 responses are ignored. Weak validators are rejected on projection-backed 200 responses, and weak or missing validators on 304 produce 502.
+
+### DW-119: Operational-index metadata request binding can deserialize `Domains` as null and then dereference `request.Domains.Count`, returning an internal error instead of a bounded malformed-request response. Add null-safe request validation.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
+location: src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:248
+reason: Operational-index metadata request binding can deserialize `Domains` as null and then dereference `request.Domains.Count`, returning an internal error instead of a bounded malformed-request response. Add null-safe request validation. [`src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:248`]
+status: done 2026-11-14
+archived: 2026-11-23
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. The capability-bound metadata branch now returns 400 `UnsupportedCapability` unless `domains` holds exactly one non-blank domain, instead of dereferencing a null list; the unbound branch already tolerated null. Test: `EventStoreDomainServiceExtensionsTests.NamedMetadataEndpoint_CapabilityBoundRequestWithoutUsableDomain_ReturnsBadRequest` (raw JSON: absent, null, `[null]`, `[""]` and `["  "]`).
+
+### DW-158: Validate `DomainServiceOptions.MaxEventsPerResult` and `MaxEventSizeBytes` bounds during startup instead of allowing zero or negative limits to reject otherwise valid responses at invocation time.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-22, runtime/unit chunk)"), 2026-08-30
+location: src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:107
+reason: source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` summary: Validate `DomainServiceOptions.MaxEventsPerResult` and `MaxEventSizeBytes` bounds during startup instead of allowing zero or negative limits to reject otherwise valid responses at invocation time. evidence: The fields and response-limit behavior predate this review range. The new startup validation at `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:107` covers only `InvocationTimeoutSeconds`; adding the two existing bounds is real hardening but is not caused by the Story 1.20 corrective change.
+status: done 2026-11-14
+archived: 2026-11-23
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. Startup options validation now rejects negative `MaxEventsPerResult` or `MaxEventSizeBytes` with `OptionsValidationException`; zero stays valid because the invoker defines it as admitting only an empty boundary. Tests: `EventStoreServerServiceCollectionExtensionsTests.AddEventStoreServerRejectsNegativeDomainServiceResultLimitAtHostStartAsync` and `AddEventStoreServerAcceptsZeroDomainServiceResultLimitsAtHostStartAsync`.
+
+### DW-161: [LOW] The DAPR API token is captured by value at registration time, so a token rotated at runtime (secret remount, config reload) stays stale until process restart; an `IOptionsMonitor`-based handler factory would pick up rotations.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 2-5-dedicated-external-tenants-api-host (2026-07-26)"), 2026-08-30
+location: src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:70
+reason: source_spec: `_bmad-output/implementation-artifacts/2-5-dedicated-external-tenants-api-host.md` summary: [LOW] The DAPR API token is captured by value at registration time, so a token rotated at runtime (secret remount, config reload) stays stale until process restart; an `IOptionsMonitor`-based handler factory would pick up rotations. evidence: Story 2.5 code review (edge-case-hunter) [`src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:70`]. Pre-existing platform design, unchanged by this patch and identical to the deleted host-local handler. Owned by Hexalith.EventStore.
+status: done 2026-11-14
+archived: 2026-11-23
+resolution: Platform capability resolved by current code (`b6c903d0d`): the generic `AddEventStoreDaprServiceInvocation<TState>` overload resolves app id and token from DI state on every send, so reloadable options pick up rotations. Tests: `DaprServiceInvocationRegistrationTests.FactoriesUseDependencyInjectionOncePerSend` and `DaprServiceInvocationHandlerTests.SendAsyncWithRotatedOrRemovedCredentialResolvesEachSend` (valid, rotated, null and blank tokens). Admin.UI (`AdminUIServiceExtensions.cs:122`), Sample.Api (`Program.cs:42`), Sample.BlazorUI (`SampleUiGatewayServiceExtensions.cs:22`), Testing (`OwnerSourceReadServiceCollectionExtensions.cs:47`) and the Tenants API host (`Hexalith.Tenants.Api/Program.cs:145`, `:152`) still call the fixed-value overload and keep a startup-captured token; migration is tracked by the follow-up entry under "Deferred from: build of spec-dw-234-119-483-203-158-fail-closed-hardening.md (2026-11-14)".
+decision: 2026-09-06 Support live rotation — Resolve the token per request through validated IOptionsMonitor state and test valid, blank, and changed token snapshots.
+decision: 2026-09-06 Support live rotation — Resolve the token per request through validated IOptionsMonitor state and test valid, blank, and changed token snapshots.
+
+### DW-203: [LOW] The `requestTimeout` override parameter validates nothing. `TimeSpan.Zero`, any negative value, or a value above `int.MaxValue` ms throws inside the `try` and is swallowed into a permanent silent fail-open; `Timeout.InfiniteTimeSpan` is accepted and removes the fail-open bound the class documents as its core invariant.
+
+origin: migrated from legacy ledger ("Deferred from: code review of story-3.2 (2026-07-29)"), 2026-08-30
+location: src/Hexalith.EventStore.Server/Queries/DaprETagService.cs:45-46
+reason: source_spec: `_bmad-output/implementation-artifacts/3-2-harden-dapr-etag-timeout-for-integration-conditions.md` summary: [LOW] The `requestTimeout` override parameter validates nothing. `TimeSpan.Zero`, any negative value, or a value above `int.MaxValue` ms throws inside the `try` and is swallowed into a permanent silent fail-open; `Timeout.InfiniteTimeSpan` is accepted and removes the fail-open bound the class documents as its core invariant. evidence: Story 3.2 code review (edge-case-hunter), 2026-07-29. `Dapr.Actors.DaprHttpInteractor..ctor` does `httpClient.Timeout = requestTimeout ?? httpClient.Timeout`, and `HttpClient.Timeout` throws `ArgumentOutOfRangeException` for zero, negatives other than `Timeout.InfiniteTimeSpan`, and values above `int.MaxValue` ms. That throw occurs at `src/Hexalith.EventStore.Server/Queries/DaprETagService.cs:45-46`, inside the `try`, so the generic `catch` at `:57` returns null forever. For the infinite case, `ActorProxyOptions.RequestTimeout`'s own XML doc confirms it disables timeouts; combined with `proxy.GetCurrentETagAsync()` taking no `CancellationToken` (`:48`, deliberate — see the remoting-interface comment at `:36-44`), neither bound survives and `CachingProjectionActor.QueryAsync` (`src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs:50-52`) can block indefinitely. Real-world reachability is currently nil: all 13 `new DaprETagService(...)` sites in the repo are tests, and DI supplies nothing for the optional parameter. Rated LOW for that reason; it becomes material the moment a production caller supplies a value. Also note the in-file comment at `:42` still hardcodes "the 3 s RequestTimeout" although the window is now instance-dependent. Suggested durable fix: `ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(requestTimeout.Value, TimeSpan.Zero)` plus an upper bound in the constructor, so a bad value fails fast instead of failing open forever.
+status: done 2026-11-14
+archived: 2026-11-23
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. The `DaprETagService` constructor throws `ArgumentOutOfRangeException` for a `requestTimeout` below 1 millisecond or above 5 minutes, including `Timeout.InfiniteTimeSpan` and sub-millisecond values that `HttpClient` truncates to zero; null keeps the 3 s default and the stale "3 s" comment is reworded. Tests: `DaprETagServiceTests.Constructor_RejectsRequestTimeoutOutsideFiniteBound` and `GetCurrentETagAsync_AcceptsRequestTimeoutBoundary` (1 ms and 5 min).
+
+### DW-205: [MEDIUM] `RepositoryProjectPaths.GetReferencedModuleProjectPath` probes a root-level `<root>/Hexalith.<Module>/` checkout at higher precedence than `references/`, and its docstring falsely claims the candidate order mirrors `Directory.Build.props`.
+
+origin: migrated from legacy ledger ("Deferred from: code review of story-3.3 (2026-07-29)"), 2026-08-30
+location: <root>/Hexalith.<Module>/
+reason: source_spec: `_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md` summary: [MEDIUM] `RepositoryProjectPaths.GetReferencedModuleProjectPath` probes a root-level `<root>/Hexalith.<Module>/` checkout at higher precedence than `references/`, and its docstring falsely claims the candidate order mirrors `Directory.Build.props`. evidence: Story 3.3 code review (blind-hunter, verified 2026-07-29 at HEAD `1d42528b`). `src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs:80` is candidate 4, `Path.Combine(root, moduleDirectory, relative)` (commented "root-level sibling module checkout"), evaluated before candidate 5 `standalone` = `<root>/references/<module>/…` at `:81`. The docstring at `:44-51` states the helper probes "every checkout layout in the same order as the `$(Hexalith*Root)` auto-detection in `Directory.Build.props`" — that is false: `Directory.Build.props:23` puts `references/Hexalith.Tenants/src` first (with an explicit comment that it "takes precedence… over any sibling/standalone clone"), `:40` puts `references/Hexalith.Commons` first, and `grep -c 'MSBuildThisFileDirectory)Hexalith\.' Directory.Build.props` returns **0** — MSBuild has no root-level probe at all. Consequence: a stray root-level `Hexalith.Tenants/` directory silently shadows `references/Hexalith.Tenants`, which is exactly the root-level path assumption FR19 exists to retire, and the AppHost could launch a different csproj than it builds. Not patched because AC4 forbids replacing the flexible resolver absent a proven break, Dev Notes `:169` explicitly accepts it ("the required invariant is that `references/` remains the fallback/convention"), and AC1 verified no such directory exists today. Text-based stale-path scans structurally cannot see it because the path is composed via `Path.Combine`. Suggested durable fix, smallest first: correct the docstring to describe actual precedence; then reorder candidate 4 below `standalone` so `references/` wins, guarded by a test.
+status: done 2026-10-18
+archived: 2026-11-23
+resolution: Resolved by Platform Story 1.10 (the Hexalith.Platform repository's `_bmad-output/implementation-artifacts/spec-1-10-run-and-debug-eventstore-and-memories-from-the-platform-workspace.md`). `GetReferencedModuleProjectPath` no longer probes: when `<root>/<Module>.slnx` exists the dependency is the consuming repository and resolves under `<root>`; otherwise it resolves under the direct submodule `<root>/references/<Module>`. Any other case throws `InvalidOperationException` naming the dependency and the expected path, so a root-level, sibling or ancestor copy can no longer shadow or replace `references/`. The docstring now describes this rule instead of claiming a `Directory.Build.props` order.
+
+### DW-206: [MEDIUM] AC4 was closed without any test proving that a present module under `references/` resolves; 5 of the 7 resolver candidates are entirely uncovered.
+
+origin: migrated from legacy ledger ("Deferred from: code review of story-3.3 (2026-07-29)"), 2026-08-30
+location: references/
+reason: source_spec: `_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md` summary: [MEDIUM] AC4 was closed without any test proving that a **present** module under `references/` resolves; 5 of the 7 resolver candidates are entirely uncovered. evidence: Story 3.3 code review (blind-hunter + acceptance-auditor), verified 2026-07-29. `tests/Hexalith.EventStore.AppHost.Tests/Configuration/RepositoryProjectPathsTests.cs` has 9 tests (5 `[Fact]` + 4 `[InlineData]`), of which exactly one touches the referenced-module helper: `GetReferencedModuleProjectPath_WhenModuleMissing_ReturnsReferencesFallback` (`:31-46`). That case returns the `standalone` path only because **nothing on disk exists** — it exercises the no-match `return standalone` at `RepositoryProjectPaths.cs:94`, never candidate 5 itself. Candidates 2, 3, 4, 6 and 7 (`:78-83`) have no coverage. A verification-and-reconciliation story for FR19 therefore added zero coverage to the single helper FR19's Aspire clause depends on. Suggested durable fix: drive the helper against a temporary directory tree so each layout can be materialised and asserted; this requires making the repository root injectable, since `GetRepositoryRoot()` (`:104`) derives from `AppContext.BaseDirectory`.
+status: done 2026-10-18
+archived: 2026-11-23
+resolution: Resolved by Platform Story 1.10 (the Hexalith.Platform repository's `_bmad-output/implementation-artifacts/spec-1-10-run-and-debug-eventstore-and-memories-from-the-platform-workspace.md`). The rule is applied through the internal `RepositoryProjectPaths.ResolveReferencedModuleProjectPath(root, …)`, which takes an injectable root. `RepositoryProjectPathsTests` now materialises temporary trees and asserts the self case, the self case winning over a `references/` copy, the self case with a missing project, a present module under `references/`, and five unmapped layouts (sibling, parent `references/`, ancestor, grand-ancestor, root-level), each throwing with the dependency and the expected `references/` path. The public entry point is covered by the gateway metadata case and an unmapped-module throw case.
+
+### DW-234: [HIGH] Dead-letter `cloudevent.id` is keyed on `CorrelationId`, so two dead-letters sharing a correlation id can be deduplicated away by subscribers.
+
+origin: migrated from legacy ledger ("Deferred from: code review of 4-4-committed-event-publication-recovery (2026-08-07)"), 2026-08-30
+location: src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs:56
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md` summary: [HIGH] Dead-letter `cloudevent.id` is keyed on `CorrelationId`, so two dead-letters sharing a correlation id can be deduplicated away by subscribers. evidence: `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs:56` sets `["cloudevent.id"] = safeMessage.CorrelationId`, unlike event publication which uses the per-event `MessageId` (`EventPublisher.cs:200`). Pre-existing since the dead-letter path was introduced, but Story 4.4 makes it load-bearing: drain exhaustion is now a terminal data-loss sink, so a deduplicated exhaustion dead-letter means committed events vanish with no trace. Fix by carrying a per-message id override so exhaustion publishes with `cloudevent.id` = the reduced command's `MessageId`.
+status: done 2026-11-14
+archived: 2026-11-23
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. `DeadLetterPublisher` now sets `cloudevent.id` to `Command.MessageId`, so dead-letters sharing a correlation id keep distinct ids and drain exhaustion publishes the reduced envelope's tracking identity. Caveat: a legacy drain record without a `MessageId` falls back to its tracking id (the correlation id), so only message-keyed drain records are guaranteed distinct. Tests: `DeadLetterPublisherTests.PublishDeadLetter_SameCorrelationIdDifferentMessageIds_PublishesDistinctCloudEventIds` and `PublishDeadLetter_DrainExhaustion_UsesReducedCommandMessageIdAsCloudEventId`.
+
+### DW-483: Treat touched `CurrentSequence == 0` streams as empty in `GetEventsAsync`.
+
+origin: migrated from legacy ledger ("unsectioned flat append and 2026-09-06 code review of spec-5-1-infrastructure-failure-cache-clear"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`GetEventsAsync`; legacy location 1449)
+reason: `GetEventsAsync` still throws `InvalidOperationException` for persisted metadata with `CurrentSequence == 0`, while `GetStreamMetadataAsync` and `ReadEventsRangeAsync` accept the same touched-empty stream and return empty results. Story 5.1 changed only metadata-read cancellation propagation, so this pre-existing read-contract inconsistency remains separate.
+status: done 2026-11-14
+archived: 2026-11-23
+resolution: Implemented by `spec-dw-234-119-483-203-158-fail-closed-hardening.md`. `GetEventsAsync` now rejects only negative `CurrentSequence`, so a touched-empty stream returns `[]` like `ReadEventsRangeAsync`. Tests: `AggregateActorGetEventsTests.GetEventsAsync_TouchedEmptyStream_ReturnsEmptyArray` and `GetEventsAsync_NegativeCurrentSequence_ThrowsInvalidOperationException`.
+
+### DW-543: Consolidate the gateway correlation-ID predicate with the AD-32 rule
+
+origin: bmad-review of Story 6.6 (epics.md), 2026-10-09
+location: src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs:IsValidIdentifier; SubmitCommandRequestValidator
+severity: low
+reason: Optional. The gateway predicate also requires an alphanumeric first and last character, which is stricter than AD-32 (1-128 ASCII alphanumeric or hyphen characters). Story 6.6 AC6 implements the AD-32 rule in Contracts for event identity, so two definitions remain until the gateway reuses the Contracts predicate. Outside the Story 6.6 acceptance criteria.
+status: done 2026-11-23
+archived: 2026-11-23
+resolution: Gateway header and command-body correlation validation reuse the Contracts AD-32 grammar, including edge hyphens. Status and replay path values retain their v1 lookup rules.
+
