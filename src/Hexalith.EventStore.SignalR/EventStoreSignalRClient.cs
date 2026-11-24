@@ -16,6 +16,11 @@ namespace Hexalith.EventStore.SignalR;
 public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     private const string CategoryName = "Hexalith.EventStore.SignalR.EventStoreSignalRClient";
     private const int MaxGroupScopeLength = 64;
+
+    // Mirror the hub's group-segment bounds (ProjectionChangedHub.ValidateGroupSegments) so an unjoinable group is
+    // refused at subscribe time instead of failing every membership reconciliation after a reconnect.
+    private const int MaxProjectionTypeLength = 100;
+    private const int MaxTenantIdLength = 64;
     private static readonly TimeSpan MembershipAttemptBudget = TimeSpan.FromSeconds(5);
     private long _connectionRecoveryEpoch = -1;
     private int _membershipRecoveryPending;
@@ -176,8 +181,8 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         ThrowIfDisposing();
         using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
         CancellationToken token = invocation.Token;
-        ValidateGroupPart(projectionType, nameof(projectionType));
-        ValidateGroupPart(tenantId, nameof(tenantId));
+        ValidateGroupPart(projectionType, nameof(projectionType), MaxProjectionTypeLength);
+        ValidateGroupPart(tenantId, nameof(tenantId), MaxTenantIdLength);
         ArgumentNullException.ThrowIfNull(onChanged);
 
         token.ThrowIfCancellationRequested();
@@ -253,8 +258,8 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         ThrowIfDisposing();
         using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
         CancellationToken token = invocation.Token;
-        ValidateGroupPart(projectionType, nameof(projectionType));
-        ValidateGroupPart(tenantId, nameof(tenantId));
+        ValidateGroupPart(projectionType, nameof(projectionType), MaxProjectionTypeLength);
+        ValidateGroupPart(tenantId, nameof(tenantId), MaxTenantIdLength);
         string? normalizedScope = NormalizeScope(groupScope, nameof(groupScope));
         ArgumentNullException.ThrowIfNull(onChanged);
 
@@ -408,8 +413,8 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     private async Task RemoveCallbacksAsync(string projectionType, string tenantId, string? scope, Delegate? original,
         bool detail, CancellationToken cancellationToken) {
         using var invocation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
-        ValidateGroupPart(projectionType, nameof(projectionType));
-        ValidateGroupPart(tenantId, nameof(tenantId));
+        ValidateGroupPart(projectionType, nameof(projectionType), MaxProjectionTypeLength);
+        ValidateGroupPart(tenantId, nameof(tenantId), MaxTenantIdLength);
         string? normalizedScope = NormalizeScope(scope, nameof(scope));
         string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
         Task[] drains;
@@ -702,11 +707,20 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         }
     }
 
-    private static void ValidateGroupPart(string value, string paramName) {
+    private static void ValidateGroupPart(string value, string paramName, int maxLength) {
         ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
 
         if (value.Contains(':', StringComparison.Ordinal)) {
             throw new ArgumentException($"{paramName} must not contain ':'.", paramName);
+        }
+
+        if (value.Length > maxLength) {
+            throw new ArgumentException($"{paramName} must not exceed {maxLength} characters.", paramName);
+        }
+
+        if (value.Any(static character => char.IsControl(character)
+            || char.GetUnicodeCategory(character) == System.Globalization.UnicodeCategory.Format)) {
+            throw new ArgumentException($"{paramName} must not contain control or format characters.", paramName);
         }
     }
 
@@ -733,7 +747,9 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         => exception.Message.Contains("Invalid projection membership snapshot.", StringComparison.Ordinal)
             || exception.Message.Contains("Maximum groups per connection", StringComparison.Ordinal)
             || exception.Message.Contains("Unsupported projection membership protocol.", StringComparison.Ordinal)
-            || exception.Message.Contains("Tenant scope is invalid or reserved.", StringComparison.Ordinal);
+            || exception.Message.Contains("Tenant scope is invalid or reserved.", StringComparison.Ordinal)
+            || exception.Message.Contains("projectionType and tenantId are required.", StringComparison.Ordinal)
+            || exception.Message.Contains("projectionType must not", StringComparison.Ordinal);
 
     private static bool IsAuthorizationRejection(HubException exception)
         => exception.Message.Contains("Tenant authorization failed.", StringComparison.Ordinal);

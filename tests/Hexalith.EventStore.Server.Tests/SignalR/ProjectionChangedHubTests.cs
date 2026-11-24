@@ -518,8 +518,10 @@ public class ProjectionChangedHubTests {
         IGroupManager groups = Substitute.For<IGroupManager>();
         ProjectionChangedHub sut = CreateHub("conn-leave-null-projection", groups, user: CreateUser("acme"));
 
-        _ = await Should.ThrowAsync<ArgumentException>(() =>
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
             sut.LeaveGroup(projectionType!, "acme"));
+
+        ex.Message.ShouldContain("are required");
 
         await groups.DidNotReceive().RemoveFromGroupAsync(
             "conn-leave-null-projection", Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -533,8 +535,10 @@ public class ProjectionChangedHubTests {
         IGroupManager groups = Substitute.For<IGroupManager>();
         ProjectionChangedHub sut = CreateHub("conn-leave-null-tenant", groups, user: CreateUser("acme"));
 
-        _ = await Should.ThrowAsync<ArgumentException>(() =>
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
             sut.LeaveGroup("order-list", tenantId!));
+
+        ex.Message.ShouldContain("are required");
 
         await groups.DidNotReceive().RemoveFromGroupAsync(
             "conn-leave-null-tenant", Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -551,6 +555,169 @@ public class ProjectionChangedHubTests {
         ex.Message.ShouldContain("must not contain colons");
         await groups.DidNotReceive().RemoveFromGroupAsync(
             "conn-scoped-leave-projection-colon", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LeaveGroupScoped_TenantIdContainsColon_ThrowsHubExceptionBeforeRemovingGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-leave-tenant-colon", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.LeaveGroupScoped("order-list", "ac:me", "conv-1"));
+
+        ex.Message.ShouldContain("must not contain colons");
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-scoped-leave-tenant-colon", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(null, "acme")]
+    [InlineData("", "acme")]
+    [InlineData("   ", "acme")]
+    [InlineData("order-list", null)]
+    [InlineData("order-list", "")]
+    [InlineData("order-list", "   ")]
+    public async Task LeaveGroupScoped_NullOrWhitespaceSegment_ThrowsHubExceptionBeforeRemovingGroup(string? projectionType, string? tenantId) {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-leave-blank", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.LeaveGroupScoped(projectionType!, tenantId!, "conv-1"));
+
+        ex.Message.ShouldContain("are required");
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-scoped-leave-blank", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(false, null, "acme")]
+    [InlineData(false, "", "acme")]
+    [InlineData(false, "   ", "acme")]
+    [InlineData(false, "order-list", null)]
+    [InlineData(false, "order-list", "")]
+    [InlineData(false, "order-list", "   ")]
+    [InlineData(true, null, "acme")]
+    [InlineData(true, "   ", "acme")]
+    [InlineData(true, "order-list", "")]
+    public async Task JoinGroup_NullOrWhitespaceSegment_ThrowsHubExceptionBeforeAddingGroup(bool scoped, string? projectionType, string? tenantId) {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-join-blank", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() => scoped
+            ? sut.JoinGroupScoped(projectionType!, tenantId!, "conv-1")
+            : sut.JoinGroup(projectionType!, tenantId!));
+
+        ex.Message.ShouldContain("are required");
+        await groups.DidNotReceive().AddToGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("join")]
+    [InlineData("scoped-join")]
+    [InlineData("leave")]
+    [InlineData("scoped-leave")]
+    public async Task GroupMembership_ProjectionTypeOver100Characters_ThrowsHubException(string operation) {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-long-projection-" + operation, groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            InvokeMembershipAsync(sut, operation, new string('a', 101), "conv-1"));
+
+        ex.Message.ShouldContain("projectionType must not exceed 100 characters");
+        await groups.DidNotReceive().AddToGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await groups.DidNotReceive().RemoveFromGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task JoinGroup_ProjectionTypeOf100Characters_IsAccepted() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-max-projection", groups, user: CreateUser("acme"));
+        string projectionType = new('a', 100);
+
+        await sut.JoinGroup(projectionType, "acme");
+
+        await groups.Received(1).AddToGroupAsync("conn-max-projection", projectionType + ":acme", Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("join", "order\nlist")]
+    [InlineData("scoped-join", "order\u0000list")]
+    [InlineData("leave", "order\rlist")]
+    [InlineData("scoped-leave", "order\tlist")]
+    [InlineData("join", "order\u200Blist")]
+    [InlineData("leave", "order\u202Elist")]
+    [InlineData("scoped-join", "\uFEFForder-list")]
+    public async Task GroupMembership_ProjectionTypeWithControlOrFormatCharacter_ThrowsHubException(string operation, string projectionType) {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-control-projection-" + operation, groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            InvokeMembershipAsync(sut, operation, projectionType, "conv-1"));
+
+        ex.Message.ShouldContain("projectionType must not contain control or format characters");
+        await groups.DidNotReceive().AddToGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await groups.DidNotReceive().RemoveFromGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("join", "acme\n")]
+    [InlineData("scoped-join", "ac\u0000me")]
+    [InlineData("leave", "acme\r")]
+    [InlineData("scoped-leave", "acme corp")]
+    [InlineData("join", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    [InlineData("leave", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    public async Task GroupMembership_TenantOutsideTheTenantContract_ThrowsHubException(string operation, string tenantId) {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-invalid-tenant-" + operation, groups, user: CreateUser("acme"));
+        Task call = operation switch
+        {
+            "join" => sut.JoinGroup("order-list", tenantId),
+            "scoped-join" => sut.JoinGroupScoped("order-list", tenantId, "conv-1"),
+            "leave" => sut.LeaveGroup("order-list", tenantId),
+            "scoped-leave" => sut.LeaveGroupScoped("order-list", tenantId, "conv-1"),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
+
+        HubException ex = await Should.ThrowAsync<HubException>(() => call);
+
+        ex.Message.ShouldContain("Tenant scope is invalid or reserved");
+        await groups.DidNotReceive().AddToGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await groups.DidNotReceive().RemoveFromGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LeaveGroup_ProjectionTypeOf100Characters_IsAccepted() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-max-projection-leave", groups, user: CreateUser("acme"));
+        string projectionType = new('a', 100);
+
+        await sut.LeaveGroup(projectionType, "acme");
+
+        await groups.Received(1).RemoveFromGroupAsync("conn-max-projection-leave", projectionType + ":acme", Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("reconcile", "order\nlist")]
+    [InlineData("validate", "order\u200Blist")]
+    [InlineData("reconcile", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    public async Task MembershipSnapshot_InvalidProjectionType_ThrowsHubExceptionBeforeChangingMembership(string operation, string projectionType) {
+        string connectionId = "conn-snapshot-invalid-" + Guid.NewGuid().ToString("N");
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub(connectionId, groups, user: CreateUser("acme"));
+
+        try
+        {
+            HubException ex = await Should.ThrowAsync<HubException>(() => operation == "reconcile"
+                ? sut.ReconcileProjectionMembership(1, [["order-list", "acme", "conv-1"], [projectionType, "acme", string.Empty]])
+                : sut.ValidateProjectionGroup(projectionType, "acme", null));
+
+            ex.Message.ShouldContain("projectionType must not");
+            await groups.DidNotReceive().AddToGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            await sut.OnDisconnectedAsync(null);
+        }
     }
 
     [Fact]
@@ -582,6 +749,16 @@ public class ProjectionChangedHubTests {
         await groups.DidNotReceive().RemoveFromGroupAsync(connection, "new:acme" + (scoped ? ":scope" : string.Empty), Arg.Any<CancellationToken>());
         await hub.OnDisconnectedAsync(null);
     }
+
+    private static Task InvokeMembershipAsync(ProjectionChangedHub hub, string operation, string projectionType, string scope)
+        => operation switch
+        {
+            "join" => hub.JoinGroup(projectionType, "acme"),
+            "scoped-join" => hub.JoinGroupScoped(projectionType, "acme", scope),
+            "leave" => hub.LeaveGroup(projectionType, "acme"),
+            "scoped-leave" => hub.LeaveGroupScoped(projectionType, "acme", scope),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
 
     private static Task InvokeProjectionAdmissionAsync(ProjectionChangedHub hub, string invocation)
         => invocation switch

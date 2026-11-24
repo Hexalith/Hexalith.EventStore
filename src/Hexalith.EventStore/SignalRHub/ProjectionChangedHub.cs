@@ -30,6 +30,9 @@ public partial class ProjectionChangedHub(
     ILogger<ProjectionChangedHub> logger) : Hub<IProjectionChangedClient> {
     private const int MaxGroupScopeLength = 64;
 
+    // Matches the projection-type bound the projection actors enforce (CachingProjectionActor.IsValidProjectionType).
+    private const int MaxProjectionTypeLength = 100;
+
     private static readonly ConcurrentDictionary<string, HashSet<string>> _connectionGroups = new();
     private static readonly ConcurrentDictionary<string, ProjectionMembershipState> _membershipStates = new();
 
@@ -145,28 +148,7 @@ public partial class ProjectionChangedHub(
     }
 
     private async Task<string> AuthorizeGroupAsync(string projectionType, string tenantId, string? scope) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(projectionType);
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-
-        // Defense-in-depth: colons are reserved as group name separator
-        if (projectionType.Contains(':') || tenantId.Contains(':')) {
-            throw new HubException("projectionType and tenantId must not contain colons.");
-        }
-
-        if (!TenantCanonicalizer.TryCanonicalize(tenantId, out string canonicalTenant)) {
-            throw new HubException("Tenant scope is invalid or reserved.");
-        }
-
-        // A non-empty scope must not contain the reserved separator either; null/empty/whitespace
-        // is allowed and resolves to the tenant-wide group.
-        string? normalizedScope = string.IsNullOrWhiteSpace(scope) ? null : scope;
-        if (normalizedScope is not null && normalizedScope.Contains(':')) {
-            throw new HubException("scope must not contain colons.");
-        }
-
-        if (normalizedScope is not null && normalizedScope.Length > MaxGroupScopeLength) {
-            throw new HubException($"scope must not exceed {MaxGroupScopeLength} characters.");
-        }
+        (string canonicalTenant, string? normalizedScope) = ValidateGroupSegments(projectionType, tenantId, scope);
 
         if (Context.User?.Identity?.IsAuthenticated != true) {
             throw new HubException("Authentication is required to join projection change groups.");
@@ -199,6 +181,58 @@ public partial class ProjectionChangedHub(
 
         return BuildGroupName(projectionType, canonicalTenant, normalizedScope);
     }
+
+    /// <summary>
+    /// Validates the segments of a projection change group for both joins and leaves. Every violation is a
+    /// descriptive <see cref="HubException"/>, so clients learn why a group name was refused.
+    /// </summary>
+    /// <param name="projectionType">The projection type.</param>
+    /// <param name="tenantId">The requested tenant.</param>
+    /// <param name="scope">The optional sub-tenant scope; null, empty or whitespace selects the tenant-wide group.</param>
+    /// <returns>The canonical tenant and the scope, or <see langword="null"/> for the tenant-wide group.</returns>
+    private static (string CanonicalTenant, string? Scope) ValidateGroupSegments(string projectionType, string tenantId, string? scope) {
+        if (string.IsNullOrWhiteSpace(projectionType) || string.IsNullOrWhiteSpace(tenantId)) {
+            throw new HubException("projectionType and tenantId are required.");
+        }
+
+        // Defense-in-depth: colons are reserved as the group name separator.
+        if (projectionType.Contains(':') || tenantId.Contains(':')) {
+            throw new HubException("projectionType and tenantId must not contain colons.");
+        }
+
+        if (projectionType.Length > MaxProjectionTypeLength) {
+            throw new HubException($"projectionType must not exceed {MaxProjectionTypeLength} characters.");
+        }
+
+        if (projectionType.Any(IsControlOrFormatCharacter)) {
+            throw new HubException("projectionType must not contain control or format characters.");
+        }
+
+        // The tenant contract bounds length and characters (lowercase alphanumerics and inner hyphens).
+        if (!TenantCanonicalizer.TryCanonicalize(tenantId, out string canonicalTenant)) {
+            throw new HubException("Tenant scope is invalid or reserved.");
+        }
+
+        string? normalizedScope = string.IsNullOrWhiteSpace(scope) ? null : scope;
+        if (normalizedScope is null) {
+            return (canonicalTenant, null);
+        }
+
+        if (normalizedScope.Contains(':')) {
+            throw new HubException("scope must not contain colons.");
+        }
+
+        if (normalizedScope.Length > MaxGroupScopeLength) {
+            throw new HubException($"scope must not exceed {MaxGroupScopeLength} characters.");
+        }
+
+        return (canonicalTenant, normalizedScope);
+    }
+
+    // Control characters (newlines, NUL) and invisible format characters (zero-width, bidi overrides) never occur
+    // in the kebab-case projection types the projection pipeline publishes, so a group named with them is unreachable.
+    private static bool IsControlOrFormatCharacter(char character)
+        => char.IsControl(character) || char.GetUnicodeCategory(character) == System.Globalization.UnicodeCategory.Format;
 
     private async Task AddGroupAsync(string groupName) {
         Context.ConnectionAborted.ThrowIfCancellationRequested();
@@ -234,31 +268,11 @@ public partial class ProjectionChangedHub(
     }
 
     private async Task LeaveGroupCoreAsync(string projectionType, string tenantId, string? scope) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(projectionType);
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-
-        // Defense-in-depth: colons are reserved as the group name separator, so reject them (and
-        // null/blank) on the leave path too, mirroring the JoinGroupCoreAsync guards — a malformed
-        // raw LeaveGroup/LeaveGroupScoped call then cannot build or remove a colon-ambiguous group
-        // name. Structure only: length and other control characters are not bounded here. Leaving
+        // The leave path applies the same structural validation as joins, so a malformed raw
+        // LeaveGroup/LeaveGroupScoped call cannot build or remove an ambiguous group name. Leaving
         // stays authorization-free by design — removing a connection from a group it is not in is
         // idempotent and harmless.
-        if (projectionType.Contains(':') || tenantId.Contains(':')) {
-            throw new HubException("projectionType and tenantId must not contain colons.");
-        }
-
-        if (!TenantCanonicalizer.TryCanonicalize(tenantId, out string canonicalTenant)) {
-            throw new HubException("Tenant scope is invalid or reserved.");
-        }
-
-        string? normalizedScope = string.IsNullOrWhiteSpace(scope) ? null : scope;
-        if (normalizedScope is not null && normalizedScope.Contains(':')) {
-            throw new HubException("scope must not contain colons.");
-        }
-
-        if (normalizedScope is not null && normalizedScope.Length > MaxGroupScopeLength) {
-            throw new HubException($"scope must not exceed {MaxGroupScopeLength} characters.");
-        }
+        (string canonicalTenant, string? normalizedScope) = ValidateGroupSegments(projectionType, tenantId, scope);
 
         string groupName = BuildGroupName(projectionType, canonicalTenant, normalizedScope);
 

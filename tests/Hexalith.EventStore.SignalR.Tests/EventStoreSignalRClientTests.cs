@@ -162,6 +162,24 @@ public class EventStoreSignalRClientTests {
         }
     }
 
+    [Theory]
+    [InlineData("counter\nlist", "acme")]
+    [InlineData("counter\u200Blist", "acme")]
+    [InlineData("counter", "ac\u0000me")]
+    [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "acme")]
+    [InlineData("counter", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    public async Task SubscribeAsync_GroupPartTheHubRejects_ThrowsArgumentException(string projectionType, string tenantId) {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            _ = await Should.ThrowAsync<ArgumentException>(() =>
+                sut.SubscribeAsync(projectionType, tenantId, () => { }, TestContext.Current.CancellationToken));
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
     [Fact]
     public async Task UnsubscribeAsync_TenantIdContainsColon_ThrowsArgumentException() {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
