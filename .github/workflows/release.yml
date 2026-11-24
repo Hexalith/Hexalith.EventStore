@@ -109,7 +109,16 @@ jobs:
             refs/heads/release/parties-sdk-3.130.2) echo 'sha=30ea43a56330a9828ed0bb2e837289231d8630d1' >> "$GITHUB_OUTPUT" ;;
             *) exit 1 ;;
           esac
-      - name: Checkout approved Builds actions
+      - name: Checkout approved Builds actions for main
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Hexalith/Hexalith.Builds
+          ref: 29923b011061347e7f61ece16d59095889bde91a
+          path: .hexalith/builds-execution
+          persist-credentials: false
+      - name: Checkout approved Builds actions for maintenance
+        if: ${{ github.ref == 'refs/heads/release/parties-sdk-3.130.2' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Hexalith/Hexalith.Builds
