@@ -1,12 +1,20 @@
 extern alias eventstore;
 
+using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Server.Pipeline.Queries;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Testing.Fakes;
+
+using MediatR;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 using EventStoreProgram = eventstore::Program;
 
@@ -69,6 +77,32 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Event
 
             // Replace CommandRouter with fake (no DAPR actor infrastructure needed)
             TestServiceOverrides.ReplaceCommandRouter(services, Router);
+
+            // The fake router tests exercise command handling after catalog admission.
+            // Preserve the gateway eligibility check in the same pipeline position for queries.
+            for (int index = 0; index < services.Count; index++) {
+                ServiceDescriptor descriptor = services[index];
+                if (descriptor.ImplementationType == typeof(RouteCatalogEligibilityBehavior<,>)) {
+                    services[index] = ServiceDescriptor.Describe(
+                        typeof(IPipelineBehavior<SubmitQuery, SubmitQueryResult>),
+                        typeof(RouteCatalogEligibilityBehavior<SubmitQuery, SubmitQueryResult>),
+                        descriptor.Lifetime);
+                }
+            }
+
+            _ = services.Replace(ServiceDescriptor.Transient<SubmitCommandHandler>(provider => new SubmitCommandHandler(
+                provider.GetRequiredService<ICommandStatusStore>(),
+                provider.GetRequiredService<ICommandArchiveStore>(),
+                provider.GetRequiredService<ICommandRouter>(),
+                provider.GetService<ICommandActivityTracker>(),
+                provider.GetService<IStreamActivityTracker>(),
+                provider.GetRequiredService<IProjectionUpdateOrchestrator>(),
+                provider.GetRequiredService<ILogger<SubmitCommandHandler>>(),
+                provider.GetService<ICommandCorrelationIndex>(),
+                provider.GetService<IProjectionActivationOutbox>(),
+                provider.GetService<IIdempotencyAdmissionCoordinator>(),
+                provider.GetService<IConfiguration>(),
+                projectionActivationWorker: provider.GetService<ProjectionActivationWorkerCapability>())));
 
             // Remove Dapr health checks that require a running sidecar
             TestServiceOverrides.RemoveDaprHealthChecks(services);
