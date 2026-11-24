@@ -2856,7 +2856,8 @@ origin: migrated from legacy ledger ("Trusted-verifier hardening pass (2026-08-2
 location: Directory.Build.targets
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The container provenance creation-time regex accepts calendar-impossible dates. evidence: `Directory.Build.targets` bounds month and day fields independently, so a value such as `2026-02-31T09:15:00Z` satisfies the claimed RFC 3339 validation. Correct calendar validation is a publisher/input-contract follow-up.
-status: open
+status: done 2026-11-24
+resolution: Validate the exact UTC timestamp shape and Gregorian month length. MSBuild accepted four valid values including leap day and rejected four impossible dates.
 
 ### DW-423: The multi-RID provenance test compares the produced creation label to its first observed value rather than the supplied creation instant.
 

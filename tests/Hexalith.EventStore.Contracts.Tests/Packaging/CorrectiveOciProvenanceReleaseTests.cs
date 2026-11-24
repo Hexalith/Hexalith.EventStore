@@ -15,7 +15,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
 {
     private const string SourceSha = "dddddddddddddddddddddddddddddddddddddddd";
     private const string Version = "0.0.0-ci-test";
-    private const string Created = "2026-08-21T09:15:00Z";
+    private const string Created = "2000-02-29T09:15:00Z";
     private static readonly TimeSpan HelperTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(8);
 
@@ -211,6 +211,10 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [InlineData("ContainerImageTag", "0.0.0-other", "ContainerImageTag must equal ContainerProvenanceReleaseVersion.", false)]
     [InlineData("ContainerImageTags", "latest", "ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else.", false)]
     [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceCreated", "2026-02-31T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceCreated", "1900-02-29T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceCreated", "2026-04-31T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceCreated", "0000-01-01T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
     [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
     [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", false)]
     [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", false)]
