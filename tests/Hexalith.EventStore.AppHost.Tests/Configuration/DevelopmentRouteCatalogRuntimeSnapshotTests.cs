@@ -77,10 +77,14 @@ public sealed class DevelopmentRouteCatalogRuntimeSnapshotTests
             string shadow = scenario == "probe-bcl-shadow"
                 ? "<Target Name=\"ShadowRuntimeProbeBcl\" AfterTargets=\"Build\"><Copy SourceFiles=\"$(TargetPath)\" DestinationFiles=\"$(TargetDir)/System.Console.dll\" /></Target>"
                 : string.Empty;
+            string runtimeConfigDev = scenario == "runtimeconfig-dev-insertion"
+                ? "<GenerateRuntimeConfigDevFile>false</GenerateRuntimeConfigDevFile>"
+                : string.Empty;
             await File.WriteAllTextAsync(path, $"""
                 <Project Sdk="Microsoft.NET.Sdk.Web"><PropertyGroup><TargetFramework>net11.0</TargetFramework>
                   <ImplicitUsings>enable</ImplicitUsings><AssemblyName>RuntimeOwner$(SelectedOwnerArtifact)</AssemblyName>
                   <BaseOutputPath>$(SelectedOwnerOutput)</BaseOutputPath><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+                  {runtimeConfigDev}
                 </PropertyGroup><ItemGroup>{references}</ItemGroup>{shadow}</Project>
                 """, TestContext.Current.CancellationToken);
             await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), """
