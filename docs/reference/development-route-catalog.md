@@ -276,6 +276,13 @@ joined to this host's target or its local auxiliary inventory establishes owners
 Known owners retain all existing projection tenant, auxiliary and output checks,
 including named-only domains; installing an uncommitted receiver still refuses.
 
+A domain host can call
+`AddEventStoreDevelopmentDomainCatalog(configuration, restrictAuxiliaryToInvocations: true, owners)`.
+Its finite receiver then admits, and its observation advertises, only canonical
+callbacks with an exact POST grant in `DeclaredInvocations`. Other SDK-mapped
+callbacks refuse, including routes that Dapr ACL prefix matching could reach. The
+original overload keeps its existing behavior.
+
 The platform routing-header owners remain SDK transports. In addition to the
 ordinary `DaprServiceInvocationHandler` and the isolated catalog state client,
 `RouteCatalogInvocationHandler` owns the Development Admin actor-state read

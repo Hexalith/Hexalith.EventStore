@@ -304,8 +304,11 @@ public static class EventStoreDomainServiceExtensions {
         // Canonical domain-service endpoints invoked by the EventStore gateway.
         _ = app.MapEventStoreDomainService();
 
+        var finiteInvocationScope = app.Services.GetService<DevelopmentDomainRouteCatalogInvocationScope>();
         _ = Hexalith.EventStore.ServiceDefaults.Routing.FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app,
-            endpoint => endpoint.Metadata.GetMetadata<DomainRouteCatalogAuxiliaryMetadata>() is { } auxiliary
+            endpoint => finiteInvocationScope is not null && !finiteInvocationScope.PostRoutes.Contains(
+                EventStoreDomainServiceRoutes.Normalize(endpoint.RoutePattern.RawText))
+                ? null : endpoint.Metadata.GetMetadata<DomainRouteCatalogAuxiliaryMetadata>() is { } auxiliary
                 ? auxiliary.Route.Operation : endpoint.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>() is not null
                     ? DomainRouteCatalogSidecarMetadata.Operation
                     : EventStoreDomainServiceRoutes.Operational.SingleOrDefault(route => route.Route == endpoint.RoutePattern.RawText)?.Operation,
@@ -432,13 +435,16 @@ public static class EventStoreDomainServiceExtensions {
         _ = app.MapPost(
             "/query",
             async (QueryEnvelope query, HttpContext httpContext, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
+                QueryResult result;
                 try {
-                    return (IResult)Results.Ok(await DomainQueryDispatcher.ExecuteWithAdministratorVerificationAsync(
-                        serviceProvider, query, cancellationToken).ConfigureAwait(false));
+                    result = await DomainQueryDispatcher.ExecuteWithAdministratorVerificationAsync(
+                        serviceProvider, query, cancellationToken).ConfigureAwait(false);
                 }
                 catch (DomainServiceAdministratorVerificationException) {
                     return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
                 }
+                return serviceProvider.GetService<IDomainQueryResponsePolicy>()?.CreateResponse(query, result)
+                    ?? Results.Ok(result);
             })
             .RequireEventStoreDomainServicePolicy("/query");
 

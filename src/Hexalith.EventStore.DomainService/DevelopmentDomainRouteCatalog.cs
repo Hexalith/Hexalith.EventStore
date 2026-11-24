@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text.Json;
 
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
@@ -33,8 +34,27 @@ public static class DevelopmentDomainRouteCatalog
     /// <summary>Enables run-private catalog preparation only when the owning runner supplies bootstrap configuration.</summary>
     public static IServiceCollection AddEventStoreDevelopmentDomainCatalog(this IServiceCollection services,
         IConfiguration configuration, params Assembly[] contractOwners)
+        => AddEventStoreDevelopmentDomainCatalog(services, configuration, restrictAuxiliaryToInvocations: false, contractOwners);
+
+    /// <summary>Enables run-private catalog preparation with optional exact invocation grants for auxiliary callbacks.</summary>
+    public static IServiceCollection AddEventStoreDevelopmentDomainCatalog(this IServiceCollection services,
+        IConfiguration configuration, bool restrictAuxiliaryToInvocations, params Assembly[] contractOwners)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(contractOwners);
+        if (restrictAuxiliaryToInvocations &&
+            configuration["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"] is { Length: > 0 })
+        {
+            string? declaration = configuration["EventStore:RouteCatalog:DevelopmentBootstrap:DeclaredInvocations"];
+            var invocations = declaration is null
+                ? []
+                : JsonSerializer.Deserialize<RouteCatalogDeclaredInvocation[]>(declaration, JsonSerializerOptions.Web) ?? [];
+            services.AddSingleton(new DevelopmentDomainRouteCatalogInvocationScope(invocations
+                .Where(invocation => invocation.HttpMethods.Contains(HttpMethods.Post, StringComparer.Ordinal))
+                .Select(invocation => EventStoreDomainServiceRoutes.Normalize(invocation.Method))
+                .ToHashSet(StringComparer.Ordinal)));
+        }
         // Loaded assembly declarations cannot mutate within this host. The fresh
         // observation below still hashes the executable files and inspects the
         // installed receiver, configuration, component and ACL on every call.
@@ -70,6 +90,10 @@ public static class DevelopmentDomainRouteCatalog
             return actual with
             {
                 ReceiverSurface = fence.Observe(), Operations = operations,
+                AuxiliaryOperations = local.GetService<DevelopmentDomainRouteCatalogInvocationScope>() is { } invocationScope
+                    ? actual.AuxiliaryOperations!.Where(operation =>
+                        invocationScope.PostRoutes.Contains(EventStoreDomainServiceRoutes.Normalize(operation.Method))).ToArray()
+                    : actual.AuxiliaryOperations,
                 ExecutableOwners = implementations.Distinct().OrderBy(assembly => assembly.FullName, StringComparer.Ordinal)
                     .ToDictionary(assembly => assembly.FullName!, assembly => ReadExecutableDigest(assembly), StringComparer.Ordinal),
             };
