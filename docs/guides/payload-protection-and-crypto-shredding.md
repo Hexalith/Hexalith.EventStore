@@ -321,6 +321,11 @@ exception messages, state-store keys, connection strings, and stack traces never
 
 ### Runtime diagnostic redaction
 
+`AddInteractionPayloadProtection` registers the `Hexalith.EventStore.PayloadProtection`
+trace source and meter with the host's OpenTelemetry providers. The meter includes
+`eventstore.payload_protection.operations` and `eventstore.payload_protection.duration`,
+labeled with the operation, result, and format version.
+
 Story 22.7d-1 centralizes protected-data-capable runtime diagnostic text behind
 `ProtectedDataDiagnosticRedactor` in `Hexalith.EventStore.Server`. Runtime callers must not pass
 `exception.Message`, provider result text, metadata dictionaries, command payloads, event payloads,

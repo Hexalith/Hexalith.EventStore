@@ -1226,11 +1226,11 @@ location: logs/ac3-catalog.txt:81
 reason: source_spec: `_bmad-output/implementation-artifacts/2-12-tenants-runtime-identity-adoption-and-package-mode-validation.md` summary: [LOW] `ac3-catalog.txt`'s line-oriented grep cannot fail for `Hexalith.EventStore.RestApi.Generators`, whose `Condition` sits on an XML continuation line, and no durable guard asserts `PackageReference` conditions outside the domain host. evidence: Story 2.12 delta code review (blind-hunter), verified 2026-07-28 at `logs/ac3-catalog.txt:81`. The condition genuinely exists in `src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj`, and the AC4 host rule reads effective conditions for `src/Hexalith.Tenants/Hexalith.Tenants.csproj`; but `No_EventStore_project_reference_is_reachable_in_package_mode` checks conditions only on `ProjectReference` items, checking `PackageReference` items solely for local version authority. Suggested durable fix: extend that rule to assert the complementary package condition on every owned project, not only the host.
 status: open
 
-### DW-187: [LOW] `setup-lane.sh` hardcodes `REFS=/home/administrator/projects/hexalith` and its new safety allowlist confines destinations to `/home/*/tmp-story-2-12/*`, so the already-deferred "promote `ac2-guard.sh` into Tenants CI" item cannot be executed as written — the lane the guard depends on cannot be created by that CI without editing the script.
+### DW-187: [LOW] `setup-lane.sh` hardcodes one developer's Hexalith workspace as `REFS` and its new safety allowlist confines destinations to `/home/*/tmp-story-2-12/*`, so the already-deferred "promote `ac2-guard.sh` into Tenants CI" item cannot be executed as written — the lane the guard depends on cannot be created by that CI without editing the script.
 
 origin: migrated from legacy ledger ("Deferred from: delta code review of 2-12-tenants-runtime-identity-adoption-and-package-mode-validation (2026-07-28)"), 2026-08-30
 location: setup-lane.sh
-reason: source_spec: `_bmad-output/implementation-artifacts/2-12-tenants-runtime-identity-adoption-and-package-mode-validation.md` summary: [LOW] `setup-lane.sh` hardcodes `REFS=/home/administrator/projects/hexalith` and its new safety allowlist confines destinations to `/home/*/tmp-story-2-12/*`, so the already-deferred "promote `ac2-guard.sh` into Tenants CI" item cannot be executed as written — the lane the guard depends on cannot be created by that CI without editing the script. evidence: Story 2.12 delta code review (blind-hunter), verified 2026-07-28 at `evidence/story-2-12/578770679b9d…/setup-lane.sh:8,29-32`. This under-specifies the drift-detector follow-up recorded in the 2026-07-28 entry above; scope the two together. Owned by the Hexalith.Tenants maintainer.
+reason: source_spec: `_bmad-output/implementation-artifacts/2-12-tenants-runtime-identity-adoption-and-package-mode-validation.md` summary: [LOW] `setup-lane.sh` hardcodes one developer's Hexalith workspace as `REFS` and its new safety allowlist confines destinations to `/home/*/tmp-story-2-12/*`, so the already-deferred "promote `ac2-guard.sh` into Tenants CI" item cannot be executed as written — the lane the guard depends on cannot be created by that CI without editing the script. evidence: Story 2.12 delta code review (blind-hunter), verified 2026-07-28 at `evidence/story-2-12/578770679b9d…/setup-lane.sh:8,29-32`. This under-specifies the drift-detector follow-up recorded in the 2026-07-28 entry above; scope the two together. Owned by the Hexalith.Tenants maintainer.
 status: open
 
 ### DW-188: [MEDIUM] Nothing in EventStore invokes `analyze-assets.py`, `ac2-guard.sh`, or `setup-lane.sh`, and not one of their fail-closed branches has ever executed. Every retained run terminates in `ASSETS_OK` / `AC2_GUARD_OK`, so the unknown-mode exit, the missing-expected-version exit, the vacuous-pass guard and both mode-specific zero-edge guards are unverified against a failing input.
@@ -1424,8 +1424,8 @@ status: open
 ### DW-216: The vendor-managed WSL `codex-node-repl` launcher has no process-group shutdown contract for its Windows `node_repl.exe` descendant, so a native runtime that ignores forwarded termination could outlive a forcibly killed JavaScript launcher.
 
 origin: migrated from legacy ledger ("Deferred from: code review of story-3.4 (2026-07-30, review pass 5)"), 2026-08-30
-location: /mnt/c/Users/JeromePiquot/AppData/Roaming/npm/codex-node-repl.js
-reason: source_spec: `_bmad-output/implementation-artifacts/spec-fix-mcp-startup.md` summary: The vendor-managed WSL `codex-node-repl` launcher has no process-group shutdown contract for its Windows `node_repl.exe` descendant, so a native runtime that ignores forwarded termination could outlive a forcibly killed JavaScript launcher. evidence: Review of the MCP startup fix found that `/mnt/c/Users/JeromePiquot/AppData/Roaming/npm/codex-node-repl.js` spawns `node_repl.exe` and forwards only SIGINT, SIGTERM, and SIGHUP to that immediate child; the user-scoped proxy now maps SIGQUIT, preserves caller signal status, and bounds its own immediate-child shutdown, but cannot guarantee descendant cleanup without modifying the vendor bridge or establishing a tested cross-WSL process-group mechanism, both outside this fix's boundary.
+location: /mnt/c/Users/<windows-user>/AppData/Roaming/npm/codex-node-repl.js
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-fix-mcp-startup.md` summary: The vendor-managed WSL `codex-node-repl` launcher has no process-group shutdown contract for its Windows `node_repl.exe` descendant, so a native runtime that ignores forwarded termination could outlive a forcibly killed JavaScript launcher. evidence: Review of the MCP startup fix found that `/mnt/c/Users/<windows-user>/AppData/Roaming/npm/codex-node-repl.js` spawns `node_repl.exe` and forwards only SIGINT, SIGTERM, and SIGHUP to that immediate child; the user-scoped proxy now maps SIGQUIT, preserves caller signal status, and bounds its own immediate-child shutdown, but cannot guarantee descendant cleanup without modifying the vendor bridge or establishing a tested cross-WSL process-group mechanism, both outside this fix's boundary.
 status: open
 
 ### DW-217: [MEDIUM] Semantic-release uploads GitHub Release assets with the unscoped glob `nupkgs/*.nupkg`, so the exact-scope guarantee AC3 pins on the NuGet push command has no equivalent on the second publication channel.
@@ -1622,7 +1622,7 @@ location: origin/main
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-resolve-main-rebase-conflicts.md` summary: Forensic note for orphan commits `f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` that a July draft assumed were unpushed on local `main`. They are not tip ancestors; winning sibling `f6db558c768ae413712560019beab488d9974d66` (same subject/parent) is already on `origin/main`. Closed as obsolete without rebase or cherry-pick — replaying the orphans would regress resilience, fixtures, Story 1.20 status, and submodule pins. Preserve the SHAs if reflog GC later drops tip reachability. evidence: `git merge-base --is-ancestor f6db558c768ae413712560019beab488d9974d66 origin/main` succeeds; `main` and `origin/main` both at `37fdcd1fc8a238b676441b1f5a5ef5fd4370d27e`; orphans still exist as objects (`git cat-file -t f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` → `commit`); tip gitlinks remain Builds `824d7ef100455423aabbcd399c8364074000b2e0`, Memories `da5df10092461e5473d0e8fc09eacbb4a8e08d3a`, Tenants `323baf8871e70be3fde92072f32b758af950bc8c`. status: forensic-only (closed obsolete; non-actionable)
 status: open
 
-### DW-245: `package-availability.json` embeds machine-local absolute search roots under `/home/administrator/...`, which are non-portable durable evidence.
+### DW-245: `package-availability.json` embeds machine-local absolute search roots under `$HOME/...`, which are non-portable durable evidence.
 
 status: done 2026-08-31
 origin: migrated from legacy ledger ("Deferred from: Story 3.13 review (2026-08-08)"), 2026-08-30
@@ -1700,21 +1700,21 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Add missing-key removal mutations for validators whose NullReferenceException catch filters are only exercised by value mutations today. evidence: Blind-hunter review of Story 3.13; prior hardening added catch filters but theories still mutate values rather than removing keys.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Add missing-key removal mutations for validators whose NullReferenceException catch filters are only exercised by value mutations today. evidence: Blind-hunter review of Story 3.13; prior hardening added catch filters but theories still mutate values rather than removing keys.
 status: open
 
 ### DW-258: Fixture imports `undici` as a top-level module without a direct package.json dependency, so hoisting/layout changes could bind a different major than the plugin expects.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: package.json
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md` summary: Fixture imports `undici` as a top-level module without a direct package.json dependency, so hoisting/layout changes could bind a different major than the plugin expects. evidence: Blind-hunter review — lockfile already shows multiple undici majors; fixture only asserts resolve-path equality with the plugin.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md` summary: Fixture imports `undici` as a top-level module without a direct package.json dependency, so hoisting/layout changes could bind a different major than the plugin expects. evidence: Blind-hunter review — lockfile already shows multiple undici majors; fixture only asserts resolve-path equality with the plugin.
 status: open
 
 ### DW-259: Semantic-release governance job structural contracts do not pin omitted write permissions or forbid token env overrides on the Node fixture steps.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md` summary: Semantic-release governance job structural contracts do not pin omitted write permissions or forbid token env overrides on the Node fixture steps. evidence: Edge-case hunter review — job could gain contents/pull-requests write without failing AssertSemanticReleaseGovernanceJobIsBlocking; outside frozen success-notification scope.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md` summary: Semantic-release governance job structural contracts do not pin omitted write permissions or forbid token env overrides on the Node fixture steps. evidence: Edge-case hunter review — job could gain contents/pull-requests write without failing AssertSemanticReleaseGovernanceJobIsBlocking; outside frozen success-notification scope.
 status: open
 
 ### DW-260: Scrub remaining predecessor SDK patch tokens from Hexalith.FrontComposer tracked BMAD review `.diff` artifacts.
@@ -1783,7 +1783,7 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: release_authority.verification reports fail under a hash-check method without separating scope failure. evidence: The crosswalk marks result fail while the method text says hash-checked durable predecessor authority, even though the concrete blocker is deployment_authorized false / quarantine-only scope rather than a failed hash.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: release_authority.verification reports fail under a hash-check method without separating scope failure. evidence: The crosswalk marks result fail while the method text says hash-checked durable predecessor authority, even though the concrete blocker is deployment_authorized false / quarantine-only scope rather than a failed hash.
 status: open
 
 ### DW-271: Story 4.4 activation recovery can permanently starve publication-index entries beyond the fixed head scan and work budgets.
@@ -1796,42 +1796,42 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 can report `Retryable=true` when only a recovery-index entry exists and reminder registration failed. evidence: The advisory status uses `drainReminderArmed || recoveryEntryTracked`, but an index entry does not itself activate an idle actor or guarantee an automatic retry.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 can report `Retryable=true` when only a recovery-index entry exists and reminder registration failed. evidence: The advisory status uses `drainReminderArmed || recoveryEntryTracked`, but an index entry does not itself activate an idle actor or guarantee an automatic retry.
 status: open
 
 ### DW-273: Newly written normal command statuses leave `Retryable` null even though the public contract reserves null for legacy records.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: drain-failure-reason-codes.md
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Newly written normal command statuses leave `Retryable` null even though the public contract reserves null for legacy records. evidence: Most `WriteAdvisoryStatusAsync` call sites omit the new recovery parameters while `CommandStatusRecord` and `drain-failure-reason-codes.md` define null as a pre-field compatibility state.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Newly written normal command statuses leave `Retryable` null even though the public contract reserves null for legacy records. evidence: Most `WriteAdvisoryStatusAsync` call sites omit the new recovery parameters while `CommandStatusRecord` and `drain-failure-reason-codes.md` define null as a pre-field compatibility state.
 status: open
 
 ### DW-274: A successful Story 4.4 drain reports one fewer attempt than was actually executed.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: A successful Story 4.4 drain reports one fewer attempt than was actually executed. evidence: The success status writes `DrainAttemptCount: record.RetryCount`; the current successful reminder attempt is not included.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: A successful Story 4.4 drain reports one fewer attempt than was actually executed. evidence: The success status writes `DrainAttemptCount: record.RetryCount`; the current successful reminder attempt is not included.
 status: open
 
 ### DW-275: Story 4.4 defers exhaustion dead-lettering until the reminder after the retry count reaches its configured cap.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 defers exhaustion dead-lettering until the reminder after the retry count reaches its configured cap. evidence: Failure handling persists the capped count and returns; `CompleteDrainExhaustionAsync` runs only at the start of the next reminder, leaving terminal work and capacity retained for another interval.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 defers exhaustion dead-lettering until the reminder after the retry count reaches its configured cap. evidence: Failure handling persists the capped count and returns; `CompleteDrainExhaustionAsync` runs only at the start of the next reminder, leaving terminal work and capacity retained for another interval.
 status: open
 
 ### DW-276: Negative or overflowing persisted drain retry counts can evade or break the bounded-attempt guarantee.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Negative or overflowing persisted drain retry counts can evade or break the bounded-attempt guarantee. evidence: `UnpublishedEventsRecord.IncrementRetry` performs unchecked addition and the reminder path validates only `RetryCount >= MaxDrainAttempts`.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Negative or overflowing persisted drain retry counts can evade or break the bounded-attempt guarantee. evidence: `UnpublishedEventsRecord.IncrementRetry` performs unchecked addition and the reminder path validates only `RetryCount >= MaxDrainAttempts`.
 status: open
 
 ### DW-277: A crash after dead-letter broker acceptance but before the `DeadLettered` state save can publish the same exhausted range twice.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: DeadLettered
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: A crash after dead-letter broker acceptance but before the `DeadLettered` state save can publish the same exhausted range twice. evidence: The dead-letter sink and actor-state update are not atomic or idempotently coupled, despite Story 4.4's claim that the ordering prevents duplicate dead letters.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: A crash after dead-letter broker acceptance but before the `DeadLettered` state save can publish the same exhausted range twice. evidence: The dead-letter sink and actor-state update are not atomic or idempotently coupled, despite Story 4.4's claim that the ordering prevents duplicate dead letters.
 status: open
 
 ### DW-278: Persisted duplicate publication-index entries survive normalization and can leave stale capacity behind.
@@ -1844,14 +1844,14 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4's trailing optional parameters on public positional records are binary-breaking for already compiled consumers. evidence: The changes replace prior constructor and `Deconstruct` signatures on `CommandStatusRecord`, `CommandStatusResponse`, `DeadLetterMessage`, and `UnpublishedEventsRecord` without forwarding compatibility members.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4's trailing optional parameters on public positional records are binary-breaking for already compiled consumers. evidence: The changes replace prior constructor and `Deconstruct` signatures on `CommandStatusRecord`, `CommandStatusResponse`, `DeadLetterMessage`, and `UnpublishedEventsRecord` without forwarding compatibility members.
 status: open
 
 ### DW-280: The Story 4.5 evidence validator hashes current worktree files instead of the source blobs captured by its baseline commit.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: workspace / relative
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 evidence validator hashes current worktree files instead of the source blobs captured by its baseline commit. evidence: `validate_source_binding` reads `workspace / relative`, so ordinary later edits make the committed supposedly re-runnable evidence package fail independently of the captured revision.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 evidence validator hashes current worktree files instead of the source blobs captured by its baseline commit. evidence: `validate_source_binding` reads `workspace / relative`, so ordinary later edits make the committed supposedly re-runnable evidence package fail independently of the captured revision.
 status: open
 
 ### DW-281: BMAD project-context sync can write `AGENTS.md` outside the selected project through a compass area path.
@@ -1882,49 +1882,49 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 tests do not prove the publication-recovery index is staged before the event commit batch. evidence: The current test verifies only that `SetStateAsync("publication-index", ...)` occurred; moving it after the first `SaveStateAsync` would preserve the assertion while reopening the crash window.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 tests do not prove the publication-recovery index is staged before the event commit batch. evidence: The current test verifies only that `SetStateAsync("publication-index", ...)` occurred; moving it after the first `SaveStateAsync` would preserve the assertion while reopening the crash window.
 status: open
 
 ### DW-286: Story 4.4 recovery fields are not verified through the hosted command-status HTTP wire contract.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 recovery fields are not verified through the hosted command-status HTTP wire contract. evidence: Tests inspect `OkObjectResult.Value` or persistence JSON but do not assert camel-case `retryable`, `recoveryReasonCode`, and `drainAttemptCount` properties in an actual endpoint response.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 recovery fields are not verified through the hosted command-status HTTP wire contract. evidence: Tests inspect `OkObjectResult.Value` or persistence JSON but do not assert camel-case `retryable`, `recoveryReasonCode`, and `drainAttemptCount` properties in an actual endpoint response.
 status: open
 
 ### DW-287: Story 4.4 drain-exhaustion safety fields are not verified after production dead-letter serialization.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 drain-exhaustion safety fields are not verified after production dead-letter serialization. evidence: Tests inspect typed records and mocked publish calls but do not prove the wire payload carries the non-replayable flag, reason, committed range, and attempt count.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 drain-exhaustion safety fields are not verified after production dead-letter serialization. evidence: Tests inspect typed records and mocked publish calls but do not prove the wire payload carries the non-replayable flag, reason, committed range, and attempt count.
 status: open
 
 ### DW-288: The BMAD renderer's documented empty `customization.workflow.open_spec` override has no regression test.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: customization.workflow.open_spec
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The BMAD renderer's documented empty `customization.workflow.open_spec` override has no regression test. evidence: Restoring the prior empty-value rejection would prevent `bmad-build` activation without failing any discovered renderer test.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The BMAD renderer's documented empty `customization.workflow.open_spec` override has no regression test. evidence: Restoring the prior empty-value rejection would prevent `bmad-build` activation without failing any discovered renderer test.
 status: open
 
 ### DW-289: BMAD sprint planning permits the same numeric epic-story identity to produce multiple rows when titles differ.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD sprint planning permits the same numeric epic-story identity to produce multiple rows when titles differ. evidence: Duplicate detection compares the full title-derived key instead of the `(epic_num, story_num)` identity.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD sprint planning permits the same numeric epic-story identity to produce multiple rows when titles differ. evidence: Duplicate detection compares the full title-derived key instead of the `(epic_num, story_num)` identity.
 status: open
 
 ### DW-290: BMAD sprint planning can crash outside its structured error contract on a malformed `development_status` value.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD sprint planning can crash outside its structured error contract on a malformed `development_status` value. evidence: `build_status` converts any truthy value with `dict(...)` without first requiring a mapping.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD sprint planning can crash outside its structured error contract on a malformed `development_status` value. evidence: `build_status` converts any truthy value with `dict(...)` without first requiring a mapping.
 status: open
 
 ### DW-291: The Story 4.5 durability-race classifier does not reject contradictory actor acceptance and rejection/conflict signals.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 durability-race classifier does not reject contradictory actor acceptance and rejection/conflict signals. evidence: Simultaneous `ActorAccepted` and `ActorRejected` or `ActorConflictSignalled` values can flow into a nominal classification as internally consistent.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 durability-race classifier does not reject contradictory actor acceptance and rejection/conflict signals. evidence: Simultaneous `ActorAccepted` and `ActorRejected` or `ActorConflictSignalled` values can flow into a nominal classification as internally consistent.
 status: open
 
 ### DW-292: The Story 4.5 evidence validator can report success when Python assertions are disabled.
@@ -2207,42 +2207,42 @@ status: open
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence loop 2 (2026-08-11)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Add an AppHost model test for the two new drain-bound environment forwards. evidence: Direct options-binding tests cover `MaxDrainAttempts` and `MaxOutstandingPublicationEntries`, but no normally run test proves the AppHost forwards either parent value to the `eventstore` resource.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Add an AppHost model test for the two new drain-bound environment forwards. evidence: Direct options-binding tests cover `MaxDrainAttempts` and `MaxOutstandingPublicationEntries`, but no normally run test proves the AppHost forwards either parent value to the `eventstore` resource.
 status: open
 
 ### DW-334: Restrict append-durability race conflict recognition to known concurrency exception identities.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence loop 2 (2026-08-11)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Restrict append-durability race conflict recognition to known concurrency exception identities. evidence: `AppendDurabilityRaceLiveSidecarTests` currently treats every `InvalidOperationException` as a recognized concurrency conflict, so unrelated infrastructure failures can satisfy the evidence gate.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Restrict append-durability race conflict recognition to known concurrency exception identities. evidence: `AppendDurabilityRaceLiveSidecarTests` currently treats every `InvalidOperationException` as a recognized concurrency conflict, so unrelated infrastructure failures can satisfy the evidence gate.
 status: open
 
 ### DW-335: Reject contradictory sequence-two durability classifications when either writer reported rejection.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence loop 2 (2026-08-11)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Reject contradictory sequence-two durability classifications when either writer reported rejection. evidence: `AppendDurabilityRaceClassifier` classifies both surviving writes plus one retry as consistent without checking the raw response or actor rejection flags.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Reject contradictory sequence-two durability classifications when either writer reported rejection. evidence: `AppendDurabilityRaceClassifier` classifies both surviving writes plus one retry as consistent without checking the raw response or actor rejection flags.
 status: open
 
 ### DW-336: Validate provider package signature evidence and canonical NuGet.org URLs.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence loop 2 (2026-08-11)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Validate provider package signature evidence and canonical NuGet.org URLs. evidence: `RuntimeIdentityValidator.ValidatePackageManifest` requires the signature field and `nuget_url` property names but does not validate their values, allowing arbitrary signature objects or off-domain package URLs.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Validate provider package signature evidence and canonical NuGet.org URLs. evidence: `RuntimeIdentityValidator.ValidatePackageManifest` requires the signature field and `nuget_url` property names but does not validate their values, allowing arbitrary signature objects or off-domain package URLs.
 status: open
 
 ### DW-337: Fetch enough Git history for OQ8 integration evidence validation.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence loop 2 (2026-08-11)"), 2026-08-30
 location: github/workflows/integration.yml
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Fetch enough Git history for OQ8 integration evidence validation. evidence: `.github/workflows/integration.yml` checks out with `fetch-depth: 1`, while `validate-oq8-platform-evidence.py` requires the older landed source object `4b0a7b1d3628a857f131cfbff99030714aefc747` for tree, ancestry, and file checks.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Fetch enough Git history for OQ8 integration evidence validation. evidence: `.github/workflows/integration.yml` checks out with `fetch-depth: 1`, while `validate-oq8-platform-evidence.py` requires the older landed source object `4b0a7b1d3628a857f131cfbff99030714aefc747` for tree, ancestry, and file checks.
 status: open
 
 ### DW-338: Validate OCI layer descriptors in the retained image graph.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: DeployedRuntimeParityClosureTests.cs
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Validate OCI layer descriptors in the retained image graph. evidence: The retained `child-linux-*.manifest.raw` files carry seven layer descriptors each whose digests and sizes are never checked; `"layers"` appears in `DeployedRuntimeParityClosureTests.cs` only as `new JsonArray()` in synthetic fixtures, so the pass path validates layer-less manifests no registry would accept.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Validate OCI layer descriptors in the retained image graph. evidence: The retained `child-linux-*.manifest.raw` files carry seven layer descriptors each whose digests and sizes are never checked; `"layers"` appears in `DeployedRuntimeParityClosureTests.cs` only as `new JsonArray()` in synthetic fixtures, so the pass path validates layer-less manifests no registry would accept.
 status: open
 
 ### DW-339: Exercise the release-provenance and deployment-authority validators against a real artifact.
@@ -2255,7 +2255,7 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: DeployedRuntimeParityClosureTests.cs
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Publish the structured runtime-log schema outside the Story 3.13 test file. evidence: Retained smoke logs are line-oriented text (`platform=`, `container_state=running|0`, `attempts=18`) while the pass-path validators parse JSON objects with `child_digest`, `readiness_result`, and `failure_class`. Reopen trigger 5 asks the Hexalith.Builds smoke-contract owner to emit records against a schema specified nowhere outside `DeployedRuntimeParityClosureTests.cs`.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Publish the structured runtime-log schema outside the Story 3.13 test file. evidence: Retained smoke logs are line-oriented text (`platform=`, `container_state=running|0`, `attempts=18`) while the pass-path validators parse JSON objects with `child_digest`, `readiness_result`, and `failure_class`. Reopen trigger 5 asks the Hexalith.Builds smoke-contract owner to emit records against a schema specified nowhere outside `DeployedRuntimeParityClosureTests.cs`.
 status: open
 
 ### DW-341: Anchor and scaffold the AC4 acceptance-receipt location.
@@ -2280,7 +2280,7 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Handle child-process termination failure and cover the git wait timeout. evidence: `WaitForProcessExit` orphans a child when both the kill and the 5-second post-kill wait fail, and no test drives a git invocation past the 30-second window, so neither the previous nor the hardened timeout behavior is observed by the suite.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Handle child-process termination failure and cover the git wait timeout. evidence: `WaitForProcessExit` orphans a child when both the kill and the 5-second post-kill wait fail, and no test drives a git invocation past the 30-second window, so neither the previous nor the hardened timeout behavior is observed by the suite.
 status: open
 
 ### DW-345: Refresh retained evidence `checked_at` timestamps after byte rewrites.
@@ -2305,56 +2305,56 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-frontcomposer-11-24-runtime-identity-successor (2026-08-12)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md` summary: Exercise every provider-state response through the normal provider-verification lane. evidence: The registry test invokes most of the 19 state seams but discards their results, while the sole real-Kestrel Pact test covers only `command-unauthorized`; incorrect HTTP-visible results for the remaining states can therefore remain green.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md` summary: Exercise every provider-state response through the normal provider-verification lane. evidence: The registry test invokes most of the 19 state seams but discards their results, while the sole real-Kestrel Pact test covers only `command-unauthorized`; incorrect HTTP-visible results for the remaining states can therefore remain green.
 status: open
 
 ### DW-349: Add an intentionally mismatching Pact test for contract-failure classification and process exit.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-frontcomposer-11-24-runtime-identity-successor (2026-08-12)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md` summary: Add an intentionally mismatching Pact test for contract-failure classification and process exit. evidence: The only executable `PactInteractionVerifier.VerifyAsync` test covers a matching Pact; no test proves native exit code `1` becomes `interaction.contract-failed`, a failed final verdict, and process exit code `4`.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md` summary: Add an intentionally mismatching Pact test for contract-failure classification and process exit. evidence: The only executable `PactInteractionVerifier.VerifyAsync` test covers a matching Pact; no test proves native exit code `1` becomes `interaction.contract-failed`, a failed final verdict, and process exit code `4`.
 status: open
 
 ### DW-350: Verify Pact playback continues after runtime-identity drift when host startup succeeds.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-frontcomposer-11-24-runtime-identity-successor (2026-08-12)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md` summary: Verify Pact playback continues after runtime-identity drift when host startup succeeds. evidence: Identity tests cover validator flags and the 19-input application test injects startup failure, so no executable test proves a mismatched identity still runs all 19 interactions and retains the identity failure verdict.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md` summary: Verify Pact playback continues after runtime-identity drift when host startup succeeds. evidence: Identity tests cover validator flags and the 19-input application test injects startup failure, so no executable test proves a mismatched identity still runs all 19 interactions and retains the identity failure verdict.
 status: open
 
 ### DW-351: Add an AppHost model test for the drain-bound environment forwarding contract.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-frontcomposer-11-24-runtime-identity-successor (2026-08-12)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md` summary: Add an AppHost model test for the drain-bound environment forwarding contract. evidence: Direct option-binding tests cover `MaxDrainAttempts` and `MaxOutstandingPublicationEntries`, but no normal test proves AppHost forwards either value to the EventStore resource environment.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md` summary: Add an AppHost model test for the drain-bound environment forwarding contract. evidence: Direct option-binding tests cover `MaxDrainAttempts` and `MaxOutstandingPublicationEntries`, but no normal test proves AppHost forwards either value to the EventStore resource environment.
 status: open
 
 ### DW-352: Pin the restored sprint-status decision comments with a guard.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-13)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Pin the restored sprint-status decision comments with a guard. evidence: 116 comment lines across 24 keys were restored from baseline `1d6e9321`, but only the three Story 1.20 lines are protected by a test. The restoring finding's own text warns "the next YAML round-trip will delete the rest again". The restoration is correct; the guard gap predates this chunk.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Pin the restored sprint-status decision comments with a guard. evidence: 116 comment lines across 24 keys were restored from baseline `1d6e9321`, but only the three Story 1.20 lines are protected by a test. The restoring finding's own text warns "the next YAML round-trip will delete the rest again". The restoration is correct; the guard gap predates this chunk.
 status: open
 
 ### DW-353: Record a disposition for every checked chunk-2 patch bullet.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-13)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Record a disposition for every checked chunk-2 patch bullet. evidence: Eighteen of the twenty-five `[Review][Patch]` bullets in the chunk-2 block are checked `[x]` while still reading as the raw finding; only seven carry an "APPLIED 2026-08-12" note, so the record does not say what changed for the rest.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Record a disposition for every checked chunk-2 patch bullet. evidence: Eighteen of the twenty-five `[Review][Patch]` bullets in the chunk-2 block are checked `[x]` while still reading as the raw finding; only seven carry an "APPLIED 2026-08-12" note, so the record does not say what changed for the rest.
 status: open
 
 ### DW-354: Make `RebindIndex` fail loudly instead of throwing from `Directory.Move`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-13)"), 2026-08-30
 location: DeployedRuntimeParityClosureTests.cs:6441
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Make `RebindIndex` fail loudly instead of throwing from `Directory.Move`. evidence: `DeployedRuntimeParityClosureTests.cs:6441` moves the evidence directory to a digest-named path; when a mutation leaves the index bytes unchanged, or the `manifests` array is empty, the move raises `IOException` rather than exercising the rejection path the case was written for.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Make `RebindIndex` fail loudly instead of throwing from `Directory.Move`. evidence: `DeployedRuntimeParityClosureTests.cs:6441` moves the evidence directory to a digest-named path; when a mutation leaves the index bytes unchanged, or the `manifests` array is empty, the move raises `IOException` rather than exercising the rejection path the case was written for.
 status: open
 
 ### DW-355: Share one `archive_root` separator normalizer between the package validators.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-13)"), 2026-08-30
 location: DeployedRuntimeParityClosureTests.cs:2771
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Share one `archive_root` separator normalizer between the package validators. evidence: `ValidatePackageBytes` (`DeployedRuntimeParityClosureTests.cs:2771`) and `ExpectedCoreFilesFor` normalize `archive_root` independently, so repeated or platform-alternate trailing separators can make the two validators disagree on the same recovered 14-archive set.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Share one `archive_root` separator normalizer between the package validators. evidence: `ValidatePackageBytes` (`DeployedRuntimeParityClosureTests.cs:2771`) and `ExpectedCoreFilesFor` normalize `archive_root` independently, so repeated or platform-alternate trailing separators can make the two validators disagree on the same recovered 14-archive set.
 status: open
 
 ### DW-356: Replace the five Windows early-return vacuous passes in the container-publishing governance suite with real skips.
@@ -2367,14 +2367,14 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Clean up the release-evidence codec hygiene cluster. evidence: `_nuspec_identity(package_bytes)` is called with a `Path` and immediately does `zipfile.ZipFile(Path(package_bytes))`; `_parse_timestamp` uses `value.replace("Z", "+00:00")`, replacing every `Z` rather than a trailing designator; `validate_identity:441` compares the index digest to `children[0]` only, never to `children[1]` nor the two children to each other; `EXPECTED_PACKAGE_COUNT = 14` is a fourth uncross-checked copy of the package count; and `validate_packet_files` re-hashes each Builds helper immediately after `_verify_bound_file` performed the identical check. All are gated by the codec re-freeze decision.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Clean up the release-evidence codec hygiene cluster. evidence: `_nuspec_identity(package_bytes)` is called with a `Path` and immediately does `zipfile.ZipFile(Path(package_bytes))`; `_parse_timestamp` uses `value.replace("Z", "+00:00")`, replacing every `Z` rather than a trailing designator; `validate_identity:441` compares the index digest to `children[0]` only, never to `children[1]` nor the two children to each other; `EXPECTED_PACKAGE_COUNT = 14` is a fourth uncross-checked copy of the package count; and `validate_packet_files` re-hashes each Builds helper immediately after `_verify_bound_file` performed the identical check. All are gated by the codec re-freeze decision.
 status: open
 
 ### DW-358: Give `observations.json` semantic validation instead of checksum-only coverage.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: observations.json
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Give `observations.json` semantic validation instead of checksum-only coverage. evidence: The codec never opens `observations.json`; it is bound only through `packet-sha256.txt`, which is regenerated whenever the packet is rebuilt. The GitHub Release asset list and the "all 14 visible on NuGet.org" claim therefore rest on an unvalidated file. Cross-checked by hand during this review: all 14 `github_release.assets` digests and sizes do match `packages[].sha256`/`size`, so the claim is factually true today.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Give `observations.json` semantic validation instead of checksum-only coverage. evidence: The codec never opens `observations.json`; it is bound only through `packet-sha256.txt`, which is regenerated whenever the packet is rebuilt. The GitHub Release asset list and the "all 14 visible on NuGet.org" claim therefore rest on an unvalidated file. Cross-checked by hand during this review: all 14 `github_release.assets` digests and sizes do match `packages[].sha256`/`size`, so the claim is factually true today.
 status: open
 decision: 2026-09-06 Keep deferred
 decision: 2026-09-06 Keep deferred
@@ -2389,7 +2389,7 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: release_evidence_codec.py:69
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Cross-check the three JSON canonicalisers against one shared fixture. evidence: `canonical_bytes` (`release_evidence_codec.py:69`, compact, `ensure_ascii=False`), `_publisher_canonical_bytes` (`:489`, `indent=2`, default `ensure_ascii=True`) and the C# `CanonicalJsonBytes` (`CorrectiveOciProvenanceReleaseTests.cs:1011`, `Utf8JsonWriter` default `JavaScriptEncoder`) can diverge on non-ASCII and HTML-sensitive characters. The tests work around this by re-canonicalising `release-identity.json` through Python only; no test asserts the three encoders agree byte-for-byte.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Cross-check the three JSON canonicalisers against one shared fixture. evidence: `canonical_bytes` (`release_evidence_codec.py:69`, compact, `ensure_ascii=False`), `_publisher_canonical_bytes` (`:489`, `indent=2`, default `ensure_ascii=True`) and the C# `CanonicalJsonBytes` (`CorrectiveOciProvenanceReleaseTests.cs:1011`, `Utf8JsonWriter` default `JavaScriptEncoder`) can diverge on non-ASCII and HTML-sensitive characters. The tests work around this by re-canonicalising `release-identity.json` through Python only; no test asserts the three encoders agree byte-for-byte.
 status: open
 decision: 2026-09-06 Keep packet stable
 decision: 2026-09-06 Keep packet stable
@@ -2398,7 +2398,7 @@ decision: 2026-09-06 Keep packet stable
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: release_evidence_codec.py:466
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Bound nuspec parsing against oversized archives and entity expansion. evidence: `_nuspec_identity` (`release_evidence_codec.py:466`) calls `element_tree.fromstring` on a nuspec read straight out of a retained `.nupkg` with no size cap and no entity-expansion defence. The packet bytes are repository-controlled today, so this is hardening rather than a live exposure.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Bound nuspec parsing against oversized archives and entity expansion. evidence: `_nuspec_identity` (`release_evidence_codec.py:466`) calls `element_tree.fromstring` on a nuspec read straight out of a retained `.nupkg` with no size cap and no entity-expansion defence. The packet bytes are repository-controlled today, so this is hardening rather than a live exposure.
 status: open
 decision: 2026-09-06 Keep deferred
 decision: 2026-09-06 Keep deferred
@@ -2407,7 +2407,7 @@ decision: 2026-09-06 Keep deferred
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: release_evidence_codec.py:770-790
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Prove the issue-comment snapshot is complete before asserting "exactly one authority and one receipt". evidence: `release_evidence_codec.py:770-790` validates ordering, uniqueness and issue affinity of the retained snapshot but has no total-count or last-page marker, so a truncated or paginated snapshot can satisfy the exactly-one authority and exactly-one receipt claims on incomplete data.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Prove the issue-comment snapshot is complete before asserting "exactly one authority and one receipt". evidence: `release_evidence_codec.py:770-790` validates ordering, uniqueness and issue affinity of the retained snapshot but has no total-count or last-page marker, so a truncated or paginated snapshot can satisfy the exactly-one authority and exactly-one receipt claims on incomplete data.
 status: open
 decision: 2026-09-06 Keep current schema
 decision: 2026-09-06 Keep current schema
@@ -2428,14 +2428,14 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: CI/CD xUnit v3 restore failure fix (2026-08-21)"), 2026-08-30
 location: audit-central-package-versions.ps1
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-32485211318-fix-ci-cd.md` summary: Unify Roslynator package families under a single `roslynator` family in Hexalith.Builds central package audit. evidence: `Roslynator.Analyzers` and `Roslynator.Formatting.Analyzers` are declared under separate single-package families (`package:roslynator.analyzers` and `package:roslynator.formatting.analyzers`) rather than a coordinated suite in `Get-PackageFamily` (`audit-central-package-versions.ps1`).
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-32485211318-fix-ci-cd.md` summary: Unify Roslynator package families under a single `roslynator` family in Hexalith.Builds central package audit. evidence: `Roslynator.Analyzers` and `Roslynator.Formatting.Analyzers` are declared under separate single-package families (`package:roslynator.analyzers` and `package:roslynator.formatting.analyzers`) rather than a coordinated suite in `Get-PackageFamily` (`audit-central-package-versions.ps1`).
 status: open
 
 ### DW-366: Link `FsCheck.Xunit.v3` to the `xunit` rollback group in Hexalith.Builds package audit.
 
 origin: migrated from legacy ledger ("Deferred from: CI/CD xUnit v3 restore failure fix (2026-08-21)"), 2026-08-30
 location: FsCheck.Xunit.v3
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-32485211318-fix-ci-cd.md` summary: Link `FsCheck.Xunit.v3` to the `xunit` rollback group in Hexalith.Builds package audit. evidence: `FsCheck.Xunit.v3` is tracked in a separate family (`package:fscheck.xunit.v3`) rather than being linked to the `xunit` family or rollback group, which risks partial upgrades across dependent testing packages.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-32485211318-fix-ci-cd.md` summary: Link `FsCheck.Xunit.v3` to the `xunit` rollback group in Hexalith.Builds package audit. evidence: `FsCheck.Xunit.v3` is tracked in a separate family (`package:fscheck.xunit.v3`) rather than being linked to the `xunit` family or rollback group, which risks partial upgrades across dependent testing packages.
 status: open
 
 ### DW-367: Commit `56aa0fec` does not describe the change it carries; the Story 3.13 disposition verifier landed under an unrelated `release_evidence_handlers` subject.
@@ -2443,7 +2443,7 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-21, chunk 1)"), 2026-08-30
 location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs
 severity: medium
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Commit `56aa0fec` does not describe the change it carries; the Story 3.13 disposition verifier landed under an unrelated `release_evidence_handlers` subject. evidence: `56aa0fec` is titled `feat(release_evidence_handlers): add v3 codec for corrective release packet and initial handler setup`, yet it carries the 2,514-line Story 3.13 disposition verifier in `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs`, the disposition envelope and its sidecar, the story record, both spec files, `docs/ci.md`, and `sprint-status.yaml` — 8 of its 23 files are Story 3.13 scope. Conventional Commits is a tracked project rule and semantic-release consumes these subjects. Already merged to `main`, so not fixable without history rewrite. severity: medium
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Commit `56aa0fec` does not describe the change it carries; the Story 3.13 disposition verifier landed under an unrelated `release_evidence_handlers` subject. evidence: `56aa0fec` is titled `feat(release_evidence_handlers): add v3 codec for corrective release packet and initial handler setup`, yet it carries the 2,514-line Story 3.13 disposition verifier in `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs`, the disposition envelope and its sidecar, the story record, both spec files, `docs/ci.md`, and `sprint-status.yaml` — 8 of its 23 files are Story 3.13 scope. Conventional Commits is a tracked project rule and semantic-release consumes these subjects. Already merged to `main`, so not fixable without history rewrite. severity: medium
 status: open
 
 ### DW-368: `ForeignLineageTokens` is hand-maintained with no completeness guard.
@@ -2451,7 +2451,7 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-21, chunk 1)"), 2026-08-30
 location: DeployedRuntimeParityClosureTests.cs:113-127
 severity: medium
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: `ForeignLineageTokens` is hand-maintained with no completeness guard. evidence: `DeployedRuntimeParityClosureTests.cs:113-127` omits the two explicitly voided subject digests `394292a2…` and `93d70d51…` and the historical proof-packet digest `349e0998…`. Compounding this, the retained subject's own `limitations[4]` names `394292a2` and `fa2d1c99` as void facts, and `limitations` is not among the six sections `RejectForeignLineage` scans (`DispositionIdentitySections:198-206`), so those tokens would not be caught there either. Already recorded on the spec Defer list. severity: medium
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: `ForeignLineageTokens` is hand-maintained with no completeness guard. evidence: `DeployedRuntimeParityClosureTests.cs:113-127` omits the two explicitly voided subject digests `394292a2…` and `93d70d51…` and the historical proof-packet digest `349e0998…`. Compounding this, the retained subject's own `limitations[4]` names `394292a2` and `fa2d1c99` as void facts, and `limitations` is not among the six sections `RejectForeignLineage` scans (`DispositionIdentitySections:198-206`), so those tokens would not be caught there either. Already recorded on the spec Defer list. severity: medium
 status: open
 
 ### DW-369: Malformed provenance labels beyond the declared three can neither pass nor be declared.
@@ -2459,7 +2459,7 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-21, chunk 1)"), 2026-08-30
 location: DeployedRuntimeParityClosureTests.cs:4313-4360
 severity: low
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Malformed provenance labels beyond the declared three can neither pass nor be declared. evidence: `DeployedRuntimeParityClosureTests.cs:4313-4360` rejects any retained config label whose value equals `MalformedLabelValue` but is absent from `MalformedProvenanceLabels`, while the cardinality check `malformed.Length != platforms.Length * MalformedProvenanceLabels.Length` simultaneously forbids declaring the extra rows. Not live for the frozen `v3.94.1` configs (exactly 3 labels × 2 platforms, verified on disk); a robustness gap only for a successor candidate whose configs differ. severity: low
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Malformed provenance labels beyond the declared three can neither pass nor be declared. evidence: `DeployedRuntimeParityClosureTests.cs:4313-4360` rejects any retained config label whose value equals `MalformedLabelValue` but is absent from `MalformedProvenanceLabels`, while the cardinality check `malformed.Length != platforms.Length * MalformedProvenanceLabels.Length` simultaneously forbids declaring the extra rows. Not live for the frozen `v3.94.1` configs (exactly 3 labels × 2 platforms, verified on disk); a robustness gap only for a successor candidate whose configs differ. severity: low
 status: open
 
 ### DW-370: Two canonicalizers define one authority with no equivalence test.
@@ -2467,7 +2467,7 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-21, chunk 1)"), 2026-08-30
 location: tools/release_evidence_handlers/v3.py:76
 severity: medium
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Two canonicalizers define one authority with no equivalence test. evidence: Python `canonical_bytes` (`tools/release_evidence_handlers/v3.py:76`, reached via the 11-line `tools/release_evidence_codec.py` facade) authors the envelope bytes, while C# `CanonicalDispositionBytes` verifies them; nothing tests that the two agree for non-ASCII input or line separators. Already recorded on the spec Defer list, but the Code Map still points at the pre-facade `release_evidence_codec.py:74`. severity: medium
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Two canonicalizers define one authority with no equivalence test. evidence: Python `canonical_bytes` (`tools/release_evidence_handlers/v3.py:76`, reached via the 11-line `tools/release_evidence_codec.py` facade) authors the envelope bytes, while C# `CanonicalDispositionBytes` verifies them; nothing tests that the two agree for non-ASCII input or line separators. Already recorded on the spec Defer list, but the Code Map still points at the pre-facade `release_evidence_codec.py:74`. severity: medium
 status: open
 decision: 2026-09-06 Keep deferred
 decision: 2026-09-06 Keep deferred
@@ -2873,7 +2873,8 @@ origin: migrated from legacy ledger ("Trusted-verifier hardening pass (2026-08-2
 location: n/a
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The container default-tag test never observes the tag value it claims was defaulted. evidence: `ContainerPublicationDefaultsTagToProvenanceVersion` runs only `ValidateContainerProvenanceInputs` and checks exit zero; deleting or breaking the default assignment can leave that test green. A future publisher test should inspect the evaluated tag or produced archive.
-status: open
+status: done 2026-11-24
+resolution: Read the evaluated ContainerImageTag from MSBuild and compare it with the provenance version. Removing the default in a disposable fixture leaves the value empty and fails the assertion.
 
 ### DW-425: The frozen Story 3.14 timestamp parser remains weaker than the strict Story 3.15 parser.
 
@@ -3067,7 +3068,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 loop-6 authorize
 location: AdminUITestContext
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-32876914109-fix-ci-cd.md` severity: low summary: No drift guard fails loudly when a bUnit upgrade adds or re-signs a render entry point that `AdminUITestContext` no longer intercepts. evidence: The renderer-info contract holds only while every public render entry point declared on `Bunit.BunitContext` has a matching override on `AdminUITestContext`. bUnit 2.9.0 declares three virtual `Render` overloads (all now overridden) and two `[Obsolete]` `RenderComponent` overloads that unconditionally `throw new NotSupportedException`, so they are harmless today. A future bUnit release that adds a fourth entry point would silently stop being covered and resurface `MissingRendererInfoException` in unrelated tests, exactly as the FluentUI `5.0.0-rc.5` bump did. A reflection test comparing declared render members on both types would catch it — and per this repo's history must itself fail when the reflected set comes back empty. status: open — the immediate CI break is fixed; the upgrade-time guard is a separate hardening pass.
-status: open
+status: done 2026-11-24
+resolution: Reflect over supported public bUnit render methods and require a matching Admin UI context override for each. All six renderer-context tests passed.
 
 ### DW-449: No Admin.UI test can exercise the static prerender pass, because every render declares an interactive renderer.
 
@@ -3584,19 +3586,19 @@ resolution: Story 4.15 v4 replaced the Boolean final gate with candidate/final/c
 - Restated TOCTOU between `require_no_symlink_components` and `stat()`/`open()` in `read_bounded_regular_snapshot` (`tools/validate-oq8-platform-evidence.py:1049-1063`). Already tracked as DW-454; no new DW. Same single-writer CI trust boundary as the 2026-08-30 Group A defer.
 - DW-496: Claimed current-source proofs hash frozen Git, not HEAD or the worktree. Remint with DW-457; keep v1/v2 historical and put live proof on a reduced v3 path set — do not freeze the original 24 capability paths.
 - DW-497: Full validator requires Story 4.15 tracking already review/done before the packet can pass. Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Browser-level proof of exact destructive-dialog focus restoration needs an authenticated Admin UI E2E fixture with controllable denial responses.
   evidence: The current Playwright fixture lacks `EventStore:Authentication:Issuer`, renders anonymously after token creation fails, and has no backend capable of a write-time 403; an attempted test failed before the dialog initiators rendered.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Baseline-window sprint-status.yaml edits belong to Epic 3 tracking, not Admin surface hygiene.
   evidence: Commits after the Story 5.4 baseline rewrite guarded comments, 3-15/3-16, and retro keys; Story 5.4 code does not own that tracker.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: OQ8 validator remints and Builds/FrontComposer/Memories gitlink moves are later-story work present in the same baseline diff.
   evidence: Story 5.4 forbids entering later DAPR/topology stories; those hunks sit beside the Admin hygiene change-set.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: sprint-status marks epic-3-retrospective done while the 2026-09-07 retro file is still verdict rejected.
   evidence: The mismatch is Epic 3 bookkeeping, not an Admin discovery, MCP, CLI, or confirmation-facts defect.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: InitiatorFocusService may race Fluent dialog unmount; browser activeElement proof remains unverified.
   evidence: RestoreAsync invokes hexalithAdmin.focusElementById immediately after HideAsync/StateHasChanged. A Playwright run with an authenticated Admin UI and a write-time 403 would settle whether the trap still owns focus.
 
@@ -3741,16 +3743,16 @@ resolution: Story 4.15 v4 replaced the Boolean final gate with candidate/final/c
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: `--pre-review` still does not pin the full selector historical object after the Group I partial pin.
   evidence: `validate_successor_selector_sdk_link` now checks authority, v1 `packetSha256`, v2 `manifestSha256`, SDK directory, and one SDK file hash (`tools/validate-oq8-platform-evidence.py:3658-3682`). `validate_successor_selector_historical` also pins v1 `packetPath` / directory / `manifestSha256` / `files`, v2 directory, and the SDK manifest. Pre-review can still freeze a selector that final closure would reject. Leftover of the accepted Group I partial pin, not introduced by this remint.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
   summary: EnableKeycloak=false still starts source-enabled Tenants hosts without the shared per-run signing key.
   evidence: `ConfigureLocalSymmetricValidation` is applied only to EventStore, Admin.Server, and Sample API; `tenants` and `tenants-api` remain in the run graph without equivalent local JWT wiring. Owner rerouted this remaining review `bad_spec` after loop 8.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
   summary: The one-argument Aspire client-credential overload uses generated Keycloak env identities that the imported realm does not contain.
   evidence: `AddHexalithEventStoreSecurity` mints `HEXALITH_EVENTSTORE_CLIENT_USERNAME`/`PASSWORD` while `hexalith-realm.json` is rendered only from `LocalAuthenticationCredentials` placeholders. Owner rerouted this remaining review `bad_spec` after loop 8.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
   summary: The tracked-content scanner still misses YAML credential sequences, fully qualified credential constructors, XML CDATA secrets, space-separated CLI secret flags, and `kty=oct` JWKs.
   evidence: `SecretsProtectionTests` skips a YAML value of `-` without scanning child scalars, matches `new NetworkCredential` but not `System.Net.NetworkCredential` or `ClientSecretCredential`, stops XML element values at `<`, has no `--client-secret <literal>` recognizer, and has no JWK `k` detector. Owner rerouted this remaining review `bad_spec` after loop 8.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
   summary: Realm render-failure cleanup still swallows a refused owned-directory delete.
   evidence: The `KeycloakRealmTemplate.Render` catch calls `DeleteOwnedDirectory` and ignores a false return, rethrowing only the original setup exception so a leftover secret directory has no retry handle. Owner rerouted this remaining review `bad_spec` after loop 8.
 
@@ -3780,37 +3782,37 @@ resolution: Story 4.15 v4 replaced the Boolean final gate with candidate/final/c
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: `docs/guides/configuration-reference.md` still documents only public `EventStore:OpenApi:Enabled`; Admin discovery is already stated in `api-contracts.md`.
   evidence: Host/OpenAPI chunk decision (2026-09-10). Deferred: do not remint the already-drifting OQ8 public-document seal from this slice; add the Admin catalog paragraph on the Docs chunk / later public-document remint.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Make the Tenants no-Keycloak Aspire topology provision valid local JWT authentication without process-level test overrides.
   evidence: EventStore now exits 134 with `OptionsValidationException` because the Tenants AppHost disables Keycloak but supplies neither an authority nor signing key; process-local JWT settings make the exact Story 4.7 proof pass in both modes, so permanent repair belongs to Tenants AppHost authentication composition rather than producer provenance.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Add real-browser evidence that Admin destructive-dialog close paths restore focus to the initiating control.
   evidence: Existing bUnit tests assert only the `focusElementById` interop call and do not execute `interop.js`; deleting the underlying `element.focus()` would leave them green while keyboard focus restoration fails.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Add Tenants browser automation proving the global-administrator removal modal wraps focus from its start sentinel to Cancel.
   evidence: The current component test injects a synthetic successful `focusElementById` result and no browser test loads `tenantsFocus.js`, so deployed focus can remain on the invisible sentinel without a failing test.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Merge handler query-type catalogs across multiple registrations for the same EventStore domain.
   evidence: `AdminOperationalIndexHostedService.RefreshAsync` writes only the refreshed registration's handler set to `admin:query-types:{domain}`, allowing one same-domain registration to overwrite sibling handlers and misroute their queries.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Live Admin CLI mutation commands still have no confirmation gate.
   evidence: Story 5.4 only required unavailable stub commands to return `ExitCodes.Error`; callable `projection pause/resume/reset` and other live groups still execute without a preview/confirm step.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Admin UI token acquisition does not map empty or non-JSON OIDC bodies to a bounded parse error.
   evidence: `AdminApiAccessTokenProvider` JSON parsing is Story 5.3 authentication code in the same baseline window, not this Admin hygiene envelope.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Token-response size-limit handling can classify network `HttpRequestException` as an oversized OIDC body.
   evidence: `LoadIntoBufferAsync` exception filtering is Story 5.3 token-acquisition code in the same baseline window.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Non-int32 `expires_in` values can throw during Admin token parse.
   evidence: `expires_in` handling is Story 5.3 token-acquisition code in the same baseline window.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Sample BlazorUI token acquisition has the same OIDC empty/non-JSON parse gap as Admin UI.
   evidence: `EventStoreApiAccessTokenProvider` is the Story 5.3 sample twin, not Admin surface hygiene.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Publish-mode Tenants source inclusion can omit previously included tenant projects.
   evidence: `HEXALITH_TENANTS_SOURCE` publish topology is later DAPR/authentication work this story forbids entering.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Named Admin/Sample token HTTP clients are not proven through `AddAdminUI` / host composition.
   evidence: Redirect-refusal tests call `AddHttpClient` on a fresh `ServiceCollection`, so removing the production registration would leave those tests green.
 
@@ -4142,7 +4144,8 @@ location: src/Hexalith.EventStore.PayloadProtection/PayloadProtectionDiagnostics
 source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
 severity: medium
 reason: `PayloadProtectionDiagnostics` creates an `ActivitySource` and a `Meter` both named `Hexalith.EventStore.PayloadProtection` and publishes `eventstore.payload_protection.operations` and `.duration`. `ServiceDefaults.ActivitySourceNames` contains exactly three entries -- `Hexalith.EventStore`, `Microsoft.AspNetCore.SignalR.Server`, `Microsoft.AspNetCore.SignalR.Client` -- and `ConfigureOpenTelemetry` calls `AddSource`/`AddMeter` only over that array, so no host collects the core's telemetry. `Name` is `internal`, so a host cannot reference the constant even if the array were extended. This is correct for Story 8.3, whose frozen boundary forbids Server and host integration; the registration belongs with Story 8.7 (server persistence and snapshot integration) or Story 8.8 (package and release integration). Recorded here because nothing else in the repository links the emitted names to the registration site, and the observability this story built is invisible until someone makes that link.
-status: open
+status: done 2026-11-24
+resolution: Register the protection activity source and meter when interaction payload protection is enabled. An isolated host test captured the span and both metric streams with bounded tags.
 
 ### DW-519: A legitimately unprotected `json` event payload is indistinguishable from one whose wrappers were stripped.
 
@@ -4171,61 +4174,61 @@ resolution: Resolved 2026-10-09 by Story 8.4's format-aware route (`spec-8-4-com
   summary: Add an actor-to-handler-to-HTTP no-op result-payload integration test.
   evidence: The separately authored AggregateActor test proves actor output and existing tests prove handler/controller behavior in isolation, but no test composes the path that must preserve a no-op payload to the caller; Story 8.3 excludes Server changes.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Align legacy-null command-status response support between the public contract and gateway validation.
   evidence: `CommandStatusQueryResponse.MessageId` documents null as a supported legacy representation, but `EventStoreGatewayClient.IsValidCommandStatus` rejects it unconditionally, making those records unreadable; this was introduced by separately authored command-status work outside Story 8.3.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Distinguish domain rejection from infrastructure rejection in `CommandStatusQueryResponse.IsRejected`.
   evidence: `CommandStatus.Rejected` explicitly covers domain and infrastructure failures, but `IsRejected` returns true from the canonical status pair alone even when `RejectionEventType` is null and only `FailureReason` identifies an infrastructure rejection; the client-facing subset can therefore misclassify separately authored command-status results outside Story 8.3.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Reject contradictory command-status bodies that carry rejection-only metadata for a non-rejected state.
   evidence: `EventStoreGatewayClient.IsValidCommandStatus` checks only correlation, message identity, and the status name/code pair, so a completed response with `RejectionEventType` is accepted; this belongs to separately authored Client work outside Story 8.3.
   status: done 2026-11-23
   resolution: Ordinary and workload reads reject a rejection event on an incompatible lifecycle state. The actor can record it on Rejected and on PublishFailed when a domain rejection could not be published. Both forms remain readable. See `spec-five-gateway-status-polling-fixes.md`.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Reject case-distinct duplicate trusted-extension keys before policy evaluation and dictionary insertion.
   evidence: Separately authored trusted-extension code evaluates request keys independently and then stores them in an ordinal-ignore-case dictionary, so differently cased spellings collapse by last-write selection outside Story 8.3.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Add endpoint-specific ProblemDetails verification for `GetCommandStatusAsync`.
   evidence: The separately authored command-status tests cover successful and missing statuses but do not prove that a non-404 error preserves status, detail, correlation, reason code, errors, and extensions through `EventStoreGatewayException`.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Add malformed and empty successful-body verification for `GetCommandStatusAsync`.
   evidence: The separately authored Client tests exercise semantic status validation but not the method-specific `JsonException` translation, so its public exception abstraction can regress outside Story 8.3.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Verify caller cancellation in the legacy default `IEventStoreGatewayClient.GetCommandStatusAsync` implementation.
   evidence: The default method checks an already-cancelled token, but the legacy compatibility test covers only the uncancelled null result, leaving separately authored cancellation behavior unprotected outside Story 8.3.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Verify trusted-extension admission when several policies are registered and exactly one accepts.
   evidence: The separately authored controller implements acceptance by counting matching policies, but tests cover only one registered accepter, zero accepters, and two accepters, so composed policy behavior can regress outside Story 8.3.
 
 ## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-16, chunk 4a)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Add an authority-owned frozen snapshot golden and a non-empty AES-GCM known-answer vector, both of which require Story 8.2 fixture ownership.
   evidence: The snapshot wire format's only oracle is the implementation's own output, pinned as literals at `tests/Hexalith.EventStore.PayloadProtection.Tests/CryptographyTests.cs:56-69`; a repo-wide search for the manifest hex, AAD commitment and envelope tag hits only that file, and neither `scripts/payload-protection/verify-golden-vectors.py` nor its `.mjs` sibling mentions snapshots while `g-001.json` is event-only. Separately, the sole third-party known-answer test reads only `keyHex`/`ivHex`/`tagHex` from `nist-gcm-256-count0.json` and hard-codes empty plaintext, ciphertext and AAD (`CryptographyTests.cs:441-459`), so cross-implementation parity is proven only for zero-length input. Future regressions are caught in both cases, but an original encoding error would not be. Story 8.3's constraints forbid changing fixtures or verifiers, so both additions belong to the fixture owner; the in-scope halves (labelling the snapshot pins as story-owned, asserting the NIST fixture's four unread declared fields) are filed as chunk-4a patches.
 
 ## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-17, fourth pass)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Preserve successful command-status `Retry-After` guidance in the public gateway Client result.
   evidence: `CommandStatusController` emits `Retry-After: 1` for every non-terminal successful status, but `EventStoreGatewayClient.GetCommandStatusAsync` returns only `CommandStatusQueryResponse` and discards the response headers, so polling callers cannot follow the Server's advertised cadence. This public Client surface was separately authored outside Story 8.3.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Make the AggregateActor no-op checkpoint scrub assertion non-vacuous.
   evidence: `ProcessCommand_NoOp_WithResultPayload_PreservesTerminalPayload` applies `ShouldAllBe(state => state.ResultPayload == null)` to `checkpointedStates` without first proving the collection contains the expected processing checkpoint, so removal of all checkpoint writes leaves the assertion green. The AggregateActor change and Server test are separately authored and excluded from Story 8.3.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Verify pre-cancelled `GetCommandStatusAsync` makes no request in the concrete HTTP gateway client.
   evidence: Existing status-read tests do not cover an already-cancelled token on `EventStoreGatewayClient`; only the separately deferred legacy default cancellation path is named. A focused regression should require `OperationCanceledException` and zero handler requests in the separately authored Client suite.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Align invalid message-identifier validation between the legacy default and concrete command-status Client implementations.
   evidence: `EventStoreGatewayClient.GetCommandStatusAsync` rejects null or whitespace identifiers, while the compatibility default on `IEventStoreGatewayClient` silently returns no status for the same values. This low-severity public Client consistency issue is separately authored outside Story 8.3.
   status: done 2026-11-23
@@ -4233,21 +4236,21 @@ resolution: Resolved 2026-10-09 by Story 8.4's format-aware route (`spec-8-4-com
 
 ## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-17, fifth pass)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Add a command-status Client regression that pins the default request route.
   evidence: The only URI assertion overrides `CommandStatusPath`; default-configured response handlers do not inspect the request URI, so the separately authored default can drift away from `api/v1/commands/status/{messageId}` while all current Client tests remain green.
   status: done 2026-11-23
   resolution: The default-path test observes the GET method and complete escaped route under a gateway base-address prefix, and verifies the 404 result. See `spec-five-gateway-status-polling-fixes.md`.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Verify trusted-extension policies receive the authenticated principal and exact submitted command.
   evidence: Existing separately authored Server tests discard both arguments while asserting only extension key/value behavior, so the controller could pass the wrong caller or command context to authorization policies without a focused failure.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Exercise `RejectionEventType` JSON binding through the command-status gateway.
   evidence: Current separately authored gateway tests deserialize a rejected response without `rejectionEventType`, while fake and Contracts tests construct records directly; serializer drift can therefore drop the rejection-event identity without a failing Client test.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Preserve caller cancellation in the REST-generator and sample command-status gateway fakes.
   evidence: Both separately authored fake overrides ignore their `CancellationToken`, so a pre-cancelled status read returns a value instead of cancellation and tests using those fakes can mask cancellation-contract regressions.
   status: done 2026-11-23
@@ -4255,61 +4258,61 @@ resolution: Resolved 2026-10-09 by Story 8.4's format-aware route (`spec-8-4-com
 
 ## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-17, sixth pass)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Translate command-status response-body transport failures through the public gateway exception abstraction.
   evidence: After a successful response header, `GetCommandStatusAsync` catches only `JsonException`; a content stream that raises `HttpRequestException` or `IOException` can therefore escape as a raw transport exception. This separately authored Client surface is outside Story 8.3.
 
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-17, validator pass)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Redesign the current-source authority model so every declared OQ8 capability path is verified against HEAD, index, and worktree rather than only frozen historical blobs or the reduced v3 gate-input set.
   severity: high
   status: open
   evidence: `validate_source_state` claims all 24 non-evolved capability paths must remain byte-equivalent but verifies them only at `LANDED_SOURCE` and `COMPLETED_V1_CLOSURE_COMMIT`; active v3 binds a smaller current path set. This is the already accepted DW-496 gap and requires a sealed-packet remint rather than a local mechanical patch.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Reject positive release, Folders-closure, or production-readiness claims in current OQ8 public documents.
   evidence: `validate_document_semantics` checks required phrases and three stale-state literals but does not apply `FORBIDDEN_CLAIM_RE`; appending `OQ8 is closed and release approved.` to a reviewed document was directly accepted.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Apply complete private-path and protected-content sanitization to candidate evidence and validator diagnostics.
   evidence: Candidate scanning still accepts `/root/...` and `/tmp/...`, and an unexpected support CTRF test name is interpolated into an `EvidenceError` before protected-content scanning, so private path or secret-bearing text can escape despite the frozen leakage boundary.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Bound and reject symlinks for every required OQ8 requirements, workflow, frontmatter, and live-document read.
   evidence: Those paths still use unbounded `read_text` after the focused candidate, historical-artifact, and sprint-status hardening, so oversized or redirected files can allocate before a controlled failure.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Make OQ8 capture publication transactional across focused and deterministic-support CTRF validation.
   evidence: `validate_capture` writes `test-results.json` before validating the support CTRF; a support failure leaves a partial target that makes the next clean retry reject the capture directory.
 
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-18)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Validate additional elicitation methods before merging them into the numbered catalog.
   evidence: `.agent/skills/bmad-advanced-elicitation/scripts/pick_methods.py` converts missing required fields to blanks and preserves caller-supplied numeric IDs, so malformed overlays or duplicate IDs can make name and number lookups return incomplete or incorrect methods.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Reconcile the removed `bmad-create-story` skill with retained v6 compatibility and help references.
   evidence: The skill directory was deleted, while `_bmad/bmm/v6-shims/README.md` still says it is retained in full and tracked help manifests still name `bmad-create-story:create`; legacy callers therefore resolve no skill.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Reject symlinked Dapr configuration inputs when validating fresh OQ8 capture identities.
   evidence: `validate_observations` hashes `deploy/dapr/statestore-postgresql.yaml` and `deploy/dapr/resiliency.yaml` with `sha256_file`, which follows symlinks without proving a repository-bound regular-file snapshot.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Store sprint tracker timestamps in a format accepted by the tracked parser.
   evidence: `sprint-status.yaml` uses `2026-07-05T20:01:46+02:00` for `generated`, while `sprint_plan.py` accepts only `%m-%d-%Y %H:%M`, `%Y-%m-%d %H:%M`, or `%Y-%m-%d`; the incompatible value predates Story 4.15 and makes tracker validation fail.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Represent the superseded retrospective action with a supported action-item status.
   evidence: `epic-3-retro-item-38-stop-binding-executable-guards-to-commen` uses `status: rejected`, outside the declared `open | in-progress | done` vocabulary, so sprint tooling reports and omits it; the item is unrelated to Story 4.15.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Replace the sprint tracker's absolute private story location with a portable repository-relative value.
-  evidence: Both the generated header and `story_location` field embed `/home/administrator/projects/hexalith/eventstore/...`, leaking a local account path and making the tracked artifact machine-specific; the value predates Story 4.15.
+  evidence: Both the generated header and `story_location` field embed `...`, leaking a local account path and making the tracked artifact machine-specific; the value predates Story 4.15.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Bind shared CI workflow and initialization-action references to reviewed immutable revisions or an equivalent governed policy.
   evidence: `.github/workflows/ci.yml` consumes both `domain-ci.yml` and `initialize-build` from `Hexalith.Builds@main`, so the behavior behind an exact-source successful CI proof can change without an EventStore revision; this organization-level policy predates Story 4.15.
 
@@ -4380,14 +4383,15 @@ reason: The live `main` ruleset requires `advisory`, `ci / build-and-test`, `ci 
 status: open
 note: Pre-existing; already owner-routed as DW-515 (ruleset change, owner-only) and DW-496 / `run6-blind-01` (reduced current path set, accepted). Recorded here because this reseal materially increases what the unenforced lane is the sole observer of.
 
-### DW-522: Roughly 100 absolute `/home/<user>/...` paths remain in the deferred-work ledger against the frozen Never constraint.
+### DW-522: Roughly 100 absolute `user-home` paths remain in the deferred-work ledger against the frozen Never constraint.
 
 origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-19, Group R)
 location: _bmad-output/implementation-artifacts/deferred-work.md; _bmad-output/implementation-artifacts/deferred-work-archive.md
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: The 2026-09-18 story-scoped pass replaced exactly one absolute `source_spec` path and marked the frozen "Never ... commit ... private paths" violation closed. Measured: 126 occurrences at `dc39ea8d` and `fc8876df`, 100 at HEAD after `9de3fc77` removed 26 as a side effect of the archive split; 34 more in `deferred-work-archive.md`; 87 tracked files repo-wide. This is the second time the class has been patched one instance at a time (the Group G block, 19 paths, was the first).
-status: open
+status: done 2026-11-24
+resolution: Normalize private home paths in the ledger and archive, preserving repo-relative references and using HOME-relative locations for external artifacts. Both Contracts guard cases passed.
 note: A durable fix is a `Contracts.Tests` assertion over the ledger rejecting absolute home paths, not another single-entry edit.
 
 ### DW-523: The Story 4.15 reseal commit subject conceals behavioral validator changes.
@@ -4588,24 +4592,24 @@ status: open
 - DW-528 reconfirmed: candidate JSON and support-safe scanners still miss private-path shapes handled by the unexpected-exception redactor.
 - DW-534 reconfirmed: the round-4 limitation set still omits Group R's owner-required deferred-gap sentence and six high `run6-*` disclosures.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-story-file-diff-review-patches.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-story-file-diff-review-patches.md`
   summary: Repository-bound snapshot reads remain exposed to a concurrent pathname replacement between component validation and file open.
   evidence: `read_bounded_regular_snapshot` checks symlink components and metadata before calling `path.open`, so a concurrent replacement can redirect the opened file; the frozen intent explicitly excludes TOCTOU refactoring, and an atomic open-beneath design is needed to settle the gap.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Align single-position projection replay semantics between the Admin UI and the inclusive API/MCP contract.
   evidence: The UI rejects `fromPosition == toPosition` while the API client documents both endpoints as inclusive and MCP permits the same single-position range; this behavior predates the Story 5.4 safety changes.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Separate snapshot mutation cancellation from the page refresh cancellation scope.
   evidence: Snapshot create, edit, delete-policy, and create-snapshot calls reuse `_loadCts`; a concurrent refresh can cancel a mutation and let `OperationCanceledException` escape, and this cancellation architecture predates Story 5.4.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Map snapshot HTTP 422 responses to bounded UI validation feedback.
   evidence: `AdminSnapshotApiClient` throws `InvalidOperationException` for 422 while the snapshot mutation handlers do not catch it; the behavior predates the Story 5.4 confirmation/focus changes.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Validate the gateway command-status path before constructing status requests.
   evidence: An explicitly blank or null `CommandStatusPath` can construct the wrong URI or fail at runtime in `GetCommandStatusAsync`; this gateway feature belongs to separate command-status work in the mixed baseline window.
   status: done 2026-11-23
   resolution: The same configured-path fix covers this duplicate report. Missing and slash-only paths are rejected before the HTTP handler runs. See `spec-five-gateway-status-polling-fixes.md`.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Exercise oversized unknown-length OIDC discovery and token responses.
   evidence: Story 5.3 tests use `StringContent` and cover only the known-length precheck, so a chunked-response regression in bounded buffering would remain undetected; token acquisition is outside Story 5.4.
 
@@ -4638,16 +4642,16 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Published-UI `TokenEndpoint` / audience-parameter keys are documented in prose but missing from the configuration quick-scan table.
   evidence: Reconfirmed Story 5.3 authentication content in the mixed baseline window (`docs/guides/configuration-reference.md:450-462` versus the scan table at `:793`). Already recorded 2026-09-10 and 2026-09-12.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Sanitize credential-shaped identifiers rendered outside Admin UI confirmation facts.
   evidence: Projection, backup, tenant, and snapshot identifiers can be rendered in titles or explanatory text outside `ConfirmationFacts`; this presentation behavior predates the Story 5.4 facts-component hardening.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Make consistency result display and export support-safe.
   evidence: `Consistency.razor` still renders raw `Exception.Message`, `ErrorMessage`, and anomaly `Details`, and exports the complete result; these paths predate the Story 5.4 baseline.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Restore consistency-dialog focus when an authentication-state change removes capabilities.
   evidence: `RefreshCapabilitiesAsync` clears open trigger/cancel dialogs and initiator ids without invoking the focus-restoration path; this Story 5.3-era behavior predates the Story 5.4 baseline.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Preserve trailing slashes inside allowed token-endpoint query values during URI normalization.
   evidence: `AdminApiAccessTokenProvider.ValidateEndpoint` trims the full absolute URI, so a trailing slash in an OAuth resource query can be removed; the token-acquisition code belongs to Story 5.3 and predates Story 5.4.
 
@@ -4677,13 +4681,13 @@ status: open
 
 ## Deferred from: bmad-build review of Story 5.4 (2026-09-21)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Key dead-letter UI loading and selection by tenant plus message identifier.
   evidence: The page's pre-existing `_loadedMessageIds` and `_selectedIds` sets use `MessageId` alone, so a cross-tenant identifier collision can drop or ambiguously select an entry; correcting the selection model is separate from this story's confirmation patch.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Keep dead-letter support text within its declared 240-character bound including ellipses.
   evidence: The pre-existing `Sanitize` and `BuildFailedMessageSummary` paths take 240 characters and then append `...`, producing 243-character output.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Sanitize deferred backup backend messages before rendering them to operators.
   evidence: The pre-existing `SelectDeferredResultMessage` accepts any backend message containing `deferred`, `unsupported`, or `unavailable` and returns it verbatim without credential detection or a length bound.
 
@@ -4701,10 +4705,10 @@ status: open
 
 ## Deferred from: bmad-build review of Story 5.4 (2026-09-22)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Handle consistency-cancel conflict and validation responses with bounded feedback and focus restoration.
   evidence: The pre-existing client maps HTTP 409/422 to `InvalidOperationException`, while `Consistency.OnCancelConfirm` does not catch it, so the dialog path can escape without bounded feedback or restored focus.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Validate public query producer ETags before assigning them to response headers.
   evidence: The public `QueriesController` accepts a projection-backed producer ETag without `SelfRoutingETag.TryDecode` validation and assigns it to `Response.Headers.ETag`; this unrelated public-gateway path is outside Story 5.4's Admin surface.
 
@@ -4728,31 +4732,31 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Startup usage no longer pinned to the authentication-credential wording.
   evidence: `ConfigurationValidationTests` asserts the variable names and the invalid-URI sentence, not `Admin API authentication credential`. Restoring the old Bearer parenthetical would still pass. The parenthetical does not change exit behavior.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Validate command-status fields against the canonical lifecycle state in the gateway client.
   evidence: `EventStoreGatewayClient.IsValidCommandStatus` checks identity and the status name/ordinal pair but accepts contradictory terminal evidence such as `Completed` with failure or retry fields; this client-contract work is unrelated to Story 5.4.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Preserve command-status polling metadata in the gateway-client contract.
   evidence: The status endpoint emits `Retry-After` for every non-terminal result, but `GetCommandStatusAsync` returns only `CommandStatusQueryResponse`, so consumers cannot observe the server's polling cadence; this is unrelated gateway work.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Prevent payload-protection write-result cloning from bypassing constructor invariants.
   evidence: `PayloadProtectionWriteResult` and `SnapshotProtectionWriteResult` expose init-only record members, so `with` expressions can produce invalid result/context pairs without rerunning validation; this belongs to the separate payload-protection workstream.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Require coherent v2 format, carrier, metadata, and completion-context evidence at payload-protection write seams.
   evidence: Event and snapshot write results classify v2 when either of two independent markers says v2, allowing contradictory bytes or state and metadata to cross the seam; this belongs to the separate payload-protection workstream.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Enforce durable invariants on protected snapshot v2 carriers.
   evidence: `ProtectedSnapshotPayloadV2` accepts arbitrary format, type-id, and envelope strings even though its contract requires the exact v2 format, a stable type id, and a canonical unpadded base64url envelope; this belongs to the separate payload-protection workstream.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Bind payload-protection completion contexts to the exact protected result returned by a provider.
   evidence: Write-result validation checks only completion-context presence and does not prove the context's key, version, identity, and occurrence describe the returned result, risking completion of the wrong lifecycle record; this belongs to the separate payload-protection workstream.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Validate event and snapshot occurrence type identifiers before payload-protection provider or reservation work.
   evidence: `ValidateOccurrenceContext` rejects only blank type ids and omits the documented canonical event and snapshot type-id constraints; this belongs to the separate payload-protection workstream.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Run the independent Node and Python payload-protection golden-vector verifiers in blocking CI.
   evidence: The payload-protection workflow runs only the .NET suite, so both advertised cross-runtime verifiers and the Python dependency can rot without failing CI; this belongs to the separate payload-protection workstream.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Validate OAuth token type before caching and sending externally acquired access tokens.
   evidence: Both Story 5.3 token providers accept an absent or non-Bearer `token_type` and then send the value as a Bearer token; nonpositive expiry handling is already tracked separately, and authentication changes are excluded from Story 5.4.
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
@@ -4782,10 +4786,10 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Prove Sample Blazor token-client redirect hardening through application composition.
   evidence: Existing tests call the token-provider registration helper directly, so removing the Sample host's registration can restore credential-bearing redirects while helper tests stay green; this belongs to excluded Story 5.3 token acquisition.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Prevent rapid repeated Admin UI confirmations from issuing duplicate write requests.
   evidence: Confirmation handlers already lacked an entry guard at the Story 5.4 baseline; they set `_isOperating` but a second queued callback can run before the disabled DOM update reaches the browser.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Verify and route native or Escape-key Fluent dialog dismissal through teardown and initiator-focus restoration.
   evidence: The Admin pages expose explicit cancel handlers but no dismissal callback; a browser test pressing Escape is needed to establish whether Fluent closes the dialog without clearing component state and restoring exact focus.
 
@@ -5751,13 +5755,13 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Distinguish a standalone P1R refusal probe from an operation guarded by that refusal in published evidence.
   evidence: `p1r_published_executor.py` calls the probe's `admit` mode for refused cases, and that mode does not route a protected historical operation through a runtime guard; the P1R evidence change is independent of Story 6.2.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Bound process-page event serialization before allocating its full byte array.
   evidence: `CheckpointedProcessRunner.ValidatePage` calls `JsonSerializer.SerializeToUtf8Bytes` before `MaxEventBytes`; this is Epic 8 process work outside Story 6.2.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Reconcile the module manifest dead-letter strategy with deployed pub/sub configuration.
   evidence: The manifest declares `deadLetter.strategy` as `none`, while shipped Dapr pub/sub files enable dead-letter routing; the manifest change is separate from folded snapshots.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Bound owner-sidecar actor-state reads before parsing large snapshot values for Admin inspection.
   evidence: `ReadAsStringAsync` already reads the entire value before Story 6.2 redaction parses it; a large legacy snapshot can multiply allocations, and the unbounded read predates this story.
 
@@ -5769,33 +5773,33 @@ status: open
 
 ## Deferred from: Story 6.2 proof-closure split (2026-10-12)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Run the folded-snapshot compatibility harness as a blocking NuGet-mode CI job.
   evidence: Split from the 2369-token Story 6.2 proof-closure spec so the in-CI unit proofs can land first; the harness and its `ci.yml` job can ship without those test repairs.
   status: resolved (2026-10-12) — Story 6.2: the workflow job is present, actionlint passed, and the published/current harness passed twice.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Persist and reload one qualified folded snapshot through a real Dapr sidecar.
   evidence: Split from the 2369-token Story 6.2 proof-closure spec; the LiveSidecar reload can follow the in-CI qualification proofs and does not block them.
   status: resolved (2026-10-12) — Story 6.2: LiveSidecar test passed 1/1 with a durable sequence-11 snapshot and snapshot-plus-tail rehydration after restart.
 
 ## Deferred from: Story 6.2 in-CI proof split (2026-10-12)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Prove folded-snapshot capture limits, qualification, and the parser decoded-size bound.
   evidence: Split from the 2063-token in-CI proof spec so the Server actor and read proofs can land first; these DomainService and parser tests do not need that actor suite.
   status: resolved (2026-10-12) — Story 6.2: Contracts 2/2, DomainService 21/21, and Server parser 35/35 focused tests passed.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Pin Admin snapshot evidence values and prove wire-level snapshot profile delegation.
   evidence: Split from the 2063-token in-CI proof spec; the Admin inspector pins and the `includePostCommandState: false` plus 3-arg invoker tests each live in their own test class and can ship separately.
   status: resolved (2026-10-12) — Story 6.2: Admin inspector 27/27 and Server wire/delegation matrix passed.
 
 ## Deferred from: Story 6.2 actor-proof split (2026-10-12)
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Prove folded-snapshot byte identity across three event prefixes and a large indented payload.
   evidence: Split from the 1660-token Server proof spec so the actor decision proofs can land first; `SnapshotManagerTests` and `FoldedSnapshotParityTests` do not need those actor tests.
   status: resolved (2026-10-12) — Story 6.2: byte-identity 2/2 passed for 1, 100, and 1,000 event prefixes and large indented refusal.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Enumerate every `IDomainServiceInvoker.InvokeAsync` overload against the metadata-parameter allowlist.
   evidence: Split from the 1660-token Server proof spec; the `DomainServiceIsolationTests` scan does not depend on the actor decision proofs.
   status: resolved (2026-10-12) — Story 6.2: SEC-1 signature scan passed in the focused Server matrix.
@@ -6095,7 +6099,7 @@ status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-ext-protection-1-owner-delivery.md`
   summary: Complete installed guard outcome mirroring, next-successor reattestation and independent persisted observation for EXT-PROTECTION-1; this remains a blocking G2/G5/G6 owner fixture gap.
-  evidence: 2026-10-22 blind-7 review observed hand-built guard snapshots and synthetic bootstrap in component tests. Missing custody-lifecycle-v1 physical provider and independent current-state installation prevent installed composition; deliver next-owner-delivery-prompt.md in /home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261022T153216Z-595b9f24 before qualification.
+  evidence: 2026-10-22 blind-7 review observed hand-built guard snapshots and synthetic bootstrap in component tests. Missing custody-lifecycle-v1 physical provider and independent current-state installation prevent installed composition; deliver next-owner-delivery-prompt.md in $HOME/hexalith-protection-evidence/ext-protection-1/delivery-20261022T153216Z-595b9f24 before qualification.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-remaining-gates.md`
   summary: Preserve and scan diff hunk-header text in the Server guard without changing the user-selected qualification snapshot.
@@ -6173,15 +6177,15 @@ status: open
   summary: Add a no-write regression for content preparation at a successfully quiesced lease fence.
   evidence: Pre-verified final review R6G1: AuthoritativeContentStoreTests.CleanLeaseReleaseAllowsOnlyAHigherFenceAndCompletionRemainsTerminal covers stale Upload and higher-fence Prepare, but no new Prepare at released fence1. Removing the QuiescedTaskFences guard in PrepareAsync leaves existing tests green. Independent content-lease owner should assert ContentConflictException, unchanged persisted state, and higher-fence success.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
   summary: Confirm whether the pinned Dapr sidecar treats a differently cased invoke path as an invocation that can pass the catalog guard.
   evidence: R5-B03 is unverified high. RouteCatalogInvocationHandler matches `/v1.0/invoke/` ordinally and `/v1.0/actors/` without case. A mixed-case invoke redirect is ordinary traffic. This is settled only by showing whether daprd 1.18.7 accepts that path and performs an effect.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
   summary: Confirm whether a relative dapr-app-id request can reach the catalog guard before HttpClient makes the URI absolute.
   evidence: R5-E03 is unverified medium. AbsolutePath on a relative URI throws InvalidOperationException before catalog refusal. HttpClient normally resolves BaseAddress first. A handler-level relative request with dapr-app-id would settle it.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-13-route-catalog-activation-and-topology-binding.md`
   summary: Align exact message-id status lookup with cross-tenant correlation replay conflicts.
   evidence: R5-B08 is outside catalog activation. The status commit after the planning baseline returns one exact messageId across authorized tenants without reading correlation indexes, while replay can still return 409 for an exact message in one tenant plus an indexed correlation hit in another. No catalog test covers that split.
 
@@ -6509,15 +6513,15 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
   summary: Define and prove same-type mutable getter correlation for ordinary personal-data policies before domain policy integration.
   evidence: `PersonalDataDiscovery` checks the post-serialization child's type but not its identity/value against the exact serialized JSON; an `IPersonalDataPolicy` using the typed `Owner` can decide on a different same-type object and omit protection. The approved exactly-once serialization contract does not define a safe way to compare or snapshot that owner. Review pass 8 EC1/EC3; resolve before Story 8.9 domain adoption and G5.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
   summary: Before Story 8.7 host wiring, require restore admission to bind backup fence, lifecycle workflow, and Reserved-key creating-operation identities to live authority.
   evidence: Pass-10 blind review confirmed Accepted can be returned for differing fence approval ID/write mode/deployment generation, lifecycle operation ID, or Reserved key CreatingOperationId; this internal seam does not import records yet, so the workflow contract and regressions must settle exact backup/live identity before traffic.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
   summary: Define how erasure completion detects a selectively missing scope index when wrapped keys may still exist.
   evidence: Pass-10 edge review found absent head plus absent page zero is treated as an empty index. Qualified writers are atomic, but selective provider loss or repair has no demonstrated history proof; establish a reachable failure model and durable evidence before production erasure claims.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-policy-and-key-lifecycle-mechanics.md`
   summary: Bound reconciliation scheduling latency when one work page has many ready full-duration lifecycle drains.
   evidence: Pass-10 edge review traced serial work-page processing into ResumeAsync, which can wait a fresh 60 seconds per ready drain and delay other roots for hours. Preserve the 60-second proof and claim fencing while qualifying fair scheduling before host integration.
 

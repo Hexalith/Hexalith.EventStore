@@ -743,11 +743,11 @@ status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionLogEventIdUniquenessTests.cs, added by commit 64a21632, guards log EventId uniqueness.
 
-### DW-245: `package-availability.json` embeds machine-local absolute search roots under `/home/administrator/...`, which are non-portable durable evidence.
+### DW-245: `package-availability.json` embeds machine-local absolute search roots under `$HOME/...`, which are non-portable durable evidence.
 
 origin: migrated from legacy ledger ("Deferred from: Story 3.13 review (2026-08-08)"), 2026-08-30
 location: package-availability.json
-reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: `package-availability.json` embeds machine-local absolute search roots under `/home/administrator/...`, which are non-portable durable evidence. evidence: Blind-hunter review of the Story 3.13 packet; fail-closed package recovery already records 404/unavailable, but retained search roots remain host-specific.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: `package-availability.json` embeds machine-local absolute search roots under `$HOME/...`, which are non-portable durable evidence. evidence: Blind-hunter review of the Story 3.13 packet; fail-closed package recovery already records 404/unavailable, but retained search roots remain host-specific.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:332 records that durable search sources are named without reintroducing absolute host paths.
@@ -828,7 +828,7 @@ resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packagin
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: package-availability.json
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Redact absolute local_search_roots from retained package-availability.json (and refresh checksums/bindings) so support-safe evidence does not embed host filesystem paths. evidence: Blind-hunter review of Story 3.13; package-availability.json lists /home/administrator/... roots while JsonEvidenceIsSupportSafe currently accepts them.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Redact absolute local_search_roots from retained package-availability.json (and refresh checksums/bindings) so support-safe evidence does not embed host filesystem paths. evidence: Blind-hunter review of Story 3.13; package-availability.json lists $HOME/... roots while JsonEvidenceIsSupportSafe currently accepts them.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:332 records the support-safe redaction of absolute package search roots.
@@ -837,7 +837,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Dev Agent Debug Log still cites stale focused/suite test totals that no longer match the 140-test verifier count. evidence: Blind-hunter review of the Story 3.13 record found 115/117 and suite 999/1001 figures while the proof packet and latest hardening pass report 140 focused tests; documentation-only drift, not a verifier defect.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Dev Agent Debug Log still cites stale focused/suite test totals that no longer match the 140-test verifier count. evidence: Blind-hunter review of the Story 3.13 record found 115/117 and suite 999/1001 figures while the proof packet and latest hardening pass report 140 focused tests; documentation-only drift, not a verifier defect.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:775-777 records refreshed focused 240/240 and complete 1494/1494 totals.
@@ -846,7 +846,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Several Task parent checkboxes remain unchecked while child boxes and later tasks are marked complete. evidence: Blind-hunter review showed Tasks 4–7 and 9 parents unchecked despite checked children; AC2/AC4 intentionally remain open, so this is progress-tracking hygiene rather than a functional gap.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Several Task parent checkboxes remain unchecked while child boxes and later tasks are marked complete. evidence: Blind-hunter review showed Tasks 4–7 and 9 parents unchecked despite checked children; AC2/AC4 intentionally remain open, so this is progress-tracking hygiene rather than a functional gap.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:197-284 marks the task parents complete consistently.
@@ -864,7 +864,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-de
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: acceptances/{subject_sha256}/
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Add an `acceptances/{subject_sha256}/` scaffold or receipt template beside the roster before AC4 collection. evidence: Blind-hunter review on 2026-08-09; AC4 still requires three content-bound receipts and 0/3 remain missing, but fail-closed review does not need the scaffold to stay non-done.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Add an `acceptances/{subject_sha256}/` scaffold or receipt template beside the roster before AC4 collection. evidence: Blind-hunter review on 2026-08-09; AC4 still requires three content-bound receipts and 0/3 remain missing, but fail-closed review does not need the scaffold to stay non-done.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:820-825 records the completed acceptance layout and three validated receipts.
@@ -873,7 +873,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Re-measure the full Contracts.Tests suite after the ninth hardening pass and refresh Dev Agent / proof-packet totals if they drift. evidence: Blind-hunter review on 2026-08-09; last recorded full-suite measurement was 1001 on 2026-08-05 while focused coverage continued to grow.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Re-measure the full Contracts.Tests suite after the ninth hardening pass and refresh Dev Agent / proof-packet totals if they drift. evidence: Blind-hunter review on 2026-08-09; last recorded full-suite measurement was 1001 on 2026-08-05 while focused coverage continued to grow.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:775-777 contains the post-hardening full-suite remeasurement.
@@ -882,7 +882,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Reviewer roster maps both eventstore-owner and release-owner to the same github:jpiquot identity. evidence: AC4 asks for distinct EventStore-owner and Release-owner acceptances, but the hash-bound roster and verifier currently authorize the same identity for both roles; separation of duties is not enforced and was not renegotiated in frozen intent.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Reviewer roster maps both eventstore-owner and release-owner to the same github:jpiquot identity. evidence: AC4 asks for distinct EventStore-owner and Release-owner acceptances, but the hash-bound roster and verifier currently authorize the same identity for both roles; separation of duties is not enforced and was not renegotiated in frozen intent.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:331 records the owner's explicit ratification of github:jpiquot holding both eventstore-owner and release-owner roles.
@@ -891,7 +891,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: docs/ci
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Same working tree advances Epic 4 tracker rows and Story 4.5 LiveSidecar docs/ci prose beside Story 3.13. evidence: Story 3.13 Code Map limits docs/ci.md edits to the deployed-closure ownership paragraph and forbids scope leakage, yet the baseline diff also includes Epic 4 status moves and LiveSidecar prose outside that ownership scope.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Same working tree advances Epic 4 tracker rows and Story 4.5 LiveSidecar docs/ci prose beside Story 3.13. evidence: Story 3.13 Code Map limits docs/ci.md edits to the deployed-closure ownership paragraph and forbids scope leakage, yet the baseline diff also includes Epic 4 status moves and LiveSidecar prose outside that ownership scope.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:362 records the owner's reviewed decision not to rewrite published co-landed history and assigns each material change to its owning story.
@@ -900,7 +900,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-de
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: runtime-verification.json
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Retained fail-closed runtime-verification.json remains schema v1 without pass-path v2 command/smoke_results shape. evidence: ValidateRuntimeExecution now requires hexalith.eventstore.story-3-13-runtime-verification/v2 with command and smoke_results, while the live fail-closed citation is still v1; reopen owners lack a documented migration to a closable pass packet.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Retained fail-closed runtime-verification.json remains schema v1 without pass-path v2 command/smoke_results shape. evidence: ValidateRuntimeExecution now requires hexalith.eventstore.story-3-13-runtime-verification/v2 with command and smoke_results, while the live fail-closed citation is still v1; reopen owners lack a documented migration to a closable pass packet.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/runtime-verification.json:2-11 implements the v2 pass-path shape.
@@ -909,7 +909,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/evidence/sto
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 activation recovery can permanently starve publication-index entries beyond the fixed head scan and work budgets. evidence: `RearmOutstandingPublicationsAsync` always restarts at the first entry, persists no cursor, and schedules no continuation while a continuously active actor may never receive another activation.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 activation recovery can permanently starve publication-index entries beyond the fixed head scan and work budgets. evidence: `RearmOutstandingPublicationsAsync` always restarts at the first entry, persists no cursor, and schedules no continuation while a continuously active actor may never receive another activation.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: Commit 4b0a7b1d3628a857f131cfbff99030714aefc747 changed AggregateActor activation recovery so already-armed head entries do not consume the probe/work budgets and later entries receive recovery opportunity.
@@ -918,7 +918,7 @@ resolution: already resolved: Commit 4b0a7b1d3628a857f131cfbff99030714aefc747 ch
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Persisted duplicate publication-index entries survive normalization and can leave stale capacity behind. evidence: `Normalize` removes only null elements, while refresh and removal operate on the first matching message ID despite the type contract promising de-duplication.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Persisted duplicate publication-index entries survive normalization and can leave stale capacity behind. evidence: `Normalize` removes only null elements, while refresh and removal operate on the first matching message ID despite the type contract promising de-duplication.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: Commit 659f3c72a653525f028b0a2212fb568e82bb50cb added owner-map normalization and duplicate suppression; src/Hexalith.EventStore.Server/Actors/UnpublishedPublicationIndex.cs:117-171 now emits at most one well-formed owner per MessageId.
@@ -927,7 +927,7 @@ resolution: already resolved: Commit 659f3c72a653525f028b0a2212fb568e82bb50cb ad
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: AGENTS.md
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync can write `AGENTS.md` outside the selected project through a compass area path. evidence: `cmd_sync` joins unvalidated absolute or parent-traversing `area` values to `project_root` without resolving and enforcing containment.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync can write `AGENTS.md` outside the selected project through a compass area path. evidence: `cmd_sync` joins unvalidated absolute or parent-traversing `area` values to `project_root` without resolving and enforcing containment.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 removed .agents/skills/bmad-project-context/scripts/context.py, including the vulnerable compass-area filesystem writer.
@@ -936,7 +936,7 @@ resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 re
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync can duplicate or remove user-authored text when managed markers are missing, reversed, or duplicated. evidence: `apply_block` validates neither marker cardinality nor ordering before slicing or appending the managed block.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync can duplicate or remove user-authored text when managed markers are missing, reversed, or duplicated. evidence: `apply_block` validates neither marker cardinality nor ordering before slicing or appending the managed block.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 removed the marker-rewriting project-context implementation; the installed skill now contains no apply_block/cmd_sync code.
@@ -945,7 +945,7 @@ resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 re
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: decision.md
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync does not re-anchor relative Markdown links that include fragments or query strings. evidence: `rewrite_links` only processes targets that literally end in `.md`, so links such as `decision.md#rationale` break when moved to another directory.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync does not re-anchor relative Markdown links that include fragments or query strings. evidence: `rewrite_links` only processes targets that literally end in `.md`, so links such as `decision.md#rationale` break when moved to another directory.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 removed the project-context rewrite_links implementation and its executable script.
@@ -954,7 +954,7 @@ resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 re
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The installed BMAD project-context implementation lacks regression coverage for its filesystem-writing and resolution paths. evidence: The local suite contains three smoke tests and conditionally skips the referenced full Layer-1 suite, leaving resolve, sweep, compass, sync, remote, and cache behavior unverified.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The installed BMAD project-context implementation lacks regression coverage for its filesystem-writing and resolution paths. evidence: The local suite contains three smoke tests and conditionally skips the referenced full Layer-1 suite, leaving resolve, sweep, compass, sync, remote, and cache behavior unverified.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 removed the implementation whose missing filesystem regression suite this entry targeted.
@@ -963,7 +963,7 @@ resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 re
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: validate-evidence.py
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 evidence validator can report success when Python assertions are disabled. evidence: Validation is implemented with `assert` statements and has no `__debug__` guard, so `python -O validate-evidence.py` removes the checks.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 evidence validator can report success when Python assertions are disabled. evidence: Validation is implemented with `assert` statements and has no `__debug__` guard, so `python -O validate-evidence.py` removes the checks.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py:13 fails closed when Python assertions are disabled.
@@ -972,7 +972,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/evidence/sto
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 evidence validator accepts truthy non-boolean invariant values. evidence: `assert all(race["invariants"].values())` accepts strings such as `"false"` instead of requiring every value to be exactly `True`.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 evidence validator accepts truthy non-boolean invariant values. evidence: `assert all(race["invariants"].values())` accepts strings such as `"false"` instead of requiring every value to be exactly `True`.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py:530-532 requires every invariant value to be exactly true.
@@ -981,7 +981,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/evidence/sto
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: source-state.md
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 source-binding validator does not fail when an evidence-relevant source path is omitted. evidence: `validate_source_binding` verifies only the rows present in `source-state.md` and has no exact expected-path set.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 source-binding validator does not fail when an evidence-relevant source path is omitted. evidence: `validate_source_binding` verifies only the rows present in `source-state.md` and has no exact expected-path set.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py:685-696 enforces REQUIRED_SOURCE_ROWS before validating hashes.
@@ -1081,7 +1081,7 @@ resolution: already resolved: Commit 5e8f175b; DaprTestContainerFixture.cs:47-52
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: release-provenance.json
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Exercise the release-provenance and deployment-authority validators against a real artifact. evidence: `ValidateRelease` and the deployment-authority path validate `release-provenance.json`, `deployment-authority.json`, and `deployment-authority-source.json`, none of which exist in the 21-file committed evidence directory; those code paths have only ever seen synthetic fixtures.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Exercise the release-provenance and deployment-authority validators against a real artifact. evidence: `ValidateRelease` and the deployment-authority path validate `release-provenance.json`, `deployment-authority.json`, and `deployment-authority-source.json`, none of which exist in the 21-file committed evidence directory; those code paths have only ever seen synthetic fixtures.
 status: done 2026-09-01
 archived: 2026-09-18
 resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:992 validates the committed candidate through ValidateRelease, and the retained candidate now contains release-provenance.json, deployment-authority.json, and deployment-authority-source.json.
@@ -1090,7 +1090,7 @@ resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packagin
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: acceptances/{subject_sha256
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Anchor and scaffold the AC4 acceptance-receipt location. evidence: `approval_contract.external_receipt_location` is the relative string `acceptances/{subject_sha256}` with no stated root, `required_receipt_fields` binds to no roster version, and the directory does not exist, so AC4 receipt collection cannot begin.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Anchor and scaffold the AC4 acceptance-receipt location. evidence: `approval_contract.external_receipt_location` is the relative string `acceptances/{subject_sha256}` with no stated root, `required_receipt_fields` binds to no roster version, and the directory does not exist, so AC4 receipt collection cannot begin.
 status: done 2026-09-01
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-3-13/disposition/6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97/acceptances/a7ecd45524ca3ebd6f2c9a23143e2786f31d705f6a4a741be8f35cfc1c1851ec/eventstore-owner.json:1 proves the subject-addressed acceptance directory is scaffolded and populated.
@@ -1100,7 +1100,7 @@ decision: 2026-08-31 Implement verified change — Implement the concrete change
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: review-subject.json
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Bind the outer evidence manifest's own bytes to a hash. evidence: `evidence-sha256.txt` is absent from `evidence-core-sha256.txt` and unbound in `review-subject.json`. Mitigated because its entry set is structurally pinned by `ExpectedOuterFiles` and its listed hashes are recomputed against live bytes, so the practical exposure is narrow.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Bind the outer evidence manifest's own bytes to a hash. evidence: `evidence-sha256.txt` is absent from `evidence-core-sha256.txt` and unbound in `review-subject.json`. Mitigated because its entry set is structurally pinned by `ExpectedOuterFiles` and its listed hashes are recomputed against live bytes, so the practical exposure is narrow.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: closed by human decision: Record the current DW-342 behavior and its verified limitation as an intentional, human-approved disposition.
@@ -1110,7 +1110,7 @@ decision: 2026-08-31 Accept current contract — Record the current DW-342 behav
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: docs/ci.md
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Disclose concurrent Epic 4 and docs changes carried inside the Story 3.13 review range. evidence: Epic 4 tracker rows and Story 4.5/4.14/OQ8/DAPR-pin prose in `docs/ci.md` land inside `1d6e9321..HEAD` from `fe715c70`, `ab1666dd`, `b927472a`, `35a1eecd`, and `86308550`. The proof packet's non-mutation attestation is scoped only to submodule gitlinks, so it under-discloses what its own reviewed range changed.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Disclose concurrent Epic 4 and docs changes carried inside the Story 3.13 review range. evidence: Epic 4 tracker rows and Story 4.5/4.14/OQ8/DAPR-pin prose in `docs/ci.md` land inside `1d6e9321..HEAD` from `fe715c70`, `ab1666dd`, `b927472a`, `35a1eecd`, and `86308550`. The proof packet's non-mutation attestation is scoped only to submodule gitlinks, so it under-discloses what its own reviewed range changed.
 status: done 2026-09-01
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:365 explicitly discloses the concurrent Epic 4, Story 4.5/4.14, OQ8, and DAPR-pin changes carried in the reviewed range.
@@ -1119,7 +1119,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: package-availability.json
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Refresh retained evidence `checked_at` timestamps after byte rewrites. evidence: `package-availability.json` declares `checked_at: 2026-08-04T11:17:05Z` and `registry-readback.json` declares `2026-08-04T11:48:07Z`, but both files were rewritten on 2026-08-09 for host-path redaction and the `cli_candidate_consequence` string.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Refresh retained evidence `checked_at` timestamps after byte rewrites. evidence: `package-availability.json` declares `checked_at: 2026-08-04T11:17:05Z` and `registry-readback.json` declares `2026-08-04T11:48:07Z`, but both files were rewritten on 2026-08-09 for host-path redaction and the `cli_candidate_consequence` string.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: closed by human decision: Record the current DW-345 behavior and its verified limitation as an intentional, human-approved disposition.
@@ -1129,7 +1129,7 @@ decision: 2026-08-31 Accept current contract — Record the current DW-345 behav
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: HIGH - Story 1.21 must repair Epic 1 frozen evidence corrupted by the SDK-token sweep in `089369bb`, under its own authority record. evidence: `089369bb` ("docs: clear remaining root predecessor SDK patch tokens", 25 files) rewrote `10.0.301` to `10.0.302` inside owner-approved Story 1.20 evidence. Story 3.13 restored only its own `fa2d1c99...` tree at `3d6dea69`. Genuine content mismatches remain at HEAD in `critical-evidence-sha256.txt` for `38f85086fc25...`, `4983299103bf...`, and `ec0d35a082bc...` (one `environment.txt` each). Story 3.13 must not write predecessor bytes again, so this needs a separate scoped story. Verified not affected: Story 3.13's `predecessor-tree-sha256.txt` passes 40/40, and the `nuget-sha256.txt` failures are missing proof packages, not corruption. status: resolved 2026-08-20 by Story 1.21. Durable evidence-owner receipt `25a01f60f8f231babb3db860dc8a59d2d46264f6cefe6db7f461fa615316d732` records the observed interactive approval and binds subject `ee5fb076bac380faa0b01ccd7aa96ec9f77955faa96f45c34aafc75d7bc8d26e` plus frozen-block digest `26c7a378bffb3a90eee0fe037aeeeec2e16a290ed91fadd5b4a4db6219db7e92`. The subject restored exactly the three pinned parent blobs; all critical manifests pass 33/33, packages remain independently unavailable at 0/14 per tree, broader Story 1.20 drift is zero, and `bmad:murat` verification binds result `e22e1aef2d24fea81d49ce5e9f495d4ff8d02e989da8b37c1937b517a477e3ab`.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: HIGH - Story 1.21 must repair Epic 1 frozen evidence corrupted by the SDK-token sweep in `089369bb`, under its own authority record. evidence: `089369bb` ("docs: clear remaining root predecessor SDK patch tokens", 25 files) rewrote `10.0.301` to `10.0.302` inside owner-approved Story 1.20 evidence. Story 3.13 restored only its own `fa2d1c99...` tree at `3d6dea69`. Genuine content mismatches remain at HEAD in `critical-evidence-sha256.txt` for `38f85086fc25...`, `4983299103bf...`, and `ec0d35a082bc...` (one `environment.txt` each). Story 3.13 must not write predecessor bytes again, so this needs a separate scoped story. Verified not affected: Story 3.13's `predecessor-tree-sha256.txt` passes 40/40, and the `nuget-sha256.txt` failures are missing proof packages, not corruption. status: resolved 2026-08-20 by Story 1.21. Durable evidence-owner receipt `25a01f60f8f231babb3db860dc8a59d2d46264f6cefe6db7f461fa615316d732` records the observed interactive approval and binds subject `ee5fb076bac380faa0b01ccd7aa96ec9f77955faa96f45c34aafc75d7bc8d26e` plus frozen-block digest `26c7a378bffb3a90eee0fe037aeeeec2e16a290ed91fadd5b4a4db6219db7e92`. The subject restored exactly the three pinned parent blobs; all critical manifests pass 33/33, packages remain independently unavailable at 0/14 per tree, broader Story 1.20 drift is zero, and `bmad:murat` verification binds result `e22e1aef2d24fea81d49ce5e9f495d4ff8d02e989da8b37c1937b517a477e3ab`.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-1-21/evidence-owner-authorization-sha256.txt:1 retains the Story 1.21 evidence-owner authorization.
@@ -1138,7 +1138,7 @@ resolution: already resolved: _bmad-output/implementation-artifacts/evidence/sto
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: evidence/story-4-5/0776785f.../validate-evidence.py
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Reseal or revert Story 4.5's self-invalidating evidence packet. evidence: `evidence/story-4-5/0776785f.../validate-evidence.py` was modified by `3e365150` after the packet was sealed at `86308550`; `sha256sum -c evidence-sha256.txt` now reports a genuine content mismatch. Found incidentally during the Story 3.13 evidence-integrity sweep; not a Story 3.13 defect.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Reseal or revert Story 4.5's self-invalidating evidence packet. evidence: `evidence/story-4-5/0776785f.../validate-evidence.py` was modified by `3e365150` after the packet was sealed at `86308550`; `sha256sum -c evidence-sha256.txt` now reports a genuine content mismatch. Found incidentally during the Story 3.13 evidence-integrity sweep; not a Story 3.13 defect.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: Commit 5e8f175b re-sealed the Story 4.5 packet; its evidence-sha256.txt verifies against the retained files.
@@ -1147,7 +1147,7 @@ resolution: already resolved: Commit 5e8f175b re-sealed the Story 4.5 packet; it
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: ContainerPublishingGovernanceTests.cs
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Replace the five Windows early-return vacuous passes in the container-publishing governance suite with real skips. evidence: `ContainerPublishingGovernanceTests.cs` returns early at lines 207, 239, 266, 287, 443 and 485 under `OperatingSystem.IsWindows()`. An early return is an xUnit pass, so AC1's "zero-skipped coverage" is satisfied by construction on Windows. Only line 287 is new in this chunk; the other five predate it.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Replace the five Windows early-return vacuous passes in the container-publishing governance suite with real skips. evidence: `ContainerPublishingGovernanceTests.cs` returns early at lines 207, 239, 266, 287, 443 and 485 under `OperatingSystem.IsWindows()`. An early return is an xUnit pass, so AC1's "zero-skipped coverage" is satisfied by construction on Windows. Only line 287 is new in this chunk; the other five predate it.
 status: done 2026-09-05
 archived: 2026-09-18
 resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs now Assert.Skip on Windows for the seven POSIX shell governance cases instead of early-return vacuous passes.
@@ -1156,7 +1156,7 @@ resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packagin
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Decide whether the OCI image index should carry provenance annotations. evidence: `_PublishMultiArchContainers` passes no labels to `CreateImageIndex`, and `validate_packet_files` checks the index only for `schemaVersion`, `mediaType` and two descriptors. The multi-arch tag — the artifact a registry UI surfaces — has no `org.opencontainers.image.*` metadata, and no test asserts either way. The spec requires labels on the child configs only, so this is out of the current contract.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Decide whether the OCI image index should carry provenance annotations. evidence: `_PublishMultiArchContainers` passes no labels to `CreateImageIndex`, and `validate_packet_files` checks the index only for `schemaVersion`, `mediaType` and two descriptors. The multi-arch tag — the artifact a registry UI surfaces — has no `org.opencontainers.image.*` metadata, and no test asserts either way. The spec requires labels on the child configs only, so this is out of the current contract.
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: closed by human decision: Record the current DW-359 behavior and its verified limitation as an intentional, human-approved disposition.
@@ -1166,7 +1166,7 @@ decision: 2026-08-31 Accept current contract — Record the current DW-359 behav
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: n/a
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Decouple the authority-window theory from the frozen timestamps and split the seven-scenario mutation Fact. evidence: `RetainedAuthorityRejectsInvalidWindowAndEditedRecord` InlineData sits exactly one second off the frozen `created_at` (`2026-08-20T11:06:06Z`); if the window check ever passes, the assertion falls through to an opaque summary-mismatch error instead of the intended message. Separately, `CanonicalReleaseIdentityBindsRetainedBytesAndRejectsMutations` packs seven independent mutation scenarios into one ~180-line `[Fact]`, so the first failure hides the other six.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Decouple the authority-window theory from the frozen timestamps and split the seven-scenario mutation Fact. evidence: `RetainedAuthorityRejectsInvalidWindowAndEditedRecord` InlineData sits exactly one second off the frozen `created_at` (`2026-08-20T11:06:06Z`); if the window check ever passes, the assertion falls through to an opaque summary-mismatch error instead of the intended message. Separately, `CanonicalReleaseIdentityBindsRetainedBytesAndRejectsMutations` packs seven independent mutation scenarios into one ~180-line `[Fact]`, so the first failure hides the other six.
 status: done 2026-09-05
 archived: 2026-09-18
 resolution: already resolved: CorrectiveOciProvenanceReleaseTests splits retained-byte mutations into focused Facts/Theories and decouples authority-window cases from frozen absolute timestamps via created_at-relative offsets, with the edited-record case as its own Fact.
@@ -1176,7 +1176,7 @@ resolution: already resolved: CorrectiveOciProvenanceReleaseTests splits retaine
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21, D5 disposition)"), 2026-08-30
 location: github/workflows/domain-release.yml
 severity: medium
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` owner_repo: `Hexalith.Builds` — reusable `.github/workflows/domain-release.yml`. NOT owned by `Hexalith.EventStore`; the EventStore `release.yml` only calls the reusable workflow, so this fix cannot land here. summary: Split the governed release path into its own reusable workflow file so legacy callers stop having to grant `attestations: write` and `id-token: write`. evidence: GitHub validates the maximum permissions across every job in a called workflow, including jobs that never run. Because `governed-release` (`domain-release.yml:478`) declares both scopes, every caller must grant them — EventStore's `release.yml` now does. The legacy `release` job (`:240`) declares no `permissions:` block, so it inherits the caller's set and executes in the protected `production` environment holding both write scopes unused. The obvious narrow fix — an explicit `permissions:` block on the legacy job — is blocked by an existing Builds contract test, `test_governed_release_workflow.GovernedOffParityTests.test_only_the_governed_job_requests_attestation_permissions`, which asserts `assertNotIn("permissions:", job_slice(workflow, "release"))`; that shape was tried during this review and reverted. Splitting the two paths into separate reusable workflow files removes the coupling without contradicting that contract. Epic 3 explicitly withholds signing/SBOM/attestation authority, so the grant should not persist longer than necessary. severity: medium status: accepted — ratified for now (Story 3.14 D5 option A); nothing is signed or attested because `governed-release: false` keeps the governed job skipped, and `ContainerPublishingGovernanceTests` pins that input.
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` owner_repo: `Hexalith.Builds` — reusable `.github/workflows/domain-release.yml`. NOT owned by `Hexalith.EventStore`; the EventStore `release.yml` only calls the reusable workflow, so this fix cannot land here. summary: Split the governed release path into its own reusable workflow file so legacy callers stop having to grant `attestations: write` and `id-token: write`. evidence: GitHub validates the maximum permissions across every job in a called workflow, including jobs that never run. Because `governed-release` (`domain-release.yml:478`) declares both scopes, every caller must grant them — EventStore's `release.yml` now does. The legacy `release` job (`:240`) declares no `permissions:` block, so it inherits the caller's set and executes in the protected `production` environment holding both write scopes unused. The obvious narrow fix — an explicit `permissions:` block on the legacy job — is blocked by an existing Builds contract test, `test_governed_release_workflow.GovernedOffParityTests.test_only_the_governed_job_requests_attestation_permissions`, which asserts `assertNotIn("permissions:", job_slice(workflow, "release"))`; that shape was tried during this review and reverted. Splitting the two paths into separate reusable workflow files removes the coupling without contradicting that contract. Epic 3 explicitly withholds signing/SBOM/attestation authority, so the grant should not persist longer than necessary. severity: medium status: accepted — ratified for now (Story 3.14 D5 option A); nothing is signed or attested because `governed-release: false` keeps the governed job skipped, and `ContainerPublishingGovernanceTests` pins that input.
 status: done 2026-09-06
 archived: 2026-09-18
 resolution: already resolved: Hexalith.Builds commit bd94f7f; references/Hexalith.Builds/.github/workflows/domain-release.yml:248-252 omits id-token/attestations globally while :495-508 grants them only to governed-release.
@@ -1186,7 +1186,7 @@ resolution: already resolved: Hexalith.Builds commit bd94f7f; references/Hexalit
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-21, chunk 1)"), 2026-08-30
 location: DeployedRuntimeParityClosureTests.cs:4910-4912
 severity: medium
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Receipt `source_url` requires a GitHub commit anchor that cannot exist; the existing deferral's "pre-existing pattern inherited" rationale is false and is corrected here. evidence: `DeployedRuntimeParityClosureTests.cs:4910-4912` requires `…/commit/<SelectedSourceSha>#story-3-13-disposition-<envelopeHash>-<role>`. GitHub mints `#commitcomment-<id>`, so the 3/3 story-completable path is reachable only from `CreateDispositionReceipts` fixtures. The spec Defer list attributes this to a pattern "inherited from `ValidateAcceptances`", but that helper uses a different, subject-keyed anchor `#story-3-13-<subjectHash>-<role>` (`:6613`) — the disposition anchor format is newly authored by commit `56aa0fec`. The durable source record lives in `sources/` inside the same directory as the receipt, so anyone who can author the receipt can author its source: the cross-check proves consistency, not independence. Contrast `LoadReviewerRoster:7010-7024`, which constrains `authority_source` to an https github.com issue-comment URL. Owner decision 2026-08-21: keep the deferral, correct the rationale; non-blocking while 3/3 receipts remain uncollected. severity: medium
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Receipt `source_url` requires a GitHub commit anchor that cannot exist; the existing deferral's "pre-existing pattern inherited" rationale is false and is corrected here. evidence: `DeployedRuntimeParityClosureTests.cs:4910-4912` requires `…/commit/<SelectedSourceSha>#story-3-13-disposition-<envelopeHash>-<role>`. GitHub mints `#commitcomment-<id>`, so the 3/3 story-completable path is reachable only from `CreateDispositionReceipts` fixtures. The spec Defer list attributes this to a pattern "inherited from `ValidateAcceptances`", but that helper uses a different, subject-keyed anchor `#story-3-13-<subjectHash>-<role>` (`:6613`) — the disposition anchor format is newly authored by commit `56aa0fec`. The durable source record lives in `sources/` inside the same directory as the receipt, so anyone who can author the receipt can author its source: the cross-check proves consistency, not independence. Contrast `LoadReviewerRoster:7010-7024`, which constrains `authority_source` to an https github.com issue-comment URL. Owner decision 2026-08-21: keep the deferral, correct the rationale; non-blocking while 3/3 receipts remain uncollected. severity: medium
 status: done 2026-08-31
 archived: 2026-09-18
 resolution: closed by human decision: Record the current DW-371 behavior and its verified limitation as an intentional, human-approved disposition.
@@ -1197,7 +1197,7 @@ decision: 2026-08-31 Accept current contract — Record the current DW-371 behav
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21, chunk 2)"), 2026-08-30
 location: github/workflows/ci.yml
 severity: low
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Mark or re-tier the heavyweight container-publish theories so the CI-gating Contracts lane is not paying for real `dotnet publish` cycles. evidence: `ContainerPublicationRejectsMissingProvenanceInputs` runs two full `dotnet publish -t:PublishContainer` cycles at an 8-minute budget each and `ContainerPublicationRejectsMalformedProvenanceInputs` runs four `dotnet msbuild -t:ValidateContainerProvenanceInputs` invocations, all inside `Hexalith.EventStore.Contracts.Tests`, which `.github/workflows/ci.yml` runs as a blocking deterministic gate. Nothing marks them excludable from a fast lane, and the two theories use inconsistent proof strategies (real publish versus direct private-target invocation) for the same guard. Pre-existing: the real-publish pattern arrived in an earlier Story 3.14 round. severity: low
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Mark or re-tier the heavyweight container-publish theories so the CI-gating Contracts lane is not paying for real `dotnet publish` cycles. evidence: `ContainerPublicationRejectsMissingProvenanceInputs` runs two full `dotnet publish -t:PublishContainer` cycles at an 8-minute budget each and `ContainerPublicationRejectsMalformedProvenanceInputs` runs four `dotnet msbuild -t:ValidateContainerProvenanceInputs` invocations, all inside `Hexalith.EventStore.Contracts.Tests`, which `.github/workflows/ci.yml` runs as a blocking deterministic gate. Nothing marks them excludable from a fast lane, and the two theories use inconsistent proof strategies (real publish versus direct private-target invocation) for the same guard. Pre-existing: the real-publish pattern arrived in an earlier Story 3.14 round. severity: low
 status: done 2026-09-05
 archived: 2026-09-18
 resolution: already resolved: CorrectiveOciProvenanceReleaseTests marks RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs, ContainerPublicationRejectsMissingProvenanceInputs, and ContainerPublicationRejectsMalformedProvenanceInputs with Category=HeavyweightContainerPublish; .github/workflows/ci.yml Contracts lane uses --filter-not-trait to exclude them from the default gate; ReleasePackageManifestTests binds the filter.
@@ -1207,7 +1207,7 @@ resolution: already resolved: CorrectiveOciProvenanceReleaseTests marks RealMult
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21, chunk 2)"), 2026-08-30
 location: tools/release_evidence_handlers/v3.py:15
 severity: medium
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Document how a second corrective release adds a `v4` evidence handler; the v3 handler is a deliberate single-packet allowlist with no successor and no procedure. evidence: `tools/release_evidence_handlers/v3.py:15` pins `EXPECTED_PACKET_CODEC_SHA256 = 814502bd…` and `:211` additionally rejects `codec["version"] != CODEC_VERSION`, so v3 accepts exactly the one retained codec digest of the frozen v3.96.2 packet. `tools/validate-corrective-release-evidence.py:14` has a single `HANDLERS` entry. Separately, `V3_PUBLICATION_PREFLIGHT_SHA256 = 830af8af…` is the *executed* `eadddc7b` shared preflight; the currently pinned `a07078ad` (and the development gitlink `307a043`) hash to `fe5ffc3f…`, so the legacy role-evidence branch is already closed to anything produced by today's pin. That is correct fail-closed behaviour for the frozen packet but leaves the next corrective release with no documented path, and no `docs/` page describes the `release_evidence_handlers` package or the dispatch table at all. severity: medium
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Document how a second corrective release adds a `v4` evidence handler; the v3 handler is a deliberate single-packet allowlist with no successor and no procedure. evidence: `tools/release_evidence_handlers/v3.py:15` pins `EXPECTED_PACKET_CODEC_SHA256 = 814502bd…` and `:211` additionally rejects `codec["version"] != CODEC_VERSION`, so v3 accepts exactly the one retained codec digest of the frozen v3.96.2 packet. `tools/validate-corrective-release-evidence.py:14` has a single `HANDLERS` entry. Separately, `V3_PUBLICATION_PREFLIGHT_SHA256 = 830af8af…` is the *executed* `eadddc7b` shared preflight; the currently pinned `a07078ad` (and the development gitlink `307a043`) hash to `fe5ffc3f…`, so the legacy role-evidence branch is already closed to anything produced by today's pin. That is correct fail-closed behaviour for the frozen packet but leaves the next corrective release with no documented path, and no `docs/` page describes the `release_evidence_handlers` package or the dispatch table at all. severity: medium
 status: done 2026-09-05
 archived: 2026-09-18
 resolution: already resolved: docs/ci.md documents the v4 evidence-handler succession procedure without changing live v3.py / dispatcher pins.
@@ -1217,7 +1217,7 @@ resolution: already resolved: docs/ci.md documents the v4 evidence-handler succe
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21, chunk 2)"), 2026-08-30
 location: deferred-work.md:14
 severity: low
-reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: The deferred-work ledger itself records a stale publication pin. evidence: `deferred-work.md:14` describes the release-skip race entry's owner_repo as "currently pinned in this repo as `builds-execution-sha: cf04c419378dfe1bd3c41a9244b5e3283092056e`"; the caller has since rotated through `63409393…` to `a07078ad…`. The ledger is append-only legacy-advisory format, so this is recorded rather than edited in place. severity: low
+reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: The deferred-work ledger itself records a stale publication pin. evidence: `deferred-work.md:14` describes the release-skip race entry's owner_repo as "currently pinned in this repo as `builds-execution-sha: cf04c419378dfe1bd3c41a9244b5e3283092056e`"; the caller has since rotated through `63409393…` to `a07078ad…`. The ledger is append-only legacy-advisory format, so this is recorded rather than edited in place. severity: low
 status: done 2026-09-05
 archived: 2026-09-18
 resolution: already resolved: append-only clarification recorded below; historical DW-7 pin prose left unchanged.
