@@ -4143,7 +4143,8 @@ location: src/Hexalith.EventStore.PayloadProtection/PayloadProtectionDiagnostics
 source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
 severity: medium
 reason: `PayloadProtectionDiagnostics` creates an `ActivitySource` and a `Meter` both named `Hexalith.EventStore.PayloadProtection` and publishes `eventstore.payload_protection.operations` and `.duration`. `ServiceDefaults.ActivitySourceNames` contains exactly three entries -- `Hexalith.EventStore`, `Microsoft.AspNetCore.SignalR.Server`, `Microsoft.AspNetCore.SignalR.Client` -- and `ConfigureOpenTelemetry` calls `AddSource`/`AddMeter` only over that array, so no host collects the core's telemetry. `Name` is `internal`, so a host cannot reference the constant even if the array were extended. This is correct for Story 8.3, whose frozen boundary forbids Server and host integration; the registration belongs with Story 8.7 (server persistence and snapshot integration) or Story 8.8 (package and release integration). Recorded here because nothing else in the repository links the emitted names to the registration site, and the observability this story built is invisible until someone makes that link.
-status: open
+status: done 2026-11-24
+resolution: Register the protection activity source and meter when interaction payload protection is enabled. An isolated host test captured the span and both metric streams with bounded tags.
 
 ### DW-519: A legitimately unprotected `json` event payload is indistinguishable from one whose wrappers were stripped.
 
