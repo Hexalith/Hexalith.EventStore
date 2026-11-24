@@ -63,6 +63,8 @@
 <CounterCommandForm TenantId="@_tenantId" />
 
 @code {
+    private readonly CounterRefreshLifetime _refresh = new();
+
     private string _tenantId = "tenant-a";
     private string _projectionType = "counter";
     private CounterStatusResult? _result;
@@ -75,30 +77,48 @@
         _tenantId = Configuration["EventStore:Counter:TenantId"] ?? "sample-tenant";
         _projectionType = Configuration["EventStore:Counter:ProjectionType"] ?? "counter";
 
-        await SignalRClient.SubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
-        await LoadDataAsync();
+        await _refresh.RunAsync(async token =>
+        {
+            if (RendererInfo.IsInteractive)
+            {
+                await SignalRClient.SubscribeAsync(_projectionType, _tenantId, OnProjectionChanged, token);
+            }
+
+            await LoadDataAsync(token);
+        });
     }
 
     private void OnProjectionChanged()
     {
-        // Signal received — show notification bar (do not stack multiple)
-        _ = InvokeAsync(() =>
+        if (!_refresh.IsDisposed)
         {
-            _hasChanges = true;
-            StateHasChanged();
-        });
+            _ = InvokeAsync(() =>
+            {
+                if (!_refresh.IsDisposed)
+                {
+                    _hasChanges = true;
+                    StateHasChanged();
+                }
+            });
+        }
     }
 
-    private async Task RefreshDataAsync()
+    private Task RefreshDataAsync() => _refresh.RunAsync(async token =>
     {
+        bool hadChanges = _hasChanges;
         _hasChanges = false;
-        await LoadDataAsync();
-    }
+        await LoadDataAsync(token);
+        if (!token.IsCancellationRequested && _error is not null)
+        {
+            _hasChanges |= hadChanges;
+        }
+    });
 
-    private async Task LoadDataAsync()
+    private async Task LoadDataAsync(CancellationToken token)
     {
         try
         {
+            token.ThrowIfCancellationRequested();
             EventStoreQueryResult queryResult = await QueryClient.GetAsync(
                 _tenantId,
                 GetCounterStatusQuery.Domain,
@@ -106,7 +126,9 @@
                 GetCounterStatusQuery.QueryType,
                 GetCounterStatusQuery.ProjectionType,
                 "counter-1",
-                _result?.ETag);
+                _result?.ETag,
+                token);
+            token.ThrowIfCancellationRequested();
             if (!CounterStatusResult.TryFromQueryResult(queryResult, _result, out CounterStatusResult state))
             {
                 _error = CounterStatusResult.InvalidPayloadMessage;
@@ -116,6 +138,9 @@
             _result = state;
             _lastRefreshed = DateTime.Now;
             _error = null;
+        }
+        catch (Exception) when (token.IsCancellationRequested)
+        {
         }
         catch (EventStoreGatewayException ex) when (ex.StatusCode == 404)
         {
@@ -127,12 +152,14 @@
         {
             _error = $"Failed to load counter: {ex.Message}";
         }
-
-        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()
     {
-        await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
+        _refresh.Dispose();
+        if (RendererInfo.IsInteractive)
+        {
+            await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
+        }
     }
 }

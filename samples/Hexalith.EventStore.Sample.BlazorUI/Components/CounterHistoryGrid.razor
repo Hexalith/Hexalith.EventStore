@@ -33,6 +33,8 @@
 </FluentCard>
 
 @code {
+    private readonly CounterRefreshLifetime _refresh = new();
+
     [Parameter] public string TenantId { get; set; } = "tenant-a";
     [Parameter] public string ProjectionType { get; set; } = "counter";
 
@@ -43,29 +45,47 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await SignalRClient.SubscribeAsync(ProjectionType, TenantId, OnProjectionChanged);
-        await LoadDataAsync();
-        _isLoading = false;
+        await _refresh.RunAsync(async token =>
+        {
+            if (RendererInfo.IsInteractive)
+            {
+                await SignalRClient.SubscribeAsync(ProjectionType, TenantId, OnProjectionChanged, token);
+            }
+
+            await LoadDataAsync(token);
+        });
+        if (!_refresh.IsDisposed)
+        {
+            _isLoading = false;
+        }
     }
 
     private void OnProjectionChanged()
     {
-        _ = InvokeAsync(async () =>
+        if (!_refresh.IsDisposed)
         {
-            _isLoading = true;
-            StateHasChanged();
-
-            await LoadDataAsync();
-
-            _isLoading = false;
-            StateHasChanged();
-        });
+            _ = InvokeAsync(() => _refresh.RunAsync(RefreshDataAsync));
+        }
     }
 
-    private async Task LoadDataAsync()
+    private async Task RefreshDataAsync(CancellationToken token)
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        await LoadDataAsync(token);
+        if (!token.IsCancellationRequested)
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadDataAsync(CancellationToken token)
     {
         try
         {
+            token.ThrowIfCancellationRequested();
             EventStoreQueryResult queryResult = await QueryClient.GetAsync(
                 TenantId,
                 GetCounterStatusQuery.Domain,
@@ -73,7 +93,9 @@
                 GetCounterStatusQuery.QueryType,
                 GetCounterStatusQuery.ProjectionType,
                 "counter-1",
-                _lastResult?.ETag);
+                _lastResult?.ETag,
+                token);
+            token.ThrowIfCancellationRequested();
             if (!CounterStatusResult.TryFromQueryResult(queryResult, _lastResult, out CounterStatusResult result))
             {
                 _error = CounterStatusResult.InvalidPayloadMessage;
@@ -92,6 +114,9 @@
             {
                 _history.RemoveAt(_history.Count - 1);
             }
+        }
+        catch (Exception) when (token.IsCancellationRequested)
+        {
         }
         catch (EventStoreGatewayException ex) when (ex.StatusCode == 404)
         {
@@ -113,7 +138,11 @@
 
     public async ValueTask DisposeAsync()
     {
-        await SignalRClient.UnsubscribeAsync(ProjectionType, TenantId, OnProjectionChanged);
+        _refresh.Dispose();
+        if (RendererInfo.IsInteractive)
+        {
+            await SignalRClient.UnsubscribeAsync(ProjectionType, TenantId, OnProjectionChanged);
+        }
     }
 
     private sealed record CounterHistoryEntry(DateTime Timestamp, int Count, string ETag);

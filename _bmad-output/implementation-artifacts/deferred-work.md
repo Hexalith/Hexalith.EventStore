@@ -205,7 +205,8 @@ resolution: Validate object and base64 projection payloads without leaking conte
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-02)"), 2026-08-30
 location: GetAsync
 reason: Concurrent/re-entrant refresh has no in-flight guard, and the in-flight `GetAsync` is never cancelled on component disposal (leading to a possible post-dispose `StateHasChanged`). `GetAsync` already exposes an unused `CancellationToken`. Demo-UI hardening across the four Counter components; `SilentReloadPattern` partially mitigates via debounce.
-status: open
+status: done 2026-11-24
+resolution: Serialize refreshes, keep the newest pending request, pass the component lifetime into gateway reads, and suppress post-disposal work in all four components. Keep SignalR registration interactive and preserve silent debounce and the notification retry action. Verify coalescing and cancellation in focused tests.
 
 ### DW-31: REST generator silently drops a `record struct` contract carrying `[RestRoute]` (the `TypeKind != Class` check returns null) with no HESREST diagnostic — inconsistent with every other unsupported-shape path, which reports a diagnostic. Add a diagnostic or explicitly support the shape.
 

@@ -58,6 +58,8 @@
 <CounterCommandForm TenantId="@_tenantId" />
 
 @code {
+    private readonly CounterRefreshLifetime _refresh = new();
+
     // 200ms balances responsiveness vs. query coalescing — increase for high-frequency projections
     private const int DebounceDelayMs = 200;
 
@@ -69,50 +71,84 @@
     private int _refreshCount;
     private string? _error;
     private CancellationTokenSource? _debounceCts;
+    private long _notificationVersion;
 
     protected override async Task OnInitializedAsync()
     {
         _tenantId = Configuration["EventStore:Counter:TenantId"] ?? "sample-tenant";
         _projectionType = Configuration["EventStore:Counter:ProjectionType"] ?? "counter";
 
-        await SignalRClient.SubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
-        await LoadDataAsync();
+        await _refresh.RunAsync(async token =>
+        {
+            if (RendererInfo.IsInteractive)
+            {
+                await SignalRClient.SubscribeAsync(_projectionType, _tenantId, OnProjectionChanged, token);
+            }
+
+            await LoadDataAsync(token);
+        });
     }
 
     private void OnProjectionChanged()
     {
-        // Cancel any pending debounce and start a new one
-        _debounceCts?.Cancel();
-        _debounceCts?.Dispose();
-        _debounceCts = new CancellationTokenSource();
-        CancellationToken token = _debounceCts.Token;
-
-        _ = InvokeAsync(async () =>
+        if (!_refresh.IsDisposed)
         {
-            try
+            _ = InvokeAsync(DebounceRefreshAsync);
+        }
+    }
+
+    private async Task DebounceRefreshAsync()
+    {
+        if (_refresh.IsDisposed)
+        {
+            return;
+        }
+
+        long version = ++_notificationVersion;
+        _debounceCts?.Cancel();
+        using var debounce = new CancellationTokenSource();
+        _debounceCts = debounce;
+        try
+        {
+            await Task.Delay(DebounceDelayMs, debounce.Token);
+        }
+        catch (OperationCanceledException) when (debounce.IsCancellationRequested)
+        {
+            return;
+        }
+        finally
+        {
+            if (_debounceCts == debounce)
             {
-                await Task.Delay(DebounceDelayMs, token);
+                _debounceCts = null;
             }
-            catch (TaskCanceledException)
-            {
-                return; // Another signal arrived — this debounce was superseded
-            }
+        }
 
-            _isRefreshing = true;
-            StateHasChanged();
+        if (version == _notificationVersion)
+        {
+            await _refresh.RunAsync(token => version == _notificationVersion ? RefreshDataAsync(token) : Task.CompletedTask);
+        }
+    }
 
-            await LoadDataAsync();
+    private async Task RefreshDataAsync(CancellationToken token)
+    {
+        _isRefreshing = true;
+        StateHasChanged();
 
+        await LoadDataAsync(token);
+        if (!token.IsCancellationRequested)
+        {
             _isRefreshing = false;
             _refreshCount++;
             StateHasChanged();
-        });
+        }
     }
 
-    private async Task LoadDataAsync()
+    private async Task LoadDataAsync(CancellationToken token)
     {
         try
         {
+            token.ThrowIfCancellationRequested();
             EventStoreQueryResult queryResult = await QueryClient.GetAsync(
                 _tenantId,
                 GetCounterStatusQuery.Domain,
@@ -120,7 +156,9 @@
                 GetCounterStatusQuery.QueryType,
                 GetCounterStatusQuery.ProjectionType,
                 "counter-1",
-                _result?.ETag);
+                _result?.ETag,
+                token);
+            token.ThrowIfCancellationRequested();
             if (!CounterStatusResult.TryFromQueryResult(queryResult, _result, out CounterStatusResult state))
             {
                 _error = CounterStatusResult.InvalidPayloadMessage;
@@ -130,6 +168,9 @@
             _result = state;
             _lastRefreshed = DateTime.Now;
             _error = null;
+        }
+        catch (Exception) when (token.IsCancellationRequested)
+        {
         }
         catch (EventStoreGatewayException ex) when (ex.StatusCode == 404)
         {
@@ -145,8 +186,11 @@
 
     public async ValueTask DisposeAsync()
     {
+        _refresh.Dispose();
         _debounceCts?.Cancel();
-        _debounceCts?.Dispose();
-        await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
+        if (RendererInfo.IsInteractive)
+        {
+            await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
+        }
     }
 }
