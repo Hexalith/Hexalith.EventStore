@@ -212,7 +212,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: 30ea43a56330a9828ed0bb2e837289231d8630d1
+          ref: bf8a28b4bbcec619e8d9764d335f786f2bafb69e
           fetch-depth: 0
           path: .hexalith/builds-publication-tests
           submodules: false

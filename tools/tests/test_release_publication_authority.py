@@ -15,7 +15,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-BEXEC = "30ea43a56330a9828ed0bb2e837289231d8630d1"
+MAIN_PUBLISHER = "bf8a28b4bbcec619e8d9764d335f786f2bafb69e"
+MAINTENANCE_PUBLISHER = "30ea43a56330a9828ed0bb2e837289231d8630d1"
 CONTRACT_FILES = (
     "publish-containers.sh", "oci_registry_validator.py", "publication_preflight.py",
     "smoke-container-platforms.sh", "smoke_container_platforms.py",
@@ -27,14 +28,10 @@ class ReleasePublicationAuthorityTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="publication-authority-")
         self.addCleanup(self.temporary.cleanup)
         self.work = Path(self.temporary.name)
-        builds = Path(os.environ.get("HEXALITH_BUILDS_SOURCE", ROOT / "references/Hexalith.Builds"))
+        self.builds = Path(os.environ.get("HEXALITH_BUILDS_SOURCE", ROOT / "references/Hexalith.Builds"))
         self.contract = self.work / ".hexalith/release"
         self.contract.mkdir(parents=True)
-        for name in CONTRACT_FILES:
-            data = subprocess.check_output([
-                "git", "-C", str(builds), "show", f"{BEXEC}:Github/publish-containers/{name}"])
-            (self.contract / name).write_bytes(data)
-            (self.contract / name).chmod(0o755)
+        self.install_publisher(MAIN_PUBLISHER)
         for name in ("tools/release-packages.json", "scripts/validate-publication-preflight.sh",
                      "scripts/validate-release-secrets.sh", "scripts/verify-release-source.sh"):
             target = self.work / name
@@ -68,7 +65,7 @@ class ReleasePublicationAuthorityTests(unittest.TestCase):
             "GITHUB_WORKFLOW_REF": "Hexalith/Hexalith.EventStore/.github/workflows/release.yml@refs/heads/main",
             "GITHUB_TOKEN": uuid.uuid4().hex, "HEXALITH_ZOT_USERNAME": uuid.uuid4().hex,
             "HEXALITH_ZOT_API_KEY": uuid.uuid4().hex,
-            "HEXALITH_BUILDS_EXECUTION_SHA": BEXEC, "HEXALITH_RELEASE_ENVIRONMENT": "production",
+            "HEXALITH_BUILDS_EXECUTION_SHA": MAIN_PUBLISHER, "HEXALITH_RELEASE_ENVIRONMENT": "production",
             "HEXALITH_RELEASE_SOURCE_BRANCH": "main", "HEXALITH_RELEASE_SOURCE_CI_WORKFLOW": "ci.yml",
             "HEXALITH_RELEASE_PACKAGE_MANIFEST": "tools/release-packages.json",
             "HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT": "14", "HEXALITH_RELEASE_REQUIRE_AUTHORITY": "false",
@@ -78,6 +75,15 @@ class ReleasePublicationAuthorityTests(unittest.TestCase):
             "PATH": str(self.fake_bin) + os.pathsep + os.environ["PATH"],
             "PYTHONPATH": os.pathsep.join((str(self.site), str(ROOT / "tools/tests"))),
         })
+
+    def install_publisher(self, commit):
+        files = CONTRACT_FILES if commit == MAINTENANCE_PUBLISHER else (*CONTRACT_FILES, "oci_attestation.py")
+        for name in files:
+            data = subprocess.check_output([
+                "git", "-C", str(self.builds), "show", f"{commit}:Github/publish-containers/{name}"])
+            target = self.contract / name
+            target.write_bytes(data)
+            target.chmod(0o755)
 
     def save(self):
         self.state_path.write_text(json.dumps(self.state))
@@ -128,6 +134,8 @@ class ReleasePublicationAuthorityTests(unittest.TestCase):
         self.assertIn("source-no-longer-current", self.invoke("verify", False).stderr)
 
     def maintenance(self):
+        self.install_publisher(MAINTENANCE_PUBLISHER)
+        self.env["HEXALITH_BUILDS_EXECUTION_SHA"] = MAINTENANCE_PUBLISHER
         self.state.pop("self_tag", None)
         container_evidence = self.work / ("evidence-" + uuid.uuid4().hex)
         self.env["HEXALITH_CONTAINER_EVIDENCE_DIRECTORY"] = str(container_evidence)
@@ -145,6 +153,13 @@ class ReleasePublicationAuthorityTests(unittest.TestCase):
             self.state["runs"][name] = [{"id": 123, "head_sha": self.sha,
                 "head_branch": branch, "event": "push", "status": "completed", "conclusion": "success"}]
         self.save()
+
+    def test_publisher_pins_are_bound_to_their_source_branches(self):
+        self.env["HEXALITH_BUILDS_EXECUTION_SHA"] = MAINTENANCE_PUBLISHER
+        self.assertIn("approved publisher commit", self.invoke("verify", False).stderr)
+        self.maintenance()
+        self.env["HEXALITH_BUILDS_EXECUTION_SHA"] = MAIN_PUBLISHER
+        self.assertIn("approved publisher commit", self.invoke("verify", False).stderr)
 
     def test_exact_maintenance_verify_and_publish_use_actual_pinned_engine(self):
         self.maintenance()
@@ -212,8 +227,7 @@ class ReleasePublicationAuthorityTests(unittest.TestCase):
         result = self.shell_boundary()
         self.assertEqual(result.returncode, 73, result.stdout + result.stderr)
         self.assertIn("publication-boundary-reached", result.stderr)
-        builds = Path(os.environ.get("HEXALITH_BUILDS_SOURCE", ROOT / "references/Hexalith.Builds"))
-        baseline = subprocess.check_output(["git", "-C", str(builds), "show",
+        baseline = subprocess.check_output(["git", "-C", str(self.builds), "show",
             "22a578b576a515d2af214fe81859447fffc97981:Github/publish-containers/publish-containers.sh"])
         (self.contract / "publish-containers.sh").write_bytes(baseline)
         result = self.shell_boundary()

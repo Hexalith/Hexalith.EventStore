@@ -53,18 +53,19 @@ is_semver_without_numeric_padding "$version" ||
   fail "A semantic release version without build metadata or leading-zero numeric identifiers is required."
 [[ "$phase" =~ ^(verify|publish)$ ]] ||
   fail "Publication phase must be verify or publish."
-[[ "$builds_execution_sha" = "30ea43a56330a9828ed0bb2e837289231d8630d1" ]] ||
-  fail "HEXALITH_BUILDS_EXECUTION_SHA must be the approved publisher commit."
 [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] ||
   fail "GITHUB_SHA must identify the exact workflow source commit."
 case "$source_branch" in
-  main) ;;
+  main) approved_publisher="bf8a28b4bbcec619e8d9764d335f786f2bafb69e" ;;
   release/parties-sdk-3.130.2)
     [[ "$version" = "3.130.2" && "${GITHUB_REPOSITORY:-}" = "Hexalith/Hexalith.EventStore" ]] ||
       fail "The maintenance source is approved only for EventStore 3.130.2."
+    approved_publisher="30ea43a56330a9828ed0bb2e837289231d8630d1"
     ;;
   *) fail "HEXALITH_RELEASE_SOURCE_BRANCH must be main or the exact approved maintenance branch." ;;
 esac
+[[ "$builds_execution_sha" = "$approved_publisher" ]] ||
+  fail "HEXALITH_BUILDS_EXECUTION_SHA must be the approved publisher commit for the source branch."
 [[ "$source_ci_workflow" = "ci.yml" ]] ||
   fail "HEXALITH_RELEASE_SOURCE_CI_WORKFLOW must be exactly ci.yml."
 [[ "$package_manifest" = "tools/release-packages.json" ]] ||
