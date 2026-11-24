@@ -70,7 +70,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             JsonElement[] manifests = index.RootElement.GetProperty("manifests").EnumerateArray().ToArray();
             manifests.Length.ShouldBe(2);
 
-            Dictionary<string, string>? expected = null;
+            Dictionary<string, string> expected = ExpectedLabels();
             string[] platforms = manifests
                 .Select(manifest => manifest.GetProperty("platform").GetProperty("architecture").GetString())
                 .Where(architecture => architecture is not null)
@@ -87,9 +87,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                     .GetString().ShouldNotBeNull();
                 using JsonDocument config = JsonDocument.Parse(entries[BlobPath(configDigest)]);
                 JsonElement labels = config.RootElement.GetProperty("config").GetProperty("Labels");
-                string observedCreated = labels.GetProperty("org.opencontainers.image.created")
-                    .GetString().ShouldNotBeNull();
-                expected ??= ExpectedLabels(observedCreated);
                 ValidateLabels(labels, expected);
                 childLabels.Add(labels.EnumerateObject().ToDictionary(
                     property => property.Name,
@@ -329,6 +326,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             ("org.opencontainers.image.documentation", "https"),
             ("org.opencontainers.image.revision", (string?)null),
             ("org.opencontainers.image.version", "9.9.9"),
+            ("org.opencontainers.image.created", "2026-08-21T10:15:00Z"),
+            ("org.opencontainers.artifact.created", "2026-08-21T10:15:00Z"),
         })
         {
             JsonObject labels = new(expected.Select(pair => KeyValuePair.Create<string, JsonNode?>(pair.Key, pair.Value)));
@@ -355,7 +354,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         Should.NotThrow(() => ValidateLabels(extraLabels.RootElement, expected));
     }
 
-    private static Dictionary<string, string> ExpectedLabels(string created = Created) => new(StringComparer.Ordinal)
+    private static Dictionary<string, string> ExpectedLabels() => new(StringComparer.Ordinal)
     {
         ["org.opencontainers.image.source"] = "https://github.com/Hexalith/Hexalith.EventStore",
         ["org.opencontainers.image.url"] =
@@ -364,8 +363,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             $"https://github.com/Hexalith/Hexalith.EventStore/blob/{SourceSha}/README.md",
         ["org.opencontainers.image.revision"] = SourceSha,
         ["org.opencontainers.image.version"] = Version,
-        ["org.opencontainers.image.created"] = created,
-        ["org.opencontainers.artifact.created"] = created,
+        ["org.opencontainers.image.created"] = Created,
+        ["org.opencontainers.artifact.created"] = Created,
     };
 
     /// <summary>

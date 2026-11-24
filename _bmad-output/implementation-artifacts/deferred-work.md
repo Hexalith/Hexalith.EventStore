@@ -2748,7 +2748,8 @@ origin: migrated from legacy ledger ("bmad-build code review of spec-3-15-correc
 location: org.opencontainers.image.created
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: The multi-RID `org.opencontainers.image.created` assertion compares the artifact to itself. evidence: `CorrectiveOciProvenanceReleaseTests` sets `expected ??= ExpectedLabels(observedCreated)` where `observedCreated` is read out of the first child config, so the emitted label is compared against itself rather than against the `-p:ContainerProvenanceCreated` input. Replacing the label value with a build-time `UtcNow` keeps the suite green. The indirection was necessary while the MSBuild fallback made the value unpredictable; now that the input is mandatory it is a stale weakening.
-status: open
+status: done 2026-11-24
+resolution: Assert both creation labels against the publisher-supplied UTC instant in each SDK archive child and reject valid but different timestamps. All 21 corrective OCI tests passed.
 
 ### DW-410: The Story 3.13 closure acceptance contract still requires the commit anchor that GitHub cannot mint, while the disposition lane was migrated to `#issuecomment-<id>`.
 
