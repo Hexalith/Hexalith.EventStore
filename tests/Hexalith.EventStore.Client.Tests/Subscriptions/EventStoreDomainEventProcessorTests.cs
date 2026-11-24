@@ -186,6 +186,8 @@ public class EventStoreDomainEventProcessorTests {
     private sealed class CapturingLogger<T> : ILogger<T> {
         public List<IReadOnlyDictionary<string, object?>> StructuredEntries { get; } = [];
 
+        public List<LogLevel> StructuredLevels { get; } = [];
+
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull
             => null;
@@ -200,6 +202,7 @@ public class EventStoreDomainEventProcessorTests {
             Func<TState, Exception?, string> formatter) {
             if (state is IEnumerable<KeyValuePair<string, object?>> values) {
                 StructuredEntries.Add(values.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
+                StructuredLevels.Add(logLevel);
             }
         }
     }
@@ -476,6 +479,101 @@ public class EventStoreDomainEventProcessorTests {
         result.ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
         handler.Handled.ShouldBeEmpty();
     }
+
+    [Fact]
+    public async Task ProcessAsync_PayloadIdPropertyMissing_WarnsOncePerEventTypeAndKeepsSkipping() {
+        var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
+        EventStoreDomainEventProcessor processor = BuildWithLogger(logger, "TenantIdentifier");
+
+        EventStoreDomainEventProcessingResult first = await processor
+            .ProcessAsync(Envelope(UniqueIdHelper.GenerateSortableUniqueStringId(), "t1", PayloadFor("t1", 1)));
+        EventStoreDomainEventProcessingResult second = await processor
+            .ProcessAsync(Envelope(UniqueIdHelper.GenerateSortableUniqueStringId(), "t1", PayloadFor("t1", 2)));
+        EventStoreDomainEventProcessingResult other = await processor
+            .ProcessAsync(MultiIdentityEnvelope(UniqueIdHelper.GenerateSortableUniqueStringId(), "t1", MultiIdentityPayloadFor("t1", "a1", 3)));
+
+        first.ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
+        second.ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
+        other.ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
+        IReadOnlyDictionary<string, object?>[] warnings = WarningsWith(logger, "EventClrType");
+        warnings.Select(static warning => warning["EventClrType"]).ShouldBe(
+            [typeof(TestEvent).FullName, typeof(MultiIdentityEvent).FullName],
+            ignoreOrder: true);
+        warnings.ShouldAllBe(warning => Equals(warning["PropertyName"], "TenantIdentifier"));
+        logger.StructuredEntries.Count(static entry => entry.ContainsKey("MessageId") && entry.ContainsKey("EventClrType"))
+            .ShouldBe(3);
+    }
+
+    [Fact]
+    public void Constructor_PayloadIdPropertyOnNoRegisteredType_WarnsAtStartup() {
+        var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
+
+        _ = BuildWithLogger(logger, "TenantIdentifier");
+
+        IReadOnlyDictionary<string, object?> warning = WarningsWith(logger, "PropertyName").ShouldHaveSingleItem();
+        warning["PropertyName"].ShouldBe("TenantIdentifier");
+        warning.ContainsKey("EventClrType").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Constructor_PayloadIdPropertyOnARegisteredType_DoesNotWarn() {
+        var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
+
+        _ = BuildWithLogger(logger, "AccountId");
+
+        logger.StructuredLevels.ShouldNotContain(LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_PayloadIdPropertyNotAString_IsReportedAsMisconfigured() {
+        var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
+        EventStoreDomainEventProcessor processor = BuildWithLogger(logger, "Value");
+
+        EventStoreDomainEventProcessingResult result = await processor
+            .ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 1)));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
+        WarningsWith(logger, "EventClrType").ShouldHaveSingleItem()["EventClrType"].ShouldBe(typeof(TestEvent).FullName);
+    }
+
+    [Theory]
+    [InlineData("other")]
+    [InlineData(null)]
+    public async Task ProcessAsync_PayloadIdValueMismatch_DoesNotReportMisconfiguration(string? payloadTenantId) {
+        var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
+        EventStoreDomainEventProcessor processor = BuildWithLogger(logger, "TenantId");
+
+        EventStoreDomainEventProcessingResult result = await processor
+            .ProcessAsync(Envelope(s_messageId, "t1", PayloadFor(payloadTenantId!, 1)));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
+        logger.StructuredLevels.ShouldNotContain(LogLevel.Warning);
+    }
+
+    private static EventStoreDomainEventProcessor BuildWithLogger(
+        CapturingLogger<EventStoreDomainEventProcessor> logger,
+        string payloadIdProperty) {
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(new CapturingHandler())
+            .BuildServiceProvider();
+        return new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type>(StringComparer.Ordinal) {
+                [typeof(TestEvent).FullName!] = typeof(TestEvent),
+                [typeof(MultiIdentityEvent).FullName!] = typeof(MultiIdentityEvent),
+            },
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            logger,
+            payloadIdProperty);
+    }
+
+    private static IReadOnlyDictionary<string, object?>[] WarningsWith(
+        CapturingLogger<EventStoreDomainEventProcessor> logger,
+        string key)
+        => Enumerable.Range(0, logger.StructuredLevels.Count)
+            .Where(index => logger.StructuredLevels[index] == LogLevel.Warning && logger.StructuredEntries[index].ContainsKey(key))
+            .Select(index => logger.StructuredEntries[index])
+            .ToArray();
 
     [Fact]
     public async Task ProcessAsync_PayloadIdCheckEnabled_MatchAccepted() {

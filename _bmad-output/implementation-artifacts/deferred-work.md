@@ -402,7 +402,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-4-projection-and-domain-event-consumer-seams (2026-07-06, review pass 2)"), 2026-08-30
 location: PayloadAggregateIdPropertyName
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-1-4-projection-and-domain-event-consumer-seams.md` summary: A misconfigured (non-existent) `PayloadAggregateIdPropertyName` silently drops every consumed event as an aggregate mismatch, indistinguishable from a legitimate value mismatch and with no distinct diagnostic. evidence: `EventStoreDomainEventProcessor.TryGetPayloadId` resolves the configured property via reflection; a name that is not a public instance property resolves to a cached null `PropertyInfo`, so `TryGetPayloadId` returns false for every payload. The caller (the `_payloadAggregateIdPropertyName is not null && (!TryGetPayloadId(...) || !string.Equals(...))` branch in `ProcessAsync`) then treats every event as `SkippedAggregateMismatch`, acknowledges it (HTTP 200), and logs only at Information — so a typo silently discards the entire subscription's traffic. The property-resolution feature pre-dates this story (this diff only re-keyed the reflection cache by (event type, property name)); the silent-drop-on-missing-property behavior was surfaced incidentally by the review, not introduced here. A fix would distinguish "property not resolvable on a resolved event type" (misconfiguration → fail fast at startup or emit a distinct warning) from a legitimate per-event value mismatch.
-status: open
+status: done 2026-11-24
+resolution: Resolve the configured property once per event type and accept any readable public property that can hold a string. Warn at construction when no registered event type has the property, and once per CLR event type when a consumed type lacks it, with a distinct per-event skip message; the acknowledged skip stays for shared topics. Verify warnings, quiet value mismatches and non-string properties in focused tests. A `new`-hidden property is deferred as DW-546.
 
 ### DW-61: Query/projection-handler domain discovery for telemetry only recognizes handlers that carry `[EventStoreDomain]` or expose a public parameterless constructor; a DI-constructed handler with no attribute is silently dropped (its domain gets no diagnostics), and the parameterless path reflectively instantiates handler types at host-build time.
 
@@ -6824,3 +6825,12 @@ followup_2026_11_01: The release-maintenance task repairs both owner defects: so
   summary: Validate producer-supplied ETag syntax before the gateway writes its HTTP validator.
   evidence: The gateway accepts a nonblank producer token for a named projection and then adds HTTP quotes. A producer that returns an already quoted or malformed token can yield a malformed header. This pre-existing gap is separate from the route and header authority fixes.
   status: open
+
+### DW-546: A payload aggregate ID property hidden with `new` makes domain-event processing throw instead of resolving or reporting it.
+
+origin: code review of spec-dw-33-43-45-58-60-63-76-deferred-batch (2026-11-24)
+location: src/Hexalith.EventStore.Client/Subscriptions/EventStoreDomainEventProcessor.cs (`ResolvePayloadIdProperty`)
+source_spec: `spec-dw-33-43-45-58-60-63-76-deferred-batch.md`
+severity: medium
+reason: `Type.GetProperty(name, Instance | Public)` throws `AmbiguousMatchException` when a derived event hides a base property with `new`. The exception escapes the resolver and `ProcessAsync`, the marker is released, and every redelivery fails the same way. Pre-existing: the earlier lookup was identical. Resolve the most-derived declaration, or report the property as unresolvable like a missing one.
+status: open

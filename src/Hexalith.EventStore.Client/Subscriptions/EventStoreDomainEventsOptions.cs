@@ -28,7 +28,10 @@ public class EventStoreDomainEventsOptions {
     /// When set, the processor reflects a payload property of this name and rejects the event when its
     /// value does not equal the envelope's <see cref="EventStoreDomainEventEnvelope.AggregateId"/>
     /// (Ordinal). Leave <see langword="null"/> to skip the integrity check. Domains whose events carry,
-    /// for example, a <c>TenantId</c> that must match the aggregate set this to <c>"TenantId"</c>.
+    /// for example, a <c>TenantId</c> that must match the aggregate set this to <c>"TenantId"</c>. The name is
+    /// case-sensitive and must be a readable public instance property that can hold a string. Events whose type has
+    /// no such property are acknowledged and skipped, and the processor logs a warning for each such event type (and
+    /// at startup when no registered event type has the property).
     /// </summary>
     public string? PayloadAggregateIdPropertyName { get; set; }
 

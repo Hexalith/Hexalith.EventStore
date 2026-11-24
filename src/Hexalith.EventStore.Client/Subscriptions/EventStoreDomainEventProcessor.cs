@@ -35,6 +35,7 @@ public class EventStoreDomainEventProcessor {
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly string? _payloadAggregateIdPropertyName;
     private readonly EventPayloadEvolutionRegistry _evolution;
+    private readonly ConcurrentDictionary<Type, byte> _unresolvablePayloadIdEventTypes = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreDomainEventProcessor"/> class.
@@ -43,8 +44,9 @@ public class EventStoreDomainEventProcessor {
     /// <param name="eventTypeRegistry">The mapping of event type names to their CLR types.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="payloadAggregateIdPropertyName">
-    /// Optional payload property name whose value must equal the envelope's
-    /// <see cref="EventStoreDomainEventEnvelope.AggregateId"/>; <see langword="null"/> disables the check.
+    /// Optional payload property name (case-sensitive) whose value must equal the envelope's
+    /// <see cref="EventStoreDomainEventEnvelope.AggregateId"/>; <see langword="null"/> disables the check. It must name a
+    /// readable public instance property that can hold a string; an event type without one is skipped with a warning.
     /// </param>
     public EventStoreDomainEventProcessor(
         IServiceScopeFactory serviceScopeFactory,
@@ -67,8 +69,9 @@ public class EventStoreDomainEventProcessor {
     /// <param name="markerStore">The marker store used for consumed-message idempotency.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="payloadAggregateIdPropertyName">
-    /// Optional payload property name whose value must equal the envelope's
-    /// <see cref="EventStoreDomainEventEnvelope.AggregateId"/>; <see langword="null"/> disables the check.
+    /// Optional payload property name (case-sensitive) whose value must equal the envelope's
+    /// <see cref="EventStoreDomainEventEnvelope.AggregateId"/>; <see langword="null"/> disables the check. It must name a
+    /// readable public instance property that can hold a string; an event type without one is skipped with a warning.
     /// </param>
     /// <param name="evolution">The validated event evolution registry, when configured.</param>
     public EventStoreDomainEventProcessor(
@@ -90,6 +93,16 @@ public class EventStoreDomainEventProcessor {
             ? null
             : payloadAggregateIdPropertyName;
         _evolution = evolution ?? new EventPayloadEvolutionRegistry(eventTypeRegistry.Values, []);
+
+        // Surface a misconfigured identity property at startup rather than after the first event is acknowledged.
+        // Some event types on a shared topic may legitimately lack it, so only a property no registered type has warns.
+        if (_payloadAggregateIdPropertyName is not null
+            && eventTypeRegistry.Count > 0
+            && eventTypeRegistry.Values.All(type => ResolvePayloadIdProperty(type, _payloadAggregateIdPropertyName) is null)) {
+            _logger.LogWarning(
+                "No registered event type has a readable public string property '{PropertyName}'; every consumed event will be skipped. Check PayloadAggregateIdPropertyName",
+                _payloadAggregateIdPropertyName);
+        }
     }
 
     /// <summary>
@@ -258,8 +271,12 @@ public class EventStoreDomainEventProcessor {
                 return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
 
+            PropertyInfo? payloadIdProperty = _payloadAggregateIdPropertyName is null
+                ? null
+                : ResolvePayloadIdProperty(@event.GetType(), _payloadAggregateIdPropertyName);
+            string? payloadId = payloadIdProperty?.GetValue(@event) as string;
             if (_payloadAggregateIdPropertyName is not null
-                && (!TryGetPayloadId(@event, _payloadAggregateIdPropertyName, out string? payloadId)
+                && (string.IsNullOrWhiteSpace(payloadId)
                     || !string.Equals(payloadId, envelope.AggregateId, StringComparison.Ordinal))) {
                 // The payload's identity property does not match the stream the event was delivered on.
                 // This is expected when a single pub/sub topic carries events from multiple aggregate types
@@ -269,11 +286,31 @@ public class EventStoreDomainEventProcessor {
                 // and mark it completed so it is acknowledged and not redelivered. Logged at Information
                 // rather than Warning because on a shared topic this is routine; a genuine integrity
                 // violation is also skipped here (never dispatched), so it cannot corrupt downstream state.
-                _logger.LogInformation(
-                    "Skipping event {MessageId}: payload '{PropertyName}' does not match aggregate ID '{AggregateId}'",
-                    envelope.MessageId,
-                    _payloadAggregateIdPropertyName,
-                    envelope.AggregateId);
+                // A configured property the event type cannot supply is a misconfiguration rather than a value
+                // mismatch (a typo would otherwise discard the whole subscription silently), so it is reported
+                // once per event type at Warning while keeping the same acknowledged skip.
+                if (payloadIdProperty is null) {
+                    if (_unresolvablePayloadIdEventTypes.TryAdd(@event.GetType(), 0)) {
+                        _logger.LogWarning(
+                            "Payload aggregate ID property '{PropertyName}' is not a readable public string property of event type '{EventClrType}'; every event of this type is skipped. Check PayloadAggregateIdPropertyName",
+                            _payloadAggregateIdPropertyName,
+                            @event.GetType().FullName);
+                    }
+
+                    _logger.LogInformation(
+                        "Skipping event {MessageId}: event type '{EventClrType}' has no readable string property '{PropertyName}'",
+                        envelope.MessageId,
+                        @event.GetType().FullName,
+                        _payloadAggregateIdPropertyName);
+                }
+                else {
+                    _logger.LogInformation(
+                        "Skipping event {MessageId}: payload '{PropertyName}' does not match aggregate ID '{AggregateId}'",
+                        envelope.MessageId,
+                        _payloadAggregateIdPropertyName,
+                        envelope.AggregateId);
+                }
+
                 await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedAggregateMismatch;
             }
@@ -344,15 +381,16 @@ public class EventStoreDomainEventProcessor {
         return handlers.Length;
     }
 
-    private static bool TryGetPayloadId(IEventPayload @event, string propertyName, out string? id) {
-        var key = new PayloadIdPropertyKey(@event.GetType(), propertyName);
-        PropertyInfo? property = s_payloadIdProperties.GetOrAdd(
-            key,
-            static key => key.EventType.GetProperty(key.PropertyName, BindingFlags.Instance | BindingFlags.Public));
-
-        id = property?.GetValue(@event) as string;
-        return !string.IsNullOrWhiteSpace(id);
-    }
+    private static PropertyInfo? ResolvePayloadIdProperty(Type eventType, string propertyName)
+        => s_payloadIdProperties.GetOrAdd(
+            new PayloadIdPropertyKey(eventType, propertyName),
+            static key => key.EventType.GetProperty(key.PropertyName, BindingFlags.Instance | BindingFlags.Public) is {
+                CanRead: true,
+            } property
+                && property.PropertyType.IsAssignableFrom(typeof(string))
+                && property.GetIndexParameters().Length == 0
+                    ? property
+                    : null);
 
     private async Task MarkCompletedSafelyAsync(string messageId) {
         try {
