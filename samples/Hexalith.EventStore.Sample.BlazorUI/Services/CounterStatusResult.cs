@@ -22,6 +22,9 @@ public sealed record CounterStatusResult(int Count, string? ETag)
     /// <summary>
     /// Creates a component state result from a gateway query result.
     /// </summary>
+    /// <param name="result">The gateway response.</param>
+    /// <param name="cachedResult">The last successfully read state, required to interpret an HTTP 304.</param>
+    /// <returns>The validated state, or the latest valid fallback (<see cref="Empty"/> when none) for an unusable response.</returns>
     public static CounterStatusResult FromQueryResult(EventStoreQueryResult result, CounterStatusResult? cachedResult)
     {
         _ = TryFromQueryResult(result, cachedResult, out CounterStatusResult state);
@@ -40,8 +43,12 @@ public sealed record CounterStatusResult(int Count, string? ETag)
 
         if (result.IsNotModified)
         {
-            state = cachedResult ?? new CounterStatusResult(0, result.ETag);
-            return true;
+            // A 304 only confirms the state whose validator the caller sent. Without that state, or for another
+            // validator, there is no confirmed count, so report the response as unusable instead of pairing an
+            // invented count with the validator; a caller holding no validator then reads without If-None-Match.
+            state = cachedResult ?? Empty;
+            return cachedResult is { ETag: not null }
+                && string.Equals(cachedResult.ETag, result.ETag, StringComparison.Ordinal);
         }
 
         if (result.Payload is { } payload && ParseCountFromPayload(payload) is int count)

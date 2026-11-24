@@ -47,4 +47,43 @@ public sealed class CounterStatusResultTests
         retained.ShouldBeSameAs(cached);
         CounterStatusResult.FromQueryResult(result, null).ShouldBeSameAs(CounterStatusResult.Empty);
     }
+
+    [Fact]
+    public void NotModifiedWithCachedState_KeepsCachedState()
+    {
+        var result = new EventStoreQueryResult(null, null, IsNotModified: true, "\"good\"");
+        var cached = new CounterStatusResult(12, "\"good\"");
+
+        CounterStatusResult.TryFromQueryResult(result, cached, out CounterStatusResult state).ShouldBeTrue();
+        state.ShouldBeSameAs(cached);
+    }
+
+    [Fact]
+    public void NotModifiedWithoutCachedState_IsUnusableAndKeepsNoValidator()
+    {
+        var result = new EventStoreQueryResult(null, null, IsNotModified: true, "\"caller-supplied\"");
+
+        CounterStatusResult.TryFromQueryResult(result, null, out CounterStatusResult state).ShouldBeFalse();
+        state.ShouldBeSameAs(CounterStatusResult.Empty);
+        CounterStatusResult.FromQueryResult(result, null).ShouldBeSameAs(CounterStatusResult.Empty);
+    }
+
+    [Fact]
+    public void NotModifiedForAnotherValidator_IsUnusableAndKeepsCachedState()
+    {
+        var result = new EventStoreQueryResult(null, null, IsNotModified: true, "\"other\"");
+        var cached = new CounterStatusResult(12, "\"good\"");
+
+        CounterStatusResult.TryFromQueryResult(result, cached, out CounterStatusResult state).ShouldBeFalse();
+        state.ShouldBeSameAs(cached);
+    }
+
+    [Fact]
+    public void NotModifiedOverTheEmptyState_IsUnusable()
+    {
+        var result = new EventStoreQueryResult(null, null, IsNotModified: true, "\"caller-supplied\"");
+
+        CounterStatusResult.TryFromQueryResult(result, CounterStatusResult.Empty, out CounterStatusResult state).ShouldBeFalse();
+        state.ShouldBeSameAs(CounterStatusResult.Empty);
+    }
 }

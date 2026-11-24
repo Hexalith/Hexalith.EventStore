@@ -290,7 +290,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-03, re-review)"), 2026-08-30
 location: CounterStatusResult.FromQueryResult
 reason: `CounterStatusResult.FromQueryResult` returns a fabricated `count 0` when the gateway reports `IsNotModified` but `cachedResult` is null. The four sample components avoid this (they pass a null ETag on first load), but the general-purpose `EventStoreProjectionQueryClient.GetAsync` accepts an arbitrary `If-None-Match` and has no guard. Demo-UI hardening.
-status: open
+status: done 2026-11-24
+resolution: Accept a 304 only when it confirms the cached state's validator. Without a cache, over the empty state, or for another validator the response is unusable and no invented count or validator is kept; `FromQueryResult` returns the last valid state or `Empty`. Verify the four 304 paths in focused tests.
 
 ### DW-44: Empty (as opposed to absent) `DAPR_HTTP_PORT` yields the base address `http://localhost:` and `new Uri(...)` throws `UriFormatException` at startup with an opaque message, in both `Sample.Api` and `Sample.BlazorUI`. The `?? "3500"` fallback only guards null. Minor robustness.
 
