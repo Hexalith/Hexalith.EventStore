@@ -56,8 +56,8 @@
     <ContainerGenerateLabelsImageVersion>false</ContainerGenerateLabelsImageVersion>
     <ContainerGenerateLabelsImageCreated>false</ContainerGenerateLabelsImageCreated>
     <!--
-      These three URLs default from each other so a caller need only override the
-      repository. ContainerProvenanceCreated deliberately has no default: it must be
+      Release and documentation URLs default to the published tag and source README.
+      ContainerProvenanceCreated deliberately has no default: it must be
       one publisher-owned instant shared by both child configs, and an MSBuild-local
       fallback is re-evaluated independently by the SDK's inner RID builds, so the
       children would disagree. The validation target below fails closed when it is
@@ -84,29 +84,26 @@
   <Target Name="ValidateContainerProvenanceInputs"
           BeforeTargets="_PublishMultiArchContainers;_PublishSingleContainer"
           Condition="'$(EnableContainer)' == 'true'">
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceSourceSha)', '^[0-9a-f]{40}$')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceSourceSha)', '\A[0-9a-f]{40}\z')) != 'true'"
            Text="ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA." />
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceReleaseVersion)', '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.((0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceReleaseVersion)', '\A(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.((0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?\z')) != 'true'"
            Text="ContainerProvenanceReleaseVersion must be SemVer without build metadata or leading-zero numeric identifiers." />
-    <Error Condition="'$(ContainerImageTag)' != '' and '$(ContainerImageTag)' != '$(ContainerProvenanceReleaseVersion)'"
+    <Error Condition="'$(ContainerImageTag)' != '' and $([System.String]::Equals('$(ContainerImageTag)', '$(ContainerProvenanceReleaseVersion)')) != 'true'"
            Text="ContainerImageTag must equal ContainerProvenanceReleaseVersion." />
-    <Error Condition="'$(ContainerImageTags)' != '' and '$(ContainerImageTags)' != '$(ContainerProvenanceReleaseVersion)'"
+    <Error Condition="'$(ContainerImageTags)' != '' and $([System.String]::Equals('$(ContainerImageTags)', '$(ContainerProvenanceReleaseVersion)')) != 'true'"
            Text="ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else." />
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceCreated)', '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceCreated)', '\A(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z\z')) != 'true'"
            Text="ContainerProvenanceCreated must be an exact UTC RFC 3339 second." />
-    <!--
-      Each URL property's Condition="'$(X)' == ''" default only fires when the property is
-      genuinely unset. An environment variable of the same name is already an MSBuild property
-      before this file evaluates, so it silently wins over the default with no shape check,
-      including a colon-truncated value like "https", the exact defect class this story exists
-      to reject. Validate shape here regardless of which source supplied the value.
-    -->
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceRepositoryUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\s]*)?\z')) != 'true'"
-           Text="ContainerProvenanceRepositoryUrl must be a well-formed https URL." />
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceReleaseUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\s]*)?\z')) != 'true'"
-           Text="ContainerProvenanceReleaseUrl must be a well-formed https URL." />
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceDocumentationUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\s]*)?\z')) != 'true'"
-           Text="ContainerProvenanceDocumentationUrl must be a well-formed https URL." />
+    <Error Condition="$(ContainerProvenanceCreated.Substring(8, 2)) &gt; $([System.DateTime]::DaysInMonth($(ContainerProvenanceCreated.Substring(0, 4)), $(ContainerProvenanceCreated.Substring(5, 2))))"
+           Text="ContainerProvenanceCreated must be an exact UTC RFC 3339 second." />
+    <!-- Validate the effective properties, including explicit and environment overrides. -->
+    <Error Condition="$([System.String]::Equals('$(ContainerProvenanceRepositoryUrl)', 'https://github.com/Hexalith/Hexalith.EventStore')) != 'true'"
+           Text="ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL." />
+    <!-- The source commit URL also identifies local images without a published release tag. -->
+    <Error Condition="$([System.String]::Equals('$(ContainerProvenanceReleaseUrl)', '$(ContainerProvenanceRepositoryUrl)/releases/tag/v$(ContainerProvenanceReleaseVersion)')) != 'true' and $([System.String]::Equals('$(ContainerProvenanceReleaseUrl)', '$(ContainerProvenanceRepositoryUrl)/commit/$(ContainerProvenanceSourceSha)')) != 'true'"
+           Text="ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository." />
+    <Error Condition="$([System.String]::Equals('$(ContainerProvenanceDocumentationUrl)', '$(ContainerProvenanceRepositoryUrl)/blob/$(ContainerProvenanceSourceSha)/README.md')) != 'true'"
+           Text="ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit." />
   </Target>
 
   <!-- Correct the SDK multi-RID key:value reconstruction before the child image is created. -->

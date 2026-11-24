@@ -427,6 +427,23 @@ OpenAI Codex (GPT-5)
 - Historical disposition: sections 12-17 reviewed, no open material findings, and documented residual risks accepted for the superseded digest.
 - Replacement approval: `AR-20260913-01` in section 18.2, confirmed by Jérôme Piquot at `2026-09-13T12:31:46Z` in all seven mandatory roles for digest `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`; additive API and residual risks accepted with no open material finding; Story 8.2 authorized.
 
+### Sprint tracker attribution
+
+The tracker at the recorded baseline `76f122332216cc5d9b44a421bdbed3ab20d35f5e`
+matches the tracker at `b200305978577530ee2e6ba9e92b886d26dc6f6f`, the parent of the
+Story 8.1 activation commit. Review the tracker diffs for these commits to isolate the
+story's changes from the intervening shared edits.
+
+| Commit | Story 8.1 tracker change |
+| --- | --- |
+| `a48580b1c8e43e2dd434771400c0d8008587d040` | Moved Epic 8 and Story 8.1 from backlog to in progress. |
+| `4bcf2484a09eb26490cb2d32ceb6df8949f90cc6` | Moved Story 8.1 from in progress to done and recorded that Story 8.2 was authorized for preflight. |
+
+The Epic 1–7 changes in the baseline-to-approval tracker diff were already present
+at `8f004ecf8be271ec5e76f97f944c1fc1154391c7`, the parent of the approval commit.
+That parent also recorded the August planning split into Stories 8.2–8.11 and
+kept Story 8.1 in progress.
+
 ### Debug Log References
 
 - 2026-07-16: RED gate confirmed the required spec artifact was absent before implementation.

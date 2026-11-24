@@ -38,6 +38,16 @@ Catalog and payload 1.18.7 selectors are independent of the shared runtime.
 The existing Platform boundary still applies: these fixtures are retained until
 an approved Platform replacement passes the same product contracts.
 
+The OQ8 tests keep PostgreSQL under fixture ownership. A GitHub Actions service
+can pull the pinned image, report readiness and clean up at job exit, but its
+lifetime is the job. The fixture runs from local xUnit as well as multiple CI
+lanes. It allocates a fresh loopback port and database credential per run,
+records the exact container ID, and checks cleanup after successful and failed
+initialization. Replacing it with a job service would require a second local
+startup path and would move the cleanup checks outside the test. Each lane
+should preload the reviewed digest, then let the fixture check it and start its
+own container. [GitHub Actions service container lifecycle](https://docs.github.com/en/actions/tutorials/use-containerized-services/use-docker-service-containers)
+
 The manual `payload-azure` job requires all of the following:
 
 - A compatible published immutable Builds release and successful ordinary CI

@@ -59,7 +59,7 @@ and later authority gates remain open. Keep Story 4.15 OQ8 seal reconciliation s
 
 - `tools/validate-corrective-release-evidence.py:12-73` and `tools/release_evidence_handlers/v3.py:58-404,863-974` -- trusted Story 3.14 dispatcher/canonical-byte gate; preserve v3 behavior and require predecessor digest `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`.
 - `tools/validate-corrected-deployed-runtime-parity.py` and `tools/deployed_runtime_parity_handlers/v1.py` -- new allowlisted closure dispatcher/handler for independent package, OCI, Production-smoke, subject, registry, receipt, and non-authority validation.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:317-603,1124-1235` -- predecessor mutation and canonicalization patterns; do not extend its frozen candidate contract.
+- The [predecessor mutation tests](https://github.com/Hexalith/Hexalith.EventStore/blob/67c645ab02b21ffcb7bef9530e524e4510e36d27/tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs#L317-L603) and [canonicalization helpers](https://github.com/Hexalith/Hexalith.EventStore/blob/67c645ab02b21ffcb7bef9530e524e4510e36d27/tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs#L1124-L1235) show the frozen candidate contract at the pre-loop-6 revision.
 - `tools/assemble-corrected-deployed-runtime-parity.py` -- deterministic packet producer: re-mints the subject, derives the package count and parity verdict from retained evidence rather than asserting them, and runs the pinned verifier over its own output before exiting.
 - `tools/capture-corrected-deployed-runtime-parity-smokes.py` -- bounded two-platform Production smoke capture.
 - `_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/` -- complete
@@ -803,6 +803,17 @@ new hole. Both were reproduced here with live controls before being fixed.
   consumer, predecessor, commit, or push action was performed. Verification: Contracts Release
   build 0W/0E; Story 3.15 closure and capture suites 114/114; predecessor/provenance suite 34/34;
   full Contracts suite 1702/1702; no skipped tests.
+
+- **2026-11-24 (historical commit scope correction, DW-439):** The hardening entry above
+  records the run before commit. Commit `67c645ab02b21ffcb7bef9530e524e4510e36d27` then
+  recorded the Story 3.15 changes alongside two dependency updates outside the parity
+  evidence scope. The Git tree diff against parent
+  `1b2718c121c3c80f01da6f8c277a98250f605d52` identifies both gitlinks.
+
+  | Dependency | Parent gitlink | Commit gitlink |
+  | --- | --- | --- |
+  | `references/Hexalith.FrontComposer` | `a229be7e7e8ea8af43c537a9ed24f13175cc1416` | `596e286fa56a9f9063dd5e5d0ef0f50d53436db1` |
+  | `references/Hexalith.Tenants` | `09c746b3d03cd6c0b51221ab0506ceffe27fc921` | `daf6c76cda0dfe471cf42b50d85a31a3d59a2a66` |
 
 - **2026-08-25 (authorized acceptance completion):** Created dedicated Story 3.15 issue
   [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352), retained its

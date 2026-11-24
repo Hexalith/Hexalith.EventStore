@@ -45,30 +45,14 @@ lychee --config lychee.toml @docsGlob
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Link checking"; exit 1 }
 Write-Host "PASSED: Link checking" -ForegroundColor Green
 
-# --- Stage 3: Deferred-Work Governance Report (advisory) ---
-Write-Host "`n=== Stage 3/4: Deferred-Work Governance Report (advisory) ===" -ForegroundColor Cyan
+# --- Stage 3: Deferred-Work Governance ---
+Write-Host "`n=== Stage 3/4: Deferred-Work Governance ===" -ForegroundColor Cyan
 .\scripts\check-deferred-work.ps1 _bmad-output/implementation-artifacts/deferred-work.md
-$deferredExitCode = $LASTEXITCODE
-switch ($deferredExitCode) {
-    0 {
-        Write-Host "PASSED: Deferred-work governance advisory report completed (exit 0)" -ForegroundColor Green
-    }
-    1 {
-        # Exit 1 is the documented advisory finding signal: ledger has
-        # OPEN/STORY entries the report wants visible. Local wrapper remains
-        # reporting-only until the governance gate is promoted, so this still
-        # doesn't fail.
-        Write-Warning "ADVISORY: Deferred-work governance exited 1 (current ledger findings; advisory only)"
-    }
-    default {
-        # Exit 2 (or any non-1 non-zero) is a usage/tool error per the
-        # wrapper's exit-code policy. Surface it as ADVISORY so a green PASSED
-        # line cannot silently mask a Python crash or unparseable args, but do
-        # not fail the local docs-validation run yet (continue-on-error is
-        # preserved in CI).
-        Write-Warning "ADVISORY: Deferred-work governance exited $deferredExitCode (usage/tool error; visible but not yet PR-blocking)"
-    }
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "FAILED: Deferred-work governance (exit $LASTEXITCODE)"
+    exit 1
 }
+Write-Host "PASSED: Deferred-work governance" -ForegroundColor Green
 
 # --- Stage 4: Sample Build & Test ---
 Write-Host "`n=== Stage 4/4: Sample Build & Test ===" -ForegroundColor Cyan

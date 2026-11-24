@@ -473,24 +473,38 @@ public sealed class AppHostAuthenticationModelTests
     public async Task RunModel_WhenConstructionFailsAfterRealmRender_CleansOwnedDirectory()
     {
         Dictionary<string, string?> original = CaptureEnvironment();
-        string[] before = GetOwnedRunDirectories();
+        DirectoryInfo temporaryRoot = Directory.CreateTempSubdirectory("apphost-realm-failure-");
+        string[] temporaryDirectoryKeys = ["TMPDIR", "TMP", "TEMP"];
+        foreach (string key in temporaryDirectoryKeys)
+        {
+            original.Add(key, Environment.GetEnvironmentVariable(key));
+        }
+
         try
         {
             ClearEnvironment();
+            foreach (string key in temporaryDirectoryKeys)
+            {
+                Environment.SetEnvironmentVariable(key, temporaryRoot.FullName);
+            }
+
             Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
             Environment.SetEnvironmentVariable(
                 HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
                 "true");
             Environment.SetEnvironmentVariable("AppHostTesting__FailAfterRealmRender", "true");
 
-            _ = await Should.ThrowAsync<Exception>(() => DistributedApplicationTestingBuilder
+            Exception exception = await Should.ThrowAsync<Exception>(() => DistributedApplicationTestingBuilder
                 .CreateAsync<Projects.Hexalith_EventStore_AppHost>());
 
-            GetOwnedRunDirectories().ShouldBe(before, ignoreOrder: true);
+            exception.GetBaseException().Message.ShouldBe(
+                "Injected AppHost model-construction failure after local realm rendering.");
+            GetOwnedRunDirectories().ShouldBeEmpty();
         }
         finally
         {
             RestoreEnvironment(original);
+            temporaryRoot.Delete(recursive: true);
         }
     }
 

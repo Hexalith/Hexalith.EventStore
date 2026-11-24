@@ -7,6 +7,11 @@
 # `git status` and breaks source-inspection tests that match newline-bearing markers.
 *.cs text eol=lf
 *.md text eol=lf
+# Keep MSBuild and workflow source inputs stable across checkouts and editor saves.
+*.props text eol=lf
+*.targets text eol=lf
+/.github/workflows/*.yml text eol=lf
+/.github/workflows/*.yaml text eol=lf
 # Imported OQ8 authority and owner permission retain their exact source Git-object bytes.
 docs/architecture/oq8/oq8-idempotency-design.md -text
 docs/architecture/oq8/LICENSE -text
@@ -20,11 +25,7 @@ deploy/dapr/qualification/public-identities/** -text
 _bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json text eol=lf
 _bmad-output/implementation-artifacts/owner-role-registry.json text eol=lf
 .github/workflows/dapr-broker-qualification.yml text eol=lf
-# Gate workflows are hashed G-OQ8 and G-HIGH-RISK subjects.
-.github/workflows/oq8-governing-design.yml text eol=lf
-.github/workflows/phase-4-gate-risk-matrix.yml text eol=lf
-# Authenticated transition workflows and the closed contract bind exact LF bytes.
-.github/workflows/phase-4-*.yml text eol=lf
+# The authenticated transition contract binds exact LF bytes.
 tools/phase-4-transition.schema.json text eol=lf
 commitlint.config.mjs text eol=lf
 # Husky hooks execute through /bin/sh and must not acquire CRLF line endings.

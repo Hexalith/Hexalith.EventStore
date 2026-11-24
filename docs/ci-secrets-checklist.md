@@ -63,11 +63,11 @@ The protected EventStore publish job obtains a temporary NuGet key from
 - The `production` environment permits exactly `main` and
   `release/parties-sdk-3.130.2` and has administrator bypass
   disabled.
-- On `main`, the release workflow calls `Hexalith.Builds`'s
-  `domain-release.yml` at the full SHA named by `builds-execution-sha`. The
-  protected job rechecks `ci.yml` and `commitlint.yml` before exchanging OIDC.
-  Builds attests the validated OCI index after publication. The maintenance
-  workflow uses its separate approved Builds commit
+- On `main`, the protected EventStore job rechecks `ci.yml` and
+  `commitlint.yml` before exchanging OIDC and publishing. It uses the approved
+  Builds OCI publisher and calls `domain-release.yml` at the same full SHA
+  to attest the validated OCI index from that run. The maintenance workflow
+  uses its separate approved Builds commit
   `30ea43a56330a9828ed0bb2e837289231d8630d1`. Both publication pins are
   independent of the development Builds gitlink. The `production` approval
   authorizes publication.
@@ -148,8 +148,10 @@ file `release.yml`, and environment `production`. The policy must grant push
 scope to every one of the 14 IDs in `tools/release-packages.json`. Set the
 repository variable `NUGET_TRUSTED_PUBLISHING_USER` to the nuget.org username
 that created the policy. Confirm the username and policy activation with the
-owner before dispatching production. On `main`, the protected reusable job
-requests the token for the EventStore caller workflow and environment. See the
+owner before dispatching production. The publishing job belongs to EventStore
+because NuGet validates the repository in `job_workflow_ref`. The separate
+Builds attestation job receives OCI publication evidence and no publishing
+credentials. See the
 [nuget.org trusted publishing guide](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing).
 
 ## Recovery after a rejected NuGet push

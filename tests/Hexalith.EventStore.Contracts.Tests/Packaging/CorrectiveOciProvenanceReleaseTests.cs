@@ -15,7 +15,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
 {
     private const string SourceSha = "dddddddddddddddddddddddddddddddddddddddd";
     private const string Version = "0.0.0-ci-test";
-    private const string Created = "2026-08-21T09:15:00Z";
+    private const string Created = "2000-02-29T09:15:00Z";
     private static readonly TimeSpan HelperTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(8);
 
@@ -70,7 +70,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             JsonElement[] manifests = index.RootElement.GetProperty("manifests").EnumerateArray().ToArray();
             manifests.Length.ShouldBe(2);
 
-            Dictionary<string, string>? expected = null;
+            Dictionary<string, string> expected = ExpectedLabels();
             string[] platforms = manifests
                 .Select(manifest => manifest.GetProperty("platform").GetProperty("architecture").GetString())
                 .Where(architecture => architecture is not null)
@@ -87,9 +87,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                     .GetString().ShouldNotBeNull();
                 using JsonDocument config = JsonDocument.Parse(entries[BlobPath(configDigest)]);
                 JsonElement labels = config.RootElement.GetProperty("config").GetProperty("Labels");
-                string observedCreated = labels.GetProperty("org.opencontainers.image.created")
-                    .GetString().ShouldNotBeNull();
-                expected ??= ExpectedLabels(observedCreated);
                 ValidateLabels(labels, expected);
                 childLabels.Add(labels.EnumerateObject().ToDictionary(
                     property => property.Name,
@@ -212,17 +209,30 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [InlineData("ContainerProvenanceSourceSha", "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA.", false)]
     [InlineData("ContainerProvenanceReleaseVersion", "01.2.3", "ContainerProvenanceReleaseVersion must be SemVer without build metadata or leading-zero numeric identifiers.", false)]
     [InlineData("ContainerImageTag", "0.0.0-other", "ContainerImageTag must equal ContainerProvenanceReleaseVersion.", false)]
+    [InlineData("ContainerImageTag", "0.0.0-CI-TEST", "ContainerImageTag must equal ContainerProvenanceReleaseVersion.", false)]
     [InlineData("ContainerImageTags", "latest", "ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else.", false)]
+    [InlineData("ContainerImageTags", "0.0.0-CI-TEST", "ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else.", false)]
+    [InlineData("ContainerProvenanceSourceSha", SourceSha + "\n", "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA.", true)]
+    [InlineData("ContainerProvenanceReleaseVersion", Version + "\n", "ContainerProvenanceReleaseVersion must be SemVer without build metadata or leading-zero numeric identifiers.", true)]
     [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "http://github.com/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https://.", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https://github.com/Hexalith/Hexalith.EventStore\n", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", true)]
-    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", true)]
-    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must be a well-formed https URL.", true)]
+    [InlineData("ContainerProvenanceCreated", "2026-02-31T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceCreated", "1900-02-29T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceCreated", "2026-04-31T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceCreated", "0000-01-01T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", false)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "http://github.com/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://.", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://github.com/Hexalith/Hexalith.EventStore\n", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", true)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", true)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", true)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://other.example/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https://other.example/Hexalith/Hexalith.EventStore/releases/tag/v0.0.0-ci-test", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", true)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v0.0.0-CI-TEST", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", false)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https://github.com/Hexalith/Hexalith.EventStore/blob/dddddddddddddddddddddddddddddddddddddddd/%ZZ.md", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", true)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https://github.com/Hexalith/Hexalith.EventStore/blob/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/README.md", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", false)]
     public void ContainerPublicationRejectsMalformedProvenanceInputs(
         string property,
         string value,
@@ -239,6 +249,10 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         if (!useEnvironment)
         {
             properties[property] = value;
+        }
+        else
+        {
+            _ = properties.Remove(property);
         }
         List<string> arguments =
         [
@@ -282,7 +296,31 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             "-p:MinVerVersionOverride=1.0.0",
             $"-p:ContainerProvenanceSourceSha={SourceSha}",
             $"-p:ContainerProvenanceReleaseVersion={Version}",
-            $"-p:ContainerProvenanceCreated={Created}");
+            $"-p:ContainerProvenanceCreated={Created}",
+            "-getProperty:ContainerImageTag");
+
+        result.ExitCode.ShouldBe(0, result.Output + result.Error);
+        result.Output.Trim().ShouldBe(Version);
+    }
+
+    /// <summary>
+    /// Verifies the documented source-commit URL for a local unpublished image.
+    /// </summary>
+    [Fact]
+    public void ContainerPublicationAllowsTheExactSourceCommitUrl()
+    {
+        ProcessResult result = RunProcess(
+            FindRepositoryRoot(),
+            "dotnet",
+            "msbuild",
+            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+            "-t:ValidateContainerProvenanceInputs",
+            "-p:EnableContainer=true",
+            "-p:UseHexalithProjectReferences=false",
+            $"-p:ContainerProvenanceSourceSha={SourceSha}",
+            $"-p:ContainerProvenanceReleaseVersion={Version}",
+            $"-p:ContainerProvenanceCreated={Created}",
+            $"-p:ContainerProvenanceReleaseUrl=https://github.com/Hexalith/Hexalith.EventStore/commit/{SourceSha}");
 
         result.ExitCode.ShouldBe(0, result.Output + result.Error);
     }
@@ -329,6 +367,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             ("org.opencontainers.image.documentation", "https"),
             ("org.opencontainers.image.revision", (string?)null),
             ("org.opencontainers.image.version", "9.9.9"),
+            ("org.opencontainers.image.created", "2026-08-21T10:15:00Z"),
+            ("org.opencontainers.artifact.created", "2026-08-21T10:15:00Z"),
         })
         {
             JsonObject labels = new(expected.Select(pair => KeyValuePair.Create<string, JsonNode?>(pair.Key, pair.Value)));
@@ -355,7 +395,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         Should.NotThrow(() => ValidateLabels(extraLabels.RootElement, expected));
     }
 
-    private static Dictionary<string, string> ExpectedLabels(string created = Created) => new(StringComparer.Ordinal)
+    private static Dictionary<string, string> ExpectedLabels() => new(StringComparer.Ordinal)
     {
         ["org.opencontainers.image.source"] = "https://github.com/Hexalith/Hexalith.EventStore",
         ["org.opencontainers.image.url"] =
@@ -364,8 +404,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             $"https://github.com/Hexalith/Hexalith.EventStore/blob/{SourceSha}/README.md",
         ["org.opencontainers.image.revision"] = SourceSha,
         ["org.opencontainers.image.version"] = Version,
-        ["org.opencontainers.image.created"] = created,
-        ["org.opencontainers.artifact.created"] = created,
+        ["org.opencontainers.image.created"] = Created,
+        ["org.opencontainers.artifact.created"] = Created,
     };
 
     /// <summary>

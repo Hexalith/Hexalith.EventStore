@@ -55,6 +55,8 @@ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 ```
 
+EventStore image provenance uses the canonical GitHub repository URL. The release URL defaults to its declared version tag and can identify the exact source commit for an unpublished image. The documentation URL points to `README.md` at that commit.
+
 The Admin.Cli is a **NuGet tool** (`PackAsTool`, `ToolCommandName=eventstore-admin`); the Admin.Mcp is
 a standalone **exe** (no container).
 

@@ -7,6 +7,9 @@ using Hexalith.EventStore.Server.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+
 namespace Hexalith.EventStore.Server.Configuration;
 
 /// <summary>Explicit infrastructure opt-in to the occurrence-authenticated content engine.</summary>
@@ -56,6 +59,8 @@ public static class InteractionPayloadProtectionServiceCollectionExtensions
         services.Replace(ServiceDescriptor.Singleton<IEventPayloadProtectionService>(
             static provider => provider.GetRequiredService<InteractionPayloadProtectionService>()));
         services.AddOptions<ActorRuntimeOptions>().PostConfigure(RegisterProtectionActors);
+        services.ConfigureOpenTelemetryTracerProvider(static tracing => tracing.AddSource(PayloadProtectionDiagnostics.Name));
+        services.ConfigureOpenTelemetryMeterProvider(static metrics => metrics.AddMeter(PayloadProtectionDiagnostics.Name));
         return services;
     }
 

@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Bunit;
 using Bunit.Rendering;
 
@@ -24,6 +26,24 @@ public class AdminUITestContextRendererInfoTests : AdminUITestContext {
         // Regresses if EnsureRendererInfo is ever moved into the constructor: touching
         // Renderer builds the provider and every later Services.Add* throws.
         Should.NotThrow(() => Services.AddSingleton(new ProbeMarker()));
+    }
+
+    /// <summary>Detects public render methods that bypass the Admin UI test context overrides.</summary>
+    [Fact]
+    public void RenderOverrides_CoverEverySupportedPublicBunitRenderMethod() {
+        const BindingFlags DeclaredPublicInstance = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Instance;
+        MethodInfo[] renderMethods = typeof(BunitContext).GetMethods(DeclaredPublicInstance)
+            .Where(method => method.Name.StartsWith("Render", StringComparison.Ordinal)
+                && method.GetCustomAttribute<ObsoleteAttribute>() is not { IsError: true })
+            .ToArray();
+        HashSet<MethodInfo> overriddenMethods = typeof(AdminUITestContext).GetMethods(DeclaredPublicInstance)
+            .Select(method => method.GetBaseDefinition())
+            .ToHashSet();
+
+        renderMethods.ShouldNotBeEmpty();
+        foreach (MethodInfo method in renderMethods) {
+            overriddenMethods.ShouldContain(method, $"The Admin UI test context must intercept {method}.");
+        }
     }
 
     [Fact]

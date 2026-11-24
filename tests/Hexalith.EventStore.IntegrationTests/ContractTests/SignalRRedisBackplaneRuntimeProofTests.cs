@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Reflection;
@@ -34,6 +35,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
         string runId = $"r10a2-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}";
         string projectionType = $"counter-{runId}";
         string tenantId = $"tenant-{runId}";
+        string accessToken = CreateAccessToken(tenantId);
         string groupName = $"{projectionType}:{tenantId}";
         var evidence = new RuntimeProofEvidence(runId, projectionType, tenantId, groupName);
 
@@ -42,10 +44,12 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
 
             await using EventStoreProofProcess instanceA = await EventStoreProofProcess.StartAsync(
                 "eventstore-a",
+                accessToken,
                 RedisEndpoint,
                 proofEndpointsEnabled: true).ConfigureAwait(true);
             await using EventStoreProofProcess instanceB = await EventStoreProofProcess.StartAsync(
                 "eventstore-b",
+                accessToken,
                 RedisEndpoint,
                 proofEndpointsEnabled: true).ConfigureAwait(true);
 
@@ -75,7 +79,6 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             var received = Channel.CreateUnbounded<ReceivedSignal>();
             var detailReceived = Channel.CreateUnbounded<ReceivedDetailSignal>();
             var reusableClientDetailReceived = Channel.CreateUnbounded<ProjectionChangedDetail>();
-            string accessToken = CreateAccessToken(tenantId);
             await using HubConnection connection = new HubConnectionBuilder()
                 .WithUrl(instanceBHubUrl.ToString(), options => options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken))
                 .Build();
@@ -195,10 +198,12 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
 
             await using EventStoreProofProcess disabledA = await EventStoreProofProcess.StartAsync(
                 "eventstore-control-a",
+                accessToken,
                 redisEndpoint: null,
                 proofEndpointsEnabled: true).ConfigureAwait(true);
             await using EventStoreProofProcess disabledB = await EventStoreProofProcess.StartAsync(
                 "eventstore-control-b",
+                accessToken,
                 redisEndpoint: null,
                 proofEndpointsEnabled: true).ConfigureAwait(true);
 
@@ -229,6 +234,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
 
             await using EventStoreProofProcess unreachableRedis = await EventStoreProofProcess.StartAsync(
                 "eventstore-unreachable-redis",
+                accessToken,
                 "localhost:6390",
                 proofEndpointsEnabled: true).ConfigureAwait(true);
             RuntimeProofIdentity unreachableIdentity = await unreachableRedis.GetIdentityAsync().ConfigureAwait(true);
@@ -326,11 +332,12 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
         private readonly ConcurrentQueue<string> _stderr = new();
         private readonly HttpClient _client;
 
-        private EventStoreProofProcess(string name, Uri baseUrl, Process process) {
+        private EventStoreProofProcess(string name, Uri baseUrl, Process process, string accessToken) {
             Name = name;
             BaseUrl = baseUrl;
             _process = process;
             _client = new HttpClient { BaseAddress = baseUrl, Timeout = TimeSpan.FromSeconds(20) };
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         }
 
         public string Name { get; }
@@ -339,6 +346,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
 
         public static async Task<EventStoreProofProcess> StartAsync(
             string name,
+            string accessToken,
             string? redisEndpoint,
             bool proofEndpointsEnabled) {
             int port = GetFreeTcpPort();
@@ -380,7 +388,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
 
             Process process = Process.Start(startInfo)
                 ?? throw new InvalidOperationException($"Failed to start {name}.");
-            var instance = new EventStoreProofProcess(name, baseUrl, process);
+            var instance = new EventStoreProofProcess(name, baseUrl, process, accessToken);
             process.OutputDataReceived += (_, args) => {
                 if (args.Data is not null) {
                     instance._stdout.Enqueue(args.Data);
@@ -391,11 +399,16 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
                     instance._stderr.Enqueue(args.Data);
                 }
             };
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            await instance.WaitForReadyAsync().ConfigureAwait(false);
-            return instance;
+            try {
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                await instance.WaitForReadyAsync().ConfigureAwait(false);
+                return instance;
+            }
+            catch {
+                await instance.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
         }
 
         public async ValueTask DisposeAsync() {

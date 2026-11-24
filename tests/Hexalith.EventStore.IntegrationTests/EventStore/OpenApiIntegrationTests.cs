@@ -1,6 +1,7 @@
 extern alias eventstore;
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
@@ -14,7 +15,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     [Fact]
     public async Task GetOpenApiDocument_Returns200WithJson() {
         // Arrange
-        HttpClient client = factory.CreateClient();
+        HttpClient client = CreateAuthenticatedClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
@@ -27,7 +28,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     [Fact]
     public async Task GetOpenApiDocument_ContainsCommandsEndpoint() {
         // Arrange
-        HttpClient client = factory.CreateClient();
+        HttpClient client = CreateAuthenticatedClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
@@ -42,7 +43,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     [Fact]
     public async Task GetOpenApiDocument_ContainsStatusEndpoint() {
         // Arrange
-        HttpClient client = factory.CreateClient();
+        HttpClient client = CreateAuthenticatedClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
@@ -60,7 +61,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     [Fact]
     public async Task GetOpenApiDocument_ContainsReplayEndpoint() {
         // Arrange
-        HttpClient client = factory.CreateClient();
+        HttpClient client = CreateAuthenticatedClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
@@ -77,7 +78,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     [Fact]
     public async Task GetOpenApiDocument_ContainsSecurityScheme() {
         // Arrange
-        HttpClient client = factory.CreateClient();
+        HttpClient client = CreateAuthenticatedClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
@@ -95,7 +96,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     [Fact]
     public async Task GetSwaggerUI_Returns200() {
         // Arrange
-        HttpClient client = factory.CreateClient();
+        HttpClient client = CreateAuthenticatedClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/swagger/index.html");
@@ -108,7 +109,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     [Fact]
     public async Task GetOpenApiDocument_IsValidOpenApi() {
         // Arrange
-        HttpClient client = factory.CreateClient();
+        HttpClient client = CreateAuthenticatedClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
@@ -125,7 +126,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     [Fact]
     public async Task GetOpenApiDocument_Contains429Response() {
         // Arrange
-        HttpClient client = factory.CreateClient();
+        HttpClient client = CreateAuthenticatedClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
@@ -137,6 +138,13 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
         JsonElement commandsPost = paths.GetProperty("/api/v1/commands").GetProperty("post");
         JsonElement responses = commandsPost.GetProperty("responses");
         responses.TryGetProperty("429", out _).ShouldBeTrue("Expected 429 response documented on POST /api/v1/commands");
+    }
+
+    private HttpClient CreateAuthenticatedClient() {
+        HttpClient client = factory.CreateClient();
+        string token = TestJwtTokenGenerator.GenerateToken(subject: "openapi-reader");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 
     private static IEnumerable<string> EnumeratePropertyNames(JsonElement element) {
