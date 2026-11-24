@@ -4450,7 +4450,8 @@ location: .gitattributes; .editorconfig; .github/workflows/ci.yml; .github/workf
 source_spec: `spec-4-15-v3-round-4-reseal.md`
 severity: medium
 reason: The v3 evidence hashes raw bytes, but the workflow YAML and shared props inputs have no explicit `eol` attribute, while `.editorconfig` defaults C# files to CRLF and `.gitattributes` requires LF. A checkout or editor can therefore rewrite reviewed bytes without a semantic source change. The policy predates the round-4 reseal and needs one repository-wide line-ending decision rather than another story-local hash adjustment.
-status: open
+status: done 2026-11-24
+resolution: Use LF for C# files, MSBuild props and targets, and workflow YAML in both checkout and editor configuration. Verified the tracked source blobs are already LF and global.json retains its required CRLF checkout.
 
 ### DW-528: Support-safe private-path scanning does not recognize deep UNC user paths.
 
