@@ -3020,7 +3020,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-co
 location: tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: Nothing enforces deferred-work ledger format -- every governance test is skipped. evidence: All `Dw6*` cases in `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/` carry `[Fact(Skip = ...)]` (Dw6Bookkeeping 4, Dw6LedgerSweep 4, Dw6CheckerReport 5, Dw6GovernanceVocabulary 6) and both `Dw4DeferredWorkDispositionAtddTests` cases are skipped as well. This is why the loop-6 block could be appended with missing `severity:` fields, absolute machine-local `source_spec` paths, and duplicate entries without any gate objecting.
-status: open
+status: done 2026-11-24
+resolution: Check numbered headings, unique active IDs and explicit statuses in the maintained Python validator. Both local documentation wrappers enforce the result. Three CLI regression tests pass. Historical migration reconciliation remains tracked by DW-456.
 
 ### DW-442: SUPERSEDES the loop-3 entry stating that opening a dedicated Story 3.15 acceptance issue and requesting acceptances "is an Ask First action and was not performed" -- it was subsequently performed.
 

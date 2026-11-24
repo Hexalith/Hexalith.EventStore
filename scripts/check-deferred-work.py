@@ -28,7 +28,16 @@ BLOCKING_RULES = {
     "dw6-story-missing-owner",
     "dw6-story-missing-next-review-date",
     "dw6-missing-grouping",
+    "dw6-duplicate-numbered-id",
+    "dw6-invalid-numbered-heading",
+    "dw6-invalid-numbered-status",
 }
+
+NUMBERED_HEADING = re.compile(r"^ {0,3}### (DW-[1-9][0-9]*):[ \t]+(\S.*)$")
+NUMBERED_PREFIX = re.compile(r"^ {0,3}###[ \t]+DW-")
+MARKDOWN_HEADING = re.compile(r"^ {0,3}#{1,6}(?:[ \t]|$)")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+NUMBERED_STATUSES = {"open": "OPEN", "done": "RESOLVED", "accepted": "ACCEPTED-DEBT"}
 
 DISPOSITION_PRECEDENCE = [
     "RESOLVED",
@@ -93,6 +102,14 @@ class Bullet:
     text: str
 
 
+@dataclass(frozen=True)
+class NumberedEntry:
+    identifier: str | None
+    line: int
+    title: str
+    statuses: tuple[str, ...]
+
+
 def positive_excerpt_length(value: str) -> int:
     parsed = int(value)
     if parsed < 8:
@@ -108,7 +125,7 @@ def main(argv: list[str]) -> int:
         description="Reports deferred-work disposition counts and governance diagnostics.",
         epilog=(
             "Exit codes: 0 = success or advisory-only diagnostics; "
-            "1 = blocking governance findings (malformed canonical OPEN/STORY entries, missing owner/next-review-date/grouping, "
+            "1 = blocking governance findings (invalid numbered entries, malformed canonical OPEN/STORY entries, missing owner/next-review-date/grouping, "
             "or unclassified live bullets in fixture mode); "
             "2 = CLI usage error. "
             "Legacy historical unclassified bullets, unknown STORY:<id> existence checks, and secondary mixed-marker context "
@@ -157,6 +174,22 @@ def check(args: argparse.Namespace) -> dict[str, object]:
 
     sources = load_sources(args)
     for display_path, content, fixture_mode in sources:
+        seen_ids: set[str] = set()
+        for entry in parse_numbered_entries(content):
+            classification = NUMBERED_STATUSES.get(entry.statuses[0]) if len(entry.statuses) == 1 else None
+            counts[classification or "unclassified"] += 1
+            if entry.identifier is None:
+                diagnostics.append(numbered_diagnostic(display_path, entry, classification, "dw6-invalid-numbered-heading",
+                    "Numbered entries require a heading in the form '### DW-1: Title'.", args.max_excerpt))
+                continue
+            if classification is None:
+                diagnostics.append(numbered_diagnostic(display_path, entry, classification, "dw6-invalid-numbered-status",
+                    "Numbered entries require one open, done or accepted status.", args.max_excerpt))
+            if entry.identifier in seen_ids and Path(display_path).name != "deferred-work-archive.md":
+                diagnostics.append(numbered_diagnostic(display_path, entry, classification, "dw6-duplicate-numbered-id",
+                    "Each numbered entry must have a unique DW identifier within this file.", args.max_excerpt))
+            seen_ids.add(entry.identifier)
+
         for bullet in parse_bullets(content):
             if bullet.heading == "Deferred-Work Governance":
                 continue
@@ -228,10 +261,52 @@ def display_path(path: Path) -> str:
         return path.as_posix()
 
 
+def numbered_diagnostic(
+    path: str, entry: NumberedEntry, classification: str | None, rule: str, hint: str, max_excerpt: int,
+) -> Diagnostic:
+    return Diagnostic(path, rule, classification, entry.identifier or "Numbered entry", sanitize_excerpt(entry.title, max_excerpt), entry.line, hint)
+
+
+def parse_numbered_entries(content: str) -> list[NumberedEntry]:
+    entries: list[NumberedEntry] = []
+    heading: re.Match[str] | None = None
+    heading_line = 0
+    statuses: list[str] = []
+    for line, text in markdown_lines(content):
+        if MARKDOWN_HEADING.match(text) or text.startswith("- source_spec:"):
+            if heading is not None:
+                entries.append(NumberedEntry(heading[1], heading_line, heading[2], tuple(statuses)))
+            heading = NUMBERED_HEADING.match(text)
+            heading_line = line
+            statuses = []
+            if heading is None and NUMBERED_PREFIX.match(text):
+                entries.append(NumberedEntry(None, line, text, ()))
+        elif heading is not None and text.startswith("status:"):
+            status = text.removeprefix("status:").split(maxsplit=1)
+            statuses.append(status[0] if status else "")
+    if heading is not None:
+        entries.append(NumberedEntry(heading[1], heading_line, heading[2], tuple(statuses)))
+    return entries
+
+
+def markdown_lines(content: str):
+    """Yield line numbers and content outside fenced examples."""
+    fence = ""
+    for index, line in enumerate(content.splitlines(), start=1):
+        marker = FENCE.match(line)
+        if fence:
+            if marker and marker[1].startswith(fence) and not marker[2].strip():
+                fence = ""
+        elif marker:
+            fence = marker[1]
+        else:
+            yield index, line
+
+
 def parse_bullets(content: str) -> list[Bullet]:
     bullets: list[Bullet] = []
     heading = ""
-    for index, raw_line in enumerate(content.splitlines(), start=1):
+    for index, raw_line in markdown_lines(content):
         stripped = raw_line.strip()
         if stripped.startswith("#"):
             heading = stripped.lstrip("#").strip()

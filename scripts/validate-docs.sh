@@ -61,28 +61,12 @@ CURRENT_STAGE="DAPR SDK version pin consistency"
 bash scripts/check-doc-versions.sh
 echo "PASSED: DAPR SDK version pin consistency"
 
-# --- Stage 5: Deferred-Work Governance Report (advisory) ---
+# --- Stage 5: Deferred-Work Governance ---
 echo ""
-echo "=== Stage 5/5: Deferred-Work Governance Report (advisory) ==="
-CURRENT_STAGE="Deferred-work governance report"
-set +e
+echo "=== Stage 5/5: Deferred-Work Governance ==="
+CURRENT_STAGE="Deferred-work governance"
 bash scripts/check-deferred-work.sh _bmad-output/implementation-artifacts/deferred-work.md
-exit_code=$?
-set -e
-if [[ "$exit_code" -eq 0 ]]; then
-  echo "PASSED: Deferred-work governance advisory report completed (exit 0)"
-elif [[ "$exit_code" -eq 1 ]]; then
-  # Exit 1 is the documented advisory finding signal: ledger has OPEN/STORY
-  # entries the report wants visible. Local wrapper remains reporting-only
-  # until the governance gate is promoted, so this still doesn't fail.
-  echo "ADVISORY: Deferred-work governance exited 1 (current ledger findings; advisory only)"
-else
-  # Exit 2 (or any non-1 non-zero) is a usage/tool error per the wrapper's
-  # exit-code policy. Surface it as ADVISORY so a green PASSED line cannot
-  # silently mask a Python crash or unparseable args, but do not fail the
-  # local docs-validation run yet (continue-on-error is preserved in CI).
-  echo "ADVISORY: Deferred-work governance exited ${exit_code} (usage/tool error; visible but not yet PR-blocking)"
-fi
+echo "PASSED: Deferred-work governance"
 
 CURRENT_STAGE=""
 trap - ERR
