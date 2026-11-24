@@ -4089,7 +4089,8 @@ location: _bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenanc
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: low
 reason: The line reads "Validation resumed on 2026-09-10 at EventStore `293c69c4…` and published Tenants `2fac18396ff11a4459de053b3ebb7ddfe7c13e30`; the root gitlink selects that exact Tenants SHA." The Tenants bump in `dfc0ac55` moves that gitlink to `ff43dc941b01d4a68070f92dde0536f5ab1ef4df`, so the present-tense claim is now false in a story recorded `done`. The fix edits another story's spec, which this review does not do unilaterally; record it so the next Tenants-provenance pass or the 4.7 record owner can restate it as an as-of-date observation.
-status: open
+status: done 2026-11-24
+resolution: Tie the Tenants pin to the 2026-09-10 EventStore revision rather than the moving root checkout. git ls-tree on 293c69c42d35dee26682d42f05c943c0b65786f4 confirms the exact published Tenants SHA.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-2-payload-protection-contracts-and-golden-vectors.md`
   summary: Existing typed unreadable outcome record formatting can expose the sensitive-by-default metadata key alias when callers log the whole outcome.
