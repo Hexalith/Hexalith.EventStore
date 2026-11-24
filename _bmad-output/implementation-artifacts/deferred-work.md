@@ -3068,7 +3068,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 loop-6 authorize
 location: AdminUITestContext
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-32876914109-fix-ci-cd.md` severity: low summary: No drift guard fails loudly when a bUnit upgrade adds or re-signs a render entry point that `AdminUITestContext` no longer intercepts. evidence: The renderer-info contract holds only while every public render entry point declared on `Bunit.BunitContext` has a matching override on `AdminUITestContext`. bUnit 2.9.0 declares three virtual `Render` overloads (all now overridden) and two `[Obsolete]` `RenderComponent` overloads that unconditionally `throw new NotSupportedException`, so they are harmless today. A future bUnit release that adds a fourth entry point would silently stop being covered and resurface `MissingRendererInfoException` in unrelated tests, exactly as the FluentUI `5.0.0-rc.5` bump did. A reflection test comparing declared render members on both types would catch it — and per this repo's history must itself fail when the reflected set comes back empty. status: open — the immediate CI break is fixed; the upgrade-time guard is a separate hardening pass.
-status: open
+status: done 2026-11-24
+resolution: Reflect over supported public bUnit render methods and require a matching Admin UI context override for each. All six renderer-context tests passed.
 
 ### DW-449: No Admin.UI test can exercise the static prerender pass, because every render declares an interactive renderer.
 
