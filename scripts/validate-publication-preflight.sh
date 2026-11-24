@@ -56,7 +56,7 @@ is_semver_without_numeric_padding "$version" ||
 [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] ||
   fail "GITHUB_SHA must identify the exact workflow source commit."
 case "$source_branch" in
-  main) approved_publisher="bf8a28b4bbcec619e8d9764d335f786f2bafb69e" ;;
+  main) approved_publisher="29923b011061347e7f61ece16d59095889bde91a" ;;
   release/parties-sdk-3.130.2)
     [[ "$version" = "3.130.2" && "${GITHUB_REPOSITORY:-}" = "Hexalith/Hexalith.EventStore" ]] ||
       fail "The maintenance source is approved only for EventStore 3.130.2."

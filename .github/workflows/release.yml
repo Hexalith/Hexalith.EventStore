@@ -79,12 +79,15 @@ jobs:
           retention-days: 30
 
   release:
-    name: Publish EventStore 3.130.2 maintenance release
+    name: Publish EventStore packages and container
     needs: verify-source
-    if: ${{ github.ref == 'refs/heads/release/parties-sdk-3.130.2' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: production
+    outputs:
+      oci-release-version: ${{ steps.semantic-release.outputs.oci-release-version }}
+      oci-subjects: ${{ steps.semantic-release.outputs.oci-subjects }}
+      oci-evidence-id: ${{ steps.release-evidence.outputs.artifact-id }}
     permissions:
       actions: read
       contents: write
@@ -97,18 +100,29 @@ jobs:
           fetch-depth: 0
           submodules: false
           persist-credentials: false
+      - name: Select approved Builds execution identity
+        id: builds-pin
+        shell: bash
+        run: |
+          case "$GITHUB_REF" in
+            refs/heads/main) echo 'sha=29923b011061347e7f61ece16d59095889bde91a' >> "$GITHUB_OUTPUT" ;;
+            refs/heads/release/parties-sdk-3.130.2) echo 'sha=30ea43a56330a9828ed0bb2e837289231d8630d1' >> "$GITHUB_OUTPUT" ;;
+            *) exit 1 ;;
+          esac
       - name: Checkout approved Builds actions
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: 30ea43a56330a9828ed0bb2e837289231d8630d1
+          ref: ${{ steps.builds-pin.outputs.sha }}
           path: .hexalith/builds-execution
           persist-credentials: false
       - name: Validate approved Builds execution identity
         shell: bash
+        env:
+          BUILDS_SHA: ${{ steps.builds-pin.outputs.sha }}
         run: |
           set -euo pipefail
-          test "$(git -C .hexalith/builds-execution rev-parse HEAD)" = "30ea43a56330a9828ed0bb2e837289231d8630d1"
+          test "$(git -C .hexalith/builds-execution rev-parse HEAD)" = "$BUILDS_SHA"
       - name: Initialize root-declared submodules
         uses: ./.hexalith/builds-execution/Github/initialize-build
       - name: Initialize .NET
@@ -146,7 +160,7 @@ jobs:
         with:
           container-projects: |
             src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
-          builds-execution-sha: 30ea43a56330a9828ed0bb2e837289231d8630d1
+          builds-execution-sha: ${{ steps.builds-pin.outputs.sha }}
       - name: Resolve release publication freeze
         id: publish-gate
         shell: bash
@@ -182,6 +196,10 @@ jobs:
             mkdir -p .hexalith/release-evidence/qualification
             node tools/verify-release-candidate.mjs | tee .hexalith/release-evidence/qualification/pre-oidc.json
           fi
+      - name: Require protected main for OCI provenance
+        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: test "$GITHUB_REF_PROTECTED" = 'true'
       - name: Validate trusted publishing account
         if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
         shell: bash
@@ -200,23 +218,31 @@ jobs:
         with:
           user: ${{ vars.NUGET_TRUSTED_PUBLISHING_USER }}
       - name: Semantic Release
+        id: semantic-release
         if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           NUGET_TRUSTED_PUBLISHING_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          HEXALITH_ATTEST_CONTAINERS: ${{ github.ref == 'refs/heads/main' }}
           HEXALITH_CONTAINER_PROJECTS: src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
           HEXALITH_ZOT_REGISTRY: ${{ vars.HEXALITH_ZOT_REGISTRY || 'registry.hexalith.com' }}
           HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
           HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}
-          HEXALITH_BUILDS_EXECUTION_SHA: 30ea43a56330a9828ed0bb2e837289231d8630d1
+          HEXALITH_BUILDS_EXECUTION_SHA: ${{ steps.builds-pin.outputs.sha }}
           HEXALITH_RELEASE_ENVIRONMENT: production
           HEXALITH_RELEASE_SOURCE_BRANCH: ${{ github.ref_name }}
           HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}
           HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json
           HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'
           HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'
-        run: npx semantic-release
+        shell: bash
+        run: |
+          if [ "$HEXALITH_ATTEST_CONTAINERS" = 'true' ]; then
+            exec bash .hexalith/builds-execution/Github/publish-containers/run-semantic-release.sh
+          fi
+          exec npx semantic-release
       - name: Upload complete release evidence
+        id: release-evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -224,14 +250,14 @@ jobs:
           path: |
             .hexalith/release-evidence/**
             !.hexalith/release-evidence/api-compatibility/**/scratch/**
-          if-no-files-found: warn
+          if-no-files-found: ${{ steps.semantic-release.outputs.oci-release-version != '' && 'error' || 'warn' }}
           include-hidden-files: true
           retention-days: 30
 
-  release-main:
-    name: Publish EventStore packages and container
-    needs: verify-source
-    if: ${{ github.ref == 'refs/heads/main' }}
+  attest-release:
+    name: Attest published EventStore OCI index
+    needs: release
+    if: ${{ github.ref == 'refs/heads/main' && needs.release.outputs.oci-release-version != '' }}
     permissions:
       actions: read
       attestations: write
@@ -239,24 +265,16 @@ jobs:
       id-token: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@bf8a28b4bbcec619e8d9764d335f786f2bafb69e
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@29923b011061347e7f61ece16d59095889bde91a
     with:
-      builds-execution-sha: bf8a28b4bbcec619e8d9764d335f786f2bafb69e
+      builds-execution-sha: 29923b011061347e7f61ece16d59095889bde91a
       solution: Hexalith.EventStore.slnx
-      timeout-minutes: 60
       environment-name: production
-      nuget-trusted-publishing: true
-      source-branch: main
-      source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}
-      source-proof-script: scripts/verify-release-source.sh
-      package-manifest: tools/release-packages.json
-      expected-package-count: 14
-      publish-containers: true
+      release-mode: attest-published-oci-v1
       container-projects: src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
-      require-publication-authority: false
-    secrets:
-      HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
-      HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}
+      published-oci-version: ${{ needs.release.outputs.oci-release-version }}
+      published-oci-subjects: ${{ needs.release.outputs.oci-subjects }}
+      published-oci-evidence-id: ${{ needs.release.outputs.oci-evidence-id }}
 
   qualify-contracts-prerequisite:
     if: ${{ github.ref == 'refs/heads/main' && (inputs.release-profile == 'contracts-prerequisite' || inputs.release-profile == 'contracts-prerequisite-verify') }}
