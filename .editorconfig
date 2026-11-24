@@ -43,6 +43,13 @@ end_of_line = lf
 [/.github/workflows/*.{yml,yaml}]
 end_of_line = lf
 
+# Explicit byte contracts checked by the gate fixture.
+[/.github/workflows/oq8-governing-design.yml]
+end_of_line = lf
+
+[/.github/workflows/phase-4-gate-risk-matrix.yml]
+end_of_line = lf
+
 [/tools/phase-4-transition.schema.json]
 end_of_line = lf
 

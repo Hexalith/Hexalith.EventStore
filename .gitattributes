@@ -25,7 +25,10 @@ deploy/dapr/qualification/public-identities/** -text
 _bmad-output/implementation-artifacts/phase-4-gate-risk-matrix.json text eol=lf
 _bmad-output/implementation-artifacts/owner-role-registry.json text eol=lf
 .github/workflows/dapr-broker-qualification.yml text eol=lf
-# The authenticated transition contract binds exact LF bytes.
+# Explicit byte contracts for the authenticated gate subjects.
+.github/workflows/oq8-governing-design.yml text eol=lf
+.github/workflows/phase-4-gate-risk-matrix.yml text eol=lf
+.github/workflows/phase-4-*.yml text eol=lf
 tools/phase-4-transition.schema.json text eol=lf
 commitlint.config.mjs text eol=lf
 # Husky hooks execute through /bin/sh and must not acquire CRLF line endings.
