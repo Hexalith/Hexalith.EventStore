@@ -304,7 +304,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-03, re-review)"), 2026-08-30
 location: InboundBearerForwardingHandler
 reason: `InboundBearerForwardingHandler` forwards a multi-valued inbound `Authorization` header comma-joined (via the `StringValues`→`string` implicit conversion), producing a malformed bearer that is rejected opaquely by the gateway rather than up front. Adversarial/rare.
-status: open
+status: done 2026-11-24
+resolution: Forward only a single non-blank inbound `Authorization` value; repeated, blank or absent headers forward no credential. Inbound JwtBearer validation already rejects a repeated header with 401 before a generated controller runs, so the handler can no longer emit a comma-joined bearer. Verify each case in focused tests.
 
 ### DW-46: HIGH — RESOLVED/SUPERSEDED. AD-14 added `QueryRouterResult.Metadata` and the carrier path; Story 2.8 / AD-15 now stamps route provenance, preserves genuine producer freshness/version evidence only for `ProjectionBacked`, and gates generated headers accordingly. D6 remains responsible for additional persisted-age production sources, while Story 4.7 retains only the Tenants `ProjectionVersion := ETag` producer cleanup.
 

@@ -12,6 +12,7 @@ using InboundBearerForwardingHandler = SampleApi::Hexalith.EventStore.Sample.Api
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 
 using Shouldly;
 
@@ -43,6 +44,73 @@ public sealed class SampleApiGatewayHandlerTests
         request.Headers.Authorization.ShouldNotBeNull();
         request.Headers.Authorization.Scheme.ShouldBe("Bearer");
         request.Headers.Authorization.Parameter.ShouldBe(bearerToken);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task InboundBearerForwardingHandler_WhenAuthorizationHeaderRepeats_ForwardsNoCredential(int count)
+    {
+        var accessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext(),
+        };
+        accessor.HttpContext.Request.Headers.Authorization = new StringValues(
+            Enumerable.Range(0, count).Select(_ => $"Bearer {Guid.NewGuid():N}").ToArray());
+        var terminal = new CaptureHandler();
+        using var handler = new InboundBearerForwardingHandler(accessor)
+        {
+            InnerHandler = terminal,
+        };
+        using var invoker = new HttpMessageInvoker(handler);
+
+        using HttpResponseMessage response = await invoker.SendAsync(
+            new HttpRequestMessage(HttpMethod.Post, "http://eventstore/api/v1/commands"),
+            TestContext.Current.CancellationToken);
+
+        HttpRequestMessage request = terminal.Request.ShouldNotBeNull();
+        request.Headers.Contains("Authorization").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task InboundBearerForwardingHandler_WithoutHttpContext_ForwardsNoCredential()
+    {
+        var terminal = new CaptureHandler();
+        using var handler = new InboundBearerForwardingHandler(new HttpContextAccessor())
+        {
+            InnerHandler = terminal,
+        };
+        using var invoker = new HttpMessageInvoker(handler);
+
+        using HttpResponseMessage response = await invoker.SendAsync(
+            new HttpRequestMessage(HttpMethod.Post, "http://eventstore/api/v1/commands"),
+            TestContext.Current.CancellationToken);
+
+        terminal.Request.ShouldNotBeNull().Headers.Contains("Authorization").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task InboundBearerForwardingHandler_WhenAuthorizationHeaderIsBlank_ForwardsNoCredential(string value)
+    {
+        var accessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext(),
+        };
+        accessor.HttpContext.Request.Headers.Authorization = value;
+        var terminal = new CaptureHandler();
+        using var handler = new InboundBearerForwardingHandler(accessor)
+        {
+            InnerHandler = terminal,
+        };
+        using var invoker = new HttpMessageInvoker(handler);
+
+        using HttpResponseMessage response = await invoker.SendAsync(
+            new HttpRequestMessage(HttpMethod.Post, "http://eventstore/api/v1/commands"),
+            TestContext.Current.CancellationToken);
+
+        terminal.Request.ShouldNotBeNull().Headers.Contains("Authorization").ShouldBeFalse();
     }
 
     [Fact]
