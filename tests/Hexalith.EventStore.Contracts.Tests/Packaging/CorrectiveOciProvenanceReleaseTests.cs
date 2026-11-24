@@ -209,7 +209,11 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [InlineData("ContainerProvenanceSourceSha", "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA.", false)]
     [InlineData("ContainerProvenanceReleaseVersion", "01.2.3", "ContainerProvenanceReleaseVersion must be SemVer without build metadata or leading-zero numeric identifiers.", false)]
     [InlineData("ContainerImageTag", "0.0.0-other", "ContainerImageTag must equal ContainerProvenanceReleaseVersion.", false)]
+    [InlineData("ContainerImageTag", "0.0.0-CI-TEST", "ContainerImageTag must equal ContainerProvenanceReleaseVersion.", false)]
     [InlineData("ContainerImageTags", "latest", "ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else.", false)]
+    [InlineData("ContainerImageTags", "0.0.0-CI-TEST", "ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else.", false)]
+    [InlineData("ContainerProvenanceSourceSha", SourceSha + "\n", "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA.", true)]
+    [InlineData("ContainerProvenanceReleaseVersion", Version + "\n", "ContainerProvenanceReleaseVersion must be SemVer without build metadata or leading-zero numeric identifiers.", true)]
     [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
     [InlineData("ContainerProvenanceCreated", "2026-02-31T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
     [InlineData("ContainerProvenanceCreated", "1900-02-29T09:15:00Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
@@ -245,6 +249,10 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         if (!useEnvironment)
         {
             properties[property] = value;
+        }
+        else
+        {
+            _ = properties.Remove(property);
         }
         List<string> arguments =
         [
