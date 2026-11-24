@@ -2997,7 +2997,7 @@ location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProve
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The Code Map's frozen fence was extended and its line anchors were not refreshed. evidence: The Code Map marks `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:317-603,1124-1235` as frozen ("do not extend its frozen candidate contract"). This change inserted 156 lines at `:895`, growing the file 1291 -> 1447, so the `1124-1235` anchor now lands on `CopyDirectory`/`LoadIdentity`/`MutateNuspecRepositoryUrl` instead of the helpers it named. The three added tests are dispatcher-trust tests rather than candidate-contract extensions, so the letter of the note holds, but the anchors are stale.
 status: done 2026-11-24
-resolution: Anchor both Code Map ranges to 67c645ab02b21ffcb7bef9530e524e4510e36d27, the 1291-line predecessor immediately before the 156-line insertion. Verified both ranges in that Git blob.
+resolution: Anchor the complete mutation test and canonical JSON helpers to 67c645ab02b21ffcb7bef9530e524e4510e36d27. Verified their named symbols and line ranges in that Git blob.
 
 ### DW-439: Two submodule gitlink bumps rode into a Story 3.15 evidence commit undeclared.
 
