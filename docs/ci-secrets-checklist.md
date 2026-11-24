@@ -56,17 +56,21 @@ The protected EventStore publish job obtains a temporary NuGet key from
 - `HEXALITH_ZOT_API_KEY` — Zot credential for publish and immutable registry inspection
 - No npm registry token is needed. `npm ci` installs the committed release
   tooling lockfile before semantic-release runs.
-- The two Zot organization credentials are mapped only to the EventStore-owned
-  protected publish job; `secrets: inherit` is forbidden. The preflight job
-  has no secret mapping, and GitHub does not start the publish job until the
-  required `production` reviewer approves a current exact-source request.
+- The two Zot organization credentials are mapped explicitly to the protected
+  release jobs. The preflight job has no secret mapping. GitHub starts the
+  publish job only after the required `production` reviewer approves a
+  current exact-source request.
 - The `production` environment permits exactly `main` and
   `release/parties-sdk-3.130.2` and has administrator bypass
   disabled.
-- The release workflow checks out Builds actions at the immutable approved
-  commit `30ea43a56330a9828ed0bb2e837289231d8630d1`. This publication pin
-  is deliberately independent of the development Builds gitlink. No
-  issue-comment authority variable is used.
+- On `main`, the release workflow calls `Hexalith.Builds`'s
+  `domain-release.yml` at the full SHA named by `builds-execution-sha`. The
+  protected job rechecks `ci.yml` and `commitlint.yml` before exchanging OIDC.
+  Builds attests the validated OCI index after publication. The maintenance
+  workflow uses its separate approved Builds commit
+  `30ea43a56330a9828ed0bb2e837289231d8630d1`. Both publication pins are
+  independent of the development Builds gitlink. The `production` approval
+  authorizes publication.
 
 The exact maintenance branch requires successful current push CI, commitlint,
 and full Integration before production or OIDC authority. A read-only job with
@@ -143,10 +147,9 @@ for repository owner `Hexalith`, repository `Hexalith.EventStore`, workflow
 file `release.yml`, and environment `production`. The policy must grant push
 scope to every one of the 14 IDs in `tools/release-packages.json`. Set the
 repository variable `NUGET_TRUSTED_PUBLISHING_USER` to the nuget.org username
-that created the policy. The username and policy activation are external owner
-inputs; do not dispatch production until the owner confirms them. A policy
-for the Builds reusable workflow has a different workflow identity and cannot
-authorize this EventStore publish job. See the
+that created the policy. Confirm the username and policy activation with the
+owner before dispatching production. On `main`, the protected reusable job
+requests the token for the EventStore caller workflow and environment. See the
 [nuget.org trusted publishing guide](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing).
 
 ## Recovery after a rejected NuGet push

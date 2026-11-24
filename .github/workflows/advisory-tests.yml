@@ -21,7 +21,6 @@ env:
   UseHexalithProjectReferences: 'false'
   ADVISORY_TEST_PROJECTS: |
     tests/Hexalith.EventStore.Admin.UI.E2E
-    tests/Hexalith.EventStore.DeferredWorkGovernance.Tests
 
 jobs:
   advisory:
