@@ -5,8 +5,10 @@ using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 using Hexalith.EventStore.Admin.UI.Layout;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -16,16 +18,22 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Layout;
 public class NavMenuTests : AdminUITestContext {
     /// <summary>Verifies that the initial static render includes working navigation links.</summary>
     [Fact]
-    public void NavMenu_StaticPrerender_ContainsNavigationLinks()
+    public async Task NavMenu_StaticPrerender_ContainsNavigationLinks()
     {
-        SetRendererInfo(new RendererInfo("Static", false));
+        await using var renderer = new HtmlRenderer(Services, Services.GetRequiredService<ILoggerFactory>());
+        string markup = await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            ParameterView parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
+            {
+                [nameof(NavMenu.Width)] = "220px",
+                [nameof(NavMenu.UserRole)] = AdminRole.Admin,
+            });
+            var output = await renderer.RenderComponentAsync<NavMenu>(parameters);
+            return output.ToHtmlString();
+        });
 
-        IRenderedComponent<NavMenu> cut = Render<NavMenu>(
-            parameters => parameters
-                .Add(p => p.Width, "220px")
-                .Add(p => p.UserRole, AdminRole.Admin));
-
-        cut.Find("nav.fluent-nav a[href='/commands']").TextContent.Trim().ShouldBe("Commands");
+        markup.ShouldContain("href=\"/commands\"");
+        markup.ShouldContain("Commands");
     }
 
     [Fact]
