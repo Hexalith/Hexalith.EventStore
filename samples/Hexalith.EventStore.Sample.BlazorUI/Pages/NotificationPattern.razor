@@ -107,7 +107,13 @@
                 GetCounterStatusQuery.ProjectionType,
                 "counter-1",
                 _result?.ETag);
-            _result = CounterStatusResult.FromQueryResult(queryResult, _result);
+            if (!CounterStatusResult.TryFromQueryResult(queryResult, _result, out CounterStatusResult state))
+            {
+                _error = CounterStatusResult.InvalidPayloadMessage;
+                return;
+            }
+
+            _result = state;
             _lastRefreshed = DateTime.Now;
             _error = null;
         }

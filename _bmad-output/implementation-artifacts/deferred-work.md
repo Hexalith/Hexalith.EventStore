@@ -197,7 +197,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-02)"), 2026-08-30
 location: CounterStatusResult.ParseCountFromPayload
 reason: Malformed projection payload throws inside `CounterStatusResult.ParseCountFromPayload` (`Convert.FromBase64String` / `JsonDocument.Parse` / `GetInt32`) instead of failing safe. Pre-existing behavior carried over from the deleted `CounterQueryService`; becomes invisible once the refresh-error patch lands.
-status: open
+status: done 2026-11-24
+resolution: Validate object and base64 projection payloads without leaking contents or throwing on bad data. Keep the previous value and validator, show a bounded error, and avoid treating the invalid response as a fresh history entry. Cover direct, encoded and malformed payloads, including invalid Unicode.
 
 ### DW-30: Concurrent/re-entrant refresh has no in-flight guard, and the in-flight `GetAsync` is never cancelled on component disposal (leading to a possible post-dispose `StateHasChanged`). `GetAsync` already exposes an unused `CancellationToken`. Demo-UI hardening across the four Counter components; `SilentReloadPattern` partially mitigates via debounce.
 

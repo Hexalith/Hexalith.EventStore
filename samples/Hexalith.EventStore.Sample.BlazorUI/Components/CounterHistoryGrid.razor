@@ -74,7 +74,12 @@
                 GetCounterStatusQuery.ProjectionType,
                 "counter-1",
                 _lastResult?.ETag);
-            CounterStatusResult result = CounterStatusResult.FromQueryResult(queryResult, _lastResult);
+            if (!CounterStatusResult.TryFromQueryResult(queryResult, _lastResult, out CounterStatusResult result))
+            {
+                _error = CounterStatusResult.InvalidPayloadMessage;
+                return;
+            }
+
             _lastResult = result;
             _history.Insert(0, new CounterHistoryEntry(
                 DateTime.Now,

@@ -11,6 +11,9 @@ namespace Hexalith.EventStore.Sample.BlazorUI.Services;
 /// <param name="ETag">The ETag from the query response, used for HTTP 304 caching.</param>
 public sealed record CounterStatusResult(int Count, string? ETag)
 {
+    /// <summary>Describes an unusable response without exposing its contents.</summary>
+    internal const string InvalidPayloadMessage = "The counter projection returned an invalid count.";
+
     /// <summary>
     /// Gets the empty counter state used before a projection exists.
     /// </summary>
@@ -21,42 +24,69 @@ public sealed record CounterStatusResult(int Count, string? ETag)
     /// </summary>
     public static CounterStatusResult FromQueryResult(EventStoreQueryResult result, CounterStatusResult? cachedResult)
     {
+        _ = TryFromQueryResult(result, cachedResult, out CounterStatusResult state);
+        return state;
+    }
+
+    /// <summary>Reports whether the gateway supplied a valid projection or an unchanged response.</summary>
+    /// <param name="result">The gateway response.</param>
+    /// <param name="cachedResult">The last successfully read state.</param>
+    /// <param name="state">The validated state, or the latest valid fallback when the response is unusable.</param>
+    /// <returns>Whether the response can be recorded as a successful refresh.</returns>
+    internal static bool TryFromQueryResult(
+        EventStoreQueryResult result, CounterStatusResult? cachedResult, out CounterStatusResult state)
+    {
         ArgumentNullException.ThrowIfNull(result);
 
         if (result.IsNotModified)
         {
-            return cachedResult ?? new CounterStatusResult(0, result.ETag);
+            state = cachedResult ?? new CounterStatusResult(0, result.ETag);
+            return true;
         }
 
-        int count = result.Payload.HasValue
-            ? ParseCountFromPayload(result.Payload.Value)
-            : 0;
+        if (result.Payload is { } payload && ParseCountFromPayload(payload) is int count)
+        {
+            state = new CounterStatusResult(count, result.ETag);
+            return true;
+        }
 
-        return new CounterStatusResult(count, result.ETag);
+        // Keep the last valid state and validator. The next refresh can retry the bad response.
+        state = cachedResult ?? Empty;
+        return false;
     }
 
-    private static int ParseCountFromPayload(JsonElement payloadElement)
+    private static int? ParseCountFromPayload(JsonElement payloadElement)
     {
-        // Payload may be a base64-encoded JSON object or a direct JSON object.
-        if (payloadElement.ValueKind == JsonValueKind.String)
+        try
         {
-            string? base64 = payloadElement.GetString();
-            if (base64 is not null)
+            if (payloadElement.ValueKind != JsonValueKind.String)
             {
-                byte[] bytes = Convert.FromBase64String(base64);
-                using var inner = JsonDocument.Parse(bytes);
-                if (inner.RootElement.TryGetProperty("count", out JsonElement countEl))
-                {
-                    return countEl.GetInt32();
-                }
+                return ReadCount(payloadElement);
             }
-        }
-        else if (payloadElement.ValueKind == JsonValueKind.Object
-            && payloadElement.TryGetProperty("count", out JsonElement directCount))
-        {
-            return directCount.GetInt32();
-        }
 
-        return 0;
+            using var inner = JsonDocument.Parse(Convert.FromBase64String(payloadElement.GetString()!));
+            return ReadCount(inner.RootElement);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            // JsonDocument can retain a string containing invalid Unicode that GetString cannot decode.
+            return null;
+        }
     }
+
+    private static int? ReadCount(JsonElement payload)
+        => payload.ValueKind == JsonValueKind.Object
+            && payload.TryGetProperty("count", out JsonElement count)
+            && count.ValueKind == JsonValueKind.Number
+            && count.TryGetInt32(out int value)
+            ? value
+            : null;
 }
