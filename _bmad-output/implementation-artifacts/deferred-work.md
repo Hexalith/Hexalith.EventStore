@@ -1462,7 +1462,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 8-1-shared-p
 location: _bmad-output/implementation-artifacts/sprint-status.yaml:51
 severity: medium
 reason: [MEDIUM] Separate unrelated Epic 1-7 tracking changes from the Story 8.1 baseline evidence so scope attribution is reviewable. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:51`. The shared sprint file accumulated concurrent story updates after the recorded baseline.
-status: open
+status: done 2026-11-24
+resolution: Record the activation and approval tracker deltas separately and identify the earlier Epic 1–7 changes in the shared tracker.
 
 ### DW-222: [LOW] `review_loop_iteration: 1` was not incremented despite two documented hardening passes recorded in the same file's Spec Change Log.
 
