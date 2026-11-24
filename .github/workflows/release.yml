@@ -79,36 +79,6 @@ jobs:
           retention-days: 30
 
   release:
-    name: Publish EventStore packages and container
-    needs: verify-source
-    if: ${{ github.ref == 'refs/heads/main' }}
-    permissions:
-      actions: read
-      attestations: write
-      contents: write
-      id-token: write
-      issues: write
-      pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@bf8a28b4bbcec619e8d9764d335f786f2bafb69e
-    with:
-      builds-execution-sha: bf8a28b4bbcec619e8d9764d335f786f2bafb69e
-      solution: Hexalith.EventStore.slnx
-      timeout-minutes: 60
-      environment-name: production
-      nuget-trusted-publishing: true
-      source-branch: main
-      source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}
-      source-proof-script: scripts/verify-release-source.sh
-      package-manifest: tools/release-packages.json
-      expected-package-count: 14
-      publish-containers: true
-      container-projects: src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
-      require-publication-authority: false
-    secrets:
-      HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
-      HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}
-
-  release-maintenance:
     name: Publish EventStore 3.130.2 maintenance release
     needs: verify-source
     if: ${{ github.ref == 'refs/heads/release/parties-sdk-3.130.2' }}
@@ -257,6 +227,36 @@ jobs:
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 30
+
+  release-main:
+    name: Publish EventStore packages and container
+    needs: verify-source
+    if: ${{ github.ref == 'refs/heads/main' }}
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@bf8a28b4bbcec619e8d9764d335f786f2bafb69e
+    with:
+      builds-execution-sha: bf8a28b4bbcec619e8d9764d335f786f2bafb69e
+      solution: Hexalith.EventStore.slnx
+      timeout-minutes: 60
+      environment-name: production
+      nuget-trusted-publishing: true
+      source-branch: main
+      source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}
+      source-proof-script: scripts/verify-release-source.sh
+      package-manifest: tools/release-packages.json
+      expected-package-count: 14
+      publish-containers: true
+      container-projects: src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
+      require-publication-authority: false
+    secrets:
+      HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
+      HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}
 
   qualify-contracts-prerequisite:
     if: ${{ github.ref == 'refs/heads/main' && (inputs.release-profile == 'contracts-prerequisite' || inputs.release-profile == 'contracts-prerequisite-verify') }}
