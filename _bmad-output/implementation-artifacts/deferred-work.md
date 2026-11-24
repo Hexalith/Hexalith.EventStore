@@ -6836,3 +6836,12 @@ source_spec: `spec-dw-33-43-45-58-60-63-76-deferred-batch.md`
 severity: medium
 reason: `Type.GetProperty(name, Instance | Public)` throws `AmbiguousMatchException` when a derived event hides a base property with `new`. The exception escapes the resolver and `ProcessAsync`, the marker is released, and every redelivery fails the same way. Pre-existing: the earlier lookup was identical. Resolve the most-derived declaration, or report the property as unresolvable like a missing one.
 status: open
+
+### DW-547: `HostedNineActivationsKeepEightSlotsAndDurableNinthUntilCapacityReleasesThenDrainOwnedCalls` fails intermittently under full-suite load.
+
+origin: full test run of spec-dw-33-43-45-58-60-63-76-deferred-batch (2026-11-24)
+location: tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionActivationWorkerTests.Lifetime.cs:246
+source_spec: `spec-dw-33-43-45-58-60-63-76-deferred-batch.md`
+severity: low
+reason: In the sequential full Server.Tests run (8,595 tests) the durable-due count read right after `StopAsync` starts was 7, not 8. Two isolated re-runs passed. The assertion reads `GetDueAsync` while the worker may still be finishing the released first activation, so it depends on scheduling. Make the test wait for the deterministic post-release state before asserting, or bound the read to the cancelled worker's completion.
+status: open
