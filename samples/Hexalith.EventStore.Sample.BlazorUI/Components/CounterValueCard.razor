@@ -104,7 +104,7 @@
         catch (Exception) when (token.IsCancellationRequested)
         {
         }
-        catch (EventStoreGatewayException ex) when (ex.StatusCode == 404)
+        catch (EventStoreGatewayException ex) when (CounterQueryFailure.IsProjectionNotYetAvailable(ex))
         {
             _result = CounterStatusResult.Empty;
             _lastRefreshed = DateTime.Now;
@@ -112,7 +112,7 @@
         }
         catch (Exception ex)
         {
-            _error = $"Failed to load: {ex.Message}";
+            _error = $"Failed to load: {CounterQueryFailure.Describe(ex)}";
         }
     }
 

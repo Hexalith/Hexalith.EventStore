@@ -118,7 +118,7 @@
         catch (Exception) when (token.IsCancellationRequested)
         {
         }
-        catch (EventStoreGatewayException ex) when (ex.StatusCode == 404)
+        catch (EventStoreGatewayException ex) when (CounterQueryFailure.IsProjectionNotYetAvailable(ex))
         {
             _lastResult = CounterStatusResult.Empty;
             _history.Insert(0, new CounterHistoryEntry(DateTime.Now, 0, "n/a"));
@@ -132,7 +132,7 @@
         }
         catch (Exception ex)
         {
-            _error = $"History refresh failed: {ex.Message}";
+            _error = $"History refresh failed: {CounterQueryFailure.Describe(ex)}";
         }
     }
 

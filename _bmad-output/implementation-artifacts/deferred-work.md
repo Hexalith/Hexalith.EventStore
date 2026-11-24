@@ -225,7 +225,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-02)"), 2026-08-30
 location: n/a
 reason: Blazor components treat "no projection yet" only as HTTP 404; a gateway `Success==false` semantic failure surfaces as `EventStoreGatewayException.StatusCode == 200` and falls through to the generic catch. Matches the old code's 404-only behavior, so no regression, but the empty-state contract could be made explicit.
-status: open
+status: done 2026-11-24
+resolution: Name the empty-state contract in `CounterQueryFailure`: only a 404 carrying `query_projection_missing` renders the empty counter in the four components, any other 404 is an error, and a gateway semantic failure (status 200, `Query semantic failure`) is shown as a failed query with its correlation ID. Verify the classification and messages in focused tests.
 
 ### DW-34: AC8 scope hygiene: the generator command-route mapping (`TryFindUnmappedCommandRouteParameter`) was changed and a command diagnostic test added inside a query-only story (defensible as generator enablement), and the broader D5 branch/working-tree carries CI/CD, `tools/release-*`, `.releaserc.json`, and submodule-pointer changes that belong to D7/D8. Split those out of the D5 change set.
 
