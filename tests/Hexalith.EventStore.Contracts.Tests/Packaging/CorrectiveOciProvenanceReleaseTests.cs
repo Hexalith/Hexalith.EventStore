@@ -288,9 +288,11 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             "-p:MinVerVersionOverride=1.0.0",
             $"-p:ContainerProvenanceSourceSha={SourceSha}",
             $"-p:ContainerProvenanceReleaseVersion={Version}",
-            $"-p:ContainerProvenanceCreated={Created}");
+            $"-p:ContainerProvenanceCreated={Created}",
+            "-getProperty:ContainerImageTag");
 
         result.ExitCode.ShouldBe(0, result.Output + result.Error);
+        result.Output.Trim().ShouldBe(Version);
     }
 
     /// <summary>

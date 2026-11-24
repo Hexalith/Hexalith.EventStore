@@ -2873,7 +2873,8 @@ origin: migrated from legacy ledger ("Trusted-verifier hardening pass (2026-08-2
 location: n/a
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The container default-tag test never observes the tag value it claims was defaulted. evidence: `ContainerPublicationDefaultsTagToProvenanceVersion` runs only `ValidateContainerProvenanceInputs` and checks exit zero; deleting or breaking the default assignment can leave that test green. A future publisher test should inspect the evaluated tag or produced archive.
-status: open
+status: done 2026-11-24
+resolution: Read the evaluated ContainerImageTag from MSBuild and compare it with the provenance version. Removing the default in a disposable fixture leaves the value empty and fails the assertion.
 
 ### DW-425: The frozen Story 3.14 timestamp parser remains weaker than the strict Story 3.15 parser.
 
