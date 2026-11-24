@@ -1179,3 +1179,18 @@ All `patch` findings surviving the Group 1 and story-files-only review passes ab
 #### v4 lifecycle supersession (2026-09-21)
 
 The preceding completion record remains historical. Story 4.15 v4 subsequently separated evidence from lifecycle state and completed the bounded transition to lifecycle `closed`, sprint `done`, and spec `done`. At that transition the focused closure class measured **464/464** and the full Contracts assembly measured **2072/2072**; this corrective pass adds twelve focused cases and measures **476/476**. Per the corrective-review constraint, the wider post-correction full suite is intentionally left to the parent verification run rather than claimed here.
+
+#### Historical handoff record
+
+The [round-4 reseal](spec-4-15-v3-round-4-reseal.md) replaced the 2026-09-18 packet
+with subject `29880d6b3ebb9a67d69d0ff2f70afd138a7c81cfd2938fcd437de5d863ede913`.
+That reseal recorded 465 focused and 2,068 full Contracts cases. The
+[v4 lifecycle successor](spec-4-15-oq8-lifecycle-closure-v4.md) closed the story.
+On 2026-09-24, the [successor selector](4-15-oq8-platform-closure-successor.json)
+selected v5 subject `12bf4413b2e917fb6de5d4805f2922a5759c7bf8039f5fec63ab6473ccd7a7fc`
+for the source-only handoff.
+
+The repository subsequently retired the packet files and validators under its
+[evidence storage policy](spec-evidence-storage-simplification.md). The selector
+and [lifecycle record](4-15-oq8-platform-lifecycle-state.json) preserve the
+historical selection and closed state.

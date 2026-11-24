@@ -4520,7 +4520,8 @@ location: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-
 source_spec: `spec-4-15-v3-round-4-reseal.md`
 severity: medium
 reason: The parent story file still ends on subject `92b189b6…`, counts 458/2061, and the “retained” TRX wording. The active round-4 packet is subject `29880d6b…` with 465/2068. Updating that file is a separate-spec edit outside this story-file chunk.
-status: open
+status: done 2026-11-24
+resolution: Identify the round-4 v3 subject and counts, point to the successor closure and later lifecycle record, and document retirement of the local evidence tooling.
 
 ### DW-536: Round-4 test receipt does not disclose that `ci / contracts` filters HeavyweightContainerPublish.
 
