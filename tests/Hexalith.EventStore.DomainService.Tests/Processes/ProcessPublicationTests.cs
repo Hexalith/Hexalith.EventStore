@@ -726,16 +726,7 @@ public sealed class ProcessPublicationTests
     public async Task RegistrationCostDoesNotGrowWithHistoricalPages()
     {
         InMemoryReadModelStore inner = new();
-        EventStoreProcessOptions options = new()
-        {
-            SupportedCandidateCount = 521,
-            SourcesPerPass = 4096,
-            OperationTimeout = TimeSpan.FromMilliseconds(100),
-            MaxEffectsPerEnvelope = 1,
-            SourceServiceQuantum = TimeSpan.FromMilliseconds(900),
-            ReconciliationInterval = TimeSpan.FromSeconds(1),
-            ReadinessMaxAge = TimeSpan.FromMinutes(30),
-        };
+        EventStoreProcessOptions options = new();
         ProcessCheckpointStore normal = new(inner, Options.Create(options), TimeProvider.System);
         for (int index = 0; index < 520; index++)
             await normal.EnsureCandidateAsync(new ProcessSource("tenant-a", "sample", $"prior-{index:0000}"));
@@ -753,16 +744,7 @@ public sealed class ProcessPublicationTests
     public async Task FreshTenantRegistrationUsesTailAfterManyTenants()
     {
         InMemoryReadModelStore inner = new();
-        EventStoreProcessOptions options = new()
-        {
-            SupportedCandidateCount = 521,
-            SourcesPerPass = 4096,
-            OperationTimeout = TimeSpan.FromMilliseconds(100),
-            MaxEffectsPerEnvelope = 1,
-            SourceServiceQuantum = TimeSpan.FromMilliseconds(900),
-            ReconciliationInterval = TimeSpan.FromSeconds(1),
-            ReadinessMaxAge = TimeSpan.FromMinutes(30),
-        };
+        EventStoreProcessOptions options = new();
         ProcessCheckpointStore normal = new(inner, Options.Create(options), TimeProvider.System);
         for (int index = 0; index < 520; index++)
             await normal.EnsureCandidateAsync(new ProcessSource($"tenant-{index:0000}", "sample", "prior"));
