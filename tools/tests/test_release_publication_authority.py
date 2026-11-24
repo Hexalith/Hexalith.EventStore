@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MAIN_PUBLISHER = "bf8a28b4bbcec619e8d9764d335f786f2bafb69e"
+MAIN_PUBLISHER = "29923b011061347e7f61ece16d59095889bde91a"
 MAINTENANCE_PUBLISHER = "30ea43a56330a9828ed0bb2e837289231d8630d1"
 CONTRACT_FILES = (
     "publish-containers.sh", "oci_registry_validator.py", "publication_preflight.py",
