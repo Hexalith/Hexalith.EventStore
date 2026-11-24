@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 
 namespace Hexalith.EventStore.Server.Queries;
@@ -11,6 +12,7 @@ namespace Hexalith.EventStore.Server.Queries;
 public sealed class SafeDenialQueryRouteRegistry : ISafeDenialQueryRoutePolicy {
     private readonly HashSet<(string Domain, string QueryType)> _routes;
     private readonly ReadOnlyCollection<(string Domain, string QueryType)> _routesView;
+    private readonly ConcurrentDictionary<(string Domain, string QueryType), byte> _reportedCaseMismatches = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SafeDenialQueryRouteRegistry"/> class.
@@ -39,5 +41,23 @@ public sealed class SafeDenialQueryRouteRegistry : ISafeDenialQueryRoutePolicy {
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
         ArgumentException.ThrowIfNullOrWhiteSpace(queryType);
         return _routes.Contains((domain, queryType));
+    }
+
+    /// <summary>Returns each newly observed registration that differs from the successful route only by case.</summary>
+    /// <param name="domain">The successful route's wire domain.</param>
+    /// <param name="queryType">The successful route's wire query type.</param>
+    /// <returns>The configured routes to report to operators.</returns>
+    internal IEnumerable<(string Domain, string QueryType)> RecordCaseMismatches(string domain, string queryType)
+    {
+        foreach ((string Domain, string QueryType) route in _routes)
+        {
+            if (route != (domain, queryType)
+                && string.Equals(route.Domain, domain, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(route.QueryType, queryType, StringComparison.OrdinalIgnoreCase)
+                && _reportedCaseMismatches.TryAdd(route, 0))
+            {
+                yield return route;
+            }
+        }
     }
 }

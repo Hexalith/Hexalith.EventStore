@@ -110,7 +110,8 @@ status: open
 origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: QueryType
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p2-dual-principal-query-envelope-safe-denial.md` summary: Make a safe-denial route registration's `Domain`/`QueryType` casing mismatch against real wire values operator-visible (today only the registered-route list itself is logged, not whether any entry actually matches a query type that ever occurs). evidence: Round-2 blind-hunter review of 6.1-P2 -- ordinal case-sensitive route matching means a typo'd-casing registration silently gets no safe-denial protection, same failure mode the round-1 startup-logging fix targeted, but closing it needs a canonical registry of valid domain/queryType pairs to cross-check against, which doesn't exist anywhere in this codebase today -- out of proportion for a patch-level fix.
-status: open
+status: done 2026-11-24
+resolution: Warn once per configured route when a successful query uses different casing and has no exact opt-in. Preserve ordinal policy matching and exclude already registered exact spellings. Cover domain and query-type mismatches, deduplication, exact routes and unchanged responses.
 decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-16, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-17: Add an end-to-end test tying `DualPrincipalClaimsHelper`'s claim-type assumptions (`azp`/`act`/`scope`/`aud`/`client_id`, dependent on `MapInboundClaims=false`) to the real `JwtBearerHandler`/Keycloak token-issuance pipeline, not just hand-constructed `ClaimsPrincipal` unit tests.

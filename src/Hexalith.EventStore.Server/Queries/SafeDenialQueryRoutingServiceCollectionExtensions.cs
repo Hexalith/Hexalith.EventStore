@@ -17,6 +17,10 @@ public static class SafeDenialQueryRoutingServiceCollectionExtensions {
     /// and <c>AddEventStoreDomainQueryRouting</c> when used) so the decorator wraps the fully
     /// composed router.
     /// </summary>
+    /// <remarks>
+    /// Match the exact wire casing. The first successful query on an unregistered alternate casing
+    /// logs event 1224 for the configured route and leaves the response unchanged.
+    /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <param name="routes">The (domain, query type) routes that opt into the safe-denial boundary.</param>
     /// <returns>The service collection for fluent chaining.</returns>

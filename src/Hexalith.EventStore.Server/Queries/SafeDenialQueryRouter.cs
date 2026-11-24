@@ -44,6 +44,14 @@ public sealed partial class SafeDenialQueryRouter(
         }
 
         if (!policy.IsOptedIn(query.Domain, query.QueryType)) {
+            if (result.Success && logger.IsEnabled(LogLevel.Warning) && policy is SafeDenialQueryRouteRegistry registry)
+            {
+                foreach ((string domain, string queryType) in registry.RecordCaseMismatches(query.Domain, query.QueryType))
+                {
+                    Log.SafeDenialRegistrationCaseMismatch(logger, domain, queryType, query.Domain, query.QueryType);
+                }
+            }
+
             return result;
         }
 
@@ -89,6 +97,13 @@ public sealed partial class SafeDenialQueryRouter(
     }
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 1224,
+            Level = LogLevel.Warning,
+            Message = "Safe-denial registration {RegisteredDomain}/{RegisteredQueryType} differs in case from successful query route {Domain}/{QueryType}. Review the configured casing if this route should opt in.")]
+        public static partial void SafeDenialRegistrationCaseMismatch(
+            ILogger logger, string registeredDomain, string registeredQueryType, string domain, string queryType);
+
         [LoggerMessage(
             EventId = 1220,
             Level = LogLevel.Information,

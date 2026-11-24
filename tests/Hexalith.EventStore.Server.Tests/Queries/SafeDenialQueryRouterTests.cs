@@ -5,7 +5,9 @@ using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -20,6 +22,48 @@ namespace Hexalith.EventStore.Server.Tests.Queries;
 /// negative control, and unchanged behavior on non-opted-in routes.
 /// </summary>
 public class SafeDenialQueryRouterTests {
+    [Theory]
+    [InlineData("Orders", "list-orders")]
+    [InlineData("orders", "List-Orders")]
+    public async Task SuccessfulQuery_ReportsCaseMismatchOnceAcrossRouterInstances(string domain, string queryType)
+    {
+        var entries = new List<LogEntry>();
+        var logger = new TestLogger<SafeDenialQueryRouter>(entries);
+        var registry = new SafeDenialQueryRouteRegistry([(domain, queryType), ("orders", "get-order")]);
+        var success = new QueryRouterResult(Success: true, Payload: null, NotFound: false);
+        IQueryRouter inner = Substitute.For<IQueryRouter>();
+        _ = inner.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>()).Returns(success);
+
+        QueryRouterResult first = await new SafeDenialQueryRouter(inner, registry, logger).RouteQueryAsync(CreateQuery());
+        QueryRouterResult second = await new SafeDenialQueryRouter(inner, registry, logger).RouteQueryAsync(CreateQuery());
+
+        first.ShouldBe(success);
+        second.ShouldBe(success);
+        registry.IsOptedIn("orders", "list-orders").ShouldBeFalse();
+        LogEntry warning = entries.ShouldHaveSingleItem();
+        warning.Level.ShouldBe(LogLevel.Warning);
+        warning.EventId.Id.ShouldBe(1224);
+        warning.Message.ShouldContain($"{domain}/{queryType}");
+        warning.Message.ShouldContain("orders/list-orders");
+    }
+
+    [Fact]
+    public async Task SuccessfulQuery_ExactOptInSuppressesCaseMismatchWarning()
+    {
+        var entries = new List<LogEntry>();
+        var registry = new SafeDenialQueryRouteRegistry([("orders", "list-orders"), ("orders", "List-Orders")]);
+        var success = new QueryRouterResult(Success: true, Payload: null, NotFound: false);
+        IQueryRouter inner = Substitute.For<IQueryRouter>();
+        _ = inner.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>()).Returns(success);
+        var router = new SafeDenialQueryRouter(inner, registry, new TestLogger<SafeDenialQueryRouter>(entries));
+
+        await router.RouteQueryAsync(CreateQuery());
+        await router.RouteQueryAsync(CreateQuery(queryType: "List-Orders"));
+
+        entries.ShouldBeEmpty();
+    }
+
+
     private static SubmitQuery CreateQuery(
         string domain = "orders",
         string queryType = "list-orders",
