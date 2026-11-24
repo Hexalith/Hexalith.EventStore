@@ -30,8 +30,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         factory.StatusStore.TtlSeconds = CommandStatusConstants.DefaultTtlSeconds; // Reset
 
         // Act
-        HttpResponseMessage response = await client.GetAsync(
-            $"/api/v1/commands/status/{correlationId}");
+        HttpResponseMessage response = await GetStatusAsync(client, correlationId, tenantId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -58,8 +57,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         string nonExistentId = Guid.NewGuid().ToString();
 
         // Act
-        HttpResponseMessage response = await client.GetAsync(
-            $"/api/v1/commands/status/{nonExistentId}");
+        HttpResponseMessage response = await GetStatusAsync(client, nonExistentId, "test-tenant");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -80,15 +78,14 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         string correlationId = Guid.NewGuid().ToString();
 
         // Act
-        HttpResponseMessage response = await client.GetAsync(
-            $"/api/v1/commands/status/{correlationId}");
+        HttpResponseMessage response = await GetStatusAsync(client, correlationId, "test-tenant");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
 
         JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
-        problemDetails.GetProperty("detail").GetString()!.ShouldContain("No tenant authorization claims found");
+        problemDetails.GetProperty("detail").GetString()!.ShouldContain("An authorized explicit scope is required.");
     }
 
     [Fact]
@@ -98,8 +95,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         string correlationId = Guid.NewGuid().ToString();
 
         // Act
-        HttpResponseMessage response = await client.GetAsync(
-            $"/api/v1/commands/status/{correlationId}");
+        HttpResponseMessage response = await GetStatusAsync(client, correlationId, "test-tenant");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -123,8 +119,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
             CancellationToken.None);
 
         // Act
-        HttpResponseMessage response = await client.GetAsync(
-            $"/api/v1/commands/status/{correlationId}");
+        HttpResponseMessage response = await GetStatusAsync(client, correlationId, tenantId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -155,8 +150,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         // Act - query status as tenant-b (SEC-3: should return 404, not 403)
         HttpClient tenantBClient = CreateAuthenticatedClient("tenant-b");
         string statusKey = submitResult.MessageId.ShouldNotBeNull();
-        HttpResponseMessage statusResponse = await tenantBClient.GetAsync(
-            $"/api/v1/commands/status/{statusKey}");
+        HttpResponseMessage statusResponse = await GetStatusAsync(tenantBClient, statusKey, "tenant-b");
 
         // Assert
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -189,8 +183,8 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         locationHeader.ShouldContain($"/api/v1/commands/status/{statusKey}");
 
         // Act - verify the Location URL is accessible
-        HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{statusKey}");
+        HttpResponseMessage statusResponse = await JwtAuthenticatedWebApplicationFactory.SendForTenantAsync(
+            client, HttpMethod.Get, locationHeader, "test-tenant");
 
         // Assert - the endpoint works
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -215,8 +209,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         SubmitCommandResponse? submitResult = await submitResponse.Content.ReadFromJsonAsync<SubmitCommandResponse>();
         string statusKey = submitResult!.MessageId.ShouldNotBeNull();
 
-        HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{statusKey}");
+        HttpResponseMessage statusResponse = await GetStatusAsync(client, statusKey, "test-tenant");
 
         // Assert
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -246,8 +239,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         string statusKey = submitResult.MessageId.ShouldNotBeNull();
 
         // Act - query status
-        HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{statusKey}");
+        HttpResponseMessage statusResponse = await GetStatusAsync(client, statusKey, "test-tenant");
 
         // Assert
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -257,6 +249,10 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         status.StatusCode.ShouldBe(0);
         status.AggregateId.ShouldBe("agg-status-1");
     }
+
+    private static Task<HttpResponseMessage> GetStatusAsync(HttpClient client, string messageId, string tenant)
+        => JwtAuthenticatedWebApplicationFactory.SendForTenantAsync(
+            client, HttpMethod.Get, $"/api/v1/commands/status/{messageId}", tenant);
 
     private HttpClient CreateAuthenticatedClient(string tenantId) {
         HttpClient client = factory.CreateClient();

@@ -37,6 +37,14 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Event
     /// <summary>Gets the shared FakeCommandRouter instance used across all tests.</summary>
     public FakeCommandRouter Router { get; } = new() { FakeActor = new FakeAggregateActor() };
 
+    internal static async Task<HttpResponseMessage> SendForTenantAsync(
+        HttpClient client, HttpMethod method, string path, string tenant)
+    {
+        using var request = new HttpRequestMessage(method, path);
+        request.Headers.Add("X-Hexalith-Tenant", tenant);
+        return await client.SendAsync(request).ConfigureAwait(false);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
         _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?> {

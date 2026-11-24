@@ -46,8 +46,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.Rejected);
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
@@ -67,8 +66,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.PublishFailed);
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
@@ -86,8 +84,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.TimedOut);
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert — replay generates a new correlation ID for tracking
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
@@ -112,8 +109,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.Completed);
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
@@ -135,8 +131,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         // Status is already Received from submission
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
@@ -151,8 +146,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         string correlationId = Guid.NewGuid().ToString();
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -171,8 +165,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
 
         // Act - replay as tenant-b (SEC-3)
         HttpClient tenantBClient = CreateAuthenticatedClient("tenant-b");
-        HttpResponseMessage response = await tenantBClient.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(tenantBClient, correlationId, "tenant-b");
 
         // Assert - 404, not 403
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -185,8 +178,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         string correlationId = Guid.NewGuid().ToString();
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -201,15 +193,14 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         string correlationId = Guid.NewGuid().ToString();
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
 
         JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
-        problemDetails.GetProperty("detail").GetString()!.ShouldContain("No tenant authorization claims found");
+        problemDetails.GetProperty("detail").GetString()!.ShouldContain("An authorized explicit scope is required.");
     }
 
     [Fact]
@@ -220,16 +211,15 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.Rejected);
 
         // Act - replay (generates a new correlation ID)
-        HttpResponseMessage replayResponse = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage replayResponse = await ReplayAsync(client, correlationId);
         replayResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         ReplayCommandResponse? replayResult = await replayResponse.Content.ReadFromJsonAsync<ReplayCommandResponse>();
         _ = replayResult.ShouldNotBeNull();
         string replayMessageId = replayResult.MessageId.ShouldNotBeNull();
 
         // Assert - status of the new replay message ID should be Received
-        HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{replayMessageId}");
+        HttpResponseMessage statusResponse = await JwtAuthenticatedWebApplicationFactory.SendForTenantAsync(
+            client, HttpMethod.Get, $"/api/v1/commands/status/{replayMessageId}", "test-tenant");
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         CommandStatusResponse? status = await statusResponse.Content.ReadFromJsonAsync<CommandStatusResponse>();
         _ = status.ShouldNotBeNull();
@@ -244,8 +234,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.Rejected);
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert — Location header points to status endpoint with the new replay message ID
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
@@ -267,8 +256,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.TimedOut);
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
@@ -285,16 +273,14 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
 
         // First failure + replay
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.Rejected);
-        HttpResponseMessage firstReplay = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage firstReplay = await ReplayAsync(client, correlationId);
         firstReplay.StatusCode.ShouldBe(HttpStatusCode.Accepted);
 
         // Second failure
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.Rejected);
 
         // Act - second replay (H2: no limit on replay attempts)
-        HttpResponseMessage secondReplay = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage secondReplay = await ReplayAsync(client, correlationId);
 
         // Assert
         secondReplay.StatusCode.ShouldBe(HttpStatusCode.Accepted);
@@ -307,8 +293,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         string correlationId = Guid.NewGuid().ToString();
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert - 404 ProblemDetails should have correlationId extension
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -337,8 +322,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         HttpClient client = CreateAuthenticatedClient("test-tenant");
 
         // Act
-        HttpResponseMessage response = await client.PostAsync(
-            $"/api/v1/commands/replay/{correlationId}", null);
+        HttpResponseMessage response = await ReplayAsync(client, correlationId);
 
         // Assert - corrupted archived data is a server-side replay failure, not a client validation error.
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
@@ -347,6 +331,10 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
         problemDetails.GetProperty("detail").GetString()!.ShouldContain("invalid and cannot be replayed");
     }
+
+    private static Task<HttpResponseMessage> ReplayAsync(HttpClient client, string correlationId, string tenant = "test-tenant")
+        => JwtAuthenticatedWebApplicationFactory.SendForTenantAsync(
+            client, HttpMethod.Post, $"/api/v1/commands/replay/{correlationId}", tenant);
 
     private HttpClient CreateAuthenticatedClient(string tenantId) {
         HttpClient client = factory.CreateClient();
