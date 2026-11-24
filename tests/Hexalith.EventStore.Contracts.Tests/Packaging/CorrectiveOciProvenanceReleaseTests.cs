@@ -211,15 +211,20 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [InlineData("ContainerImageTag", "0.0.0-other", "ContainerImageTag must equal ContainerProvenanceReleaseVersion.", false)]
     [InlineData("ContainerImageTags", "latest", "ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else.", false)]
     [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "http://github.com/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https://.", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https://github.com/Hexalith/Hexalith.EventStore\n", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", true)]
-    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", true)]
-    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must be a well-formed https URL.", true)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", false)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "http://github.com/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://.", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://github.com/Hexalith/Hexalith.EventStore\n", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", true)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", true)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", true)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://other.example/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be the canonical EventStore repository URL.", false)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https://other.example/Hexalith/Hexalith.EventStore/releases/tag/v0.0.0-ci-test", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", true)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v0.0.0-CI-TEST", "ContainerProvenanceReleaseUrl must identify the declared release tag or source commit in the EventStore repository.", false)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https://github.com/Hexalith/Hexalith.EventStore/blob/dddddddddddddddddddddddddddddddddddddddd/%ZZ.md", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", true)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https://github.com/Hexalith/Hexalith.EventStore/blob/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/README.md", "ContainerProvenanceDocumentationUrl must identify README.md at the declared EventStore source commit.", false)]
     public void ContainerPublicationRejectsMalformedProvenanceInputs(
         string property,
         string value,
@@ -280,6 +285,28 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             $"-p:ContainerProvenanceSourceSha={SourceSha}",
             $"-p:ContainerProvenanceReleaseVersion={Version}",
             $"-p:ContainerProvenanceCreated={Created}");
+
+        result.ExitCode.ShouldBe(0, result.Output + result.Error);
+    }
+
+    /// <summary>
+    /// Verifies the documented source-commit URL for a local unpublished image.
+    /// </summary>
+    [Fact]
+    public void ContainerPublicationAllowsTheExactSourceCommitUrl()
+    {
+        ProcessResult result = RunProcess(
+            FindRepositoryRoot(),
+            "dotnet",
+            "msbuild",
+            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+            "-t:ValidateContainerProvenanceInputs",
+            "-p:EnableContainer=true",
+            "-p:UseHexalithProjectReferences=false",
+            $"-p:ContainerProvenanceSourceSha={SourceSha}",
+            $"-p:ContainerProvenanceReleaseVersion={Version}",
+            $"-p:ContainerProvenanceCreated={Created}",
+            $"-p:ContainerProvenanceReleaseUrl=https://github.com/Hexalith/Hexalith.EventStore/commit/{SourceSha}");
 
         result.ExitCode.ShouldBe(0, result.Output + result.Error);
     }

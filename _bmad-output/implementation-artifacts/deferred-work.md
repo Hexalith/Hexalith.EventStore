@@ -2847,7 +2847,8 @@ origin: migrated from legacy ledger ("Trusted-verifier hardening pass (2026-08-2
 location: Directory.Build.targets
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: Container provenance URL validation accepts unrelated hosts and malformed percent escapes instead of enforcing the repository-derived canonical URLs. evidence: `Directory.Build.targets` checks only an HTTPS-shaped regex; values such as an unrelated repository URL or a path containing `%ZZ` pass and can enter OCI labels. Canonical URI derivation and validation belong to the corrective-publisher lane rather than this parity packet.
-status: open
+status: done 2026-11-24
+resolution: Require the EventStore repository, declared version tag or source commit, and README at that commit. MSBuild controls accept the documented local commit URL and reject unrelated or malformed URLs.
 
 ### DW-422: The container provenance creation-time regex accepts calendar-impossible dates.
 
