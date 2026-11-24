@@ -83,7 +83,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: live-sidecar PostgreSQL image pull CI fix (2026-07-20)"), 2026-08-30
 location: Oq8PostgresqlFixture
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md` summary: Evaluate replacing `Oq8PostgresqlFixture`'s manual `docker run`/`docker image inspect` orchestration with GitHub Actions' native `services:` container support (or an equivalent declarative approach), which would pull, health-check, and manage the Postgres container without a hand-rolled prerequisite check. evidence: Blind-hunter review of the CI fix -- this fix patches the one workflow that currently exercises the fixture; the next new workflow, self-hosted runner, or Tier-3 job that reuses `Oq8PostgresqlFixture` will hit the identical "no such image" failure unless the fixture's own contract is revisited.
-status: open
+status: done 2026-11-24
+resolution: Document the GitHub job-service tradeoff and retain the fixture-owned PostgreSQL lifecycle for local and hosted isolation, container-identity assertions, and cleanup on initialization failure. The existing runtime qualifier passed against the pinned disposable PostgreSQL container.
 
 ### DW-13: Generalize the reusable publication preflight's hard-coded EventStore package count of exactly 14 so other callers can supply their own immutable expected inventory size without weakening EventStore's manifest contract.
 
