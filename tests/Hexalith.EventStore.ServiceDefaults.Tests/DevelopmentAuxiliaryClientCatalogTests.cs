@@ -151,10 +151,17 @@ public class DevelopmentAuxiliaryClientCatalogTests
             app.UseEventStoreDevelopmentCallerCatalog().ShouldBeSameAs(app);
             app.MapGet("/human/{id}", () => "human-only");
             await app.StartAsync(TestContext.Current.CancellationToken);
-            var actual = await DevelopmentAuxiliaryClientCatalog.CaptureAsync(app.Services, app.Configuration, TestContext.Current.CancellationToken);
-            actual.AppId.ShouldBe("admin-run-one"); actual.Targets.ShouldBeEmpty(); actual.AuxiliaryOperations!.ShouldBeEmpty();
-            actual.ReceiverSurface!.FenceVersion.ShouldBe("eventstore-development-client-only-v1");
-            actual.ReceiverSurface.Endpoints.ShouldContain(endpoint => endpoint.Pattern == "/human/{id}" && !endpoint.Admitted);
+            try
+            {
+                var actual = await DevelopmentAuxiliaryClientCatalog.CaptureAsync(app.Services, app.Configuration, TestContext.Current.CancellationToken);
+                actual.AppId.ShouldBe("admin-run-one"); actual.Targets.ShouldBeEmpty(); actual.AuxiliaryOperations!.ShouldBeEmpty();
+                actual.ReceiverSurface!.FenceVersion.ShouldBe("eventstore-development-client-only-v1");
+                actual.ReceiverSurface.Endpoints.ShouldContain(endpoint => endpoint.Pattern == "/human/{id}" && !endpoint.Admitted);
+            }
+            finally
+            {
+                await app.StopAsync();
+            }
         }
         finally { Directory.Delete(directory, recursive: true); }
     }

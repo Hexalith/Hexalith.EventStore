@@ -500,7 +500,7 @@ class Qualification:
         result = {"accepted": True, "errorMessage": None, "correlationId": "recovery-correlation", "eventCount": 0,
                   "resultPayload": "{\"reconciled\":true}", "backpressureExceeded": False,
                   "backpressurePendingCount": None, "backpressureThreshold": None, "rejectionEventType": None,
-                  "failureReason": None, "resultPayloadWithheld": False}
+                  "failureReason": None, "resultPayloadWithheld": False, "admissionDeferredBeforeProcessing": False}
         self.assert_saturated(a, "before_reconciled_completion")
         status, _, body = self.actor(b, "CompleteAsync", {"fencingToken": fence, "result": result})
         self.check("reconciled_completion_after_recovery", status == 200, status=status, body=body)
