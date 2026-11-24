@@ -9,6 +9,7 @@ using System.Text.Json;
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
@@ -816,6 +817,9 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
+            // The host can reach its first background health capture during a slow test run.
+            _ = DaprInfrastructureQueryService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+                .Returns(DaprCanonicalInventory.Empty);
             _ = StreamService.GetRecentlyActiveStreamsAsync(
                     Arg.Any<string?>(),
                     Arg.Any<string?>(),
