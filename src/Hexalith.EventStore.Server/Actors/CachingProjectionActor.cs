@@ -24,8 +24,8 @@ public abstract partial class CachingProjectionActor(
     : Actor(host), IDaprProjectionActor {
     // The actor instance is shared across QueryTypes for the same (projectionType, tenantId, entityId)
     // — see QueryActorIdHelper.DeriveActorId. The cache MUST therefore be keyed by (QueryType, Payload,
-    // Paging, UserId) too, otherwise the first query to populate the cache poisons the response of every
-    // other query type, payload, or paging policy on the same actor.
+    // result-selecting Paging, UserId) too, otherwise the first query to populate the cache poisons the
+    // response of every other query type, payload, or paging policy on the same actor.
     private const int MaxCacheEntries = 32;
 
     private readonly Dictionary<CacheEntryKey, CacheEntry> _payloadCache = [];
@@ -62,7 +62,7 @@ public abstract partial class CachingProjectionActor(
         var cacheKey = new CacheEntryKey(
             envelope.QueryType,
             QueryActorIdHelper.ComputeChecksum(envelope.Payload),
-            ComputePagingChecksum(envelope.Paging),
+            ComputePagingChecksum(GetResultSelectingPaging(envelope.Paging)),
             envelope.UserId);
 
         // Cache hit: ETag is non-null AND we have an entry matching this (QueryType, Payload, Paging, UserId).
@@ -189,6 +189,15 @@ public abstract partial class CachingProjectionActor(
 
         return projectionType;
     }
+
+    /// <summary>
+    /// Gets the part of the requested paging that selects a distinct result from <see cref="ExecuteQueryAsync(QueryEnvelope, CancellationToken)"/>.
+    /// The cache keys entries on this value, so an override must return <see langword="null"/> for paging the actor
+    /// ignores and must keep any paging that changes the outcome, including paging it rejects.
+    /// </summary>
+    /// <param name="paging">The requested paging.</param>
+    /// <returns>The paging that distinguishes results; the requested paging by default.</returns>
+    private protected virtual QueryPagingOptions? GetResultSelectingPaging(QueryPagingOptions? paging) => paging;
 
     private static bool IsValidProjectionType(string projectionType)
         => projectionType.Length <= 100 && !projectionType.Contains(':');

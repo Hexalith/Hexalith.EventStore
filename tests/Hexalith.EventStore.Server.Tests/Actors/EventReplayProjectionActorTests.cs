@@ -413,4 +413,98 @@ public partial class EventReplayProjectionActorTests {
         _ = await stateManager.Received(1).TryGetStateAsync<ProjectionState>(
             EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task QueryAsync_PageSizeVariants_ShareTheUnpagedCacheEntry() {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
+        ProjectionState state = CreateTestState(projectionType: "counter");
+        _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("etag-stable");
+        _ = stateManager.TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<ProjectionState>(true, state));
+
+        QueryPagingOptions?[] variants = [
+            null,
+            new QueryPagingOptions(PageSize: 10),
+            new QueryPagingOptions(PageSize: 25, Offset: 0),
+            new QueryPagingOptions(),
+        ];
+        foreach (QueryPagingOptions? paging in variants) {
+            QueryResult result = await actor.QueryAsync(CreateTestEnvelope(paging));
+            result.Success.ShouldBeTrue();
+            result.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
+        }
+
+        _ = await stateManager.Received(1).TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task QueryAsync_CursorAfterCachedUnpagedResult_StillReturnsInvalidCursor() {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
+        ProjectionState state = CreateTestState(projectionType: "counter");
+        _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("etag-stable");
+        _ = stateManager.TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<ProjectionState>(true, state));
+
+        (await actor.QueryAsync(CreateTestEnvelope())).Success.ShouldBeTrue();
+        QueryResult cursorResult = await actor.QueryAsync(
+            CreateTestEnvelope(new QueryPagingOptions(PageSize: 10, Cursor: "opaque-cursor")));
+
+        cursorResult.Success.ShouldBeFalse();
+        cursorResult.ErrorMessage.ShouldBe(QueryAdapterFailureReason.InvalidCursor);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(50)]
+    public async Task QueryAsync_NonZeroOffsetAfterCachedUnpagedResult_ReturnsInvalidPage(int offset) {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
+        ProjectionState state = CreateTestState(projectionType: "counter");
+        _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("etag-stable");
+        _ = stateManager.TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<ProjectionState>(true, state));
+
+        (await actor.QueryAsync(CreateTestEnvelope())).Success.ShouldBeTrue();
+        QueryResult offsetResult = await actor.QueryAsync(
+            CreateTestEnvelope(new QueryPagingOptions(PageSize: 10, Offset: offset)));
+
+        offsetResult.Success.ShouldBeFalse();
+        offsetResult.ErrorMessage.ShouldBe(QueryAdapterFailureReason.InvalidPage);
+        _ = await stateManager.Received(1).TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task QueryAsync_Subclass_KeepsPageSizeInTheCacheKey() {
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("etag-stable");
+        _ = stateManager.TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<ProjectionState>(true, CreateTestState(projectionType: "counter")));
+        var host = ActorHost.CreateForTest<PagingReplayProjectionActor>(
+            new ActorTestOptions { ActorId = new ActorId(ActorIdString) });
+        var actor = new PagingReplayProjectionActor(host, eTagService);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+
+        (await actor.QueryAsync(CreateTestEnvelope(new QueryPagingOptions(PageSize: 10)))).Success.ShouldBeTrue();
+        (await actor.QueryAsync(CreateTestEnvelope(new QueryPagingOptions(PageSize: 20)))).Success.ShouldBeTrue();
+
+        _ = await stateManager.Received(2).TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
+    }
+
+    private sealed class PagingReplayProjectionActor(ActorHost host, IETagService eTagService)
+        : EventReplayProjectionActor(
+            host,
+            eTagService,
+            Substitute.For<IProjectionChangeNotifier>(),
+            Substitute.For<ILogger<EventReplayProjectionActor>>());
 }

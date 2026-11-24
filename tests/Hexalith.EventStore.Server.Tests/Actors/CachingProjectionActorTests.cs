@@ -804,6 +804,30 @@ public class CachingProjectionActorTests {
     }
 
     [Fact]
+    public async Task QueryAsync_DifferentOffsetsAndPageSizes_DoNotShareCacheByDefault() {
+        string stableETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(stableETag);
+
+        JsonElement page1 = JsonDocument.Parse("{\"page\":1}").RootElement;
+        JsonElement page2 = JsonDocument.Parse("{\"page\":2}").RootElement;
+        JsonElement page3 = JsonDocument.Parse("{\"page\":3}").RootElement;
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService,
+            QueryResult.FromPayload(page1), QueryResult.FromPayload(page2), QueryResult.FromPayload(page3));
+
+        _ = await actor.QueryAsync(CreateEnvelope(paging: new QueryPagingOptions(PageSize: 10, Offset: 0)));
+        _ = await actor.QueryAsync(CreateEnvelope(paging: new QueryPagingOptions(PageSize: 10, Offset: 10)));
+        _ = await actor.QueryAsync(CreateEnvelope(paging: new QueryPagingOptions(PageSize: 20, Offset: 0)));
+        QueryResult warm = await actor.QueryAsync(CreateEnvelope(paging: new QueryPagingOptions(PageSize: 10, Offset: 10)));
+
+        warm.GetPayload().GetProperty("page").GetInt32().ShouldBe(2);
+        actor.ExecuteCallCount.ShouldBe(3);
+    }
+
+    [Fact]
     public async Task QueryAsync_DifferentUsers_DoNotShareCache() {
         // Some queries return per-user views (e.g. get-user-tenants for non-admin filters on the caller).
         // Cache must isolate per UserId so user A doesn't observe user B's authorized-only result.

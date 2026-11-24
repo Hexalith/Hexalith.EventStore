@@ -309,6 +309,20 @@ public partial class EventReplayProjectionActor(
         }
     }
 
+    /// <summary>
+    /// Merges cache entries that differ only by page size, which this actor ignores. Cursors and offsets are rejected,
+    /// so they stay in the key and never reach a cached success. A subclass may honor paging in its own query override,
+    /// so only this exact type merges entries.
+    /// </summary>
+    /// <param name="paging">The requested paging.</param>
+    /// <returns><see langword="null"/> when only a page size was requested; otherwise the requested paging.</returns>
+    private protected override QueryPagingOptions? GetResultSelectingPaging(QueryPagingOptions? paging)
+        => GetType() == typeof(EventReplayProjectionActor)
+            && string.IsNullOrWhiteSpace(paging?.Cursor)
+            && paging?.Offset is null or 0
+                ? null
+                : paging;
+
     /// <inheritdoc/>
     protected override Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope) =>
         ExecuteQueryAsync(envelope, CancellationToken.None);
@@ -320,6 +334,12 @@ public partial class EventReplayProjectionActor(
 
         if (!string.IsNullOrWhiteSpace(envelope.Paging?.Cursor)) {
             return QueryResult.Failure(QueryAdapterFailureReason.InvalidCursor);
+        }
+
+        // One unpaged state document is served: a page size cannot shrink it, and no page starts past offset zero.
+        // An offset is therefore unsupported paging, reported as invalid-page rather than silently ignored.
+        if (envelope.Paging?.Offset is not (null or 0)) {
+            return QueryResult.Failure(QueryAdapterFailureReason.InvalidPage);
         }
 
         // Read last persisted state from DAPR actor state
