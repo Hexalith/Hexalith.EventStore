@@ -3,6 +3,10 @@ namespace Hexalith.EventStore.DomainService;
 /// <summary>
 /// Resolves convention-named diagnostics by domain name.
 /// </summary>
+/// <remarks>
+/// The registry owns and disposes every <see cref="EventStoreDomainDiagnostics"/> it creates. DI resolutions return
+/// these same instances and the container disposes them too, which their idempotent dispose makes safe.
+/// </remarks>
 public sealed class EventStoreDomainDiagnosticsRegistry : IDisposable {
     private readonly IReadOnlyDictionary<string, EventStoreDomainDiagnostics> _diagnostics;
 

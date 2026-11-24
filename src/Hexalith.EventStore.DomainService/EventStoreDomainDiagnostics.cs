@@ -8,8 +8,14 @@ namespace Hexalith.EventStore.DomainService;
 /// Registered as a singleton by <see cref="EventStoreDomainTelemetryExtensions.AddEventStoreDomainTelemetry(Microsoft.AspNetCore.Builder.WebApplicationBuilder, string)"/> and
 /// injected by domain code to create spans and metrics without declaring its own source/meter.
 /// </summary>
+/// <remarks>
+/// Instances created by <see cref="EventStoreDomainDiagnosticsRegistry"/> are owned by that registry, but the
+/// keyed and single-domain DI factories also hand them out, so the container disposes them again at teardown.
+/// <see cref="Dispose"/> is therefore idempotent: only the first call releases the source and meter.
+/// </remarks>
 public sealed class EventStoreDomainDiagnostics : IDisposable {
     private readonly Histogram<double> _admissionStageDurationMilliseconds;
+    private int _disposed;
 
     /// <summary>Initializes the diagnostics for the given domain.</summary>
     /// <param name="domain">The kebab-case domain name.</param>
@@ -52,6 +58,10 @@ public sealed class EventStoreDomainDiagnostics : IDisposable {
 
     /// <inheritdoc/>
     public void Dispose() {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+            return;
+        }
+
         ActivitySource.Dispose();
         Meter.Dispose();
     }

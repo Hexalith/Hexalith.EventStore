@@ -1,3 +1,5 @@
+using System.Diagnostics.Metrics;
+
 using Dapr.Client;
 
 using Microsoft.AspNetCore.Builder;
@@ -66,6 +68,36 @@ public sealed class EventStoreDomainTelemetryTests {
         EventStoreDomainDiagnosticsRegistry registry = provider.GetRequiredService<EventStoreDomainDiagnosticsRegistry>();
         registry.Domains.OrderBy(static domain => domain, StringComparer.Ordinal).ShouldBe(["counter", "greeting"]);
         provider.GetRequiredKeyedService<EventStoreDomainDiagnostics>("counter").ShouldBeSameAs(registry.GetDiagnostics("counter"));
+    }
+
+    [Fact]
+    public void ProviderTeardown_ReleasesRegistryOwnedDiagnosticsOnce() {
+        var services = new ServiceCollection();
+        _ = services.AddEventStoreDomainTelemetry(["dw63-teardown"]);
+        ServiceProvider provider = services.BuildServiceProvider();
+        EventStoreDomainDiagnostics direct = provider.GetRequiredService<EventStoreDomainDiagnostics>();
+        provider.GetRequiredKeyedService<EventStoreDomainDiagnostics>("dw63-teardown").ShouldBeSameAs(direct);
+        provider.GetRequiredService<EventStoreDomainDiagnosticsRegistry>().GetDiagnostics("dw63-teardown").ShouldBeSameAs(direct);
+        int completed = 0;
+        using var listener = new MeterListener {
+            InstrumentPublished = (instrument, meterListener) => {
+                if (ReferenceEquals(instrument.Meter, direct.Meter)) {
+                    meterListener.EnableMeasurementEvents(instrument);
+                }
+            },
+            MeasurementsCompleted = (instrument, _) => {
+                if (ReferenceEquals(instrument.Meter, direct.Meter)) {
+                    _ = Interlocked.Increment(ref completed);
+                }
+            },
+        };
+        listener.Start();
+
+        // The registry, the keyed factory and the single-domain factory each dispose the same instance.
+        provider.Dispose();
+        direct.Dispose();
+
+        completed.ShouldBe(1);
     }
 
     [Fact]
