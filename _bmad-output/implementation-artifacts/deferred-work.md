@@ -3079,7 +3079,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 loop-6 authorize
 location: src/Hexalith.EventStore.Admin.UI/Components/Routes.razor
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-32876914109-fix-ci-cd.md` severity: low summary: No Admin.UI test can exercise the static prerender pass, because every render declares an interactive renderer. evidence: Production Admin.UI renders `InteractiveServer` (`src/Hexalith.EventStore.Admin.UI/Components/Routes.razor`, `Components/App.razor`), which prerenders with `IsInteractive == false` before the interactive pass. `AdminUITestContext.TestRendererInfo` is `protected virtual` so a derived context can opt into `("Static", false)`, and `SetRendererInfo` now latches so a test can choose per-test — but no test does, and no shared helper exists, so the prerender branch of every component is untested. status: open — the seam exists; adding prerender coverage is a separate test-design pass.
-status: open
+status: done 2026-11-24
+resolution: Render the real Admin navigation with noninteractive Static renderer information and check its Commands link. All six NavMenuTests passed.
 
 ### DW-450: SUPERSEDES the loop-6 landing note in the sense that two loop-6 fixes were themselves regressions, both reproduced with live controls and closed in loop 7.
 
