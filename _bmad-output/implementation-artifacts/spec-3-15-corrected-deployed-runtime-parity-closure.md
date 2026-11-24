@@ -804,6 +804,17 @@ new hole. Both were reproduced here with live controls before being fixed.
   build 0W/0E; Story 3.15 closure and capture suites 114/114; predecessor/provenance suite 34/34;
   full Contracts suite 1702/1702; no skipped tests.
 
+- **2026-11-24 (historical commit scope correction, DW-439):** The hardening entry above
+  records the run before commit. Commit `67c645ab02b21ffcb7bef9530e524e4510e36d27` then
+  recorded the Story 3.15 changes alongside two dependency updates outside the parity
+  evidence scope. The Git tree diff against parent
+  `1b2718c121c3c80f01da6f8c277a98250f605d52` identifies both gitlinks.
+
+  | Dependency | Parent gitlink | Commit gitlink |
+  | --- | --- | --- |
+  | `references/Hexalith.FrontComposer` | `a229be7e7e8ea8af43c537a9ed24f13175cc1416` | `596e286fa56a9f9063dd5e5d0ef0f50d53436db1` |
+  | `references/Hexalith.Tenants` | `09c746b3d03cd6c0b51221ab0506ceffe27fc921` | `daf6c76cda0dfe471cf42b50d85a31a3d59a2a66` |
+
 - **2026-08-25 (authorized acceptance completion):** Created dedicated Story 3.15 issue
   [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352), retained its
   MEMBER-authenticated roster comment `5407975180`, replaced the issue denylist with a positive

@@ -3001,7 +3001,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-co
 location: references/Hexalith.FrontComposer
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: Two submodule gitlink bumps rode into a Story 3.15 evidence commit undeclared. evidence: Commit `67c645ab` bumps `references/Hexalith.FrontComposer` `a229be7e` -> `596e286f` and `references/Hexalith.Tenants` `09c746b3` -> `daf6c76c` alongside the spec entry that asserts "No replacement acceptance, deployment, publication, registry, consumer, predecessor, commit, or push action was performed." Neither the spec change log, the story record, `deferred-work.md` nor `docs/ci.md` mentions them. Both targets were verified contained in their submodules' `origin/main`, so no dangling gitlink is published -- this is unrecorded scope, the known concurrent-loop absorption pattern.
-status: open
+status: done 2026-11-24
+resolution: Record the exact FrontComposer and Tenants gitlink changes in 67c645ab and distinguish them from the Story 3.15 hardening. Both Git deltas and target ancestry were verified.
 
 ### DW-440: `RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs` is build-state dependent, not code dependent.
 
