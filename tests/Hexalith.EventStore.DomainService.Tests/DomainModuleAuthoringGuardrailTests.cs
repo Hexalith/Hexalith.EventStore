@@ -17,9 +17,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Shouldly;
 
 /// <summary>
-/// Epic C3 guardrail: structural checks that enforce the domain-centric authoring rule documented in the root
-/// <c>CLAUDE.md</c> ("Domain-Module Authoring"). A domain module must contain only domain code; all platform
-/// boilerplate is supplied by the EventStore domain-service SDK. Concretely a domain module must <b>not</b>:
+/// Epic C3 guardrail: structural checks that enforce the domain-module authoring rule in
+/// <c>references/Hexalith.AI.Tools/hexalith-llm-instructions.md</c>. The EventStore domain-service SDK
+/// supplies platform boilerplate so domain modules contain only domain code. A domain module must <b>not</b>:
 /// <list type="bullet">
 ///   <item>ship its own <c>*.AppHost</c>, <c>*.Aspire</c>, or <c>*.ServiceDefaults</c> project (orchestration /
 ///   DAPR wiring / shared service config belong to the platform), or</item>
@@ -205,7 +205,8 @@ public sealed class DomainModuleAuthoringGuardrailTests
             violations.ShouldBeEmpty(
                 $"Domain module '{name}' must not ship its own *.AppHost, *.Aspire, or *.ServiceDefaults "
                 + "project — orchestration, Aspire/DAPR wiring, and service defaults are provided by the "
-                + "EventStore platform (CLAUDE.md domain-centric rule). Found: " + string.Join(", ", violations));
+                + "EventStore platform. See the domain-module authoring rule in "
+                + "references/Hexalith.AI.Tools/hexalith-llm-instructions.md. Found: " + string.Join(", ", violations));
         }
     }
 
