@@ -962,7 +962,8 @@ resolution: Evaluate the Contracts project in Release with inherited version ove
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: _bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md:2
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29720431798-fix-ci-cd.md` summary: Correct the nonexistent baseline SHA recorded by the Story 4.8 implementation artifact. evidence: `_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md:2` records `afcc167ef277...`, while the valid baseline is `afcc167e0c539b09ecad978a58da2f756123f34e`; this originated in commit `73140382` and is unrelated to the CI gitlink repair.
-status: open
+status: done 2026-11-25
+resolution: Correct the Story 4.8 baseline to the verified parent of the commit that introduced the artifact.
 
 ### DW-143: `idempotency-conflict` and `idempotency-key-expired` error-catalog entries in `ErrorReferenceEndpoints.ErrorModels` omit `detail`/`reasonCode` example fields that their real exception handlers (`IdempotencyConflictExceptionHandler`, `IdempotencyKeyExpiredExceptionHandler`) actually set.
 
