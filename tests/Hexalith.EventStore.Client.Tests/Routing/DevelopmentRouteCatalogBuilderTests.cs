@@ -685,13 +685,15 @@ public class DevelopmentRouteCatalogBuilderTests
 
     private static async Task<string> BuildToolAsync(string artifacts)
     {
-        var arguments = new List<string> { "build", "tools/routing-catalog.cs", "--artifacts-path", artifacts, "-v", "quiet" };
+        // The retained Development catalog binds the released owner declarations.
+        var arguments = new List<string> {
+            "build", "tools/routing-catalog.cs", "--artifacts-path", artifacts, "-v", "quiet",
+            "-p:UseHexalithProjectReferences=false", "-p:UseNuGetDeps=true",
+        };
 #if DEBUG
         arguments.Add("-c=Debug");
-        arguments.Add("-p:UseHexalithProjectReferences=true");
 #else
         arguments.Add("-c=Release");
-        arguments.Add("-p:UseHexalithProjectReferences=false");
 #endif
         // This build starts with empty artifacts and compiles the tool and its project references.
         (int exit, string log) = await RunProcessAsync("dotnet", arguments, TimeSpan.FromMinutes(5));
