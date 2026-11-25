@@ -164,6 +164,8 @@ Content-Type: application/json
 
 Generated REST hosts emit `Location` only from a response `messageId` that is valid under the MessageId grammar the command contract declares. Version 1 accepts 1–128 ASCII letters, digits or hyphens with no leading or trailing hyphen. Version 2 accepts only a canonical 26-character uppercase Crockford ULID. The version comes from the contract declaration alone; no header, query or body value selects it. When the `messageId` is missing, blank or invalid for that version, when hosting validation published no declared version, or when no valid gateway status base is configured, the generated action still returns `202 Accepted` with `Retry-After: 1` and omits `Location`. A generated host never builds a status URI from `correlationId`.
 
+When `resultPayload` is absent, the optional `resultPayloadOmissionReason` explains a known outcome. `InFlight` means processing or automatic recovery is pending. `PublishFailed` means the status record confirms publication failed and automatic recovery is unavailable. If the field is absent, use the status endpoint for the latest state. Domain rejections continue to return a typed ProblemDetails response.
+
 ### Error Responses
 
 > **See also:** [Error Reference](./problems/index.md) for detailed documentation on each error type, including example requests/responses and resolution steps.
@@ -185,6 +187,8 @@ Generated REST hosts emit `Location` only from a response `messageId` that is va
 
 ### Stable Idempotency Outcomes
 
+The [error reference](./problems/index.md#idempotency-errors) lists the matching gateway pages and the machine-readable catalog. The table below defines the code, status, and client action for each outcome.
+
 Every idempotency Problem Details response carries `code`, `category`, `retryable`, and, when applicable, `clientAction`. It contains only the current request correlation and support-safe metadata. The .NET client exposes these as typed `EventStoreGatewayException` properties; callers do not need to parse the extension bag.
 
 | HTTP | `code` | `retryable` | `clientAction` | Meaning |
@@ -197,6 +201,8 @@ Every idempotency Problem Details response carries `code`, `category`, `retryabl
 | 503 | `idempotency_admission_corrupt` | `false` | `contact_support` | Durable admission state cannot be interpreted safely. |
 | 503 | `idempotency_key_collision` | `false` | `contact_support` | A partition digest did not match its independent verification tag. |
 | 503 | `idempotency_unsafe_legacy_state` | `false` | `contact_support` | Legacy evidence cannot preserve consumed-key knowledge and the exact result safely. |
+| 503 | `owner_admission_deferred` | `true` | `retry_later` | The owner could not establish current command authority. |
+| 400 | `idempotency_admission_rejected` | `false` | `correct_request` | Correct the rejected command and submit a new key. |
 
 An equivalent `pending` admission returns `202 Accepted` with the current request correlation and the first writer's stable execution `messageId`; it performs no additional domain work. A recoverable admission resumes only its persisted checkpoint under the existing fence.
 

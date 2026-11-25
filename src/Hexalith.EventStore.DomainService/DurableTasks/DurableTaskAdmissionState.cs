@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.EventStore.DomainService.DurableTasks;
 
 /// <summary>The single compare-and-swap boundary for confirmation and task admission.</summary>
@@ -9,4 +11,4 @@ internal sealed record DurableTaskAdmissionState(
     DurableTaskScope Scope,
     DurableTaskConfirmationState? Confirmation,
     CommittedDurableTaskAdmission? Task,
-    DurableTaskExecutionState? Execution = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DurableTaskExecutionState? Execution = null);

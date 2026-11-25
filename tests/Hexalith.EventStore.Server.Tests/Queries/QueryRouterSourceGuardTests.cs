@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
@@ -18,6 +19,47 @@ namespace Hexalith.EventStore.Server.Tests.Queries;
 
 public sealed class QueryRouterSourceGuardTests
 {
+    [Theory]
+    [InlineData(ProjectionLifecyclePhase.Erasing, ProjectionLifecyclePhase.Erasing)]
+    [InlineData(ProjectionLifecyclePhase.Idle, ProjectionLifecyclePhase.Erasing)]
+    [InlineData(ProjectionLifecyclePhase.Erasing, ProjectionLifecyclePhase.Idle)]
+    public async Task ErasureSuppressesFreshnessAndValidatorsForOverlappingRead(
+        ProjectionLifecyclePhase before, ProjectionLifecyclePhase after)
+    {
+        const string route = "counter";
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { count = 1 }), route,
+                new QueryResponseMetadata(ETag: "producer-tag", IsNotModified: true, IsStale: false,
+                    ProjectionVersion: "version-1", WarningCodes: ["retained-warning"])
+                {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        lifecycle.ReadSnapshotAsync(Arg.Any<AggregateIdentity>(), route, Arg.Any<CancellationToken>())
+            .Returns(new ProjectionLifecycleSnapshot(before, 1), new ProjectionLifecycleSnapshot(after, before == after ? 1 : 2));
+        IProjectionSourceGuardDelivery guard = Substitute.For<IProjectionSourceGuardDelivery>();
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle, guard);
+
+        QueryRouterResult result = await router.RouteQueryAsync(
+            new SubmitQuery("tenant-a", "counter", "aggregate-1", "query-counter", [], "correlation-1", "user-1", ProjectionType: route))
+            .ConfigureAwait(true);
+
+        result.Success.ShouldBeTrue();
+        result.Payload.ShouldNotBeNull().GetProperty("count").GetInt32().ShouldBe(1);
+        QueryResponseMetadata metadata = result.Metadata.ShouldNotBeNull();
+        metadata.Provenance.ShouldBe(QueryResponseProvenance.Unknown);
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        metadata.ETag.ShouldBeNull();
+        metadata.IsNotModified.ShouldBeNull();
+        metadata.IsStale.ShouldBeNull();
+        metadata.ProjectionVersion.ShouldBeNull();
+        metadata.WarningCodes.ShouldBe(["retained-warning"]);
+        guard.ReceivedCalls().ShouldBeEmpty();
+        _ = await invoker.Received(1).InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(),
+            Arg.Any<CancellationToken>()).ConfigureAwait(true);
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]

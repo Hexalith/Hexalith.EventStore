@@ -1,5 +1,5 @@
 ---
-baseline_commit: afcc167ef277d9b95566e380228551037e4c3920
+baseline_commit: afcc167e0c539b09ecad978a58da2f756123f34e
 source_candidate_commit: 4fd0c34ff24c26dd6435f341eebe969a09bfc929
 approved_change: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
 reclassified_by: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-01.md

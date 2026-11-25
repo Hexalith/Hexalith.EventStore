@@ -12,4 +12,9 @@ namespace Hexalith.EventStore.Contracts.Commands;
 public record SubmitCommandResponse(
     string CorrelationId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] JsonElement? ResultPayload = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? MessageId = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? MessageId = null)
+{
+    /// <summary>Explains the absence of a result payload when command state is known.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ResultPayloadOmissionReason? ResultPayloadOmissionReason { get; init; }
+}

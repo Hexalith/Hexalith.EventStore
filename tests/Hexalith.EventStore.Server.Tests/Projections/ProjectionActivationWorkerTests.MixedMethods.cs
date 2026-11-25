@@ -1,6 +1,7 @@
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Routing;
+using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Tests.Routing;
 using Hexalith.EventStore.ServiceDefaults.Routing;
@@ -14,6 +15,46 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class ProjectionActivationWorkerTests
 {
+    [Fact]
+    public async Task MalformedNamedHeadRetainsDurableActivationUntilSourceCanBeRead()
+    {
+        using var fixture = new LegacyReplayProductionHarness();
+        await fixture.InitializeAsync(1);
+        fixture.UseOlderSource();
+        fixture.UseProductionNamedCoordinator(hasNamedRoute: true);
+        EventEnvelope head = fixture.Events.Single();
+        string eventKey = fixture.Identity.EventStreamKeyPrefix + head.SequenceNumber;
+        await fixture.SourceState.SetStateAsync(eventKey, head with { MessageId = " " });
+        await fixture.SourceState.SaveStateAsync();
+        ProjectionActivationWorkItem original = (await fixture.Outbox.GetAsync(fixture.Identity)).ShouldNotBeNull();
+        var authority = Substitute.For<IRouteCatalogAuthority>();
+        CommittedRouteCatalogSnapshot snapshot = MixedSnapshot("counter-named", includeLegacy: false);
+        authority.AcquireAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => new RouteCatalogDispatchLease(snapshot, () => Task.CompletedTask));
+        var options = new ProjectionDispatchOptions();
+        using var worker = new ProjectionActivationWorker(fixture.Outbox, fixture.CreateOrchestrator(authority),
+            Options.Create(options), fixture.Clock, catalogAuthority: authority);
+
+        await worker.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        ProjectionActivationWorkItem deferred = (await fixture.Outbox.GetAsync(fixture.Identity)).ShouldNotBeNull();
+        deferred.ActivationId.ShouldBe(original.ActivationId);
+        deferred.Revision.ShouldBe(original.Revision);
+        deferred.Attempt.ShouldBe(original.Attempt + 1);
+        (await fixture.NamedScheduler!.GetDueAsync(fixture.Clock.GetUtcNow().AddHours(1), 64)).ShouldBeEmpty();
+
+        // Restore the original committed head. The existing due item is sufficient to retry.
+        await fixture.SourceState.SetStateAsync(eventKey, head);
+        await fixture.SourceState.SaveStateAsync();
+        fixture.Clock.Advance(options.RetryBaseDelay);
+        await worker.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        (await fixture.Outbox.GetAsync(fixture.Identity)).ShouldBeNull();
+        ProjectionDeliveryRetryWorkItem retry = (await fixture.NamedScheduler.GetDueAsync(fixture.Clock.GetUtcNow().AddHours(1), 64))
+            .ShouldHaveSingleItem();
+        retry.HeadMessageId.ShouldBe(head.MessageId);
+    }
+
     [Fact]
     public async Task MixedDeliveryDoesNotBindAnActivationRearmedAfterNamedProofWasSampled()
     {
@@ -107,7 +148,7 @@ public sealed partial class ProjectionActivationWorkerTests
         finally { resume.TrySetResult(); await attempt.WaitAsync(TimeSpan.FromSeconds(5)); }
     }
 
-    private static CommittedRouteCatalogSnapshot MixedSnapshot(string namedOutput)
+    private static CommittedRouteCatalogSnapshot MixedSnapshot(string namedOutput, bool includeLegacy = true)
     {
         var fixture = new RouteCatalogTestFixture();
         RouteContractDeclaration legacy = fixture.Envelope.Declarations.Single(declaration => declaration.RouteId == "counter-projection");
@@ -119,8 +160,8 @@ public sealed partial class ProjectionActivationWorkerTests
         RouteCatalogEntry target = fixture.Envelope.Routes.Single(entry => entry.RouteId == legacy.RouteId);
         RouteCatalogEnvelope envelope = RouteCatalogCodec.Seal(fixture.Envelope with
         {
-            Declarations = [.. fixture.Envelope.Declarations, named],
-            Routes = [.. fixture.Envelope.Routes, target with { RouteId = named.RouteId,
+            Declarations = [.. fixture.Envelope.Declarations.Where(declaration => includeLegacy || declaration != legacy), named],
+            Routes = [.. fixture.Envelope.Routes.Where(route => includeLegacy || route != target), target with { RouteId = named.RouteId,
                 DeclarationDigest = RouteCatalogCodec.ComputeDeclarationDigest(named), Method = "project/v2" }],
         });
         return new(RouteCatalogCodec.Encode(envelope), RouteCatalogCodec.ComputeRootDigest(envelope), 1);

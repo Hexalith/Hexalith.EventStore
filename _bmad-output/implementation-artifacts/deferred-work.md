@@ -771,14 +771,16 @@ resolution: Pin the activation revision before checking guarded work and retain 
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:199
 reason: The query lifecycle overlay recognizes `Rebuilding` but leaves an in-flight `Erasing` projection indistinguishable from its prior payload state. Define and expose the pre-existing erase-query visibility policy in the erasure lifecycle scope. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:199`]
-status: open
+status: done 2026-11-25
+resolution: Queries overlapping observed erasure retain their payload with Unknown provenance and lifecycle. Producer and fallback validators and freshness evidence are suppressed.
 
 ### DW-116: A blank head-event `MessageId` logs and returns from named dispatch without persisting retry work, so an aggregate with no later trigger can remain unprojected indefinitely. Add a durable malformed-identity disposition or recovery trigger.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:143
 reason: A blank head-event `MessageId` logs and returns from named dispatch without persisting retry work, so an aggregate with no later trigger can remain unprojected indefinitely. Add a durable malformed-identity disposition or recovery trigger. [`src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:143`]
-status: open
+status: done 2026-11-25
+resolution: Malformed named dispatch refuses the handoff. The durable activation is deferred and retried against the restored committed head without another command.
 
 ### DW-117: Async projection-handler convention discovery is all-or-nothing: the presence of one manual `IAsyncDomainProjectionHandler` registration disables discovery of every other implementation. Deduplicate per implementation instead of suppressing the full scan.
 
@@ -792,7 +794,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Actors/IProjectionLifecycleActor.cs:12
 reason: Lifecycle actor source files contain multiple enum, record, interface, and persisted-state declarations despite the repository's one-type-per-file rule. Split the pre-existing declarations during a scoped structural cleanup. [`src/Hexalith.EventStore.Server/Actors/IProjectionLifecycleActor.cs:12`]
-status: open
+status: done 2026-11-25
+resolution: Moved each lifecycle enum and request or response record to its own file, preserving the actor contract and serialization.
 
 ### DW-119: Operational-index metadata request binding can deserialize `Domains` as null and then dereference `request.Domains.Count`, returning an internal error instead of a bounded malformed-request response. Add null-safe request validation.
 
@@ -805,7 +808,8 @@ archived: 2026-11-23
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Actors/ProjectionLifecycleActor.cs:68
 reason: Erase lifecycle admission does not reject blank operation/digest values, and an unknown persisted phase can fall through to a fresh erase admission. Validate erase identity and fail closed on undefined lifecycle phases. [`src/Hexalith.EventStore.Server/Actors/ProjectionLifecycleActor.cs:68`]
-status: open
+status: done 2026-11-25
+resolution: Erase admission requires nonblank operation and manifest identities. Undefined persisted phases refuse admission without rewriting the record or epoch.
 
 ### DW-121: Make dev-auto review finalization conditional on fail-closed artifact decisions instead of unconditionally marking every reviewed spec `done`.
 
@@ -837,14 +841,16 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 3-1-re-tier-live-sidecar-tests-from-release-gate.md (2026-07-18)"), 2026-08-30
 location: _bmad-output/project-context.md:65
 reason: Reconcile the stale `Hexalith.EventStore.Server.Tests` CA2007 baseline exception in `_bmad-output/project-context.md:65`. The exception predates this review, while Story 3.1 now records an unfiltered Release run with 2,626 passed, 25 skipped, and no failure; leaving the old statement active can cause future agents to exclude a blocking deterministic lane from baseline validation.
-status: open
+status: done 2026-11-25
+resolution: Removed the stale CA2007 exception and documented Server.Tests as part of the baseline.
 
 ### DW-126: Reconfirmed the existing Story 1.19 erase-query visibility gap at candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`: a stable `Erasing` lifecycle falls through `QueryRouter.ApplyPersistedLifecycle`, so producer `Current` can remain projection-confirmed and mutation-eligible while read-model targets are being erased. The policy choice (for example `Unknown`, `Unavailable`, or rejecting the query) remains intentionally deferred under the earlier Story 1.19 ledger entry; this review adds no duplicate implementation owner.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-11-complete-projection-freshness-lifecycle (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:248
 reason: Reconfirmed the existing Story 1.19 erase-query visibility gap at candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`: a stable `Erasing` lifecycle falls through `QueryRouter.ApplyPersistedLifecycle`, so producer `Current` can remain projection-confirmed and mutation-eligible while read-model targets are being erased. The policy choice (for example `Unknown`, `Unavailable`, or rejecting the query) remains intentionally deferred under the earlier Story 1.19 ledger entry; this review adds no duplicate implementation owner. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:248`]
-status: open
+status: done 2026-11-25
+resolution: Duplicate of DW-115. The erasure query visibility change closes both reports.
 
 ### DW-127: Commit `ba203bde` is unbuildable in isolation: it converts the only local definition of `Microsoft.Extensions.TimeProvider.Testing` to `PackageVersion Update` while `references/Hexalith.Builds` was still pinned at `edbaeaed`, whose central props do not define the package, so CPM restore of `Server.Tests`, `Server.LiveSidecar.Tests`, and `Admin.Server.Tests` fails with NU1010 at that commit; coherence arrives only with `ea6ce49b`'s Builds bump to `cfafcbf1`. Bisect/rollback hazard only — history is already on `main`, so no rewrite; note it when bisecting across 2026-07-17.
 
@@ -879,7 +885,8 @@ decision: 2026-08-31 Implement verified change — Implement the concrete change
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18)"), 2026-08-30
 location: tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:21,208
 reason: `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:21,208` attributes the domain-centric rule to a CLAUDE.md "Domain-Module Authoring" section that does not exist (the rule lives in `references/Hexalith.AI.Tools/hexalith-llm-instructions.md`); pre-existing at baseline `a9718a21`, the guardrail itself enforces the rule on code and is unaffected — fix the citation next time the test file is opened.
-status: open
+status: done 2026-11-25
+resolution: Point the guardrail documentation and failure message to the shared Hexalith LLM baseline that defines domain-module authoring.
 
 ### DW-132: The Story 1.20 exact-membership literal `["jpiquot"]`×4 now exists in four synchronized places (both packet validators, spec Verification command 2, the allowlist itself), reducing the retained key-set/non-empty/uniqueness predicates to dead code, and the evidence-commit-A validator still lacks the login-format regex the candidate-gate validator carries. Consolidate (single source or documented sync list) at the next approved gate-logic change, together with the ledgered regex tightening above.
 
@@ -925,14 +932,16 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: @commitlint/*
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md` summary: Add durable process-level commitlint behavior fixtures for valid, subject-case, header-length, and body-line policies. evidence: The existing Contracts test pins the three-line config text but does not execute commitlint, so a future grouped `@commitlint/*` update could change delegated defaults without the regression guard detecting it.
-status: open
+status: done 2026-11-25
+resolution: Exercise the pinned commitlint CLI for accepted messages and subject-case, header-length, and body-length failures with npm run test:commitlint.
 
 ### DW-139: Reconcile the documented literal lowercase-start rule with commitlint's weaker default `subject-case` behavior.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md` summary: Reconcile the documented literal lowercase-start rule with commitlint's weaker default `subject-case` behavior. evidence: The restored default rejects `fix: Update status` but accepts descriptions beginning with digits or symbols before uppercase text, despite shared guidance requiring the description to start with a lowercase letter.
-status: open
+status: done 2026-11-25
+resolution: Require a lowercase Unicode letter at the start of the conventional description through parser options used by the pinned CLI and the shared pull request title check.
 
 ### DW-140: RESOLVED 2026-07-20 — the repository excludes `chore` and uses specific non-release types, including `build(deps)` for automated dependency maintenance.
 
@@ -945,49 +954,56 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: PackageVersion
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd-2.md` summary: Add an unoverridden Release property test that binds `Version` and `PackageVersion` to the repository release version. evidence: The external `Hexalith.Builds` gitlink change updates `HexalithEventStoreVersion` from 3.74.0 to 3.75.0, while current tests do not assert the default evaluated version and CI package validation overrides it explicitly, allowing a stale catalog value to pass.
-status: open
+status: done 2026-11-25
+resolution: Evaluate the Contracts project in Release with inherited version overrides removed and compare Version and PackageVersion with the default in the pinned Builds catalog.
 
 ### DW-142: Correct the nonexistent baseline SHA recorded by the Story 4.8 implementation artifact.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: _bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md:2
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29720431798-fix-ci-cd.md` summary: Correct the nonexistent baseline SHA recorded by the Story 4.8 implementation artifact. evidence: `_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md:2` records `afcc167ef277...`, while the valid baseline is `afcc167e0c539b09ecad978a58da2f756123f34e`; this originated in commit `73140382` and is unrelated to the CI gitlink repair.
-status: open
+status: done 2026-11-25
+resolution: Correct the Story 4.8 baseline to the verified parent of the commit that introduced the artifact.
 
 ### DW-143: `idempotency-conflict` and `idempotency-key-expired` error-catalog entries in `ErrorReferenceEndpoints.ErrorModels` omit `detail`/`reasonCode` example fields that their real exception handlers (`IdempotencyConflictExceptionHandler`, `IdempotencyKeyExpiredExceptionHandler`) actually set.
 
 origin: migrated from legacy ledger ("Deferred from: idempotency result-payload gating CI fix (2026-07-20)"), 2026-08-30
 location: ErrorReferenceEndpoints.ErrorModels
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md` summary: `idempotency-conflict` and `idempotency-key-expired` error-catalog entries in `ErrorReferenceEndpoints.ErrorModels` omit `detail`/`reasonCode` example fields that their real exception handlers (`IdempotencyConflictExceptionHandler`, `IdempotencyKeyExpiredExceptionHandler`) actually set. evidence: Adversarial review of the CI fix -- pre-existing gap unrelated to today's regression; the new `idempotency-admission-failure` entry added by this fix includes both fields (matching its handler), highlighting the sibling entries' inconsistency.
-status: open
+status: done 2026-11-25
+resolution: Publish the runtime detail and reasonCode fields in both idempotency examples and verify them through the JSON catalog endpoint.
 
 ### DW-144: No test verifies `ErrorReferenceEndpoints.ErrorModels` example content (status code, fields) against what each real `IExceptionHandler` actually emits at runtime -- only slug presence/absence is asserted.
 
 origin: migrated from legacy ledger ("Deferred from: idempotency result-payload gating CI fix (2026-07-20)"), 2026-08-30
 location: ErrorReferenceEndpoints.ErrorModels
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md` summary: No test verifies `ErrorReferenceEndpoints.ErrorModels` example content (status code, fields) against what each real `IExceptionHandler` actually emits at runtime -- only slug presence/absence is asserted. evidence: Adversarial review of the CI fix -- `AllProblemTypeUris_HaveCorrespondingErrorModel` / `AllErrorModels_HaveCorrespondingProblemTypeUri` would not have caught this fix's own status-code simplification (503 documented as primary while `idempotency_outcome_unknown` returns 409), a class of drift the catalog exists to prevent.
-status: open
+status: done 2026-11-25
+resolution: Compare catalog examples with the ordered gateway exception handlers, add documented query and idempotency response variants, and verify HTML and JSON rendering.
 
 ### DW-145: `SubmitCommandResult` has no field distinguishing why `ResultPayload` is null (still in-flight, domain-rejected, or a durable non-retryable `PublishFailed`) -- all three look identical to callers from the response body alone.
 
 origin: migrated from legacy ledger ("Deferred from: idempotency result-payload gating CI fix (2026-07-20)"), 2026-08-30
 location: SubmitCommandResult
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md` summary: `SubmitCommandResult` has no field distinguishing why `ResultPayload` is null (still in-flight, domain-rejected, or a durable non-retryable `PublishFailed`) -- all three look identical to callers from the response body alone. evidence: Adversarial review of the CI fix -- pre-existing API design gap in the exact code path this fix restores gating for; not caused by this change.
-status: open
+status: done 2026-11-25
+resolution: Expose an optional payload omission reason for known accepted outcomes, including pending admission and confirmed publication failure. Preserve typed domain rejection and verify the original execution identity on replay.
 
 ### DW-146: `docs/reference/command-api.md` § "Stable Idempotency Outcomes" and `ErrorReferenceEndpoints.ErrorModels` are two independently maintained sources of truth for the same idempotency-admission failure taxonomy, with no cross-link between them.
 
 origin: migrated from legacy ledger ("Deferred from: idempotency result-payload gating CI fix (2026-07-20)"), 2026-08-30
 location: docs/reference/command-api.md
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md` summary: `docs/reference/command-api.md` § "Stable Idempotency Outcomes" and `ErrorReferenceEndpoints.ErrorModels` are two independently maintained sources of truth for the same idempotency-admission failure taxonomy, with no cross-link between them. evidence: Adversarial review of the CI fix -- introduced when today's `19465ef8` commit added `ProblemTypeUris.IdempotencyAdmissionFailure` and the docs table without updating the error catalog; this fix closes the catalog gap but does not unify the two sources.
-status: open
+status: done 2026-11-25
+resolution: Link the HTML and JSON gateway catalogs to the canonical command API table, link the table back through the published error reference, and document the missing admission outcomes.
 
 ### DW-147: No unit test asserts that AggregateActor's several `ResultPayloadWithheld` formulas (`CreatePublishFailedResult` and the terminal-completion/concurrency-conflict paths) produce the correct value for each terminal branch.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-gh-29740868410-fix-ci-cd.md (2026-07-20)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29740868410-fix-ci-cd.md` summary: No unit test asserts that AggregateActor's several `ResultPayloadWithheld` formulas (`CreatePublishFailedResult` and the terminal-completion/concurrency-conflict paths) produce the correct value for each terminal branch. evidence: PR #319 (`6945714b`) made `CommandProcessingResult.ResultPayloadWithheld` the sole authority for whether `SubmitCommandHandler` returns a command's result payload, but only the consumer side (`SubmitCommandHandlerResultPayloadTests`) has coverage; the producer side in `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (around lines 2018, 2264, 2297, 2358) has no test proving its withheld formula is correct per branch, so a regression there would go undetected by any current suite.
-status: open
+status: done 2026-11-25
+resolution: Keep payload withholding on publication failure even when the broker has no diagnostic message. Cover returned and persisted outcomes for completion, rejections, conflicts, and fresh or resumed publication failures.
 
 ### DW-148: `SubmitCommandHandler.Log.ResultPayloadDropped`'s message text ("...because final command status was not Completed...") is stale under the flag-driven withholding logic and can be logged even when the reported `FinalStatus` is `Completed`.
 
@@ -1054,7 +1070,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: Story 2.10 Tier 1 logging regression unblock (2026-07-21)"), 2026-08-30
 location: InformationLevelOnly_TracingChainStillComplete
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-10-unblock-server-logging-regressions.md` summary: Make `InformationLevelOnly_TracingChainStillComplete` exercise an actor logger that actually disables Debug logging instead of capturing every level and filtering the resulting list afterward. evidence: Review confirmed the pre-existing test's `TestLogger<T>.IsEnabled` always returns true, so it cannot detect incorrect runtime gating through `IsEnabled(Debug)` even though its post-capture assertions exclude Debug entries; this limitation predates and is not caused by the pooled-state capture correction.
-status: open
+status: done 2026-11-25
+resolution: Set the actor capture logger minimum to Information and verify the correlation chain without filtering debug output afterward.
 
 ### DW-158: Validate `DomainServiceOptions.MaxEventsPerResult` and `MaxEventSizeBytes` bounds during startup instead of allowing zero or negative limits to reject otherwise valid responses at invocation time.
 
@@ -1094,7 +1111,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-5-dedicated-external-tenants-api-host (2026-07-26)"), 2026-08-30
 location: src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:43-48
 reason: source_spec: `_bmad-output/implementation-artifacts/2-5-dedicated-external-tenants-api-host.md` summary: [MEDIUM] AD-18 is opt-in and fail-open at the platform seam — `AddEventStoreGatewayClient` registers no routing-header handler, so a host that omits the separate `AddEventStoreDaprServiceInvocation` call silently gets no `dapr-app-id`/`dapr-api-token` ownership with no compile-time error, no startup validation and no runtime diagnostic. Same fail-open shape as the `ApiScope` trap already on record. Harden the platform so the seam fails closed (or emits a startup diagnostic) rather than relying on per-host convention plus source-text guard tests. evidence: Story 2.5 code review (blind-hunter + acceptance-auditor) [`src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:43-48` registers only `ICommandStatusLocationBuilder` and the typed client; the handler is added exclusively at line 63]. Owner decision 2026-07-26: out of Story 2.5 scope (that story reviews the Tenants host boundary, not platform design) — carry as a dedicated Hexalith.EventStore platform hardening story. Note `project-context.md:46` currently misstates this wiring as "wired by `AddEventStoreGatewayClient`"; that text is corrected under Story 2.5.
-status: open
+status: done 2026-11-25
+resolution: Validate the typed gateway HTTP pipeline when it uses the configured Dapr endpoint and warn for the ambiguous default local port. Verify fixed and dynamic registration and direct gateway compatibility.
 
 ### DW-164: [LOW] `SampleApiLaunchSettingsTests.ExtractBlock` matches an LF-only marker (`";\n\nif (security is not null)"`) against `src/Hexalith.EventStore.AppHost/Program.cs`, so the test fails on any working tree where that file is checked out or rewritten with CRLF line endings. Make the marker line-ending agnostic (normalize the text, or match on a CRLF-tolerant pattern) the way the sibling `TenantsApiLaunchSettingsTests` does with its `#endif` marker.
 
@@ -1273,7 +1291,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 3-1-re-tier-live-sidecar-tests-from-release-gate (2026-07-28)"), 2026-08-30
 location: Fixtures/DaprTestContainerCollection.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md` summary: [LOW] A tracked stale `.lscache` under `Server.Tests` still enumerates `Fixtures/DaprTestContainerCollection.cs` and `Fixtures/DaprTestContainerFixture.cs`, committed residue from the very re-tier this story certifies. The AC1 guard cannot see it. evidence: Story 3.1 closure code review (acceptance-auditor + blind-hunter), verified 2026-07-28 at `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj.lscache:185-187`. The file is tracked (`git ls-files` confirms) and last touched by `9bafe1af`, pre-split. `ReleasePackageManifestTests.cs:429-446` filters candidates to `.cs`/`.csproj` only, so the guard structurally cannot flag it; the story's AC1 evidence (filename search + `.cs` grep) has the same blind spot. Not compiled, so lane separation is unaffected. 34 `.lscache` files are tracked repo-wide, so removing one is a repo-wide convention decision rather than a story-scoped fix. Suggested durable fix: untrack `*.lscache` via `.gitignore`, or widen the guard's file filter.
-status: open
+status: done 2026-11-25
+resolution: Remove the tracked Server.Tests language-server cache that listed retired sidecar fixtures and ignore its locally regenerated copies.
 
 ### DW-191: [HIGH, FrontComposer-owned] The release-pin lockstep guard lives in a workflow that does not gate the release it protects. `CiGovernanceTests` carries `[Trait("Category","Governance")]`, which executes only in `quality.yml`; `release.yml` triggers on `workflow_run: workflows: [CI]` and neither needs nor triggers on Quality.
 

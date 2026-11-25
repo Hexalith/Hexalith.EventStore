@@ -5,7 +5,7 @@ story_key: 3-17-dapr-boundary-inventory-and-enforcement
 epic: '3'
 status: backlog
 created: 2026-10-05
-updated: 2026-11-01
+updated: 2026-11-25
 owner: EventStore architecture and packaging maintainer; Platform supplies infrastructure qualification
 supporting_requirements: [FR5, FR8, FR32, FR34, NFR12, NFR17]
 context:
@@ -93,3 +93,12 @@ Classifications must distinguish shipped runtime, public client transport, telem
 Build `tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj` individually and invoke its built executable; use xUnit v3 `-class`/`-method` filters for focused guard/evaluation work, then run the complete Contracts executable for the changed lane. Record exact evaluated MSBuild commands, property matrix, assets/compiled-input identities, fixture outcomes, and deterministic ordering. No test is implemented or claimed passed by this planning artifact.
 
 The guard must fail reproducibly on the declared negatives and identify its coverage denominator. If evaluation/restore or a required branch is environment-blocked, record the exact command/result and retain narrower evidence separately without suppressing that branch. Live/profile correctness and security/compatibility remain the owning stories' gates; a passing packaging guard cannot replace them.
+
+## Corrective Scope Authorization — 2026-11-25
+
+On 2026-11-25 the owner authorized this story's module-owned inventory and guard slice, AC1–AC6, as corrective work under AD-12 and PRD §0 ([sprint change proposal](../planning-artifacts/sprint-change-proposal-2026-11-25.md), edit P-6a, approved at `single-maintainer-attested` level).
+
+- **In scope:** AC1–AC6 as written, including static inventory rows for every reachable actor-state write path. Examples are the `IActorStateManager` paths that AggregateActor coordinates, raw Dapr actor-state HTTP and gRPC calls, generic state API aliases of the actor-state component, delete and TTL paths, and the governed erasure path. These rows are unqualified inputs to Story 4.16 AC2.
+- **Out of scope:** qualification of rows against a concrete Platform component configuration, which Platform owns; live alias exclusion on a Platform profile; marking any append-protection row qualified; and any new or broader exception without its own exact-content decision.
+- **Evidence:** under the 2026-10-23 policy, the commands, pass/fail counts, commit SHA and CI run link go in this spec. Paths under `_bmad-output/implementation-artifacts/evidence/story-3-17/` named in the tasks are recorded here instead. Negative fixtures must fail beside a positive control.
+- **Lifecycle:** the spec and tracker stay `backlog` until implementation starts. Append-protection rows stay unresolved until a qualified capability exists (Story 4.16, owner decision D1 path A).

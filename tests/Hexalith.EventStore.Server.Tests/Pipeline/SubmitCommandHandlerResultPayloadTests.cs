@@ -70,6 +70,63 @@ public class SubmitCommandHandlerResultPayloadTests {
         AssertSensitiveResultPayloadNotLogged(logs);
     }
 
+    [Theory]
+    [InlineData(CommandStatus.Received, null, ResultPayloadOmissionReason.InFlight)]
+    [InlineData(CommandStatus.Completed, null, null)]
+    [InlineData(CommandStatus.PublishFailed, true, ResultPayloadOmissionReason.InFlight)]
+    [InlineData(CommandStatus.PublishFailed, false, ResultPayloadOmissionReason.PublishFailed)]
+    [InlineData(CommandStatus.PublishFailed, null, null)]
+    public async Task Handle_MissingPayload_ExplainsVerifiedStatus(
+        CommandStatus status, bool? retryable, ResultPayloadOmissionReason? expectedReason)
+    {
+        var statusStore = Substitute.For<ICommandStatusStore>();
+        SubmitCommand command = CreateCommand();
+        _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
+            .Returns(CreateStatus(status, command) with { Retryable = retryable });
+
+        SubmitCommandResult result = await CreateHandler(statusStore, CreateRouter(null), [])
+            .Handle(command, CancellationToken.None);
+
+        result.ResultPayload.ShouldBeNull();
+        result.ResultPayloadOmissionReason.ShouldBe(expectedReason);
+    }
+
+    [Fact]
+    public async Task Handle_MissingStatusAndPayload_DoesNotUseTheFallbackReceivedWrite()
+    {
+        var statusStore = Substitute.For<ICommandStatusStore>();
+        SubmitCommand command = CreateCommand();
+        _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
+            .Returns((CommandStatusRecord?)null);
+
+        SubmitCommandResult result = await CreateHandler(statusStore, CreateRouter(null), [])
+            .Handle(command, CancellationToken.None);
+
+        result.ResultPayloadOmissionReason.ShouldBeNull();
+        await statusStore.Received(1).WriteStatusAsync(
+            command.Tenant, command.MessageId,
+            Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.Received),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_MissingPayload_OmitsStatusFromAnotherExecution()
+    {
+        var statusStore = Substitute.For<ICommandStatusStore>();
+        SubmitCommand command = CreateCommand();
+        _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
+            .Returns(CreateStatus(CommandStatus.PublishFailed, command) with
+            {
+                CorrelationId = "another-execution",
+                Retryable = false,
+            });
+
+        SubmitCommandResult result = await CreateHandler(statusStore, CreateRouter(null), [])
+            .Handle(command, CancellationToken.None);
+
+        result.ResultPayloadOmissionReason.ShouldBeNull();
+    }
+
     [Fact]
     public async Task Handle_StatusReadFailure_DropsPayloadAndLogsReadFailureAndDropWarning() {
         // Arrange

@@ -26,6 +26,23 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class NamedProjectionDispatchCoordinatorTests {
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public async Task MalformedHeadFailsWithoutAcknowledgingNamedRetryHandoff(string headMessageId)
+    {
+        using var handler = new ProjectionDispatchHttpMessageHandler("{}");
+        var scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail"), handler, out _, out _, scheduler);
+
+        await Should.ThrowAsync<ProjectionDeliveryHistoryValidationException>(() => coordinator.TryDispatchHeadAsync(
+            Identity, Registration(), 1, headMessageId, [ProjectionEvent(1)], TestContext.Current.CancellationToken));
+
+        handler.Requests.ShouldBeEmpty();
+        _ = await scheduler.DidNotReceiveWithAnyArgs().ScheduleAsync(default!, default);
+    }
+
     [Fact]
     public async Task DurableRetryDoesNotScheduleWorkAgainstAReplacementCatalog()
     {

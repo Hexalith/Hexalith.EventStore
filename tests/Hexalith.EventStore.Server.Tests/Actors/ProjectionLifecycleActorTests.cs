@@ -22,6 +22,42 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// state machine and its per-turn persistence.
 /// </summary>
 public class ProjectionLifecycleActorTests {
+    [Theory]
+    [InlineData(null, "digest", "OperationId")]
+    [InlineData(" \t", "digest", "OperationId")]
+    [InlineData("operation", "", "ManifestDigest")]
+    [InlineData("operation", " \t", "ManifestDigest")]
+    public async Task BeginEraseAsync_InvalidIdentityDoesNotPersistLifecycle(string? operationId, string digest, string parameter)
+    {
+        (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
+
+        ArgumentException exception = await Should.ThrowAsync<ArgumentException>(() =>
+            actor.BeginEraseAsync(new ProjectionEraseBeginRequest(operationId!, digest)));
+
+        exception.ParamName.ShouldBe(parameter);
+        stateManager.CommittedState.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task BeginEraseAsync_UnknownPersistedPhaseRefusesWithoutOverwritingState()
+    {
+        (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
+        var futureState = new ProjectionLifecycleActorState(
+            (ProjectionLifecyclePhase)99, "original-operation", "original-digest",
+            new Dictionary<string, string>(StringComparer.Ordinal), Revision: 7);
+        await stateManager.SetStateAsync(StateKey, futureState);
+        await stateManager.SetStateAsync(EpochStateKey, futureState.Revision);
+        await stateManager.SaveStateAsync();
+
+        ProjectionEraseAdmission admission = await actor.BeginEraseAsync(
+            new ProjectionEraseBeginRequest("next-operation", "next-digest"));
+
+        admission.Kind.ShouldBe(ProjectionEraseAdmissionKind.Conflict);
+        admission.PerTargetOutcomes.ShouldBeEmpty();
+        PersistedState(stateManager).ShouldBe(futureState);
+        stateManager.CommittedState[EpochStateKey].ShouldBe(7L);
+    }
+
     [Fact]
     public async Task BeginEraseAsync_IdleAndFreshBeginNotAllowed_RefusesWithoutLeavingIdle() {
         (ProjectionLifecycleActor actor, _) = CreateActor();

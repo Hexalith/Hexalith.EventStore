@@ -94,3 +94,11 @@ CI, using its designated private runner, approval environment, two named secrets
 and exact owner-authority digest. Existing source, expiry, private-network,
 resource/identity and custody checks remain authoritative; CI never provisions
 Azure faults or synthesizes owner authority. See [CI routing](../ci.md).
+
+When a typed gateway client sends to the configured Dapr HTTP endpoint, the SDK
+requires its routing handler to run after all other request handlers. Register
+`AddEventStoreDaprServiceInvocation` after authentication and forwarding
+handlers. The client recognizes `DAPR_HTTP_ENDPOINT` and the loopback port
+selected by `DAPR_HTTP_PORT`. A loopback HTTP address on the default port 3500
+without either setting produces a warning because that address can also host a
+direct gateway.

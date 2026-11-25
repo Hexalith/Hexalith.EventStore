@@ -174,6 +174,7 @@ public class StateMachineIntegrationTests {
         result.Accepted.ShouldBeTrue();
         result.EventCount.ShouldBe(1);
         result.ResultPayload.ShouldBe(resultPayload);
+        result.ResultPayloadWithheld.ShouldBeFalse();
         checkpointedStates.ShouldContain(state => state.CurrentStage == CommandStatus.Processing);
         checkpointedStates.ShouldContain(state => state.CurrentStage == CommandStatus.EventsStored);
         checkpointedStates.ShouldContain(state => state.CurrentStage == CommandStatus.EventsPublished);
@@ -206,6 +207,7 @@ public class StateMachineIntegrationTests {
         result.Accepted.ShouldBeTrue();
         result.EventCount.ShouldBe(0);
         result.ResultPayload.ShouldBe(resultPayload);
+        result.ResultPayloadWithheld.ShouldBeFalse();
         checkpointedStates.ShouldAllBe(state => state.ResultPayload == null);
     }
 
@@ -226,6 +228,11 @@ public class StateMachineIntegrationTests {
         result.Accepted.ShouldBeFalse();
         _ = result.ErrorMessage.ShouldNotBeNull();
         result.ErrorMessage.ShouldContain("Domain rejection");
+        result.ResultPayloadWithheld.ShouldBeTrue();
+        await stateManager.Received().SetStateAsync(
+            Arg.Is<string>(key => key == "idempotency:" + envelope.MessageId),
+            Arg.Is<IdempotencyRecord>(record => record.ResultPayloadWithheld && record.ResultPayload == null),
+            Arg.Any<CancellationToken>());
 
         // EventsStored checkpoint includes rejection event type
         await stateManager.Received().SetStateAsync(
@@ -671,21 +678,27 @@ public class StateMachineIntegrationTests {
         await stateManager.Received().SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
-    public async Task ProcessCommand_PublishFailed_WithResultPayload_ScrubsCheckpointAndTerminalResult() {
+    [Theory]
+    [InlineData(false, "Broker down")]
+    [InlineData(false, null)]
+    [InlineData(false, " ")]
+    [InlineData(true, null)]
+    public async Task ProcessCommand_PublishFailed_ScrubsPayloadAndReportsWithholding(
+        bool domainRejected, string? failureReason) {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
         const string resultPayload = "{\"result\":{\"applied\":[\"Updated person details\"]},\"party\":{\"id\":\"agg-001\"}}";
-        var successResult = new PayloadDomainResult([new TestEvent()], resultPayload);
+        IEventPayload[] events = domainRejected ? [new TestRejectionEvent()] : [new TestEvent()];
+        var domainResult = new PayloadDomainResult(events, resultPayload);
         var checkpointedStates = new List<PipelineState>();
-        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(domainResult);
         _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>(),
             Arg.Any<bool>())
-            .Returns(new EventPublishResult(false, 0, "Broker down"));
+            .Returns(new EventPublishResult(false, 0, failureReason));
         _ = stateManager.SetStateAsync(
             Arg.Any<string>(),
             Arg.Any<PipelineState>(),
@@ -698,9 +711,14 @@ public class StateMachineIntegrationTests {
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        result.Accepted.ShouldBeTrue();
+        result.Accepted.ShouldBe(!domainRejected);
         result.EventCount.ShouldBe(1);
         result.ResultPayload.ShouldBeNull();
+        result.ResultPayloadWithheld.ShouldBeTrue();
+        await stateManager.Received().SetStateAsync(
+            Arg.Is<string>(key => key == "idempotency:" + envelope.MessageId),
+            Arg.Is<IdempotencyRecord>(record => record.ResultPayloadWithheld && record.ResultPayload == null),
+            Arg.Any<CancellationToken>());
         checkpointedStates.ShouldContain(state => state.CurrentStage == CommandStatus.PublishFailed);
         checkpointedStates.ShouldAllBe(state => state.ResultPayload == null);
     }

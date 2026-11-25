@@ -551,16 +551,15 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
         if (mappedOnly && !await SupportsMappedOnlyStreamedDeliveryAsync(identity, registration,
             cancellationToken).ConfigureAwait(false)) return false;
         if (string.IsNullOrWhiteSpace(headMessageId)) {
-            // The stable dispatch identity derives from the head event's message id. Without it we
-            // cannot form a valid work item; this domain is v2-owned, so defer rather than fall
-            // through to v1. A later delivery trigger with a valid head reconciles this aggregate.
+            // Without a stable dispatch ID, the aggregate's durable activation must remain
+            // pending. Report failure so the owner can defer it without acknowledging a handoff.
             Log.DispatchDeferred(
                 logger,
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
                 ProjectionDispatchReasonCodes.MalformedOutcome);
-            return true;
+            throw new ProjectionDeliveryHistoryValidationException("Named delivery requires a stable head message identity.");
         }
 
         DateTimeOffset now = _timeProvider.GetUtcNow();

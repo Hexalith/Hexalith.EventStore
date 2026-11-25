@@ -60,6 +60,7 @@ The [investigation](investigations/story-2-14-code-map.md) gives paths/tests. Re
 - [x] `M/src/Hexalith.McpCli.Core/`, `M/src/Hexalith.McpCli.Abstractions/`, `M/tests/` — declare operation platform scope, reject public `system`, and test exact forwarding and conflict refusals.
 - [x] `T/src/Hexalith.Tenants.Contracts/Routing/TenantCatalogDeclarations.cs`, `T/src/` investigation paths — declare read scopes; migrate API, UI, bootstrap, authority, McpCli; preserve identities/audits.
 - [ ] `tests/`, `T/tests/`, `.github/workflows/integration.yml`, `T/.github/workflows/ci.yml` — run matrix and Dapr-path legacy readback in CI.
+- [ ] `tools/phase_4_story_2_14.py`, `tools/phase_4_story_completion.py`, `tools/tests/` — provide the NFR2 story-completion adapter, registered in `tools/phase_4_story_completion.py`. It consumes the authenticated G-TENANT gate decision for the exact EventStore and Tenants subjects and refuses on a mismatched subject, a missing seal or a missing attestation, for both spec and tracker targets, with a positive control using synthetic platform responses. Added 2026-11-25 by the [sprint change proposal](../planning-artifacts/sprint-change-proposal-2026-11-25.md), edit P-12.
 
 **Acceptance Criteria:**
 - Given compiled hosts, when the matrix runs, then scope agrees and invalid input causes zero downstream work.

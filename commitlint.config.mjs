@@ -1,5 +1,17 @@
+import createConventionalPreset from 'conventional-changelog-conventionalcommits';
+
+const { parser } = createConventionalPreset();
+
 export default {
   extends: ['@commitlint/config-conventional'],
+  // Both the CLI and the shared PR title check use these parser options.
+  parserPreset: {
+    parserOpts: {
+      ...parser,
+      headerPattern: /^(\w*)(?:\((.*)\))?!?: (\p{Ll}.*)$/u,
+      breakingHeaderPattern: /^(\w*)(?:\((.*)\))?!: (\p{Ll}.*)$/u,
+    },
+  },
   rules: {
     'type-enum': [
       2,

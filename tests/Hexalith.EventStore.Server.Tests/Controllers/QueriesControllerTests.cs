@@ -6,10 +6,13 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Queries;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
 
 using MediatR;
@@ -22,6 +25,9 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
+
+using ProjectionLifecyclePhase = Hexalith.EventStore.Server.Actors.ProjectionLifecyclePhase;
+using ProjectionLifecycleSnapshot = Hexalith.EventStore.Server.Actors.ProjectionLifecycleSnapshot;
 
 namespace Hexalith.EventStore.Server.Tests.Controllers;
 
@@ -933,6 +939,40 @@ public partial class QueriesControllerTests {
         response.Metadata.ProjectionVersion.ShouldBeNull();
         response.Metadata.IsDegraded.ShouldBe(true);
         response.Metadata.WarningCodes.ShouldBe([QueryWarningCodes.DegradedSearch]);
+    }
+
+    [Fact]
+    public async Task Submit_ErasingProjectionReturnsPayloadWithoutValidator()
+    {
+        string matchingETag = GenerateTestETag();
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { data = 1 }), "orders",
+                new QueryResponseMetadata(ETag: matchingETag, ProjectionVersion: "v9", IsStale: false)
+                {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        lifecycle.ReadSnapshotAsync(Arg.Any<AggregateIdentity>(), "orders", Arg.Any<CancellationToken>())
+            .Returns(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Erasing, 2));
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => handler.Handle(call.Arg<SubmitQuery>(), call.Arg<CancellationToken>()));
+        IETagService eTagService = Substitute.For<IETagService>();
+        eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>()).Returns(matchingETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        IActionResult actionResult = await controller.Submit(
+            CreateTestRequest() with { ProjectionType = "orders" }, $"\"{matchingETag}\"", TestContext.Current.CancellationToken);
+
+        SubmitQueryResponse response = actionResult.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<SubmitQueryResponse>();
+        response.Payload.GetProperty("data").GetInt32().ShouldBe(1);
+        response.Metadata!.Provenance.ShouldBe(QueryResponseProvenance.Unknown);
+        response.Metadata.ProjectionVersion.ShouldBeNull();
+        controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
+        _ = await eTagService.DidNotReceiveWithAnyArgs().GetCurrentETagAsync(default!, default!, default);
     }
 
     [Fact]

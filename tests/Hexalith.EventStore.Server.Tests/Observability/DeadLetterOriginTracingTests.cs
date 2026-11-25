@@ -65,10 +65,11 @@ public class DeadLetterOriginTracingTests {
     }
 
     private static (AggregateActor Actor, IActorStateManager StateManager, List<LogEntry> LogEntries, IDomainServiceInvoker Invoker, FakeDeadLetterPublisher DeadLetterPublisher, ICommandStatusStore StatusStore)
-        CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
+        CreateActorWithFakeDeadLetter(
+            string actorId = "test-tenant:test-domain:agg-001", LogLevel minimumLevel = LogLevel.Trace) {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         var logEntries = new List<LogEntry>();
-        var logger = new TestLogger<AggregateActor>(logEntries);
+        var logger = new TestLogger<AggregateActor>(logEntries, minimumLevel);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
@@ -362,7 +363,7 @@ public class DeadLetterOriginTracingTests {
         // Arrange: Simulate production scenario where Debug logs are filtered
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, List<LogEntry> logEntries, IDomainServiceInvoker invoker, _, _) =
-            CreateActorWithFakeDeadLetter();
+            CreateActorWithFakeDeadLetter(minimumLevel: LogLevel.Information);
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
@@ -373,9 +374,9 @@ public class DeadLetterOriginTracingTests {
         _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Even with only Information+ logs, the tracing chain is complete
-        // Filter to Information level and above (production scenario)
+        logEntries.ShouldAllBe(entry => entry.Level >= LogLevel.Information);
         IReadOnlyList<LogEntry> infoAndAboveLogs = logEntries
-            .Where(e => e.Level >= LogLevel.Information && ContainsExactField(e.Message, "CorrelationId", correlationId))
+            .Where(e => ContainsExactField(e.Message, "CorrelationId", correlationId))
             .ToList();
 
         infoAndAboveLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Processing"));

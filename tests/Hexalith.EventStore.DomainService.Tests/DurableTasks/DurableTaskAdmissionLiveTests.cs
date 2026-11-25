@@ -4,8 +4,8 @@ using Hexalith.EventStore.Client.Projections;
 
 namespace Hexalith.EventStore.DomainService.Tests.DurableTasks;
 
-/// <summary>Exercises the admission store against two sidecars connected to a private persistent provider.</summary>
-public sealed class DurableTaskAdmissionLiveTests
+/// <summary>Exercises admission and recovery against two sidecars connected to a private persistent provider.</summary>
+public sealed partial class DurableTaskAdmissionLiveTests
 {
     private const string Component = "g1-task-state";
 

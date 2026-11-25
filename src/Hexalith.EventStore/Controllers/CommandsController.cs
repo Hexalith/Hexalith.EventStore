@@ -365,7 +365,10 @@ public class CommandsController(
         return Accepted(new SubmitCommandResponse(
             result.CorrelationId,
             ParseOptionalResultPayload(result.ResultPayload, result.CorrelationId, logger),
-            statusKey));
+            statusKey)
+        {
+            ResultPayloadOmissionReason = result.ResultPayloadOmissionReason,
+        });
     }
 
     private static JsonElement? ParseOptionalResultPayload(string? resultPayload, string correlationId, ILogger logger) {

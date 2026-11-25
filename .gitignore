@@ -480,3 +480,6 @@ _bmad/render/
 # scripts/check-committed-files.sh (pre-commit hook and CI) also rejects force-added paths.
 _bmad-output/**/evidence/
 docs/evidence/
+
+# Local C# language-server cache for the server test project.
+/tests/Hexalith.EventStore.Server.Tests/*.lscache

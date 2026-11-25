@@ -368,8 +368,6 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
             if (!releasedCompatibility && !sourceGuardHandledNamed && namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false }) {
                 try {
-                    if (string.IsNullOrWhiteSpace(head.MessageId))
-                        throw new ProjectionDeliveryHistoryValidationException("Named delivery requires a stable head message identity.");
                     namedDispatchOwned = await namedProjectionDispatchCoordinator
                         .TryDispatchAsync(
                             identity,

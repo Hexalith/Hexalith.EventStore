@@ -194,15 +194,10 @@ public partial class ProjectionLifecycleActor(
     /// <inheritdoc/>
     public async Task<ProjectionEraseAdmission> BeginEraseAsync(ProjectionEraseBeginRequest request) {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId, nameof(request.OperationId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.ManifestDigest, nameof(request.ManifestDigest));
 
         ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
-
-        if (state.Phase is ProjectionLifecyclePhase.Rebuilding or ProjectionLifecyclePhase.Delivering) {
-            Log.EraseConflict(logger, Host.Id.GetId(), request.OperationId, state.OperationId ?? string.Empty);
-            return new ProjectionEraseAdmission(
-                ProjectionEraseAdmissionKind.Conflict,
-                new Dictionary<string, string>(StringComparer.Ordinal));
-        }
 
         if (state.Phase == ProjectionLifecyclePhase.Erasing) {
             if (string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
@@ -220,7 +215,9 @@ public partial class ProjectionLifecycleActor(
                     ProjectionEraseAdmissionKind.Resume,
                     new Dictionary<string, string>(state.PerTargetOutcomes, StringComparer.Ordinal));
             }
+        }
 
+        if (state.Phase != ProjectionLifecyclePhase.Idle) {
             Log.EraseConflict(logger, Host.Id.GetId(), request.OperationId, state.OperationId ?? string.Empty);
             return new ProjectionEraseAdmission(
                 ProjectionEraseAdmissionKind.Conflict,

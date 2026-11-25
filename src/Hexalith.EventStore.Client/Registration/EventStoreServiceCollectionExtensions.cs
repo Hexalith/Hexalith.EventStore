@@ -14,6 +14,7 @@ using Hexalith.EventStore.Client.Projections;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Client.Registration;
@@ -42,12 +43,15 @@ public static class EventStoreServiceCollectionExtensions {
         // opt into absolute mode with AddEventStoreCommandStatusLocation.
         services.TryAddSingleton<ICommandStatusLocationBuilder, CommandStatusLocationBuilder>();
 
-        return services.AddHttpClient<IEventStoreGatewayClient, EventStoreGatewayClient>((serviceProvider, httpClient) => {
+        IHttpClientBuilder client = services.AddHttpClient<IEventStoreGatewayClient, EventStoreGatewayClient>(nameof(IEventStoreGatewayClient), (serviceProvider, httpClient) => {
             EventStoreGatewayClientOptions options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<EventStoreGatewayClientOptions>>().Value;
             if (options.BaseAddress is not null) {
                 httpClient.BaseAddress = options.BaseAddress;
             }
         });
+        // The factory's outer logging filter appends its transport logger after the application chain.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, GatewayDaprRoutingFilter>());
+        return client;
     }
 
     /// <summary>

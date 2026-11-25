@@ -36,11 +36,3 @@ public record SubmitCommand(
     /// <summary>Redacts gateway-only claims and payload from diagnostics.</summary>
     public override string ToString() => $"SubmitCommand {{ MessageId = {MessageId}, Tenant = {Tenant}, Domain = {Domain}, AggregateId = {AggregateId}, CommandType = {CommandType}, Payload = [REDACTED], HumanAuthority = [REDACTED] }}";
 }
-
-/// <summary>
-/// Result of processing a <see cref="SubmitCommand"/>.
-/// </summary>
-public record SubmitCommandResult(
-    string CorrelationId,
-    string? ResultPayload = null,
-    string? MessageId = null);
