@@ -261,14 +261,19 @@ public sealed class DurableTaskAdmission(
         return await _authorization.AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ReadModelEntry<DurableTaskAdmissionState>> ReadAsync(
-        DurableTaskScope scope, string key, CancellationToken cancellationToken)
+    /// <summary>Reads and validates the shared admission and execution row.</summary>
+    internal static async Task<ReadModelEntry<DurableTaskAdmissionState>> ReadAsync(
+        IReadModelStore store, string storeName, DurableTaskScope scope, string key, CancellationToken cancellationToken)
     {
-        ReadModelEntry<DurableTaskAdmissionState> entry = await _store
-            .GetAsync<DurableTaskAdmissionState>(_storeName, key, cancellationToken).ConfigureAwait(false);
+        ReadModelEntry<DurableTaskAdmissionState> entry = await store
+            .GetAsync<DurableTaskAdmissionState>(storeName, key, cancellationToken).ConfigureAwait(false);
         EnsureConsistent(entry, scope);
         return entry;
     }
+
+    private Task<ReadModelEntry<DurableTaskAdmissionState>> ReadAsync(
+        DurableTaskScope scope, string key, CancellationToken cancellationToken)
+        => ReadAsync(_store, _storeName, scope, key, cancellationToken);
 
     private static void EnsureConsistent(ReadModelEntry<DurableTaskAdmissionState> entry, DurableTaskScope scope)
     {
@@ -307,7 +312,8 @@ public sealed class DurableTaskAdmission(
             && CryptographicOperations.FixedTimeEquals(
                 Convert.FromHexString(state.TokenSha256), SHA256.HashData(Convert.FromHexString(token!)));
 
-    private static string ValidateAndGetKey(DurableTaskScope scope, string requestSha256)
+    /// <summary>Validates the original scope and intent and returns their admission row key.</summary>
+    internal static string ValidateAndGetKey(DurableTaskScope scope, string requestSha256)
     {
         ArgumentNullException.ThrowIfNull(scope);
         if (!IsScopedValue(scope.TenantId) || !IsScopedValue(scope.ActorId)
@@ -329,8 +335,10 @@ public sealed class DurableTaskAdmission(
 
     private static bool IsScopedValue(string value) => !string.IsNullOrWhiteSpace(value) && value.Length <= 256;
 
-    private static bool IsSha256(string? value)
+    /// <summary>Checks for a canonical lowercase SHA-256 digest.</summary>
+    internal static bool IsSha256(string? value)
         => value is { Length: 64 } && value.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f');
 
-    private static string Hash(ReadOnlySpan<byte> bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
+    /// <summary>Computes a canonical lowercase SHA-256 digest.</summary>
+    internal static string Hash(ReadOnlySpan<byte> bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 }

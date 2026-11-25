@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.EventStore.DomainService.DurableTasks;
 
 /// <summary>The execution state retained on the admission row.</summary>
@@ -5,7 +7,13 @@ namespace Hexalith.EventStore.DomainService.DurableTasks;
 /// <param name="Owner">The identity of the worker lease, when held.</param>
 /// <param name="ExpiresAt">The exclusive expiry of the worker lease.</param>
 /// <param name="Progress">The lifecycle state, checkpoint and pending effect state.</param>
-internal sealed record DurableTaskExecutionState(long Fence, string? Owner, DateTimeOffset? ExpiresAt, DurableTaskProgress Progress)
+/// <param name="PreparedStep">The named owner step prepared before the first submission, when recovery retains it.</param>
+internal sealed record DurableTaskExecutionState(
+    long Fence,
+    string? Owner,
+    DateTimeOffset? ExpiresAt,
+    DurableTaskProgress Progress,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DurableTaskStep? PreparedStep = null)
 {
     /// <summary>Progress of an admitted task before any lease.</summary>
     internal static DurableTaskProgress InitialProgress { get; } = new([], false, DurableTaskStatus.Pending);
