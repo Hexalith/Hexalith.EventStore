@@ -74,6 +74,34 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Fact]
+    public void SemanticReleaseScopesBothPublicationChannelsToEventStorePackages()
+    {
+        using JsonDocument configuration = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(FindRepositoryRoot(), ".releaserc.json")));
+        JsonElement[] pluginConfigurations = configuration.RootElement.GetProperty("plugins").EnumerateArray()
+            .Where(plugin => plugin.ValueKind == JsonValueKind.Array)
+            .ToArray();
+
+        const string packageGlob = "nupkgs/Hexalith.EventStore.*.nupkg";
+        JsonElement github = pluginConfigurations.Single(plugin => plugin[0].GetString() == "@semantic-release/github")[1];
+        github.GetProperty("assets").EnumerateArray().Select(asset => asset.GetString()).ShouldBe(new[] { packageGlob });
+
+        JsonElement exec = pluginConfigurations.Single(plugin => plugin[0].GetString() == "@semantic-release/exec")[1];
+        string publishCommand = exec.GetProperty("publishCmd").GetString().ShouldNotBeNull();
+        Regex.Matches(publishCommand, """\bdotnet\s+nuget\s+push\s+("[^"]+"|\S+)""")
+            .Select(match => match.Groups[1].Value)
+            .ShouldBe(new[] { $"\"./{packageGlob}\"" });
+
+        string prepareCommand = exec.GetProperty("prepareCmd").GetString().ShouldNotBeNull();
+        int pack = prepareCommand.IndexOf("python3 tools/pack-release-packages.py ", StringComparison.Ordinal);
+        int validate = prepareCommand.IndexOf("python3 tools/validate-release-packages.py ", StringComparison.Ordinal);
+        pack.ShouldBeGreaterThanOrEqualTo(0);
+        validate.ShouldBeGreaterThan(pack);
+
+        LoadReleasePackages().ShouldAllBe(package => package.Id.StartsWith("Hexalith.EventStore.", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Release_manifest_includes_rest_api_generator_package()
     {
         ReleasePackage[] packages = LoadReleasePackages();

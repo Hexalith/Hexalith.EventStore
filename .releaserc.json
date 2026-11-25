@@ -24,7 +24,7 @@
     [
       "@semantic-release/github",
       {
-        "assets": ["nupkgs/*.nupkg"],
+        "assets": ["nupkgs/Hexalith.EventStore.*.nupkg"],
         "successCommentCondition": false
       }
     ]
