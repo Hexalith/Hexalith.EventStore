@@ -332,9 +332,9 @@ One primary story is accountable for each outcome in [PRD §7.1](prd.md#71-stabl
 
 | Clause | Primary story | Named supporting stories | Evidence identity |
 | --- | --- | --- | --- |
-| FR4-C1 | 1.2 | — | pending |
+| FR4-C1 | 1.2 | 2.19 | pending |
 | FR4-C2 | 1.2 | 1.16, 2.7 | pending |
-| FR4-C3 | 1.2 | 2.7, 2.11 | pending |
+| FR4-C3 | 1.2 | 2.7, 2.11, 2.18 | pending |
 | FR4-C4 | 1.2 | 2.11 | pending |
 | FR4-C5 | 1.16 | 2.7, 2.11 | pending |
 | FR4-C6 | 2.11 | 1.2, 1.16 | pending |
@@ -351,7 +351,7 @@ One primary story is accountable for each outcome in [PRD §7.1](prd.md#71-stabl
 | FR12-C3 | 2.15 | 2.9 | pending |
 | FR12-C4 | 2.15 | 2.9 | pending |
 | FR26-C1 | 5.1 | — | pending |
-| FR26-C2 | 5.2 | — | pending |
+| FR26-C2 | 5.2 | 5.15 | pending |
 | FR26-C3 | 5.3 | — | pending |
 | FR26-C4 | 5.4 | — | pending |
 | FR33-C1 | 6.1 | — | pending |
@@ -360,7 +360,7 @@ One primary story is accountable for each outcome in [PRD §7.1](prd.md#71-stabl
 | FR33-C4 | 6.4 | — | pending |
 | FR33-C5 | 6.5 | 6.5a, 6.5b, 6.5c, 6.5d | pending |
 | FR33-C6 | 6.6 | — | pending |
-| FR34-C1 | 7.1 | — | pending |
+| FR34-C1 | 7.1 | 7.23 | pending |
 | FR34-C2 | 7.2 | — | pending |
 | FR34-C3 | 7.3 | — | pending |
 | FR34-C4 | 7.4 | — | pending |
@@ -403,7 +403,7 @@ Developers can expose typed external REST APIs and build interactive clients thr
 Maintainers can build, test, package, publish, and verify EventStore independently of local checkout state, reject invalid candidates without granting authority, and prove exact package and deployed-runtime lineage for a conforming release.
 **Primary users:** Release maintainers, platform maintainers, deployment operators, and consuming-module owners
 **FRs covered:** FR17-FR22, FR25, FR36 deployed-runtime parity (FR36-C2) and the FR36-C3 to FR36-C5 publication and consumer-removal authority slices
-**Story set:** 3.1–3.23; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement. Backlog 3.18 owns G-COMPAT and NFR12's public-surface inventory slice; 3.19 owns FR36-C3 and G-PUBLICATION-AUTH; 3.20 owns FR36-C4, FR36-C5, and G-CONSUMER (`sprint-change-proposal-2026-10-07.md`). Backlog 3.21 qualifies the DAPR runtime pin and durable-broker candidates for the AD-26 profile (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
+**Story set:** 3.1–3.23; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement. Backlog 3.18 owns G-COMPAT and NFR12's public-surface inventory slice; 3.19 (in progress) owns FR36-C3 and G-PUBLICATION-AUTH; 3.20 owns FR36-C4, FR36-C5, and G-CONSUMER (`sprint-change-proposal-2026-10-07.md`). Story 3.21 (in progress; [qualification spec](../implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md)) qualifies the DAPR runtime pin and durable-broker candidates for the AD-26 profile (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
 **Evidence-storage correction (2026-10-21):** Backlog 3.22 bounds qualification output and Git admission; 3.23 retires selected bulky evidence after consumer migration and verified durable retrieval. Hexalith.AI.Tools owns the shared `/pushall` prerequisite; these stories do not reopen completed runtime stories.
 **Evidence-storage simplification (2026-10-23):** The owner replaced that plan with one rule — proof is the repository's tests plus CI, recorded in the story or spec — and the [evidence-storage simplification spec](../implementation-artifacts/spec-evidence-storage-simplification.md) removed all committed evidence and its machinery. Stories 3.22 and 3.23 are closed `done` as superseded; no external store, manifest or materialization lane is built.
 **Cross-cutting coverage:** NFR9-NFR11, NFR16-NFR17; supporting NFR12 for 3.17 boundary compatibility
@@ -605,7 +605,7 @@ As a domain projection author,
 I want a platform-owned persisted read-model store and write policy,
 So that ETag-aware reads, writes, and bounded merge retries behave consistently without domain-owned DAPR state wrappers.
 
-**Requirements coverage:** Supports primary FR5 and FR36; supporting NFR7 and NFR16.
+**Requirements coverage:** Primary FR5-C1 (ETag-aware persisted reads and writes). Supports FR36; supporting NFR7 and NFR16.
 
 **Architecture constraints:** AD-2, AD-12, and AD-14; additive public contracts and optimistic concurrency.
 
@@ -1034,7 +1034,7 @@ As a domain projection maintainer,
 I want coordinated erasure of aggregate-owned read models and projection checkpoints,
 So that recreating an aggregate identifier does not leave stale projection state that suppresses valid future delivery.
 
-**Requirements coverage:** Supports primary FR5 and FR36; supporting NFR2 and NFR16.
+**Requirements coverage:** Primary FR5-C2 (coordinated read-model and checkpoint erasure). Supports FR36; supporting NFR2 and NFR16.
 
 **Architecture constraints:** AD-2, AD-7, AD-8, AD-10, and AD-12; destructive lifecycle work is fail-closed, scoped, resumable, and evidence-backed.
 
@@ -1090,7 +1090,7 @@ As a projection author,
 I want coordinated detail and index writes,
 So that a projection cannot expose an updated detail model with a missing or inconsistent index entry.
 
-**Requirements coverage:** Primary FR5 and FR7-C3 (coordinated persistence). Supports FR36, NFR7 and NFR16.
+**Requirements coverage:** Primary FR5-C3 (detail/index batch writes) and FR7-C3 (coordinated persistence). Supports FR36, NFR7 and NFR16.
 
 **Architecture constraints:** AD-2, AD-7, AD-8, and AD-12; batching is additive, same-component, and truthfully qualified by backend evidence.
 
@@ -1369,7 +1369,7 @@ As an EventStore platform owner,
 I want a reviewed parity-closure packet tied to exact source and package identities,
 So that consumer migration resumes only against capabilities that are implemented, verified, and approved.
 
-**Requirements coverage:** Primary FR36 and NFR16; supporting NFR12.
+**Requirements coverage:** Primary FR36-C1 (source/package parity) and NFR16; supporting NFR12.
 
 **Architecture constraints:** AD-7, AD-8, AD-11, AD-12, AD-14, AD-15, AD-19, AD-20, and AD-22; evidence, artifact identities, authority, and mutation state remain distinct.
 
@@ -2135,6 +2135,7 @@ So that mixed-case, missing, conflicting, or reserved tenants can never cross a 
 **When** it executes
 **Then** it uses a distinct, authenticated, cataloged platform-operation scope
 **And** no path synthesizes or forwards `system` as a request tenant.
+**And** a supplied request tenant, a mixed tenant and platform scope, or a missing declared permission is refused before downstream work.
 
 **Given** the EventStore gateway's `ClaimsTenantValidator`, which today compares request tenants and `eventstore:tenant` grants with `StringComparison.Ordinal`, normalizes nothing, and lets a global administrator reach `system`, and Admin Server's `AdminTenantAuthorizationFilter` (`Ordinal`) and stream-query tenant filter (`OrdinalIgnoreCase`)
 **When** a command, query, stream, admin-storage, SignalR hub, or Admin Server request is authorized through them
@@ -2249,7 +2250,7 @@ So that consuming the generator never introduces warnings, nullability gaps, or 
 
 As a query client, I want to reuse a cached result only when its validator identifies the selected representation.
 
-**Requirements coverage:** Supports FR4, NFR8 and NFR12. Builds on the query provenance contract in Stories 1.2 and 2.11.
+**Requirements coverage:** Supports FR4-C3, NFR8 and NFR12. Builds on the query provenance contract in Stories 1.2 and 2.11.
 
 #### Acceptance criteria
 
@@ -2261,7 +2262,7 @@ As a query client, I want to reuse a cached result only when its validator ident
 
 As an API consumer, I want a stable failure code and correlation ID that support can use without exposing adapter diagnostics.
 
-**Requirements coverage:** Supports FR4 and NFR12. Covers the server adapter, gateway error handler and compatibility with existing producers.
+**Requirements coverage:** Supports FR4-C1 and NFR12. Covers the server adapter, gateway error handler and compatibility with existing producers.
 
 #### Acceptance criteria
 
@@ -3051,7 +3052,7 @@ As an EventStore release owner,
 I want the Story 3.14 release independently mapped and accepted as one exact deployed-runtime lineage,
 So that operators have a positive deployment-grade identity without relying on or splicing evidence from v3.94.1.
 
-**Requirements coverage:** Primary FR36 and NFR12; supporting NFR9, NFR11, and NFR16.
+**Requirements coverage:** Primary FR36-C2 (deployed-runtime parity) and NFR12; supporting NFR9, NFR11, and NFR16.
 
 **Architecture constraints:** AD-11, AD-12, and AD-22; this evidence-only closure establishes availability and an immutable selected identity but grants no deployment or consumer-mutation authority.
 
@@ -4532,7 +4533,7 @@ So that routine support workflows do not encourage accidental destructive action
 
 **Dependencies:** Stories 5.2 and 5.3 establish the authorization and host-authentication posture this surface must preserve. No later topology story may be used to waive these local safeguards.
 
-**Current reconciliation (2026-10-07):** Story 5.4 is done. `spec-5-4` is `done`, and all 139 task and review items were checked after the 2026-09-22 chunked reviews. The tracker has been `done` since commit `fcd716c9`. This was reconciled by `sprint-change-proposal-2026-10-07.md` (OR15); the paragraph formerly said "remains backlog" and listed gaps from before implementation. The spec still sets `followup_review_recommended: true`. That recommendation is advisory, and no follow-up review has run.
+**Current reconciliation (2026-10-07):** Story 5.4 is done. `spec-5-4` is `done`, and all 139 task and review items were checked after the 2026-09-22 chunked reviews. The tracker has been `done` since commit `fcd716c9`. This was reconciled by `sprint-change-proposal-2026-10-07.md` (OR15); the paragraph formerly said "remains backlog" and listed gaps from before implementation. The spec still sets `followup_review_recommended: true`. That recommendation is advisory, and no follow-up review has run. The spec did not cover the correlation criterion: the registered Admin Server Host middleware still uses `Guid.TryParse` and replaces a valid ULID, so FR26-C4 stays pending until deferred-work DW-549 delivers the AD-32 fix and a host-level regression; this story stays done.
 
 **Acceptance Criteria:**
 
@@ -4552,8 +4553,8 @@ So that routine support workflows do not encourage accidental destructive action
 **And** focused tests cover omitted, false, true, dry-run, unauthorized, cancelled, malformed-target, and repeated-invocation behavior for representative destructive command families.
 
 **Given** Admin Server Host receives `X-Correlation-ID`
-**When** the identifier is a canonical ULID, an accepted bounded non-whitespace correlation token under the documented compatibility rule, blank, duplicated, oversized, malformed, or GUID-only legacy input
-**Then** the middleware preserves only an accepted value and otherwise generates a canonical ULID-safe replacement
+**When** the identifier is a canonical ULID, GUID text or another single 1–128-character ASCII alphanumeric-or-hyphen value that the AD-32 `CorrelationIdGrammar` accepts, or is blank, duplicated, oversized or malformed
+**Then** the middleware preserves exactly one AD-32-valid value and otherwise generates a canonical ULID-safe replacement
 **And** request items, response headers, logs, and downstream context use one bounded value without `Guid.TryParse`, header injection, ambiguity, or protected-data disclosure.
 
 **Given** repository guidance describes test health and required validation
@@ -5126,7 +5127,7 @@ So that endpoint mapping order, peer invocation, or a forged caller header can n
 
 As a tenant administrator, I want storage totals, hot streams and policy or job listings that can only be read from my authorized scope.
 
-**Requirements coverage:** Supports FR26, NFR2 and NFR16. Story 5.2 owns endpoint authorization. This story owns the index readers, writers and upgrade path behind those endpoints.
+**Requirements coverage:** Supports FR26-C2, NFR2 and NFR16. Story 5.2 owns endpoint authorization. This story owns the index readers, writers and upgrade path behind those endpoints.
 
 #### Acceptance criteria
 
@@ -7086,7 +7087,7 @@ So that a restore never re-admits a consumed idempotency key, repeats a global p
 
 As an operator, I want recent activity to show a stream's actual head even after its summary leaves the bounded list.
 
-**Requirements coverage:** Supports FR34 and NFR16. Story 5.15 owns storage scope keys and their migration. Share that contract when updating the same tracker.
+**Requirements coverage:** Supports FR34-C1 and NFR16. Story 5.15 owns storage scope keys and their migration. Share that contract when updating the same tracker.
 
 #### Acceptance criteria
 
@@ -8118,7 +8119,7 @@ So that the PRD, architecture, UX, epics, tracker, and story records cannot sile
 
 **Architecture constraints:** None new.
 
-**Dependencies:** Owner-approved scoped corrective work under the current AD-12 evidence policy. The owning story/spec records its authorization and applicable approval provenance; deleted Story 9.1 tooling is not a prerequisite to restore. Final baseline approval requires OR14 completion: architecture reviewer closure and either per-role AD-26 ratification or an owner-approved AD-26 baseline disposition bound to the current ratification subject digest, final UX with substantive source reconciliation, lifecycle agreement, validated renewed epics and approval of the same source set. Building the scoped drift checks does not wait for that final approval.
+**Dependencies:** Owner-approved scoped corrective work under the current AD-12 evidence policy. The owning story/spec records its authorization and applicable approval provenance; deleted Story 9.1 tooling is not a prerequisite to restore. Final baseline approval requires OR14 completion: architecture reviewer closure and either per-role AD-26 ratification or an owner-approved AD-26 baseline disposition bound to the current ratification subject digest (approved 2026-11-25 at `5070ebdcf50d9fe7a7013be67d5c872e60563acf2ca4031382d0123754080803` for G-BASELINE only, `sprint-change-proposal-2026-11-25.md` §7.1 D3; it lapses if that digest changes), final UX with substantive source reconciliation, lifecycle agreement, validated renewed epics and approval of the same source set. Building the scoped drift checks does not wait for that final approval.
 
 **Execution clarification (approved 2026-11-09):** Detailed UX finality is satisfied for the current pair; substantive source reconciliation, architecture closure and ratification, lifecycle agreement, validation and baseline approval remain open. Schedule 9.3 under AD-12's current story/spec-plus-CI policy. Re-specify any deleted validator when scheduling its actual guard work; do not restore deleted evidence packets, registries, manifests, seals or workflows merely because older text names them. Record input identities, commands, results, source SHA and CI link in the owning story/spec. Preserve required text/ownership/status/lifecycle drift checks and truthful initial FAIL behavior. Approval of this proposal does not deliver those checks or an approved baseline. References below to older manifest, registry or validator paths are governed by that policy; they are not instructions to recreate deleted evidence machinery. Reconciliation compares FR/NFR text, stable-clause and primary ownership, affected AD constraints, UX route/security contracts, wrapper/frontmatter and tracker lifecycle accounts, and applicable approval provenance. Story 5.14 is reconciled to in progress; verify the remaining OR15 accounts against their current evidence rather than choosing the most advanced label.
 

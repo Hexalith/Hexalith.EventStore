@@ -6892,3 +6892,13 @@ severity: low
 reason: The unfiltered Release run failed `Host_WhenProductionAuthorityAlgorithmsAreMissing_FailsBeforeServing` because `WebApplicationFactory.CreateClient()` threw `ObjectDisposedException` from `DeferredHost.StartAsync`. One isolated rerun passed and logged the expected `OptionsValidationException` for `AllowedAlgorithms`. Make the startup assertion observe the original options validation failure reliably when the test host shuts down concurrently.
 status: done 2026-11-25
 resolution: Observe the options failure from the host when DeferredHost reports disposal during startup. Apply the same assertion to all three invalid JWT configurations.
+
+### DW-549: Admin Server Host correlation middleware replaces valid AD-32 correlation IDs
+
+origin: PRD update 2026-11-25, round-4 validation finding M1 (prds/prd-eventstore-2026-07-05/validation-2026-11-25-round-4/validation-report.md)
+location: src/Hexalith.EventStore.Admin.Server.Host/Middleware/CorrelationIdMiddleware.cs; tests/Hexalith.EventStore.Admin.Server.Host.Tests/MiddlewareOrderTests.cs
+source_spec: `spec-5-4-admin-surface-safety-hygiene.md`
+owner: Story 5.4 (PRD FR26-C4)
+severity: medium
+reason: The registered Admin host middleware (Program.cs:54) keeps `X-Correlation-ID` only when `Guid.TryParse` succeeds and otherwise mints `Guid.NewGuid()`, so a canonical ULID is replaced, and `MiddlewareOrderTests.cs:41` asserts that the minted header parses as a GUID. PRD FR26-C4 and §8.2 forbid `Guid.TryParse` for `correlationId`, and AD-32 requires downstream hosts to preserve valid values. Accept exactly one 1–128-character ASCII alphanumeric-or-hyphen value (ULID and GUID text included) through `CorrelationIdGrammar.IsValid`, otherwise mint `UniqueIdHelper.GenerateSortableUniqueStringId()`, mirroring the gateway middleware including its `OnStarting` restore. Replace the GUID assertion and add host-level regressions: canonical ULID preserved, GUID-form token preserved, blank, duplicate, oversized and malformed values replaced. FR26-C4 closes only when this lands; Story 5.4 stays done.
+status: open
