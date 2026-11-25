@@ -776,7 +776,8 @@ public sealed partial class NamedProjectionDispatchLiveSidecarTests(DaprTestCont
 
     internal static ProjectionDeliveryRetryWorkItem CreateUnrelatedSameShardWorkItem(
         ProjectionDeliveryRetryWorkItem persistedWork) {
-        int targetShard = SHA256.HashData(Encoding.UTF8.GetBytes(persistedWork.WorkId))[0] % RetryLedgerShardCount;
+        string shardId = ProjectionDeliveryRetryWorkItem.GetLegacyWorkId(persistedWork.WorkId) ?? persistedWork.WorkId;
+        int targetShard = SHA256.HashData(Encoding.UTF8.GetBytes(shardId))[0] % RetryLedgerShardCount;
         string workId;
         do {
             workId = $"same-shard-terminal-{Guid.NewGuid():N}";
