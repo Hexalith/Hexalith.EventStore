@@ -1,4 +1,8 @@
 
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
@@ -15,6 +19,34 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Queries;
 
 public class DaprETagServiceTests {
+    [Fact]
+    public async Task GetCurrentETagAsync_StalledProxyRequestFailsOpenAtConfiguredTimeout() {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        string endpoint = $"http://{listener.LocalEndpoint}";
+        var realFactory = new ActorProxyFactory(new ActorProxyOptions { HttpEndpoint = endpoint });
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Any<string>(), Arg.Any<ActorProxyOptions>())
+            .Returns(call => {
+                ActorProxyOptions options = call.Arg<ActorProxyOptions>();
+                options.HttpEndpoint = endpoint;
+                return realFactory.CreateActorProxy<IETagActor>(call.Arg<ActorId>(), call.Arg<string>(), options);
+            });
+
+        TimeSpan requestTimeout = TimeSpan.FromMilliseconds(500);
+        var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance, requestTimeout);
+        using var testTimeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        testTimeout.CancelAfter(TimeSpan.FromSeconds(4));
+        long start = Stopwatch.GetTimestamp();
+        Task<string?> request = service.GetCurrentETagAsync("counter", "tenant1");
+
+        // Accept the connection and keep it open without responding. A refused connection would
+        // exercise the ordinary error handler without proving that the timeout interrupts a request.
+        using TcpClient connection = await listener.AcceptTcpClientAsync(testTimeout.Token);
+        (await request.WaitAsync(testTimeout.Token)).ShouldBeNull();
+        Stopwatch.GetElapsedTime(start).ShouldBeGreaterThanOrEqualTo(requestTimeout);
+    }
+
     [Fact]
     public async Task GetCurrentETagAsync_ReturnsETag_WhenActorReturnsValue() {
         // Arrange

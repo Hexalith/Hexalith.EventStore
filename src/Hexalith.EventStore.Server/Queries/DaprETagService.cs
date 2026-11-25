@@ -57,11 +57,10 @@ public partial class DaprETagService(
             cancellationToken.ThrowIfCancellationRequested();
             return await proxy.GetCurrentETagAsync().ConfigureAwait(false);
         }
-        catch (OperationCanceledException) {
-            // Bare OperationCanceledException is rethrown so cancellation remains distinguishable from
-            // adapter-edge failures (AC9). DAPR can wrap OCE inside ActorMethodInvocationException or
-            // RpcException; those wrapped cases fall through to the generic catch below and the
-            // documented fail-open path (return null).
+        catch (OperationCanceledException ex)
+            when (cancellationToken.IsCancellationRequested || ex.InnerException is not TimeoutException) {
+            // HttpClient wraps its own request timeout in an OperationCanceledException. Preserve
+            // caller cancellation and other bare cancellation exceptions as a separate outcome.
             throw;
         }
         catch (Exception ex) {
