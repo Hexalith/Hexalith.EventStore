@@ -1291,7 +1291,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 3-1-re-tier-live-sidecar-tests-from-release-gate (2026-07-28)"), 2026-08-30
 location: Fixtures/DaprTestContainerCollection.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md` summary: [LOW] A tracked stale `.lscache` under `Server.Tests` still enumerates `Fixtures/DaprTestContainerCollection.cs` and `Fixtures/DaprTestContainerFixture.cs`, committed residue from the very re-tier this story certifies. The AC1 guard cannot see it. evidence: Story 3.1 closure code review (acceptance-auditor + blind-hunter), verified 2026-07-28 at `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj.lscache:185-187`. The file is tracked (`git ls-files` confirms) and last touched by `9bafe1af`, pre-split. `ReleasePackageManifestTests.cs:429-446` filters candidates to `.cs`/`.csproj` only, so the guard structurally cannot flag it; the story's AC1 evidence (filename search + `.cs` grep) has the same blind spot. Not compiled, so lane separation is unaffected. 34 `.lscache` files are tracked repo-wide, so removing one is a repo-wide convention decision rather than a story-scoped fix. Suggested durable fix: untrack `*.lscache` via `.gitignore`, or widen the guard's file filter.
-status: open
+status: done 2026-11-25
+resolution: Remove the tracked Server.Tests language-server cache that listed retired sidecar fixtures and ignore its locally regenerated copies.
 
 ### DW-191: [HIGH, FrontComposer-owned] The release-pin lockstep guard lives in a workflow that does not gate the release it protects. `CiGovernanceTests` carries `[Trait("Category","Governance")]`, which executes only in `quality.yml`; `release.yml` triggers on `workflow_run: workflows: [CI]` and neither needs nor triggers on Quality.
 
