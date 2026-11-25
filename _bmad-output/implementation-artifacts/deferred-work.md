@@ -978,7 +978,8 @@ resolution: Publish the runtime detail and reasonCode fields in both idempotency
 origin: migrated from legacy ledger ("Deferred from: idempotency result-payload gating CI fix (2026-07-20)"), 2026-08-30
 location: ErrorReferenceEndpoints.ErrorModels
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md` summary: No test verifies `ErrorReferenceEndpoints.ErrorModels` example content (status code, fields) against what each real `IExceptionHandler` actually emits at runtime -- only slug presence/absence is asserted. evidence: Adversarial review of the CI fix -- `AllProblemTypeUris_HaveCorrespondingErrorModel` / `AllErrorModels_HaveCorrespondingProblemTypeUri` would not have caught this fix's own status-code simplification (503 documented as primary while `idempotency_outcome_unknown` returns 409), a class of drift the catalog exists to prevent.
-status: open
+status: done 2026-11-25
+resolution: Compare catalog examples with the ordered gateway exception handlers, add documented query and idempotency response variants, and verify HTML and JSON rendering.
 
 ### DW-145: `SubmitCommandResult` has no field distinguishing why `ResultPayload` is null (still in-flight, domain-rejected, or a durable non-retryable `PublishFailed`) -- all three look identical to callers from the response body alone.
 

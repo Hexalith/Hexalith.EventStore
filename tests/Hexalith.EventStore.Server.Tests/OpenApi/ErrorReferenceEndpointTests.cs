@@ -24,7 +24,9 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
     }
 
     public static IEnumerable<object[]> ErrorReferenceModels() => ErrorReferenceEndpoints.ErrorModels
-        .Select(model => new object[] { model.Slug, model.Title, model.StatusCode, model.ExampleJson, model.ResolutionSteps[0] });
+        .Select(model => new object[] {
+            model.Slug, model.Title, model.StatusCode, new[] { model.ExampleJson }.Concat(model.AdditionalExamples ?? []).ToArray(), model.ResolutionSteps[0],
+        });
 
     [Theory]
     [InlineData("idempotency-conflict", "idempotency_conflict", "The idempotency key cannot be used for this mutation. Use the original intent or submit with a new key.")]
@@ -41,14 +43,37 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
         example.RootElement.GetProperty("reasonCode").GetString().ShouldBe(reasonCode);
     }
 
+    [Fact]
+    public async Task ErrorCatalog_ExposesBothRejectionAndUnknownOutcomeAdmissionExamples()
+    {
+        using HttpClient client = _factory.CreateClient();
+        using HttpResponseMessage response = await client.GetAsync("/problems/catalog.json");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using JsonDocument catalog = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        JsonElement admission = catalog.RootElement.EnumerateArray()
+            .Single(item => item.GetProperty("slug").GetString() == "idempotency-admission-failure");
+
+        var statuses = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (JsonElement example in admission.GetProperty("additionalExamples").EnumerateArray())
+        {
+            using JsonDocument document = JsonDocument.Parse(example.GetString()!);
+            JsonElement problem = document.RootElement;
+            statuses.Add(problem.GetProperty("code").GetString()!, problem.GetProperty("status").GetInt32());
+        }
+
+        statuses["idempotency_admission_rejected"].ShouldBe(400);
+        statuses["idempotency_outcome_unknown"].ShouldBe(409);
+    }
+
     [Theory]
     [MemberData(nameof(ErrorReferenceModels))]
     public async Task ErrorReferencePage_ReturnsHtmlWithExpectedContent(
         string errorType,
         string title,
         int statusCode,
-        string exampleJson,
+        string[] examples,
         string firstResolutionStep) {
+        ArgumentNullException.ThrowIfNull(examples);
         HttpClient client = _factory.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync($"/problems/{errorType}");
@@ -59,7 +84,10 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
         body.ShouldContain($"<h1>{WebUtility.HtmlEncode($"{title} ({statusCode})")}</h1>");
         body.ShouldContain("<pre>");
         body.ShouldContain("<h2>Resolution</h2>");
-        body.ShouldContain(WebUtility.HtmlEncode(exampleJson));
+        foreach (string example in examples)
+        {
+            body.ShouldContain(WebUtility.HtmlEncode(example));
+        }
         body.ShouldContain(WebUtility.HtmlEncode(firstResolutionStep));
     }
 
