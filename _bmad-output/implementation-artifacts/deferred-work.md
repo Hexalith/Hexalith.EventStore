@@ -841,7 +841,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 3-1-re-tier-live-sidecar-tests-from-release-gate.md (2026-07-18)"), 2026-08-30
 location: _bmad-output/project-context.md:65
 reason: Reconcile the stale `Hexalith.EventStore.Server.Tests` CA2007 baseline exception in `_bmad-output/project-context.md:65`. The exception predates this review, while Story 3.1 now records an unfiltered Release run with 2,626 passed, 25 skipped, and no failure; leaving the old statement active can cause future agents to exclude a blocking deterministic lane from baseline validation.
-status: open
+status: done 2026-11-25
+resolution: Removed the stale CA2007 exception and documented Server.Tests as part of the baseline.
 
 ### DW-126: Reconfirmed the existing Story 1.19 erase-query visibility gap at candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`: a stable `Erasing` lifecycle falls through `QueryRouter.ApplyPersistedLifecycle`, so producer `Current` can remain projection-confirmed and mutation-eligible while read-model targets are being erased. The policy choice (for example `Unknown`, `Unavailable`, or rejecting the query) remains intentionally deferred under the earlier Story 1.19 ledger entry; this review adds no duplicate implementation owner.
 
