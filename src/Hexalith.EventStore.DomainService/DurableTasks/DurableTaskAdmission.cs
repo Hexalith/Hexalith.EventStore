@@ -119,6 +119,48 @@ public sealed class DurableTaskAdmission(
         DurableTaskScope scope,
         string requestSha256,
         CancellationToken cancellationToken = default)
+        => (await ReadAuthorizedAdmissionAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false))?.Task;
+
+    /// <summary>Reads a committed task's progress under current authority for the exact scope and intent.</summary>
+    public async Task<DurableTaskProgress?> GetProgressAsync(
+        DurableTaskScope scope,
+        string requestSha256,
+        CancellationToken cancellationToken = default)
+    {
+        DurableTaskAdmissionState? state = await ReadAuthorizedAdmissionAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false);
+        return state is null ? null : state.Execution?.Progress ?? DurableTaskExecutionState.InitialProgress;
+    }
+
+    /// <summary>Updates only the execution portion of the exact committed admission using the admission CAS boundary.</summary>
+    internal async Task<DurableTaskExecutionState> UpdateExecutionAsync(
+        CommittedDurableTaskAdmission task,
+        Func<DurableTaskExecutionState, DurableTaskExecutionState> update,
+        CancellationToken cancellationToken)
+    {
+        string key = ValidateAndGetKey(task.Scope, task.RequestSha256);
+        for (int attempt = 0; attempt < MaxWrites; attempt++)
+        {
+            ReadModelEntry<DurableTaskAdmissionState> entry = await ReadAsync(task.Scope, key, cancellationToken).ConfigureAwait(false);
+            if (entry.Value is not { Task: { } persisted } state || persisted != task)
+            {
+                throw new InvalidOperationException("The Durable Task admission could not be verified.");
+            }
+
+            DurableTaskExecutionState current = state.Execution ?? DurableTaskExecutionState.Initial;
+            DurableTaskExecutionState next = update(current);
+            if (next == current || await TrySaveAsync(key, entry, state with { Execution = next }, cancellationToken).ConfigureAwait(false))
+            {
+                return next;
+            }
+        }
+
+        throw new InvalidOperationException("Durable Task execution contention exceeded the retry budget.");
+    }
+
+    private async Task<DurableTaskAdmissionState?> ReadAuthorizedAdmissionAsync(
+        DurableTaskScope scope,
+        string requestSha256,
+        CancellationToken cancellationToken)
     {
         string key = ValidateAndGetKey(scope, requestSha256);
         if (!(await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false)).Allowed)
@@ -128,7 +170,7 @@ public sealed class DurableTaskAdmission(
 
         ReadModelEntry<DurableTaskAdmissionState> entry = await ReadAsync(scope, key, cancellationToken).ConfigureAwait(false);
         return entry.Value?.Task is { } task && task.RequestSha256 == requestSha256
-            && (await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false)).Allowed ? task : null;
+            && (await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false)).Allowed ? entry.Value : null;
     }
 
     private async ValueTask<DurableTaskAdmissionAuthority> AuthorizeAsync(
@@ -145,7 +187,8 @@ public sealed class DurableTaskAdmission(
             .GetAsync<DurableTaskAdmissionState>(_storeName, key, cancellationToken).ConfigureAwait(false);
         if (entry.Value is { } value &&
             (string.IsNullOrEmpty(entry.ETag) || value.Scope != scope || value.Task is { Scope: var bound } && bound != scope
-                || value.Confirmation is { ConsumedBy: var consumedBy } && consumedBy != value.Task?.TaskId))
+                || value.Confirmation is { ConsumedBy: var consumedBy } && consumedBy != value.Task?.TaskId
+                || value.Execution is not null && value.Task is null))
         {
             throw new InvalidOperationException("The persisted Durable Task admission is inconsistent.");
         }

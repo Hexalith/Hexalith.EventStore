@@ -31,7 +31,7 @@ public sealed class DurableTaskAdmissionLiveTests
             new DaprReadModelStore(first), new DaprReadModelStore(second), Component, commitBeforeLoss);
     }
 
-    private static DaprClient Client(string variable)
+    internal static DaprClient Client(string variable)
     {
         string? endpoint = Environment.GetEnvironmentVariable(variable);
         Assert.SkipUnless(endpoint is not null, "Requires the Platform G-1 isolated runtime fixture.");

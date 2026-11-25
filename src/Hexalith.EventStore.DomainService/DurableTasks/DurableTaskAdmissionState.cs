@@ -4,7 +4,9 @@ namespace Hexalith.EventStore.DomainService.DurableTasks;
 /// <param name="Scope">The authority bound to the storage key.</param>
 /// <param name="Confirmation">The current or consumed artifact, if the intent requires one.</param>
 /// <param name="Task">The committed task admission.</param>
+/// <param name="Execution">The fenced execution state, absent on an admission that has never been leased.</param>
 internal sealed record DurableTaskAdmissionState(
     DurableTaskScope Scope,
     DurableTaskConfirmationState? Confirmation,
-    CommittedDurableTaskAdmission? Task);
+    CommittedDurableTaskAdmission? Task,
+    DurableTaskExecutionState? Execution = null);
