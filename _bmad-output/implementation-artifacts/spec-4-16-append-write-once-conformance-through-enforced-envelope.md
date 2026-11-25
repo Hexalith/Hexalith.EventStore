@@ -268,3 +268,13 @@ The 2026-11-09 source-derived counterexample still holds on this tuple. An accep
 - `gh api repos/dapr/docs/contents/daprdocs/content/en/operations/support/support-release-policy.md?ref=v1.19` returned the support table.
 
 Live tests: 0; prevention passes: 0; new CI run: none. Only this section was appended. Draft/backlog status and G-APPEND FAIL/BLOCKED remain. Implementation, runtime and dependency changes, key distribution and migration stop here.
+
+### Upstream Tracking And Release Trigger
+
+On 2026-11-25, GitHub issue and pull request searches across `dapr/dapr`, `dapr/dotnet-sdk` and `dapr/components-contrib` found related work on optional concurrency checks. The open runtime proposal retains per-key ETags with loaded state and requests atomic rejection on mismatch. Its linked create-only prototype closed without a merge. The proposal leaves mandatory actor-wide revision checks, enforced create-once identities and governed erasure unresolved. [Runtime proposal #10998](https://github.com/dapr/dapr/issues/10998) · [Closed prototype #10772](https://github.com/dapr/dapr/pull/10772)
+
+The .NET SDK change resets stale activations when the activation ID changes. The component work includes transaction rollback on ETag mismatch. The search found no SDK or component proposal for the complete protected-state contract. [SDK PR #1958](https://github.com/dapr/dotnet-sdk/pull/1958) · [Component PR #4652](https://github.com/dapr/components-contrib/pull/4652)
+
+`git ls-remote --exit-code --tags https://github.com/dapr/dapr.git 'refs/tags/v1.20.0*'` returned exit 2 with no matching tags. The D1 review trigger remains the first 1.20 release candidate. D6 awaits owner review of the [designated request text](#dependency-ownership-and-unblock-handoff). G-APPEND remains blocked pending a supported release with the complete contract. [Dapr 1.20 release planning](https://github.com/dapr/dapr/issues/10939) · [Owner decisions D1, D2 and D6](../planning-artifacts/sprint-change-proposal-2026-11-25.md#71-approval-record)
+
+On 2026-11-25, the owner approved the designated request text under D6. The request was filed at 20:53:32 UTC, and GitHub readback confirmed that the open issue body exactly matches the approved table. Story 4.16 remains in backlog pending the supported capability. [Upstream request #11244](https://github.com/dapr/dapr/issues/11244)
