@@ -1070,7 +1070,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: Story 2.10 Tier 1 logging regression unblock (2026-07-21)"), 2026-08-30
 location: InformationLevelOnly_TracingChainStillComplete
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-10-unblock-server-logging-regressions.md` summary: Make `InformationLevelOnly_TracingChainStillComplete` exercise an actor logger that actually disables Debug logging instead of capturing every level and filtering the resulting list afterward. evidence: Review confirmed the pre-existing test's `TestLogger<T>.IsEnabled` always returns true, so it cannot detect incorrect runtime gating through `IsEnabled(Debug)` even though its post-capture assertions exclude Debug entries; this limitation predates and is not caused by the pooled-state capture correction.
-status: open
+status: done 2026-11-25
+resolution: Set the actor capture logger minimum to Information and verify the correlation chain without filtering debug output afterward.
 
 ### DW-158: Validate `DomainServiceOptions.MaxEventsPerResult` and `MaxEventSizeBytes` bounds during startup instead of allowing zero or negative limits to reject otherwise valid responses at invocation time.
 
