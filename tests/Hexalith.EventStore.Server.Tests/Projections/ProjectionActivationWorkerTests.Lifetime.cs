@@ -199,7 +199,6 @@ public sealed partial class ProjectionActivationWorkerTests
                 entered.TryAdd(id, 0);
                 lock (gate) { active++; maximum = Math.Max(maximum, active); }
                 if (entered.Count == 8) saturated.TrySetResult();
-                if (id == ordered[8].ActivationId) ninthEntered.TrySetResult();
                 try
                 {
                     await releases[id].Task;
@@ -207,7 +206,10 @@ public sealed partial class ProjectionActivationWorkerTests
                 }
                 finally { lock (gate) active--; }
             });
-            return actual.WaitAsync(call.Arg<CancellationToken>());
+            Task<ProjectionSourceGuardDeliveryResult> cancellable = actual.WaitAsync(call.Arg<CancellationToken>());
+            // Shutdown may race with cleanup as soon as the test observes the ninth entry.
+            if (id == ordered[8].ActivationId) ninthEntered.TrySetResult();
+            return cancellable;
         });
         using var worker = new ProjectionActivationWorker(outbox, Substitute.For<IProjectionUpdateOrchestrator>(),
             Options.Create(new ProjectionDispatchOptions { RetryWorkerInterval = TimeSpan.FromMilliseconds(10) }),

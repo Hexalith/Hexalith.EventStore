@@ -6845,4 +6845,5 @@ location: tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionActivatio
 source_spec: `spec-dw-33-43-45-58-60-63-76-deferred-batch.md`
 severity: low
 reason: In the sequential full Server.Tests run (8,595 tests) the durable-due count read right after `StopAsync` starts was 7, not 8. Two isolated re-runs passed. The assertion reads `GetDueAsync` while the worker may still be finishing the released first activation, so it depends on scheduling. Make the test wait for the deterministic post-release state before asserting, or bound the read to the cancelled worker's completion.
-status: open
+status: done 2026-11-25
+resolution: Signal the ninth delivery only after its cancellable wait is registered so shutdown cannot release it during cleanup before the cancellation boundary is installed. Retain the durable outbox and drain assertions.
