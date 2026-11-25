@@ -7,8 +7,11 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Queries;
 
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -24,19 +27,12 @@ public class DaprETagServiceTests {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
         string endpoint = $"http://{listener.LocalEndpoint}";
-        var realFactory = new ActorProxyFactory(new ActorProxyOptions { HttpEndpoint = endpoint });
-        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
-        _ = factory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Any<string>(), Arg.Any<ActorProxyOptions>())
-            .Returns(call => {
-                ActorProxyOptions options = call.Arg<ActorProxyOptions>();
-                options.HttpEndpoint = endpoint;
-                return realFactory.CreateActorProxy<IETagActor>(call.Arg<ActorId>(), call.Arg<string>(), options);
-            });
+        var factory = new ActorProxyFactory(new ActorProxyOptions { HttpEndpoint = endpoint });
 
         TimeSpan requestTimeout = TimeSpan.FromMilliseconds(500);
         var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance, requestTimeout);
         using var testTimeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        testTimeout.CancelAfter(TimeSpan.FromSeconds(4));
+        testTimeout.CancelAfter(TimeSpan.FromSeconds(2));
         long start = Stopwatch.GetTimestamp();
         Task<string?> request = service.GetCurrentETagAsync("counter", "tenant1");
 
@@ -44,7 +40,72 @@ public class DaprETagServiceTests {
         // exercise the ordinary error handler without proving that the timeout interrupts a request.
         using TcpClient connection = await listener.AcceptTcpClientAsync(testTimeout.Token);
         (await request.WaitAsync(testTimeout.Token)).ShouldBeNull();
-        Stopwatch.GetElapsedTime(start).ShouldBeGreaterThanOrEqualTo(requestTimeout);
+        // The runtime timer can fire a few milliseconds early relative to Stopwatch.
+        Stopwatch.GetElapsedTime(start).ShouldBeGreaterThanOrEqualTo(requestTimeout - TimeSpan.FromMilliseconds(50));
+        factory.DefaultOptions.RequestTimeout.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetCurrentETagAsync_UsesEndpointTokenAndDefaultTimeoutFromServerRegistration() {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        string apiToken = Guid.NewGuid().ToString("N");
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["DAPR_HTTP_PORT"] = ((IPEndPoint)listener.LocalEndpoint).Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["DAPR_API_TOKEN"] = apiToken,
+        }).Build();
+        var services = new ServiceCollection();
+        _ = services.AddSingleton(configuration).AddEventStoreServer(configuration);
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        IETagService service = scope.ServiceProvider.GetRequiredService<IETagService>();
+
+        using var testTimeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        testTimeout.CancelAfter(TimeSpan.FromSeconds(6));
+        long start = Stopwatch.GetTimestamp();
+        Task<string?> request = service.GetCurrentETagAsync("counter", "tenant1");
+
+        using TcpClient connection = await listener.AcceptTcpClientAsync(testTimeout.Token);
+        using var reader = new StreamReader(connection.GetStream());
+        var headers = new List<string>();
+        while (await reader.ReadLineAsync(testTimeout.Token) is { Length: > 0 } line) {
+            headers.Add(line);
+        }
+
+        headers.ShouldContain(line => line.Equals($"dapr-api-token: {apiToken}", StringComparison.OrdinalIgnoreCase));
+        (await request.WaitAsync(testTimeout.Token)).ShouldBeNull();
+        Stopwatch.GetElapsedTime(start).ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(2950));
+    }
+
+    [Fact]
+    public async Task GetCurrentETagAsync_FailsOpenWhenServerProxyFactoryCannotBeConstructed() {
+        IConfiguration configuration = new ConfigurationBuilder().Build();
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IActorProxyFactory>(_ => throw new FormatException("Invalid actor proxy configuration."));
+        _ = services.AddEventStoreServer(configuration);
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        IETagService service = scope.ServiceProvider.GetRequiredService<IETagService>();
+
+        (await service.GetCurrentETagAsync("counter", "tenant1")).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetCurrentETagAsync_CallerCancellationTakesPrecedenceOverReturningAnETag() {
+        using var cancellation = new CancellationTokenSource();
+        IETagActor actor = Substitute.For<IETagActor>();
+        _ = actor.GetCurrentETagAsync().Returns(_ => {
+            cancellation.Cancel();
+            return Task.FromResult<string?>("unneeded-etag");
+        });
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Any<string>(), Arg.Any<ActorProxyOptions>())
+            .Returns(actor);
+        var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);
+
+        var error = await Should.ThrowAsync<OperationCanceledException>(
+            () => service.GetCurrentETagAsync("counter", "tenant1", cancellation.Token));
+        error.CancellationToken.ShouldBe(cancellation.Token);
     }
 
     [Fact]

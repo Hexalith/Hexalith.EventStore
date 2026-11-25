@@ -12,27 +12,44 @@ namespace Hexalith.EventStore.Server.Queries;
 /// DAPR actor-based implementation of <see cref="IETagService"/>.
 /// Wraps ETag actor proxy creation with fail-open error handling.
 /// </summary>
-public partial class DaprETagService(
-    IActorProxyFactory actorProxyFactory,
-    ILogger<DaprETagService> logger,
-    TimeSpan? requestTimeout = null) : IETagService {
-    // Reads fail open after this window so a slow or unreachable actor never blocks the projection
-    // read path. Overridable (production default 3s, supplied by DI for the unregistered optional
-    // parameter) so live-sidecar integration tests can tolerate cold-start actor activation latency
-    // on CI runners without changing production behavior. An override must be at least 1 millisecond
-    // and at most 5 minutes: HttpClient cancels on whole milliseconds, so sub-millisecond, zero,
-    // negative and Timeout.InfiniteTimeSpan values would otherwise be swallowed into a permanent
-    // fail-open or remove the bound entirely, so they fail fast at construction instead.
-    private readonly ActorProxyOptions _proxyOptions = new() {
-        RequestTimeout = requestTimeout switch {
+public partial class DaprETagService : IETagService {
+    private readonly Func<IActorProxyFactory> _getActorProxyFactory;
+    private readonly ILogger<DaprETagService> _logger;
+    private readonly TimeSpan _requestTimeout;
+
+    /// <summary>Creates a service that reads ETags using the supplied Dapr actor proxy factory.</summary>
+    /// <param name="actorProxyFactory">The actor proxy factory.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="requestTimeout">The override for the default three-second request timeout.</param>
+    public DaprETagService(
+        IActorProxyFactory actorProxyFactory,
+        ILogger<DaprETagService> logger,
+        TimeSpan? requestTimeout = null)
+        : this(() => actorProxyFactory, logger, requestTimeout) {
+    }
+
+    /// <summary>Creates a service that resolves its proxy factory within the fail-open read.</summary>
+    /// <param name="getActorProxyFactory">Resolves the configured actor proxy factory.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="requestTimeout">The override for the default three-second request timeout.</param>
+    internal DaprETagService(
+        Func<IActorProxyFactory> getActorProxyFactory,
+        ILogger<DaprETagService> logger,
+        TimeSpan? requestTimeout = null) {
+        _getActorProxyFactory = getActorProxyFactory;
+        _logger = logger;
+
+        // Keep the default bounded and allow live-sidecar tests to accommodate cold activation.
+        // HttpClient cancels on whole milliseconds, so reject sub-millisecond and infinite values.
+        _requestTimeout = requestTimeout switch {
             null => TimeSpan.FromSeconds(3),
             TimeSpan timeout when timeout >= TimeSpan.FromMilliseconds(1) && timeout <= TimeSpan.FromMinutes(5) => timeout,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(requestTimeout),
                 requestTimeout,
                 "The ETag request timeout must be at least 1 millisecond and at most 5 minutes."),
-        },
-    };
+        };
+    }
 
     /// <inheritdoc/>
     public async Task<string?> GetCurrentETagAsync(
@@ -49,24 +66,43 @@ public partial class DaprETagService(
             // CreateActorProxy<IETagActor> overload its non-remoting interactor is null, so the
             // call throws NullReferenceException inside Dapr.Actors.Client.ActorProxy.InvokeMethodAsync
             // (which the fail-open catch below then silently turned into a null ETag on every fetch).
-            // Cancellation is honoured by the pre-checks plus the bounded RequestTimeout in _proxyOptions;
+            // Cancellation is honoured by the pre-checks plus the bounded proxy request timeout;
             // the remoting interface intentionally exposes no per-call CancellationToken.
             // See sprint-change-proposal-2026-05-25-etag-actor-proxy-nre.md.
+            IActorProxyFactory actorProxyFactory = _getActorProxyFactory();
             IETagActor proxy = actorProxyFactory.CreateActorProxy<IETagActor>(
-                new ActorId(actorId), ETagActor.ETagActorTypeName, _proxyOptions);
+                new ActorId(actorId), ETagActor.ETagActorTypeName, CreateProxyOptions(actorProxyFactory));
             cancellationToken.ThrowIfCancellationRequested();
-            return await proxy.GetCurrentETagAsync().ConfigureAwait(false);
+            string? etag = await proxy.GetCurrentETagAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return etag;
         }
         catch (OperationCanceledException ex)
             when (cancellationToken.IsCancellationRequested || ex.InnerException is not TimeoutException) {
             // HttpClient wraps its own request timeout in an OperationCanceledException. Preserve
             // caller cancellation and other bare cancellation exceptions as a separate outcome.
+            cancellationToken.ThrowIfCancellationRequested();
             throw;
         }
         catch (Exception ex) {
-            Log.ETagFetchFailed(logger, actorId, ex.GetType().Name);
+            Log.ETagFetchFailed(_logger, actorId, ex.GetType().Name);
             return null;
         }
+    }
+
+    private ActorProxyOptions CreateProxyOptions(IActorProxyFactory actorProxyFactory) {
+        // Dapr replaces its defaults whenever explicit options are supplied. Copy the defaults
+        // exposed by the factory registered by AddActors without changing its shared instance.
+        var options = new ActorProxyOptions { RequestTimeout = _requestTimeout };
+        if (actorProxyFactory is ActorProxyFactory factory) {
+            ActorProxyOptions defaults = factory.DefaultOptions;
+            options.HttpEndpoint = defaults.HttpEndpoint;
+            options.DaprApiToken = defaults.DaprApiToken;
+            options.JsonSerializerOptions = defaults.JsonSerializerOptions;
+            options.UseJsonSerialization = defaults.UseJsonSerialization;
+        }
+
+        return options;
     }
 
     private static partial class Log {

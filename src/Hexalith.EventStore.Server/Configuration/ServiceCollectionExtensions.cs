@@ -132,7 +132,8 @@ public static class EventStoreServerServiceCollectionExtensions {
             provider.GetRequiredService<ILogger<QueryRouter>>(), provider.GetRequiredService<IProjectionLifecycleGateway>(),
             provider.GetRequiredService<IProjectionSourceGuardDelivery>()));
         services.TryAddScoped<IQueryRouter>(provider => provider.GetRequiredService<QueryRouter>());
-        services.TryAddScoped<IETagService, DaprETagService>();
+        services.TryAddScoped<IETagService>(provider => new DaprETagService(
+            () => provider.GetRequiredService<IActorProxyFactory>(), provider.GetRequiredService<ILogger<DaprETagService>>()));
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
         services.TryAddTransient<IAggregateStateReconstructor, DaprAggregateStateReconstructor>();
