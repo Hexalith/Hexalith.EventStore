@@ -187,6 +187,8 @@ When `resultPayload` is absent, the optional `resultPayloadOmissionReason` expla
 
 ### Stable Idempotency Outcomes
 
+The [error reference](./problems/index.md#idempotency-errors) lists the matching gateway pages and the machine-readable catalog. The table below defines the code, status, and client action for each outcome.
+
 Every idempotency Problem Details response carries `code`, `category`, `retryable`, and, when applicable, `clientAction`. It contains only the current request correlation and support-safe metadata. The .NET client exposes these as typed `EventStoreGatewayException` properties; callers do not need to parse the extension bag.
 
 | HTTP | `code` | `retryable` | `clientAction` | Meaning |
@@ -199,6 +201,8 @@ Every idempotency Problem Details response carries `code`, `category`, `retryabl
 | 503 | `idempotency_admission_corrupt` | `false` | `contact_support` | Durable admission state cannot be interpreted safely. |
 | 503 | `idempotency_key_collision` | `false` | `contact_support` | A partition digest did not match its independent verification tag. |
 | 503 | `idempotency_unsafe_legacy_state` | `false` | `contact_support` | Legacy evidence cannot preserve consumed-key knowledge and the exact result safely. |
+| 503 | `owner_admission_deferred` | `true` | `retry_later` | The owner could not establish current command authority. |
+| 400 | `idempotency_admission_rejected` | `false` | `correct_request` | Correct the rejected command and submit a new key. |
 
 An equivalent `pending` admission returns `202 Accepted` with the current request correlation and the first writer's stable execution `messageId`; it performs no additional domain work. A recoverable admission resumes only its persisted checkpoint under the existing fence.
 

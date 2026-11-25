@@ -994,7 +994,8 @@ resolution: Expose an optional payload omission reason for known accepted outcom
 origin: migrated from legacy ledger ("Deferred from: idempotency result-payload gating CI fix (2026-07-20)"), 2026-08-30
 location: docs/reference/command-api.md
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md` summary: `docs/reference/command-api.md` § "Stable Idempotency Outcomes" and `ErrorReferenceEndpoints.ErrorModels` are two independently maintained sources of truth for the same idempotency-admission failure taxonomy, with no cross-link between them. evidence: Adversarial review of the CI fix -- introduced when today's `19465ef8` commit added `ProblemTypeUris.IdempotencyAdmissionFailure` and the docs table without updating the error catalog; this fix closes the catalog gap but does not unify the two sources.
-status: open
+status: done 2026-11-25
+resolution: Link the HTML and JSON gateway catalogs to the canonical command API table, link the table back through the published error reference, and document the missing admission outcomes.
 
 ### DW-147: No unit test asserts that AggregateActor's several `ResultPayloadWithheld` formulas (`CreatePublishFailedResult` and the terminal-completion/concurrency-conflict paths) produce the correct value for each terminal branch.
 

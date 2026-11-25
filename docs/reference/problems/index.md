@@ -54,6 +54,10 @@ Some responses include Hexalith-specific extension fields:
 | 202 / 409 / 422 / 425 | [crypto-shredding-workflow-conflict](./crypto-shredding-workflow-conflict.md) | Crypto-shredding workflow conflict (Story 22.7c) |
 | 202 / 409 / 503 | [restored-backup-admission-conflict](./restored-backup-admission-conflict.md) | Restored-backup admission conflict (Story 22.7c) |
 
+## Idempotency Errors
+
+The gateway serves HTML examples at `/problems/idempotency-conflict`, `/problems/idempotency-key-expired`, and `/problems/idempotency-admission-failure`. It serves the same catalog as JSON at `/problems/catalog.json`. See the [command API reference](../command-api.md#stable-idempotency-outcomes) for the code, status, and client action for each outcome.
+
 ## Query Reason Codes
 
 Query submission uses the standard error types above plus stable `reasonCode` extensions for non-auth query policy and projection failures.

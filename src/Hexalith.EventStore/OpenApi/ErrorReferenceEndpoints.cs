@@ -11,6 +11,9 @@ namespace Hexalith.EventStore.OpenApi;
 /// Each page is a simple HTML response explaining the error, with an example and resolution guidance.
 /// </summary>
 public static class ErrorReferenceEndpoints {
+    private const string IdempotencyDocumentationUrl =
+        "https://github.com/Hexalith/Hexalith.EventStore/blob/main/docs/reference/command-api.md#stable-idempotency-outcomes";
+
     /// <summary>
     /// Data model for an error reference page.
     /// </summary>
@@ -30,6 +33,10 @@ public static class ErrorReferenceEndpoints {
         /// <summary>Gets additional ProblemDetails examples when several outcomes share the type URI.</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IReadOnlyList<string>? AdditionalExamples { get; init; }
+
+        /// <summary>Gets the canonical reference for details shared by related problems.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? DocumentationUrl { get; init; }
 
         public string TypeUri => $"https://hexalith.io/problems/{Slug}";
 
@@ -103,18 +110,25 @@ public static class ErrorReferenceEndpoints {
         new("idempotency-conflict", "Idempotency Conflict", 409,
             "The live tenant-scoped idempotency key is already associated with a different canonical intent.",
             """{"type":"https://hexalith.io/problems/idempotency-conflict","title":"Idempotency Conflict","status":409,"detail":"The idempotency key cannot be used for this mutation. Use the original intent or submit with a new key.","reasonCode":"idempotency_conflict","code":"idempotency_conflict","category":"idempotency_conflict","retryable":false,"correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
-            ["Submit the original canonical mutation intent for this key.", "Otherwise refresh state and submit with a new idempotency key."]),
+            ["Submit the original canonical mutation intent for this key.", "Otherwise refresh state and submit with a new idempotency key."])
+        {
+            DocumentationUrl = IdempotencyDocumentationUrl,
+        },
 
         new("idempotency-key-expired", "Idempotency Key Expired", 409,
             "The tenant-scoped key remains consumed, but its replay result and canonical intent digest have expired and were compacted.",
             """{"type":"https://hexalith.io/problems/idempotency-key-expired","title":"Idempotency Key Expired","status":409,"detail":"Refresh current state, then submit the intended mutation with a new idempotency key.","reasonCode":"idempotency_key_expired","code":"idempotency_key_expired","category":"idempotency_key_expired","retryable":false,"clientAction":"refresh_state_then_submit_with_new_key","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
-            ["Refresh current state.", "Submit the intended mutation with a new idempotency key."]),
+            ["Refresh current state.", "Submit the intended mutation with a new idempotency key."])
+        {
+            DocumentationUrl = IdempotencyDocumentationUrl,
+        },
 
         new("idempotency-admission-failure", "Idempotency Admission Failed", 503,
-            "Trusted idempotency admission, execution fencing, or outcome reconciliation failed closed. An unavailable or unverifiable admission returns 503. An unresolved reconciliation returns 409 with a poll-first action because execution status could not be confirmed. Rejected requests return 400 and require a corrected request. See 'Stable Idempotency Outcomes' in the command API reference for the full code/status mapping.",
+            "Trusted idempotency admission, execution fencing, or outcome reconciliation failed closed. An unavailable or unverifiable admission returns 503. An unresolved reconciliation returns 409 with a poll-first action because execution status could not be confirmed. Rejected requests return 400 and require a corrected request.",
             """{"type":"https://hexalith.io/problems/idempotency-admission-failure","title":"Idempotency Admission Failed","status":503,"detail":"Idempotency admission is temporarily unavailable. Retry later.","reasonCode":"idempotency_admission_unavailable","code":"idempotency_admission_unavailable","category":"service_unavailable","retryable":true,"clientAction":"retry_later","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
             ["Read the response's code, category, retryable, and clientAction fields to identify the exact failure — this type covers several distinct outcomes.", "For clientAction poll_status_then_retry (409), poll command status before retrying; for retry_later (503), retry after Retry-After or a short delay; for contact_support (503), contact support with the correlationId instead of retrying blindly.", "For clientAction correct_request (400), the command was rejected and will not succeed on retry; correct it and submit a new key."])
         {
+            DocumentationUrl = IdempotencyDocumentationUrl,
             AdditionalExamples =
             [
                 """{"type":"https://hexalith.io/problems/idempotency-admission-failure","title":"Idempotency Admission Failed","status":503,"detail":"Idempotency admission state cannot be safely interpreted.","reasonCode":"idempotency_admission_corrupt","code":"idempotency_admission_corrupt","category":"idempotency_admission_corrupt","retryable":false,"clientAction":"contact_support","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
@@ -279,6 +293,9 @@ public static class ErrorReferenceEndpoints {
         string typeUri = WebUtility.HtmlEncode(model.TypeUri);
         string description = WebUtility.HtmlEncode(model.Description);
         string correctiveAction = WebUtility.HtmlEncode(model.CorrectiveAction);
+        string documentationLink = model.DocumentationUrl is null
+            ? string.Empty
+            : $"<p><a href=\"{WebUtility.HtmlEncode(model.DocumentationUrl)}\">Stable Idempotency Outcomes</a></p>";
         string examples = string.Join('\n', new[] { model.ExampleJson }.Concat(model.AdditionalExamples ?? [])
             .Select(example => $"<pre>{WebUtility.HtmlEncode(example)}</pre>"));
 
@@ -295,6 +312,7 @@ public static class ErrorReferenceEndpoints {
             <body>
             <h1>{{title}}</h1>
             <p>{{description}}</p>
+            {{documentationLink}}
             <dl>
             <dt>Type URI</dt><dd><code>{{typeUri}}</code></dd>
             <dt>Corrective action</dt><dd>{{correctiveAction}}</dd>

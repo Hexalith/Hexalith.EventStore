@@ -43,6 +43,24 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
         example.RootElement.GetProperty("reasonCode").GetString().ShouldBe(reasonCode);
     }
 
+    [Theory]
+    [InlineData("idempotency-conflict")]
+    [InlineData("idempotency-key-expired")]
+    [InlineData("idempotency-admission-failure")]
+    public async Task ErrorReference_IdempotencyOutcomesLinkToCanonicalCommandReference(string slug)
+    {
+        const string commandReference =
+            "https://github.com/Hexalith/Hexalith.EventStore/blob/main/docs/reference/command-api.md#stable-idempotency-outcomes";
+
+        using HttpClient client = _factory.CreateClient();
+        string html = await client.GetStringAsync($"/problems/{slug}");
+        html.ShouldContain($"<a href=\"{commandReference}\">Stable Idempotency Outcomes</a>");
+
+        using JsonDocument catalog = JsonDocument.Parse(await client.GetStringAsync("/problems/catalog.json"));
+        JsonElement entry = catalog.RootElement.EnumerateArray().Single(item => item.GetProperty("slug").GetString() == slug);
+        entry.GetProperty("documentationUrl").GetString().ShouldBe(commandReference);
+    }
+
     [Fact]
     public async Task ErrorCatalog_ExposesBothRejectionAndUnknownOutcomeAdmissionExamples()
     {
