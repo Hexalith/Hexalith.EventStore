@@ -115,9 +115,12 @@ else if (builder.ExecutionContext.IsPublishMode) {
 string eventStoreAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.yaml");
 string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.eventstore-admin.yaml");
 string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.sample.yaml");
-string emptyDaprResourcesPath = ResolveEmptyDaprResourcesPath();
-string stateStoreComponentPath = ResolveDaprConfigPath("statestore.yaml");
-string isolatedStateStoreComponentPath = ResolveIsolatedDaprComponentPath(stateStoreComponentPath);
+// The legacy manifest publishes references to Dapr files. Keep those files beside the manifest.
+string? manifestPath = builder.ExecutionContext.IsPublishMode
+    && string.Equals(builder.Configuration["Publishing:Publisher"], "manifest", StringComparison.OrdinalIgnoreCase)
+    ? builder.Configuration["Pipeline:OutputPath"]
+    : null;
+using DaprResourceDirectory daprResources = DaprResourceDirectory.Create(ResolveDaprConfigPath("statestore.yaml"), manifestPath);
 
 // Resolve the DAPR resiliency YAML path so the Admin.Server can render /dapr/resiliency
 // without requiring an appsettings.json edit. The AppHost is the only component that knows
@@ -143,7 +146,7 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
     eventStoreAccessControlConfigPath,
     adminServerAccessControlConfigPath,
     resiliencyConfigPath,
-    stateStoreComponentPath: isolatedStateStoreComponentPath,
+    stateStoreComponentPath: daprResources.StateStorePath,
     daprPlacementHostAddress: daprPlacementHostAddress,
     daprSchedulerHostAddress: daprSchedulerHostAddress);
 
@@ -250,7 +253,7 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
         eventStoreResources,
         "sample",
         sampleAccessControlConfigPath,
-        isolatedDaprResourcesPath: emptyDaprResourcesPath,
+        isolatedDaprResourcesPath: daprResources.EmptyResourcesPath,
         daprPlacementHostAddress: daprPlacementHostAddress,
         daprSchedulerHostAddress: daprSchedulerHostAddress);
 
@@ -487,31 +490,6 @@ static void ConfigurePublishEnvironment(IDistributedApplicationBuilder builder) 
     else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase)) {
         _ = builder.AddAzureContainerAppEnvironment("aca");
     }
-}
-
-static string ResolveEmptyDaprResourcesPath() {
-    string path = Path.Combine(Path.GetTempPath(), "hexalith-eventstore-empty-dapr-resources");
-    _ = Directory.CreateDirectory(path);
-    return path;
-}
-
-static string ResolveIsolatedDaprComponentPath(string sourcePath) {
-    string sourceFullPath = Path.GetFullPath(sourcePath);
-    if (!File.Exists(sourceFullPath)) {
-        throw new FileNotFoundException(
-            "DAPR state-store component source not found.",
-            sourceFullPath);
-    }
-
-    string targetDirectory = Path.Combine(Path.GetTempPath(), "hexalith-eventstore-dapr-components", "statestore");
-    _ = Directory.CreateDirectory(targetDirectory);
-    foreach (string existingYaml in Directory.GetFiles(targetDirectory, "*.yaml")) {
-        File.Delete(existingYaml);
-    }
-
-    string targetPath = Path.Combine(targetDirectory, Path.GetFileName(sourceFullPath));
-    File.Copy(sourceFullPath, targetPath, overwrite: true);
-    return targetPath;
 }
 
 void ForwardEventStoreEnvironment(string configurationKey, string environmentKey) {

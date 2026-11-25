@@ -55,9 +55,8 @@ public class DaprComponentValidationTests {
         string appHost = ReadSource(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.AppHost", "Program.cs"));
         string extension = ReadSource(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreExtensions.cs"));
 
-        appHost.ShouldContain("stateStoreComponentPath = ResolveDaprConfigPath(\"statestore.yaml\")");
-        appHost.ShouldContain("isolatedStateStoreComponentPath = ResolveIsolatedDaprComponentPath(stateStoreComponentPath)");
-        appHost.ShouldContain("stateStoreComponentPath: isolatedStateStoreComponentPath");
+        appHost.ShouldContain("DaprResourceDirectory.Create(ResolveDaprConfigPath(\"statestore.yaml\"), manifestPath)");
+        appHost.ShouldContain("stateStoreComponentPath: daprResources.StateStorePath");
         extension.ShouldContain("File.Exists(resolvedStateStoreComponentPath)");
         extension.ShouldContain("new DaprComponentOptions { LocalPath = resolvedStateStoreComponentPath }");
     }
@@ -99,7 +98,7 @@ public class DaprComponentValidationTests {
         // it (zero infrastructure access); tenants omits it (shared state-store / pub/sub).
         string sampleBlock = GetBlock(appHost, "IResourceBuilder<ProjectResource> sample =", "IResourceBuilder<ProjectResource> blazorUi =");
         sampleBlock.ShouldContain("AddEventStoreDomainModule");
-        sampleBlock.ShouldContain("isolatedDaprResourcesPath: emptyDaprResourcesPath");
+        sampleBlock.ShouldContain("isolatedDaprResourcesPath: daprResources.EmptyResourcesPath");
 
         string tenantsBlock = GetBlock(
             appHost,
