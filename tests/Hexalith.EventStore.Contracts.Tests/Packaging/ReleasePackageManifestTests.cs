@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -51,6 +52,26 @@ public sealed class ReleasePackageManifestTests
 
     private static readonly XNamespace NuspecNamespace =
         "http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd";
+
+    [Fact]
+    public void TrackedShellEntrypointsAreExecutable()
+    {
+        byte[] output = PackagingRepositoryPaths.RunGit(
+            FindRepositoryRoot(), "ls-tree", "-r", "-z", "HEAD", "--", "scripts");
+        var entries = Encoding.UTF8.GetString(output).Split('\0', StringSplitOptions.RemoveEmptyEntries)
+            .Select(entry => (Record: entry, Path: entry[(entry.IndexOf('\t') + 1)..]))
+            .Where(entry => entry.Path.StartsWith("scripts/", StringComparison.Ordinal)
+                && entry.Path.EndsWith(".sh", StringComparison.Ordinal)
+                && !entry.Path["scripts/".Length..].Contains('/'))
+            .ToArray();
+        entries.ShouldNotBeEmpty();
+
+        string[] nonExecutable = entries
+            .Where(entry => !entry.Record.StartsWith("100755 blob ", StringComparison.Ordinal))
+            .Select(entry => entry.Path)
+            .ToArray();
+        nonExecutable.ShouldBeEmpty("Top-level shell entrypoints must be directly executable after checkout.");
+    }
 
     [Fact]
     public void Release_manifest_includes_rest_api_generator_package()

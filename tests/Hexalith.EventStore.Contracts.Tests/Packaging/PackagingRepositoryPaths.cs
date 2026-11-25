@@ -243,7 +243,11 @@ internal static class PackagingRepositoryPaths
         Path.TrimEndingDirectorySeparator(Path.GetFullPath(second)),
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
-    private static byte[] RunGit(string root, params string[] arguments) => RunGit(root, arguments, false);
+    /// <summary>Runs a Git query in the supplied repository and returns its exact output bytes.</summary>
+    /// <param name="root">The owning repository root.</param>
+    /// <param name="arguments">The Git query arguments.</param>
+    /// <returns>The bytes written to standard output.</returns>
+    internal static byte[] RunGit(string root, params string[] arguments) => RunGit(root, arguments, false);
 
     private static byte[] RunGit(string root, string[] arguments, bool allowMissing)
     {

@@ -1423,7 +1423,8 @@ resolution: Parse both external API access-control policies with the shared YAML
 origin: migrated from legacy ledger ("Deferred from: code review of story-3.3 (2026-07-29)"), 2026-08-30
 location: git ls-files -s scripts/*.sh
 reason: source_spec: `_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md` summary: [LOW] Three tracked shell scripts lack the executable bit, so direct invocation fails with exit 126; discovered during Story 3.3 Task 6, worked around, and never filed. evidence: Story 3.3 code review (blind-hunter + acceptance-auditor), verified 2026-07-29. `git ls-files -s scripts/*.sh` reports mode `100644` for `scripts/ci-local.sh`, `scripts/check-deferred-work.sh` and `scripts/validate-release-secrets.sh`, against `100755` for `scripts/check-doc-versions.sh`, `scripts/generated-api-smoke-preflight.sh`, `scripts/validate-docs.sh`, `scripts/validate-evidence.sh` and `scripts/validate-publication-preflight.sh`. Story 3.3 `:283` records the resulting exit 126 on `./scripts/ci-local.sh --tier 1 --skip-build` and routes around it by invoking the script through `bash`, but files nothing — so the next caller hits the same wall, and any CI step or hook that invokes these three directly rather than via an interpreter breaks. Suggested durable fix: `git update-index --chmod=+x scripts/ci-local.sh scripts/check-deferred-work.sh scripts/validate-release-secrets.sh`, plus a packaging-governance assertion that every `scripts/*.sh` is mode `100755`.
-status: open
+status: done 2026-11-25
+resolution: Restore executable modes for the deferred-work and release-secrets wrappers and the release-source entrypoint. Verify every tracked top-level shell entrypoint has mode 100755.
 
 ### DW-210: [MEDIUM] No CI lane ever executes the source-mode (`HEXALITH_TENANTS_SOURCE`) AppHost topology, so the Tenants security dependents that `AspireSecurityResourceNamingTests` conditionally asserts are verified nowhere.
 
