@@ -551,7 +551,8 @@ archived: 2026-11-23
 origin: migrated from legacy ledger ("Deferred from: code review of 2-7-outbound-dapr-routing-header-ownership (2026-07-10)"), 2026-08-30
 location: DaprServiceInvocationHandler.cs:16
 reason: **`apiToken` whitespace handling inconsistent with `appId`** (`DaprServiceInvocationHandler.cs:16`). `apiToken is { Length: > 0 }` forwards a whitespace-only token (`" "`) as authoritative, whereas `appId` is `ThrowIfNullOrWhiteSpace`-guarded. Matches the deleted handlers' `!string.IsNullOrEmpty` behavior (no regression); operator error fails fast at the sidecar. Optional consistency nit.
-status: open
+status: done 2026-11-25
+resolution: Treat null, empty and whitespace-only tokens as absent while keeping replacement of request-supplied headers. Verify fixed and per-send credentials.
 
 ### DW-83: No production code calls `IProjectionStateEraser` — only the DI registration in `ServiceCollectionExtensions.cs:56`. The end-to-end read-model/checkpoint drift fix is unreachable from any wired in-tree path; it depends on a future Admin/GDPR-1 erasure trigger. Deferred as expected — the caller is exactly what the governing-contract decision (see Story 1.9 Review Findings) resolves. Do not add a caller in isolation before that decision.
 

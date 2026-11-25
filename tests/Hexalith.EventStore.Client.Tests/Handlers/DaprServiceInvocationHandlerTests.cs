@@ -25,10 +25,13 @@ public sealed class DaprServiceInvocationHandlerTests {
         captured.Headers.GetValues("dapr-api-token").ShouldBe(["secret-token"]);
     }
 
-    [Fact]
-    public async Task SendAsync_WithoutConfiguredToken_RemovesSeededToken() {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public async Task SendAsync_WithoutConfiguredToken_RemovesSeededToken(string? apiToken) {
         var terminal = new CaptureHandler();
-        using var handler = new DaprServiceInvocationHandler("eventstore", apiToken: null) {
+        using var handler = new DaprServiceInvocationHandler("eventstore", apiToken) {
             InnerHandler = terminal,
         };
         using var invoker = new HttpMessageInvoker(handler);
@@ -67,7 +70,7 @@ public sealed class DaprServiceInvocationHandlerTests {
         var terminal = new CaptureHandler();
         using var handler = new DaprServiceInvocationHandler(() => (target, token)) { InnerHandler = terminal };
         using var invoker = new HttpMessageInvoker(handler);
-        foreach ((string nextTarget, string? nextToken) in new[] { ("first", firstToken), ("second", rotatedToken), ("second", (string?)null), ("second", "") })
+        foreach ((string nextTarget, string? nextToken) in new[] { ("first", firstToken), ("second", rotatedToken), ("second", (string?)null), ("second", " \t") })
         {
             target = nextTarget;
             token = nextToken;
@@ -76,7 +79,7 @@ public sealed class DaprServiceInvocationHandlerTests {
             request.Headers.TryAddWithoutValidation("dapr-api-token", "forged");
             using HttpResponseMessage response = await invoker.SendAsync(request, TestContext.Current.CancellationToken);
             request.Headers.GetValues("dapr-app-id").ShouldBe([target]);
-            if (string.IsNullOrEmpty(token)) request.Headers.Contains("dapr-api-token").ShouldBeFalse();
+            if (string.IsNullOrWhiteSpace(token)) request.Headers.Contains("dapr-api-token").ShouldBeFalse();
             else request.Headers.GetValues("dapr-api-token").ShouldBe([token]);
         }
     }
