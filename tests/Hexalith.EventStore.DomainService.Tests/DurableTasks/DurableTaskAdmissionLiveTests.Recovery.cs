@@ -115,7 +115,7 @@ public sealed partial class DurableTaskAdmissionLiveTests
         var claimed = await ReadEvidenceAsync(second, taskKey, token);
         DurableTaskExecutionState claimedState = (await secondStore.GetAsync<DurableTaskAdmissionState>(
             Component, taskKey, token)).Value.ShouldNotBeNull().Execution.ShouldNotBeNull();
-        claimedState.ShouldBe(interrupted with
+        AssertExecutionState(claimedState, interrupted with
         {
             Owner = takeover.Owner,
             Fence = takeover.Fence,
@@ -151,7 +151,7 @@ public sealed partial class DurableTaskAdmissionLiveTests
             DurableTaskAdmissionState final = (await replica.GetAsync<DurableTaskAdmissionState>(
                 Component, taskKey, token)).Value.ShouldNotBeNull();
             final.Task.ShouldBe(task);
-            final.Execution.ShouldBe(completed);
+            AssertExecutionState(final.Execution.ShouldNotBeNull(), completed);
             DurableTaskFixtureOwnerState owner = (await replica.GetAsync<DurableTaskFixtureOwnerState>(
                 Component, ownerKey, token)).Value.ShouldNotBeNull();
             owner.Receipt.ShouldBe(receipt);
@@ -183,6 +183,13 @@ public sealed partial class DurableTaskAdmissionLiveTests
             CommittedOwner = Describe(ownerAfter),
             RecoveryOwnerCalls = recoveringOwner.Calls,
         }));
+    }
+
+    private static void AssertExecutionState(DurableTaskExecutionState actual, DurableTaskExecutionState expected)
+    {
+        // Each store read materializes a separate immutable receipt array.
+        Assert.Equal<string>(expected.Progress.Receipts, actual.Progress.Receipts);
+        (actual with { Progress = actual.Progress with { Receipts = expected.Progress.Receipts } }).ShouldBe(expected);
     }
 
     private static IDurableTaskAdmissionAuthorizer RecoveryAuthority()
