@@ -779,7 +779,8 @@ resolution: Queries overlapping observed erasure retain their payload with Unkno
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:143
 reason: A blank head-event `MessageId` logs and returns from named dispatch without persisting retry work, so an aggregate with no later trigger can remain unprojected indefinitely. Add a durable malformed-identity disposition or recovery trigger. [`src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:143`]
-status: open
+status: done 2026-11-25
+resolution: Malformed named dispatch refuses the handoff. The durable activation is deferred and retried against the restored committed head without another command.
 
 ### DW-117: Async projection-handler convention discovery is all-or-nothing: the presence of one manual `IAsyncDomainProjectionHandler` registration disables discovery of every other implementation. Deduplicate per implementation instead of suppressing the full scan.
 
