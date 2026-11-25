@@ -1,3 +1,4 @@
+using System.Text;
 using System.Xml.Linq;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
@@ -67,6 +68,55 @@ public sealed class PackageOwnershipGovernanceTests
         guide.ShouldContain("global.json");
         guide.ShouldContain("package-consumer fixture");
         guide.ShouldContain(".csproj.lscache");
+    }
+
+    [Fact]
+    public void TenantsSourceGitlinkMatchesItsStablePackageReleaseLine()
+    {
+        string root = FindRepositoryRoot();
+        // This check binds the two gitlinks owned by the standalone EventStore checkout.
+        // An umbrella controls its own dependency revisions and leaves nested submodules uninitialized.
+        if (PackagingRepositoryPaths.RunGit(root, "rev-parse", "--show-superproject-working-tree").Length != 0)
+        {
+            return;
+        }
+
+        const string tenantsPath = "references/Hexalith.Tenants";
+        const string buildsPath = "references/Hexalith.Builds";
+        string buildsRoot = PackagingRepositoryPaths.ResolveDependency(root, "Hexalith.Builds");
+        string buildsGitlink = Encoding.UTF8.GetString(PackagingRepositoryPaths.RunGit(
+            root, "rev-parse", $"HEAD:{buildsPath}")).Trim();
+        byte[] catalog = PackagingRepositoryPaths.ReadPinnedFile(
+            buildsRoot, "Hexalith.Builds", buildsGitlink, "Props/Directory.Packages.props");
+        using MemoryStream catalogStream = new(catalog);
+        XDocument packageCatalog = XDocument.Load(catalogStream);
+        string packageVersion = packageCatalog.Descendants("HexalithTenantsVersion").Single().Value;
+        XElement[] tenantsPackages = packageCatalog.Descendants("PackageVersion")
+            .Where(package => GetAttributeValue(package, "Include")?.StartsWith("Hexalith.Tenants.", StringComparison.Ordinal) == true)
+            .ToArray();
+        tenantsPackages.ShouldContain(package => GetAttributeValue(package, "Include") == "Hexalith.Tenants.Contracts");
+        foreach (XElement package in tenantsPackages)
+        {
+            string? version = GetAttributeValue(package, "Version");
+            (version == "$(HexalithTenantsVersion)" ? packageVersion : version).ShouldBe(packageVersion);
+        }
+        string gitlink = Encoding.UTF8.GetString(PackagingRepositoryPaths.RunGit(
+            root, "rev-parse", $"HEAD:{tenantsPath}")).Trim();
+
+        // Source development can advance past the package tag between releases.
+        string tenantsRoot = PackagingRepositoryPaths.ResolveDependency(root, "Hexalith.Tenants");
+        string[] stableTags = Encoding.UTF8.GetString(PackagingRepositoryPaths.RunGit(tenantsRoot, "tag", "--list", "v*"))
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(tag => Version.TryParse(tag.AsSpan(1), out Version? version)
+                && version.Build >= 0 && version.Revision == -1 && tag == $"v{version}")
+            .ToArray();
+        stableTags.ShouldNotBeEmpty("The Tenants checkout must include release tags.");
+        string sourceRelease = Encoding.UTF8.GetString(PackagingRepositoryPaths.RunGit(tenantsRoot,
+            ["describe", "--first-parent", "--tags", "--abbrev=0",
+                .. stableTags.SelectMany(tag => new[] { "--match", tag }), gitlink])).Trim();
+
+        sourceRelease.ShouldBe($"v{packageVersion}",
+            $"Tenants gitlink {gitlink} and the shared package catalog must select the same stable release line.");
     }
 
     [Fact]
