@@ -6,6 +6,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Http;
@@ -170,8 +171,12 @@ public class CommandIdentityConflictTests
         detail.ShouldNotContain("incoming-message-id");
     }
 
-    [Fact]
-    public async Task SubmitCommandHandler_IdentityConflict_PreservesExistingStatusAndArchiveEvidence()
+    [Theory]
+    [InlineData("actor")]
+    [InlineData("status-message")]
+    [InlineData("archive-message")]
+    [InlineData("archive-command-type")]
+    public async Task SubmitCommandHandler_IdentityConflict_PreservesExistingStatusAndArchiveEvidence(string conflict)
     {
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();
@@ -184,31 +189,39 @@ public class CommandIdentityConflictTests
             null,
             null,
             null,
-            command.MessageId,
+            conflict == "status-message" ? "other-status-message" : command.MessageId,
             command.CorrelationId);
         var originalArchive = new ArchivedCommand(
             command.Tenant,
             command.Domain,
             command.AggregateId,
-            "OriginalCommandType",
+            conflict == "archive-command-type" ? "OriginalCommandType" : command.CommandType,
             [9, 8, 7],
             null,
             DateTimeOffset.UtcNow.AddMinutes(-1),
-            command.MessageId,
+            conflict == "archive-message" ? "other-archived-message" : command.MessageId,
             command.CorrelationId);
         await statusStore.WriteStatusAsync(command.Tenant, command.MessageId, originalStatus);
         await archiveStore.WriteCommandAsync(command.Tenant, command.MessageId, originalArchive);
         ICommandRouter router = Substitute.For<ICommandRouter>();
         _ = router.RouteCommandAsync(command, Arg.Any<CancellationToken>())
-            .Returns(new CommandProcessingResult(false, ErrorMessage: "command_identity_conflict"));
+            .Returns(conflict == "actor"
+                ? new CommandProcessingResult(false, ErrorMessage: "command_identity_conflict")
+                : new CommandProcessingResult(true, CorrelationId: command.CorrelationId));
+        var correlationIndex = new InMemoryCommandCorrelationIndex();
         var handler = new SubmitCommandHandler(
             statusStore,
             archiveStore,
             router,
-            NullLogger<SubmitCommandHandler>.Instance);
+            null,
+            null,
+            new NoOpProjectionUpdateOrchestrator(),
+            NullLogger<SubmitCommandHandler>.Instance,
+            correlationIndex);
 
-        _ = await Should.ThrowAsync<CommandIdentityConflictException>(
+        CommandIdentityConflictException exception = await Should.ThrowAsync<CommandIdentityConflictException>(
             () => handler.Handle(command, CancellationToken.None));
+        exception.MessageId.ShouldBe(command.MessageId);
 
         CommandStatusRecord persistedStatus = (await statusStore.ReadStatusAsync(
             command.Tenant,
@@ -220,8 +233,11 @@ public class CommandIdentityConflictTests
             command.Tenant,
             command.MessageId,
             CancellationToken.None)).ShouldNotBeNull();
-        persistedArchive.CommandType.ShouldBe("OriginalCommandType");
-        persistedArchive.Payload.ShouldBe([9, 8, 7]);
+        persistedArchive.ShouldBe(originalArchive);
+        statusStore.GetStatusHistory(command.Tenant, command.CorrelationId).ShouldBeEmpty();
+        archiveStore.GetArchiveCount().ShouldBe(1);
+        (await correlationIndex.ResolveAsync(command.Tenant, command.CorrelationId))
+            .Outcome.ShouldBe(CommandCorrelationResolutionOutcome.NotFound);
     }
 
     private static SubmitCommand CreateCommand() => new(

@@ -603,7 +603,8 @@ resolution: Use the batch accessor lock for every in-memory write or erase and k
 origin: migrated from legacy ledger ("Deferred from: code review of 4-2-resume-and-idempotency-integrity (2026-07-12)"), 2026-08-30
 location: AggregateActor.cs:173-176
 reason: source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md` summary: Add committed-state tests for new fail-closed / drain-identity paths (distinct messageId≠correlationId drain, Expired-outcome actor commit, SubmitCommandHandler identity guards). evidence: Message-keyed drain handoff + advisory-status identity is only exercised where messageId ≡ correlationId; the actor commit of a staged Expired idempotency mutation (AggregateActor.cs:173-176) is undriven; SubmitCommandHandler fail-closed guards (SubmitCommandHandler.cs:65-71,117-124) are untested.
-status: open
+status: done 2026-11-25
+resolution: Cover preservation of expired message-primary and legacy records after actor recreation and assert that submit identity guards preserve status, archive, and index state. The existing recovery test proves distinct message and correlation identities against committed state.
 
 ### DW-91: Cover AdminTraceQueryController correlation-index resolution/ambiguity path and accept the advisory-index not-found degradation.
 

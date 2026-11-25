@@ -57,6 +57,37 @@ public class CommandRecoveryIntegrityTests
             .Invoke(actor, null)!;
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExpiredCommand_PreservesCommittedIdentityAndCannotExecuteAfterRecreation(bool legacyKey)
+    {
+        var state = new FaultInjectingActorStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        CommandEnvelope command = Command(causationId: "cause-1");
+        string key = "idempotency:" + (legacyKey ? command.CausationId : command.MessageId);
+        DateTimeOffset expiry = DateTimeOffset.UtcNow.AddDays(-1);
+        var expired = new IdempotencyRecord(
+            command.CausationId!, command.CorrelationId, true, null, expiry.AddDays(-1),
+            MessageId: command.MessageId, CommandType: command.CommandType, ExpiresAt: expiry,
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        await state.SeedCommittedStateAsync(new Dictionary<string, object> { [key] = expired });
+
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            var context = CreateActor(state, statuses);
+            CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+            result.Accepted.ShouldBeFalse();
+            result.ErrorMessage.ShouldBe("idempotency_key_expired");
+            result.CorrelationId.ShouldBe(command.CorrelationId);
+            await context.Invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+            state.CommittedState.Keys.ShouldBe([key]);
+            state.CommittedState[key].ShouldBe(expired);
+            statuses.GetStatusHistory(command.TenantId, command.MessageId).ShouldBeEmpty();
+        }
+    }
+
+    [Theory]
     [InlineData("status-write")]
     [InlineData("cleanup-before-commit")]
     [InlineData("cleanup-after-commit")]
