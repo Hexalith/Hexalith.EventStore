@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
@@ -19,6 +20,8 @@ public sealed class DurableTaskAdmission(
     TimeProvider timeProvider)
 {
     private const int MaxWrites = 8;
+    private const string AdmissionKeyPrefix = "durable-task-admission-v1-";
+    private const string IndexKeyPrefix = "durable-task-id-v1-";
     private static readonly TimeSpan ConfirmationLifetime = TimeSpan.FromMinutes(15);
 
     private readonly IReadModelStore _store = store ?? throw new ArgumentNullException(nameof(store));
@@ -73,6 +76,7 @@ public sealed class DurableTaskAdmission(
         CancellationToken cancellationToken = default)
     {
         string key = ValidateAndGetKey(scope, requestSha256);
+        string? taskId = null;
         for (int attempt = 0; attempt < MaxWrites; attempt++)
         {
             DurableTaskAdmissionAuthority decision = await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false);
@@ -102,7 +106,8 @@ public sealed class DurableTaskAdmission(
                 return new(DurableTaskAdmissionOutcome.RenewConfirmation);
             }
 
-            var task = new CommittedDurableTaskAdmission(UniqueIdHelper.GenerateSortableUniqueStringId(), scope, requestSha256, now);
+            taskId ??= await ReserveTaskIdAsync(key, cancellationToken).ConfigureAwait(false);
+            var task = new CommittedDurableTaskAdmission(taskId, scope, requestSha256, now);
             var next = new DurableTaskAdmissionState(
                 scope, decision.RequiresConfirmation ? confirmation! with { ConsumedBy = task.TaskId } : null, task);
             if (await TrySaveAsync(key, entry, next, cancellationToken).ConfigureAwait(false))
@@ -129,6 +134,82 @@ public sealed class DurableTaskAdmission(
     {
         DurableTaskAdmissionState? state = await ReadAuthorizedAdmissionAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false);
         return state is null ? null : state.Execution?.Progress ?? DurableTaskExecutionState.InitialProgress;
+    }
+
+    /// <summary>Reads a committed task by identifier under current authority for its original scope and intent.</summary>
+    /// <param name="taskId">The platform-generated task identifier.</param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <returns>The committed task and progress, or null when the task is absent or the caller lacks current authority.</returns>
+    public async Task<DurableTaskSnapshot?> GetStatusAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        if (await ResolveCommittedAsync(taskId, cancellationToken).ConfigureAwait(false) is not { } task)
+        {
+            return null;
+        }
+
+        DurableTaskAdmissionState? state = await ReadAuthorizedAdmissionAsync(task.Scope, task.RequestSha256, cancellationToken).ConfigureAwait(false);
+        return state?.Task == task ? new(task, state.Execution?.Progress ?? DurableTaskExecutionState.InitialProgress) : null;
+    }
+
+    /// <summary>Cancels a task before its irreversible checkpoint under current authority for its original scope and intent.</summary>
+    /// <param name="taskId">The platform-generated task identifier.</param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <returns>The cancellation outcome. A conflict carries the committed status and changes nothing.</returns>
+    /// <remarks>Cancellation clears the worker lease, so the fenced worker cannot advance. Committed receipts are retained.</remarks>
+    public async Task<DurableTaskCancellationResult> CancelAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        if (await GetStatusAsync(taskId, cancellationToken).ConfigureAwait(false) is not { } current)
+        {
+            return new(DurableTaskCancellationOutcome.NotFound);
+        }
+
+        DurableTaskExecutionState next = await UpdateExecutionAsync(current.Task, static state =>
+            DurableTaskExecutionState.CanCancel(state.Progress)
+                ? state with
+                {
+                    Owner = null,
+                    ExpiresAt = null,
+                    Progress = state.Progress with { Status = DurableTaskStatus.Cancelled },
+                }
+                : state, cancellationToken).ConfigureAwait(false);
+        return new(
+            next.Progress.Status == DurableTaskStatus.Cancelled ? DurableTaskCancellationOutcome.Cancelled : DurableTaskCancellationOutcome.Conflict,
+            new DurableTaskSnapshot(current.Task, next.Progress));
+    }
+
+    /// <summary>Resolves a reserved task identifier to its committed admission for a trusted worker.</summary>
+    /// <remarks>This lookup does not authorize a caller. Owner effects reauthorize the original actor.</remarks>
+    internal async Task<CommittedDurableTaskAdmission?> ResolveCommittedAsync(string taskId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(taskId);
+        cancellationToken.ThrowIfCancellationRequested();
+        ReadModelEntry<DurableTaskIndexState> index = await _store
+            .GetAsync<DurableTaskIndexState>(_storeName, IndexKey(taskId), cancellationToken).ConfigureAwait(false);
+        if (index.Value is not { } reservation)
+        {
+            return null;
+        }
+
+        if (reservation.TaskId != taskId || reservation.AdmissionKey?.StartsWith(AdmissionKeyPrefix, StringComparison.Ordinal) != true)
+        {
+            throw new InvalidOperationException("The persisted Durable Task index is inconsistent.");
+        }
+
+        ReadModelEntry<DurableTaskAdmissionState> entry = await _store
+            .GetAsync<DurableTaskAdmissionState>(_storeName, reservation.AdmissionKey, cancellationToken).ConfigureAwait(false);
+        if (entry.Value is not { } state)
+        {
+            return null;
+        }
+
+        EnsureConsistent(entry, state.Scope);
+        if (state.Task is not { } task || task.TaskId != taskId)
+        {
+            return null;
+        }
+
+        return ValidateAndGetKey(state.Scope, task.RequestSha256) == reservation.AdmissionKey ? task
+            : throw new InvalidOperationException("The persisted Durable Task admission is inconsistent.");
     }
 
     /// <summary>Updates only the execution portion of the exact committed admission using the admission CAS boundary.</summary>
@@ -185,15 +266,29 @@ public sealed class DurableTaskAdmission(
     {
         ReadModelEntry<DurableTaskAdmissionState> entry = await _store
             .GetAsync<DurableTaskAdmissionState>(_storeName, key, cancellationToken).ConfigureAwait(false);
+        EnsureConsistent(entry, scope);
+        return entry;
+    }
+
+    private static void EnsureConsistent(ReadModelEntry<DurableTaskAdmissionState> entry, DurableTaskScope scope)
+    {
         if (entry.Value is { } value &&
-            (string.IsNullOrEmpty(entry.ETag) || value.Scope != scope || value.Task is { Scope: var bound } && bound != scope
+            (string.IsNullOrEmpty(entry.ETag) || value.Scope is null || value.Scope != scope || value.Task is { Scope: var bound } && bound != scope
                 || value.Confirmation is { ConsumedBy: var consumedBy } && consumedBy != value.Task?.TaskId
-                || value.Execution is not null && value.Task is null))
+                || value.Execution is not null && (value.Task is null || !DurableTaskExecutionState.IsConsistent(value.Execution))))
         {
             throw new InvalidOperationException("The persisted Durable Task admission is inconsistent.");
         }
+    }
 
-        return entry;
+    private async Task<string> ReserveTaskIdAsync(string admissionKey, CancellationToken cancellationToken)
+    {
+        string taskId = UniqueIdHelper.GenerateSortableUniqueStringId();
+        return await _store.TrySaveAsync(
+                _storeName, IndexKey(taskId), new DurableTaskIndexState(taskId, admissionKey), string.Empty, cancellationToken)
+            .ConfigureAwait(false)
+            ? taskId
+            : throw new InvalidOperationException("The Durable Task identifier could not be reserved.");
     }
 
     private Task<bool> TrySaveAsync(string key, ReadModelEntry<DurableTaskAdmissionState> entry,
@@ -227,8 +322,10 @@ public sealed class DurableTaskAdmission(
         }
 
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new[] { scope.TenantId, scope.ActorId, scope.Operation, scope.IdempotencyKey });
-        return "durable-task-admission-v1-" + Hash(bytes);
+        return AdmissionKeyPrefix + Hash(bytes);
     }
+
+    private static string IndexKey(string taskId) => IndexKeyPrefix + Hash(Encoding.UTF8.GetBytes(taskId));
 
     private static bool IsScopedValue(string value) => !string.IsNullOrWhiteSpace(value) && value.Length <= 256;
 

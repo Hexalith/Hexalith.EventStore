@@ -39,6 +39,9 @@ public sealed class DurableTaskAdmissionTests
         results[0].Outcome.ShouldBe(DurableTaskAdmissionOutcome.Admitted);
         results[1].ShouldBe(results[0]);
         (await replicas[1].GetCommittedAsync(Scope, RequestHash)).ShouldBe(results[0].Task);
+        DurableTaskSnapshot status = (await replicas[0].GetStatusAsync(results[0].Task!.TaskId)).ShouldNotBeNull();
+        status.Task.ShouldBe(results[0].Task);
+        status.Progress.Status.ShouldBe(DurableTaskStatus.Pending);
         (await replicas[1].AdmitAsync(Scope, ChangedHash)).Outcome.ShouldBe(DurableTaskAdmissionOutcome.Conflict);
     }
 
@@ -67,10 +70,18 @@ public sealed class DurableTaskAdmissionTests
             .Returns(call => retained.GetAsync<DurableTaskAdmissionState>(component, call.ArgAt<string>(1), call.Arg<CancellationToken>()));
         fault.TrySaveAsync(component, Arg.Any<string>(), Arg.Any<DurableTaskAdmissionState>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(WriteThenLoseAsync);
+        var reservations = new ConcurrentQueue<string>();
+        fault.TrySaveAsync(component, Arg.Any<string>(), Arg.Any<DurableTaskIndexState>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                reservations.Enqueue(call.Arg<DurableTaskIndexState>().TaskId);
+                return retained.TrySaveAsync(component, call.ArgAt<string>(1), call.Arg<DurableTaskIndexState>(), call.ArgAt<string>(3), call.Arg<CancellationToken>());
+            });
 
         var failing = new DurableTaskAdmission(fault, component, authority, TimeProvider.System);
         await Should.ThrowAsync<IOException>(() => failing.AdmitAsync(scope, RequestHash, token));
         string key = stateKeys.ShouldHaveSingleItem();
+        string reservedId = reservations.ShouldHaveSingleItem();
         DurableTaskAdmissionState observed = (await replica.GetAsync<DurableTaskAdmissionState>(component, key)).Value.ShouldNotBeNull();
         (observed.Task is not null).ShouldBe(commitBeforeLoss);
         observed.Confirmation.ShouldNotBeNull().ConsumedBy.ShouldBe(observed.Task?.TaskId);
@@ -94,9 +105,23 @@ public sealed class DurableTaskAdmissionTests
         DurableTaskAdmissionState final = (await retained.GetAsync<DurableTaskAdmissionState>(component, key)).Value.ShouldNotBeNull();
         final.Task.ShouldBe(result);
         final.Confirmation.ShouldNotBeNull().ConsumedBy.ShouldBe(result.TaskId);
+        (await initial.GetStatusAsync(result.TaskId)).ShouldNotBeNull().Task.ShouldBe(result);
+        if (commitBeforeLoss)
+        {
+            result.TaskId.ShouldBe(reservedId);
+        }
+        else
+        {
+            // The reservation of the admission that did not commit is an orphan and resolves to no task.
+            result.TaskId.ShouldNotBe(reservedId);
+            (await restarted.GetStatusAsync(reservedId)).ShouldBeNull();
+            (await new DurableTaskExecution(restarted, TimeProvider.System, TimeSpan.FromSeconds(30)).TryAcquireAsync(reservedId)).ShouldBeNull();
+        }
+
         SetDecision(authority, new(false, true, null));
         (await restarted.AdmitAsync(scope, RequestHash, token)).ShouldBe(new(DurableTaskAdmissionOutcome.Denied));
         (await restarted.GetCommittedAsync(scope, RequestHash)).ShouldBeNull();
+        (await restarted.GetStatusAsync(result.TaskId)).ShouldBeNull();
 
         async Task<bool> WriteThenLoseAsync(CallInfo call)
         {

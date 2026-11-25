@@ -31,6 +31,15 @@ public sealed class DurableTaskAdmissionLiveTests
             new DaprReadModelStore(first), new DaprReadModelStore(second), Component, commitBeforeLoss);
     }
 
+    /// <summary>Resolves status by task identifier, cancellation and completion through distinct live Dapr connections.</summary>
+    [Fact]
+    public async Task TaskStatusAndCancellationConvergeAcrossSidecars()
+    {
+        using DaprClient first = Client("HEXALITH_G1_PRIMARY_GRPC");
+        using DaprClient second = Client("HEXALITH_G1_REPLICA_GRPC");
+        await DurableTaskLifecycleTests.VerifyLifecycleAcrossReplicasAsync(new DaprReadModelStore(first), new DaprReadModelStore(second), Component);
+    }
+
     internal static DaprClient Client(string variable)
     {
         string? endpoint = Environment.GetEnvironmentVariable(variable);

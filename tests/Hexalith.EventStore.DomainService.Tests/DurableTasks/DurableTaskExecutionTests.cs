@@ -85,6 +85,7 @@ public sealed class DurableTaskExecutionTests
         (await execution.RunStepAsync(lease, 1, owner)).ShouldBeNull();
         DurableTaskProgress progress = (await admission.GetProgressAsync(Scope, RequestHash)).ShouldNotBeNull();
         progress.NeedsAttention.ShouldBeTrue();
+        progress.Status.ShouldBe(DurableTaskStatus.NeedsAttention);
         progress.EffectPending.ShouldBeTrue();
         progress.Checkpoint.ShouldBe(0);
         clock.Advance(Duration);
@@ -94,6 +95,44 @@ public sealed class DurableTaskExecutionTests
         authorizer.AuthorizeAsync(Scope, RequestHash, Arg.Any<CancellationToken>())
             .Returns(new DurableTaskAdmissionAuthority(false, false, null));
         (await admission.GetProgressAsync(Scope, RequestHash)).ShouldBeNull();
+    }
+
+    /// <summary>A receipt that differs from the committed checkpoint fences the task in NeedsAttention.</summary>
+    [Fact]
+    public async Task MismatchedOwnerReceiptRequiresAttention()
+    {
+        var clock = new ManualTimeProvider(StartedAt);
+        var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
+        var execution = new DurableTaskExecution(admission, clock, Duration);
+        CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
+        DurableTaskLease lease = (await execution.TryAcquireAsync(task)).ShouldNotBeNull();
+        IDurableTaskEffect owner = Substitute.For<IDurableTaskEffect>();
+        owner.LookupAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<(DurableTaskEffectLookup, string?)>((DurableTaskEffectLookup.Absent, null)));
+        TaskCompletionSource[] started = [new(TaskCreationOptions.RunContinuationsAsynchronously), new(TaskCreationOptions.RunContinuationsAsynchronously)];
+        TaskCompletionSource<string>[] replies = [new(TaskCreationOptions.RunContinuationsAsynchronously), new(TaskCreationOptions.RunContinuationsAsynchronously)];
+        int calls = -1;
+        owner.ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            int call = Interlocked.Increment(ref calls);
+            started[call].SetResult();
+            return replies[call].Task;
+        });
+
+        Task<string?> first = execution.RunStepAsync(lease, 1, owner);
+        await started[0].Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Task<string?> second = execution.RunStepAsync(lease, 1, owner);
+        await started[1].Task.WaitAsync(TimeSpan.FromSeconds(5));
+        replies[0].SetResult("receipt-1");
+        (await first).ShouldBe("receipt-1");
+        replies[1].SetResult("receipt-other");
+
+        (await Should.ThrowAsync<InvalidOperationException>(async () => await second)).Message.ShouldContain("differs");
+        DurableTaskProgress progress = (await admission.GetProgressAsync(Scope, RequestHash)).ShouldNotBeNull();
+        progress.Status.ShouldBe(DurableTaskStatus.NeedsAttention);
+        progress.Receipts.ShouldBe(["receipt-1"]);
+        clock.Advance(Duration);
+        (await execution.TryAcquireAsync(task)).ShouldBeNull();
     }
 
     /// <summary>Persists a checkpoint followed by an owner commit whose reply is lost.</summary>
@@ -116,6 +155,7 @@ public sealed class DurableTaskExecutionTests
         pending.Receipts.ShouldBe(["receipt-1"]);
         pending.EffectPending.ShouldBeTrue();
         pending.NeedsAttention.ShouldBeFalse();
+        pending.Status.ShouldBe(DurableTaskStatus.WaitingForDependency);
         (await replica.GetAsync<string>(Component, OwnerKey(task, 2))).Value.ShouldBe("receipt-2");
     }
 
@@ -144,6 +184,7 @@ public sealed class DurableTaskExecutionTests
         DurableTaskProgress pending = (await first.GetProgressAsync(Scope, RequestHash)).ShouldNotBeNull();
         pending.Receipts.ShouldBe(["receipt-1"]);
         pending.EffectPending.ShouldBeTrue();
+        pending.Status.ShouldBe(DurableTaskStatus.WaitingForDependency);
 
         IDurableTaskEffect owner = PersistedOwner(replica, loseSecondReply: false);
         (await worker.RunStepAsync(lease, 2, owner)).ShouldBe("receipt-2");
@@ -154,6 +195,10 @@ public sealed class DurableTaskExecutionTests
         completed.Receipts.ShouldBe(["receipt-1", "receipt-2"]);
         completed.EffectPending.ShouldBeFalse();
         completed.NeedsAttention.ShouldBeFalse();
+        completed.Status.ShouldBe(DurableTaskStatus.Running);
+        DurableTaskProgress byId = (await second.GetStatusAsync(task.TaskId)).ShouldNotBeNull().Progress;
+        byId.Receipts.ShouldBe(completed.Receipts);
+        byId.Status.ShouldBe(DurableTaskStatus.Running);
         (await first.AdmitAsync(Scope, RequestHash)).Task.ShouldBe(task);
     }
 
