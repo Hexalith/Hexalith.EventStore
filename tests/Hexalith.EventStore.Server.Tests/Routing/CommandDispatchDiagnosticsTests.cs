@@ -420,7 +420,7 @@ public sealed class CommandDispatchDiagnosticsTests
         {
             token.ShouldBe(cancellation.Token);
             steps.Add(step);
-            if (step == heldStep) { entered.SetResult(); await resume.Task; }
+            if (step == heldStep) { entered.TrySetResult(); await resume.Task; }
         }
         SubmitCommand command = Command() with { IdempotencyKey = "protected-key" };
         SubmitCommand execution = ProtectedExecution();
@@ -438,7 +438,7 @@ public sealed class CommandDispatchDiagnosticsTests
             string step = ++fences == 1 ? unknown ? "ReconciliationFence" : "InitialFence" : unknown ? "ReconciledFence" : "CompletionFence";
             return HoldAsync(step, call.Arg<CancellationToken>());
         });
-        var result = new CommandProcessingResult(true);
+        var result = new CommandProcessingResult(true, ResultPayload: "ok");
         coordinator.CompleteAsync(session, result, Arg.Any<CancellationToken>()).Returns(call => HoldAsync("AdmissionCompletion", call.Arg<CancellationToken>()));
         var router = Substitute.For<ICommandRouter>();
         router.RouteFencedCommandAsync(Arg.Any<SubmitCommand>(), session.ExecutionContext!, Arg.Any<CancellationToken>()).Returns(result);
