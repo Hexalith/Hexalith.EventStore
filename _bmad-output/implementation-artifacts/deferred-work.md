@@ -940,7 +940,8 @@ resolution: Exercise the pinned commitlint CLI for accepted messages and subject
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md` summary: Reconcile the documented literal lowercase-start rule with commitlint's weaker default `subject-case` behavior. evidence: The restored default rejects `fix: Update status` but accepts descriptions beginning with digits or symbols before uppercase text, despite shared guidance requiring the description to start with a lowercase letter.
-status: open
+status: done 2026-11-25
+resolution: Require a lowercase Unicode letter at the start of the conventional description through parser options used by the pinned CLI and the shared pull request title check.
 
 ### DW-140: RESOLVED 2026-07-20 — the repository excludes `chore` and uses specific non-release types, including `build(deps)` for automated dependency maintenance.
 

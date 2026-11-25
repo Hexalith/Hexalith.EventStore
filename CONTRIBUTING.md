@@ -58,10 +58,10 @@ concise header near 50 characters. Use `feat` for a minor release, `fix` or
 Do not use `chore`; use the specific non-release type that describes the work
 (for example `build(deps)` for dependency maintenance).
 
-Commitlint mechanically enforces the header format, allowed types, description
-case, trailing punctuation, and length. Imperative mood and choosing the type
-that accurately reflects release impact remain author and reviewer
-responsibilities.
+Commitlint mechanically enforces the header format, allowed types, lowercase
+first description character, trailing punctuation, and length. Imperative mood
+and choosing the type that accurately reflects release impact remain author and
+reviewer responsibilities.
 
 The hook validates the message automatically before Git creates a commit. You
 can also validate a prepared message or the latest commit explicitly:
@@ -70,6 +70,8 @@ can also validate a prepared message or the latest commit explicitly:
 npx commitlint --edit <message-file> --verbose
 npx commitlint --last --verbose
 ```
+
+Run `npm run test:commitlint` to check the policy against the pinned CLI.
 
 Do not bypass the hook with `--no-verify`. For example, a valid documentation
 commit is `docs: complete projection/query parity proof`.
