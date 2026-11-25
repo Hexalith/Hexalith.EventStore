@@ -771,7 +771,8 @@ resolution: Pin the activation revision before checking guarded work and retain 
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:199
 reason: The query lifecycle overlay recognizes `Rebuilding` but leaves an in-flight `Erasing` projection indistinguishable from its prior payload state. Define and expose the pre-existing erase-query visibility policy in the erasure lifecycle scope. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:199`]
-status: open
+status: done 2026-11-25
+resolution: Queries overlapping observed erasure retain their payload with Unknown provenance and lifecycle. Producer and fallback validators and freshness evidence are suppressed.
 
 ### DW-116: A blank head-event `MessageId` logs and returns from named dispatch without persisting retry work, so an aggregate with no later trigger can remain unprojected indefinitely. Add a durable malformed-identity disposition or recovery trigger.
 
@@ -844,7 +845,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-11-complete-projection-freshness-lifecycle (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:248
 reason: Reconfirmed the existing Story 1.19 erase-query visibility gap at candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`: a stable `Erasing` lifecycle falls through `QueryRouter.ApplyPersistedLifecycle`, so producer `Current` can remain projection-confirmed and mutation-eligible while read-model targets are being erased. The policy choice (for example `Unknown`, `Unavailable`, or rejecting the query) remains intentionally deferred under the earlier Story 1.19 ledger entry; this review adds no duplicate implementation owner. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:248`]
-status: open
+status: done 2026-11-25
+resolution: Duplicate of DW-115. The erasure query visibility change closes both reports.
 
 ### DW-127: Commit `ba203bde` is unbuildable in isolation: it converts the only local definition of `Microsoft.Extensions.TimeProvider.Testing` to `PackageVersion Update` while `references/Hexalith.Builds` was still pinned at `edbaeaed`, whose central props do not define the package, so CPM restore of `Server.Tests`, `Server.LiveSidecar.Tests`, and `Admin.Server.Tests` fails with NU1010 at that commit; coherence arrives only with `ea6ce49b`'s Builds bump to `cfafcbf1`. Bisect/rollback hazard only — history is already on `main`, so no rewrite; note it when bisecting across 2026-07-17.
 

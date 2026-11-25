@@ -195,7 +195,11 @@ public partial class QueryRouter : IQueryRouter {
                     .ConfigureAwait(false);
                 bool stable = string.Equals(lifecycleProjectionType, actualProjectionType, StringComparison.Ordinal)
                     && LifecycleObservation.IsStable(before, after);
+                bool erasing = after.Snapshot?.Phase == ProjectionLifecyclePhase.Erasing
+                    || (string.Equals(lifecycleProjectionType, actualProjectionType, StringComparison.Ordinal)
+                        && before.Snapshot?.Phase == ProjectionLifecyclePhase.Erasing);
                 if (!stable
+                    && !erasing
                     && !before.Failed
                     && !after.Failed
                     && after.Snapshot?.Phase != ProjectionLifecyclePhase.Rebuilding
@@ -204,11 +208,14 @@ public partial class QueryRouter : IQueryRouter {
                     continue;
                 }
 
-                QueryResponseMetadata? metadata = ApplyPersistedLifecycle(
-                    result.Metadata,
-                    stable ? after : LifecycleObservation.Unstable(after));
-                metadata = StampProjectionBacked(metadata);
-                if (_sourceGuard is not null)
+                // The read may overlap target removal. Unknown provenance suppresses both the
+                // producer validator and the gateway's fallback validator for this response.
+                QueryResponseMetadata metadata = erasing
+                    ? QueryResponseProvenancePolicy.NormalizeMetadata(
+                        result.Metadata, QueryResponseProvenance.Unknown, ProjectionLifecycleState.Unknown)
+                    : StampProjectionBacked(ApplyPersistedLifecycle(
+                        result.Metadata, stable ? after : LifecycleObservation.Unstable(after)));
+                if (!erasing && _sourceGuard is not null)
                 {
                     ProjectionSourceGuardDeliveryResult proof = await _sourceGuard.InspectCurrentAsync(
                         new(query.Tenant, query.Domain, query.AggregateId), actualProjectionType, cancellationToken).ConfigureAwait(false);
