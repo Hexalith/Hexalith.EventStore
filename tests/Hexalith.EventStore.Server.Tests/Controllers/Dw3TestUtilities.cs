@@ -176,7 +176,8 @@ internal static class Dw3TestUtilities {
     public static AdminTraceQueryController CreateTraceController(
         IAggregateActor actor,
         ICommandStatusStore commandStatusStore,
-        IConfiguration? configuration = null) {
+        IConfiguration? configuration = null,
+        ICommandCorrelationIndex? correlationIndex = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         _ = actorProxyFactory
             .CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor", Arg.Any<ActorProxyOptions?>())
@@ -186,6 +187,7 @@ internal static class Dw3TestUtilities {
             commandStatusStore,
             actorProxyFactory,
             config,
-            NullLogger<AdminTraceQueryController>.Instance);
+            NullLogger<AdminTraceQueryController>.Instance,
+            correlationIndex);
     }
 }

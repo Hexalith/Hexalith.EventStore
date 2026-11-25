@@ -611,7 +611,8 @@ resolution: Cover preservation of expired message-primary and legacy records aft
 origin: migrated from legacy ledger ("Deferred from: code review of 4-2-resume-and-idempotency-integrity (2026-07-12)"), 2026-08-30
 location: AdminTraceQueryController.cs:59-78
 reason: source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md` summary: Cover AdminTraceQueryController correlation-index resolution/ambiguity path and accept the advisory-index not-found degradation. evidence: The resolve→ambiguity-409→message-primary-read branch (AdminTraceQueryController.cs:59-78) is unexercised because Dw3TestUtilities.cs:185 builds the controller with a null index; not-found-when-index-missing is inherent to an advisory index queried by correlationId (state scan forbidden).
-status: open
+status: done 2026-11-25
+resolution: Exercise message-primary trace resolution, ambiguity before status or stream lookup, and the Unknown result when a command has no advisory mapping or stream context.
 
 ### DW-92: Bound the correlation-index overflow marker so a hot shared correlationId is not permanently ambiguous.
 
