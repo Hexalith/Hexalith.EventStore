@@ -14,6 +14,7 @@ public sealed class DurableTaskLifecycleTests
 {
     private const string Component = "g1-task-state";
     private const string UnknownTaskId = "01KAZZZZZZZZZZZZZZZZZZZZZZ";
+    private const int FailureBudget = 3;
     private static readonly string RequestHash = new('d', 64);
     private static readonly DurableTaskScope Scope = new("tenant", "original-actor", "sample.provision@1", "lifecycle-key");
     private static readonly DateTimeOffset StartedAt = new(2026, 11, 25, 12, 0, 0, TimeSpan.Zero);
@@ -33,12 +34,12 @@ public sealed class DurableTaskLifecycleTests
     {
         var clock = new ManualTimeProvider(StartedAt);
         var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
-        var worker = new DurableTaskExecution(admission, clock, Duration);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
         CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
         DurableTaskLease lease = (await worker.TryAcquireAsync(task.TaskId)).ShouldNotBeNull();
         IDurableTaskEffect owner = Owner(DurableTaskEffectLookup.Absent, null);
         var requestStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var reply = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reply = new TaskCompletionSource<(DurableTaskEffectLookup, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
         owner.ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>()).Returns(_ =>
         {
             requestStarted.SetResult();
@@ -52,7 +53,7 @@ public sealed class DurableTaskLifecycleTests
         refused.Current.ShouldNotBeNull().Progress.EffectPending.ShouldBeTrue();
         refused.Current.Progress.Status.ShouldBe(DurableTaskStatus.Running);
 
-        reply.SetResult("receipt-1");
+        reply.SetResult((DurableTaskEffectLookup.Committed, "receipt-1"));
         (await running).ShouldBe("receipt-1");
         DurableTaskCancellationResult cancelled = await admission.CancelAsync(task.TaskId);
         cancelled.Outcome.ShouldBe(DurableTaskCancellationOutcome.Cancelled);
@@ -66,8 +67,8 @@ public sealed class DurableTaskLifecycleTests
         var store = new InMemoryReadModelStore();
         var clock = new ManualTimeProvider(StartedAt);
         var admission = new DurableTaskAdmission(store, Component, Authority(), clock);
-        var first = new DurableTaskExecution(admission, clock, Duration);
-        var second = new DurableTaskExecution(new DurableTaskAdmission(store, Component, Authority(), clock), clock, Duration);
+        var first = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
+        var second = new DurableTaskExecution(new DurableTaskAdmission(store, Component, Authority(), clock), clock, Duration, FailureBudget);
         CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
         DurableTaskLease stale = (await first.TryAcquireAsync(task)).ShouldNotBeNull();
         IDurableTaskEffect unavailable = Substitute.For<IDurableTaskEffect>();
@@ -102,7 +103,7 @@ public sealed class DurableTaskLifecycleTests
     {
         var clock = new ManualTimeProvider(StartedAt);
         var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
-        var worker = new DurableTaskExecution(admission, clock, Duration);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
         IDurableTaskEffect unresolved = Owner(DurableTaskEffectLookup.Unresolved, null);
 
         CommittedDurableTaskAdmission reversible = (await admission.AdmitAsync(Scope with { IdempotencyKey = "reversible" }, RequestHash)).Task.ShouldNotBeNull();
@@ -125,13 +126,152 @@ public sealed class DurableTaskLifecycleTests
         await unresolved.DidNotReceive().ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>());
     }
 
+    /// <summary>The outcome an owner returns from the effect call is recorded, and contradictory evidence fences the task.</summary>
+    /// <param name="outcome">The owner outcome.</param>
+    /// <param name="receipt">The owner receipt.</param>
+    /// <param name="expected">The committed status.</param>
+    /// <param name="inconsistent">Whether the outcome contradicts the owner contract.</param>
+    [Theory]
+    [InlineData(DurableTaskEffectLookup.Committed, "receipt-1", DurableTaskStatus.Running, false)]
+    [InlineData(DurableTaskEffectLookup.Rejected, null, DurableTaskStatus.Rejected, false)]
+    [InlineData(DurableTaskEffectLookup.Unresolved, null, DurableTaskStatus.NeedsAttention, false)]
+    [InlineData(DurableTaskEffectLookup.Absent, null, DurableTaskStatus.NeedsAttention, true)]
+    [InlineData(DurableTaskEffectLookup.Committed, null, DurableTaskStatus.NeedsAttention, true)]
+    [InlineData(DurableTaskEffectLookup.Committed, " ", DurableTaskStatus.NeedsAttention, true)]
+    [InlineData(DurableTaskEffectLookup.Rejected, "receipt-1", DurableTaskStatus.NeedsAttention, true)]
+    [InlineData(DurableTaskEffectLookup.Unresolved, "receipt-1", DurableTaskStatus.NeedsAttention, true)]
+    public async Task OwnerEffectOutcomeIsRecorded(DurableTaskEffectLookup outcome, string? receipt, DurableTaskStatus expected, bool inconsistent)
+    {
+        var clock = new ManualTimeProvider(StartedAt);
+        var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
+        CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
+        DurableTaskLease lease = (await worker.TryAcquireAsync(task.TaskId)).ShouldNotBeNull();
+        IDurableTaskEffect owner = Owner(DurableTaskEffectLookup.Absent, null);
+        owner.ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<(DurableTaskEffectLookup, string?)>((outcome, receipt)));
+
+        if (inconsistent)
+        {
+            (await Should.ThrowAsync<InvalidOperationException>(() => worker.RunStepAsync(lease, 1, owner))).Message.ShouldContain("effect returned inconsistent");
+        }
+        else
+        {
+            (await worker.RunStepAsync(lease, 1, owner)).ShouldBe(expected == DurableTaskStatus.Running ? receipt : null);
+        }
+
+        DurableTaskProgress progress = (await admission.GetStatusAsync(task.TaskId)).ShouldNotBeNull().Progress;
+        progress.Status.ShouldBe(expected);
+        progress.Checkpoint.ShouldBe(expected == DurableTaskStatus.Running ? 1 : 0);
+        progress.EffectPending.ShouldBe(expected == DurableTaskStatus.NeedsAttention);
+        clock.Advance(Duration);
+        (await worker.TryAcquireAsync(task.TaskId) is not null).ShouldBe(expected == DurableTaskStatus.Running);
+        await owner.Received(1).ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An owner's authoritative refusal found by lookup ends the task as Rejected without invoking the owner.</summary>
+    [Fact]
+    public async Task OwnerRefusalFoundByLookupRejectsTheTask()
+    {
+        var clock = new ManualTimeProvider(StartedAt);
+        var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
+        CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
+        DurableTaskLease lease = (await worker.TryAcquireAsync(task.TaskId)).ShouldNotBeNull();
+        (await worker.RunStepAsync(lease, 1, Owner(DurableTaskEffectLookup.Committed, "receipt-1"))).ShouldBe("receipt-1");
+        IDurableTaskEffect refusing = Owner(DurableTaskEffectLookup.Rejected, null);
+
+        (await worker.RunIrreversibleStepAsync(lease, 2, refusing)).ShouldBeNull();
+        DurableTaskProgress progress = (await admission.GetStatusAsync(task.TaskId)).ShouldNotBeNull().Progress;
+        progress.Status.ShouldBe(DurableTaskStatus.Rejected);
+        progress.Receipts.ShouldBe(["receipt-1"]);
+        progress.EffectPending.ShouldBeFalse();
+        progress.IrreversibleStep.ShouldBe(2);
+        await refusing.DidNotReceive().ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>());
+        await Should.ThrowAsync<InvalidOperationException>(() => worker.CompleteAsync(lease, DurableTaskStatus.Succeeded));
+        (await admission.CancelAsync(task.TaskId)).Outcome.ShouldBe(DurableTaskCancellationOutcome.Conflict);
+    }
+
+    /// <summary>A refusal that contradicts a receipt committed under the same lease fences the task in NeedsAttention.</summary>
+    [Fact]
+    public async Task RefusalOfACommittedStepRequiresAttention()
+    {
+        var clock = new ManualTimeProvider(StartedAt);
+        var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
+        CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
+        DurableTaskLease lease = (await worker.TryAcquireAsync(task.TaskId)).ShouldNotBeNull();
+        IDurableTaskEffect owner = Substitute.For<IDurableTaskEffect>();
+        var lateLookup = new TaskCompletionSource<(DurableTaskEffectLookup, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lookupStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        owner.LookupAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>()).Returns(
+            _ => Task.FromResult<(DurableTaskEffectLookup, string?)>((DurableTaskEffectLookup.Absent, null)),
+            _ =>
+            {
+                lookupStarted.SetResult();
+                return lateLookup.Task;
+            });
+        var reply = new TaskCompletionSource<(DurableTaskEffectLookup, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        owner.ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>()).Returns(reply.Task);
+
+        Task<string?> committing = worker.RunStepAsync(lease, 1, owner);
+        Task<string?> refusing = worker.RunStepAsync(lease, 1, owner);
+        await lookupStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        reply.SetResult((DurableTaskEffectLookup.Committed, "receipt-1"));
+        (await committing).ShouldBe("receipt-1");
+        lateLookup.SetResult((DurableTaskEffectLookup.Rejected, null));
+
+        (await Should.ThrowAsync<InvalidOperationException>(() => refusing)).Message.ShouldContain("committed receipt");
+        DurableTaskProgress progress = (await admission.GetStatusAsync(task.TaskId)).ShouldNotBeNull().Progress;
+        progress.Status.ShouldBe(DurableTaskStatus.NeedsAttention);
+        progress.Receipts.ShouldBe(["receipt-1"]);
+    }
+
+    /// <summary>Owner failures count against the budget until a receipt commits, and an exhausted budget fences execution.</summary>
+    [Fact]
+    public async Task DependencyFailureBudgetResetsOnCommitAndRequiresAttention()
+    {
+        var clock = new ManualTimeProvider(StartedAt);
+        var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
+        CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
+        IDurableTaskEffect unavailable = Substitute.For<IDurableTaskEffect>();
+        unavailable.LookupAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<(DurableTaskEffectLookup, string?)>(new IOException("Owner is unavailable.")));
+
+        DurableTaskLease lease = (await worker.TryAcquireAsync(task.TaskId)).ShouldNotBeNull();
+        for (int failure = 1; failure < FailureBudget; failure++)
+        {
+            await Should.ThrowAsync<IOException>(() => worker.RunStepAsync(lease, 1, unavailable));
+            (await admission.GetStatusAsync(task.TaskId)).ShouldNotBeNull().Progress.Attempts.ShouldBe(failure);
+        }
+
+        (await worker.RunStepAsync(lease, 1, Owner(DurableTaskEffectLookup.Committed, "receipt-1"))).ShouldBe("receipt-1");
+        (await admission.GetStatusAsync(task.TaskId)).ShouldNotBeNull().Progress.Attempts.ShouldBe(0);
+        for (int failure = 1; failure <= FailureBudget; failure++)
+        {
+            clock.Advance(Duration);
+            lease = (await worker.TryAcquireAsync(task.TaskId)).ShouldNotBeNull();
+            await Should.ThrowAsync<IOException>(() => worker.RunStepAsync(lease, 2, unavailable));
+        }
+
+        DurableTaskProgress attention = (await admission.GetStatusAsync(task.TaskId)).ShouldNotBeNull().Progress;
+        attention.Status.ShouldBe(DurableTaskStatus.NeedsAttention);
+        attention.Attempts.ShouldBe(FailureBudget);
+        attention.EffectPending.ShouldBeTrue();
+        attention.Receipts.ShouldBe(["receipt-1"]);
+        clock.Advance(Duration);
+        (await worker.TryAcquireAsync(task.TaskId)).ShouldBeNull();
+        await unavailable.DidNotReceive().ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>());
+    }
+
     /// <summary>Completion requires a terminal outcome, the current lease and no pending owner step, and stays immutable.</summary>
     [Fact]
     public async Task CompletionIsFencedAndImmutable()
     {
         var clock = new ManualTimeProvider(StartedAt);
         var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
-        var worker = new DurableTaskExecution(admission, clock, Duration);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
         CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
         DurableTaskLease stale = (await worker.TryAcquireAsync(task)).ShouldNotBeNull();
         await Should.ThrowAsync<ArgumentOutOfRangeException>(() => worker.CompleteAsync(stale, DurableTaskStatus.Cancelled));
@@ -160,7 +300,7 @@ public sealed class DurableTaskLifecycleTests
     {
         var clock = new ManualTimeProvider(StartedAt);
         var admission = new DurableTaskAdmission(new InMemoryReadModelStore(), Component, Authority(), clock);
-        var worker = new DurableTaskExecution(admission, clock, Duration);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
         CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
 
         DurableTaskCancellationResult cancelled = await admission.CancelAsync(task.TaskId);
@@ -202,12 +342,20 @@ public sealed class DurableTaskLifecycleTests
     [InlineData("SucceededWithoutFence")]
     [InlineData("CancelledWithIrreversibleStep")]
     [InlineData("CancelledUnleasedWithReceipt")]
+    [InlineData("NegativeAttempts")]
+    [InlineData("PendingWithAttempts")]
+    [InlineData("RunningWithAttemptsWithoutPendingStep")]
+    [InlineData("NeedsAttentionWithAttemptsWithoutPendingStep")]
+    [InlineData("RejectedWithAttempts")]
+    [InlineData("CancelledWithAttemptsWithoutPendingStep")]
+    [InlineData("SucceededWithIrreversibleNextStep")]
+    [InlineData("FailedWithIrreversibleNextStep")]
     public async Task OffGraphPersistedStateFailsClosed(string rule)
     {
         var store = new InMemoryReadModelStore();
         var clock = new ManualTimeProvider(StartedAt);
         var admission = new DurableTaskAdmission(store, Component, Authority(), clock);
-        var worker = new DurableTaskExecution(admission, clock, Duration);
+        var worker = new DurableTaskExecution(admission, clock, Duration, FailureBudget);
         CommittedDurableTaskAdmission task = (await admission.AdmitAsync(Scope, RequestHash)).Task.ShouldNotBeNull();
         string key = store.SnapshotRawEntries(Component).Keys.Single(key => key.StartsWith("durable-task-admission-v1-", StringComparison.Ordinal));
         DurableTaskAdmissionState state = (await store.GetAsync<DurableTaskAdmissionState>(Component, key)).Value.ShouldNotBeNull();
@@ -226,11 +374,11 @@ public sealed class DurableTaskLifecycleTests
         IDurableTaskAdmissionAuthorizer authority = Authority();
         var first = new DurableTaskAdmission(primary, component, authority, clock);
         var second = new DurableTaskAdmission(replica, component, authority, clock);
-        var worker = new DurableTaskExecution(first, clock, Duration);
-        var replacement = new DurableTaskExecution(second, clock, Duration);
+        var worker = new DurableTaskExecution(first, clock, Duration, FailureBudget);
+        var replacement = new DurableTaskExecution(second, clock, Duration, FailureBudget);
         IDurableTaskEffect owner = Owner(DurableTaskEffectLookup.Absent, null);
         owner.ExecuteAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(call.Arg<DurableTaskEffectStep>().Key));
+            .Returns(call => Task.FromResult<(DurableTaskEffectLookup, string?)>((DurableTaskEffectLookup.Committed, call.Arg<DurableTaskEffectStep>().Key)));
 
         // Cancellation before the irreversible checkpoint fences the running worker and retains its receipt.
         CommittedDurableTaskAdmission cancelled = (await first.AdmitAsync(Scope with { IdempotencyKey = "lifecycle-cancel" }, RequestHash)).Task.ShouldNotBeNull();
@@ -313,6 +461,14 @@ public sealed class DurableTaskLifecycleTests
             "SucceededWithoutFence" => With(released with { Fence = 0 }, p => p with { Status = DurableTaskStatus.Succeeded }),
             "CancelledWithIrreversibleStep" => With(released, p => p with { Status = DurableTaskStatus.Cancelled, IrreversibleStep = 1 }),
             "CancelledUnleasedWithReceipt" => With(released with { Fence = 0 }, p => p with { Status = DurableTaskStatus.Cancelled }),
+            "NegativeAttempts" => With(running, p => p with { EffectPending = true, Attempts = -1 }),
+            "PendingWithAttempts" => With(pending, p => p with { Attempts = 1 }),
+            "RunningWithAttemptsWithoutPendingStep" => With(running, p => p with { Attempts = 1 }),
+            "NeedsAttentionWithAttemptsWithoutPendingStep" => With(released, p => p with { Status = DurableTaskStatus.NeedsAttention, Attempts = 1 }),
+            "RejectedWithAttempts" => With(released, p => p with { Status = DurableTaskStatus.Rejected, Attempts = 1 }),
+            "CancelledWithAttemptsWithoutPendingStep" => With(released, p => p with { Status = DurableTaskStatus.Cancelled, Attempts = 1 }),
+            "SucceededWithIrreversibleNextStep" => With(released, p => p with { Status = DurableTaskStatus.Succeeded, IrreversibleStep = 2 }),
+            "FailedWithIrreversibleNextStep" => With(released, p => p with { Status = DurableTaskStatus.Failed, IrreversibleStep = 2 }),
             _ => throw new ArgumentOutOfRangeException(nameof(rule), rule, "Unknown off-graph rule."),
         };
     }

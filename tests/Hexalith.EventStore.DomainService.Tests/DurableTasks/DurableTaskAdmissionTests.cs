@@ -115,7 +115,7 @@ public sealed class DurableTaskAdmissionTests
             // The reservation of the admission that did not commit is an orphan and resolves to no task.
             result.TaskId.ShouldNotBe(reservedId);
             (await restarted.GetStatusAsync(reservedId)).ShouldBeNull();
-            (await new DurableTaskExecution(restarted, TimeProvider.System, TimeSpan.FromSeconds(30)).TryAcquireAsync(reservedId)).ShouldBeNull();
+            (await new DurableTaskExecution(restarted, TimeProvider.System, TimeSpan.FromSeconds(30), 3).TryAcquireAsync(reservedId)).ShouldBeNull();
         }
 
         SetDecision(authority, new(false, true, null));

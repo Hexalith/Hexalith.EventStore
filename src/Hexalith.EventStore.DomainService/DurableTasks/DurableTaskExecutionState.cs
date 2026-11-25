@@ -35,9 +35,10 @@ internal sealed record DurableTaskExecutionState(long Fence, string? Owner, Date
     internal static bool IsConsistent(DurableTaskExecutionState state)
     {
         DurableTaskProgress progress = state.Progress;
-        if (progress is null || state.Fence < 0 || progress.Receipts.IsDefault || progress.Receipts.Any(string.IsNullOrWhiteSpace)
+        if (progress is null || state.Fence < 0 || progress.Attempts < 0 || !progress.EffectPending && progress.Attempts != 0
+            || progress.Receipts.IsDefault || progress.Receipts.Any(string.IsNullOrWhiteSpace)
             || progress.IrreversibleStep is { } irreversible && (irreversible <= 0 || irreversible > progress.Checkpoint + 1
-                || irreversible == progress.Checkpoint + 1 && !progress.EffectPending))
+                || irreversible == progress.Checkpoint + 1 && !progress.EffectPending && progress.Status != DurableTaskStatus.Rejected))
         {
             return false;
         }

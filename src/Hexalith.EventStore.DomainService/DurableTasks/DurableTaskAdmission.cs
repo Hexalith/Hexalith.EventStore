@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.DomainService.DurableTasks;
 /// <param name="storeName">An isolated store component providing strong reads and first-write CAS.</param>
 /// <param name="authorization">The host-owned current authority and operation policy.</param>
 /// <param name="timeProvider">The UTC clock used for confirmation expiry.</param>
-/// <remarks>The host constructs this service only for the authenticated admission and confirmation components. This type does not expose an HTTP route or register a runtime on its own.</remarks>
+/// <remarks>The host constructs this service for its authenticated admission, confirmation, status, cancellation and owner step lookup components. This type does not expose an HTTP route or register a runtime on its own.</remarks>
 public sealed class DurableTaskAdmission(
     IReadModelStore store,
     string storeName,
@@ -175,6 +175,42 @@ public sealed class DurableTaskAdmission(
         return new(
             next.Progress.Status == DurableTaskStatus.Cancelled ? DurableTaskCancellationOutcome.Cancelled : DurableTaskCancellationOutcome.Conflict,
             new DurableTaskSnapshot(current.Task, next.Progress));
+    }
+
+    /// <summary>Resolves a delegated owner step to the committed admission that binds its original actor.</summary>
+    /// <param name="taskId">The task identifier presented with the owner call.</param>
+    /// <param name="stepKey">The stable step key presented with the owner call.</param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <returns>The binding of a step with a committed receipt or a pending owner call, or null for an unknown task, a
+    /// noncanonical key, a step the task has not started or a refused step.</returns>
+    /// <remarks>The host exposes this lookup only to an authenticated owner workload. It does not authorize the original
+    /// actor: the owner checks the target it derives from the step and re-evaluates the actor's current authority.</remarks>
+    public async Task<DurableTaskStepBinding?> ResolveStepAsync(string taskId, string stepKey, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stepKey);
+        if (await ResolveCommittedAsync(taskId, cancellationToken).ConfigureAwait(false) is not { } task
+            || !DurableTaskEffectStep.TryParseKey(task.TaskId, stepKey, out int number))
+        {
+            return null;
+        }
+
+        ReadModelEntry<DurableTaskAdmissionState> entry = await ReadAsync(
+            task.Scope, ValidateAndGetKey(task.Scope, task.RequestSha256), cancellationToken).ConfigureAwait(false);
+        if (entry.Value is not { Task: { } persisted } state || persisted != task)
+        {
+            return null;
+        }
+
+        DurableTaskExecutionState execution = state.Execution ?? DurableTaskExecutionState.Initial;
+        DurableTaskProgress progress = execution.Progress;
+        if (number <= progress.Checkpoint)
+        {
+            return new(task, number, stepKey, execution.Fence, progress.Status, progress.Receipts[number - 1]);
+        }
+
+        return number == progress.Checkpoint + 1 && progress.EffectPending
+            ? new(task, number, stepKey, execution.Fence, progress.Status, null)
+            : null;
     }
 
     /// <summary>Resolves a reserved task identifier to its committed admission for a trusted worker.</summary>

@@ -13,16 +13,16 @@ public enum DurableTaskStatus
     /// <summary>A worker lease may advance the next step from the committed checkpoint.</summary>
     Running,
 
-    /// <summary>An owner call failed and the pending step resumes through authoritative lookup.</summary>
+    /// <summary>An owner call failed and the pending step resumes through authoritative lookup until the dependency failure budget is exhausted.</summary>
     WaitingForDependency,
 
-    /// <summary>An unresolved partial owner effect fences automatic execution pending reconciliation.</summary>
+    /// <summary>An unresolved partial owner effect or an exhausted dependency failure budget fences automatic execution pending reconciliation.</summary>
     NeedsAttention,
 
     /// <summary>Terminal: the workflow confirmed its authoritative end state.</summary>
     Succeeded,
 
-    /// <summary>Terminal: a known domain or owner denial.</summary>
+    /// <summary>Terminal: a known domain or owner denial, including an owner's authoritative refusal of the pending step.</summary>
     Rejected,
 
     /// <summary>Terminal: a known non-retryable technical failure.</summary>

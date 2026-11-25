@@ -40,6 +40,15 @@ public sealed class DurableTaskAdmissionLiveTests
         await DurableTaskLifecycleTests.VerifyLifecycleAcrossReplicasAsync(new DaprReadModelStore(first), new DaprReadModelStore(second), Component);
     }
 
+    /// <summary>Resolves delegated step bindings, the failure budget and an owner refusal through distinct live Dapr connections.</summary>
+    [Fact]
+    public async Task StepBindingsAndOwnerOutcomesConvergeAcrossSidecars()
+    {
+        using DaprClient first = Client("HEXALITH_G1_PRIMARY_GRPC");
+        using DaprClient second = Client("HEXALITH_G1_REPLICA_GRPC");
+        await DurableTaskStepBindingTests.VerifyStepBindingsAcrossReplicasAsync(new DaprReadModelStore(first), new DaprReadModelStore(second), Component);
+    }
+
     internal static DaprClient Client(string variable)
     {
         string? endpoint = Environment.GetEnvironmentVariable(variable);
