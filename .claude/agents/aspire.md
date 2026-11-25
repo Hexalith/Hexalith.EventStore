@@ -59,7 +59,7 @@ sudo dockerd &>/tmp/dockerd.log &
 sudo chmod 666 /var/run/docker.sock
 $HOME/.dapr/bin/placement --port 50005 &
 $HOME/.dapr/bin/scheduler --port 50006 --etcd-data-dir /tmp/dapr-scheduler-data &
-EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+EnableKeycloak=false aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
 With `EnableKeycloak=false`, auth falls back to symmetric-key JWT (no Keycloak

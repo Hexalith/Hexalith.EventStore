@@ -2,6 +2,7 @@ namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 using global::Aspire.Hosting.ApplicationModel;
 using global::Aspire.Hosting.Testing;
@@ -241,6 +242,30 @@ public sealed class AspireSecurityResourceNamingTests
             .ConfigureAwait(true);
 
         staleMatches.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task RootOwnedSourcesUseSupportedAspireAppHostOption()
+    {
+        string repositoryRoot = RepositoryProjectPaths.GetRepositoryRoot();
+        const string command = @"\baspire[\t ]+(?:run|publish)\b";
+        string[] trackedCommands = await FindTrackedMatchesAsync(repositoryRoot, [command]).ConfigureAwait(true);
+        string[] paths = trackedCommands.Select(match => match[..match.IndexOf(':')]).Distinct(StringComparer.Ordinal).ToArray();
+        paths.ShouldContain(".claude/agents/aspire.md", "The Aspire CLI audit must reach the tracked agent instructions.");
+
+        var unsupported = new List<string>();
+        foreach (string path in paths)
+        {
+            string text = File.ReadAllText(Path.Combine(repositoryRoot, path));
+            string logicalLines = Regex.Replace(text, @"[\\\x60][\t ]*\r?\n", " ");
+            const string commandArguments = @"[^\r\n;&|\x60]*?";
+            foreach (Match match in Regex.Matches(logicalLines, command + commandArguments + @"[\t ]--project\b", RegexOptions.IgnoreCase))
+            {
+                unsupported.Add($"{path}: {match.Value}");
+            }
+        }
+
+        unsupported.ShouldBeEmpty("Aspire run and publish accept --apphost for the AppHost project path.");
     }
 
     [Fact]
