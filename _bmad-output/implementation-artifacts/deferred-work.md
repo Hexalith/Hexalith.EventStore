@@ -6860,4 +6860,5 @@ location: tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiHostMiddlewa
 source_spec: `spec-next-seven-deferred-items.md`
 severity: low
 reason: The unfiltered Release run failed `Host_WhenProductionAuthorityAlgorithmsAreMissing_FailsBeforeServing` because `WebApplicationFactory.CreateClient()` threw `ObjectDisposedException` from `DeferredHost.StartAsync`. One isolated rerun passed and logged the expected `OptionsValidationException` for `AllowedAlgorithms`. Make the startup assertion observe the original options validation failure reliably when the test host shuts down concurrently.
-status: open
+status: done 2026-11-25
+resolution: Observe the options failure from the host when DeferredHost reports disposal during startup. Apply the same assertion to all three invalid JWT configurations.

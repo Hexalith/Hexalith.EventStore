@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -273,10 +274,12 @@ public sealed class SampleApiHostMiddlewareTests
     public void Host_WhenProductionSymmetricOverrideIsConfigured_FailsBeforeServingWithoutEchoingKey()
     {
         string signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        using var startupLog = new SampleApiStartupValidationLog();
         using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
             .WithWebHostBuilder(builder =>
             {
                 _ = builder.UseEnvironment("Production");
+                _ = builder.ConfigureLogging(logging => logging.AddProvider(startupLog));
                 _ = builder.ConfigureAppConfiguration((_, configuration) =>
                     configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
@@ -289,7 +292,7 @@ public sealed class SampleApiHostMiddlewareTests
                     }));
             });
 
-        OptionsValidationException exception = Should.Throw<OptionsValidationException>(() => factory.CreateClient());
+        OptionsValidationException exception = AssertStartupValidationFailure(factory, startupLog);
 
         exception.Message.ShouldContain("forbidden in Production");
         exception.ToString().ShouldNotContain(signingKey);
@@ -298,10 +301,12 @@ public sealed class SampleApiHostMiddlewareTests
     [Fact]
     public void Host_WhenProductionAuthorityAlgorithmsAreMissing_FailsBeforeServing()
     {
+        using var startupLog = new SampleApiStartupValidationLog();
         using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
             .WithWebHostBuilder(builder =>
             {
                 _ = builder.UseEnvironment("Production");
+                _ = builder.ConfigureLogging(logging => logging.AddProvider(startupLog));
                 _ = builder.ConfigureAppConfiguration((_, configuration) =>
                     configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
@@ -313,7 +318,7 @@ public sealed class SampleApiHostMiddlewareTests
                     }));
             });
 
-        OptionsValidationException exception = Should.Throw<OptionsValidationException>(() => factory.CreateClient());
+        OptionsValidationException exception = AssertStartupValidationFailure(factory, startupLog);
 
         exception.Message.ShouldContain("AllowedAlgorithms");
     }
@@ -321,10 +326,12 @@ public sealed class SampleApiHostMiddlewareTests
     [Fact]
     public void Host_WhenDevelopmentHttpAuthorityRequiresHttpsMetadata_FailsBeforeServing()
     {
+        using var startupLog = new SampleApiStartupValidationLog();
         using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
             .WithWebHostBuilder(builder =>
             {
                 _ = builder.UseEnvironment("Development");
+                _ = builder.ConfigureLogging(logging => logging.AddProvider(startupLog));
                 _ = builder.ConfigureAppConfiguration((_, configuration) =>
                     configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
@@ -338,9 +345,28 @@ public sealed class SampleApiHostMiddlewareTests
                     }));
             });
 
-        OptionsValidationException exception = Should.Throw<OptionsValidationException>(() => factory.CreateClient());
+        OptionsValidationException exception = AssertStartupValidationFailure(factory, startupLog);
 
         exception.Message.ShouldContain("RequireHttpsMetadata");
+    }
+
+    private static OptionsValidationException AssertStartupValidationFailure(
+        WebApplicationFactory<SampleApi::Program> factory,
+        SampleApiStartupValidationLog startupLog)
+    {
+        Exception error = Should.Throw<Exception>(() =>
+        {
+            using HttpClient client = factory.CreateClient();
+        });
+
+        // The host logs the original exception before disposal can race DeferredHost.StartAsync.
+        if (error is ObjectDisposedException
+            && error.StackTrace?.Contains("DeferredHost.StartAsync", StringComparison.Ordinal) == true)
+        {
+            return startupLog.Failure.ShouldNotBeNull();
+        }
+
+        return error.ShouldBeOfType<OptionsValidationException>();
     }
 
     private static void ConfigureSampleAuth(WebHostBuilderContext _, IConfigurationBuilder configuration)
