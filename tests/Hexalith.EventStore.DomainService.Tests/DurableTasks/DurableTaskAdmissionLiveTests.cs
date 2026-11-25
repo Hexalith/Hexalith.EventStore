@@ -1,0 +1,40 @@
+using Dapr.Client;
+
+using Hexalith.EventStore.Client.Projections;
+
+namespace Hexalith.EventStore.DomainService.Tests.DurableTasks;
+
+/// <summary>Exercises the admission store against two sidecars connected to a private persistent provider.</summary>
+public sealed class DurableTaskAdmissionLiveTests
+{
+    private const string Component = "g1-task-state";
+
+    /// <summary>Verifies concurrent first admissions through distinct live Dapr connections.</summary>
+    [Fact]
+    public async Task CompetingReplicasResolveTheSameTaskOnlyAdmission()
+    {
+        using DaprClient first = Client("HEXALITH_G1_PRIMARY_GRPC");
+        using DaprClient second = Client("HEXALITH_G1_REPLICA_GRPC");
+        await DurableTaskAdmissionTests.VerifyCompetingAdmissionsAsync(new DaprReadModelStore(first), new DaprReadModelStore(second), Component);
+    }
+
+    /// <summary>Inspects provider state before and after replaying an admission whose response was lost.</summary>
+    /// <param name="commitBeforeLoss">Whether the original request committed before its response was lost.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConfirmationCommitIsVisibleFromAnotherSidecar(bool commitBeforeLoss)
+    {
+        using DaprClient first = Client("HEXALITH_G1_PRIMARY_GRPC");
+        using DaprClient second = Client("HEXALITH_G1_REPLICA_GRPC");
+        await DurableTaskAdmissionTests.VerifyConfirmationCommitAsync(
+            new DaprReadModelStore(first), new DaprReadModelStore(second), Component, commitBeforeLoss);
+    }
+
+    private static DaprClient Client(string variable)
+    {
+        string? endpoint = Environment.GetEnvironmentVariable(variable);
+        Assert.SkipUnless(endpoint is not null, "Requires the Platform G-1 isolated runtime fixture.");
+        return new DaprClientBuilder().UseGrpcEndpoint(endpoint!).Build();
+    }
+}

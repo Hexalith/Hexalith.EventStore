@@ -1,0 +1,196 @@
+using System.Security.Cryptography;
+using System.Text.Json;
+
+using Hexalith.Commons.UniqueIds;
+using Hexalith.EventStore.Client.Projections;
+
+namespace Hexalith.EventStore.DomainService.DurableTasks;
+
+/// <summary>Admits one task per authorized scope and atomically consumes its optional confirmation artifact.</summary>
+/// <param name="store">The EventStore conditional state-store interface.</param>
+/// <param name="storeName">An isolated store component providing strong reads and first-write CAS.</param>
+/// <param name="authorization">The host-owned current authority and operation policy.</param>
+/// <param name="timeProvider">The UTC clock used for confirmation expiry.</param>
+/// <remarks>The host constructs this service only for the authenticated admission and confirmation components. This type does not expose an HTTP route or register a runtime on its own.</remarks>
+public sealed class DurableTaskAdmission(
+    IReadModelStore store,
+    string storeName,
+    IDurableTaskAdmissionAuthorizer authorization,
+    TimeProvider timeProvider)
+{
+    private const int MaxWrites = 8;
+    private static readonly TimeSpan ConfirmationLifetime = TimeSpan.FromMinutes(15);
+
+    private readonly IReadModelStore _store = store ?? throw new ArgumentNullException(nameof(store));
+    private readonly string _storeName = !string.IsNullOrWhiteSpace(storeName) ? storeName : throw new ArgumentException("A state component is required.", nameof(storeName));
+    private readonly IDurableTaskAdmissionAuthorizer _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+    private readonly TimeProvider _time = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+
+    /// <summary>Issues an opaque token to a currently authorized interactive caller.</summary>
+    public async Task<string?> IssueConfirmationAsync(
+        DurableTaskScope scope,
+        string requestSha256,
+        CancellationToken cancellationToken = default)
+    {
+        string key = ValidateAndGetKey(scope, requestSha256);
+        for (int attempt = 0; attempt < MaxWrites; attempt++)
+        {
+            DurableTaskAdmissionAuthority decision = await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false);
+            if (!decision.Allowed || !decision.RequiresConfirmation || !IsSha256(decision.ConfirmationBindingSha256))
+            {
+                return null;
+            }
+
+            ReadModelEntry<DurableTaskAdmissionState> entry = await ReadAsync(scope, key, cancellationToken).ConfigureAwait(false);
+            if (entry.Value?.Task is not null)
+            {
+                return null;
+            }
+
+            if (await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false) != decision)
+            {
+                return null;
+            }
+
+            byte[] token = RandomNumberGenerator.GetBytes(32);
+            var confirmation = new DurableTaskConfirmationState(
+                Hash(token), requestSha256, decision.ConfirmationBindingSha256!, _time.GetUtcNow() + ConfirmationLifetime);
+            var next = new DurableTaskAdmissionState(scope, confirmation, null);
+            if (await TrySaveAsync(key, entry, next, cancellationToken).ConfigureAwait(false))
+            {
+                return Convert.ToHexStringLower(token);
+            }
+        }
+
+        throw new InvalidOperationException("Durable Task confirmation contention exceeded the retry budget.");
+    }
+
+    /// <summary>Admits the current intent or reauthorizes and returns its original committed task.</summary>
+    public async Task<DurableTaskAdmissionResult> AdmitAsync(
+        DurableTaskScope scope,
+        string requestSha256,
+        string? confirmationToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        string key = ValidateAndGetKey(scope, requestSha256);
+        for (int attempt = 0; attempt < MaxWrites; attempt++)
+        {
+            DurableTaskAdmissionAuthority decision = await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false);
+            if (!decision.Allowed)
+            {
+                return new(DurableTaskAdmissionOutcome.Denied);
+            }
+
+            ReadModelEntry<DurableTaskAdmissionState> entry = await ReadAsync(scope, key, cancellationToken).ConfigureAwait(false);
+            decision = await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false);
+            if (!decision.Allowed)
+            {
+                return new(DurableTaskAdmissionOutcome.Denied);
+            }
+
+            if (entry.Value?.Task is { } original)
+            {
+                return original.RequestSha256 == requestSha256
+                    ? new(DurableTaskAdmissionOutcome.Admitted, original)
+                    : new(DurableTaskAdmissionOutcome.Conflict);
+            }
+
+            DurableTaskConfirmationState? confirmation = entry.Value?.Confirmation;
+            DateTimeOffset now = _time.GetUtcNow();
+            if (decision.RequiresConfirmation && !Matches(confirmation, confirmationToken, requestSha256, decision.ConfirmationBindingSha256, now))
+            {
+                return new(DurableTaskAdmissionOutcome.RenewConfirmation);
+            }
+
+            var task = new CommittedDurableTaskAdmission(UniqueIdHelper.GenerateSortableUniqueStringId(), scope, requestSha256, now);
+            var next = new DurableTaskAdmissionState(
+                scope, decision.RequiresConfirmation ? confirmation! with { ConsumedBy = task.TaskId } : null, task);
+            if (await TrySaveAsync(key, entry, next, cancellationToken).ConfigureAwait(false))
+            {
+                return new(DurableTaskAdmissionOutcome.Admitted, task);
+            }
+        }
+
+        throw new InvalidOperationException("Durable Task admission contention exceeded the retry budget.");
+    }
+
+    /// <summary>Reads committed admission by exact authorized scope and normalized intent.</summary>
+    public async Task<CommittedDurableTaskAdmission?> GetCommittedAsync(
+        DurableTaskScope scope,
+        string requestSha256,
+        CancellationToken cancellationToken = default)
+    {
+        string key = ValidateAndGetKey(scope, requestSha256);
+        if (!(await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false)).Allowed)
+        {
+            return null;
+        }
+
+        ReadModelEntry<DurableTaskAdmissionState> entry = await ReadAsync(scope, key, cancellationToken).ConfigureAwait(false);
+        return entry.Value?.Task is { } task && task.RequestSha256 == requestSha256
+            && (await AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false)).Allowed ? task : null;
+    }
+
+    private async ValueTask<DurableTaskAdmissionAuthority> AuthorizeAsync(
+        DurableTaskScope scope, string requestSha256, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await _authorization.AuthorizeAsync(scope, requestSha256, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ReadModelEntry<DurableTaskAdmissionState>> ReadAsync(
+        DurableTaskScope scope, string key, CancellationToken cancellationToken)
+    {
+        ReadModelEntry<DurableTaskAdmissionState> entry = await _store
+            .GetAsync<DurableTaskAdmissionState>(_storeName, key, cancellationToken).ConfigureAwait(false);
+        if (entry.Value is { } value &&
+            (string.IsNullOrEmpty(entry.ETag) || value.Scope != scope || value.Task is { Scope: var bound } && bound != scope
+                || value.Confirmation is { ConsumedBy: var consumedBy } && consumedBy != value.Task?.TaskId))
+        {
+            throw new InvalidOperationException("The persisted Durable Task admission is inconsistent.");
+        }
+
+        return entry;
+    }
+
+    private Task<bool> TrySaveAsync(string key, ReadModelEntry<DurableTaskAdmissionState> entry,
+        DurableTaskAdmissionState next, CancellationToken cancellationToken)
+        => _store.TrySaveAsync(_storeName, key, next, entry.ETag ?? string.Empty, cancellationToken);
+
+    private static bool Matches(DurableTaskConfirmationState? state, string? token, string requestSha256,
+        string? bindingSha256, DateTimeOffset now)
+        => state is { ConsumedBy: null }
+            && state.ExpiresAt > now
+            && state.RequestSha256 == requestSha256
+            && IsSha256(bindingSha256)
+            && state.BindingSha256 == bindingSha256
+            && IsSha256(token)
+            && IsSha256(state.TokenSha256)
+            && CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(state.TokenSha256), SHA256.HashData(Convert.FromHexString(token!)));
+
+    private static string ValidateAndGetKey(DurableTaskScope scope, string requestSha256)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        if (!IsScopedValue(scope.TenantId) || !IsScopedValue(scope.ActorId)
+            || !IsScopedValue(scope.Operation) || !IsScopedValue(scope.IdempotencyKey))
+        {
+            throw new ArgumentException("Durable Task scope values must be nonempty and at most 256 characters.", nameof(scope));
+        }
+
+        if (!IsSha256(requestSha256))
+        {
+            throw new ArgumentException("The normalized intent requires a lowercase SHA-256 digest.", nameof(requestSha256));
+        }
+
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new[] { scope.TenantId, scope.ActorId, scope.Operation, scope.IdempotencyKey });
+        return "durable-task-admission-v1-" + Hash(bytes);
+    }
+
+    private static bool IsScopedValue(string value) => !string.IsNullOrWhiteSpace(value) && value.Length <= 256;
+
+    private static bool IsSha256(string? value)
+        => value is { Length: 64 } && value.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static string Hash(ReadOnlySpan<byte> bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
+}
