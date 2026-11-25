@@ -80,12 +80,12 @@ public static class ErrorReferenceEndpoints {
 
         new("idempotency-conflict", "Idempotency Conflict", 409,
             "The live tenant-scoped idempotency key is already associated with a different canonical intent.",
-            """{"type":"https://hexalith.io/problems/idempotency-conflict","title":"Idempotency Conflict","status":409,"code":"idempotency_conflict","category":"idempotency_conflict","retryable":false,"correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
+            """{"type":"https://hexalith.io/problems/idempotency-conflict","title":"Idempotency Conflict","status":409,"detail":"The idempotency key cannot be used for this mutation. Use the original intent or submit with a new key.","reasonCode":"idempotency_conflict","code":"idempotency_conflict","category":"idempotency_conflict","retryable":false,"correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
             ["Submit the original canonical mutation intent for this key.", "Otherwise refresh state and submit with a new idempotency key."]),
 
         new("idempotency-key-expired", "Idempotency Key Expired", 409,
             "The tenant-scoped key remains consumed, but its replay result and canonical intent digest have expired and were compacted.",
-            """{"type":"https://hexalith.io/problems/idempotency-key-expired","title":"Idempotency Key Expired","status":409,"code":"idempotency_key_expired","category":"idempotency_key_expired","retryable":false,"clientAction":"refresh_state_then_submit_with_new_key","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
+            """{"type":"https://hexalith.io/problems/idempotency-key-expired","title":"Idempotency Key Expired","status":409,"detail":"Refresh current state, then submit the intended mutation with a new idempotency key.","reasonCode":"idempotency_key_expired","code":"idempotency_key_expired","category":"idempotency_key_expired","retryable":false,"clientAction":"refresh_state_then_submit_with_new_key","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
             ["Refresh current state.", "Submit the intended mutation with a new idempotency key."]),
 
         new("idempotency-admission-failure", "Idempotency Admission Failed", 503,

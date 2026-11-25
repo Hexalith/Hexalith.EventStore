@@ -970,7 +970,8 @@ resolution: Correct the Story 4.8 baseline to the verified parent of the commit 
 origin: migrated from legacy ledger ("Deferred from: idempotency result-payload gating CI fix (2026-07-20)"), 2026-08-30
 location: ErrorReferenceEndpoints.ErrorModels
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md` summary: `idempotency-conflict` and `idempotency-key-expired` error-catalog entries in `ErrorReferenceEndpoints.ErrorModels` omit `detail`/`reasonCode` example fields that their real exception handlers (`IdempotencyConflictExceptionHandler`, `IdempotencyKeyExpiredExceptionHandler`) actually set. evidence: Adversarial review of the CI fix -- pre-existing gap unrelated to today's regression; the new `idempotency-admission-failure` entry added by this fix includes both fields (matching its handler), highlighting the sibling entries' inconsistency.
-status: open
+status: done 2026-11-25
+resolution: Publish the runtime detail and reasonCode fields in both idempotency examples and verify them through the JSON catalog endpoint.
 
 ### DW-144: No test verifies `ErrorReferenceEndpoints.ErrorModels` example content (status code, fields) against what each real `IExceptionHandler` actually emits at runtime -- only slug presence/absence is asserted.
 

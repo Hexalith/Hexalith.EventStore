@@ -2,6 +2,7 @@ extern alias eventstore;
 
 using System.Net;
 using System.Reflection;
+using System.Text.Json;
 
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.OpenApi;
@@ -24,6 +25,21 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
 
     public static IEnumerable<object[]> ErrorReferenceModels() => ErrorReferenceEndpoints.ErrorModels
         .Select(model => new object[] { model.Slug, model.Title, model.StatusCode, model.ExampleJson, model.ResolutionSteps[0] });
+
+    [Theory]
+    [InlineData("idempotency-conflict", "idempotency_conflict", "The idempotency key cannot be used for this mutation. Use the original intent or submit with a new key.")]
+    [InlineData("idempotency-key-expired", "idempotency_key_expired", "Refresh current state, then submit the intended mutation with a new idempotency key.")]
+    public async Task ErrorCatalog_ExposesIdempotencyDetailAndReasonCode(string slug, string reasonCode, string detail)
+    {
+        using HttpClient client = _factory.CreateClient();
+        using HttpResponseMessage response = await client.GetAsync("/problems/catalog.json");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using JsonDocument catalog = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        JsonElement model = catalog.RootElement.EnumerateArray().Single(item => item.GetProperty("slug").GetString() == slug);
+        using JsonDocument example = JsonDocument.Parse(model.GetProperty("exampleJson").GetString()!);
+        example.RootElement.GetProperty("detail").GetString().ShouldBe(detail);
+        example.RootElement.GetProperty("reasonCode").GetString().ShouldBe(reasonCode);
+    }
 
     [Theory]
     [MemberData(nameof(ErrorReferenceModels))]
