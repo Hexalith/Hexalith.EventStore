@@ -986,7 +986,8 @@ resolution: Compare catalog examples with the ordered gateway exception handlers
 origin: migrated from legacy ledger ("Deferred from: idempotency result-payload gating CI fix (2026-07-20)"), 2026-08-30
 location: SubmitCommandResult
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md` summary: `SubmitCommandResult` has no field distinguishing why `ResultPayload` is null (still in-flight, domain-rejected, or a durable non-retryable `PublishFailed`) -- all three look identical to callers from the response body alone. evidence: Adversarial review of the CI fix -- pre-existing API design gap in the exact code path this fix restores gating for; not caused by this change.
-status: open
+status: done 2026-11-25
+resolution: Expose an optional payload omission reason for known accepted outcomes, including pending admission and confirmed publication failure. Preserve typed domain rejection and verify the original execution identity on replay.
 
 ### DW-146: `docs/reference/command-api.md` § "Stable Idempotency Outcomes" and `ErrorReferenceEndpoints.ErrorModels` are two independently maintained sources of truth for the same idempotency-admission failure taxonomy, with no cross-link between them.
 

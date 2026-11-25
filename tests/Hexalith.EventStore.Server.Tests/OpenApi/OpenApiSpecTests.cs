@@ -90,6 +90,36 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
     }
 
     [Fact]
+    public async Task OpenApiDocument_AcceptedCommandDescribesOptionalPayloadOmissionReason()
+    {
+        JsonElement document = await GetOpenApiDocumentAsync();
+        JsonElement response = document.GetProperty("paths").GetProperty("/api/v1/commands")
+            .GetProperty("post").GetProperty("responses").GetProperty("202").GetProperty("content")
+            .GetProperty("application/json").GetProperty("schema");
+        JsonElement schemas = document.GetProperty("components").GetProperty("schemas");
+        JsonElement model = response.TryGetProperty("$ref", out JsonElement modelRef)
+            ? schemas.GetProperty(modelRef.GetString()!.Split('/')[^1])
+            : response;
+        if (model.TryGetProperty("required", out JsonElement required))
+        {
+            required.EnumerateArray().Select(item => item.GetString()).ShouldNotContain("resultPayloadOmissionReason");
+        }
+
+        JsonElement reason = model.GetProperty("properties").GetProperty("resultPayloadOmissionReason");
+        if (reason.TryGetProperty("oneOf", out JsonElement alternatives))
+        {
+            reason = alternatives.EnumerateArray().Single(candidate =>
+                !candidate.TryGetProperty("type", out JsonElement type) || type.GetString() != "null");
+        }
+
+        JsonElement definition = reason.TryGetProperty("$ref", out JsonElement reasonRef)
+            ? schemas.GetProperty(reasonRef.GetString()!.Split('/')[^1])
+            : reason;
+        definition.TryGetProperty("enum", out JsonElement values).ShouldBeTrue(definition.GetRawText());
+        values.EnumerateArray().Select(item => item.GetString()).ShouldBe(["InFlight", "PublishFailed", null]);
+    }
+
+    [Fact]
     public async Task OpenApiDocument_CommandEndpoints_ContainXmlDocumentationDescriptions() {
         JsonElement doc = await GetOpenApiDocumentAsync();
 

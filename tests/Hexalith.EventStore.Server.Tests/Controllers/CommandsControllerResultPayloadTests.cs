@@ -19,6 +19,8 @@ using NSubstitute;
 
 using Shouldly;
 
+using ResultPayloadOmissionReason = Hexalith.EventStore.Contracts.Commands.ResultPayloadOmissionReason;
+
 namespace Hexalith.EventStore.Server.Tests.Controllers;
 
 /// <summary>
@@ -90,6 +92,19 @@ public class CommandsControllerResultPayloadTests {
         payload.ValueKind.ShouldBe(JsonValueKind.Object);
         payload.GetProperty("orderId").GetString().ShouldBe("abc");
         payload.GetProperty("total").GetInt32().ShouldBe(42);
+    }
+
+    [Fact]
+    public async Task Submit_PermanentPublishFailure_ExposesOmissionReasonOnWire()
+    {
+        (CommandsController controller, _) = CreateController(null, ResultPayloadOmissionReason.PublishFailed);
+
+        var accepted = (await controller.Submit(CreateTestRequest(), CancellationToken.None))
+            .ShouldBeOfType<AcceptedResult>();
+
+        JsonElement body = JsonSerializer.SerializeToElement(accepted.Value, JsonSerializerOptions.Web);
+        body.TryGetProperty("resultPayload", out _).ShouldBeFalse();
+        body.GetProperty("resultPayloadOmissionReason").GetString().ShouldBe("PublishFailed");
     }
 
     [Fact]
@@ -182,10 +197,14 @@ public class CommandsControllerResultPayloadTests {
         warningMessage.ShouldNotContain("parse cap");
     }
 
-    private static (CommandsController Controller, CapturingLogger<CommandsController> Logger) CreateController(string? resultPayload) {
+    private static (CommandsController Controller, CapturingLogger<CommandsController> Logger) CreateController(
+        string? resultPayload, ResultPayloadOmissionReason? omissionReason = null) {
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new SubmitCommandResult("test-correlation-id", resultPayload));
+            .Returns(new SubmitCommandResult("test-correlation-id", resultPayload)
+            {
+                ResultPayloadOmissionReason = omissionReason,
+            });
 
         ExtensionMetadataSanitizer sanitizer = new(Options.Create(new ExtensionMetadataOptions()));
         var logger = new CapturingLogger<CommandsController>();

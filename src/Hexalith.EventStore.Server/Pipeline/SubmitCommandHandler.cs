@@ -197,7 +197,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                     case IdempotencyAdmissionDecision.Expired:
                         throw new IdempotencyKeyExpiredException(request.CorrelationId);
                     case IdempotencyAdmissionDecision.Replay:
-                        return CreateReplayResult(request, admissionSession);
+                        return await CreateReplayResultAsync(request, admissionSession, cancellationToken).ConfigureAwait(false);
                     case IdempotencyAdmissionDecision.Execute:
                     case IdempotencyAdmissionDecision.Recoverable:
                         executionMessageId = RequireExecutionIdentity(admissionSession.ExecutionMessageId);
@@ -206,7 +206,10 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                     case IdempotencyAdmissionDecision.Pending:
                         return new SubmitCommandResult(
                             request.CorrelationId,
-                            MessageId: RequireExecutionIdentity(admissionSession.ExecutionMessageId));
+                            MessageId: RequireExecutionIdentity(admissionSession.ExecutionMessageId))
+                        {
+                            ResultPayloadOmissionReason = ResultPayloadOmissionReason.InFlight,
+                        };
                     case IdempotencyAdmissionDecision.UnknownProviderOutcome:
                         executionMessageId = RequireExecutionIdentity(admissionSession.ExecutionMessageId);
                         executionCorrelationId = RequireCheckpointIdentity(admissionSession.ExecutionCorrelationId);
@@ -358,9 +361,10 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                         .CompleteAsync(admissionSession, reconciledResult, cancellationToken)
                         .ConfigureAwait(false);
                     reconciledCompletionStage?.Complete();
-                    return CreateReplayResult(
+                    return await CreateReplayResultAsync(
                         request,
-                        admissionSession with { ReplayResult = reconciledResult });
+                        admissionSession with { ReplayResult = reconciledResult },
+                        cancellationToken).ConfigureAwait(false);
                 }
 
                 throw AdmissionFailure(
@@ -508,6 +512,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
             CommandStatusRecord? observedStatus = null;
             bool statusReadSucceeded = false;
             CommandStatusRecord? finalStatus = null;
+            ResultPayloadOmissionReason? omissionReason = null;
             try {
                 try {
                 using var statusReadStage = diagnostics?.Start(DispatchStageName.StatusRead);
@@ -534,6 +539,8 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
             catch (Exception ex) {
                 Log.StatusReadForTrackingFailed(logger, ex, request.CorrelationId, request.Tenant);
             }
+
+            omissionReason = GetResultPayloadOmissionReason(executionRequest, observedStatus);
 
             if (!coordinatedConflict && statusReadSucceeded
                 && observedStatus is null
@@ -784,6 +791,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
 
             return result with {
                 ResultPayload = resultPayload,
+                ResultPayloadOmissionReason = resultPayload is null ? omissionReason : null,
             };
         }
         finally
@@ -888,24 +896,68 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
         }
     }
 
-    private static SubmitCommandResult CreateReplayResult(
+    private async Task<SubmitCommandResult> CreateReplayResultAsync(
         SubmitCommand request,
-        IdempotencyAdmissionSession session)
+        IdempotencyAdmissionSession session,
+        CancellationToken cancellationToken)
     {
         CommandProcessingResult replay = session.ReplayResult
             ?? throw new InvalidOperationException("Replay admission did not contain a command result.");
+        string messageId = RequireExecutionIdentity(session.ExecutionMessageId);
         if (!replay.Accepted)
         {
-            ThrowDeterministicFailure(
-                request,
-                RequireExecutionIdentity(session.ExecutionMessageId),
-                replay);
+            ThrowDeterministicFailure(request, messageId, replay);
         }
 
-        return new SubmitCommandResult(
-            request.CorrelationId,
-            replay.ResultPayloadWithheld ? null : replay.ResultPayload,
-            RequireExecutionIdentity(session.ExecutionMessageId));
+        string? payload = replay.ResultPayloadWithheld ? null : replay.ResultPayload;
+        ResultPayloadOmissionReason? omissionReason = null;
+        if (payload is null && !string.IsNullOrWhiteSpace(session.ExecutionCorrelationId))
+        {
+            using var statusDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            statusDeadline.CancelAfter(TimeSpan.FromSeconds(1));
+            try
+            {
+                CommandStatusRecord? status = await statusStore
+                    .ReadStatusAsync(request.Tenant, messageId, statusDeadline.Token)
+                    .WaitAsync(statusDeadline.Token).ConfigureAwait(false);
+                SubmitCommand execution = request with { MessageId = messageId, CorrelationId = session.ExecutionCorrelationId };
+                omissionReason = GetResultPayloadOmissionReason(execution, status);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                Log.StatusReadForTrackingFailed(logger, exception, request.CorrelationId, request.Tenant);
+            }
+        }
+
+        return new SubmitCommandResult(request.CorrelationId, payload, messageId)
+        {
+            ResultPayloadOmissionReason = omissionReason,
+        };
+    }
+
+    private static ResultPayloadOmissionReason? GetResultPayloadOmissionReason(
+        SubmitCommand execution,
+        CommandStatusRecord? status)
+    {
+        if (status is null || status.MessageId != execution.MessageId
+            || status.CorrelationId != execution.CorrelationId || status.AggregateId != execution.AggregateId
+            || (status.Domain is not null && status.Domain != execution.Domain))
+        {
+            return null;
+        }
+
+        return status.Status switch
+        {
+            CommandStatus.Received or CommandStatus.Processing or CommandStatus.EventsStored
+                or CommandStatus.EventsPublished => ResultPayloadOmissionReason.InFlight,
+            CommandStatus.PublishFailed when status.Retryable is true => ResultPayloadOmissionReason.InFlight,
+            CommandStatus.PublishFailed when status.Retryable is false => ResultPayloadOmissionReason.PublishFailed,
+            _ => null,
+        };
     }
 
     private static void ThrowDeterministicFailure(

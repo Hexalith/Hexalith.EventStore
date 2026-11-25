@@ -248,6 +248,30 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData(CommandStatus.PublishFailed, false, ResultPayloadOmissionReason.PublishFailed)]
+    [InlineData(CommandStatus.Completed, null, null)]
+    public async Task Handle_ReplayWithheldResult_UsesOriginalExecutionStatus(
+        CommandStatus status, bool? retryable, ResultPayloadOmissionReason? expectedReason)
+    {
+        const string originalMessageId = "01J22222222222222222222222";
+        const string originalCorrelationId = "trace-first";
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Replay,
+            new CommandProcessingResult(true, ResultPayloadWithheld: true),
+            executionMessageId: originalMessageId, executionCorrelationId: originalCorrelationId);
+        await context.StatusStore.WriteStatusAsync(context.Command.Tenant, originalMessageId,
+            new CommandStatusRecord(status, DateTimeOffset.UtcNow, context.Command.AggregateId,
+                EventCount: 1, RejectionEventType: null, FailureReason: null, TimeoutDuration: null,
+                MessageId: originalMessageId, CorrelationId: originalCorrelationId, Retryable: retryable),
+            CancellationToken.None);
+
+        SubmitCommandResult result = await context.Handler.Handle(context.Command, CancellationToken.None);
+
+        result.ResultPayload.ShouldBeNull();
+        result.ResultPayloadOmissionReason.ShouldBe(expectedReason);
+        result.MessageId.ShouldBe(originalMessageId);
+    }
+
     [Fact]
     public async Task Handle_ReplayDomainRejection_RehydratesTypedExceptionWithoutAdvisoryRead()
     {
@@ -430,6 +454,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
 
         result.CorrelationId.ShouldBe(context.Command.CorrelationId);
         result.MessageId.ShouldBe(firstMessageId);
+        result.ResultPayloadOmissionReason.ShouldBe(ResultPayloadOmissionReason.InFlight);
         await context.Coordinator.DidNotReceive().BeginAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
             Arg.Any<CancellationToken>());
