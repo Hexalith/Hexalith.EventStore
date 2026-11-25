@@ -5066,8 +5066,7 @@ public partial class AggregateActor(
         string correlationId,
         int eventCount,
         string? failureReason,
-        string? rejectionEventType,
-        string? resultPayload = null) {
+        string? rejectionEventType) {
         bool accepted = string.IsNullOrWhiteSpace(rejectionEventType);
         string? errorMessage = accepted
             ? null
@@ -5078,10 +5077,9 @@ public partial class AggregateActor(
             ErrorMessage: errorMessage,
             CorrelationId: correlationId,
             EventCount: eventCount,
-            ResultPayload: resultPayload,
             RejectionEventType: rejectionEventType,
             FailureReason: failureReason,
-            ResultPayloadWithheld: !accepted || !string.IsNullOrWhiteSpace(failureReason));
+            ResultPayloadWithheld: true);
     }
 
     private async Task<EventEnvelope[]> ReadEventsRangeAsync(

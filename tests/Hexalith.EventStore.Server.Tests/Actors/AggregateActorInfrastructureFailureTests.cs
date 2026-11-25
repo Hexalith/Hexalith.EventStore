@@ -576,6 +576,7 @@ public class AggregateActorInfrastructureFailureTests
 
         result.Accepted.ShouldBeFalse();
         result.FailureReason.ShouldBe("ConcurrencyConflict");
+        result.ResultPayloadWithheld.ShouldBeTrue();
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
         durable[identity.MetadataKey].ShouldBe(winnerMetadata);
         durable[$"{identity.EventStreamKeyPrefix}1"].ShouldBe(winnerEvent);

@@ -1002,7 +1002,8 @@ resolution: Link the HTML and JSON gateway catalogs to the canonical command API
 origin: migrated from legacy ledger ("Deferred from: code review of spec-gh-29740868410-fix-ci-cd.md (2026-07-20)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29740868410-fix-ci-cd.md` summary: No unit test asserts that AggregateActor's several `ResultPayloadWithheld` formulas (`CreatePublishFailedResult` and the terminal-completion/concurrency-conflict paths) produce the correct value for each terminal branch. evidence: PR #319 (`6945714b`) made `CommandProcessingResult.ResultPayloadWithheld` the sole authority for whether `SubmitCommandHandler` returns a command's result payload, but only the consumer side (`SubmitCommandHandlerResultPayloadTests`) has coverage; the producer side in `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (around lines 2018, 2264, 2297, 2358) has no test proving its withheld formula is correct per branch, so a regression there would go undetected by any current suite.
-status: open
+status: done 2026-11-25
+resolution: Keep payload withholding on publication failure even when the broker has no diagnostic message. Cover returned and persisted outcomes for completion, rejections, conflicts, and fresh or resumed publication failures.
 
 ### DW-148: `SubmitCommandHandler.Log.ResultPayloadDropped`'s message text ("...because final command status was not Completed...") is stale under the flag-driven withholding logic and can be logged even when the reported `FinalStatus` is `Completed`.
 

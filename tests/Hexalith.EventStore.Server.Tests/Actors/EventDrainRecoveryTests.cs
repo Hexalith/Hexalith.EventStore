@@ -2270,7 +2270,11 @@ public class EventDrainRecoveryTests {
             Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
-        _ = await ctx.Actor.ProcessCommandAsync(CreateCapacityEnvelope());
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateCapacityEnvelope());
+
+        result.Accepted.ShouldBeTrue();
+        result.ResultPayloadWithheld.ShouldBeTrue();
+        result.ResultPayload.ShouldBeNull();
 
         // Proves this is the RESUME producing site, not the first-pass one: resume never re-invokes
         // the domain because the events are already committed.
