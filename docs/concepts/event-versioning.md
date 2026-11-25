@@ -17,6 +17,8 @@ An event without the attribute, or with `[EventPayloadVersion(1)]`, remains vers
 
 The server stores and forwards the declared version without upcasting. Stream and admin views display stored events. Neither the original payload bytes nor its event identity change during a read.
 
+The legacy event writer uses the CLR member names for typed JSON payloads and preserves bytes and format supplied by `ISerializedEventPayload`. The default domain-service wire response, direct server persistence and in-memory persister use that same writer. Domains with a bounded V1 serializer profile continue to use their registered serializer. Existing readers accept both PascalCase and camelCase. A rollout that centralizes this writer can upgrade the server and domain services in either order because the payload bytes and version metadata exchanged between them stay compatible.
+
 ## Changes that need no new version
 
 Changes that preserve the meaning and JSON shape consumed by every deployed reader, such as internal refactoring, can keep the current version. An added property needs both directions of compatibility: old readers must safely ignore it in new events, and new readers must supply a safe default when reading old stored events that lack it. Rename a property, change its type or meaning, or remove a property only with a new version and a complete upcaster chain. Check every Apply, projection, and subscription consumer before deciding that a shape change is safe.

@@ -569,9 +569,10 @@ public class EventPersisterTests {
         _ = await persister.PersistEventsAsync(TestIdentity, aggregateType: "test-domain", command, domainResult, domainServiceVersion: "v1");
 
         // Assert
+        byte[] expectedPayload = """{"Name":"hello"}"""u8.ToArray();
         await stateManager.Received(1).SetStateAsync(
             Arg.Any<string>(),
-            Arg.Is<EventEnvelope>(e => e.Payload.Length > 0),
+            Arg.Is<EventEnvelope>(e => e.Payload.SequenceEqual(expectedPayload)),
             Arg.Any<CancellationToken>());
     }
 

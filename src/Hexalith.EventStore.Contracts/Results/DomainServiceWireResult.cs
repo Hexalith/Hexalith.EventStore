@@ -1,6 +1,5 @@
-using System.Text.Json;
-
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Results;
 
@@ -46,9 +45,7 @@ public sealed record DomainServiceWireResult(
             string eventTypeName = payload is ISerializedEventPayload source
                 ? source.EventTypeName
                 : payloadType.FullName ?? payloadType.Name;
-            byte[] payloadBytes = payload is ISerializedEventPayload bytes
-                ? bytes.PayloadBytes
-                : JsonSerializer.SerializeToUtf8Bytes(payload, payloadType);
+            byte[] payloadBytes = EventStorePayloadSerialization.SerializeLegacyEventPayload(payload);
             string format = payload is ISerializedEventPayload formatted ? formatted.SerializationFormat : "json";
             if (version > 1 && !string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
             {

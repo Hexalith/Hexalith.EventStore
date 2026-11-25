@@ -6,4 +6,5 @@ namespace Hexalith.EventStore.Testing.Tests.Fakes;
 /// Represents an event payload used to verify <see cref="Hexalith.EventStore.Testing.Fakes.FakeEventPersister"/> behavior.
 /// </summary>
 /// <param name="Name">The test event name.</param>
+[EventPayloadVersion(2)]
 internal sealed record FakeEventPersisterTestEvent(string Name) : IEventPayload;

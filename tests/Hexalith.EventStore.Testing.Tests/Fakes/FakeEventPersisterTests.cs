@@ -14,6 +14,53 @@ namespace Hexalith.EventStore.Testing.Tests.Fakes;
 
 public class FakeEventPersisterTests {
     [Fact]
+    public async Task PersistEventsAsync_MatchesTheWireWriterForTypedAndSerializedPayloads() {
+        var persister = new FakeEventPersister();
+        AggregateIdentity identity = new AggregateIdentityBuilder().Build();
+        CommandEnvelope command = new CommandEnvelopeBuilder().Build();
+        byte[] original = [1, 2, 3];
+        DomainResult domainResult = DomainResult.Success([
+            new FakeEventPersisterTestEvent("typed"),
+            new FakeSerializedEventPayload("supplied-event", original, "application/octet-stream"),
+        ]);
+
+        EventPersistResult result = await persister.PersistEventsAsync(
+            identity, "test-aggregate", command, domainResult, "v1", TestContext.Current.CancellationToken);
+        DomainServiceWireResult wire = DomainServiceWireResult.FromDomainResult(domainResult);
+
+        result.PersistedEnvelopes.Count.ShouldBe(wire.Events.Count);
+        for (int index = 0; index < wire.Events.Count; index++) {
+            EventEnvelope envelope = result.PersistedEnvelopes[index];
+            envelope.Payload.ShouldBe(wire.Events[index].Payload);
+            envelope.EventTypeName.ShouldBe(wire.Events[index].EventTypeName);
+            envelope.SerializationFormat.ShouldBe(wire.Events[index].SerializationFormat);
+            envelope.PayloadVersion.ShouldBe(wire.Events[index].PayloadVersion);
+        }
+
+        original[0] = 42;
+        persister.PersistedEvents[1].Payload.ShouldBe(new byte[] { 1, 2, 3 });
+    }
+
+    [Fact]
+    public async Task PersistEventsAsync_RejectsProtectedInputWithoutPublishingPartOfTheBatch() {
+        var persister = new FakeEventPersister();
+        AggregateIdentity identity = new AggregateIdentityBuilder().Build();
+        CommandEnvelope command = new CommandEnvelopeBuilder().Build();
+        var valid = new FakeEventPersisterTestEvent("typed");
+        DomainResult batch = DomainResult.Success([valid, new FakeSerializedEventPayload("protected-event", [1], "json+pdenc-v2")]);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => persister.PersistEventsAsync(
+            identity, "test-aggregate", command, batch, "v1", TestContext.Current.CancellationToken));
+        persister.PersistedEvents.ShouldBeEmpty();
+
+        EventPersistResult retry = await persister.PersistEventsAsync(
+            identity, "test-aggregate", command, DomainResult.Success([valid]), "v1", TestContext.Current.CancellationToken);
+        EventEnvelope persisted = retry.PersistedEnvelopes.ShouldHaveSingleItem();
+        persisted.SequenceNumber.ShouldBe(1);
+        persisted.GlobalPosition.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task PersistEventsAsync_DifferentAggregates_AssignsNonZeroCrossAggregateGlobalPositions() {
         // Arrange
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

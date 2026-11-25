@@ -1,6 +1,8 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Serialization;
+using Hexalith.EventStore.Contracts.Tests.Events;
 
 namespace Hexalith.EventStore.Contracts.Tests.Results;
 
@@ -74,6 +76,26 @@ public class DomainServiceWireResultTests {
         json.ShouldNotContain("metadataVersion");
         json.ShouldNotContain("eventContractType");
         json.ShouldNotContain("payloadVersion");
+    }
+
+    [Fact]
+    public void FromDomainResult_PreservesLegacyBytesAndSharedReadersAcceptBothCasings() {
+        var payload = new LegacyWireResultTestEvent(42);
+        DomainServiceWireEvent typed = DomainServiceWireResult.FromDomainResult(DomainResult.Success([payload]))
+            .Events.ShouldHaveSingleItem();
+        typed.Payload.ShouldBe("""{"Value":42}"""u8.ToArray());
+        JsonSerializer.Deserialize<LegacyWireResultTestEvent>(typed.Payload, EventStorePayloadSerialization.Options)
+            .ShouldBe(payload);
+
+        byte[] original = """{"value":42}"""u8.ToArray();
+        var serialized = new LegacySerializedPayload("counter-changed", original, "json");
+        DomainServiceWireEvent supplied = DomainServiceWireResult.FromDomainResult(DomainResult.Success([serialized]))
+            .Events.ShouldHaveSingleItem();
+        supplied.EventTypeName.ShouldBe("counter-changed");
+        supplied.SerializationFormat.ShouldBe("json");
+        supplied.Payload.ShouldBe(original);
+        JsonSerializer.Deserialize<LegacyWireResultTestEvent>(supplied.Payload, EventStorePayloadSerialization.Options)
+            .ShouldBe(payload);
     }
 
     [Fact]

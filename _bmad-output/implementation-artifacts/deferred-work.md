@@ -1495,6 +1495,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-3.6 (2
 location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-6-manifest-driven-release-packaging.md` summary: [LOW] New evidence only, no status change: the 2026-07-31 story-3.6 asset-glob entry above cites a test name that does not exist, so its evidence trail is unfollowable. evidence: Story 3.6 follow-up review pass 2 (2026-07-31, verified against `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs`). That entry attributes the exact-scope publish assertion to `ReleasePackageManifestTests.Semantic_release_publish_command_pushes_scoped_packages`; no test of that name exists in the repository. The assertion is real but lives in `Semantic_release_delegates_package_inventory_to_manifest_scripts`, which now also pins that `tools/pack-release-packages.py` precedes `tools/validate-release-packages.py` in `prepareCmd` — the command ordering the earlier entry's stated mitigation depends on and which nothing previously asserted. The deferred finding itself (the unscoped `nupkgs/*.nupkg` GitHub asset glob at `.releaserc.json:18`) is unchanged and still open. Recorded as new evidence against that entry; the orchestrator owns its status and resolution.
 status: open
+decision: 2026-11-26 Skipped in this batch. Historical evidence attached to DW-217. The new release-scope test directly covers the underlying finding.
 
 ### DW-219: [MEDIUM] Reconcile `epic-2: in-progress` with all listed Epic 2 stories and its retrospective marked `done`. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:79`. Pre-existing sprint-tracking inconsistency outside Story 8.1.
 
@@ -1503,6 +1504,7 @@ location: _bmad-output/implementation-artifacts/sprint-status.yaml:79
 severity: medium
 reason: [MEDIUM] Reconcile `epic-2: in-progress` with all listed Epic 2 stories and its retrospective marked `done`. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:79`. Pre-existing sprint-tracking inconsistency outside Story 8.1.
 status: open
+decision: 2026-11-26 Skipped in this batch. Epic 2 now contains two active or in-review stories and two backlog stories, so in-progress reflects the current tracker.
 
 ### DW-220: [LOW] Add the intentionally preserved `awaiting-operator` value to the sprint-status schema comments. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:19,205`. Pre-existing schema-comment drift outside Story 8.1.
 
@@ -1531,13 +1533,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-3.13 (
 location: 3-13-deployed-runtime-parity-closure.md:588
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: [LOW] The story's File List omits several evidence files the tests and crosswalk already depend on and validate. evidence: `3-13-deployed-runtime-parity-closure.md:588` lists only a bare evidence-directory reference plus `reviewer-roster.json`, but `DeployedRuntimeParityClosureTests.cs` and `identity-crosswalk.json` reference and validate additional files (e.g. `deployment-authority.json`, `deployment-authority-source.json`, `release-provenance.json`, and further smoke/log files) not named in the File List. Documentation completeness only, not a functional gap.
 status: open
+decision: 2026-11-26 Skipped in this batch. The historical Story 3.13 evidence directory and its verifier were removed in 6a0b6441f.
 
 ### DW-224: [MEDIUM] Three event-payload writers disagree on serializer options, so persisted payload casing depends on which path produced the event.
 
 origin: migrated from legacy ledger ("Deferred from: code review of story-4.3 loop 1 (2026-08-07)"), 2026-08-30
 location: src/Hexalith.EventStore.Contracts/Results/DomainServiceWireResult.cs:29
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-3-deterministic-replay-dispatch-and-serialization.md` summary: [MEDIUM] Three event-payload writers disagree on serializer options, so persisted payload casing depends on which path produced the event. evidence: `src/Hexalith.EventStore.Contracts/Results/DomainServiceWireResult.cs:29`, `src/Hexalith.EventStore.Server/Events/EventPersister.cs:71` and `src/Hexalith.EventStore.Testing/Fakes/FakeEventPersister.cs:61` all call `JsonSerializer.SerializeToUtf8Bytes` with implicit options. On the deployed DAPR topology `DomainServiceWireResult` is the real writer — `DaprDomainServiceInvoker.cs:192-198` wraps its bytes as `SerializedEventPayload` and `EventPersister.cs:70-71` passes them through untouched — so a future change to `EventPersister`'s options is inert in production. Harmless today (all readers are case-insensitive after Story 4.3), but any converter or naming-policy change applies to one writer only. Story 4.3 was deliberately narrowed to readers-only on 2026-08-07 rather than change a cross-process wire format; unifying the writers needs its own story with a rollout plan.
-status: open
+status: done 2026-11-26
+resolution: Use one legacy payload writer for the wire response, server persistence and test fake. Verify typed JSON compatibility, serialized bytes and formats, payload versions and failed-batch atomicity. Document mixed-version rollout.
 
 ### DW-225: [LOW] The shared payload options are frozen with no extension seam, so a domain cannot register a converter for its own payload types.
 

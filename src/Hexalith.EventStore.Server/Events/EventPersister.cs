@@ -9,6 +9,7 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Serialization;
 using Hexalith.EventStore.PayloadProtection;
 
 using Microsoft.Extensions.Logging;
@@ -160,9 +161,7 @@ public partial class EventPersister(
 
             foreach ((IEventPayload eventPayload, string eventTypeName, string serializationFormat, string? eventContractType, int? payloadVersion, int metadataVersion) in validatedPayloads) {
                 cancellationToken.ThrowIfCancellationRequested();
-                byte[] payloadBytes = eventPayload is ISerializedEventPayload serialized
-                    ? serialized.PayloadBytes
-                    : JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
+                byte[] payloadBytes = EventStorePayloadSerialization.SerializeLegacyEventPayload(eventPayload);
                 if (payloadVersion is not null)
                 {
                     ValidateVersionedJsonObject(payloadBytes, eventTypeName);

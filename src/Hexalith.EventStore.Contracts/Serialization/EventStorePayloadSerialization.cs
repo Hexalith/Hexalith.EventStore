@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Events;
+
 namespace Hexalith.EventStore.Contracts.Serialization;
 
 /// <summary>
@@ -10,8 +12,8 @@ namespace Hexalith.EventStore.Contracts.Serialization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// No persisted or wire payload <em>writer</em> uses these options: the two payload writers deliberately
-/// keep their current behaviour, so PascalCase payload bytes are already at rest and must stay readable.
+/// The legacy event writer preserves CLR member names for typed payloads and passes through serialized
+/// payloads. PascalCase payload bytes are already at rest and must stay readable.
 /// <see cref="JsonSerializerDefaults.Web"/> sets <c>PropertyNameCaseInsensitive = true</c>, which accepts
 /// both the PascalCase bytes at rest and the camelCase bytes a normal API client submits. Widening a
 /// reader like this is always safe; narrowing it is not.
@@ -32,6 +34,14 @@ public static class EventStorePayloadSerialization {
     /// Gets the read-only serializer options every EventStore payload reader binds through.
     /// </summary>
     public static JsonSerializerOptions Options { get; } = CreateReadOnlyOptions();
+
+    /// <summary>Writes payload bytes under the legacy event contract.</summary>
+    /// <param name="payload">The typed event or an event with already serialized bytes.</param>
+    /// <returns>The payload bytes to send or persist.</returns>
+    internal static byte[] SerializeLegacyEventPayload(IEventPayload payload)
+        => payload is ISerializedEventPayload serialized
+            ? serialized.PayloadBytes
+            : JsonSerializer.SerializeToUtf8Bytes(payload, payload.GetType(), JsonSerializerOptions.Default);
 
     private static JsonSerializerOptions CreateReadOnlyOptions() {
         JsonSerializerOptions options = new(JsonSerializerDefaults.Web);

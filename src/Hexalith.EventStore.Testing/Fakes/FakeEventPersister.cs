@@ -1,10 +1,14 @@
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Serialization;
 using Hexalith.EventStore.Server.Events;
+
+using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
 namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
@@ -12,6 +16,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// Stores persisted events in memory for test assertions and supports configurable failure.
 /// </summary>
 public sealed class FakeEventPersister : IEventPersister {
+    private readonly NoOpEventPayloadProtectionService _payloadProtection = new();
     private readonly List<EventEnvelope> _persistedEvents = [];
     private readonly Dictionary<string, long> _sequenceByAggregate = [];
     private Exception? _exceptionToThrow;
@@ -30,7 +35,7 @@ public sealed class FakeEventPersister : IEventPersister {
     }
 
     /// <inheritdoc/>
-    public Task<EventPersistResult> PersistEventsAsync(
+    public async Task<EventPersistResult> PersistEventsAsync(
         AggregateIdentity identity,
         string aggregateType,
         CommandEnvelope command,
@@ -53,16 +58,25 @@ public sealed class FakeEventPersister : IEventPersister {
         _ = _sequenceByAggregate.TryGetValue(aggregateKey, out long currentSequence);
         string causationId = command.CausationId ?? command.CorrelationId;
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
+        long nextGlobalPosition = _nextGlobalPosition;
         var envelopes = new List<EventEnvelope>();
 
-        foreach (Hexalith.EventStore.Contracts.Events.IEventPayload eventPayload in domainResult.Events) {
+        foreach (IEventPayload eventPayload in domainResult.Events) {
             currentSequence++;
-            string eventTypeName = eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
-            byte[] payloadBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
+            ISerializedEventPayload? serialized = eventPayload as ISerializedEventPayload;
+            Type payloadType = eventPayload.GetType();
+            string eventTypeName = serialized?.EventTypeName ?? payloadType.FullName ?? payloadType.Name;
+            byte[] payloadBytes = EventStorePayloadSerialization.SerializeLegacyEventPayload(eventPayload);
+            string serializationFormat = serialized?.SerializationFormat ?? "json";
+            int payloadVersion = serialized is null
+                ? EventPayloadVersionResolver.GetDeclaredVersion(payloadType)
+                : serialized.PayloadVersion ?? 1;
+            PayloadProtectionResult protection = await _payloadProtection.ProtectEventPayloadAsync(
+                identity, eventPayload, eventTypeName, payloadBytes, serializationFormat, cancellationToken).ConfigureAwait(false);
 
             IDictionary<string, string> extensions = EventStorePayloadProtectionMetadataCarrier.Write(
                 extensions: (IDictionary<string, string>?)null,
-                metadata: EventStorePayloadProtectionMetadata.Unprotected());
+                metadata: protection.Metadata);
 
             var envelope = new EventEnvelope(
                 MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
@@ -71,7 +85,7 @@ public sealed class FakeEventPersister : IEventPersister {
                 TenantId: identity.TenantId,
                 Domain: identity.Domain,
                 SequenceNumber: currentSequence,
-                GlobalPosition: _nextGlobalPosition++,
+                GlobalPosition: nextGlobalPosition++,
                 Timestamp: timestamp,
                 CorrelationId: command.CorrelationId,
                 CausationId: causationId,
@@ -79,15 +93,18 @@ public sealed class FakeEventPersister : IEventPersister {
                 DomainServiceVersion: domainServiceVersion,
                 EventTypeName: eventTypeName,
                 MetadataVersion: 1,
-                SerializationFormat: "json",
-                Payload: payloadBytes,
-                Extensions: extensions);
+                SerializationFormat: protection.SerializationFormat,
+                Payload: serialized is null ? protection.PayloadBytes : protection.PayloadBytes.ToArray(),
+                Extensions: extensions) {
+                    PayloadVersion = payloadVersion == 1 ? null : payloadVersion,
+                };
 
-            _persistedEvents.Add(envelope);
             envelopes.Add(envelope);
         }
 
+        _persistedEvents.AddRange(envelopes);
+        _nextGlobalPosition = nextGlobalPosition;
         _sequenceByAggregate[aggregateKey] = currentSequence;
-        return Task.FromResult(new EventPersistResult(currentSequence, envelopes));
+        return new EventPersistResult(currentSequence, envelopes);
     }
 }
