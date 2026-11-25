@@ -288,9 +288,10 @@ The handler is registered last on the gateway `IHttpClientBuilder` so it remains
 final say after any inbound bearer or header-forwarding handler. Hosts must not define their own DAPR
 routing-header handler, and must not use a bare `TryAddWithoutValidation` for these headers (AD-2).
 
-Omitting `.AddEventStoreDaprServiceInvocation(appId, apiToken)` is **currently fail-open**: it produces no
-compile error, startup validation, or runtime diagnostic. Structural host scans therefore require the
-explicit final chained call for every sidecar-routed client.
+The typed gateway client refuses a send to the configured Dapr HTTP endpoint
+when the routing handler is missing or out of order. An otherwise unconfigured
+loopback address on the default Dapr port produces a warning. Structural host
+scans require the explicit final chained call for every sidecar-routed client.
 
 The same ownership applies to the AD-36 workload-assertion header. The platform outbound handler attaches
 the assertion for the exact receiver audience and operation, replacing and never appending, and discards

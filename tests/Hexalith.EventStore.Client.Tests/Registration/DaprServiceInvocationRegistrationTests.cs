@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Client.Registration;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
@@ -65,6 +66,94 @@ public sealed class DaprServiceInvocationRegistrationTests {
             else terminal.Request.Headers.GetValues("dapr-api-token").ShouldBe([token]);
         }
         stateReads.ShouldBe(3);
+    }
+
+    [Theory]
+    [InlineData("http://127.0.0.1:3789", "", "http://localhost:3789/api/", false)]
+    [InlineData("", "3789", "http://127.0.0.1:3789", false)]
+    [InlineData("invalid", "3789", "http://127.0.0.1:3789", false)]
+    [InlineData("https://dapr.example.test:3789", "", "https://dapr.example.test:3789", false)]
+    [InlineData("http://127.0.0.1:3789", "", "http://localhost:3790", true)]
+    [InlineData("http://127.0.0.1:3789", "", "http://127.0.0.2:3789", true)]
+    public async Task GatewayClient_RequiresRoutingOnlyForConfiguredSidecar(
+        string endpoint, string port, string baseAddress, bool directGateway)
+    {
+        var terminal = new CaptureHandler();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?> { ["DAPR_HTTP_ENDPOINT"] = endpoint, ["DAPR_HTTP_PORT"] = port }).Build());
+        IHttpClientBuilder builder = services.AddEventStoreGatewayClient()
+            .ConfigureHttpClient(client => client.BaseAddress = new Uri(baseAddress))
+            .ConfigurePrimaryHttpMessageHandler(() => terminal);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using HttpClient client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(builder.Name);
+
+        if (directGateway)
+        {
+            using HttpResponseMessage response = await client.GetAsync("api/v1/queries", TestContext.Current.CancellationToken);
+            terminal.Request.ShouldNotBeNull();
+        }
+        else
+        {
+            await AssertRoutingFailureAsync(client);
+            terminal.Request.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public async Task GatewayClient_RefusesRoutingBeforeForwardingHandlers()
+    {
+        const string endpoint = "http://dapr.example.test:3789";
+        var terminal = new CaptureHandler();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?> { ["DAPR_HTTP_ENDPOINT"] = endpoint }).Build());
+        services.AddTransient<ConflictingHeaderHandler>();
+        IHttpClientBuilder builder = services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri(endpoint))
+            .AddEventStoreDaprServiceInvocation("eventstore")
+            .AddHttpMessageHandler<ConflictingHeaderHandler>()
+            .ConfigurePrimaryHttpMessageHandler(() => terminal);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using HttpClient client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(builder.Name);
+
+        await AssertRoutingFailureAsync(client);
+
+        terminal.Request.ShouldBeNull();
+    }
+
+    private static async Task AssertRoutingFailureAsync(HttpClient client)
+    {
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(
+            () => client.GetAsync("api/v1/queries", TestContext.Current.CancellationToken));
+        error.Message.ShouldContain("AddEventStoreDaprServiceInvocation");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GatewayClient_AcceptsBothRoutingRegistrationsForConfiguredSidecar(bool dynamicRouting)
+    {
+        const string endpoint = "http://dapr.example.test:3789";
+        var terminal = new CaptureHandler();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?> { ["DAPR_HTTP_ENDPOINT"] = endpoint }).Build());
+        IHttpClientBuilder client = services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri(endpoint));
+        if (dynamicRouting)
+        {
+            client.AddEventStoreDaprServiceInvocation(_ => "eventstore", app => app, _ => null);
+        }
+        else
+        {
+            client.AddEventStoreDaprServiceInvocation("eventstore");
+        }
+        client.ConfigurePrimaryHttpMessageHandler(() => terminal);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using HttpClient http = provider.GetRequiredService<IHttpClientFactory>().CreateClient(client.Name);
+
+        using HttpResponseMessage response = await http.GetAsync("api/v1/queries", TestContext.Current.CancellationToken);
+
+        terminal.Request.ShouldNotBeNull().Headers.GetValues("dapr-app-id").ShouldBe(["eventstore"]);
     }
 
     [Fact]
