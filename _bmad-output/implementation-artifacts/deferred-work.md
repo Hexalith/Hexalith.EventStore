@@ -808,7 +808,8 @@ archived: 2026-11-23
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Actors/ProjectionLifecycleActor.cs:68
 reason: Erase lifecycle admission does not reject blank operation/digest values, and an unknown persisted phase can fall through to a fresh erase admission. Validate erase identity and fail closed on undefined lifecycle phases. [`src/Hexalith.EventStore.Server/Actors/ProjectionLifecycleActor.cs:68`]
-status: open
+status: done 2026-11-25
+resolution: Erase admission requires nonblank operation and manifest identities. Undefined persisted phases refuse admission without rewriting the record or epoch.
 
 ### DW-121: Make dev-auto review finalization conditional on fail-closed artifact decisions instead of unconditionally marking every reviewed spec `done`.
 
