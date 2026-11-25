@@ -693,7 +693,8 @@ public class DevelopmentRouteCatalogBuilderTests
         arguments.Add("-c=Release");
         arguments.Add("-p:UseHexalithProjectReferences=false");
 #endif
-        (int exit, string log) = await RunProcessAsync("dotnet", arguments);
+        // This build starts with empty artifacts and compiles the tool and its project references.
+        (int exit, string log) = await RunProcessAsync("dotnet", arguments, TimeSpan.FromMinutes(5));
         exit.ShouldBe(0, log);
         return Directory.GetFiles(Path.Combine(artifacts, "bin"), "routing-catalog.dll", SearchOption.AllDirectories).Single();
     }
@@ -701,7 +702,8 @@ public class DevelopmentRouteCatalogBuilderTests
     private static Task<(int Exit, string Log)> RunToolAsync(string tool, params string[] arguments)
         => RunProcessAsync("dotnet", [tool, .. arguments]);
 
-    private static async Task<(int Exit, string Log)> RunProcessAsync(string executable, IReadOnlyList<string> arguments)
+    private static async Task<(int Exit, string Log)> RunProcessAsync(
+        string executable, IReadOnlyList<string> arguments, TimeSpan? timeout = null)
     {
         var start = new ProcessStartInfo(executable) { WorkingDirectory = FindRoot(), RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         foreach (string argument in arguments)
@@ -712,14 +714,16 @@ public class DevelopmentRouteCatalogBuilderTests
         using Process process = Process.Start(start)!;
         Task<string> stdout = process.StandardOutput.ReadToEndAsync();
         Task<string> stderr = process.StandardError.ReadToEndAsync();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        using var deadline = new CancellationTokenSource(timeout ?? TimeSpan.FromMinutes(3));
         try
         {
-            await process.WaitForExitAsync(timeout.Token);
+            await process.WaitForExitAsync(deadline.Token);
         }
         catch (OperationCanceledException)
         {
             process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync(CancellationToken.None);
+            _ = await Task.WhenAll(stdout, stderr);
             throw;
         }
 
