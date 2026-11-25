@@ -932,7 +932,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: @commitlint/*
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md` summary: Add durable process-level commitlint behavior fixtures for valid, subject-case, header-length, and body-line policies. evidence: The existing Contracts test pins the three-line config text but does not execute commitlint, so a future grouped `@commitlint/*` update could change delegated defaults without the regression guard detecting it.
-status: open
+status: done 2026-11-25
+resolution: Exercise the pinned commitlint CLI for accepted messages and subject-case, header-length, and body-length failures with npm run test:commitlint.
 
 ### DW-139: Reconcile the documented literal lowercase-start rule with commitlint's weaker default `subject-case` behavior.
 
