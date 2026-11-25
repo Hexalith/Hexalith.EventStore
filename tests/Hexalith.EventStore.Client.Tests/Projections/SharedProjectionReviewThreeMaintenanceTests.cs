@@ -17,6 +17,8 @@ public sealed class SharedProjectionReviewThreeMaintenanceTests
     public async Task StalledFirstMaintenanceReadUsesSdkBudgetWhileCancelledBeginWaitersLeaveSharedWorkAlone(bool failImmediately, bool dependencyCancelled)
     {
         var observations = new ConcurrentQueue<string>();
+        // Cleanup flows the execution context through Task.Run. Ignore measurements from other tests.
+        var observeThisTest = new AsyncLocal<bool> { Value = true };
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, owner) =>
         {
@@ -24,6 +26,7 @@ public sealed class SharedProjectionReviewThreeMaintenanceTests
         };
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
         {
+            if (!observeThisTest.Value) return;
             observations.Enqueue("count=" + value);
             foreach (var tag in tags) observations.Enqueue(tag.Key + "=" + tag.Value);
         });
@@ -89,6 +92,8 @@ public sealed class SharedProjectionReviewThreeMaintenanceTests
     public async Task MaintenanceBudgetSetupFailureReleasesGateAndNextHealthyBeginReconcilesDurableCleanup()
     {
         var observations = new ConcurrentQueue<string>();
+        // Cleanup flows the execution context through Task.Run. Ignore measurements from other tests.
+        var observeThisTest = new AsyncLocal<bool> { Value = true };
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, owner) =>
         {
@@ -96,6 +101,7 @@ public sealed class SharedProjectionReviewThreeMaintenanceTests
         };
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
         {
+            if (!observeThisTest.Value) return;
             observations.Enqueue("count=" + value);
             foreach (var tag in tags) observations.Enqueue(tag.Key + "=" + tag.Value);
         });

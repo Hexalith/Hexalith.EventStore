@@ -1,5 +1,3 @@
-extern alias eventstore;
-
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
@@ -9,14 +7,10 @@ using System.Text.Json;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Shouldly;
-
-using EventStoreProgram = eventstore::Program;
 
 namespace Hexalith.EventStore.IntegrationTests.EventStore;
 
@@ -30,7 +24,7 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_TenantNotInClaims_Returns403ProblemDetails() {
+    public async Task PostCommands_TenantNotInClaims_ReturnsForbiddenWithoutTenantDetails() {
         // Arrange - token has tenant-a, but request uses tenant-b
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["tenant-a"]);
         HttpClient client = CreateClientWithToken(token);
@@ -46,29 +40,13 @@ public class AuthorizationIntegrationTests
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
-        // Assert
+        // The canonical tenant boundary rejects the request before MediatR.
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
-
-        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("status").GetInt32().ShouldBe(403);
-        body.GetProperty("title").GetString().ShouldBe("Forbidden");
-        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/forbidden");
-        body.GetProperty("detail").GetString()!.ShouldContain("tenant");
-        body.GetProperty("tenantId").GetString().ShouldBe("tenant-b");
-        body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
-
-        // UX-DR6: 403 detail MUST NOT leak event-sourcing or infrastructure terminology.
-        string detail = body.GetProperty("detail").GetString()!;
-        detail.ShouldNotContain("aggregate", Case.Insensitive);
-        detail.ShouldNotContain("event stream", Case.Insensitive);
-        detail.ShouldNotContain("actor", Case.Insensitive);
-        detail.ShouldNotContain("DAPR", Case.Insensitive);
-        detail.ShouldNotContain("sidecar", Case.Insensitive);
+        (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
     }
 
     [Fact]
-    public async Task PostCommands_NoTenantClaims_Returns403ProblemDetails() {
+    public async Task PostCommands_NoTenantClaims_ReturnsForbiddenWithoutTenantDetails() {
         // Arrange - token with no tenant claims at all
         string token = TestJwtTokenGenerator.GenerateToken();
         HttpClient client = CreateClientWithToken(token);
@@ -84,13 +62,9 @@ public class AuthorizationIntegrationTests
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
-        // Assert
+        // The canonical tenant boundary rejects the request before MediatR.
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
-
-        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("status").GetInt32().ShouldBe(403);
-        body.GetProperty("detail").GetString()!.ShouldContain("No tenant authorization claims found");
+        (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
     }
 
     [Fact]
@@ -268,10 +242,10 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_AuthFailure_LogsWarningWithCorrelationId() {
+    public async Task PostCommands_DomainAuthorizationFailure_LogsWarningWithCorrelationId() {
         // Arrange
         _factory.LogProvider.Clear();
-        string token = TestJwtTokenGenerator.GenerateToken(tenants: ["other-tenant"]);
+        string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"], domains: ["other-domain"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
             messageId = Guid.NewGuid().ToString(),
@@ -283,7 +257,8 @@ public class AuthorizationIntegrationTests
         };
 
         // Act
-        _ = await client.PostAsJsonAsync("/api/v1/commands", request);
+        HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
         // Assert - warning log should contain correlationId
         var warningLogs = _factory.LogProvider.GetEntries()
@@ -357,40 +332,13 @@ public class AuthorizationIntegrationTests
         return client;
     }
 
-    public class AuthorizationLogCapturingFactory : WebApplicationFactory<EventStoreProgram> {
+    public class AuthorizationLogCapturingFactory : JwtAuthenticatedWebApplicationFactory {
         public AuthzLogProvider LogProvider { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
-            _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
-                ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
-                ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
-                ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
-            }));
-            _ = builder.ConfigureServices(services => {
-                // Replace DAPR-dependent services with test fakes
-                ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
-                    d => d.ServiceType == typeof(Server.Commands.ICommandStatusStore));
-                if (statusDescriptor is not null) {
-                    _ = services.Remove(statusDescriptor);
-                }
-
-                _ = services.AddSingleton<Server.Commands.ICommandStatusStore>(new Testing.Fakes.InMemoryCommandStatusStore());
-
-                ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
-                    d => d.ServiceType == typeof(Server.Commands.ICommandArchiveStore));
-                if (archiveDescriptor is not null) {
-                    _ = services.Remove(archiveDescriptor);
-                }
-
-                _ = services.AddSingleton<Server.Commands.ICommandArchiveStore>(new Testing.Fakes.InMemoryCommandArchiveStore());
-
-                Testing.Fakes.TestServiceOverrides.ReplaceCommandRouter(services);
-                Testing.Fakes.TestServiceOverrides.RemoveDaprHealthChecks(services);
-
-                _ = services.AddLogging(logging => logging.AddProvider(LogProvider));
-            });
+            base.ConfigureWebHost(builder);
+            _ = builder.ConfigureServices(services => services.AddLogging(logging => logging.AddProvider(LogProvider)));
         }
     }
 }
