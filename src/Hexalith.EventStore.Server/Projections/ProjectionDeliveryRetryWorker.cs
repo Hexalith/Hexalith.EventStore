@@ -160,7 +160,7 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
                     workItem.ServiceVersion);
                 bool mappedHandled = await coordinator.TryDispatchMappedOnlyAsync(identity,
                     mappedRegistration, workItem.HeadSequence, workItem.HeadMessageId,
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken, workItem.CatalogFingerprint).ConfigureAwait(false);
                 if (!mappedHandled)
                     await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
                 return;
@@ -173,7 +173,7 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
                 ProjectionEventDto[] prefix = await LoadRecoveryPrefixAsync(identity, workItem, cancellationToken).ConfigureAwait(false);
                 bool boundHandled = await coordinator.TryDispatchHeadAsync(identity,
                     new(workItem.AppId, "project/v2", identity.TenantId, identity.Domain, workItem.ServiceVersion),
-                    workItem.HeadSequence, workItem.HeadMessageId, prefix, cancellationToken).ConfigureAwait(false);
+                    workItem.HeadSequence, workItem.HeadMessageId, prefix, cancellationToken, workItem.CatalogFingerprint).ConfigureAwait(false);
                 if (!boundHandled) await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
                 return;
             }
@@ -201,7 +201,7 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
                 workItem.Domain,
                 workItem.ServiceVersion);
             bool handled = await coordinator
-                .TryDispatchAsync(identity, registration, events, readability.Events, cancellationToken)
+                .TryDispatchAsync(identity, registration, events, readability.Events, cancellationToken, workItem.CatalogFingerprint)
                 .ConfigureAwait(false);
             if (!handled) {
                 await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);

@@ -62,7 +62,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
         INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
         _ = coordinator.TryDispatchMappedOnlyAsync(
                 Arg.Any<AggregateIdentity>(), Arg.Any<DomainServiceRegistration>(),
-                workItem.HeadSequence, workItem.HeadMessageId, Arg.Any<CancellationToken>())
+                workItem.HeadSequence, workItem.HeadMessageId, Arg.Any<CancellationToken>(), workItem.CatalogFingerprint)
             .Returns(true);
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         IProjectionRebuildCheckpointStore rebuilds = Substitute.For<IProjectionRebuildCheckpointStore>();
@@ -77,7 +77,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
                 && identity.Domain == workItem.Domain && identity.AggregateId == workItem.AggregateId),
             Arg.Is<DomainServiceRegistration>(registration => registration.AppId == workItem.AppId
                 && registration.Version == workItem.ServiceVersion),
-            workItem.HeadSequence, workItem.HeadMessageId, Arg.Any<CancellationToken>());
+            workItem.HeadSequence, workItem.HeadMessageId, Arg.Any<CancellationToken>(), workItem.CatalogFingerprint);
         _ = await coordinator.DidNotReceiveWithAnyArgs().TryDispatchAsync(default!, default!, default!, default!, default);
         _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
     }
@@ -95,7 +95,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
                 Arg.Any<DomainServiceRegistration>(),
                 Arg.Any<EventEnvelope[]>(),
                 Arg.Any<Hexalith.EventStore.Contracts.Projections.ProjectionEventDto[]>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), workItem.CatalogFingerprint)
             .Returns(true);
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
         _ = aggregateActor.ReadEventsRangeAsync(0, 2, 256)
@@ -121,7 +121,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
                 && events[events.Length - 1].SequenceNumber == 2
                 && events[events.Length - 1].MessageId == "01J00000000000000000000002"),
             Arg.Is<Hexalith.EventStore.Contracts.Projections.ProjectionEventDto[]>(events => events.Length == 2),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(), workItem.CatalogFingerprint);
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
                 Arg.Any<DomainServiceRegistration>(),
                 Arg.Any<EventEnvelope[]>(),
                 Arg.Any<Hexalith.EventStore.Contracts.Projections.ProjectionEventDto[]>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), workItem.CatalogFingerprint)
             .Returns(false);
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
         _ = aggregateActor.ReadEventsRangeAsync(0, 2, 256).Returns([Envelope(1), Envelope(2)]);
@@ -175,7 +175,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
                 Arg.Any<DomainServiceRegistration>(),
                 Arg.Any<EventEnvelope[]>(),
                 Arg.Any<Hexalith.EventStore.Contracts.Projections.ProjectionEventDto[]>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), workItem.CatalogFingerprint)
             .Returns(true);
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
         _ = aggregateActor.ReadEventsRangeAsync(0, 300, 256)
@@ -196,7 +196,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
             Arg.Any<DomainServiceRegistration>(),
             Arg.Is<EventEnvelope[]>(events => events.Length == 300 && events[events.Length - 1].SequenceNumber == 300),
             Arg.Is<Hexalith.EventStore.Contracts.Projections.ProjectionEventDto[]>(events => events.Length == 300),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(), workItem.CatalogFingerprint);
     }
 
     [Fact]

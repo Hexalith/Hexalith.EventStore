@@ -74,7 +74,7 @@ public sealed class ProjectionReplayRecoveryWorkerTests
             { providerCalls++; return PayloadUnprotectionOutcome.Readable(new byte[1_048_576], "json", metadata); });
         INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
         coordinator.TryDispatchHeadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<Server.DomainServices.DomainServiceRegistration>(),
-            head, Id(head), Arg.Any<ProjectionEventDto[]>(), Arg.Any<CancellationToken>()).Returns(true);
+            head, Id(head), Arg.Any<ProjectionEventDto[]>(), Arg.Any<CancellationToken>(), work.CatalogFingerprint).Returns(true);
         using var worker = new ProjectionDeliveryRetryWorker(scheduler, coordinator, actors, protection,
             Options.Create(new EventStoreActorOptions()), Options.Create(new ProjectionDispatchOptions()),
             Substitute.For<IProjectionRebuildCheckpointStore>(), new FakeTimeProvider(now), NullLogger<ProjectionDeliveryRetryWorker>.Instance);
@@ -96,7 +96,7 @@ public sealed class ProjectionReplayRecoveryWorkerTests
         active.Value = false;
         _ = coordinator.Received(expectedReason is null && scenario != "cancel" ? 1 : 0).TryDispatchHeadAsync(Arg.Any<AggregateIdentity>(),
             Arg.Any<Server.DomainServices.DomainServiceRegistration>(), head, work.HeadMessageId,
-            Arg.Is<ProjectionEventDto[]>(events => events.Length == head && events[events.Length - 1].MessageId == work.HeadMessageId), Arg.Any<CancellationToken>());
+            Arg.Is<ProjectionEventDto[]>(events => events.Length == head && events[events.Length - 1].MessageId == work.HeadMessageId), Arg.Any<CancellationToken>(), work.CatalogFingerprint);
         _ = source.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
         _ = source.DidNotReceiveWithAnyArgs().ReadEventsRangeAsync(default, default, default);
         if (expectedReason is not null)

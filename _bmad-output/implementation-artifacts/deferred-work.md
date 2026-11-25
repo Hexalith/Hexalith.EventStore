@@ -729,7 +729,8 @@ resolution: Add a state-bearing AlreadyCompleted overload. Verify dispatcher sta
 origin: migrated from legacy ledger ("Deferred from: code review of 1-12-asynchronous-multi-projection-dispatch (2026-07-13)"), 2026-08-30
 location: WorkId = SHA-256(tenant/domain/aggregate/headSequence
 reason: `ProjectionDeliveryRetryWorkItem.CreateWorkId` omits app id / service version / fingerprint — `WorkId = SHA-256(tenant/domain/aggregate/headSequence)`, so two `(appId, serviceVersion)` bindings serving the same domain+head collide on one ledger item; the second binding's app/version consistency check then fails and it defers forever. Affects blue/green or multi-version rollout of the same domain. [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorkItem.cs:44] [blind-hunter]
-status: open
+status: done 2026-11-25
+resolution: Separate work for each app, service version and catalog fingerprint at the same stream head. Reuse exactly matching legacy work and defer stale retries under their original binding.
 
 ### DW-110: `DomainProjectionCatalogRegistry` is in-memory and empty after a domain-service restart — until the gateway re-queries `/admin/operational-index-metadata` (a startup-only load), `Contains(fingerprint)` is false → `/project/v2` returns 400 `UnsupportedCapability` → the coordinator defers/retries. Overlaps the metadata refresh-cadence gap above.
 

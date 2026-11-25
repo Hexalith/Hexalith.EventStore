@@ -38,7 +38,8 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
             && item.State.LastDeliveredSequence > 0 && item.State.LastDeliveredSequence == item.State.GuardEvidence?.Source.HeadSequence)
             .Select(static item => item.State.LastDeliveredSequence).Where(value => value < head.HeadSequence).Distinct())
         {
-            string originalId = ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId, identity.Domain, identity.AggregateId, completed);
+            string originalId = ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId, identity.Domain, identity.AggregateId, completed,
+                catalog.AppId, catalog.ServiceVersion, catalog.CatalogFingerprint);
             if (await scheduler.ReadAsync(originalId, cancellationToken).ConfigureAwait(false) is { } retained
                 && (retained.ReservationFencingTokens.Count > 0 || observations.Any(item => item.State.LastDeliveredSequence == completed
                     && item.State.GuardEvidence?.OwnerProof.Selection is { } selection
@@ -143,7 +144,8 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
         options.Validate();
         DateTimeOffset now = clock.GetUtcNow();
         var proposed = new ProjectionDeliveryRetryWorkItem(ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId,
-            identity.Domain, identity.AggregateId, head.HeadSequence), identity.TenantId, identity.Domain, identity.AggregateId,
+            identity.Domain, identity.AggregateId, head.HeadSequence, catalog.AppId, catalog.ServiceVersion,
+            catalog.CatalogFingerprint), identity.TenantId, identity.Domain, identity.AggregateId,
             catalog.AppId, catalog.ServiceVersion, head.HeadSequence, head.HeadMessageId!, [.. catalog.OrdinaryProjectionTypes], [],
             head.HeadMessageId!, catalog.CatalogFingerprint, 0, now + options.RetryWorkerInterval, null)
             { ReplayRecoveryBindings = ProjectionReplayRecoveryContext.Freeze(catalog) };

@@ -473,8 +473,10 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
 
     /// <inheritdoc/>
     public Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
-        long headSequence, string headMessageId, ProjectionEventDto[] events, CancellationToken cancellationToken)
-        => TryDispatchCoreAsync(identity, registration, headSequence, headMessageId, events, false, cancellationToken);
+        long headSequence, string headMessageId, ProjectionEventDto[] events, CancellationToken cancellationToken,
+        string? retryCatalogFingerprint = null)
+        => TryDispatchCoreAsync(identity, registration, headSequence, headMessageId, events, false, cancellationToken,
+            retryCatalogFingerprint: retryCatalogFingerprint);
 
     /// <inheritdoc/>
     public Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
@@ -489,7 +491,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
         DomainServiceRegistration registration,
         EventEnvelope[] events,
         ProjectionEventDto[] projectionEvents,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        string? retryCatalogFingerprint = null) {
         var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
         ArgumentNullException.ThrowIfNull(identity);
@@ -504,26 +507,29 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
         EventEnvelope head = events.OrderBy(static item => item.SequenceNumber).Last();
         NativeSourceProof? proof = await CaptureNativePrefixAsync(identity, events, cancellationToken).ConfigureAwait(false);
         return await TryDispatchCoreAsync(identity, registration, head.SequenceNumber, head.MessageId,
-            projectionEvents, mappedOnly: false, cancellationToken, nativeSourceProof: proof).ConfigureAwait(false);
+            projectionEvents, mappedOnly: false, cancellationToken, nativeSourceProof: proof,
+            retryCatalogFingerprint: retryCatalogFingerprint).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public Task<bool> TryDispatchMappedOnlyAsync(
         AggregateIdentity identity, DomainServiceRegistration registration,
-        long sourceHeadSequence, string headMessageId, CancellationToken cancellationToken) {
+        long sourceHeadSequence, string headMessageId, CancellationToken cancellationToken,
+        string? retryCatalogFingerprint = null) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sourceHeadSequence);
         ArgumentException.ThrowIfNullOrWhiteSpace(headMessageId);
         return TryDispatchCoreAsync(identity, registration, sourceHeadSequence, headMessageId,
-            [], mappedOnly: true, cancellationToken);
+            [], mappedOnly: true, cancellationToken, retryCatalogFingerprint: retryCatalogFingerprint);
     }
 
     private async Task<bool> TryDispatchCoreAsync(
         AggregateIdentity identity, DomainServiceRegistration registration,
         long highestSequence, string headMessageId, ProjectionEventDto[] projectionEvents,
         bool mappedOnly, CancellationToken cancellationToken, IReadOnlyList<string>? compatibleRoutes = null,
-        string? expectedCatalogFingerprint = null, NativeSourceProof? nativeSourceProof = null) {
+        string? expectedCatalogFingerprint = null, NativeSourceProof? nativeSourceProof = null,
+        string? retryCatalogFingerprint = null) {
         var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease, cancellationToken).ConfigureAwait(false);
 
@@ -532,6 +538,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
         string serviceVersion = string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
         NamedProjectionRouteCatalogEntry? catalogEntry = await ResolveCatalogEntryAsync(identity, registration, cancellationToken).ConfigureAwait(false);
         if (catalogEntry is null) { return false; }
+        if (retryCatalogFingerprint is not null && catalogEntry.CatalogFingerprint != retryCatalogFingerprint) return false;
 
         if (catalogEntry.OrdinaryProjectionTypes.Count == 0) return false;
         if (catalogLease is not null) ValidateCommittedCapability(catalogLease.Snapshot, identity, catalogEntry);
@@ -562,7 +569,10 @@ internal sealed partial class NamedProjectionDispatchCoordinator : INamedProject
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
-                highestSequence),
+                highestSequence,
+                registration.AppId,
+                serviceVersion,
+                catalogEntry.CatalogFingerprint),
             identity.TenantId,
             identity.Domain,
             identity.AggregateId,

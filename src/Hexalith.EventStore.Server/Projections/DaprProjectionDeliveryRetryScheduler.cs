@@ -42,10 +42,9 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ProjectionDeliveryRetryLedger? ledger = await RouteCatalogRemoteCall.InvokeAsync(() => daprClient.GetStateAsync<ProjectionDeliveryRetryLedger>(
             projectionOptions.Value.CheckpointStateStoreName, GetLedgerKey(workId), cancellationToken: cancellationToken)).ConfigureAwait(false);
         RecordLedgerRead(ledger);
-        if (ledger is not null && (ledger.Items is null || ledger.Items.Any(static item => !IsValidPersistedWorkItem(item))
-            || ledger.Items.Count(item => item.WorkId == workId) > 1))
+        if (ledger is not null && (ledger.Items is null || ledger.Items.Any(static item => !IsValidPersistedWorkItem(item))))
             throw new InvalidOperationException("delivery_reconciliation_required");
-        return ledger?.Items.SingleOrDefault(item => item.WorkId == workId);
+        return ledger is null ? null : FindWork(ledger.Items, workId);
     }
 
     /// <inheritdoc/>
@@ -55,20 +54,42 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ValidateWorkItem(workItem);
         await MigrateLegacyLedgerAsync(cancellationToken).ConfigureAwait(false);
         ProjectionDeliveryRetryWorkItem? persisted = null;
+        string? bindingId = workItem.WorkId == workItem.GetHeadWorkId() ? workItem.GetBindingWorkId() : null;
         _ = await MutateAsync(
             workItem.WorkId,
             items => {
-                ProjectionDeliveryRetryWorkItem? existing = items.FirstOrDefault(
-                    item => string.Equals(item.WorkId, workItem.WorkId, StringComparison.Ordinal));
-                persisted = existing ?? workItem;
-                if (existing is null) {
-                    items.Add(workItem);
+                ProjectionDeliveryRetryWorkItem? existing = FindWork(items, bindingId ?? workItem.WorkId);
+                if (existing is not null) {
+                    persisted = existing;
+                    return false;
                 }
 
-                return existing is null;
+                // Legacy callers may reuse the head ID. Keep any existing owner
+                // and give a different binding its own entry in the same shard.
+                persisted = bindingId is not null && items.Any(item => item.WorkId == workItem.WorkId)
+                    ? workItem with { WorkId = bindingId }
+                    : workItem;
+                items.Add(persisted);
+                return true;
             },
             cancellationToken).ConfigureAwait(false);
         return persisted ?? workItem;
+    }
+
+    private static ProjectionDeliveryRetryWorkItem? FindWork(
+        IReadOnlyList<ProjectionDeliveryRetryWorkItem> items, string workId)
+    {
+        string? legacyId = ProjectionDeliveryRetryWorkItem.GetLegacyWorkId(workId);
+        ProjectionDeliveryRetryWorkItem? existing = null;
+        foreach (ProjectionDeliveryRetryWorkItem item in items)
+        {
+            if (item.WorkId != workId && (legacyId is null || item.WorkId != legacyId || item.GetBindingWorkId() != workId))
+                continue;
+            if (existing is not null)
+                throw new InvalidOperationException("delivery_reconciliation_required");
+            existing = item;
+        }
+        return existing;
     }
 
     /// <inheritdoc/>
@@ -319,7 +340,8 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
     }
 
     private static string GetLedgerKey(string workId) {
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(workId));
+        string shardId = ProjectionDeliveryRetryWorkItem.GetLegacyWorkId(workId) ?? workId;
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(shardId));
         int shard = hash[0] % LedgerShardCount;
         return LedgerKeys[shard];
     }
@@ -535,6 +557,9 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ArgumentException.ThrowIfNullOrWhiteSpace(workItem.HeadMessageId);
         ArgumentException.ThrowIfNullOrWhiteSpace(workItem.DispatchId);
         ArgumentException.ThrowIfNullOrWhiteSpace(workItem.CatalogFingerprint);
+        if (ProjectionDeliveryRetryWorkItem.GetLegacyWorkId(workItem.WorkId) is not null
+            && workItem.WorkId != workItem.GetBindingWorkId())
+            throw new ArgumentException("Retry work identity does not match its binding.", nameof(workItem));
         ArgumentOutOfRangeException.ThrowIfNegative(workItem.Attempt);
         ArgumentNullException.ThrowIfNull(workItem.PendingRoutes);
         ArgumentNullException.ThrowIfNull(workItem.TerminalRoutes);

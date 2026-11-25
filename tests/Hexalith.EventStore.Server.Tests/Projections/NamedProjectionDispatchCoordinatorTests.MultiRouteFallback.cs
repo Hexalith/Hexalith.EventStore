@@ -101,7 +101,8 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
         fixture.InterruptBeforePendingRoute = routes[1];
         (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeFalse();
         string workId = ProjectionDeliveryRetryWorkItem.CreateWorkId(fixture.Identity.TenantId, fixture.Identity.Domain,
-            fixture.Identity.AggregateId, 3);
+            fixture.Identity.AggregateId, 3, fixture.Catalog.AppId, fixture.Catalog.ServiceVersion,
+            fixture.Catalog.CatalogFingerprint);
         ProjectionDeliveryRetryWorkItem saved = (await fixture.Scheduler.ReadAsync(workId)).ShouldNotBeNull();
         saved.PendingRoutes.ShouldBe([routes[1]]);
         saved.ReservationFencingTokens.Keys.ShouldBe([routes[1]]);

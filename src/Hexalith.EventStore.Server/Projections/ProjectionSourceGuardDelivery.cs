@@ -37,13 +37,12 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
         IReadOnlyList<string>? requestedRoutes, CancellationToken cancellationToken)
     {
         NamedProjectionRouteCatalogEntry[] entries = [.. catalogs.Current.Entries.Where(entry => entry.Domain == identity.Domain
-            && entry.SourceGuardCapabilities.Count > 0)];
+            && entry.SourceGuardCapabilities.Count > 0 && (original is null || MatchesBinding(entry, original)))];
         if (entries.Length != 1) return false;
         NamedProjectionRouteCatalogEntry catalog = entries[0];
         if (original is not null && (original.TenantId != identity.TenantId || original.Domain != identity.Domain
-            || original.AggregateId != identity.AggregateId || original.AppId != catalog.AppId || original.ServiceVersion != catalog.ServiceVersion
-            || original.CatalogFingerprint != catalog.CatalogFingerprint || original.HeadMessageId != original.DispatchId
-            || original.WorkId != ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId, identity.Domain, identity.AggregateId, original.HeadSequence)
+            || original.AggregateId != identity.AggregateId || original.HeadMessageId != original.DispatchId
+            || (original.WorkId != original.GetHeadWorkId() && original.WorkId != original.GetBindingWorkId())
             || requestedRoutes is not { Count: > 0 } || requestedRoutes.Distinct(StringComparer.Ordinal).Count() != requestedRoutes.Count
             || requestedRoutes.Any(route => !original.PendingRoutes.Contains(route, StringComparer.Ordinal)
                 || original.TerminalRoutes.Contains(route, StringComparer.Ordinal)))) return false;
@@ -174,8 +173,10 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
         ProjectionSourceGuardAttemptTelemetry telemetry)
     {
         NamedProjectionRouteCatalogEntry[] entries = [.. catalogs.Current.Entries.Where(entry => entry.Domain == identity.Domain
-            && entry.OrdinaryProjectionTypes.Count > 0)];
-        if (entries.Length == 0) return new(false, false, null);
+            && entry.OrdinaryProjectionTypes.Count > 0 && (originalWork is null || MatchesBinding(entry, originalWork)))];
+        if (entries.Length == 0) return originalWork is null
+            ? new(false, false, null)
+            : new(true, false, "delivery_reconciliation_required");
         if (entries.Length != 1) return new(true, false, "delivery_reconciliation_required");
         NamedProjectionRouteCatalogEntry entry = entries[0];
         foreach (string route in entry.OrdinaryProjectionTypes) telemetry.Add(route);
@@ -390,7 +391,8 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
         options.Validate();
         DateTimeOffset now = (timeProvider ?? TimeProvider.System).GetUtcNow();
         var proposed = new ProjectionDeliveryRetryWorkItem(ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId,
-            identity.Domain, identity.AggregateId, reservation.EndSequence), identity.TenantId, identity.Domain,
+            identity.Domain, identity.AggregateId, reservation.EndSequence, entry.AppId, entry.ServiceVersion,
+            entry.CatalogFingerprint), identity.TenantId, identity.Domain,
             identity.AggregateId, entry.AppId, entry.ServiceVersion, reservation.EndSequence, reservation.HeadMessageId,
             [.. entry.OrdinaryProjectionTypes], [], reservation.DispatchId, entry.CatalogFingerprint, 0,
             now + options.RetryWorkerInterval, null) { ReplayRecoveryBindings = ProjectionReplayRecoveryContext.Freeze(entry) };
@@ -429,4 +431,8 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
                 ProjectionDeliveryFingerprint.ComputeInitial(identity, projection, fingerprint.StartsWith("v2:", StringComparison.Ordinal)))
             && ProjectionDeliveryIdempotencyCoordinator.ValidCompleteIdentityDigests(state);
     }
+
+    private static bool MatchesBinding(NamedProjectionRouteCatalogEntry entry, ProjectionDeliveryRetryWorkItem work)
+        => entry.AppId == work.AppId && entry.ServiceVersion == work.ServiceVersion
+            && entry.CatalogFingerprint == work.CatalogFingerprint;
 }

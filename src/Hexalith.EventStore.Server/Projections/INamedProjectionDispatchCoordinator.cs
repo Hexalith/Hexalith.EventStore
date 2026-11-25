@@ -9,7 +9,8 @@ namespace Hexalith.EventStore.Server.Projections;
 internal interface INamedProjectionDispatchCoordinator {
     /// <summary>Delivers a validated complete readable prefix without retaining a second stored-envelope array.</summary>
     Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
-        long headSequence, string headMessageId, ProjectionEventDto[] events, CancellationToken cancellationToken);
+        long headSequence, string headMessageId, ProjectionEventDto[] events, CancellationToken cancellationToken,
+        string? retryCatalogFingerprint = null);
 
     /// <summary>Retains the already validated original native cut or its frozen absence without resampling DTOs.</summary>
     Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
@@ -36,7 +37,8 @@ internal interface INamedProjectionDispatchCoordinator {
     /// <summary>Delivers one frozen actor head using bounded source pages and durable named route state.</summary>
     Task<bool> TryDispatchMappedOnlyAsync(
         AggregateIdentity identity, DomainServiceRegistration registration,
-        long sourceHeadSequence, string headMessageId, CancellationToken cancellationToken);
+        long sourceHeadSequence, string headMessageId, CancellationToken cancellationToken,
+        string? retryCatalogFingerprint = null);
 
     /// <summary>Checks the verified mapped-only streamed capability for a full-replay operation.</summary>
     Task<bool> SupportsMappedOnlyStreamedRebuildAsync(
@@ -109,11 +111,13 @@ internal interface INamedProjectionDispatchCoordinator {
     /// <param name="events">The persisted event history.</param>
     /// <param name="projectionEvents">The protected-data-readable wire event history.</param>
     /// <param name="cancellationToken">Propagates delivery cancellation.</param>
+    /// <param name="retryCatalogFingerprint">The original catalog binding when resuming durable work.</param>
     /// <returns><c>true</c> when named delivery owned the request; otherwise the caller may use v1.</returns>
     Task<bool> TryDispatchAsync(
         AggregateIdentity identity,
         DomainServiceRegistration registration,
         EventEnvelope[] events,
         ProjectionEventDto[] projectionEvents,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? retryCatalogFingerprint = null);
 }

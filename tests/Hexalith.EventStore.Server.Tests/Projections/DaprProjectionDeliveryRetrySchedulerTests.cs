@@ -13,6 +13,47 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class DaprProjectionDeliveryRetrySchedulerTests {
+    [Fact]
+    public async Task BindingScopedWorkSharesLegacyShardWithoutReusingAnotherBindingsWork()
+    {
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal);
+        var scheduler = CreateScheduler(CreateStatefulDaprClient(state));
+        var original = CreateWorkItem("legacy-head", "aggregate-a");
+        original = original with
+        {
+            WorkId = ProjectionDeliveryRetryWorkItem.CreateWorkId(
+                original.TenantId, original.Domain, original.AggregateId, original.HeadSequence),
+            Attempt = 3,
+        };
+        await scheduler.ScheduleAsync(original);
+        (await scheduler.ScheduleAsync(original with { WorkId = original.GetBindingWorkId(), Attempt = 0 }))
+            .ShouldBe(original);
+        (await scheduler.ReadAsync(original.GetBindingWorkId())).ShouldBe(original);
+
+        ProjectionDeliveryRetryWorkItem[] otherBindings =
+        [
+            original with { AppId = "other-app" },
+            original with { ServiceVersion = "other-version" },
+            original with { CatalogFingerprint = "other-fingerprint" },
+        ];
+        foreach (ProjectionDeliveryRetryWorkItem binding in otherBindings)
+        {
+            var proposed = binding with { WorkId = binding.GetBindingWorkId(), Attempt = 0 };
+            (await scheduler.ScheduleAsync(proposed)).ShouldBe(proposed);
+            (await scheduler.ScheduleAsync(binding with { WorkId = original.WorkId })).ShouldBe(proposed);
+            (await scheduler.ReadAsync(proposed.WorkId)).ShouldBe(proposed);
+        }
+
+        state.Values.ShouldHaveSingleItem().Items.Count.ShouldBe(4);
+        (await scheduler.ReadAsync(original.WorkId)).ShouldBe(original);
+
+        var newHead = original with { HeadSequence = original.HeadSequence + 1 };
+        newHead = newHead with { WorkId = newHead.GetBindingWorkId() };
+        (await scheduler.ScheduleAsync(newHead)).ShouldBe(newHead);
+        (await scheduler.ScheduleAsync(newHead with { WorkId = newHead.GetHeadWorkId() })).ShouldBe(newHead);
+        (await scheduler.ReadAsync(newHead.WorkId)).ShouldBe(newHead);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

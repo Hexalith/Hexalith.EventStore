@@ -43,7 +43,7 @@ public sealed partial class ProjectionRebuildProductionPathTests
         fixture.UseProductionNamedCoordinator(hasNamedRoute: true);
         await fixture.DeliverAsync();
         var workId = ProjectionDeliveryRetryWorkItem.CreateWorkId(fixture.Identity.TenantId, fixture.Identity.Domain,
-            fixture.Identity.AggregateId, fixture.Events.Count);
+            fixture.Identity.AggregateId, fixture.Events.Count, "sample", "v1", new string('a', 64));
         var work = (await fixture.NamedScheduler!.ReadAsync(workId)).ShouldNotBeNull();
         if (anchored) work.NativeSourceProof.ShouldBe(SourceProofCodec.ToNative(fixture.Head));
         else work.NativeSourceProof.ShouldBeNull();

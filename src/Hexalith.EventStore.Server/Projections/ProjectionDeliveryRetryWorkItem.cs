@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace Hexalith.EventStore.Server.Projections;
 
@@ -73,4 +74,38 @@ public sealed record ProjectionDeliveryRetryWorkItem(
         byte[] value = Encoding.UTF8.GetBytes($"{tenantId}\u001f{domain}\u001f{aggregateId}\u001f{headSequence}");
         return Convert.ToHexStringLower(SHA256.HashData(value));
     }
+
+    /// <summary>Creates the work identity for one service binding at the recorded stream head.</summary>
+    /// <param name="tenantId">The aggregate tenant.</param>
+    /// <param name="domain">The aggregate domain.</param>
+    /// <param name="aggregateId">The aggregate identifier.</param>
+    /// <param name="headSequence">The recorded stream head.</param>
+    /// <param name="appId">The exact service app id.</param>
+    /// <param name="serviceVersion">The exact service version.</param>
+    /// <param name="catalogFingerprint">The admitted catalog fingerprint.</param>
+    /// <returns>An opaque binding-scoped id colocated with legacy work in the retry ledger.</returns>
+    public static string CreateWorkId(string tenantId, string domain, string aggregateId, long headSequence,
+        string appId, string serviceVersion, string catalogFingerprint)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
+        ArgumentException.ThrowIfNullOrWhiteSpace(catalogFingerprint);
+        string legacyId = CreateWorkId(tenantId, domain, aggregateId, headSequence);
+        byte[] binding = JsonSerializer.SerializeToUtf8Bytes(new[] { appId, serviceVersion, catalogFingerprint });
+        return $"v2:{legacyId}:{Convert.ToHexStringLower(SHA256.HashData(binding))}";
+    }
+
+    /// <summary>Computes the original head identity for these persisted coordinates.</summary>
+    internal string GetHeadWorkId()
+        => CreateWorkId(TenantId, Domain, AggregateId, HeadSequence);
+
+    /// <summary>Computes the binding-scoped identity for these persisted coordinates.</summary>
+    internal string GetBindingWorkId()
+        => CreateWorkId(TenantId, Domain, AggregateId, HeadSequence, AppId, ServiceVersion, CatalogFingerprint);
+
+    /// <summary>Extracts the legacy head id from a binding-scoped work id.</summary>
+    internal static string? GetLegacyWorkId(string workId)
+        => workId.Length == 132 && workId.StartsWith("v2:", StringComparison.Ordinal) && workId[67] == ':'
+            ? workId[3..67]
+            : null;
 }

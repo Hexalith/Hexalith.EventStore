@@ -26,6 +26,27 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class NamedProjectionDispatchCoordinatorTests {
+    [Fact]
+    public async Task DurableRetryDoesNotScheduleWorkAgainstAReplacementCatalog()
+    {
+        using var handler = new ProjectionDispatchHttpMessageHandler("{}");
+        var scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("replacement", "widget-detail"), handler, out _, out _, scheduler);
+        EventEnvelope head = Envelope(1);
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+
+        (await coordinator.TryDispatchAsync(Identity, Registration(), [head], [ProjectionEvent(1)],
+            cancellationToken, retryCatalogFingerprint: "original")).ShouldBeFalse();
+        (await coordinator.TryDispatchHeadAsync(Identity, Registration(), 1, head.MessageId, [ProjectionEvent(1)],
+            cancellationToken, retryCatalogFingerprint: "original")).ShouldBeFalse();
+        (await coordinator.TryDispatchMappedOnlyAsync(Identity, Registration(), 1, head.MessageId,
+            cancellationToken, retryCatalogFingerprint: "original")).ShouldBeFalse();
+
+        handler.Requests.ShouldBeEmpty();
+        _ = await scheduler.DidNotReceiveWithAnyArgs().ScheduleAsync(default!, default);
+    }
+
     private static readonly AggregateIdentity Identity = new("tenant-a", "widget", "widget-1");
 
     [Fact]

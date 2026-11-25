@@ -5,7 +5,7 @@ public interface IProjectionDeliveryRetryScheduler {
     /// <summary>Reads one original head's durable work without changing its lease, due time or revision.</summary>
     /// <param name="workId">The deterministic original work identity.</param>
     /// <param name="cancellationToken">Propagates persistence cancellation.</param>
-    /// <returns>The original work, or null only when its owning shard proves it absent.</returns>
+    /// <returns>The original work, including a matching legacy id, or null when its owning shard proves it absent.</returns>
     Task<ProjectionDeliveryRetryWorkItem?> ReadAsync(string workId, CancellationToken cancellationToken = default)
         => Task.FromException<ProjectionDeliveryRetryWorkItem?>(new NotSupportedException("delivery_reconciliation_required"));
 

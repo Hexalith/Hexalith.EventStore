@@ -56,7 +56,8 @@ public sealed partial class NamedProjectionDispatchLiveSidecarTests
             var coordinator = services.GetRequiredService<INamedProjectionDispatchCoordinator>();
             var rows = services.GetRequiredService<IProjectionDeliveryStateStore>();
             var scheduler = services.GetRequiredService<IProjectionDeliveryRetryScheduler>();
-            string workId = ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId, identity.Domain, identity.AggregateId, head);
+            string workId = ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId, identity.Domain, identity.AggregateId,
+                head, catalog.AppId, catalog.ServiceVersion, catalog.CatalogFingerprint);
             foreach (DomainProjectionRebuildBatchAction boundary in new[] { DomainProjectionRebuildBatchAction.Stage,
                 DomainProjectionRebuildBatchAction.Commit, DomainProjectionRebuildBatchAction.Verify })
             {
