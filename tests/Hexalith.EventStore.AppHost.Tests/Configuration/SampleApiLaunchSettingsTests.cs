@@ -106,29 +106,13 @@ public class SampleApiLaunchSettingsTests
             + "    builder.AddProject<Projects.Hexalith_EventStore_Sample_Api>(\"sample-api\");");
     }
 
-    [Fact]
-    public void EventStoreAccessControl_SampleApiPolicyDocumentsGatewayPostOperations()
-    {
-        string accessControl = ReadRepositorySource(Path.Combine(
-            RepositoryProjectPaths.GetRepositoryRoot(),
-            "src",
-            "Hexalith.EventStore.AppHost",
-            "DaprComponents",
-            "accesscontrol.yaml"));
-
-        string[] sampleApiPolicies = ExtractYamlPolicies(accessControl, "sample-api");
-        sampleApiPolicies.Length.ShouldBe(1, "Expected exactly one DAPR access-control policy for sample-api.");
-        string sampleApiPolicy = sampleApiPolicies[0];
-
-        sampleApiPolicy.ShouldContain("defaultAction: deny");
-        sampleApiPolicy.ShouldNotContain("name: /**");
-        Dictionary<string, AccessControlOperation> operations = ExtractOperations(sampleApiPolicy);
-        operations.ShouldBe(new Dictionary<string, AccessControlOperation>(StringComparer.Ordinal)
-        {
-            ["/api/v1/queries"] = new("POST", "allow"),
-            ["/api/v1/commands"] = new("POST", "allow"),
-        });
-    }
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    [InlineData("\r")]
+    public void EventStoreAccessControl_SampleApiPolicyDocumentsGatewayPostOperations(string lineEnding)
+        => DaprAccessControlAssertions.AssertGatewayPostOperations(
+            DaprAccessControlAssertions.ReadConfiguration().ReplaceLineEndings(lineEnding), "sample-api");
 
     /// <summary>
     /// Reads a repository source file, normalizing CRLF to LF so markers containing "\n" match on any
@@ -147,89 +131,4 @@ public class SampleApiLaunchSettingsTests
         end += 1;
         return text[start..end];
     }
-
-    private static string[] ExtractYamlPolicies(string yaml, string appId)
-    {
-        string marker = $"- appId: {appId}";
-        string nextPolicyMarker = "- appId:";
-        string[] lines = yaml.Split('\n');
-        var policies = new List<string>();
-        for (int index = 0; index < lines.Length; index++)
-        {
-            if (!string.Equals(lines[index].Trim(), marker, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var policyLines = new List<string>();
-            for (int policyIndex = index; policyIndex < lines.Length; policyIndex++)
-            {
-                if (policyIndex > index
-                    && lines[policyIndex].TrimStart().StartsWith(nextPolicyMarker, StringComparison.Ordinal))
-                {
-                    break;
-                }
-
-                policyLines.Add(lines[policyIndex]);
-            }
-
-            policies.Add(string.Join('\n', policyLines));
-        }
-
-        return [.. policies];
-    }
-
-    private static Dictionary<string, AccessControlOperation> ExtractOperations(string policy)
-    {
-        var operations = new Dictionary<string, AccessControlOperation>(StringComparer.Ordinal);
-        string? currentName = null;
-        string? currentVerb = null;
-        foreach (string rawLine in policy.Split('\n'))
-        {
-            string line = rawLine.Trim();
-            const string NamePrefix = "- name: ";
-            const string VerbPrefix = "httpVerb: ";
-            const string ActionPrefix = "action: ";
-            if (line.StartsWith(NamePrefix, StringComparison.Ordinal))
-            {
-                currentName = line[NamePrefix.Length..];
-                currentVerb = null;
-                continue;
-            }
-
-            if (line.StartsWith(VerbPrefix, StringComparison.Ordinal) && currentName is not null)
-            {
-                currentVerb = line[VerbPrefix.Length..];
-                continue;
-            }
-
-            if (line.StartsWith(ActionPrefix, StringComparison.Ordinal)
-                && currentName is not null
-                && currentVerb is not null)
-            {
-                operations
-                    .TryAdd(currentName, new AccessControlOperation(NormalizeHttpVerb(currentVerb), line[ActionPrefix.Length..]))
-                    .ShouldBeTrue($"Duplicate DAPR ACL operation '{currentName}' must not be allowed to mask a broader rule.");
-                currentName = null;
-                currentVerb = null;
-            }
-        }
-
-        return operations;
-    }
-
-    private static string NormalizeHttpVerb(string httpVerb)
-    {
-        string[] verbs = httpVerb
-            .Trim()
-            .Trim('[', ']')
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(static verb => verb.Trim('\'', '"'))
-            .ToArray();
-
-        verbs.ShouldBe(["POST"], "sample-api may document only POST service-invocation operations.");
-        return verbs.Single();
-    }
-
-    private sealed record AccessControlOperation(string HttpVerb, string Action);
 }
