@@ -794,7 +794,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Actors/IProjectionLifecycleActor.cs:12
 reason: Lifecycle actor source files contain multiple enum, record, interface, and persisted-state declarations despite the repository's one-type-per-file rule. Split the pre-existing declarations during a scoped structural cleanup. [`src/Hexalith.EventStore.Server/Actors/IProjectionLifecycleActor.cs:12`]
-status: open
+status: done 2026-11-25
+resolution: Moved each lifecycle enum and request or response record to its own file, preserving the actor contract and serialization.
 
 ### DW-119: Operational-index metadata request binding can deserialize `Domains` as null and then dereference `request.Domains.Count`, returning an internal error instead of a bounded malformed-request response. Add null-safe request validation.
 
