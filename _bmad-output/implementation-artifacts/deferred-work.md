@@ -6852,3 +6852,12 @@ severity: low
 reason: In the sequential full Server.Tests run (8,595 tests) the durable-due count read right after `StopAsync` starts was 7, not 8. Two isolated re-runs passed. The assertion reads `GetDueAsync` while the worker may still be finishing the released first activation, so it depends on scheduling. Make the test wait for the deterministic post-release state before asserting, or bound the read to the cancelled worker's completion.
 status: done 2026-11-25
 resolution: Signal the ninth delivery only after its cancellable wait is registered so shutdown cannot release it during cleanup before the cancellation boundary is installed. Retain the durable outbox and drain assertions.
+
+### DW-548: Sample API startup validation can surface a disposed test host before the underlying options error
+
+origin: full test run of spec-next-seven-deferred-items (2026-11-25)
+location: tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiHostMiddlewareTests.cs
+source_spec: `spec-next-seven-deferred-items.md`
+severity: low
+reason: The unfiltered Release run failed `Host_WhenProductionAuthorityAlgorithmsAreMissing_FailsBeforeServing` because `WebApplicationFactory.CreateClient()` threw `ObjectDisposedException` from `DeferredHost.StartAsync`. One isolated rerun passed and logged the expected `OptionsValidationException` for `AllowedAlgorithms`. Make the startup assertion observe the original options validation failure reliably when the test host shuts down concurrently.
+status: open
