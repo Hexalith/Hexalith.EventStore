@@ -384,13 +384,22 @@ public class EventStoreDomainEventProcessor {
     private static PropertyInfo? ResolvePayloadIdProperty(Type eventType, string propertyName)
         => s_payloadIdProperties.GetOrAdd(
             new PayloadIdPropertyKey(eventType, propertyName),
-            static key => key.EventType.GetProperty(key.PropertyName, BindingFlags.Instance | BindingFlags.Public) is {
-                CanRead: true,
-            } property
-                && property.PropertyType.IsAssignableFrom(typeof(string))
-                && property.GetIndexParameters().Length == 0
-                    ? property
-                    : null);
+            static key => {
+                PropertyInfo? property;
+                try {
+                    property = key.EventType.GetProperty(key.PropertyName, BindingFlags.Instance | BindingFlags.Public);
+                }
+                catch (AmbiguousMatchException) {
+                    // A hidden property can have different semantics from the base declaration.
+                    return null;
+                }
+
+                return property is { CanRead: true }
+                    && property.PropertyType.IsAssignableFrom(typeof(string))
+                    && property.GetIndexParameters().Length == 0
+                        ? property
+                        : null;
+            });
 
     private async Task MarkCompletedSafelyAsync(string messageId) {
         try {

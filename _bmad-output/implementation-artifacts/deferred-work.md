@@ -6835,7 +6835,8 @@ location: src/Hexalith.EventStore.Client/Subscriptions/EventStoreDomainEventProc
 source_spec: `spec-dw-33-43-45-58-60-63-76-deferred-batch.md`
 severity: medium
 reason: `Type.GetProperty(name, Instance | Public)` throws `AmbiguousMatchException` when a derived event hides a base property with `new`. The exception escapes the resolver and `ProcessAsync`, the marker is released, and every redelivery fails the same way. Pre-existing: the earlier lookup was identical. Resolve the most-derived declaration, or report the property as unresolvable like a missing one.
-status: open
+status: done 2026-11-25
+resolution: Treat ambiguous hidden properties as unresolved and acknowledge the mismatch through the existing warning path. Verify startup, event delivery, and deduplicated redelivery.
 
 ### DW-547: `HostedNineActivationsKeepEightSlotsAndDurableNinthUntilCapacityReleasesThenDrainOwnedCalls` fails intermittently under full-suite load.
 

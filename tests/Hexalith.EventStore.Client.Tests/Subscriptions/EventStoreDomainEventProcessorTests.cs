@@ -536,6 +536,26 @@ public class EventStoreDomainEventProcessorTests {
         WarningsWith(logger, "EventClrType").ShouldHaveSingleItem()["EventClrType"].ShouldBe(typeof(TestEvent).FullName);
     }
 
+    [Fact]
+    public async Task ProcessAsync_HiddenPayloadIdProperty_IsReportedAndAcknowledged() {
+        using ServiceProvider provider = new ServiceCollection().BuildServiceProvider();
+        var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
+        Type eventType = typeof(HiddenPayloadIdentityEvent);
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type>(StringComparer.Ordinal) { [eventType.FullName!] = eventType },
+            logger,
+            nameof(HiddenPayloadIdentityEvent.TenantId));
+        WarningsWith(logger, "PropertyName").ShouldHaveSingleItem();
+
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", """{"baseTenantId":"t1","tenantId":1}"""u8.ToArray())
+            with { EventTypeName = eventType.FullName! };
+
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        WarningsWith(logger, "EventClrType").ShouldHaveSingleItem()["EventClrType"].ShouldBe(eventType.FullName);
+    }
+
     [Theory]
     [InlineData("other")]
     [InlineData(null)]
