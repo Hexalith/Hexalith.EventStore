@@ -12,6 +12,8 @@ public sealed class PublishedProductionAuthenticationTests
 {
     private const string _sampleName = "Hexalith.EventStore.Sample.Api";
     private const string _listeningMessage = "Now listening on: ";
+    // The isolated Release publish builds every dependency and its source generators from scratch.
+    private static readonly TimeSpan _publishTimeout = TimeSpan.FromMinutes(4);
     private static readonly TimeSpan _startupTimeout = TimeSpan.FromSeconds(15);
 
     /// <summary>Starts the published Sample API with RS256 and rejects the same settings with that algorithm omitted.</summary>
@@ -29,7 +31,7 @@ public sealed class PublishedProductionAuthenticationTests
                 "-p:UseSharedCompilation=false", "-p:MinVerVersionOverride=1.0.0", "-p:UseNuGetDeps=true",
                 "-p:RestoreFallbackFolders=", "--artifacts-path", Path.Combine(scratch.FullName, "artifacts"),
                 "--output", publish);
-            (int publishExit, string publishOutput) = await RunAsync(publishStart, TimeSpan.FromSeconds(120));
+            (int publishExit, string publishOutput) = await RunAsync(publishStart, _publishTimeout);
             Assert.True(publishExit == 0, $"Release Sample API publish exited {publishExit}.{Environment.NewLine}{publishOutput}");
             string executable = Path.Combine(publish, _sampleName + ".dll");
             File.Exists(executable).ShouldBeTrue();
