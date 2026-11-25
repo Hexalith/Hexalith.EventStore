@@ -28,17 +28,8 @@ public static class RepositoryProjectPaths {
     /// <param name="path">Path segments, relative to the repository root, ending in the target file.</param>
     /// <returns>The combined path rooted at the repository root.</returns>
     public static string GetProjectPath(params string[] path) {
-        ValidateRelativePathSegments(path);
-
-        string repositoryRoot = GetRepositoryRoot();
-        string resolvedPath = Path.GetFullPath(Path.Combine(repositoryRoot, Path.Combine(path)));
-        string rootedPrefix = Path.EndsInDirectorySeparator(repositoryRoot)
-            ? repositoryRoot
-            : repositoryRoot + Path.DirectorySeparatorChar;
-
-        return resolvedPath.StartsWith(rootedPrefix, StringComparison.Ordinal)
-            ? resolvedPath
-            : throw new ArgumentException("Project path segments must resolve under the repository root.", nameof(path));
+        ValidateRelativePathSegments(path, nameof(path));
+        return ResolveContainedProjectPath(GetRepositoryRoot(), Path.Combine(path), nameof(path));
     }
 
     /// <summary>
@@ -55,6 +46,7 @@ public static class RepositoryProjectPaths {
     /// <param name="moduleDirectory">The dependency module's directory name (e.g. <c>Hexalith.EventStore</c>).</param>
     /// <param name="moduleRelativePath">Path segments inside the module, ending in the target project file.</param>
     /// <returns>The absolute path to the resolved project file.</returns>
+    /// <exception cref="ArgumentException">The module name or project path is invalid.</exception>
     /// <exception cref="InvalidOperationException">
     /// The project file does not exist at the mapped location. The message names the dependency and the expected path.
     /// </exception>
@@ -74,16 +66,18 @@ public static class RepositoryProjectPaths {
     internal static string ResolveReferencedModuleProjectPath(string root, string moduleDirectory, params string[] moduleRelativePath) {
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleDirectory);
-        if (moduleRelativePath is null || moduleRelativePath.Length == 0) {
-            throw new ArgumentException("At least one module-relative path segment is required.", nameof(moduleRelativePath));
+        if (moduleDirectory is "." or ".."
+            || moduleDirectory.Contains('/') || moduleDirectory.Contains('\\')
+            || moduleDirectory.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) {
+            throw new ArgumentException("The dependency module must be a single directory name.", nameof(moduleDirectory));
         }
 
+        ValidateRelativePathSegments(moduleRelativePath, nameof(moduleRelativePath));
         string fullRoot = Path.GetFullPath(root);
         string relative = Path.Combine(moduleRelativePath);
         bool isCurrentRepository = File.Exists(Path.Combine(fullRoot, moduleDirectory + ".slnx"));
-        string expected = isCurrentRepository
-            ? Path.GetFullPath(Path.Combine(fullRoot, relative))
-            : Path.GetFullPath(Path.Combine(fullRoot, "references", moduleDirectory, relative));
+        string moduleRoot = isCurrentRepository ? fullRoot : Path.Combine(fullRoot, "references", moduleDirectory);
+        string expected = ResolveContainedProjectPath(moduleRoot, relative, nameof(moduleRelativePath));
 
         if (File.Exists(expected)) {
             return expected;
@@ -111,9 +105,9 @@ public static class RepositoryProjectPaths {
     /// </summary>
     /// <param name="root">The absolute consuming repository root.</param>
     /// <param name="moduleDirectory">The dependency module's directory name.</param>
-    /// <param name="relative">The project path relative to the dependency module.</param>
+    /// <param name="moduleRelativePath">The project path relative to the dependency module.</param>
     /// <returns>The declared workspace project path, or <see langword="null"/> when the layout is not declared.</returns>
-    private static string? GetDeclaredWorkspaceProjectPath(string root, string moduleDirectory, string relative) {
+    private static string? GetDeclaredWorkspaceProjectPath(string root, string moduleDirectory, string moduleRelativePath) {
         DirectoryInfo consumer = new(root);
         DirectoryInfo? references = consumer.Parent;
         if (references?.Name != "references" || references.Parent is not DirectoryInfo workspace) {
@@ -160,11 +154,11 @@ public static class RepositoryProjectPaths {
         // EventStore can itself be the superproject that declares a Tenants consumer. Its own
         // project is then at the workspace root, with no nested EventStore submodule to initialize.
         if (File.Exists(Path.Combine(workspace.FullName, moduleDirectory + ".slnx"))) {
-            return Path.GetFullPath(Path.Combine(workspace.FullName, relative));
+            return ResolveContainedProjectPath(workspace.FullName, moduleRelativePath, nameof(moduleRelativePath));
         }
 
         return declaredPaths.Values.Contains("references/" + moduleDirectory, StringComparer.Ordinal)
-            ? Path.GetFullPath(Path.Combine(references.FullName, moduleDirectory, relative))
+            ? ResolveContainedProjectPath(Path.Combine(references.FullName, moduleDirectory), moduleRelativePath, nameof(moduleRelativePath))
             : null;
     }
 
@@ -181,26 +175,37 @@ public static class RepositoryProjectPaths {
                 $"Cannot resolve a Hexalith repository root from '{AppContext.BaseDirectory}'. Expected a 'src' directory at '{repositoryRoot}'.");
     }
 
-    private static void ValidateRelativePathSegments(string[] path) {
-        ArgumentNullException.ThrowIfNull(path);
+    private static string ResolveContainedProjectPath(string root, string relativePath, string parameterName) {
+        string normalizedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        string resolvedPath = Path.GetFullPath(Path.Combine(normalizedRoot, relativePath));
+        string rootedPrefix = Path.EndsInDirectorySeparator(normalizedRoot)
+            ? normalizedRoot
+            : normalizedRoot + Path.DirectorySeparatorChar;
+        return resolvedPath.StartsWith(rootedPrefix, StringComparison.Ordinal) && resolvedPath != normalizedRoot
+            ? resolvedPath
+            : throw new ArgumentException("Project path segments must resolve under the mapped root.", parameterName);
+    }
+
+    private static void ValidateRelativePathSegments(string[] path, string parameterName) {
+        ArgumentNullException.ThrowIfNull(path, parameterName);
         if (path.Length == 0) {
-            throw new ArgumentException("At least one project path segment is required.", nameof(path));
+            throw new ArgumentException("At least one project path segment is required.", parameterName);
         }
 
         foreach (string segment in path) {
             if (string.IsNullOrWhiteSpace(segment)) {
-                throw new ArgumentException("Project path segments cannot be null, empty, or whitespace.", nameof(path));
+                throw new ArgumentException("Project path segments cannot be null, empty, or whitespace.", parameterName);
             }
 
             if (Path.IsPathRooted(segment)) {
-                throw new ArgumentException("Project path segments must be relative.", nameof(path));
+                throw new ArgumentException("Project path segments must be relative.", parameterName);
             }
 
             string normalizedSegment = segment.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
             if (normalizedSegment
                 .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
                 .Any(static part => part == "..")) {
-                throw new ArgumentException("Project path segments cannot contain parent-directory traversal.", nameof(path));
+                throw new ArgumentException("Project path segments cannot contain parent-directory traversal.", parameterName);
             }
         }
     }

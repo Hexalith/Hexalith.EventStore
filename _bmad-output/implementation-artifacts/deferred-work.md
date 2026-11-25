@@ -1407,7 +1407,8 @@ archived: 2026-11-23
 origin: migrated from legacy ledger ("Deferred from: code review of story-3.3 (2026-07-29)"), 2026-08-30
 location: src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs:30
 reason: source_spec: `_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md` summary: [LOW] `GetReferencedModuleProjectPath` omits the path-segment validation and root-containment check that its sibling `GetProjectPath` enforces, so a rooted segment would escape the repository root. evidence: Story 3.3 code review (blind-hunter), verified 2026-07-29. `src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs:30` calls `ValidateRelativePathSegments` and `:38-40` rejects any result that does not resolve under the repository root; the referenced-module helper at `:55-64` performs only null/empty checks on `moduleDirectory` and an array-length check on `moduleRelativePath`. `Path.Combine` discards everything preceding a rooted segment, so a rooted `moduleRelativePath` element yields an arbitrary absolute path with no containment check. `GetProjectPath_WhenSegmentIsRooted_ThrowsArgumentException` (`RepositoryProjectPathsTests.cs:68-74`) has no counterpart for the helper AC4 explicitly names. Rated LOW because every current call site passes compile-time literals (`EventStorePlatformProjectMetadata.cs`, 3 sites). Suggested durable fix: call `ValidateRelativePathSegments(moduleRelativePath)` and apply the same rooted-prefix containment assertion to the returned candidate.
-status: open
+status: done 2026-11-25
+resolution: Validate the dependency module name and all relative segments, then enforce containment under the chosen module root. Cover invalid inputs and the existing direct, sibling and superproject layouts.
 
 ### DW-208: [MEDIUM] `SampleApiLaunchSettingsTests` hand-rolls newline-sensitive YAML parsing that survives CRLF only by accident, while its sibling parses the same file with YamlDotNet.
 

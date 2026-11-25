@@ -306,6 +306,41 @@ public class RepositoryProjectPathsTests {
         exception.ParamName.ShouldBe("path");
     }
 
+    [Fact]
+    public void GetReferencedModuleProjectPath_WhenProjectPathIsRooted_ThrowsArgumentException() {
+        string project = Path.Combine(RepositoryProjectPaths.GetRepositoryRoot(), "Hexalith.EventStore.slnx");
+
+        var exception = Should.Throw<ArgumentException>(
+            () => RepositoryProjectPaths.GetReferencedModuleProjectPath(Module, "src", project));
+
+        exception.ParamName.ShouldBe("moduleRelativePath");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("src/../outside.csproj")]
+    public void GetReferencedModuleProjectPath_WhenProjectPathIsInvalid_ThrowsArgumentException(string segment) {
+        var exception = Should.Throw<ArgumentException>(
+            () => RepositoryProjectPaths.GetReferencedModuleProjectPath(Module, segment));
+
+        exception.ParamName.ShouldBe("moduleRelativePath");
+    }
+
+    [Theory]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("modules/Hexalith.EventStore")]
+    [InlineData(@"modules\Hexalith.EventStore")]
+    public void GetReferencedModuleProjectPath_WhenModuleNameContainsAPath_ThrowsArgumentException(string module) {
+        var exception = Should.Throw<ArgumentException>(
+            () => RepositoryProjectPaths.GetReferencedModuleProjectPath(module, _gatewayProject));
+
+        exception.ParamName.ShouldBe("moduleDirectory");
+    }
+
     private static void DeclareWorkspace(TemporaryLayout layout, bool quotedPaths, params string[] repositories) {
         string gitmodules = layout.CreateFile("..", "..", ".gitmodules");
         File.WriteAllText(gitmodules, string.Join(Environment.NewLine, repositories.Select(
