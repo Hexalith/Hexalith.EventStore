@@ -1,5 +1,6 @@
 
 using System.Diagnostics;
+using System.Text;
 
 using Dapr.Actors.Runtime;
 
@@ -58,13 +59,15 @@ public class PayloadProtectionTests : IDisposable {
         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
         var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
+        const string payloadMarker = "fixture-private-command-payload";
+        byte[] payload = Encoding.UTF8.GetBytes(payloadMarker);
         var command = new SubmitCommand(
             MessageId: "msg-payload-submit-1",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
             CommandType: "CreateOrder",
-            Payload: SensitivePayload,
+            Payload: payload,
             CorrelationId: "corr-123",
             UserId: "test-user",
             Extensions: null);
@@ -74,9 +77,9 @@ public class PayloadProtectionTests : IDisposable {
 
         // Assert - no log entry should contain raw payload bytes
         foreach (LogEntry entry in _logEntries) {
-            entry.Message.ShouldNotContain("DEAD");
-            entry.Message.ShouldNotContain("BEEF");
-            entry.Message.ShouldNotContain("3735928559"); // 0xDEADBEEF as decimal
+            entry.Message.ShouldNotContain(payloadMarker);
+            entry.Message.ShouldNotContain(Convert.ToHexString(payload.AsSpan(0, 15)));
+            entry.Message.ShouldNotContain(Convert.ToBase64String(payload, 0, 15));
         }
     }
 
