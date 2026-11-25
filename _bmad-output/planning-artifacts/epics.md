@@ -3195,7 +3195,7 @@ So that new work cannot silently introduce provider coupling.
 
 **Dependencies:** Approved boundary policy and existing Contracts architecture/packaging evaluation lane (`DependencyModeEvaluationTests.cs`). Consume the current scoped 2.13/8.6 decisions and selected 8.12 qualification requirements without blocking initial module inventory/guard work or creating cycles; concrete profile execution remains Platform-owned. Story 3.16 consults this inventory/policy before accepting infrastructure dependencies.
 
-**Current reconciliation:** Backlog. The published guide/register are preliminary and unqualified; the register retains the scoped 2.13 SignalR Redis and deferred 8.6 Azure decisions, while the final evaluated inventory/guard and unresolved module/profile qualification remain undelivered. Story 1.11’s domain scans do not enforce this whole-platform boundary. See the [actionable story specification](../implementation-artifacts/3-17-dapr-boundary-inventory-and-enforcement.md).
+**Current reconciliation:** Backlog. The published guide/register are preliminary and unqualified; the register retains the scoped 2.13 SignalR Redis and deferred 8.6 Azure decisions, while the final evaluated inventory/guard and unresolved module/profile qualification remain undelivered. Story 1.11’s domain scans do not enforce this whole-platform boundary. See the [actionable story specification](../implementation-artifacts/3-17-dapr-boundary-inventory-and-enforcement.md). On 2026-11-25 the owner authorized the module-owned inventory and guard slice (AC1–AC6) under AD-12. It enumerates every reachable actor-state write path as unqualified rows for Story 4.16 AC2. Profile qualification remains Platform-owned. Append-protection rows remain unresolved until a qualified capability exists.
 
 **Acceptance Criteria:**
 
@@ -3364,7 +3364,7 @@ So that the AD-26 owner decision and canonical production profile bind exactly w
 **Given** a candidate runtime of at least `1.18.3` and its independently compatible CLI
 **When** runtime, CLI, embedded component, placement, scheduler and catalog/tool pins in CI, AppHosts and profile inputs are inventoried
 **Then** exact immutable identities and loaded configuration bind the live qualification evidence
-**And** below-floor or mutable production inputs fail; guide drift goes to Story 5.9. The owner-approved 2026-11-08 refresh target is Dapr runtime/control-plane `1.19.1`, CLI `1.19.1` and embedded components-contrib `1.19.0`; retain Dapr .NET SDK `1.19.0` while latest-stable evidence agrees. The earlier Dapr `1.18.7` / CLI `1.18.2` / components `1.18.6` and RabbitMQ/Kafka observations remain historical comparison, not new-runtime conformance or production selection.
+**And** below-floor or mutable production inputs fail; guide drift goes to Story 5.9. The owner-approved 2026-11-25 candidate target is Dapr runtime/control-plane `1.19.2`, CLI `1.19.1`, embedded components-contrib `1.19.2` and .NET SDK `1.19.1`. The 1.19.1 target, its lock and its broker results remain historical comparison inputs, not current conformance. The earlier Dapr `1.18.7` / CLI `1.18.2` / components `1.18.6` and RabbitMQ/Kafka observations remain historical comparison, not new-runtime conformance or production selection.
 
 **Given** `pubsub.kafka/v1` and `pubsub.rabbitmq/v1` self-hosted candidates
 **When** the complete 12-scenario matrix per broker executes in exclusively allocated disposable local infrastructure
@@ -4305,6 +4305,8 @@ All prevention oracles use fresh logical reads through the owning Dapr actor bou
 | AC11 Final gate | Exact qualified SDK/runtime/component, complete writer inventory, delivered prerequisites and ratified canonical profile | Every applicable prevention/erasure/failover/compatibility test passes on the production path with existing AD-12/9.2 assurance. Unknown capability, unavailable lane or an unguarded writer keeps G-APPEND FAIL/BLOCKED. Runtime-minor or bound-input changes require re-proof. |
 
 **Current reconciliation (2026-11-09):** Backlog, with approved scope and amended planning only. The coarse API-group policy is rejected; this does not prove every possible envelope impossible. Mandatory Dapr conflict capability, erasure enforcement, prerequisite delivery and final conformance remain undelivered. Keep the existing story key/path and lifecycle values. Historical 4.5 observations and 4.9–4.15 authority boundaries are unchanged; deleted evidence machinery stays deleted. The approved delivery intake is recorded outside frozen intent; Platform acceptance and execution remain pending.
+
+**Current reconciliation (2026-11-25):** Backlog. Dapr runtime 1.19.2, components-contrib 1.19.2 and .NET SDK 1.19.1 make optional ETag and `first-write` checks consistent, but the actor path still has no mandatory revision or create-once condition ([4.16 recheck](../implementation-artifacts/spec-4-16-append-write-once-conformance-through-enforced-envelope.md#capability-recheck--1192-tuple-2026-11-25)). Platform's PLAT-ES416-QH Q2 R4 design awaits receipts R-P1, R-B1 and R-E1. On 2026-11-25 the owner selected capability path A, a supported upstream Dapr release, with the first Dapr 1.20 release candidate as its review trigger, and deferred R-E1 until a candidate exists ([proposal](sprint-change-proposal-2026-11-25.md)). G-APPEND remains FAIL/BLOCKED.
 
 ### Story 4.17: OQ8 Governing-Design Authority Import
 
@@ -8099,6 +8101,13 @@ So that no high-risk result overstates the assurance behind it.
 
 **Audit acceptance addition (2026-11-20).** Separate the fixture inputs for a genuinely unbound gate, the G-RUNTIME-PARITY follow-on and a bound G-TENANT request missing required subjects. Assert the applicable refusal for each, including `GATE_UNBOUND` and `SUBJECT_MISMATCH`, and prove refusal precedes command execution. Run the complete transition fixture suite and report the live matrix separately. A passing fixture suite supplies no seal or attestation.
 
+**Readiness binding order (2026-11-25).** The readiness request enrolls owner verifiers for G-OQ8, G-TENANT and G-STATUS-ID. Twelve prerequisites still refuse:
+
+- the standard controls G-BASELINE (9.3), G-CLAUSE (9.4), G-NFR8 (6.3), G-NFR18 (6.7) and G-NFR-OWNERSHIP (9.5 owner result) enroll as artifact approvals;
+- the unbound rows G-COMPAT (3.18), G-AUTH-HOSTS (5.11), G-RUNTIME-PARITY (3.15), G-PUBLICATION-AUTH (3.19), G-CONSUMER (3.20), G-MVP-COVERAGE (9.5) and G-APPEND (4.16, once owner decision D1 path A yields a qualified capability) enroll once their owners bind them.
+
+Story 9.2 stays in progress until every enrolled path has authenticated use on its exact subject ([proposal](sprint-change-proposal-2026-11-25.md)).
+
 ### Story 9.3: Planning Baseline Manifest And Drift Guard
 
 As a Product owner,
@@ -8109,7 +8118,7 @@ So that the PRD, architecture, UX, epics, tracker, and story records cannot sile
 
 **Architecture constraints:** None new.
 
-**Dependencies:** Owner-approved scoped corrective work under the current AD-12 evidence policy. The owning story/spec records its authorization and applicable approval provenance; deleted Story 9.1 tooling is not a prerequisite to restore. Final baseline approval requires OR14 completion: architecture reviewer closure and AD-26 ratification or an approved replacement, final UX with substantive source reconciliation, lifecycle agreement, validated renewed epics and approval of the same source set. Building the scoped drift checks does not wait for that final approval.
+**Dependencies:** Owner-approved scoped corrective work under the current AD-12 evidence policy. The owning story/spec records its authorization and applicable approval provenance; deleted Story 9.1 tooling is not a prerequisite to restore. Final baseline approval requires OR14 completion: architecture reviewer closure and either per-role AD-26 ratification or an owner-approved AD-26 baseline disposition bound to the current ratification subject digest, final UX with substantive source reconciliation, lifecycle agreement, validated renewed epics and approval of the same source set. Building the scoped drift checks does not wait for that final approval.
 
 **Execution clarification (approved 2026-11-09):** Detailed UX finality is satisfied for the current pair; substantive source reconciliation, architecture closure and ratification, lifecycle agreement, validation and baseline approval remain open. Schedule 9.3 under AD-12's current story/spec-plus-CI policy. Re-specify any deleted validator when scheduling its actual guard work; do not restore deleted evidence packets, registries, manifests, seals or workflows merely because older text names them. Record input identities, commands, results, source SHA and CI link in the owning story/spec. Preserve required text/ownership/status/lifecycle drift checks and truthful initial FAIL behavior. Approval of this proposal does not deliver those checks or an approved baseline. References below to older manifest, registry or validator paths are governed by that policy; they are not instructions to recreate deleted evidence machinery. Reconciliation compares FR/NFR text, stable-clause and primary ownership, affected AD constraints, UX route/security contracts, wrapper/frontmatter and tracker lifecycle accounts, and applicable approval provenance. Story 5.14 is reconciled to in progress; verify the remaining OR15 accounts against their current evidence rather than choosing the most advanced label.
 
@@ -8119,7 +8128,7 @@ So that the PRD, architecture, UX, epics, tracker, and story records cannot sile
 **When** the validator command bound by this story runs
 **Then** it binds the SHA-256 of `prd.md`, `architecture.md`, the detailed DESIGN and EXPERIENCE documents, `ux.md`, `epics.md`, `sprint-status.yaml`, every story record it names, the relevant evidence digests, and the corrective scope and approval provenance in each owning spec under AD-12 and PRD §0
 **And** the Story 9.3 spec records the source revision, invocation, manifest digest, findings and CI run so reviewers can verify that exact subject
-**And** it rejects any digest mismatch, `draft` status, open `[ASSUMPTION]`, active or unreconciled corrective-work authorization, and any approval that predates the bytes it binds.
+**And** it rejects any digest mismatch, `draft` status, open `[ASSUMPTION]`, active or unreconciled corrective-work authorization, and any approval that predates the bytes it binds. The sole exception is an architecture whose only `[ASSUMPTION]` is AD-26 and whose `draft` status follows from it. That exception applies only while a current AD-26 baseline disposition binds the subject digest it records. A stale or missing disposition fails.
 
 **Given** a manifest that binds an architecture digest different from the one `epics.md` records
 **When** that digest is repinned in `epics.md`, the PRD §11.3 register, and the manifest

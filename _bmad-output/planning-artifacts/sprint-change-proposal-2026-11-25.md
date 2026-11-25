@@ -1,9 +1,14 @@
 ---
 date: '2026-11-25'
-status: draft-pending-approval
+status: approved
+approved: '2026-11-25'
+approval: 'Owner (sole maintainer) approved the proposal and decisions D1–D8 as recommended; see §7.1'
+approved_draft: 'c8c09d2b6954b9c7e9dd5f8cc6720284735cefbc (proposal SHA-256 bb64e550d5e611f9fee8a81518e0c759500f47be8f019a34ad634a3aa4024e84)'
 mode: batch
 change_scope: moderate
-escalation: 'D1 becomes major if the owner selects a private Dapr build or an AD-34 provider exception'
+escalation: 'Not triggered: D1 selected path A. Switching later to a private Dapr build or an AD-34 provider exception makes the change major.'
+routed_to: 'Product owner and Developer agents'
+applied: 'P-1, P-2, P-3, P-4, P-5, P-6a, P-6b, P-7, P-9a, P-9b, P-10, P-12 and P-13 on 2026-11-25 (§5.1); P-8 and P-11 wait for their dependencies'
 trigger: 'bmad-sprint-planning readiness gate FAIL at 3475b097857b71d4cc25d53f0dce810e7a7fc928'
 starting_point: sprint-change-proposal-2026-11-21.md
 rechecked_revisions:
@@ -15,9 +20,9 @@ excluded_scope: 'G-1 Durable Task work (separately approved)'
 
 # Sprint change proposal: Phase 4 append protection, planning baseline and assurance
 
-**Draft for owner approval. Phase 4 readiness remains Reject.** The latest sprint-planning run failed at commit `3475b0978`. This proposal rechecks its three blockers against the current checkout, using the applied [21 November proposal](sprint-change-proposal-2026-11-21.md) as the starting point. It proposes the next decisions, a delivery order and the planning edits that follow from them. Only this file was written. No planning input, tracker, matrix, spec or code was changed, and nothing was approved, sealed or sent outside the repository.
+**Approved by the owner on 2026-11-25. Phase 4 readiness remains Reject.** The latest sprint-planning run failed at commit `3475b0978`. This proposal rechecks its three blockers against the current checkout, using the applied [21 November proposal](sprint-change-proposal-2026-11-21.md) as the starting point. It records the next decisions, a delivery order and the planning edits that follow from them. Drafting wrote only this file. After the owner's approval (§7.1), waves 1–3 and the EventStore P-4 candidate intake were applied on 2026-11-25 (§5.1). No tracker, matrix or code was changed, and nothing was sealed, attested or sent outside the repository.
 
-Most of the work below can start now as owner-authorized corrective work under AD-12. The exception is G-APPEND. No released Dapr version supplies the conflict protection that the approved Story 4.16 design requires, and no one has asked upstream for it. Until the owner picks a capability path (decision D1), Phase 4 readiness has no date that can be forecast.
+Most of the work below can start now as owner-authorized corrective work under AD-12. The exception is G-APPEND. No released Dapr version supplies the conflict protection that the approved Story 4.16 design requires, and no one has asked upstream for it yet. The owner chose to obtain it upstream (decision D1, path A), so Phase 4 readiness has no date that can be forecast until a supported Dapr release supplies it.
 
 ## 1. Issue summary
 
@@ -200,7 +205,7 @@ Binding G-COMPAT, G-AUTH-HOSTS, G-PUBLICATION-AUTH and G-CONSUMER depends on Sto
 
 ## 4. Detailed change proposals
 
-All edits below are **proposed, not applied**. Each one requires owner approval of this proposal, and where noted, the decision it depends on. "Owner" means the accountable role. All Phase 4 roles are currently held by one human, so every approval is labelled `single-maintainer-attested`.
+The owner approved these edits on 2026-11-25. Waves 1–3 and the EventStore P-4 candidate intake were applied the same day (§5.1). The P-4 hosted broker request awaits Platform acceptance. P-8 and P-11 wait for their remaining dependencies. "Owner" means the accountable role. All Phase 4 roles are currently held by one human, so every approval is labelled `single-maintainer-attested`.
 
 ### 4.1 Stories and specs
 
@@ -227,7 +232,7 @@ All edits below are **proposed, not applied**. Each one requires owner approval 
   - the Builds SDK/CLI 1.19.1 dependency.
 - **Rationale:** #4748 has been released, which meets Platform's 13 November trigger. EventStore's evaluation side should be ready before Platform executes.
 - **Owner:** Story 3.21 owner (EventStore deployment role). Platform executes; Builds owns the shared pins.
-- **Dependencies:** D5; Platform acceptance of a candidate; P-1.
+- **Dependencies:** D5 and P-1 for EventStore intake. The hosted broker request awaits Platform acceptance and separate attempt authorization.
 - **Acceptance evidence:** Lock checksums match the downloaded release artifacts; sealed lanes untouched; no promotion or selection claim; spec stays `in-progress`.
 
 **P-6a · Story 3.17 spec · Verification and authorization record**
@@ -399,7 +404,46 @@ All edits below are **proposed, not applied**. Each one requires owner approval 
 - Every readiness prerequisite either enrolled or carrying a named refusal and owner.
 - The Story 2.14 adapter in place.
 - At least one live assured gate decision completed at `single-maintainer-attested` level.
-- Phase 4 readiness stays Reject until §9's OR1 conditions hold.
+- Phase 4 readiness stays Reject until §8's OR1 conditions hold.
+
+**Routing (approved 2026-11-25).** Moderate scope, routed to the Product owner and Developer agents. The deliverables are this proposal and the implementation order below. No tracker lifecycle change is part of it.
+
+| Wave | Edits | State after approval |
+| --- | --- | --- |
+| 1 | P-1, P-6a, P-6b, P-7, P-10, P-12, P-13 | Applied 2026-11-25 |
+| 2 | P-5, P-9a, P-9b | Applied 2026-11-25. The AD-26 disposition record that S3 requires is the D3 entry in §7.1. |
+| 3 | P-2, P-3 | Applied 2026-11-25, after P-1 |
+| 4 | P-4 | EventStore intake applied 2026-11-25 after P-1 and D5. Hosted broker request pending Platform acceptance. |
+| 5 | P-8 | After McpCli Story 5.11 leaves review (D4) |
+| 6 | P-11 | After the readiness findings are saved and S5 is complete |
+
+The upstream request (D6) is not part of any wave. It is filed only after the owner reviews its exact text.
+
+### 5.1 Applied edits and their checks (2026-11-25)
+
+| Edit | File | Change |
+| --- | --- | --- |
+| P-1 | Story 4.16 spec | New section "Capability Recheck — 1.19.2 Tuple (2026-11-25)" with the exact tuple, the support-table state, seven unmet contract rows, the D1 quote and the fetch commands |
+| P-6a | Story 3.17 spec | New section "Corrective Scope Authorization — 2026-11-25"; `updated` set to 2026-11-25; status `backlog` kept |
+| P-12 | Story 2.14 spec | Unchecked NFR2 adapter task added to Tasks & Acceptance |
+| P-7 | Architecture memlog and `reviews/review-validate-2026-11-21-closure.md` | AD-26-impact NO entry for `831931885`; closure table for all 13 findings, with 10 resolved and 3 retained with owners |
+| P-2, P-5, P-6b, P-9b, P-13 | `epics.md` | Story 4.16 and 3.17 reconciliations, the Story 3.21 candidate target, the Story 9.3 dependency and AC1 exception, and the Story 9.2 readiness binding order |
+| P-3, P-9a, P-10 | `prd.md` | OR4 D1 record, OR14 and the G-BASELINE row baseline disposition, SM11 correction; `updated` and `source_artifacts` refreshed |
+| P-4 | [Story 3.21 spec](../implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md#1192-candidate-intake--2026-11-25) and [1.19.2 lock](../../deploy/dapr/qualification/runtime-lock-1.19.2.json) | Applied 2026-11-25. Recorded the unresolved AC1 disposition, verified Linux amd64/arm64 archive checksums and registry digests, and documented Builds' SDK/CLI pins. The hosted broker request is pending Platform acceptance. The lock has no selected broker and is ineligible for production. Story 3.21 stays `in-progress`. |
+
+Checks run on the working tree after the edits:
+
+- `git diff --check` exited 0.
+- The spine lint reported zero findings.
+- `architecture.md` is unchanged at `caa4d4c2…`, and the recomputed AD-26 ratification subject is still `5070ebdc…`.
+- The frozen blocks of the 4.16 and 2.14 specs are byte-identical to HEAD, and the 4.16 spec changed only by appending.
+- No FR or NFR table row changed in the PRD or the epics.
+- All 154 added lines and links were checked, and every local link and anchor resolves.
+- `sprint_plan.py validate` returned `valid: true`.
+- The risk-matrix validator still exits 1 with the same unbound and unsealed rows.
+- The Story 2.14 completion validator now refuses with `SOURCE_MISMATCH`, because `prd.md` differs from the committed copy. It is expected to return to `ADAPTER_UNAVAILABLE` once these edits are committed. That has not been verified.
+
+The edits are not committed, and the epic input digests are not renewed (S7).
 
 ## 6. Earliest corrective work under AD-12
 
@@ -429,6 +473,23 @@ Owner actions that are not corrective builds but can happen now: re-attest G-NFR
 | D7 | Timing of the first live assured decisions for G-OQ8, G-STATUS-ID and later G-TENANT | After a 24-hour stable subject; G-TENANT after P-12 and Tenants package evidence |
 | D8 | Approve this proposal and authorize applying P-1 to P-13 | Approve P-1, P-6, P-7, P-10, P-12 and P-13 now; apply the others after their decisions |
 
+### 7.1 Approval record
+
+On 2026-11-25 the owner, as sole maintainer, approved this proposal and every recommendation in the table above as written. The approved draft is commit `c8c09d2b6` (proposal SHA-256 `bb64e550…4e84`). At that commit the planning inputs, tracker, matrix, registry and `tools/` are byte-identical to `3475b0978`.
+
+| ID | Recorded decision |
+| --- | --- |
+| D1 | Path A: request the mandatory capability from upstream Dapr. Paths B and C are declined for now. The review trigger is the first Dapr 1.20 release candidate, the example in §2.1 E4. The owner may substitute a date when P-3 is applied. G-APPEND and `READY` have no forecast date while path A is pending. Scope stays Moderate. |
+| D2 | R-E1 is deferred until D1 yields a candidate. |
+| D3 | The AD-26 baseline disposition (P-9) replaces per-role ratification for G-BASELINE only. **Disposition record:** the owner binds AD-26 as an unratified `[ASSUMPTION]` at ratification subject `5070ebdcf50d9fe7a7013be67d5c872e60563acf2ca4031382d0123754080803`, which the push of 2026-11-21T11:33:17Z last changed, for G-BASELINE only. It selects no production target, broker, runtime pin, restore posture or class (c) path, and it lapses if the subject digest changes. The Story 9.3 manifest consumes this record (S4). |
+| D4 | AD-23 is adopted in the epics once McpCli Story 5.11 leaves review, and the banners are relabelled then (P-8). |
+| D5 | The Story 3.21 target is runtime 1.19.2, contrib 1.19.2, CLI 1.19.1 and SDK 1.19.1, as a non-promoting candidate with a Platform candidate request. |
+| D6 | Approved in principle. Nothing is filed until the owner reviews the exact request text. |
+| D7 | G-OQ8 and G-STATUS-ID get their first live assured decisions after 24 hours with their subject unchanged. G-TENANT follows P-12 and the Tenants package evidence. |
+| D8 | The edits are authorized in the waves listed in §5. Waves 1–3 were applied on 2026-11-25. |
+
+This approval is a planning decision under PRD §0 and AD-12. It is not an AD-11 seal or attestation and it is not AD-26 ratification. It changes no gate result and no tracker entry. Phase 4 readiness remains Reject.
+
 ## 8. Conditions for rerunning readiness
 
 These are two different reruns.
@@ -455,7 +516,7 @@ Item 3 depends on G-APPEND, so R2 is not schedulable until D1 delivers a qualifi
 
 ## 9. Verification performed for this proposal
 
-All commands ran from the repository root at `3475b0978`, and the results were confirmed unchanged at `3e5ed0a85`. They are read-only except for this file.
+All commands ran from the repository root at `3475b0978`, and the results were confirmed unchanged at `3e5ed0a85`. They are read-only except for this file. At approval, `git diff --stat 3e5ed0a85 c8c09d2b6` lists only this proposal and one test file (`DevelopmentRouteCatalogBuilderTests.cs`), so the results still hold.
 
 | Command or check | Result |
 | --- | --- |
@@ -487,6 +548,6 @@ The Story 9.2 transition fixture suite was started for reference and stopped aft
 | 4.4 Selected path | [x] | Direct adjustment with D1 |
 | 5.1–5.5 Proposal components | [x] | §1–§5 |
 | 6.1–6.2 Review | [x] | Rechecked at both revisions |
-| 6.3 Owner approval | [ ] | Pending |
+| 6.3 Owner approval | [x] | Approved 2026-11-25, D1–D8 as recommended (§7.1) |
 | 6.4 Tracker update | [N/A] | No lifecycle change proposed |
-| 6.5 Handoff confirmation | [ ] | After approval |
+| 6.5 Handoff confirmation | [x] | Moderate; routed to the Product owner and Developer agents (§5) |
