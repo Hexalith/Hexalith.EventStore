@@ -7,7 +7,8 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 public sealed partial class ContractsPackageDependencyTests
 {
     private const string MsBuildThisFileDirectory = "$(MSBuildThisFileDirectory)";
-    private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(8);
+    // The shared authority evaluates the complete tracked MSBuild graph.
+    private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(20);
 
     [Fact]
     public void Contracts_package_pins_commons_unique_ids_centrally()
