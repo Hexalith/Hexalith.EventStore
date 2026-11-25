@@ -173,6 +173,11 @@ generated API host or UI metadata consumers; keep that library free of hosting, 
 query/projection actor, and UI code. See
 `samples/Hexalith.EventStore.Sample/` (`Program.cs` + `Counter/`).
 
+Apply `[EventStoreDomain("...")]` to each query, synchronous projection, and asynchronous projection
+handler for automatic domain telemetry discovery. The SDK reads the attribute without constructing the
+handler and logs a startup warning identifying an unannotated handler. For factory registrations,
+register the domain explicitly with `AddEventStoreDomainTelemetry` so discovery need not call the factory.
+
 Do not add domain-owned `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults` projects. Domain modules should use
 the platform seams (`IReadModelStore`, `IReadModelBatchStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, `QueryCursorScope`,
 `EventStoreDomainDiagnostics`, `AddEventStoreDomainStateStoreHealthCheck`, and the SDK endpoint mapping)

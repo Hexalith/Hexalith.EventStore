@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 using NSubstitute;
 
@@ -208,6 +209,27 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         registry.GetDiagnostics("widget")!.ActivitySource.Name.ShouldBe(EventStoreDomainTelemetry.ActivitySourceName("widget"));
         registry.GetDiagnostics("gadget")!.Meter.Name.ShouldBe(EventStoreDomainTelemetry.MeterName("gadget"));
         registry.GetDiagnostics("catalog")!.Domain.ShouldBe("catalog");
+    }
+
+    [Fact]
+    public async Task DomainTelemetryDiscovery_ReportsUnannotatedHandlersAtStartup() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        var logger = new ReminderDiagnosticLogger<DomainHandlerTelemetryDiagnostics>();
+        _ = builder.Services.AddSingleton<ILogger<DomainHandlerTelemetryDiagnostics>>(logger);
+        _ = builder.AddEventStoreDomainService();
+
+        await using ServiceProvider provider = builder.Services.BuildServiceProvider();
+        DomainHandlerTelemetryDiagnostics diagnostics = provider.GetServices<IHostedService>()
+            .OfType<DomainHandlerTelemetryDiagnostics>().ShouldHaveSingleItem();
+        logger.Entries.ShouldBeEmpty();
+
+        await diagnostics.StartAsync(TestContext.Current.CancellationToken);
+
+        object?[] handlerTypes = logger.Entries.Where(entry => entry.Level == LogLevel.Warning)
+            .Select(entry => entry.Fields["HandlerType"])
+            .ToArray();
+        handlerTypes.Count(handler => Equals(handler, typeof(WidgetQueryHandler).FullName)).ShouldBe(1);
+        handlerTypes.ShouldNotContain(typeof(CatalogQueryHandler).FullName);
     }
 
     /// <summary>

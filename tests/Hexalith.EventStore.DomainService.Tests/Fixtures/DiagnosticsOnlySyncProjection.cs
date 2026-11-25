@@ -1,10 +1,12 @@
 using System.Text.Json;
 
+using Hexalith.EventStore.Client.Attributes;
 using Hexalith.EventStore.Contracts.Projections;
 
 namespace Hexalith.EventStore.DomainService.Tests.Fixtures;
 
 /// <summary>Contributes a domain solely through synchronous projection discovery.</summary>
+[EventStoreDomain("sync-projection-only")]
 public sealed class DiagnosticsOnlySyncProjection : IDomainProjectionHandler
 {
     /// <inheritdoc/>

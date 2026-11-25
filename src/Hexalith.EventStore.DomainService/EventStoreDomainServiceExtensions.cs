@@ -834,7 +834,9 @@ public static class EventStoreDomainServiceExtensions {
                 && !string.IsNullOrWhiteSpace(options.ServiceVersion));
 
         DiscoveryResult discovery = GetRegisteredDiscoveryResult(builder.Services);
-        _ = builder.Services.AddEventStoreDomainTelemetry(GetDiscoveredDomainNames(discovery, domainAssemblies));
+        _ = builder.Services.AddEventStoreDomainTelemetry(
+            discovery.Aggregates.Concat(discovery.Projections).Select(static domain => domain.DomainName)
+                .Concat(GetHandlerDomainNames(builder.Services)));
 
         return builder;
     }
@@ -843,43 +845,29 @@ public static class EventStoreDomainServiceExtensions {
         => services.LastOrDefault(static descriptor => descriptor.ServiceType == typeof(DiscoveryResult))?.ImplementationInstance as DiscoveryResult
             ?? throw new InvalidOperationException("AddEventStore did not register domain discovery results.");
 
-    private static IEnumerable<string> GetDiscoveredDomainNames(DiscoveryResult discovery, Assembly[] domainAssemblies)
-        => discovery.Aggregates
-            .Concat(discovery.Projections)
-            .Select(static domain => domain.DomainName)
-            .Concat(GetHandlerDomainNames<IDomainQueryHandler>(domainAssemblies))
-            .Concat(GetHandlerDomainNames<IDomainProjectionHandler>(domainAssemblies))
-            .Concat(GetHandlerDomainNames<IAsyncDomainProjectionHandler>(domainAssemblies))
-            .Distinct(StringComparer.OrdinalIgnoreCase);
-
-    private static IEnumerable<string> GetHandlerDomainNames<THandler>(Assembly[] domainAssemblies) {
-        foreach (Assembly assembly in domainAssemblies) {
-            foreach (Type type in assembly.GetTypes()) {
-                if (type is not { IsClass: true, IsAbstract: false }
-                    || (type.IsNestedPrivate && typeof(THandler) != typeof(IDomainQueryHandler))
-                    || !typeof(THandler).IsAssignableFrom(type)) {
-                    continue;
-                }
-
-                EventStoreDomainAttribute? attribute = type.GetCustomAttribute<EventStoreDomainAttribute>();
-                if (attribute is not null) {
-                    yield return attribute.DomainName;
-                    continue;
-                }
-
-                if (type.GetConstructor(Type.EmptyTypes) is null) {
-                    continue;
-                }
-
-                if (Activator.CreateInstance(type) is THandler handler) {
-                    yield return handler switch {
-                        IDomainQueryHandler queryHandler => queryHandler.Domain,
-                        IDomainProjectionHandler projectionHandler => projectionHandler.Domain,
-                        IAsyncDomainProjectionHandler projectionHandler => projectionHandler.Domain,
-                        _ => throw new InvalidOperationException($"Unsupported domain handler type '{typeof(THandler).FullName}'."),
-                    };
-                }
+    private static IEnumerable<string> GetHandlerDomainNames(IServiceCollection services) {
+        Type[] handlers = services
+            .Where(static descriptor => !descriptor.IsKeyedService
+                && (descriptor.ServiceType == typeof(IDomainQueryHandler)
+                    || descriptor.ServiceType == typeof(IDomainProjectionHandler)
+                    || descriptor.ServiceType == typeof(IAsyncDomainProjectionHandler)))
+            .Select(static descriptor => descriptor.ImplementationType ?? descriptor.ImplementationInstance?.GetType())
+            .OfType<Type>()
+            .Distinct()
+            .ToArray();
+        var missing = new List<Type>();
+        foreach (Type type in handlers) {
+            if (type.GetCustomAttribute<EventStoreDomainAttribute>() is { } attribute) {
+                yield return attribute.DomainName;
             }
+            else {
+                missing.Add(type);
+            }
+        }
+
+        if (missing.Count > 0) {
+            _ = services.AddSingleton(new MissingHandlerTelemetryAttributes(missing));
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DomainHandlerTelemetryDiagnostics>());
         }
     }
 

@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Client.Attributes;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.DomainService;
 
@@ -9,6 +10,7 @@ namespace Hexalith.EventStore.Sample.Counter.Projections;
 /// here — the domain no longer hand-maps <c>/project</c> in <c>Program.cs</c>. The replay logic itself lives
 /// in <see cref="CounterProjectionHandler"/>.
 /// </summary>
+[EventStoreDomain("counter")]
 public sealed class CounterProjection : IDomainProjectionHandler {
     /// <inheritdoc/>
     public string Domain => "counter";
