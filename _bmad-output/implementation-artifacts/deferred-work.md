@@ -119,7 +119,8 @@ decision: 2026-08-31 Implement verified change — Implement the concrete change
 origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: tests/Hexalith.EventStore.IntegrationTests/Security/KeycloakE2ESecurityTests.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p2-dual-principal-query-envelope-safe-denial.md` summary: Add an end-to-end test tying `DualPrincipalClaimsHelper`'s claim-type assumptions (`azp`/`act`/`scope`/`aud`/`client_id`, dependent on `MapInboundClaims=false`) to the real `JwtBearerHandler`/Keycloak token-issuance pipeline, not just hand-constructed `ClaimsPrincipal` unit tests. evidence: Round-2 blind-hunter review of 6.1-P2 -- this story is the first time these claim types become authorization-relevant (previously only `sub` mattered); nothing today would catch a regression if `MapInboundClaims` were flipped or a future middleware renamed these claim types. Belongs in the existing Keycloak E2E integration-test tier (`tests/Hexalith.EventStore.IntegrationTests/Security/KeycloakE2ESecurityTests.cs`), a heavier lift than this patch round's unit-level fixes.
-status: open
+status: done 2026-11-25
+resolution: Use a run-private Keycloak issuer and the production JwtBearer configuration to verify direct and delegated claim shapes reach query identity extraction. The delegation claims are supplied by private fixture mappers.
 
 ### DW-18: Close the timing side-channel for the safe-denial adapter (Forbidden vs. genuine not-found currently have different latency profiles -- actor-activation-then-403 vs. actor-lookup-failure -- with no constant-time/padding normalization).
 

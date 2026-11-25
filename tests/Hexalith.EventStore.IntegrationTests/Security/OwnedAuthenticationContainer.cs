@@ -29,7 +29,8 @@ internal sealed class OwnedAuthenticationContainer : IAsyncDisposable
     internal string Owner => _owner;
 
     /// <summary>Starts one private container, retaining cleanup ownership on failure.</summary>
-    internal async Task StartAsync(string image, string? entrypoint, int port, string[] arguments, CancellationToken cancellationToken)
+    internal async Task StartAsync(string image, string? entrypoint, int port, string[] arguments,
+        CancellationToken cancellationToken, string[]? runtimeArguments = null)
     {
         _creationAttempted = true;
         string[] command = ["run", "--detach", "--rm", "--name", _name,
@@ -38,7 +39,7 @@ internal sealed class OwnedAuthenticationContainer : IAsyncDisposable
         {
             command = [.. command, "--entrypoint", entrypoint];
         }
-        _identity = (await _docker([.. command, image, .. arguments], cancellationToken).ConfigureAwait(false)).Trim();
+        _identity = (await _docker([.. command, .. (runtimeArguments ?? []), image, .. arguments], cancellationToken).ConfigureAwait(false)).Trim();
         if (_identity.Length != 64 || !_identity.All(char.IsAsciiHexDigitLower))
         {
             _identity = null;
