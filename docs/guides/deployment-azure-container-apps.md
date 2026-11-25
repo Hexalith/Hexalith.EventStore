@@ -176,7 +176,7 @@ publish-output/azure/
     law.module.bicep            # Log Analytics Workspace
 ```
 
-> **Note:** Exact structure depends on the Aspire SDK version (currently 17.0.0). Always inspect the generated output before deploying.
+> **Note:** Exact structure depends on the Aspire SDK pinned in the [AppHost project](../../src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj). Always inspect the generated output before deploying.
 
 ### What Needs Manual Configuration
 

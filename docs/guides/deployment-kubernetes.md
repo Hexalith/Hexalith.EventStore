@@ -249,7 +249,7 @@ sample:
             memory: "256Mi"
 ```
 
-> **Note:** Exact field names depend on the Aspire SDK version (currently 17.0.0). Always inspect the generated `values.yaml` before modifying.
+> **Note:** Exact field names depend on the Aspire SDK pinned in the [AppHost project](../../src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj). Always inspect the generated `values.yaml` before modifying.
 
 ## Build and Push Container Images
 

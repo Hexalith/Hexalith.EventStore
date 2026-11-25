@@ -192,7 +192,7 @@ The AppHost supports three Aspire publisher targets for generating deployment ma
 
 **Prerequisites:** Install the Aspire CLI as a global tool: `dotnet tool install -g Aspire.Cli`
 
-**Generated manifests are version-tied:** Publisher output format is specific to the Aspire SDK version (currently 13.1.2). When upgrading Aspire, regenerate manifests via `aspire publish` -- do not manually edit previously generated files.
+The [AppHost project](../src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj) pins the Aspire SDK that defines the manifest format. Regenerate manifests with `aspire publish` when you upgrade that SDK.
 
 ### Docker Compose Publisher
 

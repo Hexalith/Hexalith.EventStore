@@ -31,6 +31,23 @@ public sealed class PackageOwnershipGovernanceTests
         script.ShouldContain("[Dapr.Actors.AspNetCore]=1");
     }
 
+    [Theory]
+    [InlineData("deploy/README.md", "../")]
+    [InlineData("docs/guides/deployment-docker-compose.md", "../../")]
+    [InlineData("docs/guides/deployment-kubernetes.md", "../../")]
+    [InlineData("docs/guides/deployment-azure-container-apps.md", "../../")]
+    public void DeploymentPublisherGuidanceUsesTheAppHostSdkPin(string path, string relativeRoot)
+    {
+        string root = FindRepositoryRoot();
+        const string appHost = "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj";
+        XDocument.Load(Path.Combine(root, appHost)).Root.ShouldNotBeNull()
+            .Attribute("Sdk").ShouldNotBeNull().Value.ShouldStartWith("Aspire.AppHost.Sdk/");
+
+        string guidance = File.ReadAllText(Path.Combine(root, path));
+        guidance.ShouldContain($"]({relativeRoot}{appHost})");
+        guidance.ShouldNotMatch(@"(?im)\bAspire SDK\b[^\r\n]*\b[0-9]+\.[0-9]+\.[0-9]+\b");
+    }
+
     [Fact]
     public void InternalPackageGuidanceNamesBuildsAsVersionOwner()
     {
