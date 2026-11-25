@@ -41,7 +41,7 @@ Admission reserves a task-identifier index row before the admission commit. Stat
 
 Still open:
 
-- The authenticated host and routes, and original-actor binding for delegated steps.
+- The authenticated host and routes, including the admission lookup that binds the original actor for delegated steps.
 - Separate authorization for status, cancellation and admission, including confirmation for cancellation.
 - The scheduler and durable discovery.
 - A terminal path for a pending step the owner definitively rejects. `IDurableTaskEffect` cannot report one, so `CompleteAsync` with `Rejected` or `Failed` is unreachable for that step.
@@ -69,3 +69,7 @@ python3 ../Hexalith.Platform/eng/durable-task-qualification/probe_state_store.py
 ```
 
 On 2026-11-25 the build completed with zero warnings and errors. The focused run passed 39 tests: 4 in `DurableTaskAdmissionTests`, 4 in `DurableTaskExecutionTests` and 31 in `DurableTaskLifecycleTests`. The probe passed 4 tests in `DurableTaskAdmissionLiveTests` and 1 test in each of the two `DurableTaskExecutionLiveTests` phases, with zero skips across two sidecars and a Redis restart. The fixture uses scoped test authority and a test owner.
+
+## Original-actor binding (2026-11-25)
+
+The EventStore Owner selected the committed admission lookup for delegated owner steps. A delegated step presents its task ID and stable step key. The owner reads the committed admission row through an authenticated EventStore lookup that binds the Tenant, original actor, operation and request hash. It checks that the step and target match, then re-evaluates the actor's current authority at the operation. No task-bound bearer credential is introduced. Platform and Folders recorded the same selection.
