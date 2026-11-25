@@ -43,6 +43,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// <summary>
 /// Integration test fixture that starts a local <c>daprd</c> process,
 /// reusing the existing Dapr infrastructure (Redis, placement, scheduler) from <c>dapr init</c>.
+/// The primary and replica share a run-private placement namespace and actor-state key prefix.
 /// Provides a running Dapr environment with actor support for Tier 2 integration tests.
 /// Implements <see cref="IAsyncLifetime"/> for xUnit lifecycle management.
 /// </summary>
@@ -138,6 +139,13 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
 
     /// <summary>Gets the isolated Dapr application ID used by this fixture run.</summary>
     public string AppId { get; } = $"eventstore-live-{Guid.NewGuid():N}";
+
+    /// <summary>Checks that both running sidecars use the fixture's own placement namespace.</summary>
+    internal bool SidecarsSharePrivatePlacementNamespace
+        => _daprProcess?.StartInfo.Environment.TryGetValue("NAMESPACE", out string? primary) == true
+            && primary == AppId
+            && _replicaDaprProcess?.StartInfo.Environment.TryGetValue("NAMESPACE", out string? replica) == true
+            && replica == AppId;
 
     /// <summary>Gets the application HTTP endpoint hosting the Dapr actors.</summary>
     public string AppHttpEndpoint => $"http://localhost:{_appPort}";
@@ -787,6 +795,7 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
         }
 
         _daprProcess.StartInfo.Environment["APP_API_TOKEN"] = AppApiToken;
+        _daprProcess.StartInfo.Environment["NAMESPACE"] = AppId;
 
         _daprProcess.OutputDataReceived += (_, e) =>
         {
@@ -856,6 +865,8 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
         {
             _replicaDaprProcess.StartInfo.Arguments += $" --config \"{_runtimeConfigurationPath}\"";
         }
+
+        _replicaDaprProcess.StartInfo.Environment["NAMESPACE"] = AppId;
 
         _replicaDaprProcess.OutputDataReceived += (_, e) =>
         {

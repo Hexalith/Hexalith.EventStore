@@ -36,6 +36,7 @@ public class IdempotencyAdmissionLiveSidecarTests(DaprTestContainerFixture fixtu
         bool primaryStopped = false;
         try
         {
+            fixture.SidecarsSharePrivatePlacementNamespace.ShouldBeTrue();
             IIdempotencyAdmissionCoordinator primaryCoordinator = fixture.Services
                 .GetRequiredService<IIdempotencyAdmissionCoordinator>();
             IIdempotencyAdmissionCoordinator replicaCoordinator = fixture.ReplicaServices
