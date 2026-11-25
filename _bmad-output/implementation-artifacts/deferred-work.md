@@ -954,7 +954,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: PackageVersion
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd-2.md` summary: Add an unoverridden Release property test that binds `Version` and `PackageVersion` to the repository release version. evidence: The external `Hexalith.Builds` gitlink change updates `HexalithEventStoreVersion` from 3.74.0 to 3.75.0, while current tests do not assert the default evaluated version and CI package validation overrides it explicitly, allowing a stale catalog value to pass.
-status: open
+status: done 2026-11-25
+resolution: Evaluate the Contracts project in Release with inherited version overrides removed and compare Version and PackageVersion with the default in the pinned Builds catalog.
 
 ### DW-142: Correct the nonexistent baseline SHA recorded by the Story 4.8 implementation artifact.
 

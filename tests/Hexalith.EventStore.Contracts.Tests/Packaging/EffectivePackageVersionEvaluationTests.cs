@@ -27,7 +27,7 @@ public sealed class EffectivePackageVersionEvaluationTests
         string sharedCatalogPath = ResolveSharedCatalogPath(root);
         XDocument sharedCatalog = XDocument.Load(sharedCatalogPath);
 
-        using JsonDocument evaluation = EvaluatePackageVersions(root);
+        using JsonDocument evaluation = EvaluateMsBuild(root, "Directory.Packages.props", "-getItem:PackageVersion");
         JsonElement packageVersions = evaluation.RootElement
             .GetProperty("Items")
             .GetProperty("PackageVersion");
@@ -58,7 +58,27 @@ public sealed class EffectivePackageVersionEvaluationTests
         }
     }
 
-    private static JsonDocument EvaluatePackageVersions(string root)
+    [Fact]
+    public void ReleaseVersionPropertiesDefaultToTheSharedCatalogVersion()
+    {
+        string root = FindRepositoryRoot();
+        string expectedVersion = XDocument.Load(ResolveSharedCatalogPath(root))
+            .Descendants("HexalithEventStoreVersion").Single().Value.Trim();
+
+        using JsonDocument evaluation = EvaluateMsBuild(
+            root,
+            Path.Combine("src", "Hexalith.EventStore.Contracts", "Hexalith.EventStore.Contracts.csproj"),
+            "-p:Configuration=Release",
+            "-getProperty:HexalithEventStoreVersion,Version,PackageVersion");
+        JsonElement properties = evaluation.RootElement.GetProperty("Properties");
+
+        expectedVersion.ShouldNotBeNullOrWhiteSpace();
+        properties.GetProperty("HexalithEventStoreVersion").GetString().ShouldBe(expectedVersion);
+        properties.GetProperty("Version").GetString().ShouldBe(expectedVersion);
+        properties.GetProperty("PackageVersion").GetString().ShouldBe(expectedVersion);
+    }
+
+    private static JsonDocument EvaluateMsBuild(string root, params string[] arguments)
     {
         using Process process = new()
         {
@@ -72,8 +92,21 @@ public sealed class EffectivePackageVersionEvaluationTests
             },
         };
         process.StartInfo.ArgumentList.Add("msbuild");
-        process.StartInfo.ArgumentList.Add("Directory.Packages.props");
-        process.StartInfo.ArgumentList.Add("-getItem:PackageVersion");
+        process.StartInfo.ArgumentList.Add("-nologo");
+        foreach (string argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        foreach (string name in process.StartInfo.Environment.Keys.ToArray())
+        {
+            if (name.Equals("HexalithEventStoreVersion", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("Version", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("PackageVersion", StringComparison.OrdinalIgnoreCase))
+            {
+                _ = process.StartInfo.Environment.Remove(name);
+            }
+        }
 
         process.Start().ShouldBeTrue("Could not start dotnet msbuild for package-version evaluation.");
         Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
@@ -82,6 +115,7 @@ public sealed class EffectivePackageVersionEvaluationTests
         if (!process.WaitForExit((int)_msBuildEvaluationTimeout.TotalMilliseconds))
         {
             process.Kill(entireProcessTree: true);
+            process.WaitForExit();
             throw new TimeoutException(
                 $"Package-version evaluation timed out after {_msBuildEvaluationTimeout}.");
         }
