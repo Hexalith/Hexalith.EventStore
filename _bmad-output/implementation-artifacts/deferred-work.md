@@ -241,7 +241,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-02)"), 2026-08-30
 location: CounterHistoryGrid
 reason: `CounterHistoryGrid` inserts a history row on every refresh, including HTTP 304 (no change), producing duplicate rows. Deferred (user decision B3): intent is ambiguous — value-change log (skip 304s) vs. polling/ETag-activity log (current behavior is fine). Decide the grid's purpose before changing it.
-status: open
+status: done 2026-11-25
+resolution: Keep the original row on a confirmed 304 or repeated missing projection and add a row for a newly fetched projection. Test the cached validator, unchanged response, new response, and missing projection.
 
 ### DW-36: Command contracts with duplicate JSON property names are not diagnosed; the new duplicate JSON-name check only runs for queries, so generated command serialization/model-binding can still fail later. Deferred as command/generator hardening outside the D5 query proof.
 
