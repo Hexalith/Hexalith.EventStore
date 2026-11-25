@@ -8,7 +8,7 @@ namespace Hexalith.EventStore.DomainService;
 /// Represents the durable result returned by one named projection handler.
 /// </summary>
 /// <param name="Status">The closed durable outcome classification.</param>
-/// <param name="State">Optional compatibility state returned by legacy projection adapters.</param>
+/// <param name="State">Optional compatibility state for a completed actor-backed projection.</param>
 /// <param name="ReasonCode">An optional bounded support-safe reason code.</param>
 public sealed record DomainProjectionHandlerResult(
     ProjectionDispatchStatus Status,
@@ -23,7 +23,13 @@ public sealed record DomainProjectionHandlerResult(
     /// <summary>Creates an already-completed result.</summary>
     /// <returns>An already-completed result.</returns>
     public static DomainProjectionHandlerResult AlreadyCompleted()
-        => new(ProjectionDispatchStatus.AlreadyCompleted, null, null);
+        => AlreadyCompleted(null);
+
+    /// <summary>Creates an already-completed result with compatibility state for actor write replay.</summary>
+    /// <param name="state">The same compatibility state the completed operation produced.</param>
+    /// <returns>An already-completed result.</returns>
+    public static DomainProjectionHandlerResult AlreadyCompleted(JsonElement? state)
+        => new(ProjectionDispatchStatus.AlreadyCompleted, state, null);
 
     /// <summary>Creates a retryable result.</summary>
     /// <param name="reasonCode">The support-safe reason code.</param>

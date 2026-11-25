@@ -14,6 +14,38 @@ using Shouldly;
 namespace Hexalith.EventStore.DomainService.Tests;
 
 public sealed class DomainProjectionDispatcherV2Tests {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DispatchAsync_PreservesAlreadyCompletedCompatibilityState(bool returnsState)
+    {
+        IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
+        handler.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(returnsState
+                ? DomainProjectionHandlerResult.AlreadyCompleted(JsonSerializer.SerializeToElement(new { count = 7 }))
+                : DomainProjectionHandlerResult.AlreadyCompleted());
+        using ServiceProvider provider = BuildProvider(handler);
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            CreateRequest("fingerprint-1", "widget-detail"),
+            new ProjectionDispatchOptions(),
+            CreateRegistry("fingerprint-1", "widget-detail"),
+            TestContext.Current.CancellationToken);
+
+        ProjectionDispatchOutcome outcome = response.Outcomes.ShouldHaveSingleItem();
+        outcome.Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        outcome.ReasonCode.ShouldBeNull();
+        if (returnsState)
+        {
+            outcome.State.ShouldNotBeNull().GetProperty("count").GetInt32().ShouldBe(7);
+        }
+        else
+        {
+            outcome.State.ShouldBeNull();
+        }
+    }
+
     [Fact]
     public async Task DispatchAsync_UsesOrdinalOrderAndContinuesAfterUnexpectedFailure() {
         var calls = new List<string>();

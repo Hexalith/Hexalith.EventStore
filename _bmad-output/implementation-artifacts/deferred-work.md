@@ -721,7 +721,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 1-12-asynchronous-multi-projection-dispatch (2026-07-13)"), 2026-08-30
 location: src/Hexalith.EventStore.DomainService/DomainProjectionHandlerResult.cs:25
 reason: `DomainProjectionHandlerResult.AlreadyCompleted()` has no state overload — a hand-written state-bearing named handler that returns `AlreadyCompleted()` on retry yields null state, so the coordinator advances the projection checkpoint without completing the deferred actor/ETag write (Resolved Contract #3/#5). The legacy adapter (always `Completed`+state) and batch-persistence handlers (null state, no actor write) are unaffected, so reach is narrow. Recommend adding an `AlreadyCompleted(JsonElement? state)` factory overload. [src/Hexalith.EventStore.DomainService/DomainProjectionHandlerResult.cs:25] [acceptance-auditor]
-status: open
+status: done 2026-11-25
+resolution: Add a state-bearing AlreadyCompleted overload. Verify dispatcher state transport and recovery of the actor write, ETag and checkpoint after an interrupted delivery.
 
 ### DW-109: `ProjectionDeliveryRetryWorkItem.CreateWorkId` omits app id / service version / fingerprint — `WorkId = SHA-256(tenant/domain/aggregate/headSequence)`, so two `(appId, serviceVersion)` bindings serving the same domain+head collide on one ledger item; the second binding's app/version consistency check then fails and it defers forever. Affects blue/green or multi-version rollout of the same domain.
 
