@@ -134,7 +134,7 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
         ArgumentNullException.ThrowIfNull(value);
         cancellationToken.ThrowIfCancellationRequested();
 
-        _entries[Compose(storeName, key)] = new Entry(Serialize(value), NextETag());
+        WriteUnconditionally(storeName, key, value);
         return Task.CompletedTask;
     }
 
@@ -159,18 +159,19 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
             etag = observed.ETag;
         ConcurrentWriteBeforeTrySave?.Invoke();
 
-        lock (_gate) {
-            bool exists = _entries.TryGetValue(composite, out Entry? current);
+        if (!MatchesETag(composite, etag)) {
+            return Task.FromResult(false);
+        }
 
-            // A competing CAS must not pass the same ETag between compare and replacement.
-            bool matches = exists
-                ? string.Equals(current!.ETag, etag, StringComparison.Ordinal)
-                : etag.Length == 0;
-            if (!matches) {
+        // Serialization can invoke application code. Only the ETag check and
+        // publication belong in the same critical section as the batch accessor.
+        byte[] bytes = Serialize(value);
+        lock (_gate) {
+            if (!MatchesETag(composite, etag)) {
                 return Task.FromResult(false);
             }
 
-            _entries[composite] = new Entry(Serialize(value), NextETag());
+            _entries[composite] = new Entry(bytes, NextETag());
             return Task.FromResult(true);
         }
     }
@@ -206,17 +207,17 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
         ConcurrentWriteBeforeTryErase?.Invoke();
 
         string composite = Compose(storeName, key);
-        if (!_entries.TryGetValue(composite, out Entry? current)) {
-            return Task.FromResult(true);
-        }
+        lock (_gate) {
+            if (!_entries.TryGetValue(composite, out Entry? current)) {
+                return Task.FromResult(true);
+            }
 
-        if (!string.Equals(current.ETag, etag, StringComparison.Ordinal)) {
-            return Task.FromResult(false);
-        }
+            if (!string.Equals(current.ETag, etag, StringComparison.Ordinal)) {
+                return Task.FromResult(false);
+            }
 
-        bool removed = ((ICollection<KeyValuePair<string, Entry>>)_entries)
-            .Remove(new KeyValuePair<string, Entry>(composite, current));
-        return Task.FromResult(removed);
+            return Task.FromResult(_entries.TryRemove(composite, out _));
+        }
     }
 
     /// <inheritdoc/>
@@ -376,7 +377,7 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     public void SeedRaw<TValue>(string storeName, string key, TValue value)
         where TValue : class {
         ArgumentNullException.ThrowIfNull(value);
-        _entries[Compose(storeName, key)] = new Entry(Serialize(value), NextETag());
+        WriteUnconditionally(storeName, key, value);
     }
 
     /// <summary>
@@ -437,6 +438,19 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     /// <returns><see langword="true"/> when the key holds a batch envelope.</returns>
     public bool HasPendingEnvelope(string storeName, string key) =>
         _entries.TryGetValue(Compose(storeName, key), out Entry? entry) && ReadModelBatchEnvelope.IsEnvelope(entry.Bytes);
+
+    private void WriteUnconditionally<TValue>(string storeName, string key, TValue value)
+    {
+        byte[] bytes = Serialize(value);
+        lock (_gate) {
+            _entries[Compose(storeName, key)] = new Entry(bytes, NextETag());
+        }
+    }
+
+    private bool MatchesETag(string composite, string etag)
+        => _entries.TryGetValue(composite, out Entry? current)
+            ? string.Equals(current.ETag, etag, StringComparison.Ordinal)
+            : etag.Length == 0;
 
     private static string Compose(string storeName, string key) => storeName + "\0" + key;
 

@@ -56,6 +56,49 @@ public class InMemoryReadModelStoreTests {
         store.Snapshot<Model>(StoreName, "k")!.Value.ShouldBe(2);
     }
 
+    [Theory]
+    [InlineData(ReadModelBatchStoreProfile.Resumable)]
+    [InlineData(ReadModelBatchStoreProfile.TransactionQualified)]
+    public async Task BatchCommitDuringSerializationWinsAgainstTheStaleConditionalWrite(ReadModelBatchStoreProfile profile)
+    {
+        var store = new InMemoryReadModelStore();
+        store.BatchOptions.StoreProfiles[StoreName] = profile;
+        await store.SaveAsync(StoreName, "k", new Model { Value = 1 });
+        string etag = (await store.GetAsync<Model>(StoreName, "k")).ETag.ShouldNotBeNull();
+        var serializationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var resumeSerialization = new ManualResetEventSlim();
+        TimeSpan timeout = TimeSpan.FromSeconds(5);
+        var probe = new ReadModelWriteProbe(() =>
+        {
+            serializationStarted.SetResult();
+            if (!resumeSerialization.Wait(timeout))
+            {
+                throw new TimeoutException("The conditional write was not released.");
+            }
+
+            return 2;
+        });
+        Task<bool> conditional = Task.Factory.StartNew(
+            () => store.TrySaveAsync(StoreName, "k", probe, etag), CancellationToken.None,
+            TaskCreationOptions.LongRunning, TaskScheduler.Default).Unwrap();
+
+        var batch = new ReadModelBatch(new(StoreName, "tenant", "counter", "aggregate", "view", "delivery"),
+            [ReadModelBatchOperation.Write("k", new Model { Value = 3 }, ReadModelBatchConcurrency.LastWrite)]);
+        try
+        {
+            await serializationStarted.Task.WaitAsync(timeout);
+            (await Task.Run(() => store.ExecuteAsync(batch)).WaitAsync(timeout)).IsSuccess.ShouldBeTrue();
+        }
+        finally
+        {
+            resumeSerialization.Set();
+            _ = await conditional.WaitAsync(timeout);
+        }
+
+        (await conditional).ShouldBeFalse();
+        store.Snapshot<Model>(StoreName, "k").ShouldNotBeNull().Value.ShouldBe(3);
+    }
+
     [Fact]
     public async Task TrySaveAsync_SuccessfulUpdate_AdvancesETag() {
         var store = new InMemoryReadModelStore();

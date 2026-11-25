@@ -595,7 +595,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: review of spec-gh-29184319584-fix-live-sidecar-ci (2026-07-12)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md` summary: Make in-memory read-model writes atomic with batch accessor ETag compare-and-set operations. evidence: Pre-existing `SaveAsync`, `TrySaveAsync`, `TryEraseAsync`, and `SeedRaw` paths do not share the batch accessor's `_gate`, so a true concurrent write can occur between the fake accessor's ETag check and assignment and be overwritten while conditional success is reported.
-status: open
+status: done 2026-11-25
+resolution: Use the batch accessor lock for every in-memory write or erase and keep serialization outside the conditional write section. Verify that both batch profiles commit during serialization and the stale write cannot overwrite them.
 
 ### DW-90: Add committed-state tests for new fail-closed / drain-identity paths (distinct messageId≠correlationId drain, Expired-outcome actor commit, SubmitCommandHandler identity guards).
 
