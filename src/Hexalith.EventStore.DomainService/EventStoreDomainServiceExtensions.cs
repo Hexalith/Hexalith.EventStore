@@ -306,8 +306,9 @@ public static class EventStoreDomainServiceExtensions {
 
         var finiteInvocationScope = app.Services.GetService<DevelopmentDomainRouteCatalogInvocationScope>();
         _ = Hexalith.EventStore.ServiceDefaults.Routing.FiniteRouteCatalogReceiver.UseFiniteDevelopmentRouteCatalogReceiver(app,
-            endpoint => finiteInvocationScope is not null && !finiteInvocationScope.PostRoutes.Contains(
-                EventStoreDomainServiceRoutes.Normalize(endpoint.RoutePattern.RawText))
+            // SDK domain-event deliveries are sidecar-originated and cannot carry a POST invocation grant.
+            endpoint => finiteInvocationScope is not null && endpoint.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>() is null
+                && !finiteInvocationScope.PostRoutes.Contains(EventStoreDomainServiceRoutes.Normalize(endpoint.RoutePattern.RawText))
                 ? null : endpoint.Metadata.GetMetadata<DomainRouteCatalogAuxiliaryMetadata>() is { } auxiliary
                 ? auxiliary.Route.Operation : endpoint.Metadata.GetMetadata<DomainRouteCatalogSidecarMetadata>() is not null
                     ? DomainRouteCatalogSidecarMetadata.Operation

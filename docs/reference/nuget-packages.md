@@ -609,7 +609,7 @@ Domain-service host SDK. A domain-service host references this package for platf
 - `Microsoft.AspNetCore.Builder` — `AddEventStoreDomainService`, `UseEventStoreDomainService`, `MapEventStoreDomainService`, `MapEventStoreDomainEvents`
 - `Hexalith.EventStore.DomainService` — `IDomainQueryHandler`, `IDomainQueryResponsePolicy`, `IDomainProjectionHandler`, `EventStoreDomainTelemetry`, `DaprStateStoreHealthCheck`
 
-`/query` returns HTTP 200 with the dispatched `QueryResult` by default. A host can register one `IDomainQueryResponsePolicy` to choose the HTTP response for that result. The policy runs only after workload, sidecar and catalog admission, administrator verification and dispatch. It cannot change those refusals or the 503 returned when administrator verification is unavailable.
+`/query` returns HTTP 200 with the dispatched `QueryResult` by default. A host can register an `IDomainQueryResponsePolicy` to choose the HTTP response for that result; the SDK resolves one policy, so the last registration wins. The policy runs only after workload, sidecar and catalog admission, administrator verification and dispatch. It cannot change those refusals or the 503 returned when administrator verification is unavailable.
 
 **External dependencies:** `Dapr.AspNetCore`, `Microsoft.AspNetCore.App` (framework reference).
 

@@ -62,42 +62,48 @@ public static class DevelopmentDomainRouteCatalog
         var compiled = new Lazy<(IReadOnlyList<RouteContractDeclaration> Declarations,
             IReadOnlyList<RouteOperationContract> Operations)>(() =>
             (CompiledRouteCatalogDeclarations.Read(owners), CompiledRouteCatalogDeclarations.ReadOperations(owners)));
-        return services.AddEventStoreDevelopmentRouteCatalogBootstrap(configuration, async (provider, token) =>
+        return services.AddEventStoreDevelopmentRouteCatalogBootstrap(configuration,
+            (provider, token) => ObserveAsync(provider, configuration, owners, compiled.Value, token));
+    }
+
+    /// <summary>Captures this host's complete bootstrap observation for its compiled owner contracts.</summary>
+    internal static async Task<RouteCatalogHostObservation> ObserveAsync(IServiceProvider provider, IConfiguration configuration,
+        Assembly[] owners, (IReadOnlyList<RouteContractDeclaration> Declarations, IReadOnlyList<RouteOperationContract> Operations) compiled,
+        CancellationToken token)
+    {
+        using var scope = provider.CreateScope();
+        var local = scope.ServiceProvider;
+        var (declarations, operations) = compiled;
+        var endpoints = provider.GetRequiredService<EndpointDataSource>().Endpoints;
+        var identity = local.GetRequiredService<IOptions<DomainProjectionIdentityOptions>>().Value;
+        var fence = provider.GetRequiredService<FiniteRouteCatalogReceiver>();
+        await fence.WaitForCaptureAsync(token).ConfigureAwait(false);
+        var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, identity.AppId, declarations,
+            Targets(local, endpoints, declarations), [], RouteCatalogDomainObservation.Capabilities(local),
+            RouteCatalogDomainObservation.Auxiliary(local, endpoints), token).ConfigureAwait(false);
+        var discovery = local.GetRequiredService<DiscoveryResult>();
+        Assembly[] implementations = [.. owners, typeof(DevelopmentDomainRouteCatalog).Assembly,
+            .. owners.SelectMany(owner => owner.GetReferencedAssemblies()).Select(Assembly.Load),
+            .. discovery.Projections.Select(projection => projection.Type.Assembly),
+            .. declarations.Where(declaration => declaration.Kind == "command").Select(declaration => declaration.Domain).Distinct(StringComparer.Ordinal)
+                .Select(domain => local.GetRequiredKeyedService<IDomainProcessor>(domain)).OfType<IDomainCommandPayloadInventory>()
+                .SelectMany(inventory => inventory.CommandPayloadTypes).Select(type => type.Assembly),
+            .. discovery.Aggregates.SelectMany(aggregate => local.GetRequiredKeyedService<IDomainProcessor>(aggregate.DomainName)
+                is IDomainCommandPayloadInventory inventory ? inventory.CommandPayloadTypes : Array.Empty<Type>()).Select(type => type.Assembly),
+            .. discovery.Aggregates.Select(aggregate => aggregate.Type.Assembly),
+            .. discovery.Aggregates.Select(aggregate => local.GetRequiredKeyedService<IDomainProcessor>(aggregate.DomainName).GetType().Assembly),
+            .. local.GetServices<IDomainQueryHandler>().Select(handler => handler.GetType().Assembly),
+            .. local.GetServices<IAsyncDomainProjectionHandler>().Select(handler => handler.GetType().Assembly)];
+        return actual with
         {
-            using var scope = provider.CreateScope();
-            var local = scope.ServiceProvider;
-            var (declarations, operations) = compiled.Value;
-            var endpoints = provider.GetRequiredService<EndpointDataSource>().Endpoints;
-            var identity = local.GetRequiredService<IOptions<DomainProjectionIdentityOptions>>().Value;
-            var fence = provider.GetRequiredService<FiniteRouteCatalogReceiver>();
-            await fence.WaitForCaptureAsync(token).ConfigureAwait(false);
-            var actual = await DevelopmentRouteCatalogInputs.CaptureAsync(configuration, identity.AppId, declarations,
-                Targets(local, endpoints, declarations), [], RouteCatalogDomainObservation.Capabilities(local),
-                RouteCatalogDomainObservation.Auxiliary(local, endpoints), token).ConfigureAwait(false);
-            var discovery = local.GetRequiredService<DiscoveryResult>();
-            Assembly[] implementations = [.. owners, typeof(DevelopmentDomainRouteCatalog).Assembly,
-                .. owners.SelectMany(owner => owner.GetReferencedAssemblies()).Select(Assembly.Load),
-                .. discovery.Projections.Select(projection => projection.Type.Assembly),
-                .. declarations.Where(declaration => declaration.Kind == "command").Select(declaration => declaration.Domain).Distinct(StringComparer.Ordinal)
-                    .Select(domain => local.GetRequiredKeyedService<IDomainProcessor>(domain)).OfType<IDomainCommandPayloadInventory>()
-                    .SelectMany(inventory => inventory.CommandPayloadTypes).Select(type => type.Assembly),
-                .. discovery.Aggregates.SelectMany(aggregate => local.GetRequiredKeyedService<IDomainProcessor>(aggregate.DomainName)
-                    is IDomainCommandPayloadInventory inventory ? inventory.CommandPayloadTypes : Array.Empty<Type>()).Select(type => type.Assembly),
-                .. discovery.Aggregates.Select(aggregate => aggregate.Type.Assembly),
-                .. discovery.Aggregates.Select(aggregate => local.GetRequiredKeyedService<IDomainProcessor>(aggregate.DomainName).GetType().Assembly),
-                .. local.GetServices<IDomainQueryHandler>().Select(handler => handler.GetType().Assembly),
-                .. local.GetServices<IAsyncDomainProjectionHandler>().Select(handler => handler.GetType().Assembly)];
-            return actual with
-            {
-                ReceiverSurface = fence.Observe(), Operations = operations,
-                AuxiliaryOperations = local.GetService<DevelopmentDomainRouteCatalogInvocationScope>() is { } invocationScope
-                    ? actual.AuxiliaryOperations!.Where(operation =>
-                        invocationScope.PostRoutes.Contains(EventStoreDomainServiceRoutes.Normalize(operation.Method))).ToArray()
-                    : actual.AuxiliaryOperations,
-                ExecutableOwners = implementations.Distinct().OrderBy(assembly => assembly.FullName, StringComparer.Ordinal)
-                    .ToDictionary(assembly => assembly.FullName!, assembly => ReadExecutableDigest(assembly), StringComparer.Ordinal),
-            };
-        });
+            ReceiverSurface = fence.Observe(), Operations = operations,
+            AuxiliaryOperations = local.GetService<DevelopmentDomainRouteCatalogInvocationScope>() is { } invocationScope
+                ? actual.AuxiliaryOperations!.Where(operation => operation.Sidecar is not null
+                    || invocationScope.PostRoutes.Contains(EventStoreDomainServiceRoutes.Normalize(operation.Method))).ToArray()
+                : actual.AuxiliaryOperations,
+            ExecutableOwners = implementations.Distinct().OrderBy(assembly => assembly.FullName, StringComparer.Ordinal)
+                .ToDictionary(assembly => assembly.FullName!, assembly => ReadExecutableDigest(assembly), StringComparer.Ordinal),
+        };
     }
 
     /// <summary>Reopens and hashes the complete current image without allocating an image-sized temporary array.</summary>
