@@ -263,6 +263,64 @@ public class ProjectionUpdateOrchestratorTests {
         await outbox.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default);
     }
 
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task NamedHandoffAloneDoesNotCompleteAnActivationWithIncompleteLegacyDelivery(bool checkpointSaved, bool eTagSaved)
+    {
+        using var fixture = new LegacyReplayProductionHarness();
+        await fixture.InitializeAsync(1);
+        var tracker = Substitute.For<IProjectionCheckpointTracker>();
+        tracker.SaveDeliveredSequenceAsync(TestIdentity, 1, Arg.Any<CancellationToken>()).Returns(checkpointSaved);
+        var named = Substitute.For<INamedProjectionDispatchCoordinator>();
+        named.TryDispatchAsync(TestIdentity, Arg.Any<DomainServiceRegistration>(), Arg.Any<EventEnvelope[]>(),
+            Arg.Any<ProjectionEventDto[]>(), Arg.Any<CancellationToken>()).Returns(true);
+        await fixture.Outbox.EnsureAsync(TestIdentity);
+        ProjectionActivationWorkItem activation = (await fixture.Outbox.GetAsync(TestIdentity)).ShouldNotBeNull();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            tracker, new DaprClientBuilder().Build(), CreateHttpClientFactory(new CountingProjectionResponseHandler()),
+            namedProjectionDispatchCoordinator: named, projectionActivationOutbox: fixture.Outbox);
+        resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1"));
+        var aggregateActor = Substitute.For<IAggregateActor>();
+        aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope()]);
+        actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor").Returns(aggregateActor);
+        actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(Substitute.For<IProjectionWriteActor>());
+        var eTagActor = Substitute.For<IETagActor>();
+        eTagActor.RegenerateAsync().Returns(_ => eTagSaved
+            ? Task.FromResult("projection-version")
+            : Task.FromException<string>(new IOException("ETag unavailable")));
+        actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), ETagActor.ETagActorTypeName).Returns(eTagActor);
+
+        await sut.DeliverProjectionAsync(TestIdentity, TestContext.Current.CancellationToken);
+
+        (await fixture.Outbox.GetAsync(TestIdentity)).ShouldBe(checkpointSaved && eTagSaved ? null : activation);
+    }
+
+    [Fact]
+    public async Task EmptyHistoryDoesNotClearActivationWhenCheckpointCannotBeRead()
+    {
+        using var fixture = new LegacyReplayProductionHarness();
+        await fixture.Outbox.EnsureAsync(TestIdentity);
+        ProjectionActivationWorkItem activation = (await fixture.Outbox.GetAsync(TestIdentity)).ShouldNotBeNull();
+        var tracker = Substitute.For<IProjectionCheckpointTracker>();
+        tracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<long>(new IOException("checkpoint unavailable")));
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            tracker, projectionActivationOutbox: fixture.Outbox);
+        resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1"));
+        var aggregateActor = Substitute.For<IAggregateActor>();
+        aggregateActor.GetEventsAsync(0).Returns(Array.Empty<EventEnvelope>());
+        actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor").Returns(aggregateActor);
+
+        await sut.DeliverProjectionAsync(TestIdentity, TestContext.Current.CancellationToken);
+
+        (await fixture.Outbox.GetAsync(TestIdentity)).ShouldBe(activation);
+    }
+
     // P23-6P: an operator rebuild of a domain that has zero tracked aggregates is vacuously
     // successful when a ToPosition bound is set. The operator-scope row transitions to
     // Succeeded immediately (no aggregate-scoped work executes). Pins the D3-6P decision.

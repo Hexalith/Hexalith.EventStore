@@ -763,7 +763,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct-paged-rebuild-and-replay-equivalence (2026-07-16)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:183
 reason: Activation outbox completion treats a completed named-dispatch call as durable even when `TryDispatchAsync` returns `false`, and the `finally` block can remove the activation after a later legacy delivery failure. Preserve the activation until every required delivery surface has durably completed. [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:183`]
-status: open
+status: done 2026-11-25
+resolution: Pin the activation revision before checking guarded work and retain it when a required named or legacy delivery has no durable evidence. Cover missing handoff, legacy failures, empty-stream proof and concurrent reactivation.
 
 ### DW-115: The query lifecycle overlay recognizes `Rebuilding` but leaves an in-flight `Erasing` projection indistinguishable from its prior payload state. Define and expose the pre-existing erase-query visibility policy in the erasure lifecycle scope.
 

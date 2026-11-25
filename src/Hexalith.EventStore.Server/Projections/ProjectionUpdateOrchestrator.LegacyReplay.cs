@@ -105,9 +105,13 @@ internal partial class ProjectionUpdateOrchestrator
             if (work is null) return true;
 
             // Named and explicit legacy routes may coexist. Their durable work remains independent.
-            if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false })
-                _ = await namedProjectionDispatchCoordinator.TryDispatchHeadAsync(identity, registration, head, headId, events,
+            bool namedActivationDurable = methodPlan is not { Named: true };
+            bool namedDispatchOwned = false;
+            if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false }) {
+                namedDispatchOwned = await namedProjectionDispatchCoordinator.TryDispatchHeadAsync(identity, registration, head, headId, events,
                     anchor is null ? null : SourceProofCodec.ToNative(anchor), cancellationToken).ConfigureAwait(false);
+                namedActivationDurable = namedDispatchOwned || methodPlan is null;
+            }
 
             ProjectionState? candidate = null;
             string? actorId = intent.ProjectionType is null ? null
@@ -141,7 +145,7 @@ internal partial class ProjectionUpdateOrchestrator
                 if (response is null) return true;
                 if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.NotImplemented)
                 {
-                    if (namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false })
+                    if (methodPlan is null && namedDispatchOwned)
                         await CompleteLegacyIntentAsync(identity, outbox, work, cancellationToken).ConfigureAwait(false);
                     return true;
                 }
@@ -309,7 +313,7 @@ internal partial class ProjectionUpdateOrchestrator
                 try
                 {
                     if (!await RouteCatalogRemoteCall.InvokeAsync(() => lifecycleGateway!.CompleteDeliveryWriteAsync(identity, route, lease, cleanupToken)).ConfigureAwait(false)) completed = false;
-                    if (completed)
+                    if (completed && namedActivationDurable)
                     {
                         observedCheckpoint = head;
                         if (work is not null && !await CompleteLegacyIntentAsync(identity, outbox, work, cleanupToken).ConfigureAwait(false))

@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Events;
 using System.Text.Json;
@@ -12,6 +13,38 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class ProjectionRebuildProductionPathTests
 {
+    [Fact]
+    public async Task CommittedMixedReplayRetainsActivationUntilNamedDispatchOwnsItsWork()
+    {
+        using var fixture = new LegacyReplayProductionHarness();
+        await fixture.InitializeAsync(2);
+        var named = Substitute.For<INamedProjectionDispatchCoordinator>();
+        named.TryDispatchHeadAsync(fixture.Identity, Arg.Any<DomainServiceRegistration>(), Arg.Any<long>(),
+            Arg.Any<string>(), Arg.Any<Hexalith.EventStore.Contracts.Projections.ProjectionEventDto[]>(),
+            Arg.Any<Hexalith.EventStore.Contracts.Streams.NativeSourceProof>(), Arg.Any<CancellationToken>())
+            .Returns(false, true);
+        fixture.NamedCoordinator = named;
+        var registration = new DomainServiceRegistration("sample", "project", fixture.Identity.TenantId, fixture.Identity.Domain, "v1");
+        var plan = new CommittedProjectionMethodPlan(registration, ["counter"], ["counter-named"]);
+        var orchestrator = fixture.CreateOrchestrator();
+        ProjectionActivationWorkItem original = (await fixture.Outbox.GetAsync(fixture.Identity)).ShouldNotBeNull();
+
+        await orchestrator.DeliverCompatibleReplayAsync(fixture.Identity, registration, original,
+            fixture, fixture, fixture.Outbox, TestContext.Current.CancellationToken, plan);
+
+        ProjectionActivationWorkItem retained = (await fixture.Outbox.GetAsync(fixture.Identity)).ShouldNotBeNull();
+        retained.Revision.ShouldBe(original.Revision);
+        retained.LegacyDelivery.ShouldNotBeNull();
+        (await fixture.Model.ReadProjectionStateAsync()).ShouldNotBeNull().GetState().GetProperty("count").GetInt32().ShouldBe(2);
+
+        fixture.Clock.Advance(TimeSpan.FromMinutes(6));
+        await orchestrator.DeliverCompatibleReplayAsync(fixture.Identity, registration, retained,
+            fixture, fixture, fixture.Outbox, TestContext.Current.CancellationToken, plan);
+
+        (await fixture.Outbox.GetAsync(fixture.Identity)).ShouldBeNull();
+        fixture.StagedPublications.ShouldBe(1);
+    }
+
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, true)]

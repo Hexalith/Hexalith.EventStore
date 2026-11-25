@@ -199,26 +199,41 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
         ArgumentNullException.ThrowIfNull(identity);
         CommittedProjectionMethodPlan? methodPlan = snapshot is null ? null : ResolveCommittedProjectionPlan(snapshot, identity);
         if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, methodPlan.LegacyOutputs, cancellationToken).ConfigureAwait(false);
-        bool sourceGuardHandledNamed = false;
-        if (sourceGuardDelivery is not null && methodPlan is not { Named: false })
-        {
-            ProjectionSourceGuardDeliveryResult guarded = await sourceGuardDelivery.TryDeliverAsync(identity, cancellationToken).ConfigureAwait(false);
-            if (guarded.Owned)
-            {
-                if (methodPlan is not { Legacy: true } || !guarded.AlreadyCurrent && !guarded.CompletionProven) return;
-                using var namedCleanup = guarded.CreateCleanupBudget(timeProvider ?? TimeProvider.System);
-                if (!guarded.FinalizedCleanupProven && (guarded.FinalizationStartedTimestamp is not null
-                    || !await sourceGuardDelivery.ReclaimCompletedReplayAsync(identity, namedCleanup.Token).ConfigureAwait(false))) return;
-                sourceGuardHandledNamed = true;
-            }
-        }
-        bool namedActivationDurable = sourceGuardHandledNamed || methodPlan is { Named: false } || namedProjectionDispatchCoordinator is null;
+        bool activationDurable = false;
         bool releasedCompatibility = false;
         ProjectionActivationWorkItem? activationWorkItem = null;
 
         using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
         try {
-            if (projectionActivationOutbox is not null) {
+            bool sourceGuardHandledNamed = false;
+            if (sourceGuardDelivery is not null && methodPlan is not { Named: false })
+            {
+                // Sample the activation before obtaining named proof. A newer
+                // command can then fence legacy binding and activation cleanup.
+                if (methodPlan is { Legacy: true } && projectionActivationOutbox is not null)
+                {
+                    activationWorkItem = await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.GetAsync(identity, cancellationToken)).ConfigureAwait(false);
+                    if (activationWorkItem is null)
+                    {
+                        await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.EnsureAsync(identity, cancellationToken)).ConfigureAwait(false);
+                        activationWorkItem = await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.GetAsync(identity, cancellationToken)).ConfigureAwait(false);
+                        if (activationWorkItem is null) return;
+                    }
+                }
+
+                ProjectionSourceGuardDeliveryResult guarded = await sourceGuardDelivery.TryDeliverAsync(identity, cancellationToken).ConfigureAwait(false);
+                if (guarded.Owned)
+                {
+                    if (methodPlan is not { Legacy: true } || !guarded.AlreadyCurrent && !guarded.CompletionProven) return;
+                    using var namedCleanup = guarded.CreateCleanupBudget(timeProvider ?? TimeProvider.System);
+                    if (!guarded.FinalizedCleanupProven && (guarded.FinalizationStartedTimestamp is not null
+                        || !await sourceGuardDelivery.ReclaimCompletedReplayAsync(identity, namedCleanup.Token).ConfigureAwait(false))) return;
+                    sourceGuardHandledNamed = true;
+                }
+            }
+            bool namedActivationDurable = sourceGuardHandledNamed || methodPlan is { Named: false } || namedProjectionDispatchCoordinator is null;
+            bool namedDispatchOwned = false;
+            if (projectionActivationOutbox is not null && activationWorkItem is null) {
                 activationWorkItem = await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.GetAsync(identity, cancellationToken)).ConfigureAwait(false);
             }
 
@@ -266,7 +281,7 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                     if (lastPage.Length != 1 || string.IsNullOrWhiteSpace(lastPage[0].MessageId))
                         throw new ProjectionDeliveryHistoryValidationException(
                             "Mapped normal delivery source head has no stable message identity.");
-                    namedActivationDurable = await namedProjectionDispatchCoordinator.TryDispatchMappedOnlyAsync(
+                    activationDurable = await namedProjectionDispatchCoordinator.TryDispatchMappedOnlyAsync(
                         identity, registration, sourceHead, lastPage[0].MessageId, cancellationToken)
                         .ConfigureAwait(false);
                     return;
@@ -279,7 +294,6 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                 && projectionActivationOutbox is IProjectionLegacyDeliveryOutbox legacyOutbox
                 && lifecycleGateway is not null && deliveryStateStore is not null && deliveryIdempotency is not null)
             {
-                namedActivationDurable = false;
                 if (await DeliverCompatibleReplayAsync(identity, registration, activationWorkItem,
                     publication, inspection, legacyOutbox, cancellationToken,
                     sourceGuardHandledNamed ? methodPlan! with { NamedOutputs = [] } : methodPlan, snapshot).ConfigureAwait(false)) return;
@@ -287,8 +301,10 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
             }
 
             long lastDeliveredSequence = 0;
+            bool lastDeliveredSequenceRead = false;
             try {
                 lastDeliveredSequence = await RouteCatalogRemoteCall.InvokeAsync(() => checkpointTracker!.ReadLastDeliveredSequenceAsync(identity, cancellationToken)).ConfigureAwait(false);
+                lastDeliveredSequenceRead = true;
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
@@ -301,6 +317,7 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
             EventEnvelope[] events = await RouteCatalogRemoteCall.InvokeAsync(() => aggregateProxy!.GetEventsAsync(0)).ConfigureAwait(false);
 
             if (events.Length == 0) {
+                if (!lastDeliveredSequenceRead) return;
                 // Drift detection covers the canonical "stale checkpoint + empty stream" case
                 // (e.g., state-store backup/restore mismatch) that the original deferred-work
                 // entry called out: without this branch the orchestrator would log NoEventsFound
@@ -322,11 +339,12 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                 }
 
                 Log.NoEventsFound(logger, identity.TenantId, identity.Domain, identity.AggregateId);
-                namedActivationDurable = true;
+                activationDurable = true;
                 return;
             }
 
-            long highestAvailableSequence = events.Max(e => e.SequenceNumber);
+            EventEnvelope head = events.MaxBy(static item => item.SequenceNumber)!;
+            long highestAvailableSequence = head.SequenceNumber;
 
             // Option A: the non-empty-stream drift check moved AFTER /project returns so it can read
             // the projection-scoped checkpoint (keyed by response.ProjectionType). See the drift
@@ -350,7 +368,9 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
             if (!releasedCompatibility && !sourceGuardHandledNamed && namedProjectionDispatchCoordinator is not null && methodPlan is not { Named: false }) {
                 try {
-                    bool owned = await namedProjectionDispatchCoordinator
+                    if (string.IsNullOrWhiteSpace(head.MessageId))
+                        throw new ProjectionDeliveryHistoryValidationException("Named delivery requires a stable head message identity.");
+                    namedDispatchOwned = await namedProjectionDispatchCoordinator
                         .TryDispatchAsync(
                             identity,
                             registration,
@@ -358,9 +378,9 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                             projectionReadability.Events!,
                         cancellationToken)
                         .ConfigureAwait(false);
-                    if (methodPlan is not null && !owned)
+                    if (methodPlan is not null && !namedDispatchOwned)
                         throw new RouteCatalogUnavailableException("The committed named projection method could not be selected.");
-                    namedActivationDurable = true;
+                    namedActivationDurable = namedDispatchOwned || methodPlan is null;
                 }
                 catch (RouteCatalogUnavailableException) { throw; }
                 catch (OperationCanceledException) {
@@ -379,7 +399,10 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                 }
             }
 
-            if (methodPlan is { Legacy: false }) return;
+            if (methodPlan is { Legacy: false }) {
+                activationDurable = namedActivationDurable;
+                return;
+            }
             if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, methodPlan.LegacyOutputs, cancellationToken).ConfigureAwait(false);
 
             // Named v2 routes and an unmapped legacy v1 handler may intentionally coexist for the
@@ -403,6 +426,9 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
 
             using HttpResponseMessage responseHandle = httpResponse;
             if (!responseHandle.IsSuccessStatusCode) {
+                if (methodPlan is null && namedDispatchOwned
+                    && responseHandle.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.NotImplemented)
+                    activationDurable = true;
                 Log.ProjectInvocationRejected(
                     logger,
                     identity.TenantId,
@@ -487,7 +513,7 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                 return;
             }
 
-            bool releasedCompletion = false;
+            bool legacyCompletion = false;
             try {
                 if (methodPlan is not null) await RefuseGuardedLegacyOutputsAsync(identity, [response.ProjectionType], cancellationToken).ConfigureAwait(false);
                 if (releasedCompatibility && !await CanUseReleasedWriterAsync(identity, response.ProjectionType,
@@ -505,7 +531,7 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
 
                 await RouteCatalogRemoteCall.InvokeAsync(() => writeProxy!.UpdateProjectionAsync(ProjectionState.FromProjectionResponse(response, identity.TenantId))).ConfigureAwait(false);
 
-                await RegenerateProjectionETagAsync(identity, response.ProjectionType, cancellationToken)
+                bool eTagRegenerated = await RegenerateProjectionETagAsync(identity, response.ProjectionType, cancellationToken)
                     .ConfigureAwait(false);
 
                 long highestDeliveredSequence = highestAvailableSequence;
@@ -519,9 +545,10 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                     if (!checkpointSaved) {
                         Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestDeliveredSequence);
                     }
-                    else if (releasedCompatibility) {
-                        releasedCompletion = await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity,
-                            response.ProjectionType, cancellationToken)).ConfigureAwait(false) == highestDeliveredSequence;
+                    else {
+                        legacyCompletion = eTagRegenerated && (!releasedCompatibility
+                            || await RouteCatalogRemoteCall.InvokeAsync(() => deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity,
+                                response.ProjectionType, cancellationToken)).ConfigureAwait(false) == highestDeliveredSequence);
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -540,20 +567,19 @@ internal partial class ProjectionUpdateOrchestrator : IProjectionUpdateOrchestra
                     throw new InvalidOperationException("Projection delivery lifecycle lease completion was rejected.");
                 }
             }
-            if (releasedCompatibility && releasedCompletion) {
-                // A successful named call either has no compatible named routes
-                // or owns their durable retry work. Its failure retains activation.
-                if (namedProjectionDispatchCoordinator is not null)
-                    _ = await namedProjectionDispatchCoordinator.TryDispatchAsync(identity, registration,
+            if (legacyCompletion && releasedCompatibility && !namedActivationDurable && namedProjectionDispatchCoordinator is not null
+                && !string.IsNullOrWhiteSpace(head.MessageId)) {
+                bool owned = await namedProjectionDispatchCoordinator.TryDispatchAsync(identity, registration,
                         events, projectionReadability.Events!, cancellationToken).ConfigureAwait(false);
-                namedActivationDurable = true;
+                namedActivationDurable = owned || methodPlan is null;
             }
+            activationDurable = namedActivationDurable && legacyCompletion;
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
         }
         finally {
-            if (namedActivationDurable && projectionActivationOutbox is not null && activationWorkItem is not null) {
+            if (activationDurable && projectionActivationOutbox is not null && activationWorkItem is not null) {
                 try {
                     await RouteCatalogRemoteCall.InvokeAsync(() => projectionActivationOutbox!.CompleteAsync(activationWorkItem, CancellationToken.None)).ConfigureAwait(false);
                 }

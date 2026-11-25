@@ -14,6 +14,34 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class ProjectionActivationWorkerTests
 {
+    [Fact]
+    public async Task MixedDeliveryDoesNotBindAnActivationRearmedAfterNamedProofWasSampled()
+    {
+        using var legacy = new LegacyReplayProductionHarness();
+        await legacy.InitializeAsync(2);
+        ProjectionActivationWorkItem original = (await legacy.Outbox.GetAsync(legacy.Identity)).ShouldNotBeNull();
+        var guard = Substitute.For<IProjectionSourceGuardDelivery>();
+        guard.InspectCurrentAsync(legacy.Identity, "counter", Arg.Any<CancellationToken>())
+            .Returns(new ProjectionSourceGuardDeliveryResult(false, false, null));
+        guard.TryDeliverAsync(legacy.Identity, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            await legacy.AppendAsync(1);
+            await legacy.Outbox.EnsureAsync(legacy.Identity);
+            return new ProjectionSourceGuardDeliveryResult(true, true, null) { FinalizedCleanupProven = true };
+        });
+        var authority = Substitute.For<IRouteCatalogAuthority>();
+        authority.AcquireAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => new RouteCatalogDispatchLease(MixedSnapshot("counter-named"), () => Task.CompletedTask));
+        legacy.NamedCoordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+
+        await legacy.CreateOrchestrator(authority, guard).DeliverProjectionAsync(legacy.Identity, TestContext.Current.CancellationToken);
+
+        ProjectionActivationWorkItem rearmed = (await legacy.Outbox.GetAsync(legacy.Identity)).ShouldNotBeNull();
+        rearmed.Revision.ShouldBeGreaterThan(original.Revision);
+        rearmed.LegacyDelivery.ShouldBeNull();
+        (await legacy.Model.ReadProjectionStateAsync()).ShouldBeNull();
+    }
+
     [Theory]
     [InlineData(false, "single-event-v1")]
     [InlineData(true, "single-event-v1")]
