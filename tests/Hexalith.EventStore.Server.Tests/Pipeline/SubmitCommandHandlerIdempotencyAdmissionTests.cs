@@ -1,6 +1,10 @@
+using System.Globalization;
 using System.Text.Json;
 
+using Dapr.Client;
+
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
@@ -11,6 +15,7 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 
 using NSubstitute;
@@ -502,6 +507,113 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             Arg.Any<CancellationToken>());
         context.StatusStore.GetAllStatuses().ShouldBeEmpty();
         context.ArchiveStore.GetAllArchived().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_LateReceiptOnlyRecovery_RenewsOriginalStatusThroughReplayWindow()
+    {
+        const string messageId = "01J00000000000000000000001";
+        const string originalCorrelation = "trace-first";
+        const string statusKey = "tenant-a:01J00000000000000000000001:status";
+        TestContext context = CreateContext(
+            IdempotencyAdmissionDecision.UnknownProviderOutcome, executionMessageId: messageId,
+            executionCorrelationId: originalCorrelation);
+        var reconciled = new CommandProcessingResult(true, CorrelationId: originalCorrelation, EventCount: 1);
+        _ = context.Router.ReconcileFencedCommandAsync(
+            Arg.Any<SubmitCommand>(), Arg.Any<IdempotencyExecutionContext>(), Arg.Any<CancellationToken>())
+            .Returns(new IdempotencyCheckResult(IdempotencyCheckOutcome.ExactTerminalDuplicate, reconciled));
+
+        var clock = new FakeTimeProvider();
+        var original = new CommandStatusRecord(
+            CommandStatus.Completed, clock.GetUtcNow(), context.Command.AggregateId, EventCount: 1,
+            RejectionEventType: null, FailureReason: null, TimeoutDuration: null,
+            MessageId: messageId, CorrelationId: originalCorrelation)
+        {
+            Domain = context.Command.Domain,
+            CommittedEventSequence = 1,
+        };
+        DaprClient dapr = Substitute.For<DaprClient>();
+        CommandStatusRecord? stored = null;
+        DateTimeOffset expiresAt = default;
+        bool writeUnavailable = false;
+        _ = dapr.SaveStateAsync("statestore", statusKey, Arg.Any<CommandStatusRecord>(),
+            stateOptions: Arg.Any<StateOptions?>(), metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (writeUnavailable)
+            {
+                return Task.FromException(new IOException("status store unavailable"));
+            }
+
+            int ttl = int.Parse(call.Arg<IReadOnlyDictionary<string, string>>()["ttlInSeconds"], CultureInfo.InvariantCulture);
+            expiresAt = clock.GetUtcNow().AddSeconds(ttl);
+            stored = call.Arg<CommandStatusRecord>();
+            return Task.CompletedTask;
+        });
+        _ = dapr.GetStateAsync<CommandStatusRecord>("statestore", statusKey,
+            consistencyMode: Arg.Any<ConsistencyMode?>(), metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => clock.GetUtcNow() < expiresAt ? stored! : null!);
+        var statusStore = new DaprCommandStatusStore(dapr, Options.Create(new CommandStatusOptions { TtlSeconds = 90_000 }),
+            NullLogger<DaprCommandStatusStore>.Instance);
+        var handler = new SubmitCommandHandler(statusStore, context.ArchiveStore, context.Router,
+            NullLogger<SubmitCommandHandler>.Instance, context.Coordinator);
+
+        await statusStore.WriteStatusAsync(context.Command.Tenant, messageId, original);
+        DateTimeOffset originalExpiry = expiresAt;
+        clock.Advance(TimeSpan.FromHours(2));
+        writeUnavailable = true;
+        var unavailable = await Should.ThrowAsync<IdempotencyAdmissionFailureException>(
+            () => handler.Handle(context.Command, CancellationToken.None));
+        unavailable.Code.ShouldBe("idempotency_reconciliation_unavailable");
+        unavailable.Retryable.ShouldBeTrue();
+        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+
+        writeUnavailable = false;
+        DateTimeOffset receiptExpiry = clock.GetUtcNow().AddHours(24);
+        SubmitCommandResult recovered = await handler.Handle(context.Command, CancellationToken.None);
+        recovered.MessageId.ShouldBe(messageId);
+        await context.Coordinator.Received(1).CompleteAsync(Arg.Any<IdempotencyAdmissionSession>(), reconciled, Arg.Any<CancellationToken>());
+
+        IdempotencyAdmissionSession session = await context.Coordinator.AdmitAsync(context.Command, CancellationToken.None);
+        _ = context.Coordinator.AdmitAsync(context.Command, Arg.Any<CancellationToken>())
+            .Returns(session with { Decision = IdempotencyAdmissionDecision.Replay, ReplayResult = reconciled });
+        clock.Advance(TimeSpan.FromHours(23.5));
+        clock.GetUtcNow().ShouldBeGreaterThan(originalExpiry);
+        clock.GetUtcNow().ShouldBeLessThan(receiptExpiry);
+
+        SubmitCommandResult replay = await handler.Handle(context.Command, CancellationToken.None);
+        replay.MessageId.ShouldBe(messageId);
+        (await statusStore.ReadStatusAsync(context.Command.Tenant, messageId)).ShouldBe(original);
+        await context.Router.DidNotReceiveWithAnyArgs().RouteFencedCommandAsync(default!, default!, default);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("other-domain")]
+    public async Task Handle_ReceiptOnlyRecovery_LeavesMissingOrMismatchedStatusRecoverable(string? domain)
+    {
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.UnknownProviderOutcome);
+        _ = context.Router.ReconcileFencedCommandAsync(
+            Arg.Any<SubmitCommand>(), Arg.Any<IdempotencyExecutionContext>(), Arg.Any<CancellationToken>())
+            .Returns(new IdempotencyCheckResult(IdempotencyCheckOutcome.ExactTerminalDuplicate,
+                new CommandProcessingResult(true, EventCount: 1)));
+        if (domain is not null)
+        {
+            await context.StatusStore.WriteStatusAsync(context.Command.Tenant, context.Command.MessageId,
+                new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow, context.Command.AggregateId,
+                    EventCount: 1, RejectionEventType: null, FailureReason: null, TimeoutDuration: null,
+                    MessageId: context.Command.MessageId, CorrelationId: context.Command.CorrelationId) { Domain = domain });
+        }
+
+        var failure = await Should.ThrowAsync<IdempotencyAdmissionFailureException>(
+            () => context.Handler.Handle(context.Command, CancellationToken.None));
+
+        failure.StatusCode.ShouldBe(503);
+        failure.Retryable.ShouldBeTrue();
+        context.StatusStore.GetStatusHistory(context.Command.Tenant, context.Command.MessageId).Count.ShouldBe(domain is null ? 0 : 1);
+        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+        await context.Router.DidNotReceiveWithAnyArgs().RouteFencedCommandAsync(default!, default!, default);
     }
 
     [Fact]

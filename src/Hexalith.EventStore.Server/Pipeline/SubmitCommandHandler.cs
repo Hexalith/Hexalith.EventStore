@@ -330,6 +330,29 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                     if (reconciledResult.Accepted && reconciledResult.EventCount > 0
                         && (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox, request.Domain) != true))
                         await TriggerProjectionUpdateAsync(executionRequest, diagnostics).ConfigureAwait(false);
+
+                    // A receipt-only completion depends on the status row for confirmation. Renew its
+                    // existing TTL before starting a new replay window for the recovered result.
+                    if (reconciliation.Outcome == IdempotencyCheckOutcome.ExactTerminalDuplicate
+                        && reconciledResult is { Accepted: true, FailureReason: null, ResultPayload: null, ResultPayloadWithheld: false })
+                    {
+                        await idempotencyAdmissionCoordinator
+                            .ValidateExecutionAsync(admissionSession, executionRequest, cancellationToken)
+                            .ConfigureAwait(false);
+                        if (!await TryRefreshReconciledStatusAsync(executionRequest, reconciledResult, cancellationToken)
+                                .ConfigureAwait(false))
+                        {
+                            throw AdmissionFailure(
+                                request.CorrelationId,
+                                "idempotency_reconciliation_unavailable",
+                                "service_unavailable",
+                                retryable: true,
+                                "retry_later",
+                                503,
+                                "The original command status could not be refreshed. Retry later.");
+                        }
+                    }
+
                     using var reconciledCompletionStage = diagnostics?.Start(DispatchStageName.AdmissionCompletion);
                     await idempotencyAdmissionCoordinator
                         .CompleteAsync(admissionSession, reconciledResult, cancellationToken)
@@ -816,6 +839,38 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
             new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId), cleanup.Token).ConfigureAwait(false);
         stage?.Complete();
         return true;
+    }
+
+    private async Task<bool> TryRefreshReconciledStatusAsync(
+        SubmitCommand execution, CommandProcessingResult result, CancellationToken cancellationToken)
+    {
+        try
+        {
+            CommandStatusRecord? status = await statusStore
+                .ReadStatusAsync(execution.Tenant, execution.MessageId, cancellationToken).ConfigureAwait(false);
+            if (status is not { Status: CommandStatus.Completed }
+                || status.MessageId != execution.MessageId
+                || status.CorrelationId != execution.CorrelationId
+                || status.Domain != execution.Domain
+                || status.AggregateId != execution.AggregateId
+                || status.EventCount != result.EventCount)
+            {
+                return false;
+            }
+
+            await statusStore.WriteStatusAsync(execution.Tenant, execution.MessageId, status, cancellationToken)
+                .ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            Log.StatusWriteFailed(logger, exception, execution.CorrelationId, execution.Tenant);
+            return false;
+        }
     }
 
     private async Task TriggerProjectionUpdateAsync(SubmitCommand request, DispatchDiagnostics? diagnostics) {
