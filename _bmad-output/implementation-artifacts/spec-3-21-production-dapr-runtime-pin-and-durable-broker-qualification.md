@@ -83,6 +83,8 @@ Twenty-five verifier tests pass. They include contradictory Dapr state readback,
 
 Actual broker failures and preservation blockers are retained rather than repaired by changing the pinned runtime or weakening gates. Production selection, Kubernetes rehearsal, protected prior-release inputs, restore/envelope proof, owner records and the exact production bundle remain outstanding. Story status stays `in-progress`.
 
+EventStore's local Builds pins are now 6.8.5. The [Platform 4.17 toolchain handoff](#builds-adoption-and-toolchain-readback--2026-11-26) records the matching D5 source catalog, the clean SDK restore and the outstanding released-tool and execution readbacks.
+
 ## Spec Change Log
 
 - 2026-11-12: Evaluated Platform's retained candidate-01 hosted attempt and exact source/input bindings. The attempt ended before job allocation, with 0/24 observed vectors and no packet, verifier, cleanup or artifact-delivery proof. Recorded proposed inventory/documentation handoffs and current locked-input drift without refreshing profiles or advancing the open parent task. The completed input-enabling slice is no longer the next build target.
@@ -107,6 +109,12 @@ Actual broker failures and preservation blockers are retained rather than repair
 - 2026-11-13: Continued offline assessment from published Platform `44756d1db8a38ac305cbb5247ae9cd52985b1d76` and EventStore `5f4db84502c7c54b316dd9429dccd12ae881e759`. Prepared the proposed remediation evidence contract: pressure-fault feasibility plus producer/verifier admission dependency, minimum principal/applied-ACL/publisher/readback join, supported RabbitMQ delivery and packet-custody decision. This accepts no implementation, execution, pins or guarantee closure. The reproducible audit now compares immutable evidence links with the published Git baseline, allowing the current intake to evolve without rewriting the published subject.
 
 ## Review Triage Log
+
+- 2026-11-26, medium, patched. Put adopted toolchain preflight before the dispatch decision and live readback on the separately allocated worker.
+- 2026-11-26, medium, patched. Made an offline-verified, capture-enabled successor an explicit dispatch prerequisite.
+- 2026-11-26, medium, patched. Identified the manifest change and the dependency readback needed if the owner also approves a gitlink advance.
+- 2026-11-26, medium, patched. Marked the prior 6.8.4 package observation as lacking retained hashes and recorded the source-generated hash.
+- 2026-11-26, low, patched. Recorded the generator command, nuspec hash, local feed configuration and assets readback method.
 
 ## Approved follow-up and current integrity limitation
 
@@ -439,7 +447,7 @@ The 1.19.2 candidate lock records release archive checksums, image digests and t
 
 **Platform candidate request (pending Platform acceptance).** Bind the exact tuple and released fix provenance to a bounded Platform configuration. Requalify RabbitMQ pressure with the released NACK fix #4748 (`ac89e0966` in components-contrib `1.19.2`). Rerun RabbitMQ credential rotation, RabbitMQ missing binding, Kafka credential rotation and Kafka pressure when their prerequisites are met. RabbitMQ missing binding still waits on supported delivery of upstream PR #4767, which blocks the stacked mandatory-publish work. Keep the full 24-vector matrix and existing predicates. Retain the historical 1.19.1 packets. Platform owns Kubernetes rehearsal and restore. [NACK fix #4748](https://github.com/dapr/components-contrib/pull/4748) · [Publish-failure PR #4767](https://github.com/dapr/components-contrib/pull/4767) · [Mandatory-publish PR #4768](https://github.com/dapr/components-contrib/pull/4768)
 
-**Builds dependency.** Hexalith.Builds owns the SDK and CLI pins. The checked-out Builds `v6.8.3` `Props/Directory.Packages.props` selects .NET SDK packages `1.19.1`, CLI `1.19.1` and runtime `1.19.2`. The embedded catalogs from released `Hexalith.Builds.Module.Cli` packages `6.6.2` (Platform proposal), `6.7.0` (Platform's current tool pin), `6.8.3` and `6.8.4` select the same tuple. EventStore's existing tool manifest pins Builds `6.3.1`, whose released catalog selects SDK and CLI `1.19.1` with runtime `1.19.1`. [Builds source pins](../../references/Hexalith.Builds/Props/Directory.Packages.props) · [Published Builds tool](https://www.nuget.org/packages/Hexalith.Builds.Module.Cli/6.8.4) · [Platform tool manifest](../../references/Hexalith.Platform/.config/dotnet-tools.json) · [EventStore tool manifest](../../.config/dotnet-tools.json)
+**Builds dependency.** Hexalith.Builds owns the SDK and CLI pins. At intake, Builds `v6.8.3` `Props/Directory.Packages.props` selected .NET SDK packages `1.19.1`, CLI `1.19.1` and runtime `1.19.2`. This intake recorded version agreement in the embedded catalogs of released `Hexalith.Builds.Module.Cli` packages `6.6.2` (Platform proposal), `6.7.0` (then pinned in Platform), `6.8.3` and `6.8.4`. The 6.8.4 observation has no retained package or catalog hash in this intake. EventStore's tool manifest then pinned Builds `6.3.1`, whose released catalog selects SDK and CLI `1.19.1` with runtime `1.19.1`. [Offline readback and 6.8.5 adoption](#builds-adoption-and-toolchain-readback--2026-11-26) · [Published Builds tool](https://www.nuget.org/packages/Hexalith.Builds.Module.Cli/6.8.4)
 
 ## 1.19.2 execution-profile preparation — 2026-11-26
 
@@ -481,13 +489,121 @@ eligibility `false` and broker selection `null`. [Intake lock](../../deploy/dapr
 | RabbitMQ component maintainers and EventStore 3.21, rotation and missing binding | The retained readbacks record both PRs open and unmerged, #4767 at `96c3259b7c12a476edd208848153d3cf72a8c4f0` and [#4768](https://github.com/dapr/components-contrib/pull/4768) at `c6ba13793f181461afb3c74c9300f5876879861f`, stacked on #4767. Resume when an official supported Dapr release embeds the reviewed publish-error/reconnect behavior and correlated mandatory returns, with exact embedded revision, binary and image provenance. Rotation needs the stale-generation Dapr denial `Exception (403)…ACCESS_REFUSED` through retry/reconnect. Missing binding needs physical absence before and after, one effect on the bound control, and a broker return correlated with the unbound publish before successful confirmation can be reported, with HTTP 400–598. Freeze the supported mandatory-publish setting and resulting bytes if the remedy requires it. Candidate-02 observed 599 for rotation and 204 for the unbound publish. [Work packages and retained submission](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#rabbitmq-package-b-submission-reconciliation--2026-11-15) |
 | EventStore 3.21 and Kafka maintainers, Produce pressure | Resume design when supported stock Kafka can return Produce error 89 (`THROTTLING_QUOTA_EXCEEDED`) for a publication to the existing `qualification.backpressure` topic. Bind the applied fault and command receipts to the exact broker, topic/partition and Produce request/response. The same Dapr publish command and message ID must carry `ErrorInfo` with `kafka server: The throttling quota has been exceeded`. Qualify the replacement fault receipt in the verifier, keep the 12 s pressure timeout, distinct paused-broker 599 within 10 s, and 10 s recovery/readback with exact IDs and zero acknowledged loss. Kafka 4.3.1 byte-rate throttling and administrative mutation quota do not supply this Produce rejection. Candidate-02 recorded zero acknowledged loss and no attributable rejection. Any predicate change requires a separate owner decision. [Kafka source investigation](../../docs/implementation/story-3-21-kafka-bounded-investigation.md#pressure-bounded-review-completed-replacement-implementation-stopped) |
 | EventStore 3.21 with Platform 4.17, Kafka rotation | Resume design when a supported witness on the **same live old publisher** proves completion of every earlier invocation, including Dapr timeout-detached retries, queued messages, retry batches and outstanding or uncertain broker requests, or when an independently accepted discriminator attributes each Produce request to its HTTP input despite overlapping work. Use the actual publisher lifetime, including any earlier recovery replacement. The comparison uses a 3 s Dapr outbound timeout, two retries spaced 200 ms apart, and Sarama 1.60.0 in the retained runtime module declaration. In the exclusive construction, admit only the stale input during the interval and enumerate its complete Produce request set across Dapr/Sarama retries, batches and reconnections. Bind the old process start/PID, endpoint, loaded public credential fingerprint and socket/forwarder mapping to the serving broker's authenticated principal, Produce connection/correlation IDs and serving deny ACL at decision time. Join the authorization and response to the exact stale ID, then reconcile persisted readback. Keep the 5 s stale timeout, attributable HTTP 400–598 with `kafka server: The client is not authorized to access this topic`, controlled restart, one new-generation effect and zero stale effects within 3 s. Sequential calls, later success, fixed waits, shared client ID, logger volume and readback alone leave earlier work or attribution unresolved. The cold old-generation control stays separate. Candidate-02's Kafka rotation PASS leaves the historical failure unadjudicated. [Controlled association](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/docs/implementation/story-4-17-kafka-controlled-association.md) · [Rotation feasibility](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/docs/implementation/story-4-17-kafka-rotation-observation-feasibility.md) |
-| Hexalith.Builds with EventStore 3.21 and the CiCd pin owner | EventStore's tool manifest is `6.3.1`, whose runtime catalog is 1.19.1. Platform pins `6.8.4` at Builds `a6abb7908ec38dcb3fbd99d69e7ed29ae25794d2`, whose source and released catalog select the approved versions. Resume after owner-approved EventStore adoption of the exact released catalog/package or immutable Builds source, with manifest/gitlink and tool package version, source and content hash read back from the restored execution subject. Bind the actual `daprd` and `dapr` executable versions and SHA-256, control-plane image/executable identities and embedded contrib module, and resolved Dapr .NET package IDs, versions and package content hashes from clean restore assets, including transitive `Dapr.Protos` when resolved. Local catalog agreement does not supply adopted subject readback. [EventStore tool manifest](../../.config/dotnet-tools.json) · [Builds source pins at Platform's revision](https://github.com/Hexalith/Hexalith.Builds/blob/a6abb7908ec38dcb3fbd99d69e7ed29ae25794d2/Props/Directory.Packages.props) |
+| Hexalith.Builds with EventStore 3.21 and the CiCd pin owner | The requested EventStore 6.8.5 bump is applied to the working tree. Source catalog and SDK readback passed offline. Restore the released tool package and bind the pins and readbacks to the immutable execution revision. [Pin decision, offline observations and resumption conditions](#builds-adoption-and-toolchain-readback--2026-11-26) |
 | EventStore 3.21, Platform 4.17 and the execution owner | Once supported fixes, Kafka witnesses and Builds readback are accepted, EventStore binds the final supported source, profile, inputs and hashes. Re-intake any changed tuple or configuration. Platform freezes an immutable clean dispatch revision, EventStore gitlink, workflow/actions, rendered inputs, guarded hosted allocation and evidence/cleanup receipts. The allocated worker supplies the actual CLI hash and version receipts and joins the launched image IDs to the locked child manifests. Resume with separate owner approval of one full 24-vector attempt. A retry or rerun needs a new decision. [Platform attempt and approval requirements](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/docs/implementation/story-4-17-next-candidate-intake.md#hosted-attempt-and-evidence-requirements) |
 | Deployment and Platform custody owners, selection and production | Resume selection after full technical PASS, same-inventory 4.5/4.9/4.16/4.17/4.22 evidence, composed workload and target Kubernetes rehearsal, restore, AD-26 and accepted 5.7/3.19 bindings. Target custody also needs the approved workload and provisioner identities/RBAC, encrypted immutable versioned Secrets, backup/restore, rotation, retained-version reads and old-key retirement from 8.7. [8.7 target custody prerequisites](spec-8-7-server-persistence-and-snapshot-integration.md#prerequisite-review--2026-11-26) |
 | EventStore 4.16 and the Architecture owner, protected writes | AC1 remains unresolved and protected-actor writes stay ineligible. Resume only after the mandatory append/write-once capability is owner-approved and reproved against the exact composed runtime and storage subject. [1.19.2 capability screen](spec-4-16-append-write-once-conformance-through-enforced-envelope.md#capability-recheck--1192-tuple-2026-11-25) |
 | EventStore 8.11 and approval owners, G5 | Resume G5 at the exact provider package or source revision after the Server, packaged-consumer, Parties parity and rollback packet is complete. EventStore, Security, Release, Operations, the Parties maintainer and Test/Vector review must authenticate approval of the same packet hash at least 24 hours after the last authored change. Parties 8.7 and DW-97 remain blocked/open. [Story 8.11 acceptance](../planning-artifacts/epics.md#story-811-g5-evidence-and-approval-closure) |
 
+## Builds adoption and toolchain readback — 2026-11-26
+
+### 6.8.5 adoption for Platform 4.17
+
+The follow-up request to bump Builds to `6.8.5` was applied to both
+EventStore's `.config/dotnet-tools.json` and its Builds submodule checkout at
+`deccbc3bcf4ed687ecf4d556ebe356fe57148777` (`v6.8.5`). The combined change is
+in the EventStore working tree. Platform's intake identifies 6.8.4, so bind the
+6.8.5 exact EventStore inputs when Platform freezes its successor dispatch.
+[EventStore tool manifest](../../.config/dotnet-tools.json) · [Builds 6.8.5 source](https://github.com/Hexalith/Hexalith.Builds/tree/deccbc3bcf4ed687ecf4d556ebe356fe57148777)
+
+| 6.8.5 check | Exact result |
+| --- | --- |
+| Source catalog | `Props/Directory.Packages.props` SHA-256 `77d8a4433beb9e986308a7aa1b15511028ef39dc0056580d3b7399ca61374d0b`. The generated catalog SHA-256 is `14b5c73d1a666966ceb1931255c9b8f5cf6c38995b0a9dee59490c8cb133fb39`. It selects Dapr runtime `1.19.2`, CLI and SDK `1.19.1`. Its selected archive checksums agree with the 1.19.2 profile. The retained chart, control-plane images and components-contrib `1.19.2` provenance still bind the same tuple. |
+| Clean solution restore | Archived EventStore `ed66aef9516a3426a2a66e95c343be2a0d6284dd` with the bumped manifest and exact 6.8.5 source props. The Release restore produced 71 successful project asset files. All six Dapr SDK package IDs, versions, nupkg SHA-256 and NuGet content hashes match the [inventory below](#684-comparison-and-baseline-readback). The graph includes `Hexalith.Commons.UniqueIds` `3.0.4` and a separate transitive `2.13.0`, plus `Hexalith.Tenants.Contracts` and `Hexalith.Tenants.Server` `8.1.0`. |
+| Released tool restore | `dotnet tool restore --tool-manifest .config/dotnet-tools.json --configfile "$TMPDIR/NuGet.Config"` exited `1` with “Version 6.8.5 of package hexalith.builds.module.cli is not found in NuGet feeds” against the retained local feed. Released nupkg and embedded catalog hashes remain open. |
+
+### 6.8.4 comparison and baseline readback
+
+The earlier Builds 6.8.4 source catalog at
+`a6abb7908ec38dcb3fbd99d69e7ed29ae25794d2` matches the approved tuple. The
+local approval record covers non-promoting D5 intake, and the Platform decision
+covers preparation. The retained EventStore, Platform and CiCd records checked
+for this handoff did not establish exact EventStore pin approval. The CiCd 6.8.4 render
+`6057574ae95bb32094edea8da9f21ba75d2caf3b` covered other modules. The earlier
+EventStore handoff `06f95262f9f5e8c696581aadaff206b869aa7b8b` pinned
+`Hexalith.Builds.Module.Cli` `6.3.1` and Builds gitlink
+`62876129eaa035e78bd0324419231f07d43a07b8` (`v6.8.3`). [D5 approval](../planning-artifacts/sprint-change-proposal-2026-11-25.md#71-approval-record) · [Platform intake](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/docs/implementation/story-4-17-next-candidate-intake.md#dapr-1192-candidate-intake--2026-11-26) · [CiCd render](https://github.com/Hexalith/Hexalith.CiCd/commit/6057574ae95bb32094edea8da9f21ba75d2caf3b)
+
+| Offline observation | Version and content identity |
+| --- | --- |
+| Builds 6.8.4 candidate source | `Props/Directory.Packages.props` SHA-256 `c46b4778a99a667387ea0b0059517141d9c43bf179c0b3651d9269fac993f094`. The pinned generator emitted runtime `1.19.2`, CLI `1.19.1` and SDK `1.19.1`. Generated catalog SHA-256 `729579888ce9ad5867bbb56468f25c52b2c107ffe0c8e4055df979f42897d908` is a source-derived identity. |
+| Runtime and control-plane target | Dapr runtime and chart/app `1.19.2` at `66efc169ba72dca18ab73394c98381d68cda88f0`. The retained runtime `go.mod` selects components-contrib `v1.19.2`. Platform's release record binds it to `ab395ab88023febfb824de46d474c6d299e74fb1` and module checksum `h1:kYC84yK7I7ZiB/ibjBhHuAClsoJAHedqdxTqpKr4s5A=`. The chart and all six Dapr image indexes and Linux amd64 children agree with Platform 4.5. The Builds archive checksums for `daprd`, `dapr`, placement and scheduler agree with the profile. [Profile](../../deploy/dapr/qualification/runtime-lock-1.19.2-platform-config-v1.json) · [Platform chart and image identities](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/eng/helm-qualification/dapr-1.19.2.json) |
+| Baseline tool package | The cached `Hexalith.Builds.Module.Cli` `6.3.1` nupkg SHA-256 is `4b1d581567d9dfa3a97c22fc537ad723beb5d54de9324dbf2b989254c0bfacc1`. Its embedded catalog SHA-256 is `0ff3a2ebff2055c9c8e40befe09548afe24067c6b79592b2ae24195fa818aa6b` and selects runtime, CLI and SDK `1.19.1`. |
+| Local Linux amd64 executables | `/usr/local/bin/dapr --version` reported CLI `1.19.1`, with SHA-256 `b651f5fcfe0b261ca6b26058dde31927efc8e17b12267d6743bdbeddca09bafd` matching the profile. `~/.dapr/bin/daprd --version` reported `1.19.1`, SHA-256 `b1ece5da76674bf6e15126aeb019fa58e444b5b8edf4d0ac59e32df895ae8fd2`. The profile requires `1.19.2`, SHA-256 `96d2a0aeaafc8993ed41151e184e2b1c67dc03fc21c9ba561c92e34cb5696596`. |
+
+A clean Release restore of EventStore handoff
+`06f95262f9f5e8c696581aadaff206b869aa7b8b` with its existing Builds gitlink
+produced 71 successful project asset files. The exact resolved Dapr SDK
+inventory for that baseline follows. Each restored archive matched its local
+feed bytes by SHA-256. The last column records the NuGet `sha512` field from
+`project.assets.json` in Base64.
+
+| Resolved package | Version | nupkg SHA-256 | NuGet assets SHA-512 |
+| --- | --- | --- | --- |
+| `Dapr.Actors` | `1.19.1` | `6f3937a833e0161055275192260c80e94b91f0b7c6dfb25d175b1e6f22ece346` | `/0KNi2ZW2WpDMudvK/9UUenJwYfgRR5VqBBsdpjNpgT2P2hH8p80zCFEsM7vCltpaNJ9hKP4382CNmq40rPhAQ==` |
+| `Dapr.Actors.AspNetCore` | `1.19.1` | `4e14a8e466d6582d8517973be7f818af395ab23fe38e557fa55db4b2c0ce27da` | `Aw3FmhhfducbxHY/j7Kc1UAWX/ASKHXhe1c1P1XON3fu4CR4PcVsZivoT1gjQQIkhrEbUrU4DicBG1A8S1taPw==` |
+| `Dapr.AspNetCore` | `1.19.1` | `0e9d0cf08c135607fb357bf4ecd6ad03e8a5631ec40a719a7203e7c6d88c8ce1` | `csjXmpcHZAy7dxgualJF8gOyg7E0Jq93R6s/wYdgN7crLhiegW/ieqZD7oNeZLnAcrJGzKtMh5C2ZTXXg48exw==` |
+| `Dapr.Client` | `1.19.1` | `42fd221df9de3b680c95cc3bfd6a891c360301f15cef7b81ffa4d3a682f83837` | `BKlO8CdoNm8AnlHV03V46a99kKEy2yPM+g4fG0yyZLJda0vrzJER+eiGpSwePTGiYksTQr8Q7KEsdnJ+TKbLpQ==` |
+| `Dapr.Common` (transitive) | `1.19.1` | `024e644ad8a5f677dec87665002d6af3d7c7bef3827a27f333bce1a94ee23a20` | `WUwB4KQH6PGRLD4JMsWnyQSFbgLIxCAX2Q9schp6zMJVP0TnofsRUGRbySNq93xOSHOmOhAKSsghkULc/BQ4Eg==` |
+| `Dapr.Protos` (transitive) | `1.19.1` | `29a48e7ebb71ceb9692cfa8484c30670f02e4653404c89a460e1867e51f8c717` | `9k/o+DcnPKRSmBam3karEUQGn5Wrf8GL5ikYyOyCdT+bftqwQJPHTmI6QsnK+6AEeghLKFETrorNPt2L/xSv5w==` |
+
+### Open gates for the 6.8.5 handoff
+
+| Open gate and owner | Resumption condition |
+| --- | --- |
+| Immutable adoption revision — EventStore 3.21 and Platform 4.17 | Carry forward the approved 6.8.5 manifest and gitlink, then read both back from the clean EventStore revision selected for dispatch. Reconcile the final Platform toolchain pins against that revision. |
+| Published 6.8.5 package and embedded catalog — Hexalith.Builds and EventStore 3.21 | Supply authenticated released nupkg bytes and provenance linking the package to the Builds revision. Restore the version pinned by EventStore, record package ID, version, source and content hashes, and hash the embedded `platform-version-catalog.json` from the restored assembly. Check its selections against the D5 tuple and the source result above. |
+| Dapr toolchain preflight — EventStore 3.21 and Platform 4.17 execution owner | Before requesting dispatch approval, make the approved archives available offline and verify archive hashes and executable versions/SHA-256 for `dapr` and `daprd` from the exact subject. Bind the runtime binary's embedded contrib module and expected control-plane executable/image identities to the locked manifests. |
+| Loaded toolchain — Platform 4.17 execution owner | After separately approved dispatch, read the actual CLI version and hash on the allocated worker and join the loaded runtime and control-plane executable/image identities to the locked Linux amd64 children before the vectors can earn qualification credit. |
+| Dapr SDK graph on the execution revision — EventStore 3.21 with Hexalith.Builds | Repeat the successful clean restore on the immutable execution revision and bind the resolved `Dapr.*` IDs, versions and content hashes, including transitive `Dapr.Protos`, to that revision. |
+
+**Hosted admission stays blocked.** Before requesting dispatch approval,
+bind the Builds adoption and complete preflight readback, obtain supported RabbitMQ
+delivery for pressure, rotation and missing binding, and satisfy both Kafka
+witnesses (attributable Produce pressure rejection and stale-publisher rotation).
+Then bind and verify a capture-enabled successor profile offline and obtain
+separate approval of the frozen one-attempt dispatch. The allocated worker's
+loaded toolchain readback is an execution guard. Candidate-02 remains
+**technical FAIL with 20/24 vectors passed**. Broker selection, production
+eligibility, target custody and G5 remain pending.
+
 ## Verification
+
+### Builds catalogs and SDK readback
+
+- With network access isolated, ran the command below from the exact Builds
+  revision's source inputs. The cached `Hexalith.EventStore.Aspire/5.6.0`
+  nuspec SHA-256 is `5eec33282640c623510ce6e8ccced390b694100b3acae58f957892e907479520`.
+  All three catalog selections matched D5. Compared the retained chart, Dapr
+  manifests and module declaration with Platform 4.5 and the Builds archive
+  checksum table. The installer and producer `--validate-only` commands below
+  passed on the handoff, with 64 locked inputs, 24 vectors and blocked capture.
+- Archived the EventStore handoff and its Builds props. Populated a flat local
+  feed from the global package cache under `$TMPDIR`, naming each archive
+  `<package-id>.<version>.nupkg` and preferring the canonical archive over
+  aliases. For the disposable `NuGet.Config`, replaced the repository
+  config's NuGet.org URL with that feed. Set `NUGET_PACKAGES` to an empty
+  directory under `$TMPDIR` and ran
+  `dotnet restore Hexalith.EventStore.slnx --configfile "$TMPDIR/NuGet.Config" --no-http-cache -p:Configuration=Release -m:1`
+  with SDK `11.0.100`. NuGet auditing remained enabled and the flat feed
+  supplied no vulnerability database. Read the solved
+  `Dapr.*` entries from `targets` and their `libraries` paths and
+  `sha512` fields in every `project.assets.json`. Recomputed each archive
+  SHA-256 and used the SDK's NuGet `PackageArchiveReader.GetContentHash` to
+  confirm all six asset hashes. The baseline restore and readback passed offline.
+- Repeated the same catalog generation from Builds `deccbc3bcf4ed687ecf4d556ebe356fe57148777`.
+  Repeated the solution restore from an archive of EventStore
+  `ed66aef9516a3426a2a66e95c343be2a0d6284dd` with the 6.8.5 manifest and
+  source props, a fresh package directory and the local feed. All 71 project
+  assets restored, and the six Dapr SDK identities and hashes matched the
+  baseline. The released CLI package restore remains blocked as recorded above.
+
+```bash
+nuspec="$HOME/.nuget/packages/hexalith.eventstore.aspire/5.6.0/hexalith.eventstore.aspire.nuspec"
+pwsh -NoLogo -NoProfile -File Tools/write-platform-version-catalog.ps1 \
+  -CatalogPath Props/Directory.Packages.props -OutputPath "$TMPDIR/catalog.json" \
+  -NuspecPath "$nuspec" -Configuration Release -TargetFramework net11.0
+```
 
 ### 1.19.2 execution-profile preparation
 
