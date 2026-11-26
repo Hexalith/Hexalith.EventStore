@@ -37,7 +37,7 @@ assert.deepEqual(Object.keys(githubOptions).sort(), [
     "assets",
     "successCommentCondition",
 ]);
-assert.deepEqual(githubOptions.assets, ["nupkgs/*.nupkg"]);
+assert.deepEqual(githubOptions.assets, ["nupkgs/Hexalith.EventStore.*.nupkg"]);
 assert.equal(githubOptions.successCommentCondition, false);
 assert.equal(Object.hasOwn(githubOptions, "successComment"), false);
 assert.equal(Object.hasOwn(githubOptions, "failCommentCondition"), false);
