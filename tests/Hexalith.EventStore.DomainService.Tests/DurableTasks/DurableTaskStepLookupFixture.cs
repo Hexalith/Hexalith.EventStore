@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 
 using Hexalith.EventStore.DomainService.DurableTasks;
@@ -39,7 +40,7 @@ internal sealed class DurableTaskStepLookupFixture(WebApplication? app, HttpClie
     private const string Audience = "g1-task-host";
     private const string ChannelToken = "durable-task-fixture-channel";
     private const string Issuer = "https://durable-task-fixture.invalid";
-    private const string SigningKey = "test-only-durable-task-step-lookup-signing-key";
+    private static readonly string SigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
     private const string LookupOperation = EventStoreWorkloadOperations.DurableTaskStepLookup;
 
     /// <summary>Gets the transport used for this lookup receipt.</summary>
