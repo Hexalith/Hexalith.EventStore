@@ -441,7 +441,83 @@ The 1.19.2 candidate lock records release archive checksums, image digests and t
 
 **Builds dependency.** Hexalith.Builds owns the SDK and CLI pins. The checked-out Builds `v6.8.3` `Props/Directory.Packages.props` selects .NET SDK packages `1.19.1`, CLI `1.19.1` and runtime `1.19.2`. The embedded catalogs from released `Hexalith.Builds.Module.Cli` packages `6.6.2` (Platform proposal), `6.7.0` (Platform's current tool pin), `6.8.3` and `6.8.4` select the same tuple. EventStore's existing tool manifest pins Builds `6.3.1`, whose released catalog selects SDK and CLI `1.19.1` with runtime `1.19.1`. [Builds source pins](../../references/Hexalith.Builds/Props/Directory.Packages.props) · [Published Builds tool](https://www.nuget.org/packages/Hexalith.Builds.Module.Cli/6.8.4) · [Platform tool manifest](../../references/Hexalith.Platform/.config/dotnet-tools.json) · [EventStore tool manifest](../../.config/dotnet-tools.json)
 
+## 1.19.2 execution-profile preparation — 2026-11-26
+
+Platform 4.17 accepted the D5 handoff for preparation at
+`4da1edf34b2e08ef4e7a383983be3bc151983029`. The Story 8.7 working-copy
+prerequisite review supplies the downstream scope. EventStore prepared the exact
+Dapr runtime/control plane and components-contrib `1.19.2`, CLI and .NET SDK
+`1.19.1` comparison profile. **Hosted execution admission remains blocked.**
+Story 3.21 and Story 8.7 remain in progress. [Platform 4.17 intake decision](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/docs/implementation/story-4-17-next-candidate-intake.md#dapr-1192-candidate-intake--2026-11-26) · [Story 8.7 prerequisite review](spec-8-7-server-persistence-and-snapshot-integration.md#prerequisite-review--2026-11-26)
+
+### Handoff to Platform 4.17
+
+| Binding | Exact preparation identity |
+| --- | --- |
+| EventStore source | `6f0bb8eb433d483dd03b36557a6224e3990871f4`, based on `82c9d21dc26081a49e453c3c2cd792b3f6b1dbd2` |
+| 1.19.2 intake lock SHA-256 | `c6d02b1f73a733a5bae6c23789ea99138579b3c7c797ff80dc738a72c0ec8d21` |
+| Versioned execution profile SHA-256 | `e44e0cc3e67ad6a769d64bd19d325728eb8cf2e695d8f8a503111c0c41579d00` |
+| Exact Platform comparison configuration SHA-256 | `b8601e3a6d4e8460d039573ca2f7e1728e52aa67e61fc0710d74cab5d072580b` |
+| Effective component template SHA-256 | RabbitMQ `c5ffe100825ceb25fe10b1b1192dab2e150b9c88b2a3450f612168b4b95d90cf`, Kafka `e8e494157c2f9eaa84ca3bc383872bf1354fde9a7d301901a3069e40466565c6`, Subscription source `55981fed2d78738ae730a9a1845a5070b415e4fe46b2cc43534357b8306ac971` |
+
+The versioned profile's 64 `inputs` bind every intake input, the retained lock,
+the comparison configuration and the installer, capture tools, verifier, helpers
+and executable test sources by SHA-256. The offline entry points are
+`tools/install-dapr-qualification-tools.py --profile … --validate-only` and
+`tools/qualify-dapr-brokers.py --profile … --platform-config … --validate-only`.
+The latter measures profile, configuration and rendered component hashes. The
+prepare-only profile refuses live capture before packet creation. Schema 3
+verification requires the exact independent configuration and reuses the
+candidate receipt, diagnostics, private-material and cleanup guards. Historical
+profiles and predicates retain their exact bytes and interpretation. The current
+profile binds the original 24-vector denominator and records production
+eligibility `false` and broker selection `null`. [Intake lock](../../deploy/dapr/qualification/runtime-lock-1.19.2.json) · [Execution profile and source inventory](../../deploy/dapr/qualification/runtime-lock-1.19.2-platform-config-v1.json) · [Platform comparison input](../../deploy/dapr/qualification/platform-candidate-02.json)
+
+### Evidence required to resume
+
+| Owner | Required evidence and resumption condition |
+| --- | --- |
+| RabbitMQ component maintainers and EventStore 3.21, pressure | The retained 1.19.2 release provenance shows [#4748](https://github.com/dapr/components-contrib/pull/4748) backport `ac89e0966ca5d9ff4dce4ae2ef0045c33e2660ee` in components-contrib `ab395ab88023febfb824de46d474c6d299e74fb1`. Dapr `66efc169ba72dca18ab73394c98381d68cda88f0` embeds that version. The backport makes the confirmation helper return an error on NACK. Resume pressure requalification when an official supported Dapr build embeds the [#4767](https://github.com/dapr/components-contrib/pull/4767) remedy and carries that error through public publish, retry, reconnect and cancellation. Require an effective exact-queue `reject-publish` / `max-length: 4` policy and a command-bound Dapr `ErrorInfo` on `qualification.backpressure` containing `did not receive confirmation of publishing`. Use the 5 s pressure timeout, separate paused-broker 599 cancellation within 10 s, and exact-ID recovery/readback within 10 s with zero acknowledged loss. Candidate-02 had three acknowledged IDs missing. |
+| RabbitMQ component maintainers and EventStore 3.21, rotation and missing binding | The retained readbacks record both PRs open and unmerged, #4767 at `96c3259b7c12a476edd208848153d3cf72a8c4f0` and [#4768](https://github.com/dapr/components-contrib/pull/4768) at `c6ba13793f181461afb3c74c9300f5876879861f`, stacked on #4767. Resume when an official supported Dapr release embeds the reviewed publish-error/reconnect behavior and correlated mandatory returns, with exact embedded revision, binary and image provenance. Rotation needs the stale-generation Dapr denial `Exception (403)…ACCESS_REFUSED` through retry/reconnect. Missing binding needs physical absence before and after, one effect on the bound control, and a broker return correlated with the unbound publish before successful confirmation can be reported, with HTTP 400–598. Freeze the supported mandatory-publish setting and resulting bytes if the remedy requires it. Candidate-02 observed 599 for rotation and 204 for the unbound publish. [Work packages and retained submission](../../docs/implementation/story-3-21-broker-remediation-evidence-contract.md#rabbitmq-package-b-submission-reconciliation--2026-11-15) |
+| EventStore 3.21 and Kafka maintainers, Produce pressure | Resume design when supported stock Kafka can return Produce error 89 (`THROTTLING_QUOTA_EXCEEDED`) for a publication to the existing `qualification.backpressure` topic. Bind the applied fault and command receipts to the exact broker, topic/partition and Produce request/response. The same Dapr publish command and message ID must carry `ErrorInfo` with `kafka server: The throttling quota has been exceeded`. Qualify the replacement fault receipt in the verifier, keep the 12 s pressure timeout, distinct paused-broker 599 within 10 s, and 10 s recovery/readback with exact IDs and zero acknowledged loss. Kafka 4.3.1 byte-rate throttling and administrative mutation quota do not supply this Produce rejection. Candidate-02 recorded zero acknowledged loss and no attributable rejection. Any predicate change requires a separate owner decision. [Kafka source investigation](../../docs/implementation/story-3-21-kafka-bounded-investigation.md#pressure-bounded-review-completed-replacement-implementation-stopped) |
+| EventStore 3.21 with Platform 4.17, Kafka rotation | Resume design when a supported witness on the **same live old publisher** proves completion of every earlier invocation, including Dapr timeout-detached retries, queued messages, retry batches and outstanding or uncertain broker requests, or when an independently accepted discriminator attributes each Produce request to its HTTP input despite overlapping work. Use the actual publisher lifetime, including any earlier recovery replacement. The comparison uses a 3 s Dapr outbound timeout, two retries spaced 200 ms apart, and Sarama 1.60.0 in the retained runtime module declaration. In the exclusive construction, admit only the stale input during the interval and enumerate its complete Produce request set across Dapr/Sarama retries, batches and reconnections. Bind the old process start/PID, endpoint, loaded public credential fingerprint and socket/forwarder mapping to the serving broker's authenticated principal, Produce connection/correlation IDs and serving deny ACL at decision time. Join the authorization and response to the exact stale ID, then reconcile persisted readback. Keep the 5 s stale timeout, attributable HTTP 400–598 with `kafka server: The client is not authorized to access this topic`, controlled restart, one new-generation effect and zero stale effects within 3 s. Sequential calls, later success, fixed waits, shared client ID, logger volume and readback alone leave earlier work or attribution unresolved. The cold old-generation control stays separate. Candidate-02's Kafka rotation PASS leaves the historical failure unadjudicated. [Controlled association](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/docs/implementation/story-4-17-kafka-controlled-association.md) · [Rotation feasibility](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/docs/implementation/story-4-17-kafka-rotation-observation-feasibility.md) |
+| Hexalith.Builds with EventStore 3.21 and the CiCd pin owner | EventStore's tool manifest is `6.3.1`, whose runtime catalog is 1.19.1. Platform pins `6.8.4` at Builds `a6abb7908ec38dcb3fbd99d69e7ed29ae25794d2`, whose source and released catalog select the approved versions. Resume after owner-approved EventStore adoption of the exact released catalog/package or immutable Builds source, with manifest/gitlink and tool package version, source and content hash read back from the restored execution subject. Bind the actual `daprd` and `dapr` executable versions and SHA-256, control-plane image/executable identities and embedded contrib module, and resolved Dapr .NET package IDs, versions and package content hashes from clean restore assets, including transitive `Dapr.Protos` when resolved. Local catalog agreement does not supply adopted subject readback. [EventStore tool manifest](../../.config/dotnet-tools.json) · [Builds source pins at Platform's revision](https://github.com/Hexalith/Hexalith.Builds/blob/a6abb7908ec38dcb3fbd99d69e7ed29ae25794d2/Props/Directory.Packages.props) |
+| EventStore 3.21, Platform 4.17 and the execution owner | Once supported fixes, Kafka witnesses and Builds readback are accepted, EventStore binds the final supported source, profile, inputs and hashes. Re-intake any changed tuple or configuration. Platform freezes an immutable clean dispatch revision, EventStore gitlink, workflow/actions, rendered inputs, guarded hosted allocation and evidence/cleanup receipts. The allocated worker supplies the actual CLI hash and version receipts and joins the launched image IDs to the locked child manifests. Resume with separate owner approval of one full 24-vector attempt. A retry or rerun needs a new decision. [Platform attempt and approval requirements](https://github.com/Hexalith/Hexalith.Platform/blob/4da1edf34b2e08ef4e7a383983be3bc151983029/docs/implementation/story-4-17-next-candidate-intake.md#hosted-attempt-and-evidence-requirements) |
+| Deployment and Platform custody owners, selection and production | Resume selection after full technical PASS, same-inventory 4.5/4.9/4.16/4.17/4.22 evidence, composed workload and target Kubernetes rehearsal, restore, AD-26 and accepted 5.7/3.19 bindings. Target custody also needs the approved workload and provisioner identities/RBAC, encrypted immutable versioned Secrets, backup/restore, rotation, retained-version reads and old-key retirement from 8.7. [8.7 target custody prerequisites](spec-8-7-server-persistence-and-snapshot-integration.md#prerequisite-review--2026-11-26) |
+| EventStore 4.16 and the Architecture owner, protected writes | AC1 remains unresolved and protected-actor writes stay ineligible. Resume only after the mandatory append/write-once capability is owner-approved and reproved against the exact composed runtime and storage subject. [1.19.2 capability screen](spec-4-16-append-write-once-conformance-through-enforced-envelope.md#capability-recheck--1192-tuple-2026-11-25) |
+| EventStore 8.11 and approval owners, G5 | Resume G5 at the exact provider package or source revision after the Server, packaged-consumer, Parties parity and rollback packet is complete. EventStore, Security, Release, Operations, the Parties maintainer and Test/Vector review must authenticate approval of the same packet hash at least 24 hours after the last authored change. Parties 8.7 and DW-97 remain blocked/open. [Story 8.11 acceptance](../planning-artifacts/epics.md#story-811-g5-evidence-and-approval-closure) |
+
 ## Verification
+
+### 1.19.2 execution-profile preparation
+
+Run from the exact EventStore source revision in the handoff.
+
+```bash
+profile=deploy/dapr/qualification/runtime-lock-1.19.2-platform-config-v1.json
+python3 -B tools/install-dapr-qualification-tools.py --profile "$profile" --validate-only
+python3 -B tools/qualify-dapr-brokers.py --profile "$profile" --validate-only \
+  --platform-config deploy/dapr/qualification/platform-candidate-02.json
+```
+
+- Verified the complete input inventory and unchanged matrix, evaluation, diagnostic,
+  denial and pressure predicates against the source baseline. The installer verifies both
+  archive and extracted-executable hashes in offline fixtures. Actual tool installation
+  and worker readback are pending. The preparation profile rejects capture before
+  packet output, and both synthetic schema-3 controls exercise the independent verifier.
+- The exact source archive passed 197 Dapr Python test invocations, including the
+  historical Platform discovery alias, 11 internal actor admission tests and seven
+  route-catalog tooling tests. An offline .NET harness compiled the C# fixture and passed
+  11 forwarding, pairing, refusal and fresh-directory checks.
+- Replayed the locally retained candidate-02 ZIP, SHA-256
+  `a26b848840ca8061a00d8ea7598b52b6a91b5331822645c23bc527278e40949a`, against
+  EventStore archive `495dd24943031ec75e2822c6168ada3c8b9fdb82` and the configuration
+  read from Platform dispatch `4d66ff5584e4f62239551bb02311649334171a84`.
+  Integrity, technical and authority exits reproduced `0/1/1` with byte-identical
+  stdout and empty stderr. The closed matrix remains **20/24 PASS, technical FAIL**,
+  with five historical guarantees still open.
+- This pass used offline validation, synthetic controls and historical packet replay.
+  Hosted execution remains blocked and requires separate approval.
 
 ### 1.19.2 candidate intake
 
