@@ -604,7 +604,7 @@ def run(
                                capture_output=expected_error_code is not None, text=expected_error_code is not None)
     if expected_error_code is not None:
         output = (completed.stdout or "") + (completed.stderr or "")
-        print(output, end="", flush=True)
+        print(output, end="" if output.endswith("\n") else "\n", flush=True)
         if completed.returncode == 0 or expected_error_code not in output or "CS8784" in output:
             raise ValueError(f"Unsupported compiler host did not refuse with {expected_error_code} before analyzer initialization.")
     elif completed.returncode != 0:
