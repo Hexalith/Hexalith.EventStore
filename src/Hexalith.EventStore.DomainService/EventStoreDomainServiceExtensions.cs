@@ -786,6 +786,12 @@ public static class EventStoreDomainServiceExtensions {
         // Observability, health checks, service discovery, and HTTP resilience.
         _ = builder.AddServiceDefaults();
 
+        // The gateway admits each command once per idempotency key. A shorter attempt followed by a
+        // transport retry resubmits a command that is still executing, and that duplicate admission answers
+        // Pending (202) in place of the original synchronous outcome. One attempt owns the whole budget.
+        _ = builder.Services.AddHttpClient(nameof(Hexalith.EventStore.Client.Gateway.IEventStoreGatewayClient))
+            .AddEventStoreBoundedInvocationResilience();
+
         // Domain hosts receive catalog-fenced dispatch, so they opt in to the route catalog explicitly.
         _ = builder.Services.AddEventStoreDomainServiceSecurity(builder.Configuration);
 
