@@ -64,6 +64,10 @@ WWW-Authenticate: Bearer realm="hexalith-eventstore"
 
 See the [Quickstart Guide](../../getting-started/quickstart.md) for the authenticated local UI flow.
 
+## Trusted Domain Service Denial
+
+A trusted domain service can refuse a request that the gateway already authenticated. The gateway then returns this type with a metadata-only body: title `Authentication required`, `code` and `category` `authentication_failure`, `retryable` `false`, `details.visibility` `metadata_only`, and no `detail`. A new JWT does not change this outcome. Do not resend the request unchanged; contact the domain service operator.
+
 ## Related
 
 - [Error Reference Index](./index.md)

@@ -13,6 +13,7 @@ using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.OpenApi;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.ServiceDefaults.Routing;
@@ -92,6 +93,12 @@ public class ErrorReferenceHandlerParityTests(OpenApiWebApplicationFactory facto
             (typeof(DaprSidecarUnavailableHandler), "service-unavailable",
                 new DaprException("unavailable", new RpcException(new Status(StatusCode.Unavailable, "unavailable")))),
             (typeof(RouteCatalogUnavailableExceptionHandler), "service-unavailable", new RouteCatalogUnavailableException("unavailable")),
+            (typeof(DomainServiceSafeDenialExceptionHandler), "authentication-required",
+                new DomainServiceSafeDenialException(StatusCodes.Status401Unauthorized)),
+            (typeof(DomainServiceSafeDenialExceptionHandler), "forbidden", new DomainServiceSafeDenialException(StatusCodes.Status403Forbidden)),
+            (typeof(DomainServiceSafeDenialExceptionHandler), "not-found", new DomainServiceSafeDenialException(StatusCodes.Status404NotFound)),
+            (typeof(DomainServiceSafeDenialExceptionHandler), "service-unavailable",
+                new DomainServiceSafeDenialException(StatusCodes.Status503ServiceUnavailable)),
             (typeof(GlobalExceptionHandler), "internal-server-error", new InvalidOperationException()),
         ];
 
@@ -100,10 +107,11 @@ public class ErrorReferenceHandlerParityTests(OpenApiWebApplicationFactory facto
         handlers.Select(handler => handler.GetType()).Distinct()
             .ShouldBe(scenarios.Select(scenario => scenario.Handler).Distinct(), ignoreOrder: true);
 
-        // The primary bad-request and not-found samples come from request parsing and command replay.
+        // The primary bad-request, not-found and authentication-required samples come from request parsing,
+        // command replay and the JWT challenge.
         var examples = ErrorReferenceEndpoints.ErrorModels.ToDictionary(
             model => model.Slug,
-            model => (model.Slug is "bad-request" or "not-found"
+            model => (model.Slug is "bad-request" or "not-found" or "authentication-required"
                     ? model.AdditionalExamples ?? []
                     : new[] { model.ExampleJson }.Concat(model.AdditionalExamples ?? []))
                 .Select(example => JsonNode.Parse(example)).ToList());

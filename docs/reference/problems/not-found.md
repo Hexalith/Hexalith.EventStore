@@ -47,6 +47,10 @@ Content-Type: application/problem+json
 2. Confirm the resource has been created by submitting the appropriate command first.
 3. Check that you are querying the correct query type for the resource.
 
+## Trusted Domain Service Denial
+
+A trusted domain service can report that a resource is absent or not visible to the caller. The gateway then returns this type with a metadata-only body: title `Resource not available`, `code` and `category` `not_found_to_caller`, `retryable` `false`, `details.visibility` `metadata_only`, and no `detail`. The response does not reveal whether the resource exists. Verify the identifier and your access with the domain service owner.
+
 ## Related
 
 - [Error Reference Index](./index.md)

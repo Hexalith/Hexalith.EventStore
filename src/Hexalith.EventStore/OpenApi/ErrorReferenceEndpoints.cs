@@ -55,9 +55,15 @@ public static class ErrorReferenceEndpoints {
             ["Check the 'errors' object for specific field failures.", "Correct the invalid fields and resubmit."]),
 
         new("authentication-required", "Authentication Required", 401,
-            "No JWT was provided or the JWT has an invalid signature or issuer.",
+            "No JWT was provided or the JWT has an invalid signature or issuer. A trusted domain service's metadata-only denial of an authenticated request also returns this type with code authentication_failure.",
             """{"type":"https://hexalith.io/problems/authentication-required","title":"Unauthorized","status":401,"detail":"Authentication is required to access this resource."}""",
-            ["Obtain a valid JWT from your identity provider.", "Include the token in the Authorization header: Bearer {token}."]),
+            ["Obtain a valid JWT from your identity provider.", "Include the token in the Authorization header: Bearer {token}.", "For code authentication_failure, a new JWT does not help because the domain service refused the request; do not resend it unchanged, and contact the domain service operator."])
+        {
+            AdditionalExamples =
+            [
+                """{"type":"https://hexalith.io/problems/authentication-required","title":"Authentication required","status":401,"category":"authentication_failure","code":"authentication_failure","retryable":false,"details":{"visibility":"metadata_only"}}""",
+            ],
+        },
 
         new("token-expired", "Token Expired", 401,
             "The JWT provided has expired and is no longer valid.",
@@ -76,24 +82,26 @@ public static class ErrorReferenceEndpoints {
         },
 
         new("forbidden", "Forbidden", 403,
-            "The JWT is valid but the authenticated user is not authorized for the requested tenant or operation.",
+            "The JWT is valid but the authenticated user is not authorized for the requested tenant or operation. A trusted domain service's metadata-only denial of an admitted request also returns this type with code authorization_denied.",
             """{"type":"https://hexalith.io/problems/forbidden","title":"Forbidden","status":403,"detail":"Access denied for tenant 'tenant-b'.","correlationId":"01JAXYZ1234567890ABCDEFGH","tenantId":"tenant-b","reason":"Access denied for tenant 'tenant-b'.","reasonCode":"insufficient_permission"}""",
-            ["Request access to the tenant from your administrator.", "Verify you are using the correct tenant identifier."])
+            ["Request access to the tenant from your administrator.", "Verify you are using the correct tenant identifier.", "For code authorization_denied, the domain service refused the operation under its own authority; request that access from the domain service owner."])
         {
             AdditionalExamples =
             [
                 """{"type":"https://hexalith.io/problems/forbidden","title":"Forbidden","status":403,"detail":"Forbidden","correlationId":"01JAXYZ1234567890ABCDEFGH","reasonCode":"insufficient_permission","tenantId":"tenant-b"}""",
+                """{"type":"https://hexalith.io/problems/forbidden","title":"Authorization denied","status":403,"category":"authorization_denied","code":"authorization_denied","retryable":false,"details":{"visibility":"metadata_only"}}""",
             ],
         },
 
         new("not-found", "Not Found", 404,
-            "Command replay could not find the requested command, or a query could not find its projection.",
+            "Command replay could not find the requested command, or a query could not find its projection. A trusted domain service's metadata-only denial also returns this type with code not_found_to_caller when the resource is absent or not visible to the caller.",
             """{"type":"https://hexalith.io/problems/not-found","title":"Not Found","status":404,"detail":"No command found for correlation ID '01JAXYZ1234567890ABCDEFGH'.","correlationId":"01JAXYZ1234567890ABCDEFGH","tenantId":"tenant-a"}""",
-            ["Verify the resource identifier.", "Check that the resource has not been deleted or expired."])
+            ["Verify the resource identifier.", "Check that the resource has not been deleted or expired.", "For code not_found_to_caller, the response does not reveal whether the resource exists; verify the identifier and your access with the domain service owner."])
         {
             AdditionalExamples =
             [
                 """{"type":"https://hexalith.io/problems/not-found","title":"Not Found","status":404,"detail":"The requested resource was not found.","correlationId":"01JAXYZ1234567890ABCDEFGH","reasonCode":"query_projection_missing"}""",
+                """{"type":"https://hexalith.io/problems/not-found","title":"Resource not available","status":404,"category":"not_found_to_caller","code":"not_found_to_caller","retryable":false,"details":{"visibility":"metadata_only"}}""",
             ],
         },
 
@@ -152,14 +160,15 @@ public static class ErrorReferenceEndpoints {
             ["Wait for the interval specified in the Retry-After response header before retrying.", "Consider reducing request frequency or batching commands."]),
 
         new("service-unavailable", "Service Unavailable", 503,
-            "The command processing pipeline is temporarily unavailable (e.g., DAPR sidecar unreachable).",
+            "The command processing pipeline is temporarily unavailable (e.g., DAPR sidecar unreachable). A trusted domain service's metadata-only denial also returns this type with code read_model_unavailable and retryable true.",
             """{"type":"https://hexalith.io/problems/service-unavailable","title":"Service Unavailable","status":503,"detail":"The command processing pipeline is temporarily unavailable. Please retry after the specified interval."}""",
-            ["Retry after the Retry-After interval when present, or wait briefly before retrying.", "If the error persists, check infrastructure health."])
+            ["Retry after the Retry-After interval when present, or wait briefly before retrying.", "If the error persists, check infrastructure health.", "For code read_model_unavailable, the response has no Retry-After header; retry after a short backoff."])
         {
             AdditionalExamples =
             [
                 """{"type":"https://hexalith.io/problems/service-unavailable","title":"Service Unavailable","status":503,"detail":"The command processing pipeline is temporarily unavailable. Please retry after the specified interval.","correlationId":"01JAXYZ1234567890ABCDEFGH","reasonCode":"authorization_service_unavailable","retryAfter":"30"}""",
                 """{"type":"https://hexalith.io/problems/service-unavailable","title":"Service Unavailable","status":503,"detail":"Catalog authority cannot safely admit this operation."}""",
+                """{"type":"https://hexalith.io/problems/service-unavailable","title":"Read model unavailable","status":503,"category":"read_model_unavailable","code":"read_model_unavailable","retryable":true,"details":{"visibility":"metadata_only"}}""",
             ],
         },
 

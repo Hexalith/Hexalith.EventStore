@@ -83,6 +83,10 @@ The extension name is `reasonCode`. The legacy `reason` extension and `detail` a
 2. If you need access to a different tenant, request updated credentials from your identity provider administrator.
 3. Ensure the `tenant` field in your command matches a tenant you are authorized for.
 
+## Trusted Domain Service Denial
+
+A trusted domain service can refuse a request that gateway authorization already admitted. The gateway then returns this type with a metadata-only body: title `Authorization denied`, `code` and `category` `authorization_denied`, `retryable` `false`, `details.visibility` `metadata_only`, and no `detail` or `reasonCode`. Request the access from the domain service owner.
+
 ## Related
 
 - [Error Reference Index](./index.md)

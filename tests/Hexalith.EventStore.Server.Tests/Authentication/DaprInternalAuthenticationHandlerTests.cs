@@ -11,8 +11,12 @@ using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.DomainService;
+using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.HealthChecks;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Tests.Integration;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
@@ -216,11 +220,65 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     public async Task ValidSignedWorkloadCommandReachesRouter()
     {
         _ = _factory.CommandRouter.RouteCommandAsync(
-                Arg.Any<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand>(),
+                Arg.Any<SubmitCommand>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new Hexalith.EventStore.Server.Actors.CommandProcessingResult(
+            .Returns(new CommandProcessingResult(
                 Accepted: true, CorrelationId: "workload-correlation"));
         using HttpClient client = _factory.CreateClient();
+        using HttpRequestMessage request = SignedWorkloadCommandRequest();
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        _ = await _factory.CommandRouter.Received(1).RouteCommandAsync(
+            Arg.Is<SubmitCommand>(command =>
+                command.Tenant == "tenant-a"
+                && command.Domain == "timesheets"
+                && command.CommandType == "CommitMagicLinkUse"
+                && command.Extensions != null
+                && command.Extensions[EventStoreGatewayVerifiedOrigin.ExtensionKey] == AllowedCaller),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>The shared gateway preserves a trusted owner's refusal of a frozen mutation.</summary>
+    [Fact]
+    public async Task WorkloadCommandReturnsSafeProblemWhenOwnerFreezesMutations()
+    {
+        var denial = new DomainServiceSafeDenialException((int)HttpStatusCode.ServiceUnavailable);
+        _ = _factory.CommandRouter.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(Accepted: false, ErrorMessage: denial.SafeResultCode,
+                CorrelationId: "workload-correlation"));
+        using HttpClient client = _factory.CreateClient();
+        using HttpRequestMessage request = SignedWorkloadCommandRequest();
+
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        response.Content.Headers.ContentType.ShouldNotBeNull().MediaType.ShouldBe("application/problem+json");
+        string body = await response.Content.ReadAsStringAsync(cancellationToken);
+        using JsonDocument document = JsonDocument.Parse(body);
+        JsonElement problem = document.RootElement;
+        problem.GetProperty("status").GetInt32().ShouldBe((int)HttpStatusCode.ServiceUnavailable);
+        problem.GetProperty("type").GetString().ShouldBe(ProblemTypeUris.ServiceUnavailable);
+        problem.GetProperty("title").GetString().ShouldBe("Read model unavailable");
+        problem.TryGetProperty("detail", out _).ShouldBeFalse();
+        problem.GetProperty("category").GetString().ShouldBe("read_model_unavailable");
+        problem.GetProperty("code").GetString().ShouldBe("read_model_unavailable");
+        problem.GetProperty("retryable").GetBoolean().ShouldBeTrue();
+        problem.GetProperty("details").GetProperty("visibility").GetString().ShouldBe("metadata_only");
+        body.ShouldNotContain(denial.SafeResultCode);
+        body.ShouldNotContain(denial.Message);
+        body.ShouldNotContain("tenant-a");
+        body.ShouldNotContain("time-entry-1");
+        _ = await _factory.CommandRouter.Received(1).RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+        _factory.Logs.Messages.ShouldContain(message => message.Contains("SecurityEvent=DomainServiceSafeDenial", StringComparison.Ordinal)
+            && message.Contains("CorrelationId=story-5-5-correlation", StringComparison.Ordinal)
+            && message.Contains("StatusCode=503", StringComparison.Ordinal));
+    }
+
+    private static HttpRequestMessage SignedWorkloadCommandRequest()
+    {
         var bindings = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = "tenant-a",
@@ -238,23 +296,12 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
             Payload = new { capabilityId = "capability-1" },
             CorrelationId = "workload-correlation"
         };
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands/workload")
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands/workload")
         {
             Content = new StringContent(JsonSerializer.Serialize(body, JsonSerializerOptions.Web), Encoding.UTF8, "application/json")
         };
         AddInternalHeaders(request, assertion, includeChannelToken: true);
-
-        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
-        _ = await _factory.CommandRouter.Received(1).RouteCommandAsync(
-            Arg.Is<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand>(command =>
-                command.Tenant == "tenant-a"
-                && command.Domain == "timesheets"
-                && command.CommandType == "CommitMagicLinkUse"
-                && command.Extensions != null
-                && command.Extensions[EventStoreGatewayVerifiedOrigin.ExtensionKey] == AllowedCaller),
-            Arg.Any<CancellationToken>());
+        return request;
     }
 
     private readonly InternalBoundaryFactory _factory;

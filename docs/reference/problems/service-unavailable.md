@@ -67,6 +67,10 @@ Retry-After: 30
 3. Check network connectivity between service components.
 4. Review structured logs for the specific infrastructure failure.
 
+## Trusted Domain Service Denial
+
+A trusted domain service can refuse a request while its own state is unavailable. The gateway then returns this type with a metadata-only body: title `Read model unavailable`, `code` and `category` `read_model_unavailable`, `retryable` `true`, `details.visibility` `metadata_only`, and no `detail`. This response sends no `Retry-After` header. Retry after a short backoff.
+
 ## Related
 
 - [Error Reference Index](./index.md)
