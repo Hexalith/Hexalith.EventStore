@@ -3367,10 +3367,10 @@ So that the AD-26 owner decision and canonical production profile bind exactly w
 **Then** exact immutable identities and loaded configuration bind the live qualification evidence
 **And** below-floor or mutable production inputs fail; guide drift goes to Story 5.9. The owner-approved 2026-11-25 candidate target is Dapr runtime/control-plane `1.19.2`, CLI `1.19.1`, embedded components-contrib `1.19.2` and .NET SDK `1.19.1`. The 1.19.1 target, its lock and its broker results remain historical comparison inputs, not current conformance. The earlier Dapr `1.18.7` / CLI `1.18.2` / components `1.18.6` and RabbitMQ/Kafka observations remain historical comparison, not new-runtime conformance or production selection.
 
-**Given** `pubsub.kafka/v1` and `pubsub.rabbitmq/v1` self-hosted candidates
-**When** the complete 12-scenario matrix per broker executes in exclusively allocated disposable local infrastructure
+**Given** the owner-approved `pubsub.kafka/v1` successor scope
+**When** the complete 12-scenario Kafka matrix executes in exclusively allocated disposable infrastructure
 **Then** redelivery after subscriber failure, durable delivery/quarantine and failed diversion, retention/expiry, stable CloudEvent `id == MessageId` and deduplication, scopes, TLS, secrets/rotation, cancellation/backpressure and missing bindings have independently verified command-bound Dapr persisted readback and separate broker diagnostics
-**And** both rotation failures and RabbitMQ pressure/missing bindings meet the approved closure controls or remain explicit rejected/unresolved observations; timeout/cancellation never establishes no effect. Preserve historical packets and all unrelated-container baseline identities/specifications; disappearance, mutation, unlisted packet artifacts, missing observations or contradictory receipts fail capture integrity. Azure/AWS qualification is outside this slice.
+**And** technical qualification requires all 12 Kafka vectors to pass against the existing predicates, including attributable Kafka pressure rejection and stale-publisher rotation evidence. RabbitMQ is deferred pending separate qualification. Candidate-02 retains its 24-vector denominator and technical FAIL. Timeout/cancellation never establishes no effect. Preserve historical packets and all unrelated-container baseline identities/specifications. Disappearance, mutation, unlisted packet artifacts, missing observations, extra brokers or contradictory receipts fail capture integrity. Azure/AWS qualification is outside this slice.
 
 **Given** an integrity-valid capture containing rejected guarantees
 **When** the separately approved ES-DIAG slice is evaluated

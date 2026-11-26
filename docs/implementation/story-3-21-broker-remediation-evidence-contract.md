@@ -1,10 +1,15 @@
 # Story 3.21 — offline remediation assessment and proposed evidence contract
 
-**Current handoff (2026-11-14):** the [completed Platform handoff reconciliation](#completed-platform-handoff-reconciliation--2026-11-14)
+**Current scope (2026-11-26):** The owner approved a Kafka-only successor with
+all 12 Kafka vectors and their existing predicates. RabbitMQ work is deferred
+until separate qualification. The two-broker planning below records the original
+comparison and remediation work. [Approved successor scope](../../_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md#approved-kafka-only-successor--2026-11-26)
+
+**Prior handoff (2026-11-14):** the [completed Platform handoff reconciliation](#completed-platform-handoff-reconciliation--2026-11-14)
 below supersedes the earlier pending-custody/unposted-issue statements. Those dated preparation
 statuses remain historical; the approved acceptance criteria remain binding. No successor is admitted.
 
-**Accepted next priority:** [RabbitMQ Package A, then Package B](#accepted-remediation-priority--2026-11-14),
+**RabbitMQ remediation order:** [Package A, then Package B](#accepted-remediation-priority--2026-11-14),
 with Kafka stop conditions and independent re-entry retained. The subsequent
 [Package A code contribution](#rabbitmq-package-a-code-contribution-submitted--2026-11-14)
 and [Package B submission reconciliation](#rabbitmq-package-b-submission-reconciliation--2026-11-15)
