@@ -20,12 +20,22 @@ public sealed class DurableBrokerQualificationFixture : IAsyncDisposable
     /// <returns>The independently validated technical qualification result.</returns>
     public async Task<JsonDocument> QualifyAsync(CancellationToken cancellationToken)
     {
+        if (Path.Exists(EvidenceDirectory))
+        {
+            throw new InvalidOperationException($"Broker qualification requires a fresh evidence directory: {EvidenceDirectory}.");
+        }
+
         string root = FindRepositoryRoot();
         string profile = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_QUALIFICATION_PROFILE") ?? "deploy/dapr/qualification/runtime-lock.json";
         string? platformConfiguration = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_PLATFORM_CONFIG");
         int executionCode = await RunAsync(root,
             QualificationArguments(profile, platformConfiguration, EvidenceDirectory),
             cancellationToken).ConfigureAwait(false);
+        string packetPath = Path.Combine(EvidenceDirectory, "packet.json");
+        if (executionCode is not (0 or 1) || !File.Exists(packetPath))
+        {
+            throw new InvalidOperationException($"Broker qualification produced no packet. Inspect {EvidenceDirectory}.execution.log.");
+        }
 
         // Integrity verification accepts truthful negative packets so the caller
         // can distinguish a failed guarantee from a broken or missing receipt.
@@ -41,15 +51,7 @@ public sealed class DurableBrokerQualificationFixture : IAsyncDisposable
             throw new InvalidOperationException($"Broker packet integrity failed; inspect {EvidenceDirectory}.");
         }
 
-        JsonDocument packet = JsonDocument.Parse(await File.ReadAllTextAsync(
-            Path.Combine(EvidenceDirectory, "packet.json"), cancellationToken).ConfigureAwait(false));
-        if (executionCode is not (0 or 1))
-        {
-            packet.Dispose();
-            throw new InvalidOperationException($"Broker qualification did not produce bounded outcomes; inspect {EvidenceDirectory}.");
-        }
-
-        return packet;
+        return JsonDocument.Parse(await File.ReadAllTextAsync(packetPath, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>Builds the original matrix invocation with an explicitly paired optional Platform input.</summary>
@@ -59,11 +61,11 @@ public sealed class DurableBrokerQualificationFixture : IAsyncDisposable
     /// <returns>Arguments passed directly to Python without shell interpretation.</returns>
     internal static string[] QualificationArguments(string profile, string? platformConfiguration, string output)
     {
-        bool platformProfile = string.Equals(Path.GetFileName(profile),
-            "runtime-lock-1.19.1-platform-config-v1.json", StringComparison.Ordinal);
+        bool platformProfile = Path.GetFileName(profile) is
+            "runtime-lock-1.19.1-platform-config-v1.json" or "runtime-lock-1.19.2-platform-config-v1.json";
         if (platformProfile != (platformConfiguration is not null) || platformConfiguration is not null && string.IsNullOrWhiteSpace(platformConfiguration))
         {
-            throw new ArgumentException("Platform configuration and the explicit platform-config-v1 profile are required together.");
+            throw new ArgumentException("Platform configuration and an explicit Platform profile are required together.");
         }
 
         string[] arguments = ["tools/qualify-dapr-brokers.py", "--profile", profile, "--brokers", "rabbitmq,kafka", "--output", output];

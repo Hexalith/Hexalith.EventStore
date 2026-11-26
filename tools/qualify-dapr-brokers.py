@@ -30,10 +30,12 @@ from dapr_broker_qualification import (BROKERS, SCENARIOS, PRESSURE_POLICY, PRES
     attributable_denial, pressure_rejection, kafka_group_available, digest, evaluate, missing_binding_absent, rabbitmq_pressure_effective,
     reconcile_publications, validate_profile, write_json)
 
-from dapr_platform_broker_configuration import (PROFILE_ID, CONFIGURATION_PATH, PROVENANCE_PATH, RENDERED_PATH,
+from dapr_platform_broker_configuration import (CONFIGURATION_PATH, PROVENANCE_PATH, RENDERED_PATH,
     load_configuration, provenance, component_source, apply_resiliency, kafka_settings, properties_bytes, sanitize_kafka_properties)
 
-from dapr_runtime_qualification import PLATFORM_PROFILE, CustodyError, ExclusiveDocker, profile_path, source_input, child_docker, cleanup_child_resources, resource_journal, register_private_custody
+from dapr_runtime_qualification import (CAPTURE_BLOCKED, CONFIG_1192, PLATFORM_PROFILES, CustodyError,
+    ExclusiveDocker, candidate_evidence, capture_tools, control_binary_sha, image_reference, load_profile,
+    profile_path, source_input, child_docker, cleanup_child_resources, resource_journal, register_private_custody)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,21 +51,30 @@ def port():
 
 
 class Run:
+    @staticmethod
+    def input_selection(args):
+        profile_bytes, profile = load_profile(args.profile, ROOT)
+        config_path = getattr(args, "platform_config", None)
+        if (profile_path(profile) in PLATFORM_PROFILES) != (config_path is not None):
+            raise ValueError("platformConfig: configuration and explicit platform profile are required together")
+        configuration_bytes, configuration = None, None
+        if config_path is not None:
+            configuration_bytes, configuration = load_configuration(config_path, profile["inputs"].get(CONFIG_1192))
+        return profile_bytes, profile, configuration_bytes, configuration
+
     def __init__(self, args):
+        selection = self.input_selection(args)
+        if selection[1].get("captureAdmission") == "blocked":
+            raise ValueError(CAPTURE_BLOCKED)
+        self._initialize_packet(args, selection)
+
+    def _initialize_packet(self, args, selection):
         self.args = args
         self.output = args.output.resolve()
-        self.profile_bytes = args.profile.read_bytes()
-        self.profile = json.loads(self.profile_bytes)
-        # Validate every retained path before copying bytes or creating any
-        # output/private directory. A rejected profile has no side effects.
-        validate_profile(self.profile, ROOT)
-        selected = profile_path(self.profile)
-        config_path = getattr(args, "platform_config", None)
-        self.platform_configuration = None
-        if (selected == PLATFORM_PROFILE) != (config_path is not None):
-            raise ValueError("platformConfig: configuration and explicit platform profile are required together")
-        if config_path is not None:
-            configuration_bytes, self.platform_configuration = load_configuration(config_path)
+        self.profile_bytes, self.profile, configuration_bytes, self.platform_configuration = selection
+        # Validate capture code before creating any directories.
+        tools = capture_tools(ROOT) if candidate_evidence(self.profile) else (
+            "qualify-dapr-brokers.py", "dapr_broker_qualification.py", "dapr_runtime_qualification.py")
         self.output.mkdir(parents=True, exist_ok=False)
         self.receipts = []
         self.containers = []
@@ -93,7 +104,7 @@ class Run:
         self.retained_inputs = self.output / "inputs"
         all_inputs = set(self.profile["inputs"]) | {profile_path(self.profile)}
         all_inputs.update(x["manifest"]["path"] for x in self.profile["images"].values())
-        if self.profile["runtime"]["version"] == "1.19.1":
+        if candidate_evidence(self.profile):
             all_inputs.add(self.profile["chart"]["path"])
             for image in self.profile["images"].values():
                 all_inputs.update(child["path"] for child in image.get("children", {}).values())
@@ -106,10 +117,6 @@ class Run:
                 source = source_input(self.profile, ROOT, name, self.profile["inputs"][name]) if name in self.profile["inputs"] else ROOT / name
                 shutil.copyfile(source, destination)
         # Current capture code is distinct from the original lock's historical input subject.
-        tools = [name.removeprefix('tools/') for name in self.profile['inputs'] if name.startswith('tools/') and name.endswith('.py')] if self.profile['runtime']['version'] == '1.19.1' else ("qualify-dapr-brokers.py", "dapr_broker_qualification.py", "dapr_runtime_qualification.py")
-        if self.profile["runtime"]["version"] == "1.19.1":
-            current = json.loads((ROOT / PLATFORM_PROFILE).read_text())
-            tools = [name.removeprefix('tools/') for name in current['inputs'] if name.startswith('tools/') and name.endswith('.py')]
         for name in tools:
             destination = self.output / "execution-tools" / name
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -265,17 +272,16 @@ class Run:
         container = self.run_id + "-" + name
         cidfile = self.private / (name + "-extract.cid")
         self.containers.append(cidfile)
-        image = self.profile["images"][name]["reference"]
+        image = image_reference(self.profile, name)
         self.docker("create", "--cidfile", cidfile, "--name", container, "--label", "hexalith.qualification=" + self.run_id, image, "./" + name)
         creation = next(index for index in reversed(range(len(self.receipts))) if self.receipts[index]['argv'][:2] == ['docker', 'create'])
         binary = self.private / name
         self.docker("cp", cidfile.read_text().strip() + ":/" + name, str(binary))
         extraction = len(self.receipts) - 1
         binary.chmod(0o755)
-        if self.profile["runtime"]["version"] == "1.19.1":
-            from dapr_runtime_qualification import CONTROL_BINARIES
-            if digest(binary) != CONTROL_BINARIES[name]:
-                raise ValueError("extracted control-plane executable identity mismatch")
+        expected = control_binary_sha(self.profile, name)
+        if expected is not None and digest(binary) != expected:
+            raise ValueError("extracted control-plane executable identity mismatch")
         self.receipts.append({'argv': ['SHA256', str(binary)], 'startedUtc': utc(), 'endedUtc': utc(), 'exitCode': 0, 'output': digest(binary)})
         self.identities.setdefault("controlPlane", {})[name] = {"image": image, "binarySha256": digest(binary),
             'creationReceipt': creation, 'extractionReceipt': extraction, 'hashReceipt': len(self.receipts) - 1}
@@ -321,6 +327,8 @@ class Run:
 
     def prepare(self):
         validate_profile(self.profile, ROOT)
+        if self.profile.get("captureAdmission") == "blocked":
+            raise ValueError(CAPTURE_BLOCKED)
         owner = ExclusiveDocker(self.command, self.args.exclusive_worker)
         self.docker_owner = owner
         owner.capture()
@@ -343,9 +351,8 @@ class Run:
         self.command([str(daprd), "--version"])
         self.command([str(cli), "--version"])
         self.identities.update({"preflightPassed": True, "daprdSha256": digest(daprd), "cliSha256": digest(cli), "dockerEndpoint": owner.endpoint})
-        for name in ["placement", "scheduler", *BROKERS]:
-            self.docker("pull", self.profile["images"][name]["reference"], timeout=180)
-        self.docker("pull", self.profile["openbao"]["reference"], timeout=180)
+        for name in ["placement", "scheduler", *BROKERS, "openbao"]:
+            self.docker("pull", image_reference(self.profile, name), timeout=180)
         self.certificates()
         self.openbao()
         placement_port, scheduler_port = port(), port()
@@ -387,7 +394,7 @@ class Run:
         data.chmod(0o777)
         # The image runs as openbao; unused image volumes become root-owned tmpfs.
         # Its supported switch avoids chown there while /data remains our bind.
-        container = self.container("openbao", self.profile["openbao"]["reference"],
+        container = self.container("openbao", image_reference(self.profile, "openbao"),
                        ["server", "-config=/work/bao.hcl"],
                        ["--cap-add=IPC_LOCK", "-e", "SKIP_CHOWN=1", "-p", "127.0.0.1::8200", "-v", f"{self.private}:/work:ro", "-v", f"{data}:/data"])
         self.bao_url = f"https://127.0.0.1:{self.published_port(container, 8200)}"
@@ -420,13 +427,13 @@ class Run:
             config = "listeners.tcp = none\nlisteners.ssl.default = 5671\nssl_options.cacertfile = /work/ca.crt\nssl_options.certfile = /work/server.crt\nssl_options.keyfile = /work/server.key\nssl_options.verify = verify_peer\nssl_options.fail_if_no_peer_cert = true\n"
             (self.private / "rabbitmq.conf").write_text(config)
             env = {**os.environ, "RABBITMQ_DEFAULT_USER": "qualification", "RABBITMQ_DEFAULT_PASS": self.password, "ERL_EPMD_PORT": str(port()), "RABBITMQ_DIST_PORT": str(port())}
-            self.broker_container = self.container(broker, self.profile["images"][broker]["reference"], options=["-p", "127.0.0.1::5671", "-v", f"{self.private}:/work:ro", "-v", f"{self.private}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro", "-v", f"{self.broker_dir}:/var/lib/rabbitmq", "-e", "RABBITMQ_DEFAULT_USER", "-e", "RABBITMQ_DEFAULT_PASS", "-e", "ERL_EPMD_PORT", "-e", "RABBITMQ_DIST_PORT"], env=env)
+            self.broker_container = self.container(broker, image_reference(self.profile, broker), options=["-p", "127.0.0.1::5671", "-v", f"{self.private}:/work:ro", "-v", f"{self.private}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro", "-v", f"{self.broker_dir}:/var/lib/rabbitmq", "-e", "RABBITMQ_DEFAULT_USER", "-e", "RABBITMQ_DEFAULT_PASS", "-e", "ERL_EPMD_PORT", "-e", "RABBITMQ_DIST_PORT"], env=env)
             self.broker_ready()
             # Explicit exact-name grants; no unrestricted default application user.
             exact_resources = self.profile["topics"] + ["qualification-consumer-" + topic for topic in self.profile["topics"]]
             grant = "^(" + "|".join(re.escape(name) for name in exact_resources) + ")$"
             self.docker("exec", self.broker_container, "rabbitmqctl", "set_permissions", "qualification", grant, grant, grant)
-            pattern = PRESSURE_PATTERN if self.profile["runtime"]["version"] == "1.19.1" else "^qualification[.].*backpressure.*"
+            pattern = PRESSURE_PATTERN if candidate_evidence(self.profile) else "^qualification[.].*backpressure.*"
             self.docker("exec", self.broker_container, "rabbitmqctl", "set_policy", PRESSURE_POLICY, pattern,
                         json.dumps(PRESSURE_DEFINITION), "--apply-to", "queues")
             self.pressure_policy_receipt = len(self.receipts) - 1
@@ -435,7 +442,7 @@ class Run:
             self.broker_internal_port = self.broker_port
             self.kafka_config()
             command = "/opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id MkU3OEVBNTcwNTJENDM2Qk --config /work/kafka.properties && exec /opt/kafka/bin/kafka-server-start.sh /work/kafka.properties"
-            self.broker_container = self.container(broker, self.profile["images"][broker]["reference"], ["/bin/bash", "-ec", command], ["-p", f"127.0.0.1::{self.broker_internal_port}", "-v", f"{self.private}:/work:ro", "-v", f"{self.broker_dir}:/var/lib/kafka/data"])
+            self.broker_container = self.container(broker, image_reference(self.profile, broker), ["/bin/bash", "-ec", command], ["-p", f"127.0.0.1::{self.broker_internal_port}", "-v", f"{self.private}:/work:ro", "-v", f"{self.broker_dir}:/var/lib/kafka/data"])
             self.broker_ready()
             self.kafka_topics()
             self.broker_secret = {"brokers": f"127.0.0.1:{self.broker_port}"}
@@ -681,7 +688,7 @@ class Run:
         self.stop(self.app)
 
     def scenario(self, scenario):
-        selected = self.profile["runtime"]["version"] == "1.19.1"
+        selected = candidate_evidence(self.profile)
         if scenario == "crash-redelivery":
             event_id, _ = self.publish(data={"crashOnce": True})
             self.wait(lambda: self.app.poll() is not None)
@@ -980,7 +987,7 @@ class Run:
                 try:
                     # Cleanup the private mounted tree only after independent ID cleanup.
                     if self.containers and not unresolved:
-                        helper = self.container("private-cleanup", self.profile["openbao"]["reference"],
+                        helper = self.container("private-cleanup", image_reference(self.profile, "openbao"),
                             ["-ec", f"chown -R {os.getuid()}:{os.getgid()} /cleanup\nchmod -R u+rwX /cleanup"],
                             ["--network", "none", "--user", "0", "-v", f"{self.private_parent}:/cleanup", "--entrypoint", "/bin/sh"])
                         unresolved.add(helper)
@@ -1036,15 +1043,33 @@ class Run:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, required=True)
-    parser.add_argument("--platform-config", type=Path, help="bounded schema-1 Platform JSON; requires the explicit platform-config-v1 profile")
+    parser.add_argument("--platform-config", type=Path, help="bounded schema-1 Platform JSON paired with an explicit Platform profile")
     parser.add_argument("--exclusive-worker", type=Path, default=os.environ.get("QUALIFICATION_EXCLUSIVE_WORKER"), help="exclusive disposable worker allocation JSON; required before Docker mutation")
     parser.add_argument("--brokers", default="rabbitmq,kafka")
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--validate-only", action="store_true", help="check profile and configuration offline without creating a packet")
     args = parser.parse_args()
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     if args.brokers.split(",") != list(BROKERS):
         parser.error("both candidates rabbitmq,kafka are required; missing requested scenarios cannot pass")
+    if not args.validate_only and args.output is None:
+        parser.error("--output is required for capture")
     try:
+        if args.validate_only:
+            profile_bytes, profile, configuration_bytes, config = Run.input_selection(args)
+            receipt = {"profile": profile_path(profile), "profileSha256": hashlib.sha256(profile_bytes).hexdigest(),
+                       "lockedInputs": len(profile["inputs"]), "vectors": len(BROKERS) * len(SCENARIOS)}
+            if config is not None:
+                receipt["configuration"] = provenance(configuration_bytes, config)
+                receipt["componentSha256"] = {}
+                for broker in BROKERS:
+                    path = ROOT / "deploy/dapr/qualification" / (broker + ".yaml")
+                    rendered = component_source(path.read_text(), broker, config)
+                    receipt["componentSha256"][broker] = hashlib.sha256(rendered.encode()).hexdigest()
+            if profile.get("captureAdmission") == "blocked":
+                receipt["captureAdmission"] = "blocked"
+            print(json.dumps(receipt, indent=2))
+            return 0
         run = Run(args)
     except (ValueError, KeyError, TypeError, OSError) as error:
         print(f"FAIL: qualification input rejected: {error}")

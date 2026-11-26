@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dapr_broker_qualification import digest, evaluate, validate_packet, validate_profile, write_json
 from dapr_platform_broker_configuration import (BOUNDS, CONFIGURATION_PATH, PROVENANCE_PATH, RENDERED_PATH,
     load_configuration, parse_configuration, provenance, settings, validate_configuration_packet, KAFKA_STARTUP)
-from dapr_runtime_qualification import CANDIDATE_PROFILE, PLATFORM_PROFILE, source_input
+from dapr_runtime_qualification import CANDIDATE_PROFILE, PLATFORM_PROFILE, control_binary_sha, image_reference, source_input
 import test_dapr_runtime_qualification as historical
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -133,7 +133,7 @@ class ConfigurationTests(unittest.TestCase):
             run.kafka_config()
             self.assertIn("group.initial.rebalance.delay.ms=100\n", (run.private / "kafka.properties").read_text())
             self.assertNotIn("disposable-test-pem", (run.output / "kafka/effective-inputs/kafka.properties").read_text())
-            validate_configuration_packet(run.output, source, run.receipts, False)
+            validate_configuration_packet(run.output, source, run.receipts, False, run.profile)
             run.platform_configuration = {key: CONFIG[key] for key in ("schemaVersion", "platformRevision", "platformPath")}
             for broker in ("rabbitmq", "kafka"):
                 run.broker = broker
@@ -162,7 +162,7 @@ class ConfigurationTests(unittest.TestCase):
             self.assertNotIn(b"private-key-value", retained)
             self.assertNotIn("private-key-value", json.dumps(run.receipts))
             with self.assertRaisesRegex(ValueError, "effective Kafka settings"):
-                validate_configuration_packet(run.output, source, run.receipts, False)
+                validate_configuration_packet(run.output, source, run.receipts, False, run.profile)
 
     def testActualProducerPreflightCommitsMeasuredDaprExecutable(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -227,36 +227,64 @@ class ConfigurationTests(unittest.TestCase):
 
 class PlatformPacketTests(unittest.TestCase):
     def setUp(self):
+        self.prepare_packet(PLATFORM_PROFILE)
+
+    def prepare_packet(self, selected_profile, configuration_path=None):
         control = historical.CandidatePacketTests(); control.setUp()
         self.addCleanup(control.doCleanups)
         self.f = control.fixture; f = self.f
         self.source = f.directory.parent / (f.directory.name + "-platform.json")
         self.addCleanup(self.source.unlink, missing_ok=True)
-        self.source.write_text(json.dumps(CONFIG))
-        profile = json.loads((ROOT / PLATFORM_PROFILE).read_text())
-        for name in set(profile["inputs"]) | {PLATFORM_PROFILE}:
+        data = configuration_path.read_bytes() if configuration_path else json.dumps(CONFIG).encode()
+        config = parse_configuration(data)
+        self.source.write_bytes(data)
+        profile = json.loads((ROOT / selected_profile).read_text())
+        if configuration_path is not None:
+            shutil.rmtree(f.directory / "inputs")
+        for name in set(profile["inputs"]) | {selected_profile}:
             destination = f.directory / "inputs" / name; destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, destination)
+            path = source_input(profile, ROOT, name, profile["inputs"][name]) if name in profile["inputs"] else ROOT / name
+            shutil.copyfile(path, destination)
         shutil.rmtree(f.directory / "execution-tools")
-        for name in profile["inputs"]:
+        for name, expected in profile["inputs"].items():
             if name.startswith("tools/") and name.endswith(".py"):
                 destination = f.directory / "execution-tools" / name.removeprefix("tools/")
-                destination.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(ROOT / name, destination)
-        data = self.source.read_bytes()
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source_input(profile, ROOT, name, expected), destination)
         (f.directory / CONFIGURATION_PATH).parent.mkdir(parents=True, exist_ok=True)
         (f.directory / CONFIGURATION_PATH).write_bytes(data)
-        write_json(f.directory / PROVENANCE_PATH, provenance(data, CONFIG))
+        write_json(f.directory / PROVENANCE_PATH, provenance(data, config))
         run = producer().Run.__new__(producer().Run)
         run.output = f.directory; run.retained_inputs = f.directory / "inputs"; run.receipts = f.commands
         run.private = Path(tempfile.mkdtemp(prefix="platform-render-control-")); self.addCleanup(shutil.rmtree, run.private, True)
-        run.platform_configuration = CONFIG; run.rendered_inputs = []; run.bao_url = "https://127.0.0.1:1234"; run.broker_port = 12345
+        run.platform_configuration = config; run.rendered_inputs = []; run.bao_url = "https://127.0.0.1:1234"; run.broker_port = 12345
         template = {"startedUtc": "2026-11-08T00:00:00+00:00", "endedUtc": "2026-11-08T00:00:01+00:00", "exitCode": 0, "output": ""}
         daprd = "/synthetic/measured/daprd"
         identities_path = f.directory / "execution-identities.json"
         identities = json.loads(identities_path.read_text())
         identities["daprdExecutable"] = {"path": daprd, "hashReceipt": len(f.commands)}
         f.commands.append({**template, "argv": ["SHA256", daprd], "output": profile["runtime"]["binarySha256"]})
+        identities["daprdSha256"] = profile["runtime"]["binarySha256"]
+        for name, identity in identities["controlPlane"].items():
+            creation = f.commands[identity["creationReceipt"]]
+            image = image_reference(profile, name)
+            for key in ("argv", "executedArgv"):
+                creation[key][creation[key].index(identity["image"])] = image
+            identity["image"] = image
+            identity["binarySha256"] = control_binary_sha(profile, name)
+            f.commands[identity["hashReceipt"]]["output"] = identity["binarySha256"]
         write_json(identities_path, identities)
+        for path in f.directory.glob("*/metadata/*.json"):
+            metadata = json.loads(path.read_text())
+            old = metadata.copy()
+            metadata["runtimeVersion"] = profile["runtime"]["version"]
+            for command in f.commands:
+                argv = command["argv"]
+                if argv[0] == "HTTP" and argv[-1].endswith("/v1.0/metadata") and json.loads(command["output"]) == old:
+                    command["output"] = json.dumps(metadata)
+            write_json(path, metadata)
+        cleanup_path = f.directory / "cleanup.json"
+        write_json(cleanup_path, {**json.loads(cleanup_path.read_text()), "errors": []})
         for broker in ("rabbitmq", "kafka"):
             run.broker = broker
             for role in ("qualification-publisher", "qualification-consumer"):
@@ -284,6 +312,7 @@ class PlatformPacketTests(unittest.TestCase):
         run.kafka_config()
         # Exercise the producer's actual container invocation shape without Docker.
         custody = identities["dockerCustody"]
+        kafka_image = image_reference(profile, "kafka")
         def docker(*arguments, **kwargs):
             f.commands.append({**template, "argv": ["docker", "--host", custody["endpoint"], "info", "--format", "{{.ID}}"], "output": custody["daemonId"], "socketIdentity": custody["socketIdentity"]})
             argv = ["docker", *map(str, arguments)]
@@ -291,17 +320,17 @@ class PlatformPacketTests(unittest.TestCase):
                 Path(argv[argv.index("--cidfile") + 1]).write_text("c" * 64)
                 output = "c" * 64
             else:
-                output = json.dumps([{"Id": "c" * 64, "Image": "sha256:" + "d" * 64, "Config": {"Image": profile["images"]["kafka"]["reference"]}}])
+                output = json.dumps([{"Id": "c" * 64, "Image": "sha256:" + "d" * 64, "Config": {"Image": kafka_image}}])
             f.commands.append({**template, "argv": argv, "output": output, "dockerCustody": custody,
                 "executedArgv": ["docker", "--host", custody["endpoint"], *argv[1:]], "daemonObservation": len(f.commands) - 1, "workerAdmission": 1})
             return 0, output
         run.docker = docker; run.run_id = "story-3-21-synthetic"; run.containers = []
-        container_id = run.container("kafka", profile["images"]["kafka"]["reference"], ["/bin/bash", "-ec", KAFKA_STARTUP],
+        container_id = run.container("kafka", kafka_image, ["/bin/bash", "-ec", KAFKA_STARTUP],
             ["-p", "127.0.0.1::12345", "-v", str(run.private) + ":/work:ro", "-v", str(run.private / "kafka") + ":/var/lib/kafka/data"])
         run.docker("inspect", container_id)
         write_json(f.directory / "kafka/image-identity.json", {"containerId": container_id, "imageId": "sha256:" + "d" * 64,
-            "requestedImage": profile["images"]["kafka"]["reference"], "kind": "disposable-broker-container"})
-        f.packet.update(schemaVersion=3, profile=PLATFORM_PROFILE)
+            "requestedImage": kafka_image, "kind": "disposable-broker-container"})
+        f.packet.update(schemaVersion=3, profile=selected_profile)
         write_json(f.directory / "commands.json", f.commands); f.seal()
         # Later controls drive the producer's own Kafka administration through the same Docker custody.
         run.broker_container = container_id; run.profile = profile; self.run = run; self.daprd = daprd

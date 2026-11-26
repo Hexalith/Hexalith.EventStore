@@ -1,0 +1,6 @@
+{
+  "sourceRevision": "82c9d21dc26081a49e453c3c2cd792b3f6b1dbd2",
+  "profile": "deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json",
+  "profileSha256": "f3ccd47b47e4a2cfc3754a75983299025655376f95a22cb14b528460a4f8b9ac",
+  "purpose": "Retain the exact historical input bytes displaced by the 1.19.2 implementation. Historical packets retain their source revision and profile."
+}

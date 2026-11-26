@@ -127,13 +127,30 @@ def validate_profile(profile: dict, root: Path) -> None:
     version = runtime["version"]
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) or tuple(map(int, version.split("."))) < (1, 18, 3):
         raise ValueError("runtime.version: production floor is 1.18.3")
-    from dapr_runtime_qualification import APPROVED, source_input
+    from dapr_runtime_qualification import (APPROVED, CANDIDATE_IDENTITIES, CONFIG_1192, INTAKE_1192,
+        PLATFORM_PROFILE, PLATFORM_1192_PROFILE, profile_path, source_input)
     selected = (version, runtime["cliVersion"], runtime["componentsVersion"])
-    if 'profileId' in profile:
-        from dapr_runtime_qualification import profile_path, PLATFORM_PROFILE
-        if profile_path(profile) != PLATFORM_PROFILE or selected != ('1.19.1', '1.19.1', '1.19.0'):
+    selected_profile = profile_path(profile)
+    versioned = selected_profile == PLATFORM_1192_PROFILE
+    if selected_profile == PLATFORM_PROFILE and selected != ('1.19.1', '1.19.1', '1.19.0'):
+        raise ValueError('profileId: platform profile requires its exact immutable runtime tuple')
+    if versioned:
+        if selected != ('1.19.2', '1.19.1', '1.19.2'):
             raise ValueError('profileId: platform profile requires its exact immutable runtime tuple')
-    if selected not in APPROVED:
+        intake_file = safe_file(root, INTAKE_1192)
+        if digest(intake_file) != 'c6d02b1f73a733a5bae6c23789ea99138579b3c7c797ff80dc738a72c0ec8d21':
+            raise ValueError('runtime: immutable 1.19.2 intake lock differs')
+        intake = json.loads(intake_file.read_text())
+        if (any(value != profile.get(key) for key, value in intake.items() if key != 'inputs')
+                or any(profile['inputs'].get(name) != value for name, value in intake['inputs'].items())
+                or profile['inputs'].get(INTAKE_1192) != digest(intake_file)):
+            raise ValueError('runtime: execution profile differs from the approved intake')
+        if (profile['inputs'].get(CONFIG_1192) != 'b8601e3a6d4e8460d039573ca2f7e1728e52aa67e61fc0710d74cab5d072580b'
+                or profile.get('sdk') != {'version': '1.19.1', 'repository': 'dapr/dotnet-sdk',
+                                         'commit': '70499eb50a5d24dd2511263feec23dac14077fc3'}
+                or profile.get('captureAdmission') != 'blocked'):
+            raise ValueError('profile: comparison configuration, SDK or capture disposition differs')
+    elif selected not in APPROVED:
         raise ValueError("runtime: changed candidates require requalification")
     for key in ("binarySha256", "cliSha256"):
         if not SHA.fullmatch(runtime[key]):
@@ -162,28 +179,34 @@ def validate_profile(profile: dict, root: Path) -> None:
             raise ValueError(f"images.{name}: missing linux/amd64 child")
     if not IMAGE.fullmatch(profile["openbao"]["reference"]):
         raise ValueError("openbao.reference: mutable image")
-    if {(x["repository"], x["tag"], x["commit"]) for x in runtime["sources"]} != APPROVED[selected] or len(runtime["sources"]) != len(APPROVED[selected]):
+    if not versioned and ({(x["repository"], x["tag"], x["commit"]) for x in runtime["sources"]} != APPROVED[selected]
+                          or len(runtime["sources"]) != len(APPROVED[selected])):
         raise ValueError("runtime.sources: candidate source identity mismatch")
-    if version == "1.19.1":
-        from dapr_runtime_qualification import CANDIDATE_IDENTITIES, CANDIDATE_PROFILE, PLATFORM_PROFILE, profile_path
-        selected_profile = profile_path(profile)
+    if version == "1.19.1" or versioned:
         trusted = json.loads((Path(__file__).resolve().parents[1] / selected_profile).read_text())
-        if selected_profile == PLATFORM_PROFILE and profile != trusted:
+        if (versioned or selected_profile == PLATFORM_PROFILE) and profile != trusted:
             raise ValueError('profile: platform identity or current source inventory differs from trusted owning checkout')
         if profile.get('inputs') != trusted['inputs']:
             raise ValueError('inputs: complete source inventory differs from trusted owning checkout')
-        for field in ("binarySha256", "cliSha256", "archives"):
-            if runtime.get(field) != CANDIDATE_IDENTITIES[field]:
-                raise ValueError(f"runtime.{field}: official identity mismatch")
-        if {name: identity["reference"] for name, identity in profile["images"].items()} != CANDIDATE_IDENTITIES["images"] or profile.get("chart") != CANDIDATE_IDENTITIES["chart"]:
-            raise ValueError("images/chart: official identity mismatch")
-        for name, identity in profile["images"].items():
-            manifests = json.loads(safe_file(root, identity["manifest"]["path"]).read_text())["manifests"]
+        if versioned:
+            indexed_images = {**profile["images"], "openbao": profile["openbao"]}
+        else:
+            for field in ("binarySha256", "cliSha256", "archives"):
+                if runtime.get(field) != CANDIDATE_IDENTITIES[field]:
+                    raise ValueError(f"runtime.{field}: official identity mismatch")
+            if {name: identity["reference"] for name, identity in profile["images"].items()} != CANDIDATE_IDENTITIES["images"] or profile.get("chart") != CANDIDATE_IDENTITIES["chart"]:
+                raise ValueError("images/chart: official identity mismatch")
+            indexed_images = profile["images"]
+        for name, identity in indexed_images.items():
+            index = safe_file(root, identity["manifest"]["path"])
+            if versioned and identity["reference"].rsplit(":", 1)[-1] != digest(index):
+                raise ValueError(f"images.{name}: retained OCI index digest mismatch")
+            manifests = json.loads(index.read_text())["manifests"]
             for architecture in ("amd64", "arm64"):
                 matches = [x for x in manifests if x.get("platform", {}).get("os") == "linux" and x["platform"].get("architecture") == architecture]
                 if len(matches) != 1 or not re.fullmatch(r"sha256:[a-f0-9]{64}", matches[0].get("digest", "")):
                     raise ValueError(f"images.{name}: missing/ambiguous linux/{architecture} child")
-                if name not in BROKERS:
+                if versioned or name not in BROKERS:
                     child = identity["children"][architecture]
                     if child["digest"] != matches[0]["digest"] or "sha256:" + digest(safe_file(root, child["path"])) != child["digest"]:
                         raise ValueError(f"images.{name}: child digest mismatch")
@@ -197,8 +220,8 @@ def validate_profile(profile: dict, root: Path) -> None:
             match = re.search(r"^" + field + r":\s*[\"']?([^\s\"']+)", metadata, re.M)
             if not match or match[1] != version or chart[field] != version:
                 raise ValueError(f"chart.{field}: runtime mismatch")
-        gomod = next((name for name in profile["inputs"] if name.endswith("/1.19.1/dapr-dapr-go.mod")), None)
-        if not gomod or "github.com/dapr/components-contrib v1.19.0" not in safe_file(root, gomod).read_text():
+        gomod = next((name for name in profile["inputs"] if name.endswith(f"/{version}/dapr-dapr-go.mod")), None)
+        if not gomod or f"github.com/dapr/components-contrib v{runtime['componentsVersion']}" not in safe_file(root, gomod).read_text():
             raise ValueError("runtime: embedded components source mismatch")
         for binary, archive in runtime["archives"].items():
             checksum = safe_file(root, archive["checksumPath"]).read_text().split()[0]
@@ -540,6 +563,7 @@ def validate_inventory(snapshot, phase, identities, commands):
 
 def validate_control_observations(identities, profile, commands, executed):
     """Require an observed extraction, measured file and native launch chain."""
+    from dapr_runtime_qualification import image_reference
     endpoints = {}
     for name, identity in identities.get('controlPlane', {}).items():
         def command(field):
@@ -552,7 +576,7 @@ def validate_control_observations(identities, profile, commands, executed):
         created, creation = command('creationReceipt')
         copied, extraction = command('extractionReceipt')
         measured, measurement = command('hashReceipt')
-        if (creation['argv'][:2] != ['docker', 'create'] or profile['images'][name]['reference'] not in creation['argv']
+        if (creation['argv'][:2] != ['docker', 'create'] or image_reference(profile, name) not in creation['argv']
                 or extraction['argv'][:2] != ['docker', 'cp'] or not extraction['argv'][2].endswith(':/' + name)
                 or not SHA.fullmatch(creation.get('output', '').strip())
                 or extraction['argv'][2] != creation['output'].strip() + ':/' + name
@@ -612,20 +636,24 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
     actual_files = {str(x.relative_to(directory)) for x in directory.rglob("*") if x.is_file() and x != directory / "packet.json"}
     if actual_files != set(artifacts):
         raise ValueError("artifacts: unlisted or missing retained files")
-    from dapr_runtime_qualification import LEGACY_PROFILE, CANDIDATE_PROFILE, PLATFORM_PROFILE, profile_path, source_input
+    from dapr_runtime_qualification import (LEGACY_PROFILE, CANDIDATE_PROFILE, PLATFORM_PROFILES,
+        PLATFORM_1192_PROFILE, candidate_evidence, capture_tools, control_binary_sha, execution_tools,
+        image_reference, load_profile, profile_path, source_input)
     selected_profile = packet.get("profile", LEGACY_PROFILE)
-    if selected_profile not in (LEGACY_PROFILE, CANDIDATE_PROFILE, PLATFORM_PROFILE):
+    if selected_profile not in (LEGACY_PROFILE, CANDIDATE_PROFILE, *PLATFORM_PROFILES):
         raise ValueError("packet: unsupported selected profile")
-    profile = json.loads(safe_file(directory, "inputs/" + selected_profile).read_text())
-    validate_profile(profile, directory / "inputs")
+    _, profile = load_profile(safe_file(directory, "inputs/" + selected_profile), directory / "inputs")
     if selected_profile != profile_path(profile):
         raise ValueError("packet: selected profile does not match loaded runtime tuple")
-    platform = selected_profile == PLATFORM_PROFILE
+    platform = selected_profile in PLATFORM_PROFILES
+    candidate = candidate_evidence(profile)
+    if selected_profile == PLATFORM_1192_PROFILE and set(packet["brokers"]) != set(BROKERS):
+        raise ValueError("brokers: unexpected or missing broker in the 24-vector matrix")
     if platform != (packet.get("schemaVersion") == 3):
         raise ValueError("packet: platform configuration requires its explicit profile and schema 3")
     if not platform and (platform_config is not None or any(name.startswith('platform-configuration/') for name in artifacts)):
         raise ValueError("packet: historical profiles cannot contain Platform configuration")
-    if profile["runtime"]["version"] == "1.19.1" and packet.get("schemaVersion") != (3 if platform else 2):
+    if candidate and packet.get("schemaVersion") != (3 if platform else 2):
         raise ValueError("candidate packets require schema 2; Platform configuration requires schema 3")
     for name, expected in profile["inputs"].items():
         if artifacts.get("inputs/" + name) != expected:
@@ -640,9 +668,11 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
     commands = json.loads(safe_file(directory, "commands.json").read_text())
     if not commands:
         raise ValueError("commands: no execution receipts")
-    if not platform and ("inputs/" + PLATFORM_PROFILE in artifacts or any(
+    if not platform and (any("inputs/" + path in artifacts for path in PLATFORM_PROFILES) or any(
             row.get("argv", [])[:2] == ["CONFIGURATION", "render"] for row in commands)):
         raise ValueError("packet: historical profile contains Platform capture identity or render receipts")
+    if platform and any("inputs/" + path in artifacts for path in PLATFORM_PROFILES if path != selected_profile):
+        raise ValueError("packet: mixed Platform capture identities")
     if not platform:
         validate_historical_effective_inputs(directory)
     for receipt in commands:
@@ -651,14 +681,11 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
         if datetime.fromisoformat(receipt["endedUtc"]) < datetime.fromisoformat(receipt["startedUtc"]):
             raise ValueError("commands: inverted execution window")
     for name, identity in identities.get("controlPlane", {}).items():
-        if name not in ("placement", "scheduler") or identity.get("image") != profile["images"][name]["reference"] or not SHA.fullmatch(identity.get("binarySha256", "")):
+        if name not in ("placement", "scheduler") or identity.get("image") != image_reference(profile, name) or not SHA.fullmatch(identity.get("binarySha256", "")):
             raise ValueError(f"controlPlane.{name}: wrong control-plane identity")
-    if profile["runtime"]["version"] == "1.19.1":
-        from dapr_runtime_qualification import CONTROL_BINARIES
-        for name, identity in identities.get("controlPlane", {}).items():
-            if identity.get("binarySha256") != CONTROL_BINARIES[name]:
-                raise ValueError("controlPlane: official executable identity mismatch")
-    if profile["runtime"]["version"] == "1.19.1":
+        if candidate and identity.get("binarySha256") != control_binary_sha(profile, name):
+            raise ValueError("controlPlane: official executable identity mismatch")
+    if candidate:
         executed = any(not json.loads(safe_file(directory, row["observation"]).read_text()).get("blockedBy")
                        for outcomes in packet["brokers"].values() for row in outcomes.values())
         if executed and set(identities.get("controlPlane", {})) != {"placement", "scheduler"}:
@@ -670,7 +697,7 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
             executed_brokers = {broker for broker, outcomes in packet["brokers"].items()
                                 if any(not json.loads(safe_file(directory, row["observation"]).read_text()).get("blockedBy")
                                        for row in outcomes.values())}
-            validate_configuration_packet(directory, platform_config, commands, executed_brokers)
+            validate_configuration_packet(directory, platform_config, commands, executed_brokers, profile)
     # Metadata are captured from the actual live sidecar. Source templates alone
     # do not establish which component was loaded, even if all hashes are valid.
     for broker in BROKERS:
@@ -703,7 +730,7 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
                 raise ValueError(f"{broker}/{scenario}: wrong observation identity")
             if not readback or not diagnostic or outcome["applicationReadback"] == outcome["brokerDiagnostics"]:
                 raise ValueError(f"{broker}/{scenario}: independent readback/diagnostics missing")
-            validate_observations(scenario, observation, readback, diagnostic, commands, require_diagnostics=profile["runtime"]["version"] == "1.19.1")
+            validate_observations(scenario, observation, readback, diagnostic, commands, require_diagnostics=candidate)
             passed = evaluate(scenario, observation)
             if outcome["result"] != ("PASS" if passed else "FAIL"):
                 raise ValueError(f"{broker}/{scenario}: false result")
@@ -720,7 +747,7 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
     after = json.loads(safe_file(directory, "workspace-after.json").read_text())
     if any(after.get(key) != value for key, value in before.items()):
         raise ValueError("cleanup: unrelated container specifications changed")
-    if packet.get('schemaVersion') in (2, 3) and profile['runtime']['version'] == '1.19.1' and identities.get('dockerCustody'):
+    if candidate and identities.get('dockerCustody'):
         before_index = validate_inventory(before, 'before', identities, commands)
         after_index = validate_inventory(after, 'after', identities, commands)
         if before_index >= after_index: raise ValueError('cleanup: before/after inventories are not independent observations')
@@ -747,7 +774,7 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
     if cleanup.get("ownedResourcesRemaining") != [] or cleanup.get("unrelatedContainersUnchanged") is not True:
         raise ValueError("cleanup: remaining owned resources or changed unrelated containers")
     if packet.get("schemaVersion") in (2, 3):
-        if profile["runtime"]["version"] == "1.19.1":
+        if candidate:
             if cleanup.get('privateMaterialRemoved') is not True:
                 raise ValueError('cleanup: selected private material removal is incomplete')
             owning_root = Path(__file__).resolve().parents[1]
@@ -756,23 +783,19 @@ def validate_packet(directory: Path, *, allow_failures: bool = False, require_au
                 trusted = digest(source_input(profile, owning_root, path, expected))
                 if profile['inputs'].get(path) != trusted or trusted != expected:
                     raise ValueError('inputs: complete source binding mismatch with trusted owning checkout')
-            original_tools = {'execution-tools/' + path.removeprefix('tools/'): expected
-                              for path, expected in trusted_profile['inputs'].items() if path.startswith('tools/') and path.endswith('.py')}
-            actual_tools = {name: value for name, value in artifacts.items() if name.startswith('execution-tools/')}
-            if platform or actual_tools != original_tools:
-                current_profile = json.loads((owning_root / PLATFORM_PROFILE).read_text())
-                current_tools = {'execution-tools/' + path.removeprefix('tools/'): digest(safe_file(owning_root, path))
-                                 for path in current_profile['inputs'] if path.startswith('tools/') and path.endswith('.py')}
-                if any(current_tools['execution-tools/' + path.removeprefix('tools/')] != expected
-                       for path, expected in current_profile['inputs'].items() if path.startswith('tools/') and path.endswith('.py')):
-                    raise ValueError('execution-tools: current source inventory mismatch with trusted owning checkout')
-                if actual_tools != current_tools:
-                    raise ValueError('execution-tools: current capture source binding mismatch with trusted owning checkout')
+            actual_tools = {name.removeprefix('execution-tools/'): value for name, value in artifacts.items()
+                            if name.startswith('execution-tools/')}
+            original_tools = execution_tools(trusted_profile)
+            if actual_tools != original_tools and (selected_profile == PLATFORM_1192_PROFILE
+                                                   or actual_tools != capture_tools(owning_root)):
+                raise ValueError('execution-tools: capture source binding mismatch with trusted owning checkout')
         custody = identities.get("dockerCustody", {})
         if identities.get("preflightPassed") and (custody.get("exclusive") is not True or not custody.get("daemonId") or not custody.get("endpoint", "").startswith("unix:///")):
             raise ValueError("execution-identities: exclusive daemon custody is absent")
         if cleanup.get("complete") is not True:
             raise ValueError("cleanup: incomplete baseline comparison or owned cleanup")
+        if selected_profile == PLATFORM_1192_PROFILE and cleanup.get("errors") != []:
+            raise ValueError("cleanup: complete result requires an empty error inventory")
     if require_authority:
         raise ValueError("production eligibility FAIL: authenticated AD-26 Architecture/Platform records, Story 3.19 publication/profile binding, Kubernetes rehearsal, restore and Story 4.16 envelope proof are absent; this lane never issues authority")
     if failures and not allow_failures:

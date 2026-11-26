@@ -1,0 +1,367 @@
+{
+  "schemaVersion": 1,
+  "purpose": "non-authorizing disposable candidate qualification",
+  "target": "self-hosted-kubernetes",
+  "executionStage": "local-docker-first-stage",
+  "productionEligible": false,
+  "selectedBroker": null,
+  "runtime": {
+    "version": "1.19.2",
+    "minimum": "1.18.3",
+    "cliVersion": "1.19.1",
+    "componentsVersion": "1.19.2",
+    "sources": [
+      {
+        "repository": "dapr/dapr",
+        "tag": "v1.19.2",
+        "commit": "66efc169ba72dca18ab73394c98381d68cda88f0"
+      },
+      {
+        "repository": "dapr/components-contrib",
+        "tag": "v1.19.2",
+        "commit": "ab395ab88023febfb824de46d474c6d299e74fb1"
+      },
+      {
+        "repository": "dapr/cli",
+        "tag": "v1.19.1",
+        "commit": "e6263a6e5e6aa63b73ae24ea76a685d074c21d96"
+      }
+    ],
+    "binarySha256": "96d2a0aeaafc8993ed41151e184e2b1c67dc03fc21c9ba561c92e34cb5696596",
+    "cliSha256": "b651f5fcfe0b261ca6b26058dde31927efc8e17b12267d6743bdbeddca09bafd",
+    "archives": {
+      "daprd": {
+        "url": "https://github.com/dapr/dapr/releases/download/v1.19.2/daprd_linux_amd64.tar.gz",
+        "sha256": "a5ab822a607f158666c214b918785698883202278312d931da63a6c24d61c8e4",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/daprd_linux_amd64.tar.gz.sha256"
+      },
+      "dapr": {
+        "url": "https://github.com/dapr/cli/releases/download/v1.19.1/dapr_linux_amd64.tar.gz",
+        "sha256": "6e9a339d261e430e5914909cc4443572573c197c174c3e14504c34116831de3b",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/dapr_linux_amd64.tar.gz.sha256"
+      },
+      "placement": {
+        "url": "https://github.com/dapr/dapr/releases/download/v1.19.2/placement_linux_amd64.tar.gz",
+        "sha256": "36cb7525818db7465f0ffd738e6b8e516e4fa550f6649bbd7d2b2ec10a41fa40",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/placement_linux_amd64.tar.gz.sha256"
+      },
+      "scheduler": {
+        "url": "https://github.com/dapr/dapr/releases/download/v1.19.2/scheduler_linux_amd64.tar.gz",
+        "sha256": "493e6c7d3475742cc93c00326f0028f11aa3aced7cef5a8bcff9b825a710b538",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/scheduler_linux_amd64.tar.gz.sha256"
+      },
+      "sentry": {
+        "url": "https://github.com/dapr/dapr/releases/download/v1.19.2/sentry_linux_amd64.tar.gz",
+        "sha256": "bc0aaf45665a3063d560b7a31076b10b37ef961f4bdb37c0afecf69e9cd87912",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/sentry_linux_amd64.tar.gz.sha256"
+      },
+      "daprd-arm64": {
+        "url": "https://github.com/dapr/dapr/releases/download/v1.19.2/daprd_linux_arm64.tar.gz",
+        "sha256": "6db856c7c9af7e266e39b2a941ad95951d141b65648c76ce7dd7d16545fa6847",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/daprd_linux_arm64.tar.gz.sha256"
+      },
+      "dapr-arm64": {
+        "url": "https://github.com/dapr/cli/releases/download/v1.19.1/dapr_linux_arm64.tar.gz",
+        "sha256": "b28bfa9a6aa6748e082bfcf97534fef68cae32a05f19c0b5c0dba8a70182a3d7",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/dapr_linux_arm64.tar.gz.sha256"
+      },
+      "placement-arm64": {
+        "url": "https://github.com/dapr/dapr/releases/download/v1.19.2/placement_linux_arm64.tar.gz",
+        "sha256": "eec366a189745d1e1f95762d21be1f4c1f4d98ba3c53b3b7c1193b0e6eb865ab",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/placement_linux_arm64.tar.gz.sha256"
+      },
+      "scheduler-arm64": {
+        "url": "https://github.com/dapr/dapr/releases/download/v1.19.2/scheduler_linux_arm64.tar.gz",
+        "sha256": "2e50fb2317846402c8ab723b3fa1646cd12ff2c5dd97d6614c11c4fc209ac3c6",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/scheduler_linux_arm64.tar.gz.sha256"
+      },
+      "sentry-arm64": {
+        "url": "https://github.com/dapr/dapr/releases/download/v1.19.2/sentry_linux_arm64.tar.gz",
+        "sha256": "7188febe8f34efa650bf3696f193c11fabc49e3e4cb018a1c6de7cbd8e97fe78",
+        "checksumPath": "deploy/dapr/qualification/public-identities/1.19.2/sentry_linux_arm64.tar.gz.sha256"
+      }
+    }
+  },
+  "images": {
+    "daprd": {
+      "version": "1.19.2",
+      "reference": "ghcr.io/dapr/daprd@sha256:7839fbb66d4be24ec52e347bec2dca66a91bef3079d8c8d57676f6d3ef92654f",
+      "manifest": {
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-daprd.manifest.json",
+        "sha256": "7839fbb66d4be24ec52e347bec2dca66a91bef3079d8c8d57676f6d3ef92654f"
+      },
+      "children": {
+        "amd64": {
+          "digest": "sha256:7be54fc884cc1f8704916cadfc6a4a014ae8e82bfd19f700a87294565b8a532b",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-daprd-amd64.manifest.json"
+        },
+        "arm64": {
+          "digest": "sha256:a284831a31d43e705c61d5a3b750a6142993cde7ee8b91d38ae0783dc52873a9",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-daprd-arm64.manifest.json"
+        }
+      }
+    },
+    "operator": {
+      "version": "1.19.2",
+      "reference": "ghcr.io/dapr/operator@sha256:3f4ea473731716942d53270a9c4351b32e73a0a717b0328831bf114f7929b17f",
+      "manifest": {
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-operator.manifest.json",
+        "sha256": "3f4ea473731716942d53270a9c4351b32e73a0a717b0328831bf114f7929b17f"
+      },
+      "children": {
+        "amd64": {
+          "digest": "sha256:68246e116b1578779ca2b14439b777574853396a681a2d2bcc5486af099ea81a",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-operator-amd64.manifest.json"
+        },
+        "arm64": {
+          "digest": "sha256:9b04417eacb81cd7ba0d35c45df7bca421aefcbd8552238df12230321409f6f1",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-operator-arm64.manifest.json"
+        }
+      }
+    },
+    "injector": {
+      "version": "1.19.2",
+      "reference": "ghcr.io/dapr/injector@sha256:ebdd4e6ff248b7e936553653df2448a4fd8011d5e61916324fb0ac657c6395d5",
+      "manifest": {
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-injector.manifest.json",
+        "sha256": "ebdd4e6ff248b7e936553653df2448a4fd8011d5e61916324fb0ac657c6395d5"
+      },
+      "children": {
+        "amd64": {
+          "digest": "sha256:ef16117d74cea0c2bdab37a4f540e32485eddf6661422b88cbcea478277c3e25",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-injector-amd64.manifest.json"
+        },
+        "arm64": {
+          "digest": "sha256:a1429cf62f40f43948751153687ebeea023e6a4d051517aaf53e4d67052a1c6c",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-injector-arm64.manifest.json"
+        }
+      }
+    },
+    "sentry": {
+      "version": "1.19.2",
+      "reference": "ghcr.io/dapr/sentry@sha256:3d93c1bf742b52909926d73417fe4651028ab8d9293cda78e1f671f6e018dbd7",
+      "manifest": {
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-sentry.manifest.json",
+        "sha256": "3d93c1bf742b52909926d73417fe4651028ab8d9293cda78e1f671f6e018dbd7"
+      },
+      "children": {
+        "amd64": {
+          "digest": "sha256:b518793fab70f8fce10cc36a87aacd383afe2b886aaf7c324d8b8e6434e9bf62",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-sentry-amd64.manifest.json"
+        },
+        "arm64": {
+          "digest": "sha256:6df6fc5105e339735cd4b20471465bcc14f0228a3d6ef2aa950721153aaa4987",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-sentry-arm64.manifest.json"
+        }
+      },
+      "binarySha256": "d9516ea33f13e55c2e8b7d2f40a605cd4ea02595d32bb6d1ce940295ad11279d"
+    },
+    "placement": {
+      "version": "1.19.2",
+      "reference": "ghcr.io/dapr/placement@sha256:3c687e9526394bf708a8f8eb5dbb71376110bafb552250172eb5c018947017e8",
+      "manifest": {
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-placement.manifest.json",
+        "sha256": "3c687e9526394bf708a8f8eb5dbb71376110bafb552250172eb5c018947017e8"
+      },
+      "children": {
+        "amd64": {
+          "digest": "sha256:6a549b5e6e1d05b8b624c8cd978a005176ba578ac694ba86b68beaec36a59766",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-placement-amd64.manifest.json"
+        },
+        "arm64": {
+          "digest": "sha256:e0957091fe2d9c99beae2b43b3b1ac828e5571f839919060e8e7a4c87965e95d",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-placement-arm64.manifest.json"
+        }
+      },
+      "binarySha256": "c675d7bcc0ff548dee8e16ccd2e0da88bbbce967d489011578a3e799041d6862"
+    },
+    "scheduler": {
+      "version": "1.19.2",
+      "reference": "ghcr.io/dapr/scheduler@sha256:e6f7319295425161dd23678a6014c9eb74326fee826baa5a21c431525cbb4bf0",
+      "manifest": {
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-scheduler.manifest.json",
+        "sha256": "e6f7319295425161dd23678a6014c9eb74326fee826baa5a21c431525cbb4bf0"
+      },
+      "children": {
+        "amd64": {
+          "digest": "sha256:b1e03ea5c86c70dec5127773f5e404fa61584ef2e1cd654cfa27f5197a494663",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-scheduler-amd64.manifest.json"
+        },
+        "arm64": {
+          "digest": "sha256:9a0e2afb4d7340eb85c7beef8363bd6304be19939d684039d309a547516d47cb",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-scheduler-arm64.manifest.json"
+        }
+      },
+      "binarySha256": "c3745c440bbe6676f1dd6a22558d139793c9cacfe2b0d97736e6d90c6567a2e6"
+    },
+    "rabbitmq": {
+      "version": "4.3.6-management",
+      "reference": "docker.io/library/rabbitmq@sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58",
+      "manifest": {
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/library-rabbitmq-4.3.6-management.manifest.json",
+        "sha256": "54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58"
+      },
+      "children": {
+        "amd64": {
+          "digest": "sha256:2b0728651f6867d6421311165b94f7c9b8e9b8390045df1f0cb6b52f128d451a",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/library-rabbitmq-4.3.6-management-amd64.manifest.json"
+        },
+        "arm64": {
+          "digest": "sha256:de03afc2c596b635196692c18425149f1e85d13ba8c1990c1a78684f693dc459",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/library-rabbitmq-4.3.6-management-arm64.manifest.json"
+        }
+      }
+    },
+    "kafka": {
+      "version": "4.3.1",
+      "reference": "docker.io/apache/kafka@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837",
+      "manifest": {
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/apache-kafka-4.3.1.manifest.json",
+        "sha256": "77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837"
+      },
+      "children": {
+        "amd64": {
+          "digest": "sha256:ccd1314e47ec76909e01f86308b4dcf2064f19f7c89759234322314b0e319e26",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/apache-kafka-4.3.1-amd64.manifest.json"
+        },
+        "arm64": {
+          "digest": "sha256:c2b5172ab20d66381ec1729796a410fd611135821994526d4d42d2f256054af3",
+          "path": "deploy/dapr/qualification/public-identities/1.19.2/apache-kafka-4.3.1-arm64.manifest.json"
+        }
+      }
+    }
+  },
+  "openbao": {
+    "version": "2.6.2",
+    "reference": "quay.io/openbao/openbao@sha256:11fd73a2102cda9c55d5d881a8c3210303146a7ec1e8ac76f526e175c6d24641",
+    "manifest": {
+      "path": "deploy/dapr/qualification/public-identities/1.19.2/openbao-openbao-2.6.2.manifest.json",
+      "sha256": "11fd73a2102cda9c55d5d881a8c3210303146a7ec1e8ac76f526e175c6d24641"
+    },
+    "children": {
+      "amd64": {
+        "digest": "sha256:e29524ba7c3f20d01f562c481e3eccbad6c91df45a2f2531433da4951e408cff",
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/openbao-openbao-2.6.2-amd64.manifest.json"
+      },
+      "arm64": {
+        "digest": "sha256:c3c4bcd0ecf54fd5256881e85f3c0dba97d540e024da3c18504e5f1fce1e981a",
+        "path": "deploy/dapr/qualification/public-identities/1.19.2/openbao-openbao-2.6.2-arm64.manifest.json"
+      }
+    }
+  },
+  "topics": [
+    "qualification.events",
+    "qualification.poison",
+    "qualification.quarantine",
+    "qualification.failed-diversion",
+    "qualification.quarantine-denied",
+    "qualification.expiry",
+    "qualification.backpressure",
+    "qualification.missing-binding"
+  ],
+  "requiredScenarios": [
+    "crash-redelivery",
+    "broker-restart",
+    "durable-quarantine",
+    "failed-diversion",
+    "retention-expiry",
+    "stable-id-deduplication",
+    "app-topic-scopes",
+    "tls-negative",
+    "missing-secret",
+    "secret-rotation",
+    "cancellation-backpressure",
+    "missing-bindings"
+  ],
+  "inputs": {
+    "deploy/dapr/qualification/kafka.yaml": "1fd1e9b139f40b15c1684be588a65ededfb7c245b8698b61325c14f60ae560e6",
+    "deploy/dapr/qualification/platform-candidate-02.json": "b8601e3a6d4e8460d039573ca2f7e1728e52aa67e61fc0710d74cab5d072580b",
+    "deploy/dapr/qualification/public-identities/1.19.2/apache-kafka-4.3.1-amd64.manifest.json": "ccd1314e47ec76909e01f86308b4dcf2064f19f7c89759234322314b0e319e26",
+    "deploy/dapr/qualification/public-identities/1.19.2/apache-kafka-4.3.1-arm64.manifest.json": "c2b5172ab20d66381ec1729796a410fd611135821994526d4d42d2f256054af3",
+    "deploy/dapr/qualification/public-identities/1.19.2/apache-kafka-4.3.1.manifest.json": "77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-1.19.2.tgz": "3c0e68d61dccf6dc30bf153cb7bd47b50dbe5f8cb889ec2d72b2ec38fa725efa",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-dapr-go.mod": "c3f32083d48f34304ec813a2715617b7408b5fe48fb6d740c53e3708b9455c65",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-daprd-amd64.manifest.json": "7be54fc884cc1f8704916cadfc6a4a014ae8e82bfd19f700a87294565b8a532b",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-daprd-arm64.manifest.json": "a284831a31d43e705c61d5a3b750a6142993cde7ee8b91d38ae0783dc52873a9",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-daprd.manifest.json": "7839fbb66d4be24ec52e347bec2dca66a91bef3079d8c8d57676f6d3ef92654f",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-injector-amd64.manifest.json": "ef16117d74cea0c2bdab37a4f540e32485eddf6661422b88cbcea478277c3e25",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-injector-arm64.manifest.json": "a1429cf62f40f43948751153687ebeea023e6a4d051517aaf53e4d67052a1c6c",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-injector.manifest.json": "ebdd4e6ff248b7e936553653df2448a4fd8011d5e61916324fb0ac657c6395d5",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-operator-amd64.manifest.json": "68246e116b1578779ca2b14439b777574853396a681a2d2bcc5486af099ea81a",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-operator-arm64.manifest.json": "9b04417eacb81cd7ba0d35c45df7bca421aefcbd8552238df12230321409f6f1",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-operator.manifest.json": "3f4ea473731716942d53270a9c4351b32e73a0a717b0328831bf114f7929b17f",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-placement-amd64.manifest.json": "6a549b5e6e1d05b8b624c8cd978a005176ba578ac694ba86b68beaec36a59766",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-placement-arm64.manifest.json": "e0957091fe2d9c99beae2b43b3b1ac828e5571f839919060e8e7a4c87965e95d",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-placement.manifest.json": "3c687e9526394bf708a8f8eb5dbb71376110bafb552250172eb5c018947017e8",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-scheduler-amd64.manifest.json": "b1e03ea5c86c70dec5127773f5e404fa61584ef2e1cd654cfa27f5197a494663",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-scheduler-arm64.manifest.json": "9a0e2afb4d7340eb85c7beef8363bd6304be19939d684039d309a547516d47cb",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-scheduler.manifest.json": "e6f7319295425161dd23678a6014c9eb74326fee826baa5a21c431525cbb4bf0",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-sentry-amd64.manifest.json": "b518793fab70f8fce10cc36a87aacd383afe2b886aaf7c324d8b8e6434e9bf62",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-sentry-arm64.manifest.json": "6df6fc5105e339735cd4b20471465bcc14f0228a3d6ef2aa950721153aaa4987",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr-sentry.manifest.json": "3d93c1bf742b52909926d73417fe4651028ab8d9293cda78e1f671f6e018dbd7",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr_linux_amd64.tar.gz.sha256": "54d66b0a8ab060a976319f3144746498296a985d2fef52df1755b5869d3bece4",
+    "deploy/dapr/qualification/public-identities/1.19.2/dapr_linux_arm64.tar.gz.sha256": "e6fef2177e5efd4113e1c5bbed80eeb9559edb38289c364cc5cd3e9f58ea2aa7",
+    "deploy/dapr/qualification/public-identities/1.19.2/daprd_linux_amd64.tar.gz.sha256": "23c58ac34b1a81ab85958418ea5b2053764a26c1a001613979a31f7e40db58d5",
+    "deploy/dapr/qualification/public-identities/1.19.2/daprd_linux_arm64.tar.gz.sha256": "fa7d4233bfa260bd3255226fc99cfaecf8004e79bb6762b0dec69a2b362cb6ba",
+    "deploy/dapr/qualification/public-identities/1.19.2/library-rabbitmq-4.3.6-management-amd64.manifest.json": "2b0728651f6867d6421311165b94f7c9b8e9b8390045df1f0cb6b52f128d451a",
+    "deploy/dapr/qualification/public-identities/1.19.2/library-rabbitmq-4.3.6-management-arm64.manifest.json": "de03afc2c596b635196692c18425149f1e85d13ba8c1990c1a78684f693dc459",
+    "deploy/dapr/qualification/public-identities/1.19.2/library-rabbitmq-4.3.6-management.manifest.json": "54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58",
+    "deploy/dapr/qualification/public-identities/1.19.2/openbao-openbao-2.6.2-amd64.manifest.json": "e29524ba7c3f20d01f562c481e3eccbad6c91df45a2f2531433da4951e408cff",
+    "deploy/dapr/qualification/public-identities/1.19.2/openbao-openbao-2.6.2-arm64.manifest.json": "c3c4bcd0ecf54fd5256881e85f3c0dba97d540e024da3c18504e5f1fce1e981a",
+    "deploy/dapr/qualification/public-identities/1.19.2/openbao-openbao-2.6.2.manifest.json": "11fd73a2102cda9c55d5d881a8c3210303146a7ec1e8ac76f526e175c6d24641",
+    "deploy/dapr/qualification/public-identities/1.19.2/placement_linux_amd64.tar.gz.sha256": "b3d082f62fd37935deb5a2699a0fbc8e6dfc612319bd5c5a2a7a8f4cac68f848",
+    "deploy/dapr/qualification/public-identities/1.19.2/placement_linux_arm64.tar.gz.sha256": "847d9af48d0ed50b4e7de9ea6bfefa1a2f6bab76e767181635f9ef2a69d7607e",
+    "deploy/dapr/qualification/public-identities/1.19.2/scheduler_linux_amd64.tar.gz.sha256": "964e2c56d5e53ba8cf5bc7bd57333b87b1e6939abdaff90a0c690ec03a6af081",
+    "deploy/dapr/qualification/public-identities/1.19.2/scheduler_linux_arm64.tar.gz.sha256": "c04f1e00f2019dd5123331c6bbd5e16a5b4bb15b52b2774aa703b406c9b3d077",
+    "deploy/dapr/qualification/public-identities/1.19.2/sentry_linux_amd64.tar.gz.sha256": "7b9fe4686401d532ee436add0b1c2f881d62e46ea07d10e63b7fd45059998303",
+    "deploy/dapr/qualification/public-identities/1.19.2/sentry_linux_arm64.tar.gz.sha256": "2d80428d27f7894b2992cc05b686355421d6ece5071821bd29606b2b745f9f79",
+    "deploy/dapr/qualification/rabbitmq.yaml": "c5ffe100825ceb25fe10b1b1192dab2e150b9c88b2a3450f612168b4b95d90cf",
+    "deploy/dapr/qualification/runtime-lock-1.19.2.json": "c6d02b1f73a733a5bae6c23789ea99138579b3c7c797ff80dc738a72c0ec8d21",
+    "deploy/dapr/qualification/subscriptions.yaml": "55981fed2d78738ae730a9a1845a5070b415e4fe46b2cc43534357b8306ac971",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/DurableBrokerConfigurationInputTests.cs": "b78f1e3432ccedd6cb8e8c2d59d55ee4a245bf7672024a5048ca4b36dac903c6",
+    "tests/Hexalith.EventStore.IntegrationTests/Fixtures/DurableBrokerQualificationFixture.cs": "b121bca1972b7f69694a590c9309e8a102bffb7eea68a62be36f50437ec06091",
+    "tools/dapr_broker_probe.py": "6d39e455aae2f9d570a429d6abef3b3c78dbc21d4b5aa19f4e9243bad9002996",
+    "tools/dapr_broker_qualification.py": "eaa19fe7ba3ff9bfa9dd33b56ebba41f591e0dec77a19c3bdde48062cf0ce1c8",
+    "tools/dapr_platform_broker_configuration.py": "952834664c9780427d714e534012bef4a3f1259a7626f8db013a3b3c2581daec",
+    "tools/dapr_qualification_tcp_proxy.py": "6a81efb39e2977cfecbb211d803274ef3ddc6c3b1ab6e5230700a41c1de9f6b4",
+    "tools/dapr_runtime_qualification.py": "2b9e032d1abcca39ca2470249dfa56ce177eb1aa298203ba76c229134d8b48a1",
+    "tools/install-dapr-qualification-tools.py": "18d09856ca5163e33d13d06537069bcaf9ddfc8c2fb476c7c83ff28a44a59ff2",
+    "tools/qualification-docker.py": "a9c4af0cd804b83209305271e02a419242f1f1c1dbca4f9e0de7e44b84b8c6d4",
+    "tools/qualify-dapr-brokers.py": "5ffa2a98897be071685262e5164afcf8f6d647ab63be84684ae1eb2a05bd09a9",
+    "tools/qualify-dapr-runtime.py": "ad7558bdd69e265e2f77b560e6b39113bac173803769ad2d896df9d6898c10d0",
+    "tools/qualify-internal-actor-admission.py": "2da3699c1877be91c5ee6629eceefa0d2d4f2ba0e3034a3c23057b2484f7971a",
+    "tools/run-dapr-runtime-lane.py": "aaf1c70d6864af9d1b2041df6df60491a2a191228a4793b5396e706c98a185b9",
+    "tools/tests/test_dapr_broker_execution_profile.py": "43749bd1e249d608834b8062c98d59432deb0a77a450764fe019342b7a6f46e8",
+    "tools/tests/test_dapr_broker_qualification.py": "d00955d511432072032f2110f83a8912cf9cc682f99c968301d03586a5aa77a4",
+    "tools/tests/test_dapr_platform_broker_configuration.py": "eac3b409c6e881ed70b3b1b81a3fb1c3197a554a041a20ca9cb11e22a4d69d44",
+    "tools/tests/test_dapr_platform_broker_qualification.py": "8b474fb4a1adb4e7a4d348bf3a9e1947a8f8dbb3674a5662bce3fd698a9f1c54",
+    "tools/tests/test_dapr_runtime_qualification.py": "deda81b4771b6ea7ba0a05fde922fdca1181d7bb983e9b27b949ad54b43c6c2f",
+    "tools/tests/test_qualify_internal_actor_admission.py": "54d0e62f8b28c3d4cc80d7b7c3b3d71eebf0b180bfc276ad71e898a4ba502f93",
+    "tools/validate-dapr-broker-qualification.py": "cf5d18473960dbf056c7c1a742e50eac2fec59c5f944dc0aa1851d871c8ee9d3"
+  },
+  "authority": {
+    "ad26": null,
+    "publicationRecord": null,
+    "canonicalProfile": null,
+    "kubernetesRehearsal": null
+  },
+  "limitations": [
+    "Single-node disposable broker: no HA, production retention, capacity or restore claim.",
+    "Local Docker does not establish Kubernetes or production-path proof.",
+    "Runtime minor changes require broker requalification and Story 4.16 envelope re-proof.",
+    "Candidate intake only. Existing qualification tools require separate explicit profile admission before execution."
+  ],
+  "chart": {
+    "path": "deploy/dapr/qualification/public-identities/1.19.2/dapr-1.19.2.tgz",
+    "sha256": "3c0e68d61dccf6dc30bf153cb7bd47b50dbe5f8cb889ec2d72b2ec38fa725efa",
+    "version": "1.19.2",
+    "appVersion": "1.19.2"
+  },
+  "profileId": "platform-1.19.2-config-v1",
+  "captureAdmission": "blocked",
+  "sdk": {
+    "version": "1.19.1",
+    "repository": "dapr/dotnet-sdk",
+    "commit": "70499eb50a5d24dd2511263feec23dac14077fc3"
+  }
+}

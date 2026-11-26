@@ -9,7 +9,7 @@ from dapr_broker_qualification import validate_packet
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("packet", type=Path)
-    parser.add_argument("--platform-config", type=Path, help="separate original Platform configuration required for schema 3")
+    parser.add_argument("--platform-config", type=Path, help="independent original Platform configuration required for either schema-3 profile")
     parser.add_argument("--allow-failures", action="store_true", help="verify truthful negative evidence without converting it into a pass")
     parser.add_argument("--require-production-authority", action="store_true")
     args = parser.parse_args()

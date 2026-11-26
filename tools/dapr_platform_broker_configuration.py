@@ -10,7 +10,6 @@ import json
 from pathlib import Path, PurePosixPath
 import re
 
-PROFILE_ID = "platform-config-v1"
 CONFIGURATION_PATH = "platform-configuration/configuration.json"
 PROVENANCE_PATH = "platform-configuration/provenance.json"
 RENDERED_PATH = "platform-configuration/rendered-inputs.json"
@@ -68,7 +67,7 @@ def parse_configuration(data: bytes) -> dict:
     return config
 
 
-def load_configuration(path: Path) -> tuple[bytes, dict]:
+def load_configuration(path: Path, expected_sha256: str | None = None) -> tuple[bytes, dict]:
     """Reject escaping/symlink inputs before creating any output or resources."""
     path = Path(path)
     if (path.suffix != ".json" or ".." in path.parts
@@ -79,6 +78,8 @@ def load_configuration(path: Path) -> tuple[bytes, dict]:
             data = stream.read(65537)
     except OSError:
         fail("file", "configuration cannot be read")
+    if expected_sha256 is not None and hashlib.sha256(data).hexdigest() != expected_sha256:
+        fail("configuration", "bytes differ from the versioned profile binding")
     return data, parse_configuration(data)
 
 
@@ -224,9 +225,11 @@ def kafka_administration(argv: list, container: str | None, broker_port) -> bool
             and argv[4:8] == ["--bootstrap-server", f"127.0.0.1:{broker_port}", "--command-config", "/work/admin.properties"])
 
 
-def validate_configuration_packet(directory: Path, config_path: Path | None, commands: list, executed: set[str] | bool) -> None:
+def validate_configuration_packet(directory: Path, config_path: Path | None, commands: list,
+                                  executed: set[str] | bool, profile: dict) -> None:
     """Verify separate source bytes, every rendered byte and the actual execution path."""
     from dapr_broker_qualification import digest, safe_file, SHA
+    from dapr_runtime_qualification import CONFIG_1192, image_reference
     executed_brokers = set(BOUNDS) if executed is True else set() if executed is False else executed
     if config_path is None:
         fail("file", "independent verification requires the separate original configuration")
@@ -236,7 +239,7 @@ def validate_configuration_packet(directory: Path, config_path: Path | None, com
     packet_identities = {(path.stat().st_dev, path.stat().st_ino) for path in directory.rglob("*") if path.is_file()}
     if supplied.resolve().is_relative_to(directory.resolve()) or supplied_identity in packet_identities:
         fail("file", "independent configuration cannot be a packet file or same-file alias")
-    data, config = load_configuration(supplied)
+    data, config = load_configuration(supplied, profile["inputs"].get(CONFIG_1192))
     if retained_configuration.read_bytes() != data:
         fail("configuration", "retained bytes differ from the independent input")
     if json.loads(safe_file(directory, PROVENANCE_PATH).read_text()) != provenance(data, config):
@@ -310,8 +313,6 @@ def validate_configuration_packet(directory: Path, config_path: Path | None, com
     identities = json.loads(identities_path.read_text()) if identities_path.is_file() else {}
     executable = identities.get("daprdExecutable", {})
     executable_path = executable.get("path")
-    profile_path = directory / "inputs/deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json"
-    profile = json.loads(profile_path.read_text()) if profile_path.is_file() else {}
     kafka_container = None
     if kafka and (directory / "kafka/image-identity.json").is_file():
         # The Kafka loop below binds this identity to the measured launch and inspection.
@@ -330,7 +331,7 @@ def validate_configuration_packet(directory: Path, config_path: Path | None, com
                 or identities.get("preflightPassed") is not True):
             fail("execution", "sidecar executable lacks the measured Dapr preflight binding")
         measurement = commands[measured]
-        expected_binary = profile.get("runtime", {}).get("binarySha256")
+        expected_binary = profile["runtime"]["binarySha256"]
         if (measurement.get("argv") != ["SHA256", executable_path] or measurement.get("exitCode") != 0
                 or measurement.get("output") != expected_binary or identities.get("daprdSha256") != expected_binary):
             fail("execution", "sidecar executable differs from the measured Dapr binary")
@@ -348,7 +349,7 @@ def validate_configuration_packet(directory: Path, config_path: Path | None, com
         launched.add((row["broker"], row["role"]))
     for row in kafka:
         launches = []
-        image = profile.get("images", {}).get("kafka", {}).get("reference")
+        image = image_reference(profile, "kafka")
         for index, receipt in enumerate(commands):
             argv = receipt["argv"]
             if argv[:2] not in (["docker", "run"], ["docker", "create"]):

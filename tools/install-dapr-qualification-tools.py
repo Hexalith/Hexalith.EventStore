@@ -8,23 +8,36 @@ import os
 from pathlib import Path
 import tarfile
 import urllib.request
-from dapr_broker_qualification import validate_profile
+from dapr_runtime_qualification import PLATFORM_1192_ID, load_profile
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', type=Path, required=True)
-    parser.add_argument('--destination', type=Path, required=True)
+    parser.add_argument('--destination', type=Path)
+    parser.add_argument('--validate-only', action='store_true', help='check locked tool inputs without downloading or installing')
     args = parser.parse_args()
-    profile = json.loads(args.profile.read_text())
-    validate_profile(profile, Path(__file__).resolve().parents[1])
+    if not args.validate_only and args.destination is None:
+        parser.error('--destination is required for installation')
+    data, profile = load_profile(args.profile, Path(__file__).resolve().parents[1])
+    if args.validate_only:
+        runtime = profile['runtime']
+        print(json.dumps({'profileSha256': hashlib.sha256(data).hexdigest(),
+                          'daprdSha256': runtime['binarySha256'], 'cliSha256': runtime['cliSha256'],
+                          'archives': {name: runtime['archives'][name] for name in ('daprd', 'dapr')
+                                       if name in runtime.get('archives', {})}}, indent=2))
+        return 0
+    executables = {}
     for repository, version, binary, field, folder in [
         ('dapr/cli', profile['runtime']['cliVersion'], 'dapr', 'cliSha256', 'cli'),
         ('dapr/dapr', profile['runtime']['version'], 'daprd', 'binarySha256', 'runtime'),
     ]:
-        url = f'https://github.com/{repository}/releases/download/v{version}/{binary}_linux_amd64.tar.gz'
-        data = urllib.request.urlopen(url, timeout=120).read()
         identity = profile['runtime'].get('archives', {}).get(binary)
+        url = f'https://github.com/{repository}/releases/download/v{version}/{binary}_linux_amd64.tar.gz'
+        if profile.get('profileId') == PLATFORM_1192_ID:
+            url = identity['url']
+        with urllib.request.urlopen(url, timeout=120) as response:
+            data = response.read()
         if identity and hashlib.sha256(data).hexdigest() != identity['sha256']:
             raise ValueError(binary + ': official archive checksum mismatch')
         with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as package:
@@ -33,7 +46,8 @@ def main():
             content = package.extractfile(members[0]).read()
         if hashlib.sha256(content).hexdigest() != profile['runtime'][field]:
             raise ValueError(binary + ': immutable executable checksum mismatch')
-        destination = args.destination.resolve() / folder / binary
+        executables[args.destination.resolve() / folder / binary] = content
+    for destination, content in executables.items():
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content); destination.chmod(0o755)
     if os.environ.get('GITHUB_PATH'):

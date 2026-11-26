@@ -10,6 +10,13 @@ import stat
 LEGACY_PROFILE = 'deploy/dapr/qualification/runtime-lock.json'
 CANDIDATE_PROFILE = 'deploy/dapr/qualification/runtime-lock-1.19.1.json'
 PLATFORM_PROFILE = 'deploy/dapr/qualification/runtime-lock-1.19.1-platform-config-v1.json'
+PLATFORM_1192_PROFILE = 'deploy/dapr/qualification/runtime-lock-1.19.2-platform-config-v1.json'
+PLATFORM_PROFILES = (PLATFORM_PROFILE, PLATFORM_1192_PROFILE)
+INTAKE_1192 = 'deploy/dapr/qualification/runtime-lock-1.19.2.json'
+CONFIG_1192 = 'deploy/dapr/qualification/platform-candidate-02.json'
+PLATFORM_1192_ID = 'platform-1.19.2-config-v1'
+CAPTURE_BLOCKED = 'Dapr 1.19.2 capture admission is blocked pending supported remediation, Kafka witnesses, Builds readback and separate execution approval'
+PLATFORM_INPUTS = 'deploy/dapr/qualification/public-identities/1.19.1-platform-config-v1-inputs'
 CANDIDATE_INPUTS = 'deploy/dapr/qualification/public-identities/1.19.1-original-inputs'
 LEGACY_INPUTS = 'deploy/dapr/qualification/public-identities/1.18.7-original-inputs'
 REDIS_IMAGE = 'redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf'
@@ -30,9 +37,55 @@ def profile_path(profile: dict) -> str:
     """Retain original packet paths for the original tuple."""
     if profile.get('profileId') == 'platform-config-v1':
         return PLATFORM_PROFILE
+    if profile.get('profileId') == PLATFORM_1192_ID:
+        return PLATFORM_1192_PROFILE
     if 'profileId' in profile:
         raise ValueError('profileId: unsupported explicit profile')
     return LEGACY_PROFILE if profile['runtime']['version'] == '1.18.7' else CANDIDATE_PROFILE
+
+
+def image_reference(profile: dict, name: str) -> str:
+    identity = profile['openbao'] if name == 'openbao' else profile['images'][name]
+    if profile.get('profileId') == PLATFORM_1192_ID:
+        return identity['reference'].split('@', 1)[0] + '@' + identity['children']['amd64']['digest']
+    return identity['reference']
+
+
+def candidate_evidence(profile: dict) -> bool:
+    return profile['runtime']['version'] in ('1.19.1', '1.19.2')
+
+
+def control_binary_sha(profile: dict, name: str) -> str | None:
+    if profile.get('profileId') == PLATFORM_1192_ID:
+        return profile['images'][name]['binarySha256']
+    if candidate_evidence(profile):
+        return CONTROL_BINARIES[name]
+    return None
+
+
+def load_profile(path: Path, root: Path) -> tuple[bytes, dict]:
+    from dapr_broker_qualification import validate_profile
+    data = path.read_bytes()
+    profile = json.loads(data)
+    validate_profile(profile, root)
+    if profile.get('profileId') == PLATFORM_1192_ID:
+        trusted = Path(__file__).resolve().parents[1] / PLATFORM_1192_PROFILE
+        if data != trusted.read_bytes():
+            raise ValueError('profile: exact versioned lock bytes differ from the trusted owning checkout')
+    return data, profile
+
+
+def execution_tools(profile: dict) -> dict:
+    return {name.removeprefix('tools/'): expected for name, expected in profile['inputs'].items()
+            if name.startswith('tools/') and name.endswith('.py')}
+
+
+def capture_tools(root: Path) -> dict:
+    from dapr_broker_qualification import digest, safe_file
+    expected = execution_tools(json.loads((root / PLATFORM_1192_PROFILE).read_text()))
+    if any(digest(safe_file(root, 'tools/' + name)) != value for name, value in expected.items()):
+        raise ValueError('execution-tools: current source inventory mismatch with trusted owning checkout')
+    return expected
 
 
 def source_input(profile: dict, root: Path, name: str, expected: str) -> Path:
@@ -41,14 +94,15 @@ def source_input(profile: dict, root: Path, name: str, expected: str) -> Path:
     path = safe_file(root, name)
     if digest(path) == expected:
         return path
-    archives = {LEGACY_PROFILE: LEGACY_INPUTS, CANDIDATE_PROFILE: CANDIDATE_INPUTS}
-    archive = archives.get(profile_path(profile))
-    if archive and root.resolve() == Path(__file__).resolve().parents[1]:
-        retained_name = archive + '/' + name
-        if (root / retained_name).is_file():
-            retained = safe_file(root, retained_name)
-            if digest(retained) == expected:
-                return retained
+    archives = {LEGACY_PROFILE: (LEGACY_INPUTS,), CANDIDATE_PROFILE: (CANDIDATE_INPUTS, PLATFORM_INPUTS),
+                PLATFORM_PROFILE: (PLATFORM_INPUTS,)}
+    if root.resolve() == Path(__file__).resolve().parents[1]:
+        for archive in archives.get(profile_path(profile), ()):
+            retained_name = archive + '/' + name
+            if (root / retained_name).is_file():
+                retained = safe_file(root, retained_name)
+                if digest(retained) == expected:
+                    return retained
     return path
 
 
