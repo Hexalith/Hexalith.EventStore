@@ -20,12 +20,13 @@ spec:
         policy: exponential
         maxInterval: 10s
         maxRetries: 5
-      # Pub/sub inbound: broker -> sidecar -> subscriber app
-      # Effective inbound retry count = subscriber-side retries x resiliency retries
+      # Pub/sub inbound: broker -> sidecar -> subscriber app.
+      # A finite Dapr retry budget can settle an unretained message. Keep retrying
+      # with backoff while Operations cannot confirm durable capture.
       pubsubRetryInbound:
         policy: exponential
         maxInterval: 60s
-        maxRetries: 20
+        maxRetries: -1
     timeouts:
       daprSidecar: 5s
       # Pub/sub outbound: prevent hung sidecar->broker calls from blocking actor turns

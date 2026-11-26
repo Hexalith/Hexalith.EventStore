@@ -247,9 +247,9 @@ On sidecar recovery:
 1. The DAPR sidecar restarts and reconnects to the state store and pub/sub broker
 2. Hexalith's actor reactivates and rehydrates state from the persisted event stream
 3. If the actor detects unpublished events (events persisted but not confirmed as published), it re-publishes them
-4. Downstream consumers may receive duplicate events during recovery. Hexalith's consumer-side idempotency — causation ID check on every event delivery — handles this. If a consumer has already processed an event (matching causation ID), the duplicate is discarded
+4. Downstream consumers may receive duplicate events during recovery. Match the received CloudEvent source and ID within the subscription to recognize an event that has already been handled.
 
-This is an at-least-once delivery guarantee, not exactly-once. The combination of persist-first + re-publish-on-recovery + consumer idempotency provides effective exactly-once _processing_ semantics while maintaining the simplicity of at-least-once _delivery_.
+Delivery is at least once and unordered. Publish recovery can repeat an event with its persisted CloudEvent ID. Each subscription is responsible for deduplication and for reconciling any handler effects that remain uncertain.
 
 ### Retry Policies and Circuit Breakers
 
@@ -262,7 +262,7 @@ Hexalith works with DAPR's resiliency configuration — you define policies in y
 
 ### Dead-Letter Routing
 
-When event delivery to a subscriber fails after all retries are exhausted, DAPR routes the event to a dead-letter topic with full context (original event, failure reason, retry count, timestamps). See the [Troubleshooting Guide](troubleshooting.md) for how to investigate and replay dead-lettered events.
+The generic domain-event subscriber applies its configured delivery age and persisted failure budget. It acknowledges a rejected delivery after Operations confirms a matching retained record, or when a catalog explicitly authorizes that skip. Failed, conflicting, and unknown captures remain retryable. A broker retry count or dead-letter transfer alone does not supply Operations evidence. The Operations recovery profile still requires Platform qualification and durable audit.
 
 ### Debugging the Sidecar Chain
 

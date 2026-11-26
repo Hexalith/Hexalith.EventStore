@@ -84,16 +84,9 @@ public sealed class DeadLetterCaptureBodyTests
             request.Body.SequenceEqual(body)));
     }
 
-    /// <summary>
-    /// Verifies a chunked oversize body is dropped before actor work and acknowledged rather than looped.
-    /// </summary>
-    /// <remarks>
-    /// A body over the retention limit is over it on every redelivery. Because this topic has no dead-letter
-    /// destination of its own, returning a non-2xx would make Dapr redeliver it forever while nothing is ever
-    /// retained. The bounded oversize capture counter is the operator's signal instead.
-    /// </remarks>
+    /// <summary>Verifies an oversized delivery stays retryable without an actor call.</summary>
     [Fact]
-    public async Task CaptureEndpointAcknowledgesChunkedOversizeBeforeActorInvocation()
+    public async Task CaptureEndpointRetriesChunkedOversizeBeforeActorInvocation()
     {
         var context = new DefaultHttpContext();
         context.Request.ContentLength = null;
@@ -108,13 +101,13 @@ public sealed class DeadLetterCaptureBodyTests
             TimeProvider.System,
             Telemetry(services));
 
-        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status200OK);
+        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
         _ = await actor.DidNotReceiveWithAnyArgs().CaptureAsync(default!);
     }
 
-    /// <summary>Verifies a hash conflict is acknowledged, since redelivery can never resolve it.</summary>
+    /// <summary>Verifies a hash conflict stays retryable.</summary>
     [Fact]
-    public async Task CaptureEndpointAcknowledgesHashConflict()
+    public async Task CaptureEndpointRetriesHashConflict()
     {
         (byte[] body, _) = StructuredCloudEventFixture.Create();
         var context = new DefaultHttpContext();
@@ -132,7 +125,7 @@ public sealed class DeadLetterCaptureBodyTests
             TimeProvider.System,
             Telemetry(services));
 
-        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status200OK);
+        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
     }
 
     private static ServiceProvider Metrics() => new ServiceCollection().AddMetrics().BuildServiceProvider();

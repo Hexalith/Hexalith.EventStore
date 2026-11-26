@@ -43,7 +43,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-21
+last_updated: 2026-11-26
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -245,8 +245,8 @@ development_status:
   6-7-aot-and-trimming-posture-reference: done
   epic-6-retrospective: done
 
-  epic-7: backlog
-  7-1-delivery-contract-and-poison-handling: backlog
+  epic-7: in-progress
+  7-1-delivery-contract-and-poison-handling: in-progress
   7-2-admin-claims-normalization: backlog
   7-3-state-mutating-admin-audit: backlog
   7-4-honest-deferred-admin-operations: backlog

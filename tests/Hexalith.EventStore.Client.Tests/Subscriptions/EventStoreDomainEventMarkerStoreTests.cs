@@ -1,3 +1,4 @@
+using Dapr;
 using Dapr.Client;
 
 using Hexalith.EventStore.Client.Subscriptions;
@@ -55,6 +56,44 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
     }
 
     [Fact]
+    public async Task DevelopmentCapacityAndExpiryProtectActiveAndAmbiguousMarkers()
+    {
+        var clock = new ManualClock();
+        var store = new InMemoryEventStoreDomainEventMarkerStore(new EventStoreDomainEventsOptions
+        {
+            DevelopmentMarkerCapacity = 3,
+            DevelopmentMarkerRetention = TimeSpan.FromMinutes(1),
+        }, clock);
+
+        EventStoreDomainEventMarkerLease active = (await store.TryAcquireContentAsync("active", "a")).Lease.ShouldNotBeNull();
+        EventStoreDomainEventMarkerLease dispatched = (await store.TryAcquireContentAsync("dispatched", "b")).Lease.ShouldNotBeNull();
+        EventStoreDomainEventMarkerLease completed = (await store.TryAcquireContentAsync("completed", "c")).Lease.ShouldNotBeNull();
+        (await store.MarkFencedDispatchedAsync(dispatched)).ShouldBeTrue();
+        (await store.MarkFencedDispatchedAsync(completed)).ShouldBeTrue();
+        await store.MarkFencedCompletedAsync(completed);
+
+        clock.Now += TimeSpan.FromMinutes(1) - TimeSpan.FromTicks(1);
+        (await store.TryAcquireContentAsync("pressure", "d")).Result.ShouldBe(EventStoreDomainEventMarkerAcquisitionResult.InProgress);
+
+        clock.Now += TimeSpan.FromTicks(1);
+        (await store.TryAcquireContentAsync("pressure", "d")).Result.ShouldBe(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
+        (await store.TryAcquireContentAsync(active.MessageId, active.Fingerprint)).Result.ShouldBe(EventStoreDomainEventMarkerAcquisitionResult.InProgress);
+        (await store.TryAcquireContentAsync(dispatched.MessageId, dispatched.Fingerprint)).Result.ShouldBe(EventStoreDomainEventMarkerAcquisitionResult.CompletionPending);
+        await store.ReleaseFenceAsync(active);
+        EventStoreDomainEventMarkerLease replacement = (await store.TryAcquireContentAsync(active.MessageId, active.Fingerprint)).Lease.ShouldNotBeNull();
+        await store.ReleaseFenceAsync(active);
+        (await store.TryAcquireContentAsync(replacement.MessageId, replacement.Fingerprint))
+            .Result.ShouldBe(EventStoreDomainEventMarkerAcquisitionResult.InProgress);
+    }
+
+    private sealed class ManualClock : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = DateTimeOffset.UnixEpoch;
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    [Fact]
     public async Task InterfaceDefaultMarkDispatched_CompletesLegacyStoreExactlyOnce() {
         IEventStoreDomainEventMarkerStore store = new LegacyMarkerStore();
 
@@ -93,6 +132,28 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
             default!,
             default!,
             default);
+    }
+
+    [Fact]
+    public async Task DaprMarkerStore_QualificationRequiresAnExplicitFirstWriteRejection()
+    {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(new DaprMetadata(
+            "subscriber", [], new Dictionary<string, string>(),
+            [new DaprComponentsMetadata("markers", "state.redis", "v1", ["ETAG"])]));
+        _ = daprClient.TrySaveStateAsync("markers", Arg.Any<string>(), Arg.Any<EventStoreDomainEventMarkerRecord>(),
+            string.Empty, Arg.Any<StateOptions>(), Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>()).Returns(
+                _ => Task.FromResult(true),
+                _ => Task.FromException<bool>(new DaprException("State store unavailable.")));
+
+        DaprEventStoreDomainEventMarkerStore store = CreateDaprStore(daprClient);
+
+        await Should.ThrowAsync<DaprException>(() => store.TryAcquireContentAsync("message-1", "fingerprint"));
+        await Should.ThrowAsync<DaprException>(() => store.TryAcquireContentAsync("message-1", "fingerprint"));
+        _ = await daprClient.Received(2).GetMetadataAsync(Arg.Any<CancellationToken>());
+        _ = await daprClient.DidNotReceiveWithAnyArgs().GetStateAndETagAsync<EventStoreDomainEventMarkerRecord?>(
+            default!, default!, default, default!, default);
     }
 
     [Theory]

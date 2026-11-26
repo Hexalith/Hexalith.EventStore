@@ -37,12 +37,10 @@ public sealed class EventStoreOperationsHostTests
         subscription.GetProperty("route").GetString().ShouldBe("dead-letters/work/events");
 
 
-        // The dead-letter topic has no dead-letter destination of its own, so a non-2xx here is an unbounded
-        // redelivery loop. An empty body can never become non-empty, so it is acknowledged and counted instead.
         using HttpResponseMessage capture = await client.PostAsync(
             "/dead-letters/work/events",
             new ByteArrayContent([]));
-        capture.StatusCode.ShouldBe(HttpStatusCode.OK);
+        capture.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
     }
 
     /// <summary>

@@ -23,4 +23,11 @@ public interface IDeadLetterQueryService {
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The dead-letter entry count.</returns>
     Task<int> GetDeadLetterCountAsync(CancellationToken ct = default);
+
+    /// <summary>Gets count and oldest age for an explicitly authorized view.</summary>
+    /// <param name="tenantId">The requested tenant, or null for an authorized global view.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The scoped evidence summary.</returns>
+    Task<DeadLetterSummary> GetDeadLetterSummaryAsync(string? tenantId, CancellationToken ct = default)
+        => Task.FromException<DeadLetterSummary>(new NotSupportedException("Dead-letter summary evidence is unavailable."));
 }

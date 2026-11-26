@@ -807,11 +807,10 @@ spec:
                 maxInterval: 10s
                 maxRetries: 5
             pubsubRetryInbound:
-                # Broker -> sidecar -> subscriber app retries.
-                # More retries with longer intervals for subscriber processing failures.
+                # Keep unretained subscriber deliveries retryable with backoff.
                 policy: exponential
                 maxInterval: 60s
-                maxRetries: 20
+                maxRetries: -1
         timeouts:
             daprSidecar:
                 # General sidecar operation timeout.
@@ -865,6 +864,8 @@ spec:
 ```
 
 The resiliency policies augment built-in component retries. The effective retry count is `component built-in retries x resiliency retries`. For example, RabbitMQ has ~3 built-in publisher confirm retries, so with `maxRetries: 5` in `pubsubRetryOutbound`, the effective outbound retry count is approximately 15.
+
+Operations owns the subscriber's finite attempt and age budget. Dapr's inbound retry stays active with exponential backoff until the application confirms handling or durable retention. Dapr 1.19.1 can signal a final delivery disposition to the broker when a finite inbound budget runs out without a dead-letter destination. The exact broker profile still needs to prove retry and retention across interruptions. [Dapr 1.19.1 subscription runtime](https://github.com/dapr/dapr/blob/v1.19.1/pkg/runtime/subscription/subscription.go#L373-L419)
 
 ## Access Control
 
@@ -927,14 +928,14 @@ spec:
     routes:
         # HTTP endpoint on the subscriber that receives events.
         default: /events/idempotency-demo
-    # Dead-letter topic follows convention: deadletter.{tenant}.{domain}.events
-    deadLetterTopic: deadletter.sample.counter.events
 # Scoped to the subscriber app-id only.
 scopes:
     - sample
 ```
 
-The subscription pattern: a topic routes events to an HTTP endpoint on the subscriber application. If the subscriber fails to process the event after retry exhaustion, the message moves to the DAPR subscriber dead-letter topic. Dead-letter topic subscription is separate - only operational/monitoring tools should subscribe to dead-letter topics. This subscriber delivery outcome is not the same as EventStore's command infrastructure dead-letter path and is not required for EventStore to clear publish recovery state after DAPR accepts publication.
+The live topic routes to a channel-authenticated subscriber and the exact subscription is bound to its route catalog. Set the application delivery limit with `EventStore:SubscriberDelivery:MaximumDeliveryAttempts` and optionally `MaximumDeliveryAge`. Keep broker expiry disabled for deliveries awaiting capture. A dedicated Operations sink confirms the scoped retained record before the application acknowledges an exhausted delivery. Dapr RPC retries and vendor dead-letter features require separate qualification. EventStore clears producer drain state when Dapr accepts publication.
+
+For isolated Development runs, bind the SDK to the Operations app with `EventStore:SubscriberDelivery:DevelopmentOperationsAppId`. The Operations side needs `IsolatedSubscriberRecovery=true`, the exact `ReplayAppId`, `ReplayMethodName`, `PubSubName`, and `LiveTopicName`, and the same `MaximumDeliveryAttempts`. Channel credentials and the matching Dapr caller identity protect the private transport. The subscriber needs a Dapr marker component that proves checked first-write acquisition. Platform qualification and Story 7.3 audit are required before enabling production recovery.
 
 ## Persistence Guarantees by Backend
 
@@ -952,7 +953,7 @@ This matrix separates EventStore guarantees, DAPR/component behavior, and live p
 
 | Backend | Required DAPR settings | Ordering boundary | Routing/session/partition mechanism | At-least-once mechanism | Dead-letter capability | Resiliency config location | Claim status | Known caveats |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Redis Streams | `pubsub.redis`, `enableDeadLetter=true`, scoped `publishingScopes`/`subscriptionScopes` | EventStore publishes persisted events in sequence order; Redis/DAPR subscriber delivery order is not a cross-backend contract. | No EventStore-emitted partition/session metadata; topic is `{tenant}.{domain}.events`; event envelope carries aggregate and sequence. | Persist-first plus `UnpublishedEventsRecord` drain; DAPR Redis consumer group delivery is at-least-once. | DAPR-managed dead-letter topic after subscriber retry exhaustion. | `deploy/dapr/resiliency.yaml`; local AppHost component for Redis. | `proven` for local Redis publish and drain recovery; ordering beyond EventStore sequence is `documented-only`. | Redis durability depends on AOF/RDB/server configuration; local dev grants include `eventstore-test-subscriber` and are not production defaults. |
+| Redis Streams | `pubsub.redis`, scoped `publishingScopes`/`subscriptionScopes` | EventStore publishes persisted events in sequence order. Subscriber delivery is unordered. | No EventStore-emitted partition/session metadata. Topic is `{tenant}.{domain}.events`. The envelope carries aggregate identity and sequence. | Persist-first with `UnpublishedEventsRecord` drain. Dapr Redis consumer group delivery is at least once. | The subscriber acknowledges after Operations confirms durable retention. | `deploy/dapr/resiliency.yaml` and the local AppHost Redis component. | `proven` for local Redis publish and drain recovery. | Redis durability depends on server persistence configuration. The `eventstore-test-subscriber` grant is for development. |
 | RabbitMQ | `pubsub.rabbitmq`, `durable=true`, `deletedWhenUnused=false`, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted and publish calls are ordered; RabbitMQ delivery/consumer order depends on queues, consumers, acknowledgements, and topology. | No EventStore-emitted routing key/partition metadata; DAPR component maps topics to RabbitMQ exchange/queue behavior. | Persist-first plus drain; RabbitMQ durable queues and acknowledgements provide broker at-least-once when configured. | Native DLX through DAPR `enableDeadLetter`. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-rabbitmq.yaml`. | `configured`; live RabbitMQ publish/order/dead-letter proof is not in the local automated suite. | RabbitMQ ACLs are separate from DAPR scoping; multiple competing consumers can affect observed ordering. |
 | Kafka | `pubsub.kafka`, `brokers`, `authType`, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted; Kafka per-partition order requires a stable partition key and single ordered consumer path. | DAPR supports per-call `partitionKey`/`__key`, but EventStore does not emit it yet; per-aggregate partition policy is `documented-only` until proven. | Persist-first plus drain; Kafka commit log retention and consumer group offsets provide backend at-least-once behavior when configured. | Separate dead-letter topic via DAPR. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-kafka.yaml`. | `configured` for component scoping/dead-letter; Kafka ordering key proof is `not proven`. | Topic auto-creation may be disabled by brokers; repartitioning or missing partition keys can break per-aggregate broker ordering claims. |
 | Azure Service Bus | `pubsub.azure.servicebus.topics`, `connectionString` or Azure identity metadata, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted; Service Bus ordered delivery requires session-enabled topics/subscriptions and a stable `SessionId`. | DAPR supports per-call `SessionId`/`PartitionKey`, but EventStore does not emit it yet; session policy is `documented-only` until proven. | Persist-first plus drain; Service Bus broker delivery is at-least-once with native settlement semantics. | Native DLQ through Service Bus/DAPR subscriber dead-letter handling. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-servicebus.yaml`; ACA translation if using managed DAPR. | `configured` for component scoping/dead-letter; session ordering proof is `not proven`. | Topics/subscriptions must be pre-created; session-enabled topology must be explicitly provisioned before claiming ordered broker delivery. |

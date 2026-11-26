@@ -295,7 +295,11 @@ public static class EventStoreDomainServiceExtensions {
 
         if (consumesDomainEvents && !applicationProperties.ContainsKey(CloudEventsRegisteredKey)) {
             applicationProperties[CloudEventsRegisteredKey] = true;
-            _ = app.UseCloudEvents();
+            _ = app.UseCloudEvents(new Dapr.CloudEventsMiddlewareOptions
+            {
+                ForwardCloudEventPropertiesAsHeaders = true,
+                IncludedCloudEventPropertiesAsHeaders = ["id", "source", "topic", "pubsubname", "type", "specversion"],
+            });
         }
 
         // Health endpoints (/health, /alive, /ready) from ServiceDefaults.
@@ -794,6 +798,17 @@ public static class EventStoreDomainServiceExtensions {
         // registration idempotent so a host-supplied client remains authoritative.
         if (!builder.Services.Any(static service => service.ServiceType == typeof(Dapr.Client.DaprClient))) {
             builder.Services.AddDaprClient();
+        }
+
+        _ = builder.Services.AddOptions<EventStoreDomainEventsOptions>()
+            .Bind(builder.Configuration.GetSection("EventStore:SubscriberDelivery"));
+        if (builder.Environment.IsDevelopment()
+            && builder.Configuration["EventStore:SubscriberDelivery:DevelopmentOperationsAppId"] is { Length: > 0 } operationsAppId)
+        {
+            _ = builder.Services.AddHttpClient(nameof(DevelopmentSubscriberPoisonSink),
+                client => client.Timeout = TimeSpan.FromSeconds(10));
+            _ = builder.Services.AddSingleton<IEventStoreSubscriberPoisonSink>(services => new DevelopmentSubscriberPoisonSink(
+                services.GetRequiredService<Dapr.Client.DaprClient>(), services.GetRequiredService<IHttpClientFactory>(), operationsAppId));
         }
 
         // The query dispatch path constructs the platform-owned IQueryCursorCodec, whose cursor integrity is

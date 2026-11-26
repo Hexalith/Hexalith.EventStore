@@ -78,7 +78,8 @@ public sealed class DeadLetterListProjectionTests
         PagedResult<DeadLetterEntry> page = (await response.Content.ReadFromJsonAsync<PagedResult<DeadLetterEntry>>())
             .ShouldNotBeNull();
         page.TotalCount.ShouldBe(7);
-        page.ContinuationToken.ShouldBe("5");
+        page.ContinuationToken.ShouldNotBeNullOrWhiteSpace();
+        page.ContinuationToken.ShouldNotBe("5");
         page.Items.Count().ShouldBe(2);
 
         DeadLetterEntry identified = page.Items.First();

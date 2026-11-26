@@ -53,7 +53,9 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
             evolution.AddKnownType(eventType);
         }
 
-        services.TryAddSingleton<IEventStoreDomainEventMarkerStore, InMemoryEventStoreDomainEventMarkerStore>();
+        services.TryAddSingleton<IEventStoreDomainEventMarkerStore>(sp => new InMemoryEventStoreDomainEventMarkerStore(
+            sp.GetRequiredService<IOptions<EventStoreDomainEventsOptions>>().Value,
+            sp.GetService<TimeProvider>()));
         services.TryAddSingleton(sp => new EventStoreDomainEventProcessor(
             sp.GetRequiredService<IServiceScopeFactory>(),
             registry,

@@ -1,4 +1,5 @@
 using global::Aspire.Hosting;
+using global::Aspire.Hosting.ApplicationModel;
 using global::Aspire.Hosting.Testing;
 
 using Hexalith.EventStore.AppHost;
@@ -34,6 +35,9 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
     public HttpClient SubscriberClient => _subscriberClient ?? throw new InvalidOperationException(
         "Test subscriber not initialized. Ensure InitializeAsync has completed.");
 
+    public Uri EventStoreSidecarEndpoint => (_app ?? throw new InvalidOperationException("Test infrastructure was not initialized."))
+        .GetEndpoint("eventstore-dapr-cli", "http");
+
     public IDatabase RedisDatabase => (_redis ?? throw new InvalidOperationException(
         "Redis multiplexer not initialized. Ensure InitializeAsync has completed.")).GetDatabase();
 
@@ -44,6 +48,29 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
     public string SubscriberAuthSecret { get; } = Guid.NewGuid().ToString("N");
 
     public string AggregateActorTypeName { get; } = $"AggregateActorIntegration{Guid.NewGuid():N}";
+
+    public async Task RestartSubscriberAsync(CancellationToken cancellationToken)
+    {
+        const string subscriber = "eventstore-test-subscriber";
+        DistributedApplication app = _app ?? throw new InvalidOperationException("Test infrastructure was not initialized.");
+        ExecuteCommandResult stopped = await app.ResourceCommands
+            .ExecuteCommandAsync(subscriber, KnownResourceCommands.StopCommand, cancellationToken).ConfigureAwait(false);
+        if (!stopped.Success)
+        {
+            throw new InvalidOperationException("The test subscriber could not be stopped.");
+        }
+
+        _ = await app.ResourceNotifications.WaitForResourceAsync(subscriber, KnownResourceStates.TerminalStates, cancellationToken)
+            .ConfigureAwait(false);
+        ExecuteCommandResult started = await app.ResourceCommands
+            .ExecuteCommandAsync(subscriber, KnownResourceCommands.StartCommand, cancellationToken).ConfigureAwait(false);
+        if (!started.Success)
+        {
+            throw new InvalidOperationException("The test subscriber could not be restarted.");
+        }
+
+        _ = await app.ResourceNotifications.WaitForResourceHealthyAsync(subscriber, cancellationToken).ConfigureAwait(false);
+    }
 
     public async ValueTask InitializeAsync() {
         SnapshotAndSet("EnableKeycloak", "false");

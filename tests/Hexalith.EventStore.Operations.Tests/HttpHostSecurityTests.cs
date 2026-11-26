@@ -6,6 +6,8 @@ using System.Text;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 using Hexalith.EventStore.Operations.Actors;
 using Hexalith.EventStore.Operations.Models;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
@@ -97,15 +99,18 @@ public sealed partial class HttpHostSecurityTests
     public async Task ValidHumanRelayPreservesTenantAndUsesValidatedAttribution(string operation)
     {
         IDeadLetterDrainActor actor = Substitute.For<IDeadLetterDrainActor>();
-        actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted"));
-        actor.SkipAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted"));
-        actor.ArchiveAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted"));
-        await using WebApplicationFactory<Program> factory = Factory(actor);
+        actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted") { OperationId = "operation-a", State = "pending" });
+        actor.SkipAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted") { OperationId = "operation-a", State = "completed" });
+        actor.ArchiveAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted") { OperationId = "operation-a", State = "completed" });
+        await using WebApplicationFactory<Program> factory = Factory(actor, isolatedRecovery: true);
         using HttpClient client = factory.CreateClient();
         using var request = Authorized(HttpMethod.Post, "/internal/dead-letters/" + operation);
         request.Content = JsonContent.Create(new { tenantId = "tenant-a", messageIds = new[] { "message-a" }, requestedBy = "forged" });
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.StatusCode.ShouldBe(operation == "retry" ? HttpStatusCode.Accepted : HttpStatusCode.OK);
+        AdminOperationResult outcome = (await response.Content.ReadFromJsonAsync<AdminOperationResult>()).ShouldNotBeNull();
+        outcome.OperationId.ShouldBe("operation-a");
+        outcome.Success.ShouldBe(operation != "retry");
         var call = actor.ReceivedCalls().ShouldHaveSingleItem();
         var action = call.GetArguments()[0].ShouldBeOfType<DeadLetterActionRequest>();
         action.TenantId.ShouldBe("tenant-a");
@@ -158,7 +163,85 @@ public sealed partial class HttpHostSecurityTests
         actor.ReceivedCalls().ShouldBeEmpty();
     }
 
-    private static WebApplicationFactory<Program> Factory(IDeadLetterDrainActor actor, int maxActionItems = 100)
+    [Fact]
+    public async Task SummaryRequiresAuthorizedScopeAndReturnsOldestVisibleAge()
+    {
+        IDeadLetterDrainActor actor = Substitute.For<IDeadLetterDrainActor>();
+        actor.ListAsync(Arg.Any<DeadLetterListRequest>()).Returns(new DeadLetterListResult([], 1, null)
+        {
+            OldestFailureAt = DateTimeOffset.UtcNow.AddMinutes(-2),
+        });
+        await using WebApplicationFactory<Program> factory = Factory(actor);
+        using HttpClient client = factory.CreateClient();
+
+        using var hidden = Authorized(HttpMethod.Get, "/internal/dead-letters/count?tenantId=tenant-b&detailed=true", "read-only");
+        using HttpResponseMessage excluded = await client.SendAsync(hidden);
+        excluded.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        actor.ReceivedCalls().ShouldBeEmpty();
+
+        using var visible = Authorized(HttpMethod.Get, "/internal/dead-letters/count?tenantId=tenant-a&detailed=true", "read-only");
+        using HttpResponseMessage response = await client.SendAsync(visible);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        DeadLetterSummary summary = (await response.Content.ReadFromJsonAsync<DeadLetterSummary>()).ShouldNotBeNull();
+        summary.Count.ShouldBe(1);
+        summary.OldestAge.ShouldNotBeNull().ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMinutes(2));
+        _ = await actor.Received(1).ListAsync(new DeadLetterListRequest("tenant-a", 1, 0));
+    }
+
+    [Fact]
+    public async Task ListCursorDoesNotExposeIndexAndInvalidCursorDeniesBeforeLookup()
+    {
+        IDeadLetterDrainActor actor = Substitute.For<IDeadLetterDrainActor>();
+        actor.ListAsync(Arg.Any<DeadLetterListRequest>()).Returns(new DeadLetterListResult([], 2, 1));
+        await using WebApplicationFactory<Program> factory = Factory(actor);
+        using HttpClient client = factory.CreateClient();
+        const string path = "/internal/dead-letters?tenantId=tenant-a";
+
+        using var initial = Authorized(HttpMethod.Get, path, "read-only");
+        using HttpResponseMessage response = await client.SendAsync(initial);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var page = (await response.Content.ReadFromJsonAsync<PagedResult<DeadLetterEntry>>()).ShouldNotBeNull();
+        page.ContinuationToken.ShouldNotBeNullOrWhiteSpace();
+        page.ContinuationToken.ShouldNotBe("1");
+
+        using var request = Authorized(HttpMethod.Get, path + "&continuationToken=1", "read-only");
+        using HttpResponseMessage rejected = await client.SendAsync(request);
+        rejected.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        _ = await actor.Received(1).ListAsync(Arg.Any<DeadLetterListRequest>());
+    }
+
+    [Theory]
+    [InlineData("/internal/dead-letters?tenantId=tenant-a")]
+    [InlineData("/internal/dead-letters/count?tenantId=tenant-a&detailed=true")]
+    public async Task OperatorReadFailureReturnsOpaqueUnavailableEvidence(string path)
+    {
+        IDeadLetterDrainActor actor = Substitute.For<IDeadLetterDrainActor>();
+        _ = actor.ListAsync(Arg.Any<DeadLetterListRequest>())
+            .Returns(Task.FromException<DeadLetterListResult>(new InvalidOperationException("private store information")));
+        await using WebApplicationFactory<Program> factory = Factory(actor);
+        using HttpClient client = factory.CreateClient();
+        using var request = Authorized(HttpMethod.Get, path, "read-only");
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        (await response.Content.ReadAsStringAsync()).ShouldNotContain("private store information");
+    }
+
+    [Fact]
+    public async Task ValidRecoveryOutsideIsolatedProfileHasNoActorEffect()
+    {
+        IDeadLetterDrainActor actor = Substitute.For<IDeadLetterDrainActor>();
+        await using WebApplicationFactory<Program> factory = Factory(actor);
+        using HttpClient client = factory.CreateClient();
+        using var request = Authorized(HttpMethod.Post, "/internal/dead-letters/retry");
+        request.Content = JsonContent.Create(new { tenantId = "tenant-a", messageIds = new[] { "message-a" } });
+        using HttpResponseMessage response = await client.SendAsync(request);
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        actor.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    private static WebApplicationFactory<Program> Factory(IDeadLetterDrainActor actor, int maxActionItems = 100, bool isolatedRecovery = false)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
@@ -169,6 +252,7 @@ public sealed partial class HttpHostSecurityTests
                 ["Authentication:JwtBearer:Issuer"] = "story514",
                 ["Authentication:JwtBearer:Audience"] = "operations",
                 ["Authentication:JwtBearer:SigningKey"] = Key,
+                ["EventStoreOperations:IsolatedSubscriberRecovery"] = isolatedRecovery.ToString(),
                 ["EventStoreOperations:MaxActionItems"] = maxActionItems.ToString(System.Globalization.CultureInfo.InvariantCulture),
             }));
             builder.ConfigureTestServices(services =>

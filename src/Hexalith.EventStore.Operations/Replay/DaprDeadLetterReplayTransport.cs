@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -14,7 +15,8 @@ namespace Hexalith.EventStore.Operations.Replay;
 internal sealed class DaprDeadLetterReplayTransport(
     DaprClient daprClient,
     IHttpClientFactory httpClientFactory,
-    IOptions<EventStoreOperationsOptions> options) : IDeadLetterReplayTransport
+    IOptions<EventStoreOperationsOptions> options,
+    IHostEnvironment environment) : IDeadLetterReplayTransport
 {
     private readonly DaprClient _daprClient = daprClient ?? throw new ArgumentNullException(nameof(daprClient));
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
@@ -24,11 +26,23 @@ internal sealed class DaprDeadLetterReplayTransport(
     public async Task DeliverAsync(byte[] body, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(body);
+        if (!environment.IsDevelopment() || !_options.IsolatedSubscriberRecovery)
+        {
+            throw new InvalidOperationException("The subscriber replay profile is unavailable.");
+        }
+
+        using JsonDocument structured = JsonDocument.Parse(body);
+        string? messageId = structured.RootElement.GetProperty("id").GetString();
+        if (!Models.DeadLetterSafeIdentity.IsValidValue(messageId))
+        {
+            throw new InvalidOperationException("The retained subscriber identity is unavailable.");
+        }
 
         using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
             HttpMethod.Post,
             _options.ReplayAppId,
             _options.ReplayMethodName);
+        request.Headers.Add("X-EventStore-Subscriber-Replay", messageId);
         request.Content = new ByteArrayContent(body);
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
         HttpClient client = _httpClientFactory.CreateClient(nameof(DaprDeadLetterReplayTransport));
@@ -36,5 +50,10 @@ internal sealed class DaprDeadLetterReplayTransport(
             .SendAsync(request, cancellationToken)
             .ConfigureAwait(false);
         _ = response.EnsureSuccessStatusCode();
+        if (!response.Headers.TryGetValues("X-EventStore-Subscriber-Outcome", out IEnumerable<string>? values)
+            || !values.SequenceEqual(["handled"], StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("The subscriber did not confirm handler completion.");
+        }
     }
 }

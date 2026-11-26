@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Routing;
 namespace Hexalith.EventStore.DomainService;
 
 /// <summary>Private witness created only by the actual SDK subscription mapper.</summary>
-internal sealed class DomainRouteCatalogSidecarMetadata(RequestDelegate? actualRequest, string path, string pubsub, string topic, bool declarative)
+internal sealed class DomainRouteCatalogSidecarMetadata(RequestDelegate? actualRequest, string path, string pubsub, string topic, bool declarative, EventStoreSubscriptionSkipPolicy acknowledgedSkips)
 {
     internal const string Operation = "sdk-sidecar:domain-events";
 
@@ -32,7 +32,10 @@ internal sealed class DomainRouteCatalogSidecarMetadata(RequestDelegate? actualR
             throw new RouteCatalogUnavailableException("The actual SDK subscription metadata differs from its configured component, topic or mode.");
         var assembly = typeof(EventStoreDomainEventsEndpointExtensions).Assembly;
         return new(typeof(EventStoreDomainEventsEndpointExtensions).FullName!,
-            TechnicalHttpActionObservation.AssemblyIdentity(assembly)[^64..], pubsub, topic);
+            TechnicalHttpActionObservation.AssemblyIdentity(assembly)[^64..], pubsub, topic)
+        {
+            AcknowledgedSkips = acknowledgedSkips,
+        };
     }
 
     internal static RouteCatalogSidecarTransport? ObserveEndpoint(RouteEndpoint endpoint)

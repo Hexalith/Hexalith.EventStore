@@ -15,4 +15,7 @@ public enum EventStoreDomainEventMarkerAcquisitionResult {
 
     /// <summary>Handlers already ran and the caller must only complete the durable marker.</summary>
     CompletionPending = 3,
+
+    /// <summary>The existing marker cannot be proven to describe the received event.</summary>
+    ContentConflict = 4,
 }

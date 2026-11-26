@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Contracts.Routing;
+
 namespace Hexalith.EventStore.Client.Subscriptions;
 
 /// <summary>
@@ -24,13 +26,28 @@ public class EventStoreDomainEventsOptions {
     /// <summary>The key prefix used by the DAPR marker store before the topic, route, and EventStore message ID scope.</summary>
     public string MarkerKeyPrefix { get; set; } = "eventstore:domain-events:markers:";
 
+    /// <summary>The maximum number of development markers, including active and ambiguous attempts.</summary>
+    public int DevelopmentMarkerCapacity { get; set; } = 10000;
+
+    /// <summary>The minimum time a completed development marker remains eligible to deduplicate redelivery.</summary>
+    public TimeSpan DevelopmentMarkerRetention { get; set; } = TimeSpan.FromHours(24);
+
+    /// <summary>Gets or sets the failed-delivery budget when a poison sink is bound.</summary>
+    public int MaximumDeliveryAttempts { get; set; } = 10;
+
+    /// <summary>Gets or sets the maximum age of a delivery before a handler may run.</summary>
+    public TimeSpan? MaximumDeliveryAge { get; set; }
+
+    /// <summary>Gets or sets skip outcomes eligible for acknowledgement only under an exact committed catalog.</summary>
+    public EventStoreSubscriptionSkipPolicy AcknowledgedSkips { get; set; }
+
     /// <summary>
     /// When set, the processor reflects a payload property of this name and rejects the event when its
     /// value does not equal the envelope's <see cref="EventStoreDomainEventEnvelope.AggregateId"/>
     /// (Ordinal). Leave <see langword="null"/> to skip the integrity check. Domains whose events carry,
     /// for example, a <c>TenantId</c> that must match the aggregate set this to <c>"TenantId"</c>. The name is
     /// case-sensitive and must be a readable public instance property that can hold a string. Events whose type has
-    /// no such property are acknowledged and skipped, and the processor logs a warning for each such event type (and
+    /// no such property are rejected, and the processor logs a warning for each such event type (and
     /// at startup when no registered event type has the property).
     /// </summary>
     public string? PayloadAggregateIdPropertyName { get; set; }

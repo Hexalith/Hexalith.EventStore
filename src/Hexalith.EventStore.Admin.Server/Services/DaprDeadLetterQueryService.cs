@@ -57,6 +57,19 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService {
         => await InvokeGetAsync<int>(InternalRoute + "/count", [], ct).ConfigureAwait(false);
 
     /// <inheritdoc/>
+    public Task<DeadLetterSummary> GetDeadLetterSummaryAsync(string? tenantId, CancellationToken ct = default)
+    {
+        List<KeyValuePair<string, string>> query = [new("detailed", "true")];
+        if (tenantId is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+            query.Add(new("tenantId", tenantId));
+        }
+
+        return InvokeGetAsync<DeadLetterSummary>(InternalRoute + "/count", query, ct);
+    }
+
+    /// <inheritdoc/>
     public async Task<PagedResult<DeadLetterEntry>> ListDeadLettersAsync(
         string? tenantId,
         int count,

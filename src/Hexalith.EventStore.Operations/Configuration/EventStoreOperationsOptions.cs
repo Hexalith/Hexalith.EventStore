@@ -14,6 +14,15 @@ public sealed class EventStoreOperationsOptions
     /// <summary>Gets or sets the one dead-letter topic drained by this workload instance.</summary>
     public string TopicName { get; set; } = "deadletter.work.events";
 
+    /// <summary>Gets or sets the exact live topic admitted to an isolated subscriber poison sink.</summary>
+    public string LiveTopicName { get; set; } = "work.events";
+
+    /// <summary>Enables subscriber observation and replay only in a Development workload.</summary>
+    public bool IsolatedSubscriberRecovery { get; set; }
+
+    /// <summary>Gets or sets the failed-delivery budget agreed with the isolated live subscription.</summary>
+    public int MaximumDeliveryAttempts { get; set; } = 10;
+
     /// <summary>Gets or sets the HTTP route that receives the raw dead-letter delivery.</summary>
     public string CaptureRoute { get; set; } = "/dead-letters/work/events";
 
