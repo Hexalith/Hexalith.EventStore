@@ -182,7 +182,7 @@ public sealed class DurableTaskAdmission(
     /// <param name="stepKey">The stable step key presented with the owner call.</param>
     /// <param name="cancellationToken">The caller cancellation token.</param>
     /// <returns>The binding of a step with a committed receipt or a pending owner call, or null for an unknown task, a
-    /// noncanonical key, a step the task has not started or a refused step.</returns>
+    /// noncanonical key, a named recovery step, a step the task has not started or a refused step.</returns>
     /// <remarks>The host exposes this lookup only to an authenticated owner workload. It does not authorize the original
     /// actor: the owner checks the target it derives from the step and re-evaluates the actor's current authority.</remarks>
     public async Task<DurableTaskStepBinding?> ResolveStepAsync(string taskId, string stepKey, CancellationToken cancellationToken = default)
@@ -202,6 +202,11 @@ public sealed class DurableTaskAdmission(
         }
 
         DurableTaskExecutionState execution = state.Execution ?? DurableTaskExecutionState.Initial;
+        if (execution.PreparedStep is not null)
+        {
+            return null;
+        }
+
         DurableTaskProgress progress = execution.Progress;
         if (number <= progress.Checkpoint)
         {

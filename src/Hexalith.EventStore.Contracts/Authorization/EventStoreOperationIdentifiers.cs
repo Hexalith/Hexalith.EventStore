@@ -47,4 +47,7 @@ public static class EventStoreOperationIdentifiers
 
     /// <summary>Resolve one exact owner authority query under a signed requester binding.</summary>
     public const string GatewayOwnerAuthorityQuery = "eventstore:owner-authority-query";
+
+    /// <summary>Resolve a committed Durable Task step in the G-1 host.</summary>
+    public const string DurableTaskStepLookup = "eventstore:durable-task-step-lookup";
 }

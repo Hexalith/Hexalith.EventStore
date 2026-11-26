@@ -43,14 +43,14 @@ Admission reserves a task-identifier index row before the admission commit. Stat
 
 Still open:
 
-- The authenticated host and routes, including the route that exposes the committed step lookup to authenticated owner workloads and confines each owner workload to the steps of its own operation.
+- The G-1 runtime host and its authenticated admission, confirmation, task status and cancellation routes. The committed-step lookup is available as an opt-in route for that host.
 - Separate authorization for status, cancellation and admission, including confirmation for cancellation.
 - The scheduler and durable discovery.
 - The dependency failure budget value, which belongs to the Platform operating envelope.
 - Reconciliation from `NeedsAttention`. The row does not persist the cause, an exhausted budget or an unresolved partial effect, which reconciliation needs.
 - Retention of admission and index rows.
 - The selected rollback, including the compatibility of rows written by the previous candidate and of new rows read by it. New rows add the attempt count, which the previous candidate drops when it rewrites a row. The previous candidate reads a refused irreversible step as inconsistent and fails closed.
-- One step-execution path. `DurableTaskRecovery` with its `PreparedStep` and `DurableTaskExecution` with its pending-step progress were developed in parallel and both write execution state on the admission row. Select one before a host registers either.
+- The retained-store treatment of legacy `DurableTaskRecovery` rows. Numbered lookup refuses any row with a named prepared step.
 - Cancellation races are verified only against the in-memory store, not against the Dapr and Redis store.
 
 ## Lifecycle verification
@@ -74,7 +74,17 @@ On 2026-11-25 the build completed with zero warnings and errors. The focused run
 
 ## Original-actor binding (2026-11-25)
 
-The EventStore Owner selected the committed admission lookup for delegated owner steps. A delegated step presents its task ID and stable step key. The owner reads the committed admission row through an authenticated EventStore lookup that binds the Tenant, original actor, operation and request hash. It checks that the step and target match, then re-evaluates the actor's current authority at the operation. No task-bound bearer credential is introduced. Platform and Folders recorded the same selection. `DurableTaskAdmission.ResolveStepAsync` implements the store lookup. Its authenticated route is still open.
+The EventStore Owner selected the committed admission lookup for delegated owner steps. A delegated step presents its task ID and stable step key. The owner reads the committed admission row through an authenticated EventStore lookup that binds the Tenant, original actor, operation and request hash. It checks that the step and target match, then re-evaluates the actor's current authority at the operation. Platform and Folders recorded the same selection. `DurableTaskAdmission.ResolveStepAsync` implements the store lookup.
+
+## Authenticated committed-step lookup (2026-11-26)
+
+The user approved `DurableTaskExecution` as the G-1 authenticated host's step model. It numbers steps from one and uses `{taskId}/step/{number}` as the canonical key. Historical `DurableTaskRecovery` retains its named steps and hashed keys. The numbered lookup refuses both a named key and a numbered alias for a row holding a named prepared step or receipt.
+
+The G-1 host applies the shared HTTP boundary with `AddEventStoreHttpHostSecurity()` and `UseEventStoreHttpHostSecurity()`. It registers its `DurableTaskAdmission`, calls `AddDurableTaskStepLookup()` on its services, and calls `MapDurableTaskStepLookup(...)` with its owner grants. The v1 contract is `POST /internal/durable-tasks/v1/steps/lookup`. The receiver uses the shared EventStore workload verifier with `APP_API_TOKEN`, configured `Authentication:DurableTaskStepLookup` audience and allowed callers, and the signed `eventstore:durable-task-step-lookup` operation. The assertion must carry exact `eventstore:bound-tenant` and `eventstore:bound-domain` claims. The request supplies `taskId`, `stepKey`, `admissionOperation`, `requestSha256`, `targetDomain`, `targetId`, and a positive `fence`.
+
+The handler matches the authenticated workload, admission operation, canonical step number and signed target domain to a host-registered grant. It verifies the committed operation, Tenant and normalized digest and compares the target identifier to the result of the grant's derivation from the committed admission and canonical key. The host and downstream owner supply that derivation. The handler then matches the presented fence to the persisted fence. An unknown binding, mismatched scope or target, or stale fence yields an empty `404`. The workload scheme handles credential and operation refusals.
+
+A successful response contains `tenantId`, `originalActorId`, `admissionOperation`, `requestSha256`, `taskId`, `stepKey`, `status`, `receipt`, and `acceptsExecution`. A step with a committed receipt accepts receipt recovery under the current fence and returns `acceptsExecution: false`. A pending step accepts execution only when its committed lifecycle state permits it. Folders must re-evaluate the original actor's current authority before acting and deduplicate the effect by the canonical task-step key. The runtime and operating-envelope qualification, Folder provisioning, retained-store recovery and owner acceptance remain open.
 
 ## One-task crash recovery — 2026-11-25
 

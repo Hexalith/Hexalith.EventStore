@@ -12,7 +12,8 @@ namespace Hexalith.EventStore.DomainService.Tests.DurableTasks;
 /// <summary>Exercises fenced execution and authoritative effect recovery against the conditional store contract.</summary>
 public sealed class DurableTaskExecutionTests
 {
-    private const string Component = "g1-task-state";
+    /// <summary>The shared execution fixture state-store component.</summary>
+    internal const string Component = "g1-task-state";
     private const string LeaseKey = "g1-execution-fixture-lease";
     private const int FailureBudget = 3;
     private static readonly string RequestHash = new('a', 64);
@@ -137,7 +138,8 @@ public sealed class DurableTaskExecutionTests
     }
 
     /// <summary>Persists a checkpoint followed by an owner commit whose reply is lost.</summary>
-    internal static async Task CommitWithLostReplyAsync(IReadModelStore primary, IReadModelStore replica)
+    internal static async Task<(DurableTaskAdmission Admission, DurableTaskLease Lease)> CommitWithLostReplyAsync(
+        IReadModelStore primary, IReadModelStore replica, Func<DurableTaskAdmission, DurableTaskLease, Task>? verifyOwnerBinding = null)
     {
         var clock = new ManualTimeProvider(StartedAt);
         var first = new DurableTaskAdmission(primary, Component, Authority(), clock);
@@ -148,7 +150,8 @@ public sealed class DurableTaskExecutionTests
         (await new DurableTaskExecution(second, clock, Duration, FailureBudget).TryAcquireAsync(task)).ShouldBeNull();
         (await primary.TrySaveAsync(Component, LeaseKey, lease, string.Empty)).ShouldBeTrue();
 
-        IDurableTaskEffect owner = PersistedOwner(primary, loseSecondReply: true);
+        IDurableTaskEffect owner = PersistedOwner(primary, loseSecondReply: true,
+            verifyOwnerBinding is null ? null : () => verifyOwnerBinding(second, lease));
         (await worker.RunStepAsync(lease, 1, owner)).ShouldBe("receipt-1");
         await Should.ThrowAsync<IOException>(() => worker.RunStepAsync(lease, 2, owner));
 
@@ -158,10 +161,12 @@ public sealed class DurableTaskExecutionTests
         pending.NeedsAttention.ShouldBeFalse();
         pending.Status.ShouldBe(DurableTaskStatus.WaitingForDependency);
         (await replica.GetAsync<string>(Component, OwnerKey(task, 2))).Value.ShouldBe("receipt-2");
+        return (second, lease);
     }
 
     /// <summary>Recovers the owner commit from the retained provider after replacing the worker and both sidecars.</summary>
-    internal static async Task RecoverAfterLostReplyAsync(IReadModelStore primary, IReadModelStore replica)
+    internal static async Task<(DurableTaskAdmission Admission, DurableTaskLease Lease, long StaleFence)> RecoverAfterLostReplyAsync(
+        IReadModelStore primary, IReadModelStore replica, Func<DurableTaskAdmission, DurableTaskLease, long, Task>? verifyPending = null)
     {
         var clock = new ManualTimeProvider(StartedAt + Duration);
         var first = new DurableTaskAdmission(primary, Component, Authority(), clock);
@@ -170,6 +175,10 @@ public sealed class DurableTaskExecutionTests
         DurableTaskLease stale = (await primary.GetAsync<DurableTaskLease>(Component, LeaseKey)).Value.ShouldNotBeNull();
         CommittedDurableTaskAdmission task = (await second.GetCommittedAsync(Scope, RequestHash)).ShouldNotBeNull();
         task.ShouldBe(stale.Task);
+        string ownerKey = OwnerKey(task, 2);
+        ReadModelEntry<string> ownerBefore = await replica.GetAsync<string>(Component, ownerKey);
+        ownerBefore.Value.ShouldBe("receipt-2");
+        ownerBefore.ETag.ShouldNotBeNullOrEmpty();
         DurableTaskLease lease = (await worker.TryAcquireAsync(task)).ShouldNotBeNull();
         lease.Fence.ShouldBe(stale.Fence + 1);
         lease.Owner.ShouldNotBe(stale.Owner);
@@ -186,6 +195,10 @@ public sealed class DurableTaskExecutionTests
         pending.Receipts.ShouldBe(["receipt-1"]);
         pending.EffectPending.ShouldBeTrue();
         pending.Status.ShouldBe(DurableTaskStatus.WaitingForDependency);
+        if (verifyPending is not null)
+        {
+            await verifyPending(second, lease, stale.Fence);
+        }
 
         IDurableTaskEffect owner = PersistedOwner(replica, loseSecondReply: false);
         (await worker.RunStepAsync(lease, 2, owner)).ShouldBe("receipt-2");
@@ -202,6 +215,9 @@ public sealed class DurableTaskExecutionTests
         byId.Receipts.ShouldBe(completed.Receipts);
         byId.Status.ShouldBe(DurableTaskStatus.Running);
         (await first.AdmitAsync(Scope, RequestHash)).Task.ShouldBe(task);
+        (await replica.GetAsync<string>(Component, ownerKey)).ShouldBe(ownerBefore);
+        (await primary.GetAsync<string>(Component, ownerKey)).ShouldBe(ownerBefore);
+        return (second, lease, stale.Fence);
     }
 
     private static IDurableTaskAdmissionAuthorizer Authority()
@@ -212,7 +228,7 @@ public sealed class DurableTaskExecutionTests
         return authorizer;
     }
 
-    private static IDurableTaskEffect PersistedOwner(IReadModelStore store, bool loseSecondReply)
+    private static IDurableTaskEffect PersistedOwner(IReadModelStore store, bool loseSecondReply, Func<Task>? verifySecondStepBinding = null)
     {
         IDurableTaskEffect owner = Substitute.For<IDurableTaskEffect>();
         owner.LookupAsync(Arg.Any<DurableTaskEffectStep>(), Arg.Any<CancellationToken>())
@@ -229,11 +245,17 @@ public sealed class DurableTaskExecutionTests
 
         async Task<(DurableTaskEffectLookup, string?)> ExecuteAsync(DurableTaskEffectStep step, CancellationToken cancellationToken)
         {
+            if (step.Number == 2 && verifySecondStepBinding is not null)
+            {
+                await verifySecondStepBinding();
+            }
+
             string receipt = $"receipt-{step.Number}";
             (await store.TrySaveAsync(Component, "owner-" + step.Key, receipt, string.Empty, cancellationToken)).ShouldBeTrue();
             return loseSecondReply && step.Number == 2 ? throw new IOException("Lost owner reply after commit.") : (DurableTaskEffectLookup.Committed, receipt);
         }
     }
 
-    private static string OwnerKey(CommittedDurableTaskAdmission task, int number) => $"owner-{task.TaskId}/step/{number}";
+    /// <summary>Returns the owner row key for the numbered fixture step.</summary>
+    internal static string OwnerKey(CommittedDurableTaskAdmission task, int number) => $"owner-{task.TaskId}/step/{number}";
 }
