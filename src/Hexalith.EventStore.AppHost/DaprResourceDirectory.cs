@@ -5,6 +5,8 @@ internal sealed class DaprResourceDirectory : IDisposable
 {
     private readonly DirectoryInfo _root;
     private readonly bool _deleteOnDispose;
+    private readonly object _gate = new();
+    private bool _disposed;
 
     private DaprResourceDirectory(DirectoryInfo root, string stateStorePath, string emptyResourcesPath, bool deleteOnDispose)
     {
@@ -52,18 +54,22 @@ internal sealed class DaprResourceDirectory : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (!_deleteOnDispose)
+        lock (_gate)
         {
-            return;
-        }
+            if (_disposed || !_deleteOnDispose)
+            {
+                return;
+            }
 
-        try
-        {
-            _root.Delete(recursive: true);
-        }
-        catch (DirectoryNotFoundException)
-        {
-            // The directory has already been removed.
+            _disposed = true;
+            try
+            {
+                _root.Delete(recursive: true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // The directory has already been removed.
+            }
         }
     }
 }
