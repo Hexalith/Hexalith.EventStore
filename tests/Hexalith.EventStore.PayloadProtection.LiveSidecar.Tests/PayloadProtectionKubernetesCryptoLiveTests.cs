@@ -18,6 +18,72 @@ namespace Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests;
 public sealed class PayloadProtectionKubernetesCryptoLiveTests(KubernetesCryptoFixture fixture) : IClassFixture<KubernetesCryptoFixture>
 {
     [Fact(Explicit = true)]
+    public async Task SharedPostgresqlStateUsesTheSameEtagsAcrossAppsAndRollsBackStaleTransactions()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        CancellationToken token = timeout.Token;
+        await fixture.StartAsync(token);
+        await using KubernetesCryptoStatePeer peer = await fixture.StartStatePeerAsync(token);
+        DaprMetadata primaryMetadata = await fixture.Client.GetMetadataAsync(token);
+        DaprMetadata peerMetadata = await peer.Client.GetMetadataAsync(token);
+        primaryMetadata.Id.ShouldBe(fixture.AppId);
+        peerMetadata.Id.ShouldBe(peer.AppId);
+        peerMetadata.Id.ShouldNotBe(primaryMetadata.Id);
+        peerMetadata.Components.Select(component => component.Name).ShouldBe(["statestore"]);
+
+        var primaryStore = new DaprPayloadProtectionStateStore(fixture.Client, authorityProfile: PayloadProtectionAuthorityProfile.DaprKubernetesCrypto);
+        var peerStore = new DaprPayloadProtectionStateStore(peer.Client, authorityProfile: PayloadProtectionAuthorityProfile.DaprKubernetesCrypto);
+        (await new PayloadProtectionCapabilityProbe(primaryStore).ProbeAsync(token)).ShouldBe("state.postgresql:v2");
+        (await new PayloadProtectionCapabilityProbe(peerStore).ProbeAsync(token)).ShouldBe("state.postgresql:v2");
+
+        string probe = new CryptographicPayloadProtectionEntropy().CreateKeyReference();
+        string timestamp = PayloadProtectionStateCodec.Timestamp(DateTimeOffset.UtcNow);
+        var initial = new WorkHeadV1(PayloadProtectionStateKeys.Digest(probe), 0, 0, 0, timestamp);
+        var committedCompanion = new WorkHeadV1(PayloadProtectionStateKeys.Digest(probe + "-committed"), 0, 0, 0, timestamp);
+        var rejectedCompanion = new WorkHeadV1(PayloadProtectionStateKeys.Digest(probe + "-rejected"), 0, 0, 0, timestamp);
+        string key = PayloadProtectionStateCodec.KeyFor(initial);
+        (await primaryStore.CommitAsync([PayloadProtectionStateMutation.Put(initial)], token)).ShouldBe(PayloadStateCommitResult.Committed);
+
+        PayloadProtectionStateValue<WorkHeadV1>? peerInitial = await peerStore.ReadAsync<WorkHeadV1>(key, token);
+        PayloadProtectionStateValue<WorkHeadV1>? primaryInitial = await primaryStore.ReadAsync<WorkHeadV1>(key, token);
+        peerInitial.ShouldNotBeNull();
+        primaryInitial.ShouldNotBeNull();
+        primaryInitial.Value.ShouldBe(initial);
+        peerInitial.Value.ShouldBe(initial);
+        peerInitial.Bytes.Span.SequenceEqual(primaryInitial.Bytes.Span).ShouldBeTrue();
+        peerInitial.ETag.ShouldNotBeNullOrEmpty();
+        peerInitial.ETag.ShouldBe(primaryInitial.ETag);
+
+        WorkHeadV1 updated = initial with { Revision = 1 };
+        (await peerStore.CommitAsync(
+            [PayloadProtectionStateMutation.Put(updated, primaryInitial.ETag), PayloadProtectionStateMutation.Put(committedCompanion)],
+            token)).ShouldBe(PayloadStateCommitResult.Committed);
+        PayloadProtectionStateValue<WorkHeadV1>? afterCommit = await primaryStore.ReadAsync<WorkHeadV1>(key, token);
+        afterCommit.ShouldNotBeNull();
+        afterCommit.Value.ShouldBe(updated);
+        afterCommit.ETag.ShouldNotBe(primaryInitial.ETag);
+
+        PayloadStateCommitResult stale = await primaryStore.CommitAsync(
+            [PayloadProtectionStateMutation.Put(rejectedCompanion), PayloadProtectionStateMutation.Put(initial with { Revision = 2 }, peerInitial.ETag)],
+            token);
+        // The Dapr transaction can report a stale ETag as Unknown. The strong reads establish the rollback.
+        stale.ShouldBeOneOf(PayloadStateCommitResult.Conflict, PayloadStateCommitResult.Unknown);
+
+        foreach (DaprPayloadProtectionStateStore store in new[] { primaryStore, peerStore })
+        {
+            PayloadProtectionStateValue<WorkHeadV1>? persisted = await store.ReadAsync<WorkHeadV1>(key, token);
+            persisted.ShouldNotBeNull();
+            persisted.Value.ShouldBe(updated);
+            persisted.Bytes.Span.SequenceEqual(afterCommit.Bytes.Span).ShouldBeTrue();
+            persisted.ETag.ShouldBe(afterCommit.ETag);
+            PayloadProtectionStateValue<WorkHeadV1>? companion = await store.ReadAsync<WorkHeadV1>(PayloadProtectionStateCodec.KeyFor(committedCompanion), token);
+            companion.ShouldNotBeNull();
+            companion.Value.ShouldBe(committedCompanion);
+            (await store.ReadAsync<WorkHeadV1>(PayloadProtectionStateCodec.KeyFor(rejectedCompanion), token)).ShouldBeNull();
+        }
+    }
+
+    [Fact(Explicit = true)]
     public async Task WrapAndUnwrapPersistWrappedDekV2AndItsIndexedAuthorityThroughTheDaprStateBoundary()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));

@@ -93,6 +93,8 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     internal string Erasure { get; }
     /// <summary>Gets the 256-character maximum address.</summary>
     internal string Maximum { get; }
+    /// <summary>Gets the primary sidecar's expected app ID.</summary>
+    internal string AppId => _identity;
     /// <summary>Gets the current SDK client to the owned sidecar, used for state and test-only legacy envelopes.</summary>
     internal DaprClient Client { get; private set; } = null!;
     /// <summary>Gets the current generated-client crypto transport, created as production creates it, with the per-run API token.</summary>
@@ -108,6 +110,9 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     /// <summary>Gets the owned node container's published API endpoint.</summary>
     internal string OwnedNodeEndpoint { get; private set; } = "";
 
+    private string StateComponentsDirectory => Path.Combine(_directory!, "state-components");
+    private string CryptoComponentsDirectory => Path.Combine(_directory!, "crypto-components");
+
     /// <inheritdoc/>
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
@@ -121,7 +126,8 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
             if (_directory is not null) { throw new InvalidOperationException("The Kubernetes cryptography lane failed to start earlier."); }
             if (!_listening) { TaskScheduler.UnobservedTaskException += OnUnobservedTaskException; _listening = true; }
             _directory = Path.Combine(Path.GetTempPath(), "pp-k8s-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(_directory);
+            Directory.CreateDirectory(StateComponentsDirectory);
+            Directory.CreateDirectory(CryptoComponentsDirectory);
             await VerifyToolsAsync(token);
             await CreateClusterAsync(token);
             await ProvisionKeysAsync(token);
@@ -129,7 +135,7 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
             string password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
             _postgres = new OwnedPostgresContainer(_identity);
             int postgresPort = await _postgres.StartAsync(password);
-            await WritePrivateAsync("statestore.yaml", $"""
+            await WritePrivateAsync(Path.Combine(StateComponentsDirectory, "statestore.yaml"), $"""
                 apiVersion: dapr.io/v1alpha1
                 kind: Component
                 metadata:
@@ -162,46 +168,95 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     internal async ValueTask StartSidecarAsync(CancellationToken token)
     {
         if (_sidecar is not null) { throw new InvalidOperationException("The lane sidecar is already running."); }
-        var start = new ProcessStartInfo(_daprd!) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
-        foreach (string argument in new[] { "--app-id", _identity, "--resources-path", _directory!, "--dapr-http-port", Port(0), "--dapr-grpc-port", Port(1),
-            "--dapr-internal-grpc-port", Port(2), "--metrics-port", Port(3), "--log-level", "warn" }) { start.ArgumentList.Add(argument); }
-        start.Environment.Remove("KUBECONFIG");
-        start.Environment["DAPR_API_TOKEN"] = _apiToken;
-        _sidecar = Process.Start(start) ?? throw new InvalidOperationException("The lane sidecar could not start.");
-        _sidecar.OutputDataReceived += (_, e) => { if (e.Data is not null && _sidecarLog.Count < 10_000) { _sidecarLog.Enqueue(e.Data); } };
-        _sidecar.ErrorDataReceived += (_, e) => { if (e.Data is not null && _sidecarLog.Count < 10_000) { _sidecarLog.Enqueue(e.Data); } };
-        _sidecar.BeginOutputReadLine(); _sidecar.BeginErrorReadLine();
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-        deadline.CancelAfter(TimeSpan.FromSeconds(60));
-        using var http = new HttpClient();
-        while (true)
-        {
-            deadline.Token.ThrowIfCancellationRequested();
-            if (_sidecar.HasExited) { throw new InvalidOperationException("The lane sidecar exited before readiness."); }
-            try
-            {
-                using var probe = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{Port(0)}/v1.0/healthz/outbound");
-                probe.Headers.Add(DaprCryptographyGrpcTransport.ApiTokenHeader, _apiToken);
-                using HttpResponseMessage response = await http.SendAsync(probe, deadline.Token);
-                if (response.IsSuccessStatusCode) { break; }
-            }
-            catch (HttpRequestException) { }
-            await Task.Delay(200, deadline.Token);
-        }
-
+        _sidecar = await StartSidecarProcessAsync(AppId, _ports, [StateComponentsDirectory, CryptoComponentsDirectory], token);
         Client?.Dispose();
-        Client = new DaprClientBuilder().UseGrpcEndpoint($"http://127.0.0.1:{Port(1)}").UseDaprApiToken(_apiToken).Build();
+        Client = CreateStateClient(_ports);
         Store = new DaprPayloadProtectionStateStore(Client, authorityProfile: PayloadProtectionAuthorityProfile.DaprKubernetesCrypto);
         Transport?.Dispose();
         Transport = CreateTransport(_apiToken);
     }
 
+    /// <summary>Starts a test-scoped sidecar that loads only the lane's shared state component.</summary>
+    internal async ValueTask<KubernetesCryptoStatePeer> StartStatePeerAsync(CancellationToken token)
+    {
+        if (_sidecar is not { HasExited: false })
+        {
+            throw new InvalidOperationException("The primary sidecar must be running before its state peer starts.");
+        }
+
+        string appId = AppId + "-state-peer";
+        int[] ports = Ports(4);
+        Process sidecar = await StartSidecarProcessAsync(appId, ports, [StateComponentsDirectory], token);
+        try
+        {
+            return new KubernetesCryptoStatePeer(appId, CreateStateClient(ports), sidecar);
+        }
+        catch
+        {
+            await StopSidecarProcessAsync(sidecar);
+            throw;
+        }
+    }
+
+    private async ValueTask<Process> StartSidecarProcessAsync(string appId, int[] ports, string[] resourceDirectories, CancellationToken token)
+    {
+        var start = new ProcessStartInfo(_daprd!) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        foreach (string argument in new[] { "--app-id", appId, "--dapr-http-port", Port(ports, 0), "--dapr-grpc-port", Port(ports, 1),
+            "--dapr-internal-grpc-port", Port(ports, 2), "--metrics-port", Port(ports, 3), "--dapr-listen-addresses", "127.0.0.1",
+            "--dapr-internal-grpc-listen-address", "127.0.0.1", "--metrics-listen-address", "127.0.0.1", "--log-level", "warn" })
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        foreach (string directory in resourceDirectories)
+        {
+            start.ArgumentList.Add("--resources-path");
+            start.ArgumentList.Add(directory);
+        }
+
+        start.Environment.Remove("KUBECONFIG");
+        start.Environment["DAPR_API_TOKEN"] = _apiToken;
+        Process sidecar = Process.Start(start) ?? throw new InvalidOperationException("The lane sidecar could not start.");
+        try
+        {
+            sidecar.OutputDataReceived += (_, e) => { if (e.Data is not null && _sidecarLog.Count < 10_000) { _sidecarLog.Enqueue(e.Data); } };
+            sidecar.ErrorDataReceived += (_, e) => { if (e.Data is not null && _sidecarLog.Count < 10_000) { _sidecarLog.Enqueue(e.Data); } };
+            sidecar.BeginOutputReadLine();
+            sidecar.BeginErrorReadLine();
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
+            deadline.CancelAfter(TimeSpan.FromSeconds(60));
+            using var http = new HttpClient();
+            while (true)
+            {
+                deadline.Token.ThrowIfCancellationRequested();
+                if (sidecar.HasExited) { throw new InvalidOperationException("The lane sidecar exited before readiness."); }
+                try
+                {
+                    using var probe = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{Port(ports, 0)}/v1.0/healthz/outbound");
+                    probe.Headers.Add(DaprCryptographyGrpcTransport.ApiTokenHeader, _apiToken);
+                    using HttpResponseMessage response = await http.SendAsync(probe, deadline.Token);
+                    if (response.IsSuccessStatusCode) { return sidecar; }
+                }
+                catch (HttpRequestException) { }
+                await Task.Delay(200, deadline.Token);
+            }
+        }
+        catch
+        {
+            await StopSidecarProcessAsync(sidecar);
+            throw;
+        }
+    }
+
+    private DaprClient CreateStateClient(int[] ports)
+        => new DaprClientBuilder().UseGrpcEndpoint($"http://127.0.0.1:{Port(ports, 1)}").UseDaprApiToken(_apiToken).Build();
+
     /// <summary>Creates a transport to the owned sidecar through configuration, as production resolves it; a null token sends none.</summary>
     internal DaprCryptographyGrpcTransport CreateTransport(string? apiToken)
         => DaprCryptographyGrpcTransport.Create(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["DAPR_GRPC_ENDPOINT"] = $"http://127.0.0.1:{Port(1)}",
-            ["DAPR_GRPC_PORT"] = Port(1),
+            ["DAPR_GRPC_ENDPOINT"] = $"http://127.0.0.1:{Port(_ports, 1)}",
+            ["DAPR_GRPC_PORT"] = Port(_ports, 1),
             // An explicit empty value keeps any ambient DAPR_API_TOKEN out of the lane.
             ["DAPR_API_TOKEN"] = apiToken ?? "",
         }).Build());
@@ -236,12 +291,19 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     {
         Process? sidecar = _sidecar;
         if (sidecar is null) { return; }
+        try { await StopSidecarProcessAsync(sidecar); }
+        finally { _sidecar = null; }
+    }
+
+    /// <summary>Stops and disposes a lane-owned sidecar process.</summary>
+    internal static async ValueTask StopSidecarProcessAsync(Process sidecar)
+    {
         try
         {
             if (!sidecar.HasExited) { sidecar.Kill(entireProcessTree: true); }
             await sidecar.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
         }
-        finally { sidecar.Dispose(); _sidecar = null; }
+        finally { sidecar.Dispose(); }
     }
 
     /// <summary>Returns the bounded daprd output captured so far, for no-leak sentinels.</summary>
@@ -349,7 +411,7 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
         foreach ((string account, string file, string component) in new[] { ("pp-crypto", "restricted.kubeconfig", Component), ("pp-denied", "denied.kubeconfig", DeniedComponent) })
         {
             string serviceToken = (await KubectlAsync(["create", "token", account, "-n", Namespace, "--duration=2h"], token: token)).Trim();
-            await WritePrivateAsync(file, $"""
+            await WritePrivateAsync(Path.Combine(_directory!, file), $"""
                 apiVersion: v1
                 kind: Config
                 clusters:
@@ -369,7 +431,7 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
                 current-context: lane
                 """, token);
             // defaultNamespace stays unset so every key name carries its namespace.
-            await WritePrivateAsync(component + ".yaml", $"""
+            await WritePrivateAsync(Path.Combine(CryptoComponentsDirectory, component + ".yaml"), $"""
                 apiVersion: dapr.io/v1alpha1
                 kind: Component
                 metadata:
@@ -399,9 +461,8 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
         finally { CryptographicOperations.ZeroMemory(der); Array.Clear(pem); }
     }
 
-    private async ValueTask WritePrivateAsync(string name, string content, CancellationToken token)
+    private static async ValueTask WritePrivateAsync(string path, string content, CancellationToken token)
     {
-        string path = Path.Combine(_directory!, name);
         var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
         // ServiceAccount tokens and the state password stay readable by the owner only.
         if (!OperatingSystem.IsWindows()) { options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite; }
@@ -486,7 +547,7 @@ public sealed class KubernetesCryptoFixture : IAsyncLifetime
     }
 
     private static string Address(string space, string secret) => space + "/" + secret + "/" + DataKey;
-    private string Port(int index) => _ports[index].ToString(CultureInfo.InvariantCulture);
+    private static string Port(int[] ports, int index) => ports[index].ToString(CultureInfo.InvariantCulture);
 
     private static int[] Ports(int count)
     {

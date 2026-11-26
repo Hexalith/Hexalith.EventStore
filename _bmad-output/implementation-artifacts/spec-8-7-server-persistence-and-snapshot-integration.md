@@ -100,7 +100,8 @@ Paths below are relative to `src/` unless prefixed with `tests/`.
 - [x] `src/Hexalith.EventStore.PayloadProtection/PayloadProtectionServiceCollectionExtensions.cs` — implement first-phase closed options/startup validation; preserve Server's default registration and interaction semantics. Enabled registration deliberately fails before hosted services while prerequisite admission is unavailable.
 - [x] `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-08.md` — apply the approved Dapr/Kubernetes planning direction and record the separately identified successor intent while preserving original frozen bytes, baseline and first-phase evidence.
 - [x] Story 8.12 — approve its exact successor spec/supplement and qualify the built-in Kubernetes/gRPC backend plus versioned wrapped-key records. Revision 4 and fresh SDK 1.19.1 owned-kind results satisfy the bounded EventStore handoff; Platform target and host/state/fleet/restore prerequisites still precede Server admission/wiring.
-- [ ] Story 3.21 / Builds — accept the qualified runtime/CLI 1.19.1 input, with the owner-approved SDK 1.19.1 input and the required runtime-minor regressions/reseal boundaries; complete existing capacity/index/erasure-memory and state/fleet/restore prerequisites independently.
+- [ ] Story 3.21 / Builds — accept an exact qualified runtime, CLI and SDK tuple with the required runtime regressions, adoption, and reseal evidence. The bounded 8.12 qualification is on runtime/CLI/SDK 1.19.1. D5 admits runtime 1.19.2 to Story 3.21 candidate intake. Complete the state/fleet/restore prerequisites independently and retain the completed capacity/index/erasure-memory evidence.
+- [x] `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/` — extend the isolated PF-02 evidence for the existing daprd 1.19.1/PostgreSQL v2 fixture. Run two simultaneous sidecars with distinct app IDs and the same fixed component-name key prefix. Verify immediate cross-app strong reads and ETags, then a successful ETag transaction and the persisted rollback of a stale transaction with a companion write. Exercise the existing capability probe on this profile. See [local verification](#isolated-two-app-pf-02-verification--2026-11-26).
 - [ ] `src/Hexalith.EventStore.PayloadProtection/PayloadProtectionServiceCollectionExtensions.cs`, `src/Hexalith.EventStore.Server/Configuration/` — after qualified backend/capacity/state/fleet evidence exists, finish enabled host admission and exactly-one engine replacement for each approved write mode.
 - [ ] `src/Hexalith.EventStore.Server/Events/`, `src/Hexalith.EventStore.Server/Actors/AggregateActor.PayloadProtection.cs` — connect generic occurrence, reservation/completion and typed reads through existing atomic boundaries; cover every owning Server/Admin read path before completion.
 - [x] `tests/Hexalith.EventStore.Contracts.Tests/`, `tests/Hexalith.EventStore.PayloadProtection.Tests/`, `tests/Hexalith.EventStore.Server.Tests/Configuration/PayloadProtectionRegistrationTests.cs` — verify first-phase wire/options/refusal, authority, compatibility/lifecycle unit behavior and the actual Server no-op; retain existing coverage and the two environment-dependent package-artifact skips.
@@ -282,3 +283,63 @@ All three builds passed with zero warnings/errors. The core suite passed **1,245
 The bounded 8.12 prerequisite is now checked. **8.7 stays `in-progress`**: target Platform custody/cluster qualification, 3.21 and PF-02/shared-state/fleet/restore/history/retirement obligations remain open. Enabled registration continues to refuse before service resolution. No deployment, release, infrastructure change to a shared cluster or G5 acceptance is inferred. The task-owned Aspire baseline was inspected (13 Running, 16 Waiting, one Starting) and stopped before source edits; no all-resources-ready claim is made.
 
 Local scratch evidence is `/tmp/story87-sdk1191-{core,live,server}-build.log`, `/tmp/story87-sdk1191-core-tests.log`, `/tmp/story87-sdk1191-server-focused.log`, `/tmp/story87-sdk1191-kubernetes-crypto-tests.log`, `/tmp/story87-sdk1191-kubernetes-crypto.trx`, `/tmp/story87-sdk1191-{protos,client}-api-diff.log` and `/tmp/story87-sdk1191-{node,python}-goldens.log`. It is not hosted CI or target qualification evidence.
+
+### Prerequisite review — 2026-11-26
+
+The review used EventStore `82c9d21dc26081a49e453c3c2cd792b3f6b1dbd2`, Builds gitlink `62876129eaa035e78bd0324419231f07d43a07b8` and Platform gitlink `6046e6f15d220b84a12488178cd1114778e7e81b`. The committed Platform owning checkout at `80a60039b46ea6bdccd9eeac5091551bc59643fa` records the same relevant tracker states. The EventStore tracker shows 3.21 and 8.7 in progress, 8.12 done for the bounded handoff, and 8.8–8.11 in backlog. The completed capacity and Dapr error-outcome slices supply their existing evidence. [EventStore tracker](sprint-status.yaml) · [Capacity](spec-payload-protection-capacity-fixes.md) · [Dapr error outcomes](spec-dapr-crypto-error-outcomes.md) · [Platform tracker at the gitlink](../../references/Hexalith.Platform/_bmad-output/implementation-artifacts/sprint-status.yaml)
+
+| Prerequisite | State and required evidence |
+| --- | --- |
+| **3.21 runtime and broker** | EventStore completed the approved D5 intake for runtime/control plane and embedded components-contrib 1.19.2, CLI and .NET SDK 1.19.1. The latest retained broker run is still candidate-02 at 20/24, technical FAIL, selected broker null. **Platform Story 4.17** must accept the 1.19.2 candidate request and obtain separate authority for the exact 24-vector attempt. It needs supported remediation and full results, including RabbitMQ NACK/pressure and missing bindings, both credential rotations, Kafka pressure, and composed workload and restore proof. **EventStore 3.21** owns input admission and Dapr assertions against that exact candidate. **Builds** owns pin adoption. The **deployment owner** owes production AD-26 selection and accepted 5.7/3.19 receipt bindings. The 4.16 protected-write capability remains unresolved. [3.21 intake](spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md#1192-candidate-intake--2026-11-25) · [D5 and AD-26 disposition](../planning-artifacts/sprint-change-proposal-2026-11-25.md#71-approval-record) |
+| **PF-02 shared state** | Story 8.5's retained isolated PostgreSQL v2 lane uses daprd 1.18.7. The bounded 8.12 fixture uses daprd 1.19.1 and the same PostgreSQL image and fixed component-name prefix. The single-client startup probe leaves cross-app visibility open. EventStore can extend the existing isolated 1.19.1 evidence before a target has been selected. **Platform/Operations** must supply the exact target runtime, component/configuration identity, shared key prefix, app scopes and state namespace. **EventStore 8.7 and Operations** must bind the PF-02 result to that profile, including strong reads, ETags, conditional create, atomic catalog/authority/lease/key/index transactions and TTL. Then 8.7 can pin the qualified profile for readiness and qualify fleet, fence and restore behavior. [Lifecycle amendment §7](spec-8-5-lifecycle-protocol-amendment.md#7-required-implementation-checks) · [8.5 verification](spec-8-5-policy-and-key-lifecycle-mechanics.md#verification) |
+| **Target Platform custody and cluster** | Platform 4.5 records isolated 1.19.2 Helm qualification. Its 4.9, 4.16 and 4.22 remain backlog, and the inspected Platform revisions contain no accepted target payload KEK custody record. **Platform custody and deployment owners** must record an exact approved target rehearsal bundle covering dedicated immutable/versioned Secrets, component and workload identity, runtime/provisioner RBAC, sidecar injection/API-token authentication, encryption at rest, Secret/etcd backup and restore, and rotation with retained-version reads and old-key retirement. If the selected tuple differs from revision 4, the **EventStore owner and Security** must reconcile the approved crypto subject and requalify it before Server admission. [Bounded 8.12 evidence](spec-8-12-dapr-kubernetes-cryptography.md) · [Approved Platform handoff](../planning-artifacts/sprint-change-proposal-2026-11-08.md#p7--platform-operations-documentation-and-unchanged-ux) |
+
+For 3.21 re-entry, **EventStore's 3.21 owner** needs a supported Kafka Produce rejection witness with exact-ID Dapr readback, and a rotation witness joining the stale publisher and credential generation to the broker-observed principal and applied ACL. **Platform 4.17** needs the admitted 1.19.2 source/lock/configuration, including the released RabbitMQ NACK fix, and supported delivery of the RabbitMQ publish-failure and mandatory-return fixes before the full attempt. Any different Kafka guarantee or test predicate needs a separately approved decision. [3.21 result and engineering dependencies](spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md#platform-result-reconciliation--2026-11-13)
+
+The selected local slice is the two-app PF-02 check. Story 8.7 remains in progress and generic Enabled registration continues to refuse. G5 is pending until **EventStore Story 8.11** records the required authenticated approvals at the exact provider package or source revision, with Server, packaged consumer, Parties parity and rollback evidence. The required roles are EventStore, Security, Release, Operations, the Parties maintainer and Test/Vector review. The Parties tracker and deferred-work ledger at `9bb45df43669c7a225aad799fcf088d37d86bcfe` show its Story 8.7 blocked and DW-97 open. [Story 8.11 acceptance](../planning-artifacts/epics.md#story-811-g5-evidence-and-approval-closure)
+
+### Isolated two-app PF-02 verification — 2026-11-26
+
+The test starts a state-only Dapr sidecar beside the primary. Dapr metadata identifies both app IDs independently. Both clients use the lock-verified daprd 1.19.1 executable, SDK 1.19.1, the revision 4 state authority and the same fixture-owned `statestore` (`state.postgresql:v2`, `keyPrefix: name`). The existing capability probe runs through each client for conditional create, CAS, conditional delete, rollback and TTL. The new case then reads the same bytes and ETag immediately across app IDs, uses one sidecar's ETag for a successful transaction on the other, and checks both clients' readback after a stale write. It requires the updated bytes and ETag, the committed companion, and absence of the rolled-back companion.
+
+The local component profile uses PostgreSQL image `postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636` and kind 0.31.0 with node digest `sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f`. Daprd SHA-256 is `b1ece5da76674bf6e15126aeb019fa58e444b5b8edf4d0ac59e32df895ae8fd2`; the existing [1.19.1 lock](../../deploy/dapr/qualification/runtime-lock-1.19.1.json) is `5bce69c02c7aee8e3ec37003186a7e602ef25adb2c2808137302b0f4a908ca58`.
+
+Pre-edit AppHost baseline ran from the EventStore root:
+
+```bash
+run-with-temp aspire start --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json
+aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json
+aspire stop --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+aspire ps --format Json
+```
+
+The description showed 13 Running, 16 Waiting and one Starting resource. The task-owned AppHost stopped successfully and the final process listing was empty.
+
+The tested working tree is EventStore HEAD `82c9d21dc26081a49e453c3c2cd792b3f6b1dbd2` plus the following uncommitted test sources. The source-mode build used the Builds gitlink above and Commons gitlink `59c22162e6b54a39864dbc5f0ba76056045a411f`.
+
+| Test source under `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/` | SHA-256 |
+| --- | --- |
+| `KubernetesCryptoFixture.cs` | `af26f7adbeebe83923b3cd20b5c10f969d907879abe8e32fff8288dbad0315a9` |
+| `KubernetesCryptoStatePeer.cs` | `e48acb645a31f27ac878050f67b2e59e4483dd863d6617efb7a2d8fa7b0d0ab4` |
+| `PayloadProtectionKubernetesCryptoLiveTests.cs` | `81f68347b64a96f41610e29f73dd5385212e1e915595085a245a00492035020f` |
+
+```bash
+run-with-temp bash -s <<'BASH'
+set -euo pipefail
+evidence_dir="$HOME/.cache/hexalith/eventstore/story-8-7-pf02"
+mkdir -p "$evidence_dir"
+ln -s "$PWD/Hexalith.EventStore.slnx" "$TMPDIR/Hexalith.EventStore.slnx"
+ln -s "$PWD/deploy" "$TMPDIR/deploy"
+dotnet build tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests.csproj \
+  --configuration Debug -p:UseHexalithProjectReferences=true -m:1 --artifacts-path "$TMPDIR/artifacts" \
+  2>&1 | tee "$evidence_dir/build.log"
+QUALIFICATION_DAPRD="$HOME/.dapr/bin/daprd" HEXALITH_PP_KIND="$(command -v kind)" \
+  dotnet "$TMPDIR/artifacts/bin/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests/debug/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests.dll" \
+  -trait Lane=KubernetesCrypto -explicit only -failSkips -result-trx "$evidence_dir/kubernetes-crypto.trx" \
+  2>&1 | tee "$evidence_dir/kubernetes-crypto.log"
+BASH
+```
+
+- The final .NET SDK 11.0.100 source-mode build exited 0 with zero warnings and errors. The explicit lane exited 0 after **132.688 s**, with **15 passed, zero failures, errors, skips or not-run**. The TRX records 15 executed and passed, including `SharedPostgresqlStateUsesTheSameEtagsAcrossAppsAndRollsBackStaleTransactions` in **4.585 s**. The restored graph resolves `Dapr.Client/1.19.1` and `Dapr.Protos/1.19.1`.
+- Local process readback observed two simultaneous sidecars with distinct HTTP and gRPC ports and observed the peer exit while the primary still ran. Post-run checks found no lane-owned containers, sidecars or kind clusters. Build, execution, TRX and cleanup logs are under `/home/administrator/.cache/hexalith/eventstore/story-8-7-pf02/`. Hosted CI remains unrun for this change.
+- This completes the isolated cross-app assertion. Target PF-02, the exact state profile admission, fleet and restore proof, enabled Server persistence/snapshot integration and G5 remain open.
