@@ -661,7 +661,8 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                 }
             }
 
-            if (processingResult.Accepted && processingResult.EventCount > 0) {
+            if (processingResult.Accepted && processingResult.EventCount > 0
+                && (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox, request.Domain) != true)) {
                 using var projectionFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
                 await ValidateExecutionFenceAsync(
                     idempotencyAdmissionCoordinator,
@@ -669,10 +670,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                     executionRequest,
                     cancellationToken).ConfigureAwait(false);
                 projectionFenceStage?.Complete();
-                if (projectionActivationOutbox is null || projectionActivationWorker?.CanDefer(projectionActivationOutbox, request.Domain) != true)
-                {
-                    await TriggerProjectionUpdateAsync(executionRequest, diagnostics).ConfigureAwait(false);
-                }
+                await TriggerProjectionUpdateAsync(executionRequest, diagnostics).ConfigureAwait(false);
             }
 
             // Read final status once for both activity trackers (advisory, rule #12)

@@ -5,6 +5,7 @@ using Dapr.Client;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
@@ -79,6 +80,56 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         await outbox.DidNotReceiveWithAnyArgs().EnsureAsync(default!, default);
         await context.Router.DidNotReceiveWithAnyArgs().RouteFencedCommandAsync(default!, default!, default);
         await context.Router.DidNotReceiveWithAnyArgs().RouteCommandAsync(default!, default);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Handle_ProtectedExecutionFencesInlineProjectionAndDurableCompletion(bool workerOwnsOutbox)
+    {
+        using var cancellation = new CancellationTokenSource();
+        IProjectionActivationOutbox outbox = Substitute.For<IProjectionActivationOutbox>();
+        IProjectionActivationOutbox workerOutbox = workerOwnsOutbox ? outbox : Substitute.For<IProjectionActivationOutbox>();
+        using var worker = new ProjectionActivationWorker(workerOutbox, new NoOpProjectionUpdateOrchestrator(),
+            Options.Create(new ProjectionDispatchOptions { RetryWorkerInterval = TimeSpan.FromHours(1) }), TimeProvider.System);
+        var projection = Substitute.For<IProjectionUpdateOrchestrator>();
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute, projectionActivationOutbox: outbox,
+            projectionActivationWorker: new ProjectionActivationWorkerCapability(worker, workerOutbox, true),
+            projectionOrchestrator: projection);
+        var session = (await context.Coordinator.AdmitAsync(context.Command, cancellation.Token))!;
+        var execution = context.Command with { IdempotencyKey = null };
+        var aggregate = new AggregateIdentity(execution.Tenant, execution.Domain, execution.AggregateId);
+        var accepted = new CommandProcessingResult(true, EventCount: 1);
+        List<string> calls = [];
+        _ = context.Coordinator.BeginAsync(session, cancellation.Token)
+            .Returns(_ => { calls.Add("begin"); return Task.CompletedTask; });
+        _ = context.Coordinator.ValidateExecutionAsync(session, execution, cancellation.Token)
+            .Returns(_ => { calls.Add("fence"); return Task.CompletedTask; });
+        _ = outbox.EnsureAsync(aggregate, Arg.Any<CancellationToken>())
+            .Returns(_ => { calls.Add("activation"); return Task.CompletedTask; });
+        _ = context.Router.RouteFencedCommandAsync(execution, session.ExecutionContext!, cancellation.Token)
+            .Returns(_ => { calls.Add("route"); return accepted; });
+        _ = projection.UpdateProjectionAsync(aggregate, CancellationToken.None)
+            .Returns(_ => { calls.Add("projection"); return Task.CompletedTask; });
+        _ = context.Coordinator.CompleteAsync(session, accepted, cancellation.Token)
+            .Returns(_ => { calls.Add("complete"); return Task.CompletedTask; });
+        await worker.StartAsync(CancellationToken.None);
+
+        try
+        {
+            SubmitCommandResult result = await context.Handler.Handle(context.Command, cancellation.Token);
+
+            result.MessageId.ShouldBe(context.Command.MessageId);
+            calls.ShouldBe(workerOwnsOutbox
+                ? ["begin", "fence", "activation", "route", "activation", "fence", "fence", "fence", "complete"]
+                : ["begin", "fence", "activation", "route", "activation", "fence", "fence", "fence", "projection", "fence", "complete"]);
+            await context.Coordinator.ReceivedWithAnyArgs(workerOwnsOutbox ? 4 : 5).ValidateExecutionAsync(default!, default!, default);
+            await projection.ReceivedWithAnyArgs(workerOwnsOutbox ? 0 : 1).UpdateProjectionAsync(default!, default);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
     }
 
     [Fact]
@@ -901,7 +952,8 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         IdempotencyExecutionContext? executionContext = null,
         string? executionMessageId = null,
         string? executionCorrelationId = null,
-        ProjectionActivationWorkerCapability? projectionActivationWorker = null)
+        ProjectionActivationWorkerCapability? projectionActivationWorker = null,
+        IProjectionUpdateOrchestrator? projectionOrchestrator = null)
     {
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();
@@ -965,7 +1017,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
                 router,
                 activityTracker: null,
                 streamActivityTracker: null,
-                projectionOrchestrator: new NoOpProjectionUpdateOrchestrator(),
+                projectionOrchestrator: projectionOrchestrator ?? new NoOpProjectionUpdateOrchestrator(),
                 logger: logger ?? NullLogger<SubmitCommandHandler>.Instance,
                 correlationIndex: null,
                 projectionActivationOutbox: projectionActivationOutbox,
