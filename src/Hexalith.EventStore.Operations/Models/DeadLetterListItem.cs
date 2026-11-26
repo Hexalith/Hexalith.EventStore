@@ -13,4 +13,8 @@ public sealed record DeadLetterListItem(
     DateTimeOffset CapturedAtUtc,
     int ReplayAttempts,
     DeadLetterReplayState State,
-    string? LastReasonCode);
+    string? LastReasonCode)
+{
+    /// <summary>Gets the failure evidence from the live subscriber.</summary>
+    public SubscriberFailureEvidence? DeliveryFailure { get; init; }
+}

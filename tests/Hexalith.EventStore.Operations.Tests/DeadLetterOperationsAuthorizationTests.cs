@@ -94,15 +94,9 @@ public sealed class DeadLetterOperationsAuthorizationTests
         measurements.ShouldContain("capture-failed");
     }
 
-    /// <summary>
-    /// Verifies a delivery the actor can never retain is acknowledged rather than redelivered.
-    /// </summary>
-    /// <remarks>
-    /// Redelivering the same bytes reproduces the same rejection, so a non-2xx here would spend the whole finite
-    /// inbound retry budget and still end in the same loss.
-    /// </remarks>
+    /// <summary>Verifies an unretainable delivery stays retryable.</summary>
     [Fact]
-    public async Task UnretainableCaptureIsAcknowledged()
+    public async Task UnretainableCaptureStaysRetryable()
     {
         var context = new DefaultHttpContext();
         context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("{\"id\":\"message-1\"}"));
@@ -120,7 +114,7 @@ public sealed class DeadLetterOperationsAuthorizationTests
             TimeProvider.System,
             new EventStoreOperationsTelemetry(services.GetRequiredService<IMeterFactory>(), TimeProvider.System, Options.Create(new EventStoreOperationsOptions())));
 
-        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status200OK);
+        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
     }
 
     /// <summary>Verifies action batches and actor-key inputs are bounded before actor invocation.</summary>

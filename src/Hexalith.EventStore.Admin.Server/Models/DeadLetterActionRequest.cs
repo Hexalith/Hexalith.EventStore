@@ -18,6 +18,10 @@ public sealed class DeadLetterActionRequest : IValidatableObject {
     [Required]
     public IReadOnlyList<string>? MessageIds { get; init; }
 
+    /// <summary>Gets the stable request identity for a distinct operator decision.</summary>
+    [StringLength(128, MinimumLength = 1)]
+    public string? ActionId { get; init; }
+
     /// <inheritdoc/>
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) {
         if (MessageIds is null) {

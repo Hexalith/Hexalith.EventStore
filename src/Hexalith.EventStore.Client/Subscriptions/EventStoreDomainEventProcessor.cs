@@ -112,9 +112,18 @@ public class EventStoreDomainEventProcessor {
     /// <param name="envelope">The domain-event envelope.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The event processing outcome.</returns>
-    public async Task<EventStoreDomainEventProcessingResult> ProcessAsync(
+    public Task<EventStoreDomainEventProcessingResult> ProcessAsync(
         EventStoreDomainEventEnvelope envelope,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default)
+        => ProcessAsync(envelope, dispatchAllowed: true, cancellationToken);
+
+    /// <summary>Reports whether the configured marker admits content-bound durable processing.</summary>
+    internal bool HasDurableAdmission => _markerStore.IsDurable && _markerStore.SupportsContentBoundAdmission;
+
+    /// <summary>Processes an admitted delivery within the receiving subscription's age policy.</summary>
+    internal async Task<EventStoreDomainEventProcessingResult> ProcessAsync(
+        EventStoreDomainEventEnvelope envelope, bool dispatchAllowed, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(envelope);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -149,10 +158,18 @@ public class EventStoreDomainEventProcessor {
             return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
         }
 
-        EventStoreDomainEventMarkerAcquisitionResult acquisition = await _markerStore
-            .TryAcquireAsync(envelope.MessageId, cancellationToken)
-            .ConfigureAwait(false);
-        switch (acquisition) {
+        EventStoreDomainEventMarkerAdmission admission = _markerStore.SupportsContentBoundAdmission
+            ? await _markerStore.TryAcquireContentAsync(
+                envelope.MessageId, EventStorePayloadFingerprint.ComputeDelivery(envelope), cancellationToken).ConfigureAwait(false)
+            : new(await _markerStore.TryAcquireAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false));
+        EventStoreDomainEventMarkerLease? lease = admission.Lease;
+        if (_markerStore.SupportsContentBoundAdmission && lease is null
+            && admission.Result is EventStoreDomainEventMarkerAcquisitionResult.Acquired or EventStoreDomainEventMarkerAcquisitionResult.CompletionPending)
+        {
+            return EventStoreDomainEventProcessingResult.RetryableInProgress;
+        }
+
+        switch (admission.Result) {
             case EventStoreDomainEventMarkerAcquisitionResult.Acquired:
                 break;
             case EventStoreDomainEventMarkerAcquisitionResult.Completed:
@@ -162,17 +179,19 @@ public class EventStoreDomainEventProcessor {
                 _logger.LogWarning("Event {MessageId} is already being processed; keeping delivery retryable.", envelope.MessageId);
                 return EventStoreDomainEventProcessingResult.RetryableInProgress;
             case EventStoreDomainEventMarkerAcquisitionResult.CompletionPending:
-                await MarkCompletedStrictAsync(envelope.MessageId).ConfigureAwait(false);
+                await MarkCompletedStrictAsync(envelope.MessageId, lease).ConfigureAwait(false);
 
                 // Information rather than Debug: this branch only runs after an earlier attempt dispatched
                 // handlers and failed to complete its marker. It is the signal an operator needs when
                 // draining Dispatched markers before a rollback, and Debug is off in production.
                 _logger.LogInformation("Completed previously dispatched event {MessageId} without redispatching handlers.", envelope.MessageId);
                 return EventStoreDomainEventProcessingResult.Duplicate;
+            case EventStoreDomainEventMarkerAcquisitionResult.ContentConflict:
+                return EventStoreDomainEventProcessingResult.RetryableContentConflict;
             default:
                 _logger.LogWarning(
                     "Marker store returned unsupported acquisition result {AcquisitionResult} for event {MessageId}; keeping delivery retryable.",
-                    acquisition,
+                    admission.Result,
                     envelope.MessageId);
                 return EventStoreDomainEventProcessingResult.RetryableInProgress;
         }
@@ -180,9 +199,15 @@ public class EventStoreDomainEventProcessor {
         bool releaseMarkerOnFailure = true;
 
         try {
+            if (!dispatchAllowed)
+            {
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.DeliveryAgeExceeded;
+            }
+
             if (!ValidateEnvelopeAfterAcquisition(envelope)) {
                 _logger.LogWarning("Skipping invalid domain-event envelope with missing or unsupported metadata.");
-                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
@@ -197,7 +222,7 @@ public class EventStoreDomainEventProcessor {
                 _logger.LogWarning("Cannot read known event {EventTypeName} version {PayloadVersion} at sequence {SequenceNumber}; Reason={Reason}; UpcasterType={UpcasterType}; InnerExceptionType={InnerExceptionType}",
                     error.EventTypeName, error.StoredVersion, error.SequenceNumber, error.Reason,
                     error.UpcasterTypeName, error.InnerExceptionTypeName);
-                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
 
@@ -208,14 +233,14 @@ public class EventStoreDomainEventProcessor {
                     && (envelope.PayloadVersion ?? 1) != EventPayloadVersionResolver.GetDeclaredVersion(eventType)) {
                     _logger.LogWarning("Cannot read known event {EventTypeName} version {PayloadVersion} at sequence {SequenceNumber}: current version differs.",
                         envelope.EventTypeName, envelope.PayloadVersion ?? 1, envelope.SequenceNumber);
-                    await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                    await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                     return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
                 }
             }
 
             if (eventType is null
                 && (envelope.Payload.Length == 0 || string.IsNullOrWhiteSpace(envelope.SerializationFormat))) {
-                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
@@ -224,21 +249,20 @@ public class EventStoreDomainEventProcessor {
                     _logger.LogWarning(
                         "Cannot read known event {EventTypeName} version {PayloadVersion} at sequence {SequenceNumber}: unsupported serialization format.",
                         envelope.EventTypeName, envelope.PayloadVersion ?? 1, envelope.SequenceNumber);
-                    await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                    await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                     return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
                 }
 
                 _logger.LogWarning(
-                    "Skipping event {MessageId}: unsupported serialization format '{SerializationFormat}'",
-                    envelope.MessageId,
-                    envelope.SerializationFormat);
-                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                    "Rejecting event {MessageId} with an unsupported serialization format.",
+                    envelope.MessageId);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
             if (eventType is null) {
                 _logger.LogWarning("Unknown event type '{EventTypeName}' — skipping", envelope.EventTypeName);
-                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedUnknownEventType;
             }
 
@@ -252,7 +276,7 @@ public class EventStoreDomainEventProcessor {
                     envelope.MessageId,
                     envelope.EventTypeName,
                     exception.GetType().Name);
-                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
             catch (NotSupportedException exception) {
@@ -261,13 +285,13 @@ public class EventStoreDomainEventProcessor {
                     envelope.MessageId,
                     envelope.EventTypeName,
                     exception.GetType().Name);
-                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
 
             if (deserialized is not IEventPayload @event) {
                 _logger.LogWarning("Failed to deserialize event {MessageId} as {EventTypeName}", envelope.MessageId, envelope.EventTypeName);
-                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
 
@@ -278,17 +302,8 @@ public class EventStoreDomainEventProcessor {
             if (_payloadAggregateIdPropertyName is not null
                 && (string.IsNullOrWhiteSpace(payloadId)
                     || !string.Equals(payloadId, envelope.AggregateId, StringComparison.Ordinal))) {
-                // The payload's identity property does not match the stream the event was delivered on.
-                // This is expected when a single pub/sub topic carries events from multiple aggregate types
-                // whose identity conventions differ (e.g. a tenants topic carrying both tenant-aggregate
-                // events, where payload TenantId == AggregateId, and global-administrators events, where it
-                // does not). Treat it as a terminal skip — the event is not addressed to this projection —
-                // and mark it completed so it is acknowledged and not redelivered. Logged at Information
-                // rather than Warning because on a shared topic this is routine; a genuine integrity
-                // violation is also skipped here (never dispatched), so it cannot corrupt downstream state.
-                // A configured property the event type cannot supply is a misconfiguration rather than a value
-                // mismatch (a typo would otherwise discard the whole subscription silently), so it is reported
-                // once per event type at Warning while keeping the same acknowledged skip.
+                // No handler ran. The receiving endpoint applies its catalog policy or captures the
+                // rejected delivery before it can acknowledge it.
                 if (payloadIdProperty is null) {
                     if (_unresolvablePayloadIdEventTypes.TryAdd(@event.GetType(), 0)) {
                         _logger.LogWarning(
@@ -311,7 +326,7 @@ public class EventStoreDomainEventProcessor {
                         envelope.AggregateId);
                 }
 
-                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedAggregateMismatch;
             }
 
@@ -332,26 +347,26 @@ public class EventStoreDomainEventProcessor {
 
             MethodInfo genericDispatch = s_dispatchMethod.MakeGenericMethod(eventType);
             using IServiceScope scope = _serviceScopeFactory.CreateScope();
-            int handlerCount = await ((Task<int>)genericDispatch.Invoke(null, [scope.ServiceProvider, @event, context, cancellationToken])!).ConfigureAwait(false);
+            int handlerCount = await ((Task<int>)genericDispatch.Invoke(null,
+                [scope.ServiceProvider, @event, context, (Action)(() => releaseMarkerOnFailure = false), cancellationToken])!)
+                .ConfigureAwait(false);
             if (handlerCount == 0) {
                 _logger.LogWarning("No handlers registered for event type '{EventTypeName}' — skipping", envelope.EventTypeName);
-                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedNoHandlers;
             }
 
-            // Once handlers have completed successfully, do not delete the marker if the completion write
-            // fails. Releasing here would let a redelivery run side effects a second time.
-            releaseMarkerOnFailure = false;
-            bool completionPending = await MarkDispatchedStrictAsync(envelope.MessageId).ConfigureAwait(false);
+            // A proven dispatch can be completed by another delivery if this write is interrupted.
+            bool completionPending = await MarkDispatchedStrictAsync(envelope.MessageId, lease).ConfigureAwait(false);
             if (completionPending) {
-                await MarkCompletedStrictAsync(envelope.MessageId).ConfigureAwait(false);
+                await MarkCompletedStrictAsync(envelope.MessageId, lease).ConfigureAwait(false);
             }
 
             return EventStoreDomainEventProcessingResult.Processed;
         }
         catch {
             if (releaseMarkerOnFailure) {
-                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                await ReleaseSafelyAsync(envelope.MessageId, lease).ConfigureAwait(false);
             }
 
             throw;
@@ -371,9 +386,17 @@ public class EventStoreDomainEventProcessor {
         IServiceProvider serviceProvider,
         TEvent @event,
         EventStoreDomainEventContext context,
+        Action onDispatchStarted,
         CancellationToken cancellationToken)
         where TEvent : IEventPayload {
         IEventStoreDomainEventHandler<TEvent>[] handlers = serviceProvider.GetServices<IEventStoreDomainEventHandler<TEvent>>().ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+        if (handlers.Length > 0)
+        {
+            // From the first invocation onward even a fault or cancellation can follow a committed effect.
+            onDispatchStarted();
+        }
+
         foreach (IEventStoreDomainEventHandler<TEvent> handler in handlers) {
             await handler.HandleAsync(@event, context, cancellationToken).ConfigureAwait(false);
         }
@@ -401,26 +424,11 @@ public class EventStoreDomainEventProcessor {
                         : null;
             });
 
-    private async Task MarkCompletedSafelyAsync(string messageId) {
+    private async Task<bool> MarkDispatchedStrictAsync(string messageId, EventStoreDomainEventMarkerLease? lease) {
         try {
-            // Terminal completions acknowledge the message regardless of the current delivery's cancellation.
-            // Tying the completion write to the request token could leave the marker un-completed after a
-            // client/sidecar abort — on the in-memory store the key stays InProgress, so every redelivery
-            // returns RetryableInProgress (500) and wedges a terminal skip into a poison loop. Always
-            // complete with CancellationToken.None, matching the successful-dispatch path.
-            await _markerStore.MarkCompletedAsync(messageId, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception exception) {
-            _logger.LogWarning(
-                "Failed to mark domain event {MessageId} as completed; ExceptionType={ExceptionType}",
-                messageId,
-                exception.GetType().Name);
-        }
-    }
-
-    private async Task<bool> MarkDispatchedStrictAsync(string messageId) {
-        try {
-            return await _markerStore.MarkDispatchedAsync(messageId, CancellationToken.None).ConfigureAwait(false);
+            return lease is null
+                ? await _markerStore.MarkDispatchedAsync(messageId, CancellationToken.None).ConfigureAwait(false)
+                : await _markerStore.MarkFencedDispatchedAsync(lease, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception exception) {
             _logger.LogWarning(
@@ -431,9 +439,16 @@ public class EventStoreDomainEventProcessor {
         }
     }
 
-    private async Task MarkCompletedStrictAsync(string messageId) {
+    private async Task MarkCompletedStrictAsync(string messageId, EventStoreDomainEventMarkerLease? lease) {
         try {
-            await _markerStore.MarkCompletedAsync(messageId, CancellationToken.None).ConfigureAwait(false);
+            if (lease is null)
+            {
+                await _markerStore.MarkCompletedAsync(messageId, CancellationToken.None).ConfigureAwait(false);
+            }
+            else
+            {
+                await _markerStore.MarkFencedCompletedAsync(lease, CancellationToken.None).ConfigureAwait(false);
+            }
         }
         catch (Exception exception) {
             _logger.LogWarning(
@@ -444,9 +459,16 @@ public class EventStoreDomainEventProcessor {
         }
     }
 
-    private async Task ReleaseSafelyAsync(string messageId) {
+    private async Task ReleaseSafelyAsync(string messageId, EventStoreDomainEventMarkerLease? lease) {
         try {
-            await _markerStore.ReleaseAsync(messageId, CancellationToken.None).ConfigureAwait(false);
+            if (lease is null)
+            {
+                await _markerStore.ReleaseAsync(messageId, CancellationToken.None).ConfigureAwait(false);
+            }
+            else
+            {
+                await _markerStore.ReleaseFenceAsync(lease, CancellationToken.None).ConfigureAwait(false);
+            }
         }
         catch (Exception exception) {
             _logger.LogWarning(

@@ -9,4 +9,8 @@ namespace Hexalith.EventStore.Operations.Models;
 public sealed record DeadLetterListResult(
     IReadOnlyList<DeadLetterListItem> Items,
     int TotalCount,
-    int? NextOffset);
+    int? NextOffset)
+{
+    /// <summary>Gets the first observed failure among the authorized open entries.</summary>
+    public DateTimeOffset? OldestFailureAt { get; init; }
+}

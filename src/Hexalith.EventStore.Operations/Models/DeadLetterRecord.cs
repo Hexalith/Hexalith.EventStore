@@ -19,4 +19,14 @@ public sealed record DeadLetterRecord(
     DateTimeOffset CapturedAtUtc,
     DeadLetterReplayState State,
     int ReplayAttempts,
-    string? LastReasonCode);
+    string? LastReasonCode)
+{
+    /// <summary>Gets the action currently associated with this record.</summary>
+    public string? ActionOperationId { get; init; }
+
+    /// <summary>Gets the content and scope fingerprint for a validated subscriber transfer.</summary>
+    public string? DeliveryFingerprint { get; init; }
+
+    /// <summary>Gets the persisted subscriber attempt evidence.</summary>
+    public SubscriberFailureEvidence? DeliveryFailure { get; init; }
+}

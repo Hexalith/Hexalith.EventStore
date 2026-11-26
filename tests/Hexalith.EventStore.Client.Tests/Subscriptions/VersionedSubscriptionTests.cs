@@ -141,7 +141,7 @@ public sealed class VersionedSubscriptionTests
             "correlation-1", "json", "{\"Amount\":9}"u8.ToArray()) { PayloadVersion = 1 };
 
         (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.SkippedNoHandlers);
-        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.SkippedNoHandlers);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Claims;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
@@ -38,6 +39,19 @@ public class AdminDeadLettersControllerTests {
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task ListDeadLetters_RejectsInvalidCursorWithBoundedProblem() {
+        _ = _queryService.ListDeadLettersAsync("tenant-a", 100, "stale", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<PagedResult<DeadLetterEntry>>(
+                new HttpRequestException("private cursor information", null, HttpStatusCode.BadRequest)));
+
+        IActionResult result = await _sut.ListDeadLetters("tenant-a", continuationToken: "stale");
+
+        ObjectResult invalid = result.ShouldBeOfType<ObjectResult>();
+        invalid.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        invalid.Value.ShouldBeOfType<ProblemDetails>().Detail.ShouldNotContain("private cursor information");
     }
 
     [Fact]

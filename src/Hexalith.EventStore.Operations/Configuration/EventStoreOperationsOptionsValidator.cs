@@ -17,6 +17,11 @@ internal sealed class EventStoreOperationsOptionsValidator : IValidateOptions<Ev
         List<string> failures = [];
         ValidateRequired(options.PubSubName, nameof(options.PubSubName), failures);
         ValidateRequired(options.TopicName, nameof(options.TopicName), failures);
+        ValidateRequired(options.LiveTopicName, nameof(options.LiveTopicName), failures);
+        if (options.MaximumDeliveryAttempts is < 1 or > 1_000)
+        {
+            failures.Add($"{nameof(options.MaximumDeliveryAttempts)} must be between 1 and 1000.");
+        }
         ValidateRequired(options.CaptureRoute, nameof(options.CaptureRoute), failures);
         ValidateRequired(options.AdminCallerAppId, nameof(options.AdminCallerAppId), failures);
         ValidateRequired(options.ReplayAppId, nameof(options.ReplayAppId), failures);

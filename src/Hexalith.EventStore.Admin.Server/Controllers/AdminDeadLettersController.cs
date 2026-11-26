@@ -1,9 +1,12 @@
+using System.Net;
+
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Models;
+using Hexalith.EventStore.Contracts.Identity;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -25,16 +28,26 @@ public class AdminDeadLettersController(
     IDeadLetterCommandService deadLetterCommandService,
     ILogger<AdminDeadLettersController> logger) : ControllerBase {
     /// <summary>
-    /// Gets the total count of dead-letter entries across all tenants.
+    /// Gets the authorized dead-letter count and optionally returns the oldest failure age.
     /// </summary>
     [HttpGet("count")]
-    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetDeadLetterCount(CancellationToken ct = default) {
+    public async Task<IActionResult> GetDeadLetterCount(CancellationToken ct = default,
+        [FromQuery] string? tenantId = null, [FromQuery] bool detailed = false) {
         try {
+            if (!TryResolveTenantScope(tenantId, out string? effectiveTenantId)) {
+                return CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", "Not authorized for the requested dead letters.");
+            }
+
+            if (detailed || effectiveTenantId is not null) {
+                DeadLetterSummary summary = await deadLetterQueryService.GetDeadLetterSummaryAsync(effectiveTenantId, ct).ConfigureAwait(false);
+                return detailed ? Ok(summary) : Ok(summary.Count);
+            }
+
             int count = await deadLetterQueryService
                 .GetDeadLetterCountAsync(ct)
                 .ConfigureAwait(false);
@@ -56,8 +69,8 @@ public class AdminDeadLettersController(
     /// </summary>
     [HttpGet]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(PagedResult<DeadLetterEntry>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
@@ -74,6 +87,10 @@ public class AdminDeadLettersController(
                     "Not authorized for the requested tenant.");
             }
 
+            if (count <= 0) {
+                return InvalidListRequest();
+            }
+
             PagedResult<DeadLetterEntry> result = await deadLetterQueryService
                 .ListDeadLettersAsync(effectiveTenantId, count, continuationToken, ct)
                 .ConfigureAwait(false);
@@ -81,6 +98,9 @@ public class AdminDeadLettersController(
         }
         catch (UnauthorizedAccessException) {
             return CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", "Not authorized for the requested dead letters.");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest) {
+            return InvalidListRequest();
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ListDeadLetters), ex);
@@ -98,6 +118,8 @@ public class AdminDeadLettersController(
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
@@ -109,9 +131,10 @@ public class AdminDeadLettersController(
         ArgumentNullException.ThrowIfNull(request);
 
         try {
-            AdminOperationResult result = await deadLetterCommandService
-                .RetryDeadLettersAsync(tenantId, NormalizeMessageIds(request.MessageIds!), ct)
-                .ConfigureAwait(false);
+            IReadOnlyList<string> messageIds = NormalizeMessageIds(request.MessageIds!);
+            AdminOperationResult result = request.ActionId is { } actionId
+                ? await deadLetterCommandService.RetryDeadLettersAsync(tenantId, messageIds, actionId, ct).ConfigureAwait(false)
+                : await deadLetterCommandService.RetryDeadLettersAsync(tenantId, messageIds, ct).ConfigureAwait(false);
             return MapOperationResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
@@ -141,9 +164,10 @@ public class AdminDeadLettersController(
         ArgumentNullException.ThrowIfNull(request);
 
         try {
-            AdminOperationResult result = await deadLetterCommandService
-                .SkipDeadLettersAsync(tenantId, NormalizeMessageIds(request.MessageIds!), ct)
-                .ConfigureAwait(false);
+            IReadOnlyList<string> messageIds = NormalizeMessageIds(request.MessageIds!);
+            AdminOperationResult result = request.ActionId is { } actionId
+                ? await deadLetterCommandService.SkipDeadLettersAsync(tenantId, messageIds, actionId, ct).ConfigureAwait(false)
+                : await deadLetterCommandService.SkipDeadLettersAsync(tenantId, messageIds, ct).ConfigureAwait(false);
             return MapOperationResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
@@ -173,9 +197,10 @@ public class AdminDeadLettersController(
         ArgumentNullException.ThrowIfNull(request);
 
         try {
-            AdminOperationResult result = await deadLetterCommandService
-                .ArchiveDeadLettersAsync(tenantId, NormalizeMessageIds(request.MessageIds!), ct)
-                .ConfigureAwait(false);
+            IReadOnlyList<string> messageIds = NormalizeMessageIds(request.MessageIds!);
+            AdminOperationResult result = request.ActionId is { } actionId
+                ? await deadLetterCommandService.ArchiveDeadLettersAsync(tenantId, messageIds, actionId, ct).ConfigureAwait(false)
+                : await deadLetterCommandService.ArchiveDeadLettersAsync(tenantId, messageIds, ct).ConfigureAwait(false);
             return MapOperationResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
@@ -200,35 +225,44 @@ public class AdminDeadLettersController(
         return deduped;
     }
 
-    /// <summary>
-    /// Resolves the tenant scope for an unfiltered dead-letter read, refusing to widen a non-admin caller to the
-    /// global backlog.
-    /// </summary>
-    /// <remarks>
-    /// A requested tenant has already been checked against the caller's claims by
-    /// <see cref="AdminTenantAuthorizationFilter"/>. The uncovered case is the request that names no tenant: an
-    /// Operator is granted its role by <c>eventstore:permission=command:replay</c> alone and need not carry a
-    /// tenant claim, so returning <see langword="null"/> here would hand that caller every tenant's backlog.
-    /// This mattered less while the backing index was never populated; the operations workload returns real
-    /// retained items, so the global scope is now restricted to the Admin role, as on the global count endpoint.
-    /// </remarks>
-    /// <param name="requestedTenantId">The tenant explicitly requested by the caller, if any.</param>
-    /// <param name="effectiveTenantId">The resolved scope, or <see langword="null"/> for the global backlog.</param>
-    /// <returns><see langword="true"/> when the caller is authorized for the resolved scope.</returns>
-    private bool TryResolveTenantScope(string? requestedTenantId, out string? effectiveTenantId) {
-        if (!string.IsNullOrWhiteSpace(requestedTenantId)) {
-            effectiveTenantId = requestedTenantId;
+    private IActionResult InvalidListRequest()
+        => CreateProblemResult(StatusCodes.Status400BadRequest, "Invalid Dead Letter List Request",
+            "Supply a positive count and a continuation token for this view.");
+
+    private bool TryResolveTenantScope(string? requestedTenantId, out string? effectiveTenantId)
+    {
+        effectiveTenantId = null;
+        if (Request.Query["tenantId"].Count > 1 || Request.Query.ContainsKey("tenantId") && requestedTenantId is null
+            || Request.Headers.ContainsKey("X-Hexalith-Scope") || Request.Headers.ContainsKey("X-Hexalith-Tenant")
+            || !TenantCanonicalizer.TryCanonicalizeGrants(User.FindAll(AdminClaimTypes.Tenant).Select(claim => claim.Value), out IReadOnlySet<string> grants))
+        {
+            return false;
+        }
+
+        bool global = User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin));
+        if (requestedTenantId is not null)
+        {
+            if (!TenantCanonicalizer.TryCanonicalize(requestedTenantId, out string tenantId) || !global && !grants.Contains(tenantId))
+            {
+                return false;
+            }
+
+            effectiveTenantId = tenantId;
             return true;
         }
 
-        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
-            effectiveTenantId = null;
+        if (global)
+        {
             return true;
         }
 
-        string? tenantClaim = User.FindFirst(AdminClaimTypes.Tenant)?.Value;
-        effectiveTenantId = tenantClaim;
-        return !string.IsNullOrWhiteSpace(tenantClaim);
+        if (grants.Count == 1)
+        {
+            effectiveTenantId = grants.Single();
+            return true;
+        }
+
+        return false;
     }
 
     private IActionResult MapOperationResult(AdminOperationResult? result) {
@@ -236,11 +270,20 @@ public class AdminDeadLettersController(
             return CreateProblemResult(StatusCodes.Status500InternalServerError, "Internal Server Error", "No result returned from the service.");
         }
 
+        if (result.State == "pending") {
+            return Accepted(result);
+        }
+
+        if (result.State == "failed") {
+            return UnprocessableEntity(result);
+        }
+
         if (result.Success) {
             return Ok(result);
         }
 
         return result.ErrorCode switch {
+            "Unavailable" or "TIMEOUT" => CreateProblemResult(StatusCodes.Status503ServiceUnavailable, "Service Unavailable", result.Message),
             "NotFound" => CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", result.Message),
             "Unauthorized" => CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", result.Message),
             "InvalidOperation" => CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Invalid Operation", result.Message),
@@ -249,7 +292,7 @@ public class AdminDeadLettersController(
     }
 
     private static bool IsServiceUnavailable(Exception ex)
-        => ex is HttpRequestException or TimeoutException
+        => ex is HttpRequestException or TimeoutException or NotSupportedException
             || (ex is Grpc.Core.RpcException rpc && rpc.StatusCode is
                 Grpc.Core.StatusCode.Unavailable or
                 Grpc.Core.StatusCode.DeadlineExceeded or
@@ -257,7 +300,7 @@ public class AdminDeadLettersController(
                 Grpc.Core.StatusCode.ResourceExhausted);
 
     private ObjectResult ServiceUnavailable(string method, Exception ex) {
-        logger.LogError(ex, "Admin service unavailable: {Method}", method);
+        logger.LogError("Admin service unavailable in {Method}. FailureType={FailureType}", method, ex.GetType().Name);
         return CreateProblemResult(
             StatusCodes.Status503ServiceUnavailable,
             "Service Unavailable",
@@ -265,7 +308,7 @@ public class AdminDeadLettersController(
     }
 
     private ObjectResult UnexpectedError(string method, Exception ex) {
-        logger.LogError(ex, "Unexpected error in {Method}", method);
+        logger.LogError("Unexpected error in {Method}. FailureType={FailureType}", method, ex.GetType().Name);
         return CreateProblemResult(
             StatusCodes.Status500InternalServerError,
             "Internal Server Error",

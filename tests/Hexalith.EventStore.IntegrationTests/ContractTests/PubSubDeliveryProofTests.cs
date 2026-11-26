@@ -64,6 +64,97 @@ public sealed class PubSubDeliveryProofTests {
     }
 
     [Fact]
+    public async Task PubSubDelivery_UsesPersistedIdentityAcrossAggregatesAndRedelivery()
+    {
+        const string source = "hexalith-eventstore/tenant-a/counter";
+        const string topic = "tenant-a.counter.events";
+        string correlationId = $"shared-{Guid.NewGuid():N}";
+        string firstAggregate = $"delivery-first-{Guid.NewGuid():N}";
+        string secondAggregate = $"delivery-second-{Guid.NewGuid():N}";
+
+        await SubmitAsync(firstAggregate);
+        await SubmitAsync(secondAggregate);
+        JsonElement[] delivered = await WaitForSubscriberEventsAsync(correlationId, expectedCount: 2,
+            extraCondition: events => events.Any(item => GetString(item, "aggregateId") == firstAggregate)
+                && events.Any(item => GetString(item, "aggregateId") == secondAggregate));
+        JsonElement first = delivered.First(item => GetString(item, "aggregateId") == firstAggregate);
+        JsonElement second = delivered.First(item => GetString(item, "aggregateId") == secondAggregate);
+        using var sidecar = new HttpClient { BaseAddress = _fixture.EventStoreSidecarEndpoint };
+        JsonElement firstStored = await ReadPersistedEventAsync(sidecar, firstAggregate);
+        JsonElement secondStored = await ReadPersistedEventAsync(sidecar, secondAggregate);
+        string firstId = PersistedMessageId(firstStored);
+        string secondId = PersistedMessageId(secondStored);
+
+        firstId.ShouldNotBe(secondId);
+        GetString(first, "id").ShouldBe(firstId);
+        GetString(second, "id").ShouldBe(secondId);
+        GetString(first, "sequenceNumber").ShouldBe("1");
+        GetString(second, "sequenceNumber").ShouldBe("1");
+
+        JsonElement firstEffect = await ReadEffectAsync(source, firstId);
+        JsonElement secondEffect = await ReadEffectAsync(source, secondId);
+        GetString(firstEffect, "aggregateId").ShouldBe(firstAggregate);
+        GetString(secondEffect, "aggregateId").ShouldBe(secondAggregate);
+
+        using var restart = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        await _fixture.RestartSubscriberAsync(restart.Token);
+        JsonElement[] afterRestart = await GetSubscriberEventsAsync(correlationId);
+        int firstDeliveriesAfterRestart = afterRestart.Count(item => GetString(item, "id") == firstId);
+        GetString(await ReadEffectAsync(source, firstId), "receivedAt").ShouldBe(GetString(firstEffect, "receivedAt"));
+        GetString(await ReadEffectAsync(source, secondId), "receivedAt").ShouldBe(GetString(secondEffect, "receivedAt"));
+
+        _ = TryGetProperty(firstStored, "metadata", out JsonElement metadata);
+        var eventData = metadata.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.OrdinalIgnoreCase);
+        _ = TryGetProperty(firstStored, "payload", out JsonElement payload);
+        eventData["payload"] = payload;
+        using var republish = new HttpRequestMessage(HttpMethod.Post, $"/v1.0/publish/pubsub/{topic}");
+        republish.Content = JsonContent.Create(new
+        {
+            specversion = "1.0",
+            id = firstId,
+            source,
+            type = GetString(first, "type"),
+            data = eventData,
+        }, new MediaTypeHeaderValue("application/cloudevents+json"));
+        using HttpResponseMessage publication = await sidecar.SendAsync(republish);
+        _ = publication.EnsureSuccessStatusCode();
+
+        JsonElement[] repeated = await WaitForSubscriberEventsAsync(correlationId, expectedCount: firstDeliveriesAfterRestart + 1,
+            extraCondition: events => events.Count(item => GetString(item, "id") == firstId) > firstDeliveriesAfterRestart);
+        repeated.ShouldAllBe(item => GetString(item, "id") == firstId || GetString(item, "id") == secondId);
+        GetString(await ReadEffectAsync(source, firstId), "receivedAt").ShouldBe(GetString(firstEffect, "receivedAt"));
+        GetString(await ReadEffectAsync(source, secondId), "receivedAt").ShouldBe(GetString(secondEffect, "receivedAt"));
+
+        async Task SubmitAsync(string aggregateId)
+        {
+            using HttpRequestMessage request = ContractTestHelpers.CreateCommandRequest("tenant-a", "counter", aggregateId, "IncrementCounter");
+            request.Headers.Add("X-Correlation-ID", correlationId);
+            using HttpResponseMessage response = await _fixture.EventStoreClient.SendAsync(request);
+            response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        }
+    }
+
+    private async Task<JsonElement> ReadPersistedEventAsync(HttpClient sidecar, string aggregateId)
+    {
+        string actorId = $"tenant-a:counter:{aggregateId}";
+        string key = $"{actorId}:events:1";
+        return await sidecar.GetFromJsonAsync<JsonElement>(
+            $"/v1.0/actors/{_fixture.AggregateActorTypeName}/{Uri.EscapeDataString(actorId)}/state/{Uri.EscapeDataString(key)}");
+    }
+
+    private static string PersistedMessageId(JsonElement stored)
+    {
+        TryGetProperty(stored, "metadata", out JsonElement metadata).ShouldBeTrue();
+        string? messageId = GetString(metadata, "messageId");
+        messageId.ShouldNotBeNullOrWhiteSpace();
+        return messageId!;
+    }
+
+    private async Task<JsonElement> ReadEffectAsync(string source, string id)
+        => await _fixture.SubscriberClient.GetFromJsonAsync<JsonElement>(
+            $"/effects?source={Uri.EscapeDataString(source)}&id={Uri.EscapeDataString(id)}");
+
+    [Fact]
     public async Task PubSubDrain_PublishFailsThenRecovers_DrainsPersistedEvents() {
         string aggregateId = $"r4a5-drain-{Guid.NewGuid():N}";
         TryWriteFaultFile();
@@ -118,13 +209,14 @@ public sealed class PubSubDeliveryProofTests {
         }
     }
 
-    private async Task<JsonElement[]> WaitForSubscriberEventsAsync(string correlationId, int expectedCount) {
+    private async Task<JsonElement[]> WaitForSubscriberEventsAsync(string correlationId, int expectedCount,
+        Func<JsonElement[], bool>? extraCondition = null) {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(SubscriberTimeout);
         JsonElement[] lastEvents = [];
 
         while (DateTimeOffset.UtcNow < deadline) {
             lastEvents = await GetSubscriberEventsAsync(correlationId).ConfigureAwait(false);
-            if (lastEvents.Length >= expectedCount) {
+            if (lastEvents.Length >= expectedCount && (extraCondition is null || extraCondition(lastEvents))) {
                 return lastEvents;
             }
 

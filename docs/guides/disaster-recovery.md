@@ -431,7 +431,7 @@ The pub/sub system (DAPR's event distribution mechanism) is **not** the source o
 During an outage, pub/sub messages may be lost. The event store handles this through multiple layers:
 
 - **DAPR retry policies:** Configured in the resiliency component, DAPR automatically retries failed pub/sub deliveries with exponential backoff.
-- **Dead-letter topics:** Messages that exhaust all retries are routed to dead-letter topics (`deadletter.{tenant}.{domain}.events`) for manual inspection and reprocessing.
+- **Subscriber poison:** Operations retains a scoped record after application exhaustion and confirms capture before acknowledgement. A retryable acknowledgement path requires a qualified broker that preserves outstanding deliveries.
 - **Persist-then-publish guarantee:** Events are always written to the state store before publication. If publication fails, the event is safe and the checkpointed state machine marks it for republication.
 
 ### Republishing Events
@@ -446,14 +446,7 @@ To trigger republication for a specific aggregate, send any command targeting th
 
 ### Dead-Letter Recovery
 
-Inspect dead-letter topics for failed messages:
-
-```bash
-# Check dead-letter topic for a specific tenant and domain
-# Topic pattern: deadletter.{tenant}.{domain}.events
-```
-
-Dead-letter messages retain the full CloudEvents 1.0 envelope, including the original event data, correlation ID, and failure reason. Process them by fixing the underlying subscriber issue and then resubmitting.
+Inspect the authorized Operations count, oldest failure age, and bounded reason category. A retry returns a pending action until normal subscriber admission provides completion evidence. Resubmit the same action ID and message set to read that action's persisted outcome. Use a new action ID for a new recovery decision after a failed retry. Skip and archive preserve the immutable source event. Keep recovery isolated until the Platform broker and state profile, credentials, release identity, and durable audit meet AD-31.
 
 ## Backup Immutability (Operator Responsibility)
 

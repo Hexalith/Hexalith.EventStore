@@ -3,6 +3,8 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
+using Microsoft.Extensions.Hosting;
+
 PrerequisiteValidator.Validate();
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
@@ -438,7 +440,9 @@ ConfigurePublishEnvironment(builder);
 bool testSubscriberEnabled = bool.TryParse(builder.Configuration["EnablePubSubTestSubscriber"]?.Trim(), out bool parsed) && parsed;
 string testSubscriberTopic = builder.Configuration["EVENTSTORE_TEST_SUBSCRIBER_TOPIC"]?.Trim() ?? "tenant-a.counter.events";
 string testSubscriberAuthSecret = builder.Configuration["EVENTSTORE_TEST_SUBSCRIBER_AUTH_SECRET"]?.Trim() ?? Guid.NewGuid().ToString("N");
-if (testSubscriberEnabled) {
+if (testSubscriberEnabled && builder.Environment.IsDevelopment()) {
+    var subscriberProofState = builder.AddDaprComponent("subscriber-proof-state", "state.redis",
+        new DaprComponentOptions { LocalPath = ResolveDaprConfigPath("statestore-subscriber-proof.yaml") });
     IResourceBuilder<ProjectResource> testSubscriber = builder.AddProject<Projects.Hexalith_EventStore_TestSubscriber>("eventstore-test-subscriber")
         .WithDaprSidecar(sidecar => sidecar
             .WithOptions(new DaprSidecarOptions {
@@ -446,7 +450,8 @@ if (testSubscriberEnabled) {
                 PlacementHostAddress = daprPlacementHostAddress,
                 SchedulerHostAddress = daprSchedulerHostAddress,
             })
-            .WithReference(eventStoreResources.PubSub))
+            .WithReference(eventStoreResources.PubSub)
+            .WithReference(subscriberProofState))
         .WaitFor(eventStore);
 
     _ = testSubscriber

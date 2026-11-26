@@ -340,15 +340,23 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_SameMessageIdTwice_SecondIsDuplicate() {
+    public async Task ProcessAsync_ExactRedeliveryIsDuplicateAndConflictingContentRetries()
+    {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope first = Envelope(s_duplicateMessageId, "t1", PayloadFor("t1", 1));
+        EventStoreDomainEventEnvelope other = first with
+        {
+            MessageId = s_secondMessageId,
+            AggregateId = "t2",
+            Payload = PayloadFor("t2", 2),
+        };
 
-        _ = await processor.ProcessAsync(Envelope(s_duplicateMessageId, "t1", PayloadFor("t1", 1)));
-        EventStoreDomainEventProcessingResult second = await processor.ProcessAsync(
-            Envelope(s_duplicateMessageId, "t1", Encoding.UTF8.GetBytes("{ not json")));
-
-        second.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
-        handler.Handled.Count.ShouldBe(1);
+        (await processor.ProcessAsync(first)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        (await processor.ProcessAsync(other)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        (await processor.ProcessAsync(first)).ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        (await processor.ProcessAsync(first with { Payload = Encoding.UTF8.GetBytes("{ not json") }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.RetryableContentConflict);
+        handler.Handled.Select(entry => entry.Context.MessageId).ShouldBe([s_duplicateMessageId, s_secondMessageId]);
     }
 
     [Fact]
@@ -361,11 +369,11 @@ public class EventStoreDomainEventProcessorTests {
         result.ShouldBe(EventStoreDomainEventProcessingResult.SkippedUnknownEventType);
 
         EventStoreDomainEventProcessingResult duplicate = await processor.ProcessAsync(envelope);
-        duplicate.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        duplicate.ShouldBe(EventStoreDomainEventProcessingResult.SkippedUnknownEventType);
     }
 
     [Fact]
-    public async Task ProcessAsync_UnknownEventWithUnsupportedFormat_KeepsLegacyDisposition() {
+    public async Task ProcessAsync_UnsupportedFormatDoesNotCreateCompletedMarker() {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
         EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with {
             EventTypeName = "Not.A.Known.Type",
@@ -374,7 +382,7 @@ public class EventStoreDomainEventProcessorTests {
 
         (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
         (await processor.ProcessAsync(envelope with { SerializationFormat = "json" }))
-            .ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+            .ShouldBe(EventStoreDomainEventProcessingResult.SkippedUnknownEventType);
         handler.Handled.ShouldBeEmpty();
     }
 
@@ -537,7 +545,7 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_HiddenPayloadIdProperty_IsReportedAndAcknowledged() {
+    public async Task ProcessAsync_HiddenPayloadIdPropertyIsReportedAndNeverDispatched() {
         using ServiceProvider provider = new ServiceCollection().BuildServiceProvider();
         var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
         Type eventType = typeof(HiddenPayloadIdentityEvent);
@@ -552,7 +560,7 @@ public class EventStoreDomainEventProcessorTests {
             with { EventTypeName = eventType.FullName! };
 
         (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
-        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
         WarningsWith(logger, "EventClrType").ShouldHaveSingleItem()["EventClrType"].ShouldBe(eventType.FullName);
     }
 
@@ -607,7 +615,7 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_HandlerException_ReleasesMarkerSoRedeliveryCanRun() {
+    public async Task ProcessAsync_AmbiguousHandlerExceptionKeepsMarkerOwned() {
         var handler = new FailingOnceHandler();
         ServiceProvider provider = new ServiceCollection()
             .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
@@ -625,8 +633,8 @@ public class EventStoreDomainEventProcessorTests {
         _ = await Should.ThrowAsync<InvalidOperationException>(() => processor.ProcessAsync(envelope));
         EventStoreDomainEventProcessingResult retry = await processor.ProcessAsync(envelope);
 
-        retry.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
-        handler.InvocationCount.ShouldBe(2);
+        retry.ShouldBe(EventStoreDomainEventProcessingResult.RetryableInProgress);
+        handler.InvocationCount.ShouldBe(1);
     }
 
     [Fact]

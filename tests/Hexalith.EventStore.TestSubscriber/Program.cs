@@ -1,10 +1,15 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+
+using Dapr.Client;
 using System.Text.Json;
 
 const int MaxRetainedEvents = 256;
+const string EffectStore = "subscriber-proof-state";
 const string AuthHeaderName = "X-Test-Auth";
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton(_ => new DaprClientBuilder().Build());
 WebApplication app = builder.Build();
 
 string topic = (Environment.GetEnvironmentVariable("EVENTSTORE_TEST_SUBSCRIBER_TOPIC")?.Trim()) is { Length: > 0 } configuredTopic
@@ -26,7 +31,7 @@ app.MapGet("/dapr/subscribe", () => Results.Json(new[] {
     },
 }));
 
-app.MapPost(route, async (HttpRequest request) => {
+app.MapPost(route, async (HttpRequest request, DaprClient dapr) => {
     JsonElement cloudEvent;
     JsonElement data;
     try {
@@ -39,33 +44,60 @@ app.MapPost(route, async (HttpRequest request) => {
             ? dataElement.Clone()
             : default;
     }
-    catch (JsonException ex) {
-        return Results.BadRequest(new { error = "Invalid CloudEvent JSON", detail = ex.Message });
+    catch (JsonException) {
+        return Results.BadRequest();
     }
     catch (OperationCanceledException) {
         return Results.StatusCode(StatusCodes.Status499ClientClosedRequest);
     }
 
     string? id = GetString(cloudEvent, "id");
-    string? correlationId = GetString(data, "correlationId")
-        ?? GetString(data, "CorrelationId")
-        ?? ParseCorrelationIdFromCloudEventId(id);
-    string? sequence = GetNumberOrString(data, "sequenceNumber")
-        ?? GetNumberOrString(data, "SequenceNumber")
-        ?? ParseSequenceFromCloudEventId(id);
+    string? source = GetString(cloudEvent, "source");
+    string? persistedId = GetString(data, "messageId") ?? GetString(data, "MessageId");
+    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(source) || id != persistedId)
+    {
+        return Results.BadRequest();
+    }
 
-    receivedEvents.Enqueue(new ReceivedPubSubEvent(
+    var delivered = new ReceivedPubSubEvent(
         Topic: topic,
         Type: GetString(cloudEvent, "type"),
-        Source: GetString(cloudEvent, "source"),
+        Source: source,
         Id: id,
-        CorrelationId: correlationId,
-        SequenceNumber: sequence,
+        CorrelationId: GetString(data, "correlationId") ?? GetString(data, "CorrelationId"),
+        SequenceNumber: GetNumberOrString(data, "sequenceNumber") ?? GetNumberOrString(data, "SequenceNumber"),
         TenantId: GetString(data, "tenantId") ?? GetString(data, "TenantId"),
         Domain: GetString(data, "domain") ?? GetString(data, "Domain"),
         AggregateId: GetString(data, "aggregateId") ?? GetString(data, "AggregateId"),
         EventTypeName: GetString(data, "eventTypeName") ?? GetString(data, "EventTypeName"),
-        ReceivedAt: DateTimeOffset.UtcNow));
+        ReceivedAt: DateTimeOffset.UtcNow);
+    string effectKey = BuildEffectKey(topic, source, id);
+    CancellationToken cancellationToken = request.HttpContext.RequestAborted;
+    ReceivedPubSubEvent? effect = await dapr.GetStateAsync<ReceivedPubSubEvent?>(EffectStore, effectKey,
+        ConsistencyMode.Strong, cancellationToken: cancellationToken).ConfigureAwait(false);
+    if (effect is null)
+    {
+        try
+        {
+            _ = await dapr.TrySaveStateAsync(EffectStore, effectKey, delivered, string.Empty,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite, Consistency = ConsistencyMode.Strong },
+                new Dictionary<string, string>(StringComparer.Ordinal) { ["ttlInSeconds"] = "3600" }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Dapr.DaprException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // A concurrent delivery may have committed the one logical effect.
+        }
+
+        effect = await dapr.GetStateAsync<ReceivedPubSubEvent?>(EffectStore, effectKey,
+            ConsistencyMode.Strong, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    if (effect?.Id != id || effect.Source != source)
+    {
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    receivedEvents.Enqueue(delivered);
 
     // Bounded queue: drop oldest when over the cap so a long-running fixture cannot leak memory
     // and so DAPR at-least-once redeliveries from prior tests cannot accumulate without bound.
@@ -86,6 +118,18 @@ app.MapGet("/events", (HttpRequest request, string? correlationId) => {
     }
 
     return Results.Ok(events.OrderBy(e => e.ReceivedAt).ToArray());
+});
+
+app.MapGet("/effects", async (HttpRequest request, string source, string id, DaprClient dapr) =>
+{
+    if (!IsAuthorized(request, authSecret))
+    {
+        return Results.Unauthorized();
+    }
+
+    ReceivedPubSubEvent? effect = await dapr.GetStateAsync<ReceivedPubSubEvent?>(EffectStore, BuildEffectKey(topic, source, id),
+        ConsistencyMode.Strong, cancellationToken: request.HttpContext.RequestAborted).ConfigureAwait(false);
+    return effect is null ? Results.NotFound() : Results.Ok(effect);
 });
 
 app.MapDelete("/events", (HttpRequest request, string? correlationId) => {
@@ -149,30 +193,8 @@ static string? GetNumberOrString(JsonElement element, string propertyName) {
     };
 }
 
-static string? ParseCorrelationIdFromCloudEventId(string? cloudEventId) {
-    if (string.IsNullOrWhiteSpace(cloudEventId)) {
-        return null;
-    }
-
-    int separator = cloudEventId.LastIndexOf(':');
-    return separator <= 0 ? null : cloudEventId[..separator];
-}
-
-static string? ParseSequenceFromCloudEventId(string? cloudEventId) {
-    if (string.IsNullOrWhiteSpace(cloudEventId)) {
-        return null;
-    }
-
-    int separator = cloudEventId.LastIndexOf(':');
-    if (separator < 0 || separator >= cloudEventId.Length - 1) {
-        return null;
-    }
-
-    string candidate = cloudEventId[(separator + 1)..];
-    return long.TryParse(candidate, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out _)
-        ? candidate
-        : null;
-}
+static string BuildEffectKey(string topic, string source, string id)
+    => "effect:" + Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new[] { topic, source, id })));
 
 internal sealed record ReceivedPubSubEvent(
     string Topic,

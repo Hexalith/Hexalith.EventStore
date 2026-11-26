@@ -4,6 +4,9 @@ using System.Diagnostics.Metrics;
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
+using Hexalith.Commons.UniqueIds;
+using Hexalith.EventStore.Client.Subscriptions;
+
 using Hexalith.EventStore.Operations.Actors;
 using Hexalith.EventStore.Operations.Configuration;
 using Hexalith.EventStore.Operations.Models;
@@ -68,6 +71,99 @@ public sealed class DeadLetterDrainActorTests
         duplicate.Outcome.ShouldBe(DeadLetterCaptureOutcome.Duplicate);
         conflict.Outcome.ShouldBe(DeadLetterCaptureOutcome.HashConflict);
         stateManager.CommittedState.Values.OfType<DeadLetterRecord>().ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task ExhaustedDeliveryRetainsExactScopedEvidenceAndRejectsConflicts()
+    {
+        var options = new EventStoreOperationsOptions { MaximumDeliveryAttempts = 2 };
+        (DeadLetterDrainActor actor, InMemoryStateManager state, _) = CreateActor(options: options);
+        string id = UniqueIdHelper.GenerateSortableUniqueStringId();
+        DateTimeOffset timestamp = DateTimeOffset.UnixEpoch.AddDays(1);
+        DateTimeOffset failure = timestamp.AddMinutes(1);
+        var envelope = new EventStoreDomainEventEnvelope(id, "work-a", "tenant-a", "WorkItemCreated", 1,
+            timestamp, "correlation-a", "json", "{}"u8.ToArray()) { Domain = "work" };
+        var delivery = new EventStoreSubscriberDelivery("pubsub", "work.events", "/work/events",
+            "hexalith-eventstore/tenant-a/work", id, envelope) { SubscriberAppId = "works" };
+        var observation = new SubscriberDeliveryObservation(delivery,
+            new EventStoreSubscriberFailure(EventStoreSubscriberFailureReason.ProcessingFailure, true, 2), failure);
+
+        (await actor.ObserveSubscriberDeliveryAsync(observation)).ShouldBe(EventStoreSubscriberPoisonOutcome.Retryable);
+        state.CommittedState.Values.OfType<SubscriberFailureEvidence>().ShouldHaveSingleItem().Attempts.ShouldBe(1);
+        state.CommittedState.Values.OfType<DeadLetterRecord>().ShouldBeEmpty();
+        DateTimeOffset lastFailure = failure.AddSeconds(1);
+
+        (await actor.ObserveSubscriberDeliveryAsync(observation)).ShouldBe(EventStoreSubscriberPoisonOutcome.Retryable);
+        (await actor.ObserveSubscriberDeliveryAsync(observation with
+        {
+            Failure = observation.Failure.ShouldNotBeNull() with { ObservationId = Guid.NewGuid() },
+            ObservedAtUtc = lastFailure,
+        }))
+            .ShouldBe(EventStoreSubscriberPoisonOutcome.Retained);
+        (await actor.ObserveSubscriberDeliveryAsync(observation with { Failure = null }))
+            .ShouldBe(EventStoreSubscriberPoisonOutcome.Retained);
+        (await actor.ObserveSubscriberDeliveryAsync(observation with
+        {
+            Delivery = delivery with { Envelope = envelope with { Payload = """{"other":1}"""u8.ToArray() } },
+        })).ShouldBe(EventStoreSubscriberPoisonOutcome.Conflict);
+
+        state.CommittedState.Values.OfType<SubscriberFailureEvidence>().ShouldBeEmpty();
+        DeadLetterRecord retained = state.CommittedState.Values.OfType<DeadLetterRecord>().ShouldHaveSingleItem();
+        retained.Identity.OriginalTopic.ShouldBe("work.events");
+        retained.Identity.OriginalTimestamp.ShouldBe(timestamp);
+        retained.DeliveryFailure.ShouldNotBeNull().Attempts.ShouldBe(2);
+        retained.DeliveryFailure.FirstFailure.ShouldBe(failure);
+        retained.DeliveryFailure.LastFailure.ShouldBe(lastFailure);
+        (await actor.ListAsync(new DeadLetterListRequest("tenant-b", 1, 0))).TotalCount.ShouldBe(0);
+        DeadLetterListResult visible = await actor.ListAsync(new DeadLetterListRequest("tenant-a", 1, 0));
+        visible.TotalCount.ShouldBe(1);
+        visible.OldestFailureAt.ShouldBe(failure);
+    }
+
+    [Fact]
+    public async Task AttributedRetryDecisionsAreIdempotentAndPublishPersistedCompletion()
+    {
+        (DeadLetterDrainActor actor, InMemoryStateManager state, IDeadLetterReplayTransport transport) = CreateActor();
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        var request = new DeadLetterActionRequest("tenant-a", ["message-a"], "operator-a") { ActionId = "action-one" };
+
+        DeadLetterActorActionResult accepted = await actor.RetryAsync(request);
+        accepted.State.ShouldBe("pending");
+        accepted.OperationId.ShouldNotBeNullOrWhiteSpace();
+        (await actor.RetryAsync(request)).ShouldBe(accepted);
+        (await actor.RetryAsync(request with { MessageIds = ["message-b"] })).Success.ShouldBeFalse();
+        await transport.DidNotReceiveWithAnyArgs().DeliverAsync(default!, default);
+        Record(state, "message-a").State.ShouldBe(DeadLetterReplayState.ReplayRequested);
+
+        await actor.ReceiveReminderAsync(DeadLetterDrainActor.ReplayReminderName, [], TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        DeadLetterActorActionResult completed = await actor.RetryAsync(request);
+        completed.OperationId.ShouldBe(accepted.OperationId);
+        completed.State.ShouldBe("completed");
+        completed.Success.ShouldBeTrue();
+        Record(state, "message-a").State.ShouldBe(DeadLetterReplayState.Replayed);
+        await transport.Received(1).DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RepeatedAttributedRetryRearmsUnregisteredReminder()
+    {
+        ActorTimerManager timerManager = Substitute.For<ActorTimerManager>();
+        _ = timerManager.RegisterReminderAsync(Arg.Any<ActorReminder>())
+            .Returns(_ => throw new InvalidOperationException("scheduler unavailable"), _ => Task.CompletedTask);
+        (DeadLetterDrainActor actor, InMemoryStateManager state, IDeadLetterReplayTransport transport) = CreateActor(timerManager);
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        var request = new DeadLetterActionRequest("tenant-a", ["message-a"], "operator-a") { ActionId = "action-one" };
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.RetryAsync(request));
+        DeadLetterActorActionResult accepted = await actor.RetryAsync(request);
+
+        accepted.State.ShouldBe("pending");
+        state.CommittedState.Values.OfType<DeadLetterActionEvidence>().ShouldHaveSingleItem().Result.ShouldBe(accepted);
+        Record(state, "message-a").ReplayAttempts.ShouldBe(0);
+        await timerManager.Received(2).RegisterReminderAsync(Arg.Any<ActorReminder>());
+        await actor.ReceiveReminderAsync(DeadLetterDrainActor.ReplayReminderName, [], TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        (await actor.RetryAsync(request)).State.ShouldBe("completed");
+        await transport.Received(1).DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>Verifies a persisted replay request converges after reminder recovery.</summary>
@@ -304,14 +400,17 @@ public sealed class DeadLetterDrainActorTests
     {
         (DeadLetterDrainActor actor, InMemoryStateManager stateManager, _) = CreateActor();
         _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        DeadLetterListResult result = await actor.ListAsync(new DeadLetterListRequest("tenant-a", 500, int.MaxValue));
+        result.Items.ShouldBeEmpty();
+        result.NextOffset.ShouldBeNull();
+
         await SetStateAsync(stateManager, "message-a", (DeadLetterReplayState)int.MaxValue);
 
-        DeadLetterListResult result = await actor.ListAsync(new DeadLetterListRequest("tenant-a", 500, int.MaxValue));
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.ListAsync(new DeadLetterListRequest("tenant-a", 500, 0)));
+        (await actor.ListAsync(new DeadLetterListRequest("tenant-b", 500, 0))).TotalCount.ShouldBe(0);
         DeadLetterActorActionResult action = await actor.ArchiveAsync(
             new DeadLetterActionRequest("tenant-a", ["message-a"]));
 
-        result.Items.ShouldBeEmpty();
-        result.NextOffset.ShouldBeNull();
         action.ShouldBe(new DeadLetterActorActionResult(false, "not-found"));
     }
 
@@ -439,6 +538,17 @@ public sealed class DeadLetterDrainActorTests
         _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(
             () => actor.ListAsync(new DeadLetterListRequest(null, 6, 0)));
         _ = await actor.ListAsync(new DeadLetterListRequest(null, 5, 0));
+    }
+
+    [Fact]
+    public async Task MissingIndexedRecordMakesListEvidenceUnavailable()
+    {
+        (DeadLetterDrainActor actor, InMemoryStateManager state, _) = CreateActor();
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        _ = await state.TryRemoveStateAsync(DeadLetterDrainActor.ItemStateName("message-a"));
+        await state.SaveStateAsync();
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.ListAsync(new DeadLetterListRequest("tenant-a", 1, 0)));
     }
 
     /// <summary>

@@ -15,6 +15,15 @@ public interface IDeadLetterCommandService {
     /// <returns>The operation result.</returns>
     Task<AdminOperationResult> RetryDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct = default);
 
+    /// <summary>Submits or reads a recovery decision identified by a stable caller action ID.</summary>
+    /// <param name="tenantId">The authorized tenant scope.</param>
+    /// <param name="messageIds">The selected retained message IDs.</param>
+    /// <param name="actionId">The stable identity of this decision.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The persisted operation state.</returns>
+    Task<AdminOperationResult> RetryDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
+        => Task.FromException<AdminOperationResult>(new NotSupportedException("Idempotent recovery is unavailable."));
+
     /// <summary>
     /// Skips the specified dead-letter messages, removing them from the queue.
     /// </summary>
@@ -24,6 +33,15 @@ public interface IDeadLetterCommandService {
     /// <returns>The operation result.</returns>
     Task<AdminOperationResult> SkipDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct = default);
 
+    /// <summary>Submits or reads a recovery decision identified by a stable caller action ID.</summary>
+    /// <param name="tenantId">The authorized tenant scope.</param>
+    /// <param name="messageIds">The selected retained message IDs.</param>
+    /// <param name="actionId">The stable identity of this decision.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The persisted operation state.</returns>
+    Task<AdminOperationResult> SkipDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
+        => Task.FromException<AdminOperationResult>(new NotSupportedException("Idempotent recovery is unavailable."));
+
     /// <summary>
     /// Archives the specified dead-letter messages.
     /// </summary>
@@ -32,4 +50,13 @@ public interface IDeadLetterCommandService {
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
     Task<AdminOperationResult> ArchiveDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct = default);
+
+    /// <summary>Submits or reads a recovery decision identified by a stable caller action ID.</summary>
+    /// <param name="tenantId">The authorized tenant scope.</param>
+    /// <param name="messageIds">The selected retained message IDs.</param>
+    /// <param name="actionId">The stable identity of this decision.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The persisted operation state.</returns>
+    Task<AdminOperationResult> ArchiveDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
+        => Task.FromException<AdminOperationResult>(new NotSupportedException("Idempotent recovery is unavailable."));
 }

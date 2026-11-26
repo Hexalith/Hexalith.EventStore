@@ -64,6 +64,33 @@ public record DeadLetterEntry(
         ? OriginalCommandType
         : throw new ArgumentException("OriginalCommandType cannot be null, empty, or whitespace.", nameof(OriginalCommandType));
 
+    /// <summary>Gets the originating message identifier when available.</summary>
+    public string? CausationId { get; init; }
+
+    /// <summary>Gets the original sequence within the aggregate.</summary>
+    public long? SequenceNumber { get; init; }
+
+    /// <summary>Gets the original EventStore event time.</summary>
+    public DateTimeOffset? OriginalTimestampUtc { get; init; }
+
+    /// <summary>Gets the original subscription topic.</summary>
+    public string? OriginalTopic { get; init; }
+
+    /// <summary>Gets the durable live delivery failure count.</summary>
+    public int? DeliveryAttempts { get; init; }
+
+    /// <summary>Gets the first observed delivery failure.</summary>
+    public DateTimeOffset? FirstFailureAtUtc { get; init; }
+
+    /// <summary>Gets the last observed delivery failure.</summary>
+    public DateTimeOffset? LastFailureAtUtc { get; init; }
+
+    /// <summary>Gets the bounded latest live delivery failure category.</summary>
+    public string? FailureCategory { get; init; }
+
+    /// <summary>Gets whether live handling may recover after the underlying condition changes.</summary>
+    public bool? Retryable { get; init; }
+
     /// <summary>Creates a dead-letter entry whose failure diagnostic is represented by a redacted descriptor.</summary>
     public static DeadLetterEntry WithRedactedFailure(
         string messageId,

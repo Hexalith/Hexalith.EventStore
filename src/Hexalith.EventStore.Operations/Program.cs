@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Client.Registration;
+
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Operations.Actors;
@@ -13,6 +15,11 @@ using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Microsoft.Extensions.Options;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+if (!builder.Environment.IsDevelopment()
+    && builder.Configuration.GetValue<bool>($"{EventStoreOperationsOptions.SectionName}:IsolatedSubscriberRecovery"))
+{
+    throw new InvalidOperationException("Subscriber recovery requires a qualified Operations profile.");
+}
 _ = DaprAppChannelSecurity.ValidateConfiguration(
     builder.Environment,
     builder.Configuration[DaprAppChannelSecurity.ConfigurationKey]);
@@ -22,6 +29,8 @@ builder.Services.AddDaprClient();
 builder.Services.AddOperationsHttpSecurity();
 builder.Services.AddDevelopmentOperationsCatalog(builder.Configuration);
 builder.Services.AddHttpClient();
+builder.Services.AddDataProtection();
+builder.Services.AddEventStoreQueryCursorCodec("eventstore-operations/dead-letters");
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<EventStoreOperationsTelemetry>();
 builder.Services.AddSingleton<IDeadLetterReplayTransport, DaprDeadLetterReplayTransport>();

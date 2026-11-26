@@ -29,8 +29,8 @@ public sealed partial class HttpHostSecurityTests
             _ => ["Invalid"],
         };
         var actor = Substitute.For<Actors.IDeadLetterDrainActor>();
-        actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted"));
-        await using var factory = Factory(actor);
+        actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted") { OperationId = "operation-a", State = "completed" });
+        await using var factory = Factory(actor, isolatedRecovery: true);
         using var client = factory.CreateClient();
         using var request = Authorized(HttpMethod.Post, "/internal/dead-letters/retry");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token(additional: new Dictionary<string, object>
@@ -73,8 +73,8 @@ public sealed partial class HttpHostSecurityTests
     {
         var actor = Substitute.For<Actors.IDeadLetterDrainActor>();
         actor.ListAsync(Arg.Any<DeadLetterListRequest>()).Returns(new DeadLetterListResult([], 0, null));
-        actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted"));
-        await using var factory = Factory(actor);
+        actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted") { OperationId = "operation-a", State = "completed" });
+        await using var factory = Factory(actor, isolatedRecovery: true);
         using var client = factory.CreateClient();
         using var request = RoleRequest(action ? HttpMethod.Post : HttpMethod.Get,
             action ? "/internal/dead-letters/retry" : "/internal/dead-letters?tenantId=unidentified", role, "unidentified");
@@ -132,8 +132,8 @@ public sealed partial class HttpHostSecurityTests
     public async Task MaximumActionFieldsRemainAdmitted()
     {
         var actor = Substitute.For<Actors.IDeadLetterDrainActor>();
-        actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted"));
-        await using var factory = Factory(actor, maxActionItems: 1000);
+        actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(new DeadLetterActorActionResult(true, "accepted") { OperationId = "operation-a", State = "completed" });
+        await using var factory = Factory(actor, maxActionItems: 1000, isolatedRecovery: true);
         using var client = factory.CreateClient();
         string tenant = new('t', 64);
         using var request = RoleRequest(HttpMethod.Post, "/internal/dead-letters/retry", "Operator", tenant);
@@ -152,12 +152,12 @@ public sealed partial class HttpHostSecurityTests
     {
         var actor = Substitute.For<Actors.IDeadLetterDrainActor>();
         actor.RetryAsync(Arg.Any<DeadLetterActionRequest>()).Returns(Task.FromException<DeadLetterActorActionResult>(new JsonException("downstream")));
-        await using var factory = Factory(actor);
+        await using var factory = Factory(actor, isolatedRecovery: true);
         using var client = factory.CreateClient();
         using var request = Authorized(HttpMethod.Post, "/internal/dead-letters/retry");
         request.Content = JsonContent.Create(new { tenantId = "tenant-a", messageIds = new[] { "message-a" } });
         using var response = await client.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
-        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
         actor.ReceivedCalls().ShouldHaveSingleItem();
     }
 

@@ -12,4 +12,7 @@ public enum EventStoreDomainEventMarkerState {
 
     /// <summary>Handlers completed successfully and only durable completion remains.</summary>
     Dispatched = 2,
+
+    /// <summary>The attempt was released after confirming it had never dispatched handlers.</summary>
+    Released = 3,
 }

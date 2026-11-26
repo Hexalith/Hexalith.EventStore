@@ -13,7 +13,7 @@ This page explains the complete envelope structure, shows you a real example fro
 
 ## What Is an Event Envelope?
 
-An event envelope wraps every domain event with metadata that the EventStore populates automatically. You write only the domain event payload — the business fact, like "counter incremented by 1" — and the EventStore adds the 11 metadata fields that provide traceability, ordering, multi-tenancy, and correlation.
+An event envelope wraps every domain event with metadata that EventStore populates automatically. You write the domain event payload, such as "counter incremented by 1". EventStore assigns its message ID and records the metadata for tenant scope, stream position, and tracing.
 
 Think of the envelope like a physical letter: your domain event is the letter inside, and the metadata fields are the postmark, return address, tracking number, and recipient address printed on the outside. Just as a postal system needs those markings to route, track, and deliver the letter, EventStore needs the metadata to persist events in the right stream, maintain strict ordering, isolate tenants, and enable distributed tracing across services.
 
@@ -33,7 +33,7 @@ In each case, the envelope gives you the full context of each event: who caused 
 
 An event envelope is organized into three layers:
 
-- **Metadata** — 11 typed fields that identify, order, and trace the event
+- **Metadata** — 15 base fields that identify, order, and trace the event
 - **Payload** — the serialized domain event as an opaque byte array
 - **Extensions** — an open metadata bag for domain-specific needs
 
@@ -45,26 +45,30 @@ The extensions provide an escape hatch for domain-specific metadata that EventSt
 
 ### Metadata Fields
 
-The 11 metadata fields fall into three logical groups:
+The base metadata falls into three groups:
 
-- **Identity fields** — `aggregateId`, `tenantId`, `domain`: locate the event in the multi-tenant, multi-domain aggregate topology. These three fields uniquely identify which aggregate instance produced the event and which tenant owns it.
+- **Identity fields** include `messageId`, `aggregateId`, `aggregateType`, `tenantId`, and `domain`. The message ID identifies the event. The tenant, domain, and aggregate ID identify the stream.
 
-- **Ordering and timing fields** — `sequenceNumber`, `timestamp`: position the event in its aggregate stream and on the global timeline. The sequence number provides strict ordering within one aggregate's stream; the timestamp provides a wall-clock reference for cross-aggregate and cross-service event correlation.
+- **Ordering and timing fields** include `sequenceNumber`, `globalPosition`, and `timestamp`. The sequence number orders persisted events within one aggregate. The timestamp records wall-clock time.
 
-- **Tracing and provenance fields** — `correlationId`, `causationId`, `userId`, `domainServiceVersion`, `eventTypeName`, `serializationFormat`: trace the event back to the request, command, user, and service version that produced it. These fields power distributed tracing, audit logging, and version-aware deserialization.
+- **Tracing and provenance fields** include `correlationId`, `causationId`, `userId`, `domainServiceVersion`, `eventTypeName`, `metadataVersion`, and `serializationFormat`.
 
 | Field                  | Type           | Description                                                  | Example                                                          |
 | ---------------------- | -------------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `messageId`            | string         | Persisted event identifier and CloudEvent ID                 | `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`                                   |
 | `aggregateId`          | string         | Aggregate identifier within its tenant/domain scope          | `"counter-1"`                                                    |
+| `aggregateType`        | string         | Aggregate type that produced the event                       | `"counter"`                                                      |
 | `tenantId`             | string         | Tenant isolation key (lowercase, validated)                  | `"demo"`                                                         |
 | `domain`               | string         | Domain service namespace (lowercase, validated)              | `"counter"`                                                      |
 | `sequenceNumber`       | long           | Strictly ordered per aggregate stream, starts at 1, gapless  | `1`                                                              |
+| `globalPosition`       | long           | Optional allocated position, or zero when disabled           | `0`                                                              |
 | `timestamp`            | DateTimeOffset | Server-clock event creation time                             | `"2026-03-01T10:30:00Z"`                                         |
 | `correlationId`        | string         | Request-level tracing — same for all events from one command | `"550e8400-e29b-41d4-a716-446655440000"`                         |
 | `causationId`          | string         | ID of the command that caused this event                     | `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"`                         |
 | `userId`               | string         | Authenticated user identity (from JWT `sub` claim)           | `"user@example.com"`                                             |
 | `domainServiceVersion` | string         | Version of the domain service that produced the event        | `"v1"`                                                           |
 | `eventTypeName`        | string         | Fully qualified event type for deserialization               | `"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented"` |
+| `metadataVersion`      | int            | Metadata envelope schema version                             | `1`                                                              |
 | `serializationFormat`  | string         | Payload encoding format                                      | `"json"`                                                         |
 
 You'll notice `aggregateId` is the local aggregate identifier (`counter-1`), while `tenantId` and `domain` are stored separately. Together, those three fields identify the aggregate instance that produced the event. The canonical composite identity still exists in the system — for example, `AggregateIdentity.ActorId` is `tenant:domain:aggregateId` — but the persisted envelope keeps the parts separate for filtering, routing, and key derivation. See [Identity Scheme](identity-scheme.md) for the complete identity mapping.
@@ -117,26 +121,30 @@ A typical use case: if your system routes events differently based on business p
 
 Extensions are string-to-string only — they do not support nested structures or non-string value types. This is intentional: keeping extensions flat makes them trivially serializable, efficiently queryable, and resistant to schema drift. If you need complex metadata, serialize it to a string value (for example, a JSON string as the value of a single extension key).
 
-By convention, extension keys use lowercase with a prefix (e.g., `x-priority`, `x-region`) to avoid collisions with any future metadata fields. EventStore does not enforce a naming convention on extensions, but following this pattern makes it clear which metadata is core (the 11 envelope fields) and which is domain-specific (extensions).
+By convention, extension keys use lowercase with a prefix (e.g., `x-priority`, `x-region`) to distinguish them from core envelope metadata.
 
 ## A Real Event Envelope
 
-The following example shows a complete event envelope for a `CounterIncremented` event from the Counter sample. This is the flat Server envelope format — the JSON wire representation used for DAPR state store persistence and pub/sub publishing. All field names use camelCase, which is the wire format convention throughout Hexalith.EventStore.
+The following example shows the flat JSON envelope published as CloudEvent `data` for a `CounterIncremented` event from the Counter sample. The published CloudEvent `id` is the persisted `messageId` shown here.
 
 In this scenario, a user sent an `IncrementCounter` command to the Counter sample's API. The AggregateActor processed the command, the domain service's `Handle` method returned a `CounterIncremented` event, and EventStore wrapped that event in the envelope shown below:
 
 ```json
 {
+    "messageId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
     "aggregateId": "counter-1",
+    "aggregateType": "counter",
     "tenantId": "demo",
     "domain": "counter",
     "sequenceNumber": 1,
+    "globalPosition": 0,
     "timestamp": "2026-03-01T10:30:00+00:00",
     "correlationId": "550e8400-e29b-41d4-a716-446655440000",
     "causationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "userId": "user@example.com",
     "domainServiceVersion": "v1",
     "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
+    "metadataVersion": 1,
     "serializationFormat": "json",
     "payload": "e30=",
     "extensions": {
@@ -155,7 +163,7 @@ Note three things in this example:
 
 - **Opaque payload:** The payload is opaque bytes. EventStore persisted the raw serialized content without knowing or caring what is inside. This is why EventStore can handle any domain event type without code changes — the envelope structure is the same whether you are storing counter increments, order placements, or user registrations.
 
-This JSON shape is exactly what you see when you inspect events in the DAPR state store or when you receive events on a pub/sub topic. The flat structure with all fields at the top level is the Server envelope format — the wire representation used for persistence and publishing.
+The broker carries the flat Server envelope. Persisted aggregate events expose the same message ID under their stored metadata.
 
 If this same command had produced multiple events (for example, both `CounterIncremented` and `CounterThresholdReached`), each event would get its own envelope with a unique `sequenceNumber` but shared `correlationId` and `causationId` values. This lets you reconstruct the full set of events produced by a single command by querying for all envelopes with the same causation ID.
 
@@ -165,7 +173,7 @@ There are two `EventEnvelope` record types in the codebase — this is by design
 
 **Contracts EventEnvelope** (`Hexalith.EventStore.Contracts.Events.EventEnvelope`) is a composed structure with a separate `EventMetadata` record. This is the public API type that domain service developers reference. The composed structure makes it easy to work with metadata and payload independently — for example, you can pass just the `Metadata` to a logging method without touching the payload. When you write projections, test assertions, or event handlers inside the EventStore ecosystem, you work with this type.
 
-**Server EventEnvelope** (`Hexalith.EventStore.Server.Events.EventEnvelope`) is a flat structure with all 11 fields inlined alongside the payload and extensions. This is the internal storage/wire type used for DAPR state store persistence and pub/sub publishing. The flat structure maps directly to JSON without nesting, which simplifies DAPR's built-in serialization. This is the shape that arrives on pub/sub topics — if you build a subscriber or projection outside the EventStore ecosystem, you deserialize from the flat Server envelope format.
+**Server EventEnvelope** (`Hexalith.EventStore.Server.Events.EventEnvelope`) carries the 15 base fields alongside the payload and extensions in a flat structure. External subscribers consume this flat shape from CloudEvent `data`.
 
 The reason for having two representations is separation of concerns: the Contracts type is optimized for developer ergonomics (grouped metadata, read-only extensions), while the Server type is optimized for storage and wire efficiency (flat, no nesting, mutable extensions for serialization compatibility).
 
@@ -178,23 +186,17 @@ The Contracts types look like this:
 ```csharp
 // Contracts.Events namespace — the type you reference as a domain service developer
 public record EventMetadata(
-    string AggregateId, string TenantId, string Domain,
-    long SequenceNumber, DateTimeOffset Timestamp,
+    string MessageId, string AggregateId, string AggregateType, string TenantId, string Domain,
+    long SequenceNumber, long GlobalPosition, DateTimeOffset Timestamp,
     string CorrelationId, string CausationId, string UserId,
-    string DomainServiceVersion, string EventTypeName, string SerializationFormat);
+    string DomainServiceVersion, string EventTypeName, int MetadataVersion, string SerializationFormat);
 
 public record EventEnvelope(EventMetadata Metadata, byte[] Payload, IReadOnlyDictionary<string, string>? Extensions);
 ```
 
 As a domain service developer, you only interact with the Contracts types. The Server envelope is an internal implementation detail that you never need to reference directly.
 
-Neither envelope type carries JSON serialization attributes (such as `[JsonPropertyName]`) — DAPR handles serialization automatically using its built-in System.Text.Json configuration. This means the wire format follows `System.Text.Json` defaults: camelCase property names, no null value omission, and standard type converters for `DateTimeOffset`, `long`, and `byte[]` (base64).
-
-If you build a subscriber that consumes events from DAPR pub/sub, the event data payload inside the CloudEvents wrapper is the flat Server envelope — all 11 metadata fields plus payload and extensions appear as top-level JSON properties, exactly like the JSON example shown earlier in this page. You do not need to reference the Server package — define a matching record in your own code or use dynamic deserialization.
-
-This means external services (even non-.NET ones) can consume Hexalith events by defining their own data type that matches the flat JSON structure. The CloudEvents wrapper provides standard metadata for routing and filtering, and the inner data payload is the flat envelope you already know from the JSON example above.
-
-When consuming events from pub/sub, remember that you receive the flat Server envelope shape — not the nested Contracts shape. All 11 metadata fields, plus `payload` (base64-encoded) and `extensions`, appear as top-level properties in the JSON data payload within the CloudEvents wrapper. If you are writing a .NET subscriber, you can create a simple record type matching this flat structure for deserialization. If you are writing in another language, map the JSON properties to your language's equivalent types.
+External subscribers can define a record that matches the flat JSON shape. The wire format uses camelCase property names and base64 for `payload`. Versioned events can include extra metadata such as `eventContractType` and `payloadVersion`.
 
 ## How EventStore Populates Metadata
 
@@ -252,6 +254,18 @@ When events are published to DAPR pub/sub, they are wrapped in CloudEvents 1.0 f
 
 - **`cloudevent.id`** — the EventStore-generated persisted event `messageId`. This is the stable event identity across publication, drain recovery, and transport retries. Subscribers can use it to recognize the same persisted event; do not derive identity from correlation ID and sequence.
 
+Delivery is at least once and unordered. Deduplicate external deliveries within each subscription on the received CloudEvent `(source, id)`. EventStore's subscriber uses the persisted `data.messageId` within the admitted subscription and verifies that `id` matches it. A sequence number is local to the aggregate stream.
+
+For example, a subscriber receives these CloudEvent identities on one subscription. Both aggregates share a correlation ID and both events are at sequence 1.
+
+| Delivery | Received source | Received id | Aggregate | Correlation | Sequence | Effect |
+| --- | --- | --- | --- | --- | --- | --- |
+| First | `hexalith-eventstore/demo/counter` | `01ARZ3NDEKTSV4RRFFQ69G5FAV` | `counter-a` | `shared-request` | 1 | Persist the first effect |
+| Second | `hexalith-eventstore/demo/counter` | `01ARZ3NDEKTSV4RRFFQ69G5FAW` | `counter-b` | `shared-request` | 1 | Persist the second effect |
+| Redelivery | `hexalith-eventstore/demo/counter` | `01ARZ3NDEKTSV4RRFFQ69G5FAV` | `counter-a` | `shared-request` | 1 | Acknowledge the completed duplicate |
+
+Commit the external deduplication record with the effect when the subscriber's storage provides atomic transactions. For EventStore subscribers, a fenced marker prevents a second dispatch while the first attempt is active or has an uncertain outcome. A rejected delivery requires durably confirmed poison capture before acknowledgement unless an exact catalog policy admits that skip.
+
 Events follow the [CloudEvents 1.0 specification](https://cloudevents.io/), making them consumable by any CloudEvents-compatible subscriber — including non-.NET services, third-party event routers, and cloud-native event meshes.
 
 The CloudEvents standard ensures that Hexalith events integrate naturally into heterogeneous architectures where not every service runs on .NET. A Python microservice, a Go event processor, or a serverless function can all subscribe to Hexalith event topics and consume events using their platform's CloudEvents SDK.
@@ -301,7 +315,7 @@ In the [Command Lifecycle Deep Dive](command-lifecycle.md), you saw the Aggregat
 
 Four design principles run through the envelope design:
 
-- **Metadata ownership:** EventStore owns all 11 metadata fields — domain services produce only the business fact (payload). This separation means your domain logic stays focused on business rules without worrying about infrastructure concerns like sequence numbering, tenant isolation, or tracing. It also means metadata is consistent system-wide — every event follows the same structure regardless of which domain service produced it.
+- **Metadata ownership:** EventStore assigns the envelope metadata. Domain services produce the event payload.
 
 - **Schema ignorance:** EventStore treats the payload as opaque bytes — it works with any domain event type without schema coupling. You can add new event types, change event shapes, or use different serialization formats without modifying EventStore itself. This is what makes EventStore a general-purpose event sourcing infrastructure — it is not coupled to any specific domain model.
 

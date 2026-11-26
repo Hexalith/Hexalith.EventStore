@@ -22,7 +22,7 @@ public class AdminDeadLettersControllerCountTests {
     public AdminDeadLettersControllerCountTests() => _sut = new AdminDeadLettersController(_queryService, _commandService, NullLogger<AdminDeadLettersController>.Instance) {
         ControllerContext = new ControllerContext {
             HttpContext = new DefaultHttpContext {
-                User = CreatePrincipal("ReadOnly"),
+                User = CreatePrincipal("Admin"),
             },
         }
     };
@@ -70,14 +70,17 @@ public class AdminDeadLettersControllerCountTests {
     }
 
     [Fact]
-    public void GetDeadLetterCount_RequiresGlobalAdminPolicy() {
+    public async Task GetDeadLetterCount_RequiresReadOnlyPolicyAndDeniesUnscopedNonAdmin() {
         AuthorizeAttribute attribute = typeof(AdminDeadLettersController)
             .GetMethod(nameof(AdminDeadLettersController.GetDeadLetterCount), BindingFlags.Instance | BindingFlags.Public)
             .ShouldNotBeNull()
             .GetCustomAttributes<AuthorizeAttribute>()
             .ShouldHaveSingleItem();
 
-        attribute.Policy.ShouldBe(AdminAuthorizationPolicies.Admin);
+        attribute.Policy.ShouldBe(AdminAuthorizationPolicies.ReadOnly);
+        _sut.ControllerContext.HttpContext.User = CreatePrincipal("ReadOnly");
+        (await _sut.GetDeadLetterCount()).ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
+        _ = await _queryService.DidNotReceiveWithAnyArgs().GetDeadLetterCountAsync(default);
     }
 
     private static ClaimsPrincipal CreatePrincipal(string adminRole) {

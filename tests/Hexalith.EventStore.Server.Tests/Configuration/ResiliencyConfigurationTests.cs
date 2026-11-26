@@ -33,9 +33,7 @@ public class ResiliencyConfigurationTests {
     public void LocalResiliency_ContainsPubSubInboundRetryPolicy() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
-        content.ShouldContain("pubsubRetryInbound:");
-        content.ShouldContain("maxRetries: 10", customMessage:
-            "Local inbound retry should allow 10 retries for subscriber processing failures");
+        ExtractMaxRetries(content, "pubsubRetryInbound").ShouldBe(-1);
     }
 
     // --- Task 6.4: Local pubsubBreaker ---
@@ -92,7 +90,7 @@ public class ResiliencyConfigurationTests {
     // --- Task 6.7: Production higher retry limits ---
 
     [Fact]
-    public void ProductionResiliency_HigherRetryLimits() {
+    public void ProductionResiliency_HigherOutboundRetryLimit() {
         string localContent = File.ReadAllText(LocalResiliencyPath);
         string prodContent = File.ReadAllText(ProductionResiliencyPath);
 
@@ -100,14 +98,8 @@ public class ResiliencyConfigurationTests {
         int localOutbound = ExtractMaxRetries(localContent, "pubsubRetryOutbound");
         int prodOutbound = ExtractMaxRetries(prodContent, "pubsubRetryOutbound");
 
-        // Extract inbound maxRetries
-        int localInbound = ExtractMaxRetries(localContent, "pubsubRetryInbound");
-        int prodInbound = ExtractMaxRetries(prodContent, "pubsubRetryInbound");
-
         prodOutbound.ShouldBeGreaterThan(localOutbound,
             $"Production outbound retries ({prodOutbound}) should exceed local ({localOutbound})");
-        prodInbound.ShouldBeGreaterThan(localInbound,
-            $"Production inbound retries ({prodInbound}) should exceed local ({localInbound})");
     }
 
     // --- Task 6.8: Local timeout policies ---

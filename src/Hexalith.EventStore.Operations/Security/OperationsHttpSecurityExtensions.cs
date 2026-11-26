@@ -30,7 +30,7 @@ internal static class OperationsHttpSecurityExtensions
         {
             foreach (string operation in new[] { "count", "list", "retry", "skip", "archive" })
             {
-                string requiredRole = operation == "count" ? "Admin" : operation == "list" ? "ReadOnly" : "Operator";
+                string requiredRole = operation is "count" or "list" ? "ReadOnly" : "Operator";
                 options.AddPolicy(PolicyPrefix + operation, new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
                     .Combine(EventStoreHttpHostSecurityExtensions.CreateHumanPolicy())
                     .RequireAssertion(context => context.Resource is HttpContext http

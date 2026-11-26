@@ -13,4 +13,11 @@ public sealed record DeadLetterCaptureRequest(
     string Topic,
     byte[] Body,
     string BodySha256,
-    DateTimeOffset CapturedAtUtc);
+    DateTimeOffset CapturedAtUtc)
+{
+    /// <summary>Gets the content and scope fingerprint for a validated subscriber transfer.</summary>
+    public string? DeliveryFingerprint { get; init; }
+
+    /// <summary>Gets the persisted subscriber attempt evidence.</summary>
+    public SubscriberFailureEvidence? DeliveryFailure { get; init; }
+}

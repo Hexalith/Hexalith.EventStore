@@ -7,10 +7,10 @@ public enum EventStoreDomainEventProcessingResult {
     /// <summary>The event was dispatched to at least one handler.</summary>
     Processed,
 
-    /// <summary>The event message ID was already processed or is currently being processed.</summary>
+    /// <summary>The exact event was already processed.</summary>
     Duplicate,
 
-    /// <summary>The event type is not recognized by the current service and was intentionally skipped.</summary>
+    /// <summary>The event type is not recognized by the current service.</summary>
     SkippedUnknownEventType,
 
     /// <summary>The event type is known, but no handlers were registered for it.</summary>
@@ -19,8 +19,7 @@ public enum EventStoreDomainEventProcessingResult {
     /// <summary>
     /// The payload's configured identity property does not match the aggregate ID of the stream the event
     /// was delivered on. Expected when a single pub/sub topic carries events from multiple aggregate types
-    /// whose identity conventions differ; the event is not addressed to this projection and is skipped
-    /// (acknowledged, not retried).
+    /// whose identity conventions differ. The receiving subscription applies its rejection policy.
     /// </summary>
     SkippedAggregateMismatch,
 
@@ -34,4 +33,10 @@ public enum EventStoreDomainEventProcessingResult {
 
     /// <summary>The delivery needs an unavailable verified evolution capability and remains retryable without a marker or handler effect.</summary>
     RetryableCapabilityMismatch,
+
+    /// <summary>The delivery disagrees with an existing marker or the stored content identity is unavailable.</summary>
+    RetryableContentConflict,
+
+    /// <summary>The delivery exceeded the configured age before any handler invocation.</summary>
+    DeliveryAgeExceeded,
 }

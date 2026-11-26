@@ -17,6 +17,18 @@ public sealed record DeadLetterSafeIdentity(
     string? CorrelationId,
     string? EventType)
 {
+    /// <summary>Gets the originating message identity, when present.</summary>
+    public string? CausationId { get; init; }
+
+    /// <summary>Gets the sequence within the addressed aggregate.</summary>
+    public long? SequenceNumber { get; init; }
+
+    /// <summary>Gets the original persisted event time.</summary>
+    public DateTimeOffset? OriginalTimestamp { get; init; }
+
+    /// <summary>Gets the original live subscription topic.</summary>
+    public string? OriginalTopic { get; init; }
+
     /// <summary>Gets the maximum retained length of any identity field.</summary>
     public const int MaxValueLength = 256;
 
@@ -47,7 +59,9 @@ public sealed record DeadLetterSafeIdentity(
             && IsNullOrValid(Domain)
             && IsNullOrValid(AggregateId)
             && IsNullOrValid(CorrelationId)
-            && IsNullOrValid(EventType);
+            && IsNullOrValid(EventType)
+            && IsNullOrValid(CausationId)
+            && IsNullOrValid(OriginalTopic);
 
     private static bool IsNullOrValid(string? value) => value is null || IsValidValue(value);
 }

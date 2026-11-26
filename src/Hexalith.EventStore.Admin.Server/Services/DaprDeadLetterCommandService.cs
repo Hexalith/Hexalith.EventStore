@@ -63,6 +63,10 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             ct).ConfigureAwait(false);
 
     /// <inheritdoc/>
+    public Task<AdminOperationResult> RetryDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
+        => InvokeOperationsPostAsync("internal/dead-letters/retry", new { tenantId, messageIds, actionId }, ct);
+
+    /// <inheritdoc/>
     public async Task<AdminOperationResult> SkipDeadLettersAsync(
         string tenantId,
         IReadOnlyList<string> messageIds,
@@ -73,6 +77,10 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             ct).ConfigureAwait(false);
 
     /// <inheritdoc/>
+    public Task<AdminOperationResult> SkipDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
+        => InvokeOperationsPostAsync("internal/dead-letters/skip", new { tenantId, messageIds, actionId }, ct);
+
+    /// <inheritdoc/>
     public async Task<AdminOperationResult> ArchiveDeadLettersAsync(
         string tenantId,
         IReadOnlyList<string> messageIds,
@@ -81,6 +89,10 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             "internal/dead-letters/archive",
             new { tenantId, messageIds },
             ct).ConfigureAwait(false);
+
+    /// <inheritdoc/>
+    public Task<AdminOperationResult> ArchiveDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
+        => InvokeOperationsPostAsync("internal/dead-letters/archive", new { tenantId, messageIds, actionId }, ct);
 
     private async Task<AdminOperationResult> InvokeOperationsPostAsync<TRequest>(
         string endpoint,
@@ -116,8 +128,8 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to invoke operations endpoint '{Endpoint}'.", endpoint);
-            return new AdminOperationResult(false, ErrorNoOperation, ex.Message, GetErrorCode(ex));
+            _logger.LogWarning("Operations endpoint '{Endpoint}' failed. FailureType={FailureType}", endpoint, ex.GetType().Name);
+            return new AdminOperationResult(false, ErrorNoOperation, "The recovery action is unavailable.", GetErrorCode(ex));
         }
     }
 
@@ -146,6 +158,7 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
     }
 
     private static string MapHttpStatusToErrorCode(HttpStatusCode statusCode) => statusCode switch {
+        HttpStatusCode.ServiceUnavailable => "Unavailable",
         HttpStatusCode.NotFound => "NotFound",
         HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Unauthorized",
         HttpStatusCode.BadRequest

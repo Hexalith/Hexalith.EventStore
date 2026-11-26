@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+
 using System.Net;
 
 using Dapr.Client;
@@ -18,11 +20,12 @@ namespace Hexalith.EventStore.Operations.Tests;
 /// </summary>
 public sealed class DaprDeadLetterReplayTransportTests
 {
+    private static readonly byte[] s_body = """{"id":"message-a","data":{"sequenceNumber":1}}"""u8.ToArray();
     /// <summary>Verifies target coordinates, content type, and original bytes are preserved.</summary>
     [Fact]
     public async Task DeliverUsesConfiguredTargetAndExactStructuredCloudEvent()
     {
-        byte[] body = [1, 3, 5, 7];
+        byte[] body = s_body;
         (DaprDeadLetterReplayTransport transport, DaprClient daprClient, CapturingHandler handler) = CreateTransport(HttpStatusCode.OK);
 
         await transport.DeliverAsync(body);
@@ -38,7 +41,7 @@ public sealed class DaprDeadLetterReplayTransportTests
     {
         (DaprDeadLetterReplayTransport transport, _, _) = CreateTransport(HttpStatusCode.ServiceUnavailable);
 
-        _ = await Should.ThrowAsync<HttpRequestException>(() => transport.DeliverAsync([1]));
+        _ = await Should.ThrowAsync<HttpRequestException>(() => transport.DeliverAsync(s_body));
     }
 
     private static (DaprDeadLetterReplayTransport Transport, DaprClient DaprClient, CapturingHandler Handler)
@@ -51,10 +54,13 @@ public sealed class DaprDeadLetterReplayTransportTests
         var client = new HttpClient(handler);
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
         _ = factory.CreateClient(Arg.Any<string>()).Returns(client);
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Development);
         var transport = new DaprDeadLetterReplayTransport(
             daprClient,
             factory,
-            Options.Create(new EventStoreOperationsOptions()));
+            Options.Create(new EventStoreOperationsOptions { IsolatedSubscriberRecovery = true }),
+            environment);
         return (transport, daprClient, handler);
     }
 
@@ -72,7 +78,9 @@ public sealed class DaprDeadLetterReplayTransportTests
                 ? null
                 : await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             ContentType = request.Content?.Headers.ContentType?.MediaType;
-            return new HttpResponseMessage(statusCode);
+            var response = new HttpResponseMessage(statusCode);
+            response.Headers.Add("X-EventStore-Subscriber-Outcome", "handled");
+            return response;
         }
     }
 }

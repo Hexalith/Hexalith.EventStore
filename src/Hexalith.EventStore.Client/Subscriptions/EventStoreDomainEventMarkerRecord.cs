@@ -8,6 +8,12 @@ namespace Hexalith.EventStore.Client.Subscriptions;
 public sealed record EventStoreDomainEventMarkerRecord(
     EventStoreDomainEventMarkerState State,
     DateTimeOffset UpdatedAt) {
+    /// <summary>Gets the fingerprint of the admitted content. Legacy records have no fingerprint.</summary>
+    public string? Fingerprint { get; init; }
+
+    /// <summary>Gets the owning attempt's fence. Legacy records have no fence.</summary>
+    public Guid Fence { get; init; }
+
     /// <summary>
     /// Creates an in-progress marker.
     /// </summary>

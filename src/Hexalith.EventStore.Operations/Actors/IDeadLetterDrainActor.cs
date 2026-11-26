@@ -1,5 +1,7 @@
 using Dapr.Actors;
 
+using Hexalith.EventStore.Client.Subscriptions;
+
 using Hexalith.EventStore.Operations.Models;
 
 namespace Hexalith.EventStore.Operations.Actors;
@@ -11,6 +13,9 @@ public interface IDeadLetterDrainActor : IActor
 {
     /// <summary>Durably captures an item and its index entry before returning.</summary>
     Task<DeadLetterCaptureResult> CaptureAsync(DeadLetterCaptureRequest request);
+
+    /// <summary>Reads or updates evidence for a validated live subscription.</summary>
+    Task<EventStoreSubscriberPoisonOutcome> ObserveSubscriberDeliveryAsync(SubscriberDeliveryObservation observation);
 
     /// <summary>Returns a redacted tenant-scoped page.</summary>
     Task<DeadLetterListResult> ListAsync(DeadLetterListRequest request);

@@ -4,6 +4,42 @@ namespace Hexalith.EventStore.Client.Subscriptions;
 /// Stores idempotency markers for consumed EventStore domain events.
 /// </summary>
 public interface IEventStoreDomainEventMarkerStore {
+    /// <summary>Gets whether this store enforces content-bound, fenced admission.</summary>
+    bool SupportsContentBoundAdmission => false;
+
+    /// <summary>Gets whether the store persists content-bound markers across process replacement.</summary>
+    bool IsDurable => false;
+
+    /// <summary>Acquires the marker for the received event content.</summary>
+    /// <param name="messageId">The persisted event identifier.</param>
+    /// <param name="fingerprint">The fingerprint of the admitted event envelope.</param>
+    /// <param name="cancellationToken">The operation cancellation token.</param>
+    /// <returns>The admission result and any lease needed to transition it.</returns>
+    Task<EventStoreDomainEventMarkerAdmission> TryAcquireContentAsync(
+        string messageId, string fingerprint, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("The marker store does not provide content-bound admission.");
+
+    /// <summary>Records proven handler dispatch under the supplied lease.</summary>
+    /// <param name="lease">The fenced marker lease.</param>
+    /// <param name="cancellationToken">The operation cancellation token.</param>
+    /// <returns>Whether a completion transition remains.</returns>
+    Task<bool> MarkFencedDispatchedAsync(EventStoreDomainEventMarkerLease lease, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("The marker store does not provide fenced dispatch.");
+
+    /// <summary>Completes a marker after dispatch has been proven.</summary>
+    /// <param name="lease">The fenced marker lease.</param>
+    /// <param name="cancellationToken">The operation cancellation token.</param>
+    /// <returns>The completion operation.</returns>
+    Task MarkFencedCompletedAsync(EventStoreDomainEventMarkerLease lease, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("The marker store does not provide fenced completion.");
+
+    /// <summary>Releases a marker whose owner can prove handler dispatch never started.</summary>
+    /// <param name="lease">The fenced marker lease.</param>
+    /// <param name="cancellationToken">The operation cancellation token.</param>
+    /// <returns>The release operation.</returns>
+    Task ReleaseFenceAsync(EventStoreDomainEventMarkerLease lease, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("The marker store does not provide fenced release.");
+
     /// <summary>
     /// Attempts to acquire processing ownership for an EventStore message ID.
     /// </summary>
