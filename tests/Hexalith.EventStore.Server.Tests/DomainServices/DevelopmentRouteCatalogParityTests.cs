@@ -225,7 +225,7 @@ public class DevelopmentRouteCatalogParityTests
         RouteCatalogEnvelope first = await DevelopmentCatalogProfile.BuildDeclarationsAsync(root, TestContext.Current.CancellationToken);
         for (int attempt = 0; attempt < 2; attempt++)
             RouteCatalogCodec.Encode(await DevelopmentCatalogProfile.BuildDeclarationsAsync(root, TestContext.Current.CancellationToken)).ShouldBe(retained);
-        RouteCatalogCodec.ComputeRootDigest(first).ShouldBe("8afc9833a67417e53fbbf91a18c76e4f273a11d534fc2637e0552da43c5544ff");
+        RouteCatalogCodec.ComputeRootDigest(first).ShouldBe("0c95ab9274b9f59b6e95388ac415c149ea614914135c46546ec90f6d111f4658");
         first.Declarations.Select(RouteCatalogCodec.ComputeDeclarationDigest).Order(StringComparer.Ordinal)
             .ShouldBe(DevelopmentCatalogProfile.Declarations.Select(RouteCatalogCodec.ComputeDeclarationDigest).Order(StringComparer.Ordinal));
         IDeclaredIdempotencyIntentAdapter[] owners = [.. SampleCatalog.CreateAdapters(), .. TenantIntentAdapters.Create()];
@@ -233,8 +233,8 @@ public class DevelopmentRouteCatalogParityTests
             .ShouldBe(owners.Select(adapter => DevelopmentIdempotencyBindings.Bind(adapter.Declaration, first.Generation))
                 .Select(RouteCatalogCodec.ComputeIdempotencyEntryDigest).Order(StringComparer.Ordinal));
         first.SchemaVersion.ShouldBe(2);
-        first.Routes.Count.ShouldBe(31);
-        first.Idempotency.Count.ShouldBe(18);
+        first.Routes.Count.ShouldBe(32);
+        first.Idempotency.Count.ShouldBe(19);
         first.Declarations.Count(d => d.Kind == "query").ShouldBe(10);
         first.Declarations.Count(d => d.Kind == "projection").ShouldBe(3);
         first.Routes.Single(r => r.RouteId == "counter-status-query").AppId.ShouldBe("eventstore");

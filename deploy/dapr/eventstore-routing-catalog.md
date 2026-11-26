@@ -1,13 +1,14 @@
 # Route catalog declarations and runtime certification
 
 `eventstore-routing-catalog.json` is the **declared Development inventory and an
-unactivated runtime candidate**, retained for review and compatibility verification. Its 31 routes
-contain 18 command policies, ten query declarations and three callable
+unactivated runtime candidate**, retained for review and compatibility verification. Its 32 routes
+contain 19 command policies, ten query declarations and three callable
 projections. The canonical root is
-`8afc9833a67417e53fbbf91a18c76e4f273a11d534fc2637e0552da43c5544ff`.
+`0c95ab9274b9f59b6e95388ac415c149ea614914135c46546ec90f6d111f4658`.
 
-The retained candidate follows the public Tenants 8.0.0 declarations with the
-EventStore 5.1.0 dependency selection. It includes the tenant-access recovery command, the global-administrator audit
+The retained candidate follows the public Tenants 8.1.0 declarations with the
+EventStore 5.6.0 dependency selection. It includes the synthetic tenant creation
+command, the tenant-access recovery command, the global-administrator audit
 query and the owning queries' explicit platform admission metadata. Those
 declarations grant no human permission, runtime authority or activation.
 
