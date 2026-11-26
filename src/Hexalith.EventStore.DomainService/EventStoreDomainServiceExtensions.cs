@@ -788,7 +788,8 @@ public static class EventStoreDomainServiceExtensions {
 
         // The gateway admits each command once per idempotency key. A shorter attempt followed by a
         // transport retry resubmits a command that is still executing, and that duplicate admission answers
-        // Pending (202) in place of the original synchronous outcome. One attempt owns the whole budget.
+        // Pending (202) in place of the original synchronous outcome. One attempt owns the whole budget for
+        // every call on the client registered by AddEventStoreGatewayClient; early transient replies still retry.
         _ = builder.Services.AddHttpClient(nameof(Hexalith.EventStore.Client.Gateway.IEventStoreGatewayClient))
             .AddEventStoreBoundedInvocationResilience();
 

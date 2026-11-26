@@ -3,7 +3,7 @@ using Microsoft.Extensions.Http.Resilience;
 
 namespace Hexalith.EventStore.ServiceDefaults;
 
-/// <summary>Configures the bounded transport used by domain queries and Admin API invocations.</summary>
+/// <summary>Configures the bounded transport used by domain queries, Admin API invocations and the domain host's gateway client.</summary>
 public static class BoundedInvocationResilienceExtensions
 {
     /// <summary>
