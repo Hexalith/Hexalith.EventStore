@@ -33,6 +33,7 @@ public class AdminDeadLettersController(
     [HttpGet("count")]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(DeadLetterSummary), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]

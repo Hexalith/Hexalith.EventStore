@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.DomainService;
@@ -20,9 +22,15 @@ namespace Hexalith.EventStore.DomainService;
 /// </summary>
 /// <remarks>
 /// This is the platform generalization of the per-domain subscription endpoints domain modules previously
-/// hand-wrote (e.g. <c>MapTenantEventSubscription</c>). Pair with
-/// <c>AddEventStoreDomainEvents</c> (registration) and ensure <c>app.UseCloudEvents()</c> and
-/// <c>app.MapSubscribeHandler()</c> are configured.
+/// hand-wrote (e.g. <c>MapTenantEventSubscription</c>). Pair with <c>AddEventStoreDomainEvents</c> (registration).
+/// <c>UseEventStoreDomainService()</c> configures <c>UseCloudEvents</c> with CloudEvent property forwarding, forwards
+/// <c>pubsubname</c> itself, and maps <c>MapSubscribeHandler()</c>. Outside Development, and whenever a poison sink is
+/// bound, a delivery is refused unless it carries exactly one of each forwarded header: <c>cloudevent.id</c>,
+/// <c>cloudevent.source</c>, <c>cloudevent.topic</c>, <c>cloudevent.pubsubname</c>, <c>cloudevent.type</c> and
+/// <c>cloudevent.specversion</c>. A custom pipeline must call <c>UseCloudEvents</c> with
+/// <c>ForwardCloudEventPropertiesAsHeaders</c> enabled for <c>id</c>, <c>source</c>, <c>topic</c>, <c>type</c> and
+/// <c>specversion</c>, and forward <c>pubsubname</c> from the body before it, because Dapr's middleware never forwards
+/// that attribute. It must also map <c>MapSubscribeHandler()</c> unless subscriptions are declarative.
 /// </remarks>
 public static class EventStoreDomainEventsEndpointExtensions {
     /// <summary>
@@ -40,11 +48,22 @@ public static class EventStoreDomainEventsEndpointExtensions {
 
         EventStoreSubscriptionSkipPolicy allSkips = EventStoreSubscriptionSkipPolicy.UnknownEventType
             | EventStoreSubscriptionSkipPolicy.NoHandlers | EventStoreSubscriptionSkipPolicy.AggregateMismatch;
-        if (options.MaximumDeliveryAttempts is < 1 or > 1000
-            || options.MaximumDeliveryAge is { } age && (age <= TimeSpan.Zero || age > TimeSpan.FromDays(365))
-            || (options.AcknowledgedSkips & ~allSkips) != 0)
+        if (options.MaximumDeliveryAttempts is < 1 or > 1000)
         {
-            throw new InvalidOperationException("The subscription delivery policy is invalid.");
+            throw new InvalidOperationException(
+                "The subscription delivery policy is invalid: MaximumDeliveryAttempts must be between 1 and 1000.");
+        }
+
+        if (options.MaximumDeliveryAge is { } age && (age <= TimeSpan.Zero || age > TimeSpan.FromDays(365)))
+        {
+            throw new InvalidOperationException(
+                "The subscription delivery policy is invalid: MaximumDeliveryAge must be positive and at most 365 days.");
+        }
+
+        if ((options.AcknowledgedSkips & ~allSkips) != 0)
+        {
+            throw new InvalidOperationException(
+                "The subscription delivery policy is invalid: AcknowledgedSkips contains an unsupported skip policy.");
         }
 
         RouteHandlerBuilder endpoint = endpoints.MapPost(options.SubscriptionRoute, (
@@ -74,8 +93,11 @@ public static class EventStoreDomainEventsEndpointExtensions {
         IServiceProvider services = context.RequestServices;
         bool development = services.GetRequiredService<IHostEnvironment>().IsDevelopment();
         IEventStoreSubscriberPoisonSink? sink = services.GetService<IEventStoreSubscriberPoisonSink>();
+        ILogger logger = services.GetService<ILoggerFactory>()?.CreateLogger(EventStoreDomainEventsDeliveryLog.Category)
+            ?? NullLogger.Instance;
         if (!development && !processor.HasDurableAdmission)
         {
+            EventStoreDomainEventsDeliveryLog.Refused(logger, "durable-admission-unavailable");
             return MapProcessingResult(EventStoreDomainEventProcessingResult.RetryableInProgress);
         }
 
@@ -94,13 +116,15 @@ public static class EventStoreDomainEventsEndpointExtensions {
                 || (component != options.PubSubName && !legacyReplay)
                 || Header(context, "cloudevent.type") != envelope.EventTypeName || Header(context, "cloudevent.specversion") != "1.0")
             {
+                EventStoreDomainEventsDeliveryLog.Refused(logger, "cloudevent-metadata-mismatch");
                 return MapProcessingResult(EventStoreDomainEventProcessingResult.RetryableContentConflict);
             }
 
-            delivery = new EventStoreSubscriberDelivery(options.PubSubName, options.TopicName, options.SubscriptionRoute,
-                source, id, envelope);
+            delivery = new EventStoreSubscriberDelivery(options.PubSubName, options.TopicName,
+                "/" + options.SubscriptionRoute.TrimStart('/'), source, id, envelope);
             if (!delivery.IsValid())
             {
+                EventStoreDomainEventsDeliveryLog.Refused(logger, "delivery-identity-invalid");
                 return MapProcessingResult(EventStoreDomainEventProcessingResult.RetryableContentConflict);
             }
         }
@@ -118,6 +142,7 @@ public static class EventStoreDomainEventsEndpointExtensions {
 
                 if (observation != EventStoreSubscriberPoisonOutcome.Retryable)
                 {
+                    EventStoreDomainEventsDeliveryLog.Retryable(logger, "poison-precheck-conflict", delivery.Id);
                     return MapProcessingResult(EventStoreDomainEventProcessingResult.RetryableContentConflict);
                 }
             }
@@ -130,8 +155,9 @@ public static class EventStoreDomainEventsEndpointExtensions {
             {
                 result = await processor.ProcessAsync(envelope, !expired, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
+                EventStoreDomainEventsDeliveryLog.Failed(logger, "processing-failed", delivery?.Id, ex.GetType().Name);
                 if (sink is null)
                 {
                     return Results.StatusCode(StatusCodes.Status500InternalServerError);
@@ -139,7 +165,7 @@ public static class EventStoreDomainEventsEndpointExtensions {
 
                 return await RecordFailureAsync(sink, delivery, options,
                     expired ? EventStoreSubscriberFailureReason.DeliveryAgeExceeded : EventStoreSubscriberFailureReason.ProcessingFailure,
-                    retryable: !expired, replay, cancellationToken).ConfigureAwait(false);
+                    retryable: !expired, replay, logger, cancellationToken).ConfigureAwait(false);
             }
 
             if (result is EventStoreDomainEventProcessingResult.Processed or EventStoreDomainEventProcessingResult.Duplicate)
@@ -157,7 +183,10 @@ public static class EventStoreDomainEventsEndpointExtensions {
                 return Results.Ok();
             }
 
+            // Another attempt may own the marker, so expiry never relabels a concurrent or conflicting attempt.
             (EventStoreSubscriberFailureReason reason, bool retryable) = expired
+                && result is not (EventStoreDomainEventProcessingResult.RetryableInProgress
+                    or EventStoreDomainEventProcessingResult.RetryableContentConflict)
                 ? (EventStoreSubscriberFailureReason.DeliveryAgeExceeded, false) : result switch
             {
                 EventStoreDomainEventProcessingResult.SkippedUnknownEventType => (EventStoreSubscriberFailureReason.UnknownEventType, false),
@@ -169,24 +198,36 @@ public static class EventStoreDomainEventsEndpointExtensions {
                 EventStoreDomainEventProcessingResult.RetryableContentConflict => (EventStoreSubscriberFailureReason.ContentConflict, true),
                 _ => (EventStoreSubscriberFailureReason.MarkerPending, true),
             };
-            return await RecordFailureAsync(sink, delivery, options, reason, retryable, replay, cancellationToken).ConfigureAwait(false);
+            return await RecordFailureAsync(sink, delivery, options, reason, retryable, replay, logger, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            EventStoreDomainEventsDeliveryLog.Failed(logger, "delivery-unavailable", delivery?.Id, ex.GetType().Name);
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
     }
 
     private static async Task<IResult> RecordFailureAsync(IEventStoreSubscriberPoisonSink? sink, EventStoreSubscriberDelivery? delivery,
-        EventStoreDomainEventsOptions options, EventStoreSubscriberFailureReason reason, bool retryable, bool replay, CancellationToken cancellationToken)
+        EventStoreDomainEventsOptions options, EventStoreSubscriberFailureReason reason, bool retryable, bool replay, ILogger logger,
+        CancellationToken cancellationToken)
     {
-        if (!replay && sink is not null && delivery is not null && await sink.ObserveAsync(delivery,
-                new EventStoreSubscriberFailure(reason, retryable, options.MaximumDeliveryAttempts), cancellationToken)
-                .ConfigureAwait(false) == EventStoreSubscriberPoisonOutcome.Retained)
+        EventStoreSubscriberPoisonOutcome? outcome = !replay && sink is not null && delivery is not null
+            ? await sink.ObserveAsync(delivery, new EventStoreSubscriberFailure(reason, retryable, options.MaximumDeliveryAttempts),
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        if (outcome == EventStoreSubscriberPoisonOutcome.Retained)
         {
             return Results.Ok();
         }
 
+        string reasonCode = outcome switch
+        {
+            EventStoreSubscriberPoisonOutcome.Retryable => "failure-retryable",
+            null when replay => "replay-not-handled",
+            null => "poison-sink-unavailable",
+            _ => "poison-observation-conflict",
+        };
+        EventStoreDomainEventsDeliveryLog.NotRetained(logger, reasonCode, reason.ToString(), delivery?.Id ?? "unadmitted");
         return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
     }
 

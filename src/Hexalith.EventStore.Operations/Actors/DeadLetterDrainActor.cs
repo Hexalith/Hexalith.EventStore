@@ -130,13 +130,18 @@ public sealed class DeadLetterDrainActor(
     {
         ArgumentNullException.ThrowIfNull(observation);
         EventStoreSubscriberDelivery delivery = observation.Delivery;
-        if (delivery is null || !delivery.IsValid() || delivery.SubscriberAppId != _options.ReplayAppId
-            || delivery.PubSubName != _options.PubSubName
-            || delivery.TopicName != _options.LiveTopicName
-            || delivery.SubscriptionRoute != "/" + _options.ReplayMethodName.TrimStart('/')
-            || observation.Failure is { } invalid && (!Enum.IsDefined(invalid.Reason) || invalid.AttemptLimit != _options.MaximumDeliveryAttempts
-                || invalid.ObservationId == Guid.Empty))
+        string? mismatch = delivery is null || !delivery.IsValid() ? "identity"
+            : delivery.SubscriberAppId != _options.ReplayAppId ? "app"
+            : delivery.PubSubName != _options.PubSubName ? "pubsub"
+            : delivery.TopicName != _options.LiveTopicName ? "topic"
+            : delivery.SubscriptionRoute != "/" + _options.ReplayMethodName.TrimStart('/') ? "route"
+            : observation.Failure is { } invalid && !Enum.IsDefined(invalid.Reason) ? "failure-reason"
+            : observation.Failure is { } limited && limited.AttemptLimit != _options.MaximumDeliveryAttempts ? "attempt-limit"
+            : observation.Failure is { } observed && observed.ObservationId == Guid.Empty ? "observation-id"
+            : null;
+        if (delivery is null || mismatch is not null)
         {
+            _telemetry.SubscriberMismatch(_options.TopicName, mismatch ?? "identity");
             return EventStoreSubscriberPoisonOutcome.Conflict;
         }
 
@@ -147,12 +152,16 @@ public sealed class DeadLetterDrainActor(
         var retained = await StateManager.TryGetStateAsync<DeadLetterRecord>(itemName).ConfigureAwait(false);
         if (retained.HasValue)
         {
-            return ValidStoredBody(retained.Value) && retained.Value.DeliveryFingerprint == fingerprint
+            if (ValidStoredBody(retained.Value) && retained.Value.DeliveryFingerprint == fingerprint
                 && retained.Value.Identity.TenantId == envelope.TenantId && retained.Value.Identity.Domain == envelope.Domain
                 && retained.Value.Topic == _options.TopicName
-                && (await ReadIndexAsync().ConfigureAwait(false)).MessageIds.Contains(envelope.MessageId, StringComparer.Ordinal)
-                ? EventStoreSubscriberPoisonOutcome.Retained
-                : EventStoreSubscriberPoisonOutcome.Conflict;
+                && (await ReadIndexAsync().ConfigureAwait(false)).MessageIds.Contains(envelope.MessageId, StringComparer.Ordinal))
+            {
+                return EventStoreSubscriberPoisonOutcome.Retained;
+            }
+
+            _telemetry.SubscriberMismatch(_options.TopicName, "retained-scope");
+            return EventStoreSubscriberPoisonOutcome.Conflict;
         }
 
         if (observation.Failure is not { } failure)
@@ -164,6 +173,7 @@ public sealed class DeadLetterDrainActor(
         var previous = await StateManager.TryGetStateAsync<SubscriberFailureEvidence>(attemptName).ConfigureAwait(false);
         if (previous.HasValue && previous.Value.Fingerprint != fingerprint)
         {
+            _telemetry.SubscriberMismatch(_options.TopicName, "attempt-content");
             return EventStoreSubscriberPoisonOutcome.Conflict;
         }
 
@@ -647,7 +657,6 @@ public sealed class DeadLetterDrainActor(
             await StageReplayActionOutcomeAsync(replaying.ActionOperationId).ConfigureAwait(false);
             await StateManager.SaveStateAsync().ConfigureAwait(false);
             _telemetry.Action(_options.TopicName, failure is null ? "replayed" : exhausted ? "exhausted" : "retryable", reason);
-
         }
 
         // Observed once per drain rather than once per item: the observation rescans the whole backlog, so

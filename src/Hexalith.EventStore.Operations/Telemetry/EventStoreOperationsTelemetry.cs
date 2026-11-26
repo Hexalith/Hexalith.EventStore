@@ -64,6 +64,14 @@ public sealed class EventStoreOperationsTelemetry
     internal void Capture(string topic, string status)
         => _captures.Add(1, new KeyValuePair<string, object?>("topic", topic), new("status", status));
 
+    /// <summary>Records a refused subscriber observation by bounded mismatch category, without an item identifier.</summary>
+    internal void SubscriberMismatch(string topic, string category)
+        => _captures.Add(
+            1,
+            new KeyValuePair<string, object?>("topic", topic),
+            new("status", "subscriber-mismatch"),
+            new("reason", category));
+
     /// <summary>Records an operator or replay action without an item identifier.</summary>
     internal void Action(string topic, string status, string reason)
         => _actions.Add(

@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 
 using Dapr.Client;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
@@ -53,42 +54,40 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
     }
 
     /// <inheritdoc/>
-    public async Task<AdminOperationResult> RetryDeadLettersAsync(
+    /// <remarks>
+    /// Each call is a new operator decision. Operations derives a fixed identity for a request without an action ID,
+    /// so a retry after a failed campaign would read back the stored failure instead of replaying. A fresh action ID
+    /// is generated once per call, before sending, so transport retries of the same request reuse it.
+    /// </remarks>
+    public Task<AdminOperationResult> RetryDeadLettersAsync(
         string tenantId,
         IReadOnlyList<string> messageIds,
         CancellationToken ct = default)
-        => await InvokeOperationsPostAsync(
-            "internal/dead-letters/retry",
-            new { tenantId, messageIds },
-            ct).ConfigureAwait(false);
+        => RetryDeadLettersAsync(tenantId, messageIds, NewActionId(), ct);
 
     /// <inheritdoc/>
     public Task<AdminOperationResult> RetryDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
         => InvokeOperationsPostAsync("internal/dead-letters/retry", new { tenantId, messageIds, actionId }, ct);
 
     /// <inheritdoc/>
-    public async Task<AdminOperationResult> SkipDeadLettersAsync(
+    /// <remarks>Generates one fresh action ID per call; see <see cref="RetryDeadLettersAsync(string, IReadOnlyList{string}, CancellationToken)"/>.</remarks>
+    public Task<AdminOperationResult> SkipDeadLettersAsync(
         string tenantId,
         IReadOnlyList<string> messageIds,
         CancellationToken ct = default)
-        => await InvokeOperationsPostAsync(
-            "internal/dead-letters/skip",
-            new { tenantId, messageIds },
-            ct).ConfigureAwait(false);
+        => SkipDeadLettersAsync(tenantId, messageIds, NewActionId(), ct);
 
     /// <inheritdoc/>
     public Task<AdminOperationResult> SkipDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
         => InvokeOperationsPostAsync("internal/dead-letters/skip", new { tenantId, messageIds, actionId }, ct);
 
     /// <inheritdoc/>
-    public async Task<AdminOperationResult> ArchiveDeadLettersAsync(
+    /// <remarks>Generates one fresh action ID per call; see <see cref="RetryDeadLettersAsync(string, IReadOnlyList{string}, CancellationToken)"/>.</remarks>
+    public Task<AdminOperationResult> ArchiveDeadLettersAsync(
         string tenantId,
         IReadOnlyList<string> messageIds,
         CancellationToken ct = default)
-        => await InvokeOperationsPostAsync(
-            "internal/dead-letters/archive",
-            new { tenantId, messageIds },
-            ct).ConfigureAwait(false);
+        => ArchiveDeadLettersAsync(tenantId, messageIds, NewActionId(), ct);
 
     /// <inheritdoc/>
     public Task<AdminOperationResult> ArchiveDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, string actionId, CancellationToken ct = default)
@@ -132,6 +131,8 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             return new AdminOperationResult(false, ErrorNoOperation, "The recovery action is unavailable.", GetErrorCode(ex));
         }
     }
+
+    private static string NewActionId() => UniqueIdHelper.GenerateSortableUniqueStringId();
 
     private static string GetErrorCode(Exception exception) {
         Exception current = exception;

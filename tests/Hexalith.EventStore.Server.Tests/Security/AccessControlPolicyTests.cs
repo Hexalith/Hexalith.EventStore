@@ -396,8 +396,8 @@ public class AccessControlPolicyTests {
         // Verify dead-letter is enabled
         GetComponentMetadataValue(localDoc, "enableDeadLetter").ShouldBe("true",
             "Local pub/sub must have dead-letter enabled");
-        _ = GetComponentMetadataValue(localDoc, "deadLetterTopic").ShouldNotBeNull(
-            "Local pub/sub must configure a dead-letter topic");
+        GetComponentMetadataValue(localDoc, "deadLetterTopic").ShouldBeNull(
+            "Local pub/sub must not declare a component dead-letter topic; subscriber poison goes to Operations capture");
 
         // Verify component scopes restrict to eventstore only
         VerifyPubSubScopesAllowAuthorizedSubscribersOnly(localDoc, "local pub/sub (dead-letter check)");
@@ -418,8 +418,8 @@ public class AccessControlPolicyTests {
         Dictionary<string, object> rabbitDoc = LoadYaml(ProductionPubSubRabbitMqPath);
         GetComponentMetadataValue(rabbitDoc, "enableDeadLetter").ShouldBe("true",
             "Production RabbitMQ pub/sub must have dead-letter enabled");
-        _ = GetComponentMetadataValue(rabbitDoc, "deadLetterTopic").ShouldNotBeNull(
-            "Production RabbitMQ pub/sub must configure a dead-letter topic");
+        GetComponentMetadataValue(rabbitDoc, "deadLetterTopic").ShouldBeNull(
+            "Production RabbitMQ pub/sub must not declare a component dead-letter topic");
         VerifyPubSubScopesAllowAuthorizedSubscribersOnly(
             rabbitDoc,
             "production RabbitMQ pub/sub (dead-letter check)");
@@ -427,8 +427,8 @@ public class AccessControlPolicyTests {
         Dictionary<string, object> kafkaDoc = LoadYaml(ProductionPubSubKafkaPath);
         GetComponentMetadataValue(kafkaDoc, "enableDeadLetter").ShouldBe("true",
             "Production Kafka pub/sub must have dead-letter enabled");
-        _ = GetComponentMetadataValue(kafkaDoc, "deadLetterTopic").ShouldNotBeNull(
-            "Production Kafka pub/sub must configure a dead-letter topic");
+        GetComponentMetadataValue(kafkaDoc, "deadLetterTopic").ShouldBeNull(
+            "Production Kafka pub/sub must not declare a component dead-letter topic");
         VerifyPubSubScopesAllowAuthorizedSubscribersOnly(
             kafkaDoc,
             "production Kafka pub/sub (dead-letter check)");

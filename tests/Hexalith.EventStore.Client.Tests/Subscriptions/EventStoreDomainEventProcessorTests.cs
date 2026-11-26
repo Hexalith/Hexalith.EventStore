@@ -62,6 +62,17 @@ public class EventStoreDomainEventProcessorTests {
         }
     }
 
+    private sealed class CancellingHandler(CancellationTokenSource source) : IEventStoreDomainEventHandler<TestEvent> {
+        public int InvocationCount { get; private set; }
+
+        public Task HandleAsync(TestEvent @event, EventStoreDomainEventContext context, CancellationToken cancellationToken = default) {
+            InvocationCount++;
+            source.Cancel();
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class CompletionFailingMarkerStore : IEventStoreDomainEventMarkerStore {
         public int ReleaseCount { get; private set; }
 
@@ -635,6 +646,86 @@ public class EventStoreDomainEventProcessorTests {
 
         retry.ShouldBe(EventStoreDomainEventProcessingResult.RetryableInProgress);
         handler.InvocationCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CancellationBeforeHandlerStart_ReleasesMarkerForRedelivery() {
+        using var cancellation = new CancellationTokenSource();
+        var handler = new CapturingHandler();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(_ => {
+                // Cancellation lands after marker admission and before any handler starts, so no effect can exist.
+                cancellation.Cancel();
+                return handler;
+            })
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 7));
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => processor.ProcessAsync(envelope, cancellation.Token));
+        handler.Handled.ShouldBeEmpty();
+
+        EventStoreDomainEventProcessingResult redelivery = await processor.ProcessAsync(envelope);
+
+        redelivery.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CancellationAfterHandlerStart_KeepsMarkerOwnedWithoutRedispatch() {
+        using var cancellation = new CancellationTokenSource();
+        var handler = new CancellingHandler(cancellation);
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 7));
+
+        // The handler started, so its effect is unknown: the marker stays owned and no redelivery redispatches.
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => processor.ProcessAsync(envelope, cancellation.Token));
+        EventStoreDomainEventProcessingResult retry = await processor.ProcessAsync(envelope);
+
+        retry.ShouldBe(EventStoreDomainEventProcessingResult.RetryableInProgress);
+        handler.InvocationCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DispatchNotAllowed_ReleasesWithoutInvokingKnownHandler() {
+        var handler = new CapturingHandler();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 7));
+
+        // A known, registered type proves the age guard itself stops dispatch, not a missing registration.
+        EventStoreDomainEventProcessingResult expired = await processor.ProcessAsync(envelope, dispatchAllowed: false, CancellationToken.None);
+
+        expired.ShouldBe(EventStoreDomainEventProcessingResult.DeliveryAgeExceeded);
+        handler.Handled.ShouldBeEmpty();
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
     }
 
     [Fact]

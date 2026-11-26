@@ -81,10 +81,6 @@ resource pubsub 'Microsoft.App/managedEnvironments/daprComponents@2025-01-01' = 
         name: 'enableDeadLetter'
         value: 'true'
       }
-      {
-        name: 'deadLetterTopic'
-        value: 'deadletter'
-      }
     ], empty(managedIdentityClientId) ? [] : [
       {
         name: 'azureClientId'

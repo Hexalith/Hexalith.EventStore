@@ -84,10 +84,12 @@ public class ProductionDaprComponentValidationTests {
     [InlineData("pubsub-rabbitmq.yaml")]
     [InlineData("pubsub-kafka.yaml")]
     [InlineData("pubsub-servicebus.yaml")]
-    public void ProductionPubSubs_DeadLetterTopicIsConfigured(string fileName) {
+    public void ProductionPubSubs_DeclareNoComponentDeadLetterTopic(string fileName) {
+        // No supported component reads this key. EventStore subscribers acknowledge exhausted deliveries only after
+        // Operations confirms capture, and producer drain dead letters use deadletter.{tenant}.{domain}.events.
         Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
         GetComponentMetadataValue(doc, "deadLetterTopic")
-            .ShouldBe("deadletter", $"{fileName} must set deadLetterTopic to the shared dead-letter topic name");
+            .ShouldBeNull($"{fileName} must not declare a component dead-letter topic");
     }
 
     // --- ProductionAccessControl_DefaultActionIsDeny ---

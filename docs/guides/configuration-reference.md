@@ -75,7 +75,7 @@ Configuration section: `EventStore:Publisher`
 | `PubSubName` | string | `"pubsub"` | DAPR pub/sub component name to publish events to |
 | `DeadLetterTopicPrefix` | string | `"deadletter"` | Prefix for dead-letter topics. Format: `{prefix}.{tenant}.{domain}.events` |
 
-`DeadLetterTopicPrefix` applies to EventStore command infrastructure dead letters published by `DeadLetterPublisher`. DAPR subscriber dead-letter topics are configured separately in DAPR component/subscription YAML through metadata such as `deadLetterTopic` and subscription `deadLetterTopic`; they represent subscriber delivery retry exhaustion, not EventStore command processing failure.
+`DeadLetterTopicPrefix` applies to EventStore command infrastructure dead letters published by `DeadLetterPublisher`. Subscriber delivery failures use no Dapr dead-letter route: the subscriber's application attempt and age limits apply (see [Subscriber Delivery](#subscriber-delivery)), followed by Operations capture. Those records represent subscriber exhaustion, not EventStore command processing failure.
 
 ```json
 {
@@ -494,6 +494,35 @@ Capacity alone keeps the normal interval. Retained `Unresolved` or
 `Quarantined` convergence outcomes degrade readiness without making the scan
 incomplete; a null stream fold with durable work retains its witnesses and
 discovery and keeps the normal interval.
+
+### Subscriber Delivery
+
+A domain service that consumes events through `AddEventStoreDomainEvents` binds `EventStoreDomainEventsOptions` from `EventStore:SubscriberDelivery`. The application limits decide exhaustion; Dapr inbound retries stay unbounded and no broker dead-letter route is used.
+
+Configuration section: `EventStore:SubscriberDelivery`
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `MaximumDeliveryAttempts` | int | `10` | Failed deliveries recorded before a bound poison sink captures the event. Must be 1–1000 and equal the Operations `MaximumDeliveryAttempts` |
+| `MaximumDeliveryAge` | TimeSpan? | none | Age after the event timestamp beyond which handlers no longer run; a bound poison sink then captures the delivery. Must be positive and at most 365 days |
+| `AcknowledgedSkips` | flags | `None` | Skips acknowledged without capture: `UnknownEventType`, `NoHandlers`, `AggregateMismatch`. Each also needs the matching entry in the committed route catalog |
+| `DevelopmentMarkerCapacity` | int | `10000` | Maximum in-memory markers, including active and ambiguous attempts. Development and tests only |
+| `DevelopmentMarkerRetention` | TimeSpan | `1.00:00:00` | Minimum time a completed in-memory marker still deduplicates a redelivery. Development and tests only |
+| `DevelopmentOperationsAppId` | string? | none | Development only: binds the isolated Operations poison sink to this Dapr app ID |
+
+Outside Development a delivery needs a durable marker store and the forwarded `cloudevent.*` headers that `UseEventStoreDomainService()` configures.
+
+### Operations Dead-Letter Recovery
+
+`Hexalith.EventStore.Operations` binds `EventStoreOperations`. Subscriber recovery is isolated and non-production until the AD-31 gates are met.
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `IsolatedSubscriberRecovery` | bool | `false` | Development only: maps the subscriber observation route and enables retry, skip and archive |
+| `LiveTopicName` | string | `"work.events"` | The one live topic whose subscriber deliveries this workload admits |
+| `MaximumDeliveryAttempts` | int | `10` | Attempt budget agreed with the subscriber; a different subscriber value is refused. Must be 1–1000 |
+
+The Admin `GET api/v1/admin/dead-letters/count` endpoint requires the ReadOnly role. A caller without the Admin role sees only its single tenant grant or a named granted tenant, and `detailed=true` returns the count with the oldest failure age.
 
 ### OpenAPI
 

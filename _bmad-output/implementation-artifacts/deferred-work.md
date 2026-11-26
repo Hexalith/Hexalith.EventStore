@@ -6914,3 +6914,39 @@ owner: Story 5.4 (PRD FR26-C4)
 severity: medium
 reason: The registered Admin host middleware (Program.cs:54) keeps `X-Correlation-ID` only when `Guid.TryParse` succeeds and otherwise mints `Guid.NewGuid()`, so a canonical ULID is replaced, and `MiddlewareOrderTests.cs:41` asserts that the minted header parses as a GUID. PRD FR26-C4 and §8.2 forbid `Guid.TryParse` for `correlationId`, and AD-32 requires downstream hosts to preserve valid values. Accept exactly one 1–128-character ASCII alphanumeric-or-hyphen value (ULID and GUID text included) through `CorrelationIdGrammar.IsValid`, otherwise mint `UniqueIdHelper.GenerateSortableUniqueStringId()`, mirroring the gateway middleware including its `OnStarting` restore. Replace the GUID assertion and add host-level regressions: canonical ULID preserved, GUID-form token preserved, blank, duplicate, oversized and malformed values replaced. FR26-C4 closes only when this lands; Story 5.4 stays done.
 status: open
+
+### DW-550: Measure the Story 7.1 subscriber hot path against NFR2
+
+origin: Story 7.1 review pass 1 (2026-11-26), finding BH-17
+location: src/Hexalith.EventStore.Client/Subscriptions/DaprEventStoreDomainEventMarkerStore.cs; src/Hexalith.EventStore.DomainService/EventStoreDomainEventsEndpointExtensions.cs
+source_spec: `spec-7-1-delivery-contract-and-poison-handling.md`
+owner: Story 7.1 follow-up (supporting NFR2)
+severity: medium (unverified)
+reason: Durable admission now costs about four state-store round trips to acquire and three for each of two transitions. A bound sink adds an Operations call carrying the full payload before processing, all through one actor per topic. No throughput or latency evidence exists. Settle by measuring per-delivery latency and throughput on the qualified Kafka profile against NFR2.
+status: open
+
+---
+
+### DW-551: Bound the cost of Operations dead-letter count and list scans
+
+origin: Story 7.1 review pass 1 (2026-11-26), finding BH-13b
+location: src/Hexalith.EventStore.Operations/Actors/DeadLetterDrainActor.cs (ListAsync)
+source_spec: `spec-7-1-delivery-contract-and-poison-handling.md`
+owner: Story 7.1 follow-up / AD-31 production enablement
+severity: medium (unverified)
+reason: Each list or count call clears the actor cache and reads every indexed record. The count endpoint is now open to the ReadOnly role and is likely to be polled by dashboards. Settle by measuring count latency for a large retained index, and by checking whether count previously read the cached backlog observation instead of scanning.
+status: open
+
+---
+
+### DW-552: Reconcile the broker-qualification subscription dead-letter route with Story 7.1
+
+origin: Story 7.1 review pass 1 (2026-11-26), finding BH-10c
+location: deploy/dapr/qualification/subscriptions.yaml
+source_spec: `spec-7-1-delivery-contract-and-poison-handling.md`
+owner: Story 3.21 hosted broker qualification
+severity: medium (unverified)
+reason: The qualification profile still declares `deadLetterTopic: qualification.quarantine`. Story 7.1 removed component and subscription dead-letter routes because one can move a delivery off the live topic before Operations confirms capture. The structured topology test covers only top-level `deploy/dapr` files. Settle by checking whether the qualification resiliency policy can exhaust inbound retries and use that route; if it can, align the profile or record why qualification needs it.
+status: open
+
+---

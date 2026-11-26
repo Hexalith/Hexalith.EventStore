@@ -193,9 +193,9 @@ Persistence guarantees: Cosmos DB provides multi-region replication with configu
 
 ## Pub/Sub Configuration
 
-The pub/sub component handles event distribution using CloudEvents 1.0 format. Events are published to per-tenant-per-domain topics following the `{tenant}.{domain}.events` naming pattern (D6). Subscription delivery failures can route to DAPR dead-letter topics such as `deadletter.{tenant}.{domain}.events` when the subscription config sets a dead-letter topic.
+The pub/sub component handles event distribution using CloudEvents 1.0 format. Events are published to per-tenant-per-domain topics following the `{tenant}.{domain}.events` naming pattern (D6). Subscriber delivery failures stay on the live topic. The EventStore subscriber acknowledges a delivery only after handling, a cataloged skip, or a confirmed Operations poison capture, so the templates declare no subscription or component dead-letter route that could move an exhausted delivery without that capture.
 
-Do not confuse DAPR subscriber dead-letter routing with EventStore command infrastructure dead letters. EventStore infrastructure dead letters are produced by the application through `DeadLetterPublisher` when command processing fails before a durable publish/drain path exists. DAPR subscriber dead letters are produced by the DAPR pub/sub runtime after a subscriber repeatedly fails to process a message. Both use operational topics, but they prove different failures and must be monitored separately.
+Do not confuse subscriber poison handling with EventStore command infrastructure dead letters. EventStore infrastructure dead letters are produced by the application through `DeadLetterPublisher` on `deadletter.{tenant}.{domain}.events` when command processing fails before a durable publish/drain path exists. Subscriber poison records are retained by Operations after the subscriber's own attempt or age limit. They prove different failures and must be monitored separately.
 
 All pub/sub backends use the same three-layer scoping architecture:
 
@@ -226,12 +226,9 @@ spec:
           # Leave empty for local development without authentication.
           value: "{env:REDIS_PASSWORD}"
         - name: enableDeadLetter
-          # Routes undeliverable messages (after retry exhaustion) to a dead-letter topic.
+          # Not poison evidence. Subscriber failures stay on the live topic until the
+          # subscriber handles them or Operations confirms capture.
           value: "true"
-        - name: deadLetterTopic
-          # Default dead-letter topic name. Per-tenant dead-letter routing
-          # (deadletter.{tenant}.{domain}.events) is configured per-subscription.
-          value: "deadletter"
         - name: publishingScopes
           # Layer 2: sample= (empty) denies sample from publishing.
           # eventstore is NOT listed = unrestricted publishing to all topics (NFR20).
@@ -247,7 +244,7 @@ scopes:
     - ops-monitor
 ```
 
-Redis Streams uses consumer group semantics for at-least-once delivery. Dead-letter handling is DAPR-managed (Redis does not have native dead-letter queues).
+Redis Streams uses consumer group semantics for at-least-once delivery. Redis has no native dead-letter queue; unacknowledged deliveries stay pending in the consumer group.
 
 ### RabbitMQ (On-Premise Production)
 
@@ -328,7 +325,8 @@ Source: `deploy/dapr/pubsub-rabbitmq.yaml`
 # level BEFORE messages reach RabbitMQ. This means:
 #   - Scoping is identical across all pub/sub component types (Redis, RabbitMQ, Kafka)
 #   - RabbitMQ-level ACLs/permissions are a SEPARATE layer (configure independently)
-#   - Dead-letter exchanges (DLX) in RabbitMQ are managed by DAPR via enableDeadLetter
+#   - Dead-letter exchanges (DLX) in RabbitMQ are managed by DAPR via enableDeadLetter;
+#     they retain dropped messages and are not EventStore poison evidence
 #
 # SCOPING FIELD REFERENCE (DAPR 1.16)
 # =====================================
@@ -357,14 +355,11 @@ spec:
         - name: deletedWhenUnused
           # Queue lifecycle flag (false = keep queue even when no consumers).
           value: "false"
-        # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
-        # Compatible with RabbitMQ dead-letter exchanges (DLX).
-        # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
-        # per-subscription in Story 4.5.
+        # enableDeadLetter makes RabbitMQ retain an explicitly dropped message in its dead-letter
+        # exchange instead of discarding it. It is not EventStore poison evidence. Do not set
+        # ttlInSeconds, maxLen or maxLenBytes: expiry or overflow can drop an event awaiting capture.
         - name: enableDeadLetter
           value: "true"
-        - name: deadLetterTopic
-          value: "deadletter"
         # Publishing scoping (Story 5.1):
         # eventstore is NOT listed = unrestricted publishing to all topics (NFR20).
         # NOTE: Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name,
@@ -513,14 +508,11 @@ spec:
           # Kafka authentication type: none, password, mtls, or oidc.
           # Use 'password' for SASL/PLAIN or SASL/SCRAM, 'mtls' for certificate auth.
           value: "{env:KAFKA_AUTH_TYPE}"
-        # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
-        # Kafka dead-letter: messages routed to a separate Kafka topic after consumer failure.
-        # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
-        # per-subscription in Story 4.5.
+        # Subscriber failures stay on the live topic; no component setting routes them.
+        # Keep topic retention (retention.ms) unbounded or longer than the subscriber's
+        # maximum delivery age so broker expiry cannot remove an unacknowledged event.
         - name: enableDeadLetter
           value: "true"
-        - name: deadLetterTopic
-          value: "deadletter"
         # Publishing scoping (Story 5.1):
         # eventstore is NOT listed = unrestricted publishing to all topics (NFR20).
         # NOTE: Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name,
@@ -667,11 +659,9 @@ spec:
           # Alternatively, use Azure AD authentication with namespaceName metadata.
           value: "{env:SERVICEBUS_CONNECTION_STRING}"
         - name: enableDeadLetter
-          # Enables routing to dead-letter topic when retries are exhausted.
+          # Not poison evidence. Do not set a message time-to-live or a low maxDeliveryCount:
+          # Service Bus expiry or native dead-lettering bypasses Operations capture.
           value: "true"
-        - name: deadLetterTopic
-          # Default dead-letter topic name used by this component.
-          value: "deadletter"
         # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID before deployment.
         # If left unset, these values may remain literal and scoping will not match real app-ids.
         - name: publishingScopes
@@ -696,8 +686,6 @@ metadata:
       value: "{env:SERVICEBUS_CONNECTION_STRING}"
     - name: enableDeadLetter
       value: "true"
-    - name: deadLetterTopic
-      value: "deadletter"
     - name: publishingScopes
       value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
     - name: subscriptionScopes
@@ -708,7 +696,7 @@ scopes:
     - "{env:OPS_MONITOR_APP_ID}"
 ```
 
-Azure Service Bus provides guaranteed delivery with native dead-letter queue support. Topics must be pre-created in Azure Service Bus — there is no auto-creation like Redis or RabbitMQ. Use Shared Access Signature (SAS) or Azure AD (RBAC) authentication for production. Geo-replication is available for disaster recovery.
+Azure Service Bus provides guaranteed delivery. Its native dead-letter queue is not Operations poison evidence. Topics must be pre-created in Azure Service Bus — there is no auto-creation like Redis or RabbitMQ. Use Shared Access Signature (SAS) or Azure AD (RBAC) authentication for production. Geo-replication is available for disaster recovery.
 
 ### CloudEvents 1.0 Compliance
 
@@ -912,7 +900,7 @@ Azure Container Apps does NOT support `accesscontrol.yaml`. In ACA, equivalent s
 
 ## Declarative Subscriptions
 
-Declarative subscriptions define which topics a subscriber listens to, including dead-letter routing. Each subscription is a separate YAML file that DAPR loads alongside component configurations.
+Declarative subscriptions define which topics a subscriber listens to. They declare no dead-letter topic or message time-to-live. Each subscription is a separate YAML file that DAPR loads alongside component configurations.
 
 Source: `deploy/dapr/subscription-sample-counter.yaml`
 
@@ -954,9 +942,9 @@ This matrix separates EventStore guarantees, DAPR/component behavior, and live p
 | Backend | Required DAPR settings | Ordering boundary | Routing/session/partition mechanism | At-least-once mechanism | Dead-letter capability | Resiliency config location | Claim status | Known caveats |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Redis Streams | `pubsub.redis`, scoped `publishingScopes`/`subscriptionScopes` | EventStore publishes persisted events in sequence order. Subscriber delivery is unordered. | No EventStore-emitted partition/session metadata. Topic is `{tenant}.{domain}.events`. The envelope carries aggregate identity and sequence. | Persist-first with `UnpublishedEventsRecord` drain. Dapr Redis consumer group delivery is at least once. | The subscriber acknowledges after Operations confirms durable retention. | `deploy/dapr/resiliency.yaml` and the local AppHost Redis component. | `proven` for local Redis publish and drain recovery. | Redis durability depends on server persistence configuration. The `eventstore-test-subscriber` grant is for development. |
-| RabbitMQ | `pubsub.rabbitmq`, `durable=true`, `deletedWhenUnused=false`, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted and publish calls are ordered; RabbitMQ delivery/consumer order depends on queues, consumers, acknowledgements, and topology. | No EventStore-emitted routing key/partition metadata; DAPR component maps topics to RabbitMQ exchange/queue behavior. | Persist-first plus drain; RabbitMQ durable queues and acknowledgements provide broker at-least-once when configured. | Native DLX through DAPR `enableDeadLetter`. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-rabbitmq.yaml`. | `configured`; live RabbitMQ publish/order/dead-letter proof is not in the local automated suite. | RabbitMQ ACLs are separate from DAPR scoping; multiple competing consumers can affect observed ordering. |
-| Kafka | `pubsub.kafka`, `brokers`, `authType`, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted; Kafka per-partition order requires a stable partition key and single ordered consumer path. | DAPR supports per-call `partitionKey`/`__key`, but EventStore does not emit it yet; per-aggregate partition policy is `documented-only` until proven. | Persist-first plus drain; Kafka commit log retention and consumer group offsets provide backend at-least-once behavior when configured. | Separate dead-letter topic via DAPR. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-kafka.yaml`. | `configured` for component scoping/dead-letter; Kafka ordering key proof is `not proven`. | Topic auto-creation may be disabled by brokers; repartitioning or missing partition keys can break per-aggregate broker ordering claims. |
-| Azure Service Bus | `pubsub.azure.servicebus.topics`, `connectionString` or Azure identity metadata, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted; Service Bus ordered delivery requires session-enabled topics/subscriptions and a stable `SessionId`. | DAPR supports per-call `SessionId`/`PartitionKey`, but EventStore does not emit it yet; session policy is `documented-only` until proven. | Persist-first plus drain; Service Bus broker delivery is at-least-once with native settlement semantics. | Native DLQ through Service Bus/DAPR subscriber dead-letter handling. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-servicebus.yaml`; ACA translation if using managed DAPR. | `configured` for component scoping/dead-letter; session ordering proof is `not proven`. | Topics/subscriptions must be pre-created; session-enabled topology must be explicitly provisioned before claiming ordered broker delivery. |
+| RabbitMQ | `pubsub.rabbitmq`, `durable=true`, `deletedWhenUnused=false`, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted and publish calls are ordered; RabbitMQ delivery/consumer order depends on queues, consumers, acknowledgements, and topology. | No EventStore-emitted routing key/partition metadata; DAPR component maps topics to RabbitMQ exchange/queue behavior. | Persist-first plus drain; RabbitMQ durable queues and acknowledgements provide broker at-least-once when configured. | Subscriber acknowledges after Operations retention; the DLX only retains explicitly dropped messages. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-rabbitmq.yaml`. | `configured`; live RabbitMQ publish/order/dead-letter proof is not in the local automated suite. | RabbitMQ ACLs are separate from DAPR scoping; multiple competing consumers can affect observed ordering. |
+| Kafka | `pubsub.kafka`, `brokers`, `authType`, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted; Kafka per-partition order requires a stable partition key and single ordered consumer path. | DAPR supports per-call `partitionKey`/`__key`, but EventStore does not emit it yet; per-aggregate partition policy is `documented-only` until proven. | Persist-first plus drain; Kafka commit log retention and consumer group offsets provide backend at-least-once behavior when configured. | Subscriber acknowledges after Operations retention; no component dead-letter route. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-kafka.yaml`. | `configured` for component scoping/dead-letter; Kafka ordering key proof is `not proven`. | Topic auto-creation may be disabled by brokers; repartitioning or missing partition keys can break per-aggregate broker ordering claims. |
+| Azure Service Bus | `pubsub.azure.servicebus.topics`, `connectionString` or Azure identity metadata, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted; Service Bus ordered delivery requires session-enabled topics/subscriptions and a stable `SessionId`. | DAPR supports per-call `SessionId`/`PartitionKey`, but EventStore does not emit it yet; session policy is `documented-only` until proven. | Persist-first plus drain; Service Bus broker delivery is at-least-once with native settlement semantics. | Subscriber acknowledges after Operations retention; the native DLQ is not poison evidence. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-servicebus.yaml`; ACA translation if using managed DAPR. | `configured` for component scoping/dead-letter; session ordering proof is `not proven`. | Topics/subscriptions must be pre-created; session-enabled topology must be explicitly provisioned before claiming ordered broker delivery. |
 
 #### Backend Proof Paths
 

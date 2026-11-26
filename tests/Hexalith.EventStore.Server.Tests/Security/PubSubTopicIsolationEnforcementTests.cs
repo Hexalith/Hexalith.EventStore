@@ -75,8 +75,8 @@ public class PubSubTopicIsolationEnforcementTests {
         // Dead-letter must be enabled
         GetComponentMetadataValue(doc, "enableDeadLetter").ShouldBe("true",
             "Local pub/sub must have dead-letter enabled");
-        _ = GetComponentMetadataValue(doc, "deadLetterTopic").ShouldNotBeNull(
-            "Local pub/sub must configure a dead-letter topic");
+        GetComponentMetadataValue(doc, "deadLetterTopic").ShouldBeNull(
+            "Local pub/sub must not declare a component dead-letter topic; subscriber poison goes to Operations capture");
 
         // subscriptionScopes must exist (dead-letter topic scoping is controlled by the same field)
         string? subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes");

@@ -85,7 +85,7 @@ For a staged rollout, register the old and new domain service versions at the sa
 2. Deploy the matching SDK release to **every consumer replica**: domain services, projections, and subscriber hosts.
 3. Deploy the new event declaration and complete upcaster chain. A consumer replica still on the previous release refuses a versioned event and retries until it is upgraded.
 
-A subscription that cannot upcast returns HTTP 503 and leaves the event uncompleted. Configure Dapr resiliency `maxRetries` and a dead-letter topic so a persistent incompatibility is visible and can be redelivered after correction. Do not acknowledge an unreadable known event as successful.
+A subscription that cannot upcast returns HTTP 503 and leaves the event uncompleted. Do not add a Dapr dead-letter route for it: the subscriber's application attempt and age limits apply (`EventStore:SubscriberDelivery:MaximumDeliveryAttempts` and `MaximumDeliveryAge`), followed by Operations capture, which keeps a persistent incompatibility visible and replayable after correction. Do not acknowledge an unreadable known event as successful.
 
 An unreadable known event raises `EventPayloadEvolutionException`. Replay reports `UnsupportedVersion` for version or upcaster failures; a malformed current-version payload found during replay deserialization reports `DeserializationFailed`. Live `/process` surfaces an uncaught evolution error as HTTP 500. Projection dispatch stops before invoking the handler or advancing its checkpoint, and `/project/v2` surfaces the failure as HTTP 500. A shared rebuild accumulate failure returns `Indeterminate` with reason `HandlerFailure` and does not advance. Deploy a corrected consumer and retry the event.
 

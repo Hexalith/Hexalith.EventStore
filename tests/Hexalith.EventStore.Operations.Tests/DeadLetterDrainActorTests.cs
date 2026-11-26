@@ -166,6 +166,53 @@ public sealed class DeadLetterDrainActorTests
         await transport.Received(1).DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task AttributedRetryCampaignThatExhaustsEndsFailed()
+    {
+        (DeadLetterDrainActor actor, InMemoryStateManager state, IDeadLetterReplayTransport transport) =
+            CreateActor(options: new EventStoreOperationsOptions { MaxReplayAttempts = 2 });
+        _ = transport
+            .DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(new HttpRequestException("rejected", null, System.Net.HttpStatusCode.BadRequest)));
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        var request = new DeadLetterActionRequest("tenant-a", ["message-a"], "operator-a") { ActionId = "action-exhaust" };
+
+        (await actor.RetryAsync(request)).State.ShouldBe("pending");
+        await actor.ReceiveReminderAsync(DeadLetterDrainActor.ReplayReminderName, [], TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        (await actor.RetryAsync(request)).State.ShouldBe("pending");
+        await actor.ReceiveReminderAsync(DeadLetterDrainActor.ReplayReminderName, [], TimeSpan.Zero, TimeSpan.FromMinutes(1));
+
+        DeadLetterActorActionResult failed = await actor.RetryAsync(request);
+        failed.State.ShouldBe("failed");
+        failed.Success.ShouldBeFalse();
+        failed.ReasonCode.ShouldBe("replay-failed");
+        Record(state, "message-a").State.ShouldBe(DeadLetterReplayState.Archived);
+        await transport.Received(2).DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("skip")]
+    [InlineData("archive")]
+    public async Task SkipAndArchiveReportActionPendingWhileAnAttributedRetryIsPending(string operation)
+    {
+        (DeadLetterDrainActor actor, InMemoryStateManager state, IDeadLetterReplayTransport transport) = CreateActor();
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        var retry = new DeadLetterActionRequest("tenant-a", ["message-a"], "operator-a") { ActionId = "action-retry" };
+        (await actor.RetryAsync(retry)).State.ShouldBe("pending");
+        var decision = new DeadLetterActionRequest("tenant-a", ["message-a"], "operator-a") { ActionId = "action-" + operation };
+
+        DeadLetterActorActionResult refused = operation == "skip"
+            ? await actor.SkipAsync(decision)
+            : await actor.ArchiveAsync(decision);
+
+        refused.Success.ShouldBeFalse();
+        refused.ReasonCode.ShouldBe("action-pending");
+        refused.OperationId.ShouldBeNull();
+        Record(state, "message-a").State.ShouldBe(DeadLetterReplayState.ReplayRequested);
+        state.CommittedState.Values.OfType<DeadLetterActionEvidence>().ShouldHaveSingleItem().Result.State.ShouldBe("pending");
+        await transport.DidNotReceiveWithAnyArgs().DeliverAsync(default!, default);
+    }
+
     /// <summary>Verifies a persisted replay request converges after reminder recovery.</summary>
     [Fact]
     public async Task ReminderRecoveryReplaysOriginalBytesAndMarksItemReplayed()

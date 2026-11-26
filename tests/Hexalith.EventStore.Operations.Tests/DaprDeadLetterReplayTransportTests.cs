@@ -33,6 +33,19 @@ public sealed class DaprDeadLetterReplayTransportTests
         _ = daprClient.Received(1).CreateInvokeMethodRequest(HttpMethod.Post, "works", "work/events");
         handler.Body.ShouldBe(body);
         handler.ContentType.ShouldBe("application/cloudevents+json");
+        handler.ReplayHeader.ShouldBe(["message-a"]);
+    }
+
+    /// <summary>Verifies a success status alone is not replay completion evidence.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("skipped")]
+    [InlineData("Handled")]
+    public async Task DeliverRejectsSuccessWithoutHandledOutcome(string? outcome)
+    {
+        (DaprDeadLetterReplayTransport transport, _, _) = CreateTransport(HttpStatusCode.OK, outcome);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => transport.DeliverAsync(s_body));
     }
 
     /// <summary>Verifies a non-success target acknowledgement propagates to the actor state machine.</summary>
@@ -45,12 +58,12 @@ public sealed class DaprDeadLetterReplayTransportTests
     }
 
     private static (DaprDeadLetterReplayTransport Transport, DaprClient DaprClient, CapturingHandler Handler)
-        CreateTransport(HttpStatusCode statusCode)
+        CreateTransport(HttpStatusCode statusCode, string? outcome = "handled")
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.CreateInvokeMethodRequest(HttpMethod.Post, "works", "work/events")
             .Returns(new HttpRequestMessage(HttpMethod.Post, "http://localhost/invoke/works/work/events"));
-        var handler = new CapturingHandler(statusCode);
+        var handler = new CapturingHandler(statusCode, outcome);
         var client = new HttpClient(handler);
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
         _ = factory.CreateClient(Arg.Any<string>()).Returns(client);
@@ -64,11 +77,13 @@ public sealed class DaprDeadLetterReplayTransportTests
         return (transport, daprClient, handler);
     }
 
-    private sealed class CapturingHandler(HttpStatusCode statusCode) : HttpMessageHandler
+    private sealed class CapturingHandler(HttpStatusCode statusCode, string? outcome) : HttpMessageHandler
     {
         internal byte[]? Body { get; private set; }
 
         internal string? ContentType { get; private set; }
+
+        internal string[] ReplayHeader { get; private set; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -78,8 +93,13 @@ public sealed class DaprDeadLetterReplayTransportTests
                 ? null
                 : await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             ContentType = request.Content?.Headers.ContentType?.MediaType;
+            ReplayHeader = request.Headers.TryGetValues("X-EventStore-Subscriber-Replay", out IEnumerable<string>? values) ? [.. values] : [];
             var response = new HttpResponseMessage(statusCode);
-            response.Headers.Add("X-EventStore-Subscriber-Outcome", "handled");
+            if (outcome is not null)
+            {
+                response.Headers.Add("X-EventStore-Subscriber-Outcome", outcome);
+            }
+
             return response;
         }
     }

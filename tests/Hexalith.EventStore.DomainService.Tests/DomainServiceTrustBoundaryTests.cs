@@ -12,6 +12,7 @@ using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Testing.Fakes;
 using Hexalith.EventStore.Client.Registration;
+using Hexalith.EventStore.Client.Subscriptions;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Queries;
@@ -625,6 +626,90 @@ public sealed partial class DomainServiceTrustBoundaryTests
         admittedDiscovery.Headers.Add(DaprAppChannelToken.HeaderName, ChannelToken);
         using HttpResponseMessage admittedDiscoveryResponse = await client.SendAsync(admittedDiscovery, TestContext.Current.CancellationToken);
         admittedDiscoveryResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    /// <summary>
+    /// A structured CloudEvent shaped like an EventStore publication reaches the handler through the real
+    /// <c>UseEventStoreDomainService()</c> pipeline, whose unwrapping forwards the CloudEvent headers the callback admits.
+    /// </summary>
+    [Fact]
+    public async Task SubscriptionRoute_StructuredCloudEventThroughTheSdkPipelineRunsTheHandler()
+    {
+        var handler = new CountingWidgetEventHandler();
+        IEventStoreSubscriberPoisonSink sink = Substitute.For<IEventStoreSubscriberPoisonSink>();
+        _ = sink.ObserveAsync(Arg.Any<EventStoreSubscriberDelivery>(), Arg.Any<EventStoreSubscriberFailure?>(), Arg.Any<CancellationToken>())
+            .Returns(EventStoreSubscriberPoisonOutcome.Retryable);
+        await using WebApplication app = await StartAsync(configureServices: services =>
+        {
+            services.AddSingleton(sink);
+            services.AddSingleton<IEventStoreDomainEventHandler<WidgetCreated>>(handler);
+            services.AddEventStoreDomainEvents(typeof(DomainServiceTrustBoundaryTests).Assembly, options =>
+            {
+                options.SubscriptionRoute = "/widget/events";
+                options.TopicName = "widget.events";
+            });
+        });
+        string messageId = UniqueIdHelper.GenerateSortableUniqueStringId();
+        var envelope = new EventStoreDomainEventEnvelope(messageId, "widget-1", "tenant-a", typeof(WidgetCreated).FullName!, 1,
+            DateTimeOffset.UtcNow, "corr-1", "json", "{}"u8.ToArray()) { Domain = "widget" };
+        // EventPublisher sets id, source and type; the sidecar adds topic and pubsubname on delivery.
+        string cloudEvent = JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["specversion"] = "1.0",
+            ["id"] = messageId,
+            ["source"] = "hexalith-eventstore/tenant-a/widget",
+            ["type"] = envelope.EventTypeName,
+            ["topic"] = "widget.events",
+            ["pubsubname"] = "pubsub",
+            ["datacontenttype"] = "application/json",
+            ["data"] = envelope,
+        }, JsonSerializerOptions.Web);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/widget/events")
+        {
+            Content = new StringContent(cloudEvent, Encoding.UTF8, "application/cloudevents+json"),
+        };
+        request.Headers.Add(DaprAppChannelToken.HeaderName, ChannelToken);
+
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        handler.Count.ShouldBe(1);
+        _ = await sink.Received(1).ObserveAsync(
+            Arg.Is<EventStoreSubscriberDelivery>(delivery => delivery.Id == messageId
+                && delivery.Source == "hexalith-eventstore/tenant-a/widget"
+                && delivery.SubscriptionRoute == "/widget/events" && delivery.TopicName == "widget.events"),
+            null,
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>The <c>EventStore:SubscriberDelivery</c> section binds the delivery policy and the isolated sink.</summary>
+    [Fact]
+    public async Task SubscriberDeliverySettingsBindFromConfiguration()
+    {
+        await using WebApplication app = await StartAsync(
+            settings: new Dictionary<string, string?>
+            {
+                ["EventStore:SubscriberDelivery:MaximumDeliveryAttempts"] = "7",
+                ["EventStore:SubscriberDelivery:MaximumDeliveryAge"] = "02:00:00",
+                ["EventStore:SubscriberDelivery:AcknowledgedSkips"] = "UnknownEventType, NoHandlers",
+                ["EventStore:SubscriberDelivery:DevelopmentMarkerCapacity"] = "42",
+                ["EventStore:SubscriberDelivery:DevelopmentMarkerRetention"] = "00:30:00",
+                ["EventStore:SubscriberDelivery:DevelopmentOperationsAppId"] = "eventstore-operations",
+            },
+            configureServices: services => services.AddEventStoreDomainEvents(
+                typeof(DomainServiceTrustBoundaryTests).Assembly,
+                options => options.SubscriptionRoute = "/widget/events"));
+
+        EventStoreDomainEventsOptions options = app.Services.GetRequiredService<IOptions<EventStoreDomainEventsOptions>>().Value;
+        options.MaximumDeliveryAttempts.ShouldBe(7);
+        options.MaximumDeliveryAge.ShouldBe(TimeSpan.FromHours(2));
+        options.AcknowledgedSkips.ShouldBe(Hexalith.EventStore.Contracts.Routing.EventStoreSubscriptionSkipPolicy.UnknownEventType
+            | Hexalith.EventStore.Contracts.Routing.EventStoreSubscriptionSkipPolicy.NoHandlers);
+        options.DevelopmentMarkerCapacity.ShouldBe(42);
+        options.DevelopmentMarkerRetention.ShouldBe(TimeSpan.FromMinutes(30));
+        options.SubscriptionRoute.ShouldBe("/widget/events");
+        app.Services.GetRequiredService<IEventStoreSubscriberPoisonSink>()
+            .ShouldBeOfType<DevelopmentSubscriberPoisonSink>().OperationsAppId.ShouldBe("eventstore-operations");
     }
 
     /// <summary>
@@ -1317,6 +1402,17 @@ public sealed partial class DomainServiceTrustBoundaryTests
                 messages.Enqueue(message);
                 entries.Enqueue((eventId, logLevel, message, Activity.Current?.TraceId.ToString()));
             }
+        }
+    }
+
+    private sealed class CountingWidgetEventHandler : IEventStoreDomainEventHandler<WidgetCreated>
+    {
+        public int Count { get; private set; }
+
+        public Task HandleAsync(WidgetCreated @event, EventStoreDomainEventContext context, CancellationToken cancellationToken = default)
+        {
+            Count++;
+            return Task.CompletedTask;
         }
     }
 }

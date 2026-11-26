@@ -38,10 +38,10 @@ All pub/sub rows use CloudEvents 1.0 and per-tenant-per-domain topics. EventStor
 
 | Backend | DAPR Component Type | Config File | Required settings | Ordering boundary | Dead-letter capability | Claim status |
 | --- | --- | --- | --- | --- | --- | --- |
-| Redis Streams | `pubsub.redis` | Local AppHost only | `enableDeadLetter=true`, scoped publish/subscribe grants | EventStore sequence order is proven; broker/subscriber order is local Redis proof only | DAPR-managed subscriber dead-letter topic | `proven` for local Redis publish and drain recovery |
-| RabbitMQ | `pubsub.rabbitmq` | `pubsub-rabbitmq.yaml` | `durable=true`, `deletedWhenUnused=false`, `enableDeadLetter=true`, production subscriber scopes | EventStore sequence order persists; RabbitMQ delivery order depends on topology and consumers | Native DLX through DAPR | `configured`, live proof required |
-| Kafka | `pubsub.kafka` | `pubsub-kafka.yaml` | `brokers`, `authType`, `enableDeadLetter=true`, production subscriber scopes | Per-partition order requires a stable partition key; EventStore does not emit `partitionKey`/`__key` yet | Separate dead-letter topic | `configured`; partition ordering `not proven` |
-| Azure Service Bus | `pubsub.azure.servicebus.topics` | `pubsub-servicebus.yaml` | connection string or Azure identity, `enableDeadLetter=true`, production subscriber scopes, pre-created topics | Ordered delivery requires session-enabled topology and stable `SessionId`; EventStore does not emit `SessionId` yet | Native DLQ through DAPR/Service Bus | `configured`; session ordering `not proven` |
+| Redis Streams | `pubsub.redis` | Local AppHost only | scoped publish/subscribe grants | EventStore sequence order is proven; broker/subscriber order is local Redis proof only | Subscriber acknowledges after Operations retention | `proven` for local Redis publish and drain recovery |
+| RabbitMQ | `pubsub.rabbitmq` | `pubsub-rabbitmq.yaml` | `durable=true`, `deletedWhenUnused=false`, `enableDeadLetter=true`, production subscriber scopes | EventStore sequence order persists; RabbitMQ delivery order depends on topology and consumers | Subscriber acknowledges after Operations retention; DLX retains explicit drops | `configured`, live proof required |
+| Kafka | `pubsub.kafka` | `pubsub-kafka.yaml` | `brokers`, `authType`, `enableDeadLetter=true`, production subscriber scopes | Per-partition order requires a stable partition key; EventStore does not emit `partitionKey`/`__key` yet | Subscriber acknowledges after Operations retention; no component route | `configured`; partition ordering `not proven` |
+| Azure Service Bus | `pubsub.azure.servicebus.topics` | `pubsub-servicebus.yaml` | connection string or Azure identity, `enableDeadLetter=true`, production subscriber scopes, pre-created topics | Ordered delivery requires session-enabled topology and stable `SessionId`; EventStore does not emit `SessionId` yet | Subscriber acknowledges after Operations retention; native DLQ is not poison evidence | `configured`; session ordering `not proven` |
 
 Do not use this table to claim exactly-once delivery or subscriber processing success. For subscriber deduplication, use the received CloudEvent `(source, id)` within the subscription. The publisher sets `id` to the persisted event’s `messageId` and reuses it on redelivery. The [delivery identity example](../docs/concepts/event-envelope.md#cloudevents-integration) shows two aggregates with the same correlation and sequence and one repeated delivery.
 
@@ -421,7 +421,7 @@ After deployment, verify the configuration:
 2. **Component loaded:** Check DAPR sidecar logs for `component loaded. name: statestore` and `component loaded. name: pubsub`
 3. **Actor state store:** Verify actor activation succeeds by sending a test command
 4. **Pub/sub delivery:** Verify events publish and subscribers receive them
-5. **Dead-letter routing:** Simulate a subscriber failure to confirm dead-letter topic receives the message
+5. **Subscriber failure:** Simulate a subscriber failure and confirm the delivery stays retryable until the subscriber handles it or Operations confirms a scoped poison record
 6. **Access control:** Verify unauthorized app-ids receive 403 Forbidden from DAPR sidecar
 
 ## Adding New Domain Services
@@ -467,7 +467,7 @@ The NFR29 portability guarantee means any DAPR-compatible backend works — not 
 1. Find the DAPR component spec at [DAPR Pub/Sub Components](https://docs.dapr.io/reference/components-reference/supported-pubsub/)
 2. Create a new YAML file following the pattern in `pubsub-rabbitmq.yaml`
 3. Required metadata fields:
-    - Configure dead-letter handling using backend-supported metadata (for example: `enableDeadLetter` + `deadLetterTopic` where supported)
+    - Do not configure broker message expiry, overflow limits or a component dead-letter route that can remove a delivery before the subscriber handles it or Operations confirms capture
     - `publishingScopes` and `subscriptionScopes` (copy from existing pub/sub configs)
     - Connection credentials via `{env:VAR_NAME}` references
 4. The component `metadata.name` **must** be `pubsub` (matches what the application code references)

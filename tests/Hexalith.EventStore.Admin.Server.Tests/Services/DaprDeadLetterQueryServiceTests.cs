@@ -140,6 +140,61 @@ public sealed class DaprDeadLetterQueryServiceTests {
             () => service.ListDeadLettersAsync("tenant-a", 10, null));
     }
 
+    /// <summary>Verifies count evidence is requested for the exact authorized tenant scope.</summary>
+    [Fact]
+    public async Task GetDeadLetterSummaryAsyncForwardsDetailedTenantScope() {
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetToken().Returns("operator-token");
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(authContext);
+        var expected = new DeadLetterSummary(2, TimeSpan.FromMinutes(3));
+        handler.SetupJsonResponse(expected);
+
+        DeadLetterSummary summary = await service.GetDeadLetterSummaryAsync("tenant-a");
+
+        summary.ShouldBe(expected);
+        HttpRequestMessage request = handler.LastRequest.ShouldNotBeNull();
+        Uri uri = request.RequestUri.ShouldNotBeNull();
+        uri.AbsolutePath.ShouldBe("/internal/dead-letters/count");
+        uri.Query.ShouldContain("detailed=true");
+        uri.Query.ShouldContain("tenantId=tenant-a");
+        request.Headers.Authorization.ShouldNotBeNull().Parameter.ShouldBe("operator-token");
+    }
+
+    /// <summary>Verifies the authorized global view sends no tenant selector and keeps an absent oldest age.</summary>
+    [Fact]
+    public async Task GetDeadLetterSummaryAsyncOmitsTenantForGlobalView() {
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(new NullAdminAuthContext());
+        handler.SetupJsonResponse(new DeadLetterSummary(0, null));
+
+        DeadLetterSummary summary = await service.GetDeadLetterSummaryAsync(null);
+
+        summary.Count.ShouldBe(0);
+        summary.OldestAge.ShouldBeNull();
+        Uri uri = handler.LastRequest.ShouldNotBeNull().RequestUri.ShouldNotBeNull();
+        uri.Query.ShouldContain("detailed=true");
+        uri.Query.ShouldNotContain("tenantId");
+    }
+
+    /// <summary>Verifies a whitespace tenant cannot become an unscoped summary request.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GetDeadLetterSummaryAsyncRejectsWhitespaceTenant(string tenantId) {
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(new NullAdminAuthContext());
+
+        _ = await Should.ThrowAsync<ArgumentException>(() => service.GetDeadLetterSummaryAsync(tenantId));
+        handler.RequestCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies unavailable summary evidence is not reported as a zero count.</summary>
+    [Fact]
+    public async Task GetDeadLetterSummaryAsyncPropagatesUnavailableEvidence() {
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(new NullAdminAuthContext());
+        handler.SetupErrorResponse(HttpStatusCode.ServiceUnavailable);
+
+        _ = await Should.ThrowAsync<HttpRequestException>(() => service.GetDeadLetterSummaryAsync("tenant-a"));
+    }
+
     private static (DaprDeadLetterQueryService Service, TestHttpMessageHandler Handler) CreateService(
         IAdminAuthContext authContext)
         => CreateService(authContext, out _);

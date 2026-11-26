@@ -101,14 +101,15 @@ spec:
       # Kafka authentication type: none, password, mtls, or oidc.
       # Use 'password' for SASL/PLAIN or SASL/SCRAM, 'mtls' for certificate auth.
       value: "{env:KAFKA_AUTH_TYPE}"
-    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
-    # Kafka dead-letter: messages routed to a separate Kafka topic after consumer failure.
-    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
-    # per-subscription in Story 4.5.
+    # Subscriber failures stay on the live topic. Dapr inbound retries are unbounded
+    # (resiliency.yaml) and the EventStore subscriber acknowledges a delivery only after
+    # handling, a cataloged skip, or a confirmed Operations poison capture. No component
+    # setting here captures poison evidence or receives exhausted EventStore deliveries.
+    # Keep topic retention (retention.ms) unbounded or longer than the subscriber's
+    # maximum delivery age so broker expiry cannot remove an unacknowledged event.
+    # EventStore itself publishes producer drain dead letters to deadletter.{tenant}.{domain}.events.
     - name: enableDeadLetter
       value: "true"
-    - name: deadLetterTopic
-      value: "deadletter"
     # Publishing scoping (Story 5.1):
     # eventstore is NOT listed = unrestricted publishing to all topics (NFR20).
     # NOTE: Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name,

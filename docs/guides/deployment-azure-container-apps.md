@@ -368,12 +368,12 @@ metadata:
     value: "<your-servicebus-namespace>.servicebus.windows.net"
   - name: enableDeadLetter
     value: "true"
-  - name: deadLetterTopic
-    value: "deadletter"
 scopes:
   - eventstore
 EOF
 ```
+
+> **Note:** The component declares no dead-letter route for subscribers. A failed delivery stays on the live subscription until the subscriber's application attempt and age limits apply, followed by Operations capture.
 
 > **Note:** Azure Service Bus does not auto-create topics. Pre-create topics matching the `{tenant}.{domain}.events` pattern before sending commands.
 

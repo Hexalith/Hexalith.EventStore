@@ -98,10 +98,15 @@ spec:
       # Format: Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=<key-name>;SharedAccessKey=<key>
       # Alternatively, use Azure AD authentication with namespaceName metadata.
       value: "{env:SERVICEBUS_CONNECTION_STRING}"
+    # Subscriber failures stay on the live topic. Dapr inbound retries are unbounded
+    # (resiliency.yaml) and the EventStore subscriber acknowledges a delivery only after
+    # handling, a cataloged skip, or a confirmed Operations poison capture. No component
+    # setting here captures poison evidence or receives exhausted EventStore deliveries.
+    # Do not set a message time-to-live or a low maxDeliveryCount: Service Bus expiry or
+    # native dead-lettering moves an event off the live subscription without Operations capture.
+    # EventStore itself publishes producer drain dead letters to deadletter.{tenant}.{domain}.events.
     - name: enableDeadLetter
       value: "true"
-    - name: deadLetterTopic
-      value: "deadletter"
     # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID before deployment.
     # If left unset, these values may remain literal and scoping will not match real app-ids.
     - name: publishingScopes

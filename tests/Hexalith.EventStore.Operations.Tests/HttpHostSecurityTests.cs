@@ -8,6 +8,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
+using Hexalith.EventStore.Client.Subscriptions;
 using Hexalith.EventStore.Operations.Actors;
 using Hexalith.EventStore.Operations.Models;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
@@ -204,10 +205,81 @@ public sealed partial class HttpHostSecurityTests
         page.ContinuationToken.ShouldNotBeNullOrWhiteSpace();
         page.ContinuationToken.ShouldNotBe("1");
 
+        using var next = Authorized(HttpMethod.Get, path + "&continuationToken=" + Uri.EscapeDataString(page.ContinuationToken!), "read-only");
+        using HttpResponseMessage nextPage = await client.SendAsync(next);
+        nextPage.StatusCode.ShouldBe(HttpStatusCode.OK);
+        _ = await actor.Received(1).ListAsync(Arg.Is<DeadLetterListRequest>(value => value.TenantId == "tenant-a" && value.Offset == 1));
+
         using var request = Authorized(HttpMethod.Get, path + "&continuationToken=1", "read-only");
         using HttpResponseMessage rejected = await client.SendAsync(request);
         rejected.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        _ = await actor.Received(1).ListAsync(Arg.Any<DeadLetterListRequest>());
+        _ = await actor.Received(2).ListAsync(Arg.Any<DeadLetterListRequest>());
+    }
+
+    /// <summary>Verifies the Development sink's JSON shape reaches the actor and its outcome parses back.</summary>
+    [Theory]
+    [InlineData(EventStoreSubscriberPoisonOutcome.Retryable)]
+    [InlineData(EventStoreSubscriberPoisonOutcome.Retained)]
+    [InlineData(EventStoreSubscriberPoisonOutcome.Conflict)]
+    public async Task SubscriberDeliveryRoundTripsTheDevelopmentSinkWireContract(EventStoreSubscriberPoisonOutcome outcome)
+    {
+        var actorHttp = new ActorMethodHandler(outcome);
+        await using WebApplicationFactory<Program> factory = Factory(Substitute.For<IDeadLetterDrainActor>(), isolatedRecovery: true, proxies: ActorProxies(actorHttp));
+        using HttpClient client = factory.CreateClient();
+        EventStoreSubscriberDelivery delivery = SubscriberDelivery();
+        var failure = new EventStoreSubscriberFailure(EventStoreSubscriberFailureReason.ProcessingFailure, true, 10);
+        using HttpRequestMessage request = SubscriberDeliveryRequest("works", JsonContent.Create(new { delivery, failure }));
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await response.Content.ReadFromJsonAsync<EventStoreSubscriberPoisonOutcome>(TestContext.Current.CancellationToken)).ShouldBe(outcome);
+        actorHttp.Path.ShouldNotBeNull().ShouldEndWith("/method/" + nameof(IDeadLetterDrainActor.ObserveSubscriberDeliveryAsync));
+        SubscriberDeliveryObservation forwarded = System.Text.Json.JsonSerializer.Deserialize<SubscriberDeliveryObservation>(
+            actorHttp.Body.ShouldNotBeNull(), System.Text.Json.JsonSerializerOptions.Web).ShouldNotBeNull();
+        forwarded.Delivery.ShouldBe(delivery with { SubscriberAppId = "works", Envelope = forwarded.Delivery.Envelope });
+        forwarded.Delivery.Envelope.Payload.ShouldBe(delivery.Envelope.Payload);
+        forwarded.Delivery.IsValid().ShouldBeTrue();
+        forwarded.Failure.ShouldBe(failure);
+        forwarded.ObservedAtUtc.ShouldNotBe(default);
+    }
+
+    /// <summary>Verifies caller, body and profile refusals on the subscriber observation route never reach the actor.</summary>
+    [Theory]
+    [InlineData("wrong-caller", HttpStatusCode.Forbidden)]
+    [InlineData("malformed", HttpStatusCode.BadRequest)]
+    public async Task SubscriberDeliveryRefusesBeforeActorWork(string scenario, HttpStatusCode expected)
+    {
+        var actorHttp = new ActorMethodHandler(EventStoreSubscriberPoisonOutcome.Retained);
+        await using WebApplicationFactory<Program> factory = Factory(Substitute.For<IDeadLetterDrainActor>(), isolatedRecovery: true, proxies: ActorProxies(actorHttp));
+        using HttpClient client = factory.CreateClient();
+        HttpContent content = scenario == "malformed"
+            ? new StringContent("{\"delivery\":", Encoding.UTF8, "application/json")
+            : JsonContent.Create(new { delivery = SubscriberDelivery(), failure = (EventStoreSubscriberFailure?)null });
+        using HttpRequestMessage request = SubscriberDeliveryRequest(scenario == "wrong-caller" ? "peer" : "works", content);
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        response.StatusCode.ShouldBe(expected);
+        actorHttp.RequestCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies the observation route does not exist outside the isolated recovery profile.</summary>
+    [Fact]
+    public async Task SubscriberDeliveryRouteIsAbsentWhenTheRecoveryProfileIsOff()
+    {
+        var actorHttp = new ActorMethodHandler(EventStoreSubscriberPoisonOutcome.Retained);
+        await using WebApplicationFactory<Program> factory = Factory(Substitute.For<IDeadLetterDrainActor>(), proxies: ActorProxies(actorHttp));
+        using HttpClient client = factory.CreateClient();
+        using HttpRequestMessage request = SubscriberDeliveryRequest("works",
+            JsonContent.Create(new { delivery = SubscriberDelivery(), failure = (EventStoreSubscriberFailure?)null }));
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        response.StatusCode.ShouldNotBe(HttpStatusCode.OK);
+        factory.Services.GetServices<EndpointDataSource>().SelectMany(static source => source.Endpoints).OfType<RouteEndpoint>()
+            .ShouldNotContain(endpoint => endpoint.RoutePattern.RawText == "/internal/dead-letters/subscriber-delivery");
+        actorHttp.RequestCount.ShouldBe(0);
     }
 
     [Theory]
@@ -241,7 +313,27 @@ public sealed partial class HttpHostSecurityTests
         actor.ReceivedCalls().ShouldBeEmpty();
     }
 
-    private static WebApplicationFactory<Program> Factory(IDeadLetterDrainActor actor, int maxActionItems = 100, bool isolatedRecovery = false)
+    private static ActorProxyFactory ActorProxies(HttpMessageHandler handler)
+        => new(new ActorProxyOptions { HttpEndpoint = "http://127.0.0.1:3500" }, handler);
+
+    private static EventStoreSubscriberDelivery SubscriberDelivery()
+    {
+        string id = Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId();
+        var envelope = new EventStoreDomainEventEnvelope(id, "work-a", "tenant-a", "WorkItemCreated", 1,
+            DateTimeOffset.UnixEpoch.AddDays(1), "correlation-a", "json", "{\"value\":1}"u8.ToArray()) { Domain = "work" };
+        return new EventStoreSubscriberDelivery("pubsub", "work.events", "/work/events", "hexalith-eventstore/tenant-a/work", id, envelope);
+    }
+
+    private static HttpRequestMessage SubscriberDeliveryRequest(string caller, HttpContent content)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/internal/dead-letters/subscriber-delivery") { Content = content };
+        request.Headers.Add(DaprAppChannelToken.HeaderName, Channel);
+        request.Headers.Add(EventStoreWorkloadAuthenticationDefaults.DaprCallerHeaderName, caller);
+        return request;
+    }
+
+    private static WebApplicationFactory<Program> Factory(IDeadLetterDrainActor actor, int maxActionItems = 100, bool isolatedRecovery = false,
+        IActorProxyFactory? proxies = null)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
@@ -259,10 +351,14 @@ public sealed partial class HttpHostSecurityTests
             {
                 foreach (ServiceDescriptor descriptor in services.Where(static descriptor => descriptor.ServiceType == typeof(IHostedService)
                     && descriptor.ImplementationType == typeof(DeadLetterBacklogReconciler)).ToArray()) services.Remove(descriptor);
-                IActorProxyFactory proxies = Substitute.For<IActorProxyFactory>();
-                proxies.CreateActorProxy<IDeadLetterDrainActor>(Arg.Any<ActorId>(), Arg.Any<string>()).Returns(actor);
+                IActorProxyFactory factoryProxies = proxies ?? Substitute.For<IActorProxyFactory>();
+                if (proxies is null)
+                {
+                    factoryProxies.CreateActorProxy<IDeadLetterDrainActor>(Arg.Any<ActorId>(), Arg.Any<string>()).Returns(actor);
+                }
+
                 services.RemoveAll<IActorProxyFactory>();
-                services.AddSingleton(proxies);
+                services.AddSingleton(factoryProxies);
             });
         });
 
@@ -289,5 +385,22 @@ public sealed partial class HttpHostSecurityTests
             Expires = scenario == "expired" ? DateTime.UtcNow.AddMinutes(-10) : DateTime.UtcNow.AddMinutes(5), Claims = claims,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyMaterial)), SecurityAlgorithms.HmacSha256),
         });
+    }
+
+    private sealed class ActorMethodHandler(EventStoreSubscriberPoisonOutcome outcome) : HttpMessageHandler
+    {
+        internal int RequestCount { get; private set; }
+
+        internal string? Path { get; private set; }
+
+        internal byte[]? Body { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            Path = request.RequestUri?.AbsolutePath;
+            Body = request.Content is null ? null : await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(outcome) };
+        }
     }
 }

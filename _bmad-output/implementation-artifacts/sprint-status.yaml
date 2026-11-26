@@ -246,7 +246,7 @@ development_status:
   epic-6-retrospective: done
 
   epic-7: in-progress
-  7-1-delivery-contract-and-poison-handling: in-progress
+  7-1-delivery-contract-and-poison-handling: review
   7-2-admin-claims-normalization: backlog
   7-3-state-mutating-admin-audit: backlog
   7-4-honest-deferred-admin-operations: backlog

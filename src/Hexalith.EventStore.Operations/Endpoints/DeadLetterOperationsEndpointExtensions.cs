@@ -363,7 +363,6 @@ internal static class DeadLetterOperationsEndpointExtensions
             ? Results.NotFound()
             : Results.UnprocessableEntity(new AdminOperationResult(false, "dead-letter-action",
                 "The requested operation cannot be completed.", "InvalidOperation"));
-
     }
 
 

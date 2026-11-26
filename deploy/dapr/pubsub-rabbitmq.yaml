@@ -72,7 +72,8 @@
 # level BEFORE messages reach RabbitMQ. This means:
 #   - Scoping is identical across all pub/sub component types (Redis, RabbitMQ, Kafka)
 #   - RabbitMQ-level ACLs/permissions are a SEPARATE layer (configure independently)
-#   - Dead-letter exchanges (DLX) in RabbitMQ are managed by DAPR via enableDeadLetter
+#   - Dead-letter exchanges (DLX) in RabbitMQ are managed by DAPR via enableDeadLetter;
+#     they retain dropped messages and are not EventStore poison evidence
 #
 # SCOPING FIELD REFERENCE (DAPR 1.16)
 # =====================================
@@ -99,14 +100,16 @@ spec:
       value: "true"
     - name: deletedWhenUnused
       value: "false"
-    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
-    # Compatible with RabbitMQ dead-letter exchanges (DLX).
-    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
-    # per-subscription in Story 4.5.
+    # Subscriber failures stay on the live topic. Dapr inbound retries are unbounded
+    # (resiliency.yaml) and the EventStore subscriber acknowledges a delivery only after
+    # handling, a cataloged skip, or a confirmed Operations poison capture. No component
+    # setting here captures poison evidence or receives exhausted EventStore deliveries.
+    # enableDeadLetter makes RabbitMQ retain an explicitly dropped message in its dead-letter
+    # exchange instead of discarding it. Do not set ttlInSeconds, maxLen or maxLenBytes:
+    # queue expiry or overflow can drop an event that awaits capture.
+    # EventStore itself publishes producer drain dead letters to deadletter.{tenant}.{domain}.events.
     - name: enableDeadLetter
       value: "true"
-    - name: deadLetterTopic
-      value: "deadletter"
     # Publishing scoping (Story 5.1):
     # eventstore is NOT listed = unrestricted publishing to all topics (NFR20).
     # NOTE: Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name,

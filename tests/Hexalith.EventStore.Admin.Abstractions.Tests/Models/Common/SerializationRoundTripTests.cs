@@ -35,6 +35,19 @@ public class SerializationRoundTripTests {
     }
 
     [Fact]
+    public void AdminOperationResult_RoundTripsPersistedActionState() {
+        var original = new AdminOperationResult(false, "op-002", "Pending", null) { State = "pending" };
+        string json = JsonSerializer.Serialize(original, _options);
+        AdminOperationResult? deserialized = JsonSerializer.Deserialize<AdminOperationResult>(json, _options);
+
+        _ = deserialized.ShouldNotBeNull();
+        deserialized.ShouldBe(original);
+        deserialized.State.ShouldBe("pending");
+        JsonSerializer.Deserialize<AdminOperationResult>("""{"success":true,"operationId":"op-003"}""", _options)
+            .ShouldNotBeNull().State.ShouldBeNull();
+    }
+
+    [Fact]
     public void ProjectionStatus_RoundTrips() {
         var original = new ProjectionStatus("OrderSummary", "acme", ProjectionStatusType.Running, 5, 100.5, 0, 1000, DateTimeOffset.UtcNow);
         string json = JsonSerializer.Serialize(original, _options);

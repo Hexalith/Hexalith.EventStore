@@ -27,13 +27,11 @@ spec:
     # Redis password. Empty string for default local Redis without auth.
     - name: redisPassword
       value: ""
-    # Enable dead-letter topic for messages that exhaust delivery retries.
+    # Subscriber failures stay on the live topic until the EventStore subscriber handles
+    # them or Operations confirms poison capture. EventStore publishes producer drain dead
+    # letters to deadletter.{tenant}.{domain}.events itself.
     - name: enableDeadLetter
       value: "true"
-    # Default dead-letter topic name. Per-subscription dead-letter routing
-    # (deadletter.{tenant}.{domain}.events) is configured separately.
-    - name: deadLetterTopic
-      value: "deadletter"
 # Scope to eventstore only. Domain services have zero pub/sub access.
 scopes:
   - eventstore

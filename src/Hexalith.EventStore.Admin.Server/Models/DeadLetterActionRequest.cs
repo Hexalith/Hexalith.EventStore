@@ -19,11 +19,18 @@ public sealed class DeadLetterActionRequest : IValidatableObject {
     public IReadOnlyList<string>? MessageIds { get; init; }
 
     /// <summary>Gets the stable request identity for a distinct operator decision.</summary>
+    /// <remarks>Uses the Operations identity rule: no surrounding whitespace and no control characters.</remarks>
     [StringLength(128, MinimumLength = 1)]
     public string? ActionId { get; init; }
 
     /// <inheritdoc/>
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) {
+        if (ActionId is not null && !IsValidActionId(ActionId)) {
+            yield return new ValidationResult(
+                "ActionId must not be blank, padded, or contain control characters.",
+                [nameof(ActionId)]);
+        }
+
         if (MessageIds is null) {
             yield break;
         }
@@ -44,4 +51,10 @@ public sealed class DeadLetterActionRequest : IValidatableObject {
             }
         }
     }
+
+    private static bool IsValidActionId(string value)
+        => !string.IsNullOrWhiteSpace(value)
+            && value.Length <= 128
+            && string.Equals(value, value.Trim(), StringComparison.Ordinal)
+            && !value.Any(char.IsControl);
 }

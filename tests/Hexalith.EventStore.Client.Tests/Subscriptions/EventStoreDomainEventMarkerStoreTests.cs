@@ -1,5 +1,9 @@
+using System.Globalization;
+
 using Dapr;
 using Dapr.Client;
+
+using Grpc.Core;
 
 using Hexalith.EventStore.Client.Subscriptions;
 
@@ -86,6 +90,30 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
             .Result.ShouldBe(EventStoreDomainEventMarkerAcquisitionResult.InProgress);
     }
 
+    [Fact]
+    public async Task DevelopmentConcurrentAcquisitionEnforcesCapacityAndSingleOwner()
+    {
+        var store = new InMemoryEventStoreDomainEventMarkerStore(new EventStoreDomainEventsOptions
+        {
+            DevelopmentMarkerCapacity = 4,
+        });
+
+        EventStoreDomainEventMarkerAdmission[] distinct = await Task.WhenAll(Enumerable.Range(0, 32)
+            .Select(index => Task.Run(() => store.TryAcquireContentAsync($"distinct-{index}", "fingerprint"))));
+
+        distinct.Count(admission => admission.Result == EventStoreDomainEventMarkerAcquisitionResult.Acquired).ShouldBe(4);
+        distinct.Where(admission => admission.Result != EventStoreDomainEventMarkerAcquisitionResult.Acquired)
+            .ShouldAllBe(admission => admission.Result == EventStoreDomainEventMarkerAcquisitionResult.InProgress && admission.Lease == null);
+
+        var contended = new InMemoryEventStoreDomainEventMarkerStore();
+        EventStoreDomainEventMarkerAdmission[] same = await Task.WhenAll(Enumerable.Range(0, 32)
+            .Select(_ => Task.Run(() => contended.TryAcquireContentAsync("shared", "fingerprint"))));
+
+        same.Count(admission => admission.Result == EventStoreDomainEventMarkerAcquisitionResult.Acquired).ShouldBe(1);
+        same.Where(admission => admission.Result != EventStoreDomainEventMarkerAcquisitionResult.Acquired)
+            .ShouldAllBe(admission => admission.Result == EventStoreDomainEventMarkerAcquisitionResult.InProgress && admission.Lease == null);
+    }
+
     private sealed class ManualClock : TimeProvider
     {
         public DateTimeOffset Now { get; set; } = DateTimeOffset.UnixEpoch;
@@ -154,6 +182,39 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
         _ = await daprClient.Received(2).GetMetadataAsync(Arg.Any<CancellationToken>());
         _ = await daprClient.DidNotReceiveWithAnyArgs().GetStateAndETagAsync<EventStoreDomainEventMarkerRecord?>(
             default!, default!, default, default!, default);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DaprMarkerStore_QualifiesTheObservedRedisFirstWriteRejection(bool withScriptHash)
+    {
+        // Dapr 1.19.1 Redis refuses a second create-if-absent from its Lua script and reports it as gRPC Internal,
+        // with or without the Redis 7 script-hash suffix, for the key under the app ID prefix.
+        DaprClient daprClient = CreateRedisFirstWriteClient(key => withScriptHash
+            ? $"failed saving state in state store markers: user_script:14: failed to set key subscriber||{key} script: {RedisScriptHash}, on @user_script:14."
+            : $"failed saving state in state store markers: user_script:14: failed to set key subscriber||{key}");
+        DaprEventStoreDomainEventMarkerStore store = CreateDaprStore(daprClient);
+
+        EventStoreDomainEventMarkerAdmission admission = await store.TryAcquireContentAsync("message-1", "fingerprint");
+
+        admission.Result.ShouldBe(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
+        _ = await daprClient.Received(1).TryDeleteStateAsync("markers", Arg.Is<string>(key => key.Contains(":probe:", StringComparison.Ordinal)),
+            Arg.Any<string>(), Arg.Any<StateOptions>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("failed saving state in state store markers: user_script:15: failed to set key subscriber||{0}")]
+    [InlineData("failed saving state in state store markers: user_script:14: failed to set key subscriber||{0}-other")]
+    [InlineData("failed saving state in state store markers: user_script:14: failed to set key subscriber||{0} script: 0123456789abcdef0123456789abcdef0123456, on @user_script:14.")]
+    public async Task DaprMarkerStore_RefusesANearMissRedisRejection(string detailFormat)
+    {
+        DaprClient daprClient = CreateRedisFirstWriteClient(key => string.Format(CultureInfo.InvariantCulture, detailFormat, key));
+        DaprEventStoreDomainEventMarkerStore store = CreateDaprStore(daprClient);
+
+        _ = await Should.ThrowAsync<DaprException>(() => store.TryAcquireContentAsync("message-1", "fingerprint"));
+
+        _ = await daprClient.DidNotReceiveWithAnyArgs().TryDeleteStateAsync(default!, default!, default!, default!, default!, default);
     }
 
     [Theory]
@@ -435,6 +496,42 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
                 TopicName = "my-domain.events",
                 SubscriptionRoute = "/my-domain/events",
             }));
+
+    private const string RedisScriptHash = "0123456789abcdef0123456789abcdef01234567";
+
+    private static DaprClient CreateRedisFirstWriteClient(Func<string, string> rejectionDetail)
+    {
+        var state = new Dictionary<string, (EventStoreDomainEventMarkerRecord Record, string ETag)>(StringComparer.Ordinal);
+        int version = 0;
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(new DaprMetadata(
+            "subscriber", [], new Dictionary<string, string>(),
+            [new DaprComponentsMetadata("markers", "state.redis", "v1", ["ETAG"])]));
+        _ = daprClient.TrySaveStateAsync("markers", Arg.Any<string>(), Arg.Any<EventStoreDomainEventMarkerRecord>(),
+            Arg.Any<string>(), Arg.Any<StateOptions>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                string key = call.ArgAt<string>(1);
+                if (state.ContainsKey(key) && string.IsNullOrEmpty(call.ArgAt<string>(3)))
+                {
+                    return Task.FromException<bool>(new DaprException("State save failed.",
+                        new RpcException(new Status(StatusCode.Internal, rejectionDetail(key)))));
+                }
+
+                state[key] = (call.ArgAt<EventStoreDomainEventMarkerRecord>(2), (++version).ToString(CultureInfo.InvariantCulture));
+                return Task.FromResult(true);
+            });
+        _ = daprClient.GetStateAndETagAsync<EventStoreDomainEventMarkerRecord?>("markers", Arg.Any<string>(),
+                Arg.Any<ConsistencyMode?>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns(call => state.TryGetValue(call.ArgAt<string>(1), out var current)
+                ? ((EventStoreDomainEventMarkerRecord?, string))(current.Record, current.ETag)
+                : ((EventStoreDomainEventMarkerRecord?, string))(null, string.Empty));
+        _ = daprClient.TryDeleteStateAsync("markers", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<StateOptions>(),
+                Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns(call => state.TryGetValue(call.ArgAt<string>(1), out var current) && current.ETag == call.ArgAt<string>(2)
+                && state.Remove(call.ArgAt<string>(1)));
+        return daprClient;
+    }
 
     private static void SetupStateAndEtag(
         DaprClient daprClient,

@@ -295,6 +295,8 @@ public static class EventStoreDomainServiceExtensions {
 
         if (consumesDomainEvents && !applicationProperties.ContainsKey(CloudEventsRegisteredKey)) {
             applicationProperties[CloudEventsRegisteredKey] = true;
+            // Dapr never forwards pubsubname as a header, so forward it first for the callback's component check.
+            _ = app.UseCloudEventPubSubNameForwarding();
             _ = app.UseCloudEvents(new Dapr.CloudEventsMiddlewareOptions
             {
                 ForwardCloudEventPropertiesAsHeaders = true,

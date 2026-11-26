@@ -99,13 +99,13 @@ spec:
       value: "{env:REDIS_HOST|127.0.0.1:6379}"
     - name: redisPassword
       value: "{env:REDIS_PASSWORD}"
-    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
-    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
-    # per-subscription.
+    # Subscriber failures stay on the live topic. Dapr inbound retries are unbounded
+    # (resiliency.yaml) and the EventStore subscriber acknowledges a delivery only after
+    # handling, a cataloged skip, or a confirmed Operations poison capture. No component
+    # setting here captures poison evidence or receives exhausted EventStore deliveries.
+    # EventStore itself publishes producer drain dead letters to deadletter.{tenant}.{domain}.events.
     - name: enableDeadLetter
       value: "true"
-    - name: deadLetterTopic
-      value: "deadletter"
     # Publishing scoping (Story 5.1, AC #7, AC #12):
     # sample= (empty) denies sample from publishing to any topic.
     # eventstore is NOT listed = unrestricted publishing to all topics including

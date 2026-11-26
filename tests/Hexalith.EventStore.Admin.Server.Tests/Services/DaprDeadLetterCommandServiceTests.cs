@@ -220,6 +220,70 @@ public class DaprDeadLetterCommandServiceTests {
             .ShouldBe(["message-a", "message-b"]);
     }
 
+    [Theory]
+    [InlineData("retry")]
+    [InlineData("skip")]
+    [InlineData("archive")]
+    public async Task ActionsForwardStableActionIdAndPreservePersistedState(string action) {
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(
+            new AdminOperationResult(false, "operation-9", "The recovery action state was persisted.", null) { State = "pending" },
+            HttpStatusCode.Accepted);
+
+        AdminOperationResult result = action switch {
+            "retry" => await service.RetryDeadLettersAsync("tenant-a", ["message-a"], "action-9"),
+            "skip" => await service.SkipDeadLettersAsync("tenant-a", ["message-a"], "action-9"),
+            _ => await service.ArchiveDeadLettersAsync("tenant-a", ["message-a"], "action-9"),
+        };
+
+        result.OperationId.ShouldBe("operation-9");
+        result.State.ShouldBe("pending");
+        result.Success.ShouldBeFalse();
+        handler.LastRequest.ShouldNotBeNull().RequestUri.ShouldNotBeNull().AbsolutePath.ShouldBe($"/internal/dead-letters/{action}");
+        using JsonDocument body = JsonDocument.Parse(handler.LastRequestBody.ShouldNotBeNull());
+        body.RootElement.GetProperty("tenantId").GetString().ShouldBe("tenant-a");
+        body.RootElement.GetProperty("actionId").GetString().ShouldBe("action-9");
+        body.RootElement.GetProperty("messageIds").EnumerateArray().Select(static item => item.GetString()).ShouldBe(["message-a"]);
+    }
+
+    [Theory]
+    [InlineData("retry")]
+    [InlineData("skip")]
+    [InlineData("archive")]
+    public async Task ActionsWithoutActionIdSendOneFreshValidIdentityPerCall(string action) {
+        // Without an action ID Operations derives a fixed identity, so a retry after a failed campaign would only read
+        // back the stored failure. Each legacy call is a new decision and must carry its own identity.
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(new AdminOperationResult(true, "operation", null, null));
+        var sent = new List<string>();
+
+        for (int call = 0; call < 2; call++) {
+            _ = action switch {
+                "retry" => await service.RetryDeadLettersAsync("tenant-a", ["message-a"]),
+                "skip" => await service.SkipDeadLettersAsync("tenant-a", ["message-a"]),
+                _ => await service.ArchiveDeadLettersAsync("tenant-a", ["message-a"]),
+            };
+            using JsonDocument body = JsonDocument.Parse(handler.LastRequestBody.ShouldNotBeNull());
+            sent.Add(body.RootElement.GetProperty("actionId").GetString().ShouldNotBeNull());
+        }
+
+        handler.RequestCount.ShouldBe(2);
+        sent.Distinct(StringComparer.Ordinal).Count().ShouldBe(2);
+        sent.ShouldAllBe(id => id.Length > 0 && id.Length <= 128 && id == id.Trim() && !id.Any(char.IsControl));
+    }
+
+    [Fact]
+    public async Task ActionsReportUnavailableRecoveryProfileWithoutRawDiagnostics() {
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new HttpRequestException("private sidecar diagnostic", null, HttpStatusCode.ServiceUnavailable));
+
+        AdminOperationResult result = await service.RetryDeadLettersAsync("tenant-a", ["message-a"], "action-10");
+
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Unavailable");
+        result.Message.ShouldNotBeNull().ShouldNotContain("private sidecar diagnostic");
+    }
+
     // === Error code extraction ===
 
     [Fact]
