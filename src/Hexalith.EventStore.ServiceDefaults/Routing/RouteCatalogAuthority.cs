@@ -345,7 +345,9 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             // fresh and ordered; independent local acquisitions may observe concurrently.
             if (shortAdmission) admission.Release();
             RouteCatalogActivation observed = Freeze(candidate);
-            await ValidateAsync(observed, cancellationToken, diagnostics).ConfigureAwait(false);
+            // Validation binds this copy before exposing it to either observer. The private
+            // candidate has the same initial bytes and is retained for this attempt alone.
+            string candidateBinding = await ValidateAsync(observed, cancellationToken, diagnostics).ConfigureAwait(false);
             if (shortAdmission)
             {
                 await WaitForLocalAdmissionAsync(cancellationToken, diagnostics).ConfigureAwait(false);
@@ -353,7 +355,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             }
             try
             {
-                if (!SameAdmissionActivation(candidate, observed))
+                if (!SameAdmissionActivation(candidate, candidateBinding, observed))
                     throw new RouteCatalogUnavailableException("The observed catalog activation changed during admission.");
                 RequireLocalIdentity();
                 if (options.Value.Identity != identity || options.Value.Profile != profile || store.Coordinates != coordinates)
@@ -374,7 +376,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
                 if (options.Value.Identity != identity || options.Value.Profile != profile || store.Coordinates != coordinates)
                     throw new RouteCatalogUnavailableException("The local catalog authority changed during admission.");
                 bool sameAuthority = fresh.Epoch == state.Epoch && fresh.Committed is { } committed
-                    && SameAdmissionActivation(candidate, Freeze(committed));
+                    && SameAdmissionActivation(candidate, candidateBinding, Freeze(committed));
                 if (sameAuthority && fresh.Leases.Any(fence => fence.LeaseId == leaseId))
                 {
                     // Recover an already durable admission even if a successor began draining it.
@@ -443,11 +445,11 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         return result;
     }
 
-    private static bool SameAdmissionActivation(RouteCatalogActivation validated, RouteCatalogActivation current)
+    private static bool SameAdmissionActivation(RouteCatalogActivation validated, string validatedBinding, RouteCatalogActivation current)
         => validated.RootDigest == current.RootDigest
             && string.Equals(validated.TrustProof, current.TrustProof, StringComparison.Ordinal)
             && validated.CanonicalCatalog.AsSpan().SequenceEqual(current.CanonicalCatalog)
-            && RouteCatalogActivationBinding.ComputeDigest(validated) == RouteCatalogActivationBinding.ComputeDigest(current);
+            && validatedBinding == RouteCatalogActivationBinding.ComputeDigest(current);
 
     private static void RequireAdmissionFence(RouteCatalogActivationState state, string leaseId, RouteCatalogHostIdentity identity, RouteCatalogActivation activation)
     {
@@ -530,7 +532,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         }
     }
 
-    private async Task ValidateAsync(RouteCatalogActivation activation, CancellationToken cancellationToken, DispatchDiagnostics? diagnostics = null)
+    private async Task<string> ValidateAsync(RouteCatalogActivation activation, CancellationToken cancellationToken, DispatchDiagnostics? diagnostics = null)
     {
         long phase = RouteCatalogDecodeScope.Current is null ? 0 : Stopwatch.GetTimestamp();
         RequireLocalIdentity();
@@ -560,6 +562,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             stage?.Complete();
         }
         _ = ReportDecodePhase("trust", phase);
+        return binding;
     }
 
     private static long ReportDecodePhase(string phase, long started)

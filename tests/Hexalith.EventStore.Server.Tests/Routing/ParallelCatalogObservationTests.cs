@@ -22,6 +22,37 @@ public sealed class ParallelCatalogObservationTests(ITestOutputHelper output)
     private static bool PrivateExpected => false;
 #endif
 
+    /// <summary>The admission CAS validates the freshly read binding against the digest retained by this attempt.</summary>
+    [Fact]
+    public async Task FreshAdmissionReadComputesOnlyTheCurrentBindingBeforeCas()
+    {
+        var fixture = await FixtureAsync();
+        var store = new CatalogAdmissionRebaseStore(fixture.Store);
+        using var authority = Create(fixture, store, _ => Task.FromResult(fixture.Observations[0]));
+        int? hitsAtRefresh = null;
+        int? hitsAtCas = null;
+        store.BeforeRead = (read, _) =>
+        {
+            if (read == 2) hitsAtRefresh = RouteCatalogBindingScope.Current?.CacheHits;
+            return Task.CompletedTask;
+        };
+        store.Exchange = (_, _, _, _) =>
+        {
+            hitsAtCas = RouteCatalogBindingScope.Current?.CacheHits;
+            return Task.FromResult<bool?>(null);
+        };
+
+        await using var lease = await authority.AcquireAsync(TestContext.Current.CancellationToken);
+        store.Reads.ShouldBe(2);
+        store.ExchangeETags.ShouldBe([store.ReadETags[1]]);
+        (await fixture.Store.ReadAsync(default)).State.Leases.ShouldHaveSingleItem();
+        if (PrivateExpected)
+        {
+            hitsAtRefresh.ShouldNotBeNull();
+            (hitsAtCas - hitsAtRefresh).ShouldBe(1);
+        }
+    }
+
     /// <summary>Two selected observations reach one barrier together; final state reads/CAS remain mutually exclusive.</summary>
     [Theory]
     [InlineData(true)]
