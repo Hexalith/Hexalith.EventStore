@@ -16,16 +16,16 @@ public sealed class DaprResourceDirectoryTests
     {
         const string skipPrerequisites = "SKIP_PREREQUISITE_CHECK";
         string? original = Environment.GetEnvironmentVariable(skipPrerequisites);
+        string? firstPath = null;
+        string? firstEmptyPath = null;
+        string? secondPath = null;
+        string? secondEmptyPath = null;
         try
         {
             Environment.SetEnvironmentVariable(skipPrerequisites, "true");
             string sourcePath = Path.Combine(RepositoryProjectPaths.GetRepositoryRoot(),
                 "src", "Hexalith.EventStore.AppHost", "DaprComponents", "statestore.yaml");
             byte[] expectedStateStore = File.ReadAllBytes(sourcePath);
-            string firstPath;
-            string firstEmptyPath;
-            string secondPath;
-            string secondEmptyPath;
             await using (IDistributedApplicationTestingBuilder second = await CreateModelAsync().ConfigureAwait(true))
             {
                 secondPath = GetStateStorePath(second);
@@ -46,19 +46,54 @@ public sealed class DaprResourceDirectoryTests
                     Directory.GetFiles(Path.GetDirectoryName(secondPath)!).ShouldBe(new[] { secondPath });
                 }
 
-                Directory.Exists(Path.GetDirectoryName(firstPath)).ShouldBeFalse();
-                Directory.Exists(firstEmptyPath).ShouldBeFalse();
                 Directory.GetFileSystemEntries(secondEmptyPath).ShouldBeEmpty();
                 File.ReadAllBytes(secondPath).ShouldBe(expectedStateStore);
             }
-
-            Directory.Exists(Path.GetDirectoryName(secondPath)).ShouldBeFalse();
-            Directory.Exists(secondEmptyPath).ShouldBeFalse();
         }
         finally
         {
             Environment.SetEnvironmentVariable(skipPrerequisites, original);
+            TryDeleteResourceRoot(firstPath);
+            TryDeleteResourceRoot(firstEmptyPath);
+            TryDeleteResourceRoot(secondPath);
+            TryDeleteResourceRoot(secondEmptyPath);
         }
+    }
+
+    [Fact]
+    public void InstancesOwnSeparateDirectoriesAndDisposeIndependently()
+    {
+        string sourcePath = Path.Combine(RepositoryProjectPaths.GetRepositoryRoot(),
+            "src", "Hexalith.EventStore.AppHost", "DaprComponents", "statestore.yaml");
+        byte[] expectedStateStore = File.ReadAllBytes(sourcePath);
+        string firstPath;
+        string firstEmptyPath;
+        string secondPath;
+        string secondEmptyPath;
+        using (DaprResourceDirectory second = DaprResourceDirectory.Create(sourcePath))
+        {
+            secondPath = second.StateStorePath;
+            secondEmptyPath = second.EmptyResourcesPath;
+            using (DaprResourceDirectory first = DaprResourceDirectory.Create(sourcePath))
+            {
+                firstPath = first.StateStorePath;
+                firstEmptyPath = first.EmptyResourcesPath;
+                firstPath.ShouldNotBe(secondPath);
+                firstEmptyPath.ShouldNotBe(secondEmptyPath);
+                Directory.GetFileSystemEntries(firstEmptyPath).ShouldBeEmpty();
+                Directory.GetFileSystemEntries(secondEmptyPath).ShouldBeEmpty();
+                File.ReadAllBytes(firstPath).ShouldBe(expectedStateStore);
+                File.ReadAllBytes(secondPath).ShouldBe(expectedStateStore);
+            }
+
+            Directory.Exists(Path.GetDirectoryName(firstPath)).ShouldBeFalse();
+            Directory.Exists(firstEmptyPath).ShouldBeFalse();
+            Directory.GetFileSystemEntries(secondEmptyPath).ShouldBeEmpty();
+            File.ReadAllBytes(secondPath).ShouldBe(expectedStateStore);
+        }
+
+        Directory.Exists(Path.GetDirectoryName(secondPath)).ShouldBeFalse();
+        Directory.Exists(secondEmptyPath).ShouldBeFalse();
     }
 
     [Fact]
@@ -102,5 +137,37 @@ public sealed class DaprResourceDirectoryTests
         sample.TryGetLastAnnotation<DaprSidecarAnnotation>(out DaprSidecarAnnotation? sidecar).ShouldBeTrue();
         sidecar!.Sidecar.TryGetLastAnnotation<DaprSidecarOptionsAnnotation>(out DaprSidecarOptionsAnnotation? options).ShouldBeTrue();
         return options!.Options.ResourcesPaths.ShouldNotBeNull().ShouldHaveSingleItem();
+    }
+
+    private static void TryDeleteResourceRoot(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        DirectoryInfo? directory = File.Exists(path)
+            ? new FileInfo(path).Directory
+            : new DirectoryInfo(Directory.Exists(path) ? path : Path.GetDirectoryName(path)!);
+        while (directory is not null)
+        {
+            if (directory.Name.StartsWith("hexalith-eventstore-dapr-", StringComparison.Ordinal))
+            {
+                try
+                {
+                    directory.Delete(recursive: true);
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+
+                return;
+            }
+
+            directory = directory.Parent;
+        }
     }
 }

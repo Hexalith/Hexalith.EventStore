@@ -3,7 +3,6 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 PrerequisiteValidator.Validate();
@@ -123,7 +122,11 @@ string? manifestPath = builder.ExecutionContext.IsPublishMode
     && string.Equals(builder.Configuration["Publishing:Publisher"], "manifest", StringComparison.OrdinalIgnoreCase)
     ? builder.Configuration["Pipeline:OutputPath"]
     : null;
-using DaprResourceDirectory daprResources = DaprResourceDirectory.Create(ResolveDaprConfigPath("statestore.yaml"), manifestPath);
+// Keep this owner alive for the AppHost process, not the orchestrator host.
+// DistributedApplicationTestingBuilder.BuildAsync continues the entry point into
+// RunAsync; a failed DCP start must not delete these directories while another
+// AppHost model is still inspecting them.
+DaprResourceDirectory daprResources = DaprResourceDirectory.Create(ResolveDaprConfigPath("statestore.yaml"), manifestPath);
 
 // Resolve the DAPR resiliency YAML path so the Admin.Server can render /dapr/resiliency
 // without requiring an appsettings.json edit. The AppHost is the only component that knows
@@ -460,15 +463,8 @@ if (testSubscriberEnabled && builder.Environment.IsDevelopment()) {
         .WithEnvironment("EVENTSTORE_TEST_SUBSCRIBER_AUTH_SECRET", testSubscriberAuthSecret);
 }
 
-if (string.Equals(Environment.GetEnvironmentVariable("SKIP_PREREQUISITE_CHECK"), "true", StringComparison.OrdinalIgnoreCase))
-{
-    // Model-only tests inspect the built application model. They never start
-    // workloads, so a DCP probe must not unwind the entry point and delete
-    // per-run resource directories while the testing builder is still asserting.
-    RemoveOrchestratorHostedServices(builder.Services);
-}
-
 await builder.Build().RunAsync().ConfigureAwait(false);
+daprResources.Dispose();
 
 static string ResolveDaprConfigPath(string fileName) {
     string configPath = Path.Combine(Directory.GetCurrentDirectory(), "DaprComponents", fileName);
@@ -485,27 +481,6 @@ static string ResolveDaprConfigPath(string fileName) {
     }
 
     return configPath;
-}
-
-static void RemoveOrchestratorHostedServices(IServiceCollection services)
-{
-    for (int index = services.Count - 1; index >= 0; index--)
-    {
-        ServiceDescriptor descriptor = services[index];
-        if (descriptor.ServiceType != typeof(IHostedService))
-        {
-            continue;
-        }
-
-        string? name = descriptor.ImplementationType?.FullName
-            ?? descriptor.ImplementationInstance?.GetType().FullName;
-        if (name is not null
-            && (name.Contains(".Dcp.", StringComparison.Ordinal)
-                || name.Contains(".Orchestrator.", StringComparison.Ordinal)))
-        {
-            services.RemoveAt(index);
-        }
-    }
 }
 
 // Aspire requires exactly one compute environment per resource at publish time.
