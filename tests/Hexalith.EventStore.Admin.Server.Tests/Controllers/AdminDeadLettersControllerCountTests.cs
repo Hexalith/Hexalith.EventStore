@@ -73,8 +73,9 @@ public class AdminDeadLettersControllerCountTests {
     [Fact]
     public async Task GetDeadLetterCount_RequiresReadOnlyPolicyAndDeniesUnscopedNonAdmin() {
         AuthorizeAttribute attribute = typeof(AdminDeadLettersController)
-            .GetMethod(nameof(AdminDeadLettersController.GetDeadLetterCount), BindingFlags.Instance | BindingFlags.Public)
-            .ShouldNotBeNull()
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .Single(method => method.Name == nameof(AdminDeadLettersController.GetDeadLetterCount)
+                && method.GetCustomAttribute<HttpGetAttribute>() is not null)
             .GetCustomAttributes<AuthorizeAttribute>()
             .ShouldHaveSingleItem();
 

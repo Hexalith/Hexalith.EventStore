@@ -28,6 +28,13 @@ public class AdminDeadLettersController(
     IDeadLetterCommandService deadLetterCommandService,
     ILogger<AdminDeadLettersController> logger) : ControllerBase {
     /// <summary>
+    /// Gets the authorized dead-letter count. Kept as the published 4.2.0 binary member.
+    /// </summary>
+    [NonAction]
+    public Task<IActionResult> GetDeadLetterCount(CancellationToken ct) =>
+        GetDeadLetterCount(tenantId: null, detailed: false, ct);
+
+    /// <summary>
     /// Gets the authorized dead-letter count and optionally returns the oldest failure age.
     /// </summary>
     [HttpGet("count")]
@@ -37,8 +44,8 @@ public class AdminDeadLettersController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetDeadLetterCount(CancellationToken ct = default,
-        [FromQuery] string? tenantId = null, [FromQuery] bool detailed = false) {
+    public async Task<IActionResult> GetDeadLetterCount(
+        [FromQuery] string? tenantId = null, [FromQuery] bool detailed = false, CancellationToken ct = default) {
         try {
             if (!TryResolveTenantScope(tenantId, out string? effectiveTenantId)) {
                 return CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", "Not authorized for the requested dead letters.");
