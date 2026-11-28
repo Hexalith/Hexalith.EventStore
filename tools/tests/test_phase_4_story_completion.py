@@ -177,8 +177,9 @@ class StoryCompletionTests(unittest.TestCase):
                 other = S.TRACKER if target == 'spec' else self.spec
                 original = (self.f.root / other).read_bytes()
                 self.f.state['observed'] = []
+                owner = "test-only-owner"
                 process, result = self.cli(target=target, authenticated=True,
-                                           PHASE4_TENANTS_READ_TOKEN='synthetic-tenants-read-token')
+                                           PHASE4_TENANTS_READ_TOKEN=owner)
                 self.assertEqual(0, process.returncode, process.stderr)
                 self.assertEqual('assured-story-slice', result['disposition'])
                 self.assertEqual(evidence, result['story_evidence'])
@@ -193,8 +194,8 @@ class StoryCompletionTests(unittest.TestCase):
                 self.assertIn(T.API + f'/actions/runs/{TENANT_GATE_RUN}/attempts/2', urls)
                 self.assertIn(T.API + '/issues/comments/200', urls)
                 tenants_tree = Tenant.prefix(Tenant.TENANTS) + '/git/trees/' + Tenant.TREE + '?recursive=1'
-                self.assertEqual('Bearer synthetic-tenants-read-token', requests[tenants_tree]['authorization'])
-                self.assertEqual('Bearer ' + self.f.fixture_token, requests[T.API + '/issues/comments/200']['authorization'])
+                self.assertEqual("Bearer " + owner, requests[tenants_tree]['authorization'])
+                self.assertEqual("Bearer " + self.f.fixture_token, requests[T.API + '/issues/comments/200']['authorization'])
 
     def test_nfr2_both_writers_refuse_missing_seal_or_human_attestation(self):
         for target in ('spec', 'tracker'):
