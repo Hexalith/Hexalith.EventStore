@@ -57,6 +57,45 @@ public class CommandRecoveryIntegrityTests
             .Invoke(actor, null)!;
 
     [Theory]
+    [InlineData(null)]
+    [InlineData(CommandStatus.Received)]
+    [InlineData(CommandStatus.PublishFailed)]
+    public async Task CompletedReplayRestoresOnlyAnAbsentOrLegacyPlaceholderStatus(CommandStatus? existingStatus)
+    {
+        var state = new FaultInjectingActorStateManager();
+        var original = CreateActor(state, new InMemoryCommandStatusStore());
+        CommandEnvelope command = Command();
+        (await original.Actor.ProcessCommandAsync(command)).Accepted.ShouldBeTrue();
+        state.CommittedState.ContainsKey(TerminalAdvisoryIntent.GetStateKey(command.MessageId)).ShouldBeFalse();
+
+        var statuses = new InMemoryCommandStatusStore();
+        if (existingStatus is CommandStatus existing)
+        {
+            var observed = new CommandStatusRecord(existing, DateTimeOffset.UtcNow, command.AggregateId, null, null,
+                null, null, command.MessageId, command.CorrelationId)
+            {
+                Domain = existing == CommandStatus.Received ? null : command.Domain,
+            };
+            await statuses.WriteStatusAsync(command.TenantId, command.MessageId, observed);
+        }
+
+        var restarted = CreateActor(state, statuses);
+        (await restarted.Actor.ProcessCommandAsync(command)).Accepted.ShouldBeTrue();
+
+        CommandStatusRecord restored = (await statuses.ReadStatusAsync(command.TenantId, command.MessageId)).ShouldNotBeNull();
+        restored.Status.ShouldBe(existingStatus == CommandStatus.PublishFailed ? CommandStatus.PublishFailed : CommandStatus.Completed);
+        restored.Domain.ShouldBe(command.Domain);
+        restored.MessageId.ShouldBe(command.MessageId);
+        restored.CorrelationId.ShouldBe(command.CorrelationId);
+        restored.AggregateId.ShouldBe(command.AggregateId);
+        restored.EventCount.ShouldBe(existingStatus == CommandStatus.PublishFailed ? (int?)null : 2);
+        restored.CommittedEventSequence.ShouldBeNull();
+        restarted.Publisher.PublishCalls.ShouldBeEmpty();
+        await restarted.Invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        (await restarted.Actor.GetEventsAsync(0)).Length.ShouldBe(2);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ExpiredCommand_PreservesCommittedIdentityAndCannotExecuteAfterRecreation(bool legacyKey)

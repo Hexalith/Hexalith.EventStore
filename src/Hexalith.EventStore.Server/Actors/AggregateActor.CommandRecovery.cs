@@ -159,6 +159,24 @@ public partial class AggregateActor
             {
                 ReportRecoveryRetention(command.MessageId, "advisory_cached_result_conflict");
             }
+            else if (cached is { Accepted: true, EventCount: > 0, ErrorMessage: null,
+                         RejectionEventType: null, FailureReason: null, ResultPayloadWithheld: false }
+                && string.Equals(command.CorrelationId, cached.CorrelationId, StringComparison.Ordinal))
+            {
+                // The exact terminal duplicate proves publication, but the retained result
+                // does not carry the committed range. Readers must verify that separately.
+                CommandStatusRecord? observed = await commandStatusStore
+                    .ReadStatusAsync(command.TenantId, command.MessageId).ConfigureAwait(false);
+                if (observed is null || observed is { Status: CommandStatus.Received, Domain: null,
+                        EventCount: null, CommittedEventSequence: null, RejectionEventType: null, FailureReason: null }
+                    && observed.MessageId == command.MessageId
+                    && observed.CorrelationId == command.CorrelationId
+                    && observed.AggregateId == command.AggregateId)
+                {
+                    await WriteAdvisoryStatusAsync(command, CommandStatus.Completed, eventCount: cached.EventCount)
+                        .ConfigureAwait(false);
+                }
+            }
         }
         catch (Exception exception) when (exception is not (OperationCanceledException or ActorStateRemediationException))
         {
