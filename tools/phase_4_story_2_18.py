@@ -8,11 +8,12 @@ import re
 import shutil
 import socket
 import stat
+import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
 
-from dapr_runtime_qualification import CANDIDATE_PROFILE, REDIS_IMAGE, load_profile
+from dapr_runtime_qualification import CANDIDATE_IDENTITIES, CANDIDATE_PROFILE, REDIS_IMAGE
 import phase_4_story_5_3 as Source
 import phase_4_transition as C
 
@@ -22,7 +23,7 @@ STORY_KEY = "2-18-bind-conditional-queries-to-the-returned-representation"
 SPEC = "_bmad-output/implementation-artifacts/spec-" + STORY_KEY + ".md"
 CONTROL_FILES = (
     "tools/phase_4_story_2_18.py", "tools/phase_4_story_5_3.py",
-    "tools/dapr_runtime_qualification.py", "tools/dapr_broker_qualification.py",
+    "tools/dapr_runtime_qualification.py",
 )
 BUILDS = "references/Hexalith.Builds"
 PROJECT_NAME = "Hexalith.EventStore.Server.LiveSidecar.Tests"
@@ -39,7 +40,6 @@ CASES = (
 )
 RUNTIME = "1.19.1"
 DOCKER_OWNER_LABEL = "hexalith.eventstore.story-2-18-test-owner"
-TOPOLOGY_OWNER = "EVENTSTORE_STORY_2_18_TEST_OWNER"
 
 
 def supported(claim):
@@ -50,7 +50,10 @@ def supported(claim):
 
 
 def subject_at(api, commit, allow_absent=False):
-    tree = Source.authenticated_tree(api, commit, allow_absent)
+    return subject_digest(Source.authenticated_tree(api, commit, allow_absent))
+
+
+def subject_digest(tree):
     return C.digest(C.canonical({"adapter": ADAPTER, "root_tree": tree}))
 
 
@@ -106,9 +109,12 @@ def dotnet_executable():
 
 
 def runtime_inputs(work):
-    _, profile = load_profile(work / CANDIDATE_PROFILE, work)
+    profile = json.loads((work / CANDIDATE_PROFILE).read_bytes())
     runtime = profile["runtime"]
-    C.require(runtime["version"] == RUNTIME, "STORY_EVIDENCE_FAILED", "Story 2.18 requires Dapr " + RUNTIME)
+    images = {name: profile["images"][name]["reference"] for name in ("placement", "scheduler")}
+    C.require(runtime["version"] == RUNTIME and runtime["binarySha256"] == CANDIDATE_IDENTITIES["binarySha256"]
+              and all(reference == CANDIDATE_IDENTITIES["images"][name] for name, reference in images.items()),
+              "STORY_EVIDENCE_FAILED", "Story 2.18 requires the published Dapr " + RUNTIME + " runtime identities")
     installed = os.environ.get("QUALIFICATION_DAPRD") or os.environ.get("EVENTSTORE_ROUTE_CATALOG_DAPRD")
     path = require_executable(Path(installed) if installed else Path.home() / ".dapr/bin/daprd", "daprd " + RUNTIME)
     selected = work / ".story-2-18-daprd"
@@ -117,7 +123,6 @@ def runtime_inputs(work):
     C.require(Source.file_digest(selected) == runtime["binarySha256"],
               "STORY_EVIDENCE_FAILED", "Story 2.18 daprd differs from the pinned runtime")
     selected.chmod(0o700)
-    images = {name: profile["images"][name]["reference"] for name in ("placement", "scheduler")}
     images["redis"] = REDIS_IMAGE
     return selected, {"version": RUNTIME, "daprd_sha256": runtime["binarySha256"], "images": images}
 
@@ -139,6 +144,26 @@ def wait_for_control_ports(ports):
                 if time.monotonic() >= deadline:
                     raise C.Refusal("STORY_EVIDENCE_FAILED", "Story 2.18 private Dapr control plane is unavailable") from error
                 time.sleep(0.1)
+
+
+def write_fixture_docker(work, docker, host, owner):
+    """Label Redis started by the native test so forced shutdown can reap it."""
+    directory = work / ".story-2-18-tools"
+    directory.mkdir()
+    wrapper = directory / "docker"
+    wrapper.write_text(
+        f"#!{sys.executable} -I\n"
+        "import os, sys\n"
+        "args = sys.argv[1:]\n"
+        f"if args[:2] != ['--host', {host!r}] or len(args) < 3:\n"
+        "    raise SystemExit('Story 2.18 fixture refuses a different Docker endpoint')\n"
+        "if args[2] == 'run':\n"
+        f"    args[3:3] = ['--label', {DOCKER_OWNER_LABEL + '=' + owner!r}]\n"
+        f"os.execv({str(docker)!r}, [{str(docker)!r}, *args])\n",
+        encoding="utf-8",
+    )
+    wrapper.chmod(0o700)
+    return directory
 
 
 @contextmanager
@@ -175,7 +200,8 @@ def native_topology(work, runtime):
             C.require(C.sha(identifier, 64), "STORY_EVIDENCE_FAILED", "invalid private Dapr container identity")
             ports["EVENTSTORE_TEST_" + name.upper() + "_PORT"] = str(port)
         wait_for_control_ports([int(port) for port in ports.values()])
-        yield {**environment, **ports, TOPOLOGY_OWNER: owner}
+        path = write_fixture_docker(work, docker, docker_host, owner)
+        yield {**environment, **ports, "PATH": os.pathsep.join((str(path), os.defpath))}
     finally:
         Source.cleanup_owned_containers(owner, run, DOCKER_OWNER_LABEL)
 
@@ -256,6 +282,8 @@ def evaluate(control):
     C.require(supported(control.story), "ADAPTER_UNAVAILABLE", "Story 2.18 requires its exact supporting slice")
     try:
         manifest = inventory(control)
+        C.require(subject_digest(manifest["root_tree"]) == control.subject, "SUBJECT_MISMATCH",
+                  "Story 2.18 build tree differs from the authenticated approval subject")
         binding = {"adapter": ADAPTER, "head_sha": manifest["head"], "root_tree": manifest["root_tree"],
                    "builds_gitlink": manifest["submodules"][0]["commit"],
                    "inventory_sha256": C.digest(C.canonical(manifest))}
