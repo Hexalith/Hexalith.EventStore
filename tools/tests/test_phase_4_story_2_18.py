@@ -1,9 +1,14 @@
 """Registration, source binding and refusal checks for the native query proof."""
 
+import base64
 import copy
+import hashlib
 import json
 from pathlib import Path
 import secrets
+import socket
+import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -66,6 +71,15 @@ class ConditionalQueryProofTests(unittest.TestCase):
         self.assertEqual(6, len(cases))
         self.assertTrue(all(row["result"] == "PASS" for row in cases))
 
+    def test_evidence_schema_requires_the_producers_exact_case_order_and_membership(self):
+        schema = json.loads((T.ROOT / "tools/phase-4-transition.schema.json").read_text())
+        cases = self.cases(self.report())
+        constraint = schema["$defs"]["story_2_18_evidence"]["properties"]["cases"]
+        self.assertEqual({"const": cases}, constraint)
+        alternate = copy.deepcopy(cases)
+        alternate[2]["component"] = "pubsub"
+        self.assertNotEqual(constraint["const"], alternate)
+
     def test_green_totals_cannot_hide_unrelated_duplicate_missing_or_skipped_cases(self):
         for change in ("unrelated", "duplicate", "missing", "skipped", "other_assembly", "assembly_error"):
             with self.subTest(change=change):
@@ -105,6 +119,69 @@ class ConditionalQueryProofTests(unittest.TestCase):
             api = SimpleNamespace(get=lambda path: {"sha": T.HEAD, "tree": {"sha": root_tree}})
             self.assertEqual(C.digest(C.canonical({"adapter": A.ADAPTER, "root_tree": root_tree})),
                              A.subject_at(api, T.HEAD))
+
+    def test_git_snapshot_timeout_refuses_with_the_evidence_limit_code(self):
+        control = SimpleNamespace(root=self.root, head=T.HEAD, story=self.claim("spec"), story_evidence=None)
+        with mock.patch.object(A.Source, "git", side_effect=subprocess.TimeoutExpired("git", 60)):
+            with self.assertRaisesRegex(C.Refusal, "Git snapshot exceeded its time limit") as caught:
+                A.evaluate(control)
+        self.assertEqual("STORY_EVIDENCE_LIMIT", caught.exception.code)
+        self.assertIsNone(control.story_evidence)
+
+    def test_invalid_nuget_zip_refuses_with_the_evidence_failure_code(self):
+        package = self.root / "sample" / "1.0.0"
+        package.mkdir(parents=True)
+        content = b"not a zip archive"
+        (package / "sample.1.0.0.nupkg").write_bytes(content)
+        (package / "sample.1.0.0.nupkg.sha512").write_bytes(base64.b64encode(hashlib.sha512(content).digest()))
+        tree = "c" * 40
+        manifest = {"head": T.HEAD, "root_tree": tree, "submodules": [{"commit": "d" * 40}]}
+        control = SimpleNamespace(root=self.root, story=self.claim("spec"), subject=A.subject_digest(tree),
+                                  binding={}, story_evidence=None)
+        with mock.patch.object(A, "inventory", return_value=manifest), \
+             mock.patch.object(A, "run", side_effect=lambda root, _: A.Source.dependency_inventory(root)):
+            with self.assertRaisesRegex(C.Refusal, "restored NuGet archive is invalid") as caught:
+                A.evaluate(control)
+        self.assertEqual("STORY_EVIDENCE_FAILED", caught.exception.code)
+        self.assertIsNone(control.story_evidence)
+
+    def test_fixture_docker_refuses_a_different_image_and_a_replaced_socket(self):
+        docker = self.root / "fake-docker"
+        docker.write_text(f"#!{sys.executable} -I\nimport json, sys\nprint(json.dumps(sys.argv[1:]))\n")
+        docker.chmod(0o700)
+        endpoint = self.root / "d.sock"
+        host = "unix://" + str(endpoint)
+        owner = "a" * 32
+        with socket.socket(socket.AF_UNIX) as original, socket.socket(socket.AF_UNIX) as replacement:
+            original.bind(str(endpoint))
+            bound = endpoint.lstat()
+            wrapper = A.write_fixture_docker(self.root, docker, host, (bound.st_dev, bound.st_ino), owner) / "docker"
+            startup = ["--detach", "--rm", "--pull", "never", "--name", "catalog-redis-fixture", "--label",
+                       "hexalith.route-catalog-fixture=fixture", "--publish", "127.0.0.1::6379", "--tmpfs", "/data"]
+            command = [str(wrapper), "--host", host, "run"]
+            accepted = subprocess.run([*command, *startup, A.REDIS_IMAGE, "redis-server", "--save", "", "--appendonly", "no"],
+                                      check=True, capture_output=True, text=True)
+            self.assertEqual(["--label", A.DOCKER_OWNER_LABEL + "=" + owner], json.loads(accepted.stdout)[3:5])
+
+            # Supplying the pinned string as a flag value cannot authorize a different actual image.
+            wrong_image = subprocess.run([*command, *startup, "--label", A.REDIS_IMAGE, "redis:latest", "redis-server"],
+                                         capture_output=True, text=True)
+            self.assertNotEqual(0, wrong_image.returncode)
+            self.assertIn("requires the pinned Redis image", wrong_image.stderr)
+            self.assertEqual("", wrong_image.stdout)
+
+            alias = subprocess.run([*command[:3], "container", "run", "redis:latest"], capture_output=True, text=True)
+            self.assertNotEqual(0, alias.returncode)
+            self.assertIn("refuses an unexpected Docker command", alias.stderr)
+            self.assertEqual("", alias.stdout)
+
+            next_endpoint = self.root / "replacement.sock"
+            replacement.bind(str(next_endpoint))
+            next_endpoint.replace(endpoint)
+            changed = subprocess.run([*command, *startup, A.REDIS_IMAGE, "redis-server"], capture_output=True, text=True)
+            self.assertNotEqual(0, changed.returncode)
+            self.assertIn("Docker socket changed", changed.stderr)
+            self.assertEqual("", changed.stdout)
 
     def private_checkout(self, repository, files, gitlinks=()):
         repository.mkdir(parents=True, exist_ok=True)
@@ -211,6 +288,24 @@ class GuardedCompletionRefusals(unittest.TestCase):
         for item in self.fixture.request["subjects"]:
             self.fixture.blob(T.BEFORE, item["path"], (self.fixture.root / item["path"]).read_bytes())
         self.writer.evaluation("APPROVAL_WINDOW")
+
+    def test_post_proof_head_refusal_clears_only_story_2_18_evidence(self):
+        self.select("spec")
+        control = C.Control(self.fixture.root, self.fixture.request, None)
+        evidence = {"result": "PASS"}
+
+        def record_proof():
+            control.story_evidence = evidence
+
+        for conditional, retained in ((True, None), (False, evidence)):
+            with self.subTest(conditional=conditional):
+                control.conditional_story = conditional
+                with mock.patch.object(control, "prepare"), mock.patch.object(control, "check_approvals"), \
+                     mock.patch.object(control, "prerequisites", side_effect=record_proof), \
+                     mock.patch.object(control, "current_head", side_effect=C.Refusal("SOURCE_MISMATCH", "main advanced")):
+                    with self.assertRaises(C.Refusal) as caught:
+                        control.evaluate()
+                self.assertIs(retained, control.result("evaluate", [caught.exception.code])["story_evidence"])
 
 
 if __name__ == "__main__":

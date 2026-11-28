@@ -2072,21 +2072,14 @@
           }
         },
         "cases": {
-          "type": "array",
-          "minItems": 6,
-          "maxItems": 6,
-          "uniqueItems": true,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["component", "declarative", "legacy_finite", "result"],
-            "properties": {
-              "component": { "enum": ["in-memory-events", "pubsub"] },
-              "declarative": { "type": "boolean" },
-              "legacy_finite": { "type": "boolean" },
-              "result": { "const": "PASS" }
-            }
-          }
+          "const": [
+            { "component": "in-memory-events", "declarative": false, "legacy_finite": false, "result": "PASS" },
+            { "component": "in-memory-events", "declarative": false, "legacy_finite": true, "result": "PASS" },
+            { "component": "in-memory-events", "declarative": true, "legacy_finite": false, "result": "PASS" },
+            { "component": "in-memory-events", "declarative": true, "legacy_finite": true, "result": "PASS" },
+            { "component": "pubsub", "declarative": false, "legacy_finite": false, "result": "PASS" },
+            { "component": "pubsub", "declarative": false, "legacy_finite": true, "result": "PASS" }
+          ]
         }
       }
     },

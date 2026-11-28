@@ -8,10 +8,13 @@ import re
 import shutil
 import socket
 import stat
+import subprocess
 import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
+import zipfile
+import zlib
 
 from dapr_runtime_qualification import CANDIDATE_IDENTITIES, CANDIDATE_PROFILE, REDIS_IMAGE
 import phase_4_story_5_3 as Source
@@ -146,19 +149,37 @@ def wait_for_control_ports(ports):
                 time.sleep(0.1)
 
 
-def write_fixture_docker(work, docker, host, owner):
-    """Label Redis started by the native test so forced shutdown can reap it."""
+def write_fixture_docker(work, docker, host, socket_identity, owner):
+    """Require the captured socket and pinned Redis image, then label owned containers."""
     directory = work / ".story-2-18-tools"
     directory.mkdir()
     wrapper = directory / "docker"
     wrapper.write_text(
         f"#!{sys.executable} -I\n"
-        "import os, sys\n"
+        "import os, stat, sys\n"
         "args = sys.argv[1:]\n"
         f"if args[:2] != ['--host', {host!r}] or len(args) < 3:\n"
         "    raise SystemExit('Story 2.18 fixture refuses a different Docker endpoint')\n"
         "if args[2] == 'run':\n"
+        "    image = 3\n"
+        "    while image < len(args) and args[image].startswith('-'):\n"
+        "        if args[image] in ('--detach', '--rm'):\n"
+        "            image += 1\n"
+        "        elif args[image] in ('--pull', '--name', '--label', '--publish', '--tmpfs'):\n"
+        "            image += 2\n"
+        "        else:\n"
+        "            raise SystemExit('Story 2.18 fixture refuses an unexpected Docker run option')\n"
+        f"    if args[image:image + 1] != [{REDIS_IMAGE!r}]:\n"
+        "        raise SystemExit('Story 2.18 fixture requires the pinned Redis image')\n"
         f"    args[3:3] = ['--label', {DOCKER_OWNER_LABEL + '=' + owner!r}]\n"
+        "elif args[2] not in ('inspect', 'exec', 'rm'):\n"
+        "    raise SystemExit('Story 2.18 fixture refuses an unexpected Docker command')\n"
+        "try:\n"
+        "    endpoint = os.lstat(args[1][7:])\n"
+        "except OSError:\n"
+        "    raise SystemExit('Story 2.18 fixture Docker socket is unavailable')\n"
+        f"if not stat.S_ISSOCK(endpoint.st_mode) or (endpoint.st_dev, endpoint.st_ino) != {socket_identity!r}:\n"
+        "    raise SystemExit('Story 2.18 fixture Docker socket changed')\n"
         f"os.execv({str(docker)!r}, [{str(docker)!r}, *args])\n",
         encoding="utf-8",
     )
@@ -170,15 +191,18 @@ def write_fixture_docker(work, docker, host, owner):
 def native_topology(work, runtime):
     docker = require_executable(Path("/usr/bin/docker"), "Docker")
     endpoint = Path("/var/run/docker.sock").resolve()
-    C.require(endpoint.exists() and stat.S_ISSOCK(endpoint.stat().st_mode), "STORY_EVIDENCE_FAILED",
+    C.require(endpoint.exists(), "STORY_EVIDENCE_FAILED",
+              "Story 2.18 prerequisite unavailable: local Docker socket")
+    initial = endpoint.lstat()
+    C.require(stat.S_ISSOCK(initial.st_mode), "STORY_EVIDENCE_FAILED",
               "Story 2.18 prerequisite unavailable: local Docker socket")
     docker_host = "unix://" + str(endpoint)
-    socket_identity = (endpoint.stat().st_dev, endpoint.stat().st_ino)
+    socket_identity = (initial.st_dev, initial.st_ino)
     environment = {"DOCKER_HOST": docker_host}
 
     def run(argv, step, timeout=30):
-        current = endpoint.stat()
-        C.require((current.st_dev, current.st_ino) == socket_identity, "STORY_EVIDENCE_FAILED",
+        current = endpoint.lstat()
+        C.require(stat.S_ISSOCK(current.st_mode) and (current.st_dev, current.st_ino) == socket_identity, "STORY_EVIDENCE_FAILED",
                   "Story 2.18 Docker socket changed")
         return execute_bounded(work, [str(docker), "--host", docker_host, *argv[1:]], step, timeout, environment)
 
@@ -200,7 +224,7 @@ def native_topology(work, runtime):
             C.require(C.sha(identifier, 64), "STORY_EVIDENCE_FAILED", "invalid private Dapr container identity")
             ports["EVENTSTORE_TEST_" + name.upper() + "_PORT"] = str(port)
         wait_for_control_ports([int(port) for port in ports.values()])
-        path = write_fixture_docker(work, docker, docker_host, owner)
+        path = write_fixture_docker(work, docker, docker_host, socket_identity, owner)
         yield {**environment, **ports, "PATH": os.pathsep.join((str(path), os.defpath))}
     finally:
         Source.cleanup_owned_containers(owner, run, DOCKER_OWNER_LABEL)
@@ -294,5 +318,9 @@ def evaluate(control):
         control.story_evidence = {"schema": SCHEMA, "adapter": ADAPTER, "result": "PASS", "binding": binding,
                                   "selector": SELECTOR, "test_source": TEST_SOURCE,
                                   "http_status_sequence": [200, 304, 200], **execution}
+    except subprocess.TimeoutExpired as error:
+        raise C.Refusal("STORY_EVIDENCE_LIMIT", "Story 2.18 Git snapshot exceeded its time limit") from error
+    except (zipfile.BadZipFile, zipfile.LargeZipFile, zlib.error) as error:
+        raise C.Refusal("STORY_EVIDENCE_FAILED", "Story 2.18 restored NuGet archive is invalid") from error
     except (OSError, ValueError, KeyError) as error:
         raise C.Refusal("STORY_EVIDENCE_FAILED", "Story 2.18 cannot build or execute its bound live proof") from error

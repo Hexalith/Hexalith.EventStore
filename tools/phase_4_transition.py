@@ -908,7 +908,12 @@ class Control:
         self.prepare()
         self.check_approvals()
         self.prerequisites()
-        self.current_head()
+        try:
+            self.current_head()
+        except Refusal:
+            if self.conditional_story:
+                self.story_evidence = None
+            raise
         return self.result("evaluate", [])
 
     def result(self, phase, codes, seal=None):

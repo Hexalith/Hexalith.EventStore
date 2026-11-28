@@ -132,6 +132,14 @@ context:
 | Resumed Edge 7. Unused projection-type result | Low | Patch. The helper reports whether multiple projection types were found. The controller-action tests cover the responses previously checked through reflection. |
 | Resumed Verification 1. Weak prefix guard can be removed undetected | Low | Patch. The prior weak-prefixed test also contained quotes. Add cases that isolate both forms of the prefix. |
 | Resumed Verification 2. Replay status read failure | High | Deferred. Same cause as Resumed Blind 1. |
+| Completion adapter. Source timeout and corrupt package diagnostics | Medium | Patched. Git timeouts and invalid NuGet archives produce structured story-evidence refusals. |
+| Completion adapter. Docker endpoint and Redis identity | Medium | Patched. The fixture launcher checks the captured socket and requires the Redis digest reported in the evidence. |
+| Completion adapter. Source or authorization changes during verification | Medium | Patched. Refused head, approval, artifact, or attempt checks clear passing evidence before returning. A genuine successful guarded write still requires authenticated approvals and seal. |
+| Completion adapter. Exact case membership in the artifact contract | Medium | Patched. The schema validates the canonical six-case producer report and rejects a substituted case. |
+| Completion adapter. Hosted prerequisites and fixture discovery | Medium | Open. The CiCd-owned workflows need pinned runtime provisioning for a hosted seal and separate discovery of the new local fixture suite. |
+| Completion adapter. Result selector coupled to fixture XML | Low | Verified with a clean build and the real xUnit report. Local fixture XML covers malformed, missing, skipped and substituted cases. |
+| Completion adapter. Untagged replay regression | Low | Existing Server tests cover the untagged interleaving. The new native evidence runs the three-response HTTP proof requested for the guard. |
+| Completion adapter. Failure log detail | Low | The guard reports the failing step. Local build and xUnit logs were retained for this diagnostic. |
 
 ## Verification
 
@@ -184,7 +192,8 @@ context:
 
 #### Completion adapter verification
 
-- The private Release build and all six native Dapr 1.19.1 HTTP cases passed with the adapter corrections on top of `482deb46a88f870ffd09fa006ae6724ff83d0530`. Each case verifies tagged `200`, bodyless `304`, and changed tagged `200` after replay-actor reactivation. This was a local diagnostic run. The guard requires the evidence to be reproduced from the published revision.
+- The private Release build and all six native Dapr 1.19.1 HTTP cases passed in a clean local diagnostic at `74b251e87f625b3453c36cd03d3ec7c991277485`, using Builds `388e2f73887dbac852fac21cd7f917ef38726eab`. Each case verifies tagged `200`, bodyless `304`, and changed tagged `200` after replay-actor reactivation. The guard requires a completed authenticated run on the published revision.
+- The review follow-up passed all 13 adapter tests, including schema validation, and ran the stricter Docker wrapper against the real pinned Redis image with owned cleanup.
 - Both completion validator writes now exit 1 with `SEAL_MISSING`. The spec and tracker stay `in-progress`. The dedicated runner needs the pinned Dapr binary and Docker images, followed by role-bound `product-owner` and `test-owner` approvals and completed evaluation seals for the two completion targets.
 
 #### Rejected
