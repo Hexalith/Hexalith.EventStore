@@ -53,6 +53,13 @@ public sealed class CommittedRouteCatalogSnapshot
 
     /// <summary>Freezes a complete verified activation, including opt-in v2 membership and independently observed runtime coordinates.</summary>
     public CommittedRouteCatalogSnapshot(RouteCatalogActivation activation, long epoch, string? localAppId, RouteCatalogStateCoordinates? coordinates)
+        : this(activation, epoch, localAppId, coordinates, validatedCompleteBindingDigest: null)
+    {
+    }
+
+    /// <summary>Freezes a complete verified activation whose binding digest was already computed and matched in this acquisition.</summary>
+    internal CommittedRouteCatalogSnapshot(RouteCatalogActivation activation, long epoch, string? localAppId,
+        RouteCatalogStateCoordinates? coordinates, string? validatedCompleteBindingDigest)
         : this((activation ?? throw new ArgumentNullException(nameof(activation))).CanonicalCatalog, activation.RootDigest, epoch,
             activation.AuxiliaryOperations, activation.ProjectionCapabilities, localAppId)
     {
@@ -60,7 +67,10 @@ public sealed class CommittedRouteCatalogSnapshot
         TechnicalHttpReceivers = TechnicalHttpCatalogBinding.Freeze(activation.TechnicalHttpReceivers) ?? Array.AsReadOnly(Array.Empty<RouteCatalogTechnicalHttpReceiver>());
         if (TechnicalHttpReceivers.Count > 0 && (coordinates is null || string.IsNullOrWhiteSpace(localAppId)))
             throw new RouteCatalogUnavailableException("Technical v2 dispatch requires independently observed local authority coordinates and identity.", RouteCatalogRefusalReason.Configuration);
-        CompleteActivationBindingDigest = RouteCatalogActivationBinding.ComputeDigest(activation);
+        CompleteActivationBindingDigest = validatedCompleteBindingDigest is { Length: 64 } validDigest
+            && validDigest.All(char.IsAsciiHexDigitLower)
+            ? validDigest
+            : RouteCatalogActivationBinding.ComputeDigest(activation);
         ActivationBindingDigest = TechnicalHttpReceivers.Count == 0 ? null : CompleteActivationBindingDigest;
         AuthorityCoordinates = coordinates;
     }

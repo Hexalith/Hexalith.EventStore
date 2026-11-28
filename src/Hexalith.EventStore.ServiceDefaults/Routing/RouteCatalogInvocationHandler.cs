@@ -183,7 +183,23 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
         RouteCatalogDispatchLease lease;
         using (var stage = diagnostics?.Start(DispatchStageName.InvocationAcquire))
         {
-            lease = await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            if (_authority is RouteCatalogAuthority concrete && IsReadOnlyStreamWorkloadRequest(method, request.Method))
+            {
+                RouteCatalogDispatchLease readOnly = await concrete.AcquireReadOnlyAsync(cancellationToken).ConfigureAwait(false);
+                if (RouteCatalogMetadataRequest.IsGateway(readOnly.Snapshot, appId, method, request.Method))
+                {
+                    lease = readOnly;
+                }
+                else
+                {
+                    await readOnly.DisposeAsync().ConfigureAwait(false);
+                    lease = await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                lease = await _authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            }
             stage?.Complete();
         }
         try
@@ -241,6 +257,9 @@ public sealed class RouteCatalogInvocationHandler : HttpMessageHandler
             : await lease.InvokeRemoteAsync(() => SendTransportAsync(cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
+    internal static bool IsReadOnlyStreamWorkloadRequest(string method, HttpMethod httpMethod)
+        => httpMethod == HttpMethod.Post
+            && string.Equals(method.Trim('/'), RouteCatalogMetadataRequest.Method, StringComparison.Ordinal);
 
     private async Task<HttpResponseMessage> SendOwnerReadAsync(HttpRequestMessage request, string appId, CancellationToken token)
     {

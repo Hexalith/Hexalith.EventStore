@@ -8,7 +8,7 @@ namespace Hexalith.EventStore.ServiceDefaults.Routing;
 /// <summary>Captures only the exact committed SDK content-free native metadata frame; possession grants no authority.</summary>
 internal static class RouteCatalogMetadataRequest
 {
-    private const string Method = "api/v1/streams/read/workload";
+    internal const string Method = "api/v1/streams/read/workload";
     private const int MaximumBodyBytes = 32768;
     private static readonly HashSet<string> Fields = new(StringComparer.Ordinal)
     { "tenant", "domain", "aggregateId", "fromSequence", "toSequence", "checkpoint", "continuationToken", "pageSize", "projectionName", "requireNativeProof" };

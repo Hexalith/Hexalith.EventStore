@@ -186,7 +186,7 @@ internal sealed partial class ProjectionActivationWorker(
                 }
                 ProjectionActivationWorkerLog.Failed(Logger, "delivery", "activation_delivery_pending");
             }
-            DateTimeOffset nextDue = timeProvider.GetUtcNow() + options.Value.RetryBaseDelay;
+            DateTimeOffset nextDue = timeProvider.GetUtcNow() + ComputeRetryDelay(workItem.Attempt, options.Value);
             CancellationToken deferToken = cleanupBudget?.Token ?? stoppingToken;
             await outbox.DeferAsync(workItem, nextDue, deferToken).ConfigureAwait(false);
             await ConfirmDeferRecoveryAsync(workItem, nextDue, deferToken).ConfigureAwait(false);
@@ -199,7 +199,7 @@ internal sealed partial class ProjectionActivationWorker(
             {
                 cleanupBudget ??= new(TimeSpan.FromSeconds(30), timeProvider);
                 cleanupBudget.Token.ThrowIfCancellationRequested();
-                DateTimeOffset nextDue = timeProvider.GetUtcNow() + options.Value.RetryBaseDelay;
+                DateTimeOffset nextDue = timeProvider.GetUtcNow() + ComputeRetryDelay(workItem.Attempt, options.Value);
                 await outbox.DeferAsync(workItem, nextDue, cleanupBudget.Token).ConfigureAwait(false);
                 await ConfirmDeferRecoveryAsync(workItem, nextDue, cleanupBudget.Token).ConfigureAwait(false);
             }
@@ -224,6 +224,21 @@ internal sealed partial class ProjectionActivationWorker(
                 trace?.Complete();
             }
         }
+    }
+
+    private static TimeSpan ComputeRetryDelay(int attempt, ProjectionDispatchOptions dispatchOptions)
+    {
+        long baseTicks = Math.Max(0L, dispatchOptions.RetryBaseDelay.Ticks);
+        long maxTicks = Math.Max(baseTicks, dispatchOptions.RetryMaxDelay.Ticks);
+        if (baseTicks == 0L || attempt <= 0)
+        {
+            return TimeSpan.FromTicks(baseTicks);
+        }
+
+        int shift = Math.Min(attempt, 62);
+        long factor = 1L << shift;
+        long delayTicks = baseTicks > maxTicks / factor ? maxTicks : baseTicks * factor;
+        return TimeSpan.FromTicks(delayTicks);
     }
 
     private async Task ConfirmDeferRecoveryAsync(ProjectionActivationWorkItem workItem, DateTimeOffset nextDue, CancellationToken token)

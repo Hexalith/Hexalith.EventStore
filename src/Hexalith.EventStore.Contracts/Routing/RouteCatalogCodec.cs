@@ -67,7 +67,7 @@ public static class RouteCatalogCodec
                     throw Failure("$", "root-digest-mismatch");
                 return fresh;
             }
-            return DecodeCore(bytes, expectedRootDigest, scope, root);
+            return DecodeCoreOwned(captured, expectedRootDigest, scope, root);
         }
         return DecodeCore(bytes, expectedRootDigest, null, null);
     }
@@ -86,9 +86,23 @@ public static class RouteCatalogCodec
             }
             // Missing facts and misses take the complete original decoder path. Remember
             // remains after every original closed-schema/canonical/expected-root check.
-            return DecodeCore(captured, expectedRootDigest, scope, root).Profile;
+            return DecodeCoreOwned(captured, expectedRootDigest, scope, root).Profile;
         }
-        return Decode(bytes, expectedRootDigest).Profile;
+        if (bytes.Length is 0 or > MaximumByteLength)
+        {
+            throw Failure("$", "size-limit");
+        }
+        byte[] ownedBytes = bytes.ToArray();
+        ValidatedRouteCatalogEncoding? cachedEncoding = Volatile.Read(ref _validatedEncoding);
+        if (cachedEncoding is not null && cachedEncoding.Matches(ownedBytes))
+        {
+            if (expectedRootDigest is not null && expectedRootDigest != cachedEncoding.RootDigest)
+            {
+                throw Failure("$", "root-digest-mismatch");
+            }
+            return cachedEncoding.Profile;
+        }
+        return DecodeCoreOwned(ownedBytes, expectedRootDigest, null, null).Profile;
     }
 
     private static RouteCatalogEnvelope DecodeCore(ReadOnlyMemory<byte> bytes, string? expectedRootDigest,
@@ -101,8 +115,13 @@ public static class RouteCatalogCodec
         {
             throw Failure("$", "size-limit");
         }
-        byte[] ownedBytes = bytes.ToArray();
-        bytes = ownedBytes;
+        return DecodeCoreOwned(bytes.ToArray(), expectedRootDigest, scope, capturedRoot);
+    }
+
+    private static RouteCatalogEnvelope DecodeCoreOwned(byte[] ownedBytes, string? expectedRootDigest,
+        RouteCatalogDecodeScope? scope, string? capturedRoot)
+    {
+        ReadOnlyMemory<byte> bytes = ownedBytes;
         RouteCatalogEnvelope envelope;
         ValidatedRouteCatalogEncoding? validated = Volatile.Read(ref _validatedEncoding);
         if (validated is not null && validated.Matches(bytes.Span))
@@ -119,7 +138,7 @@ public static class RouteCatalogCodec
             {
                 throw Failure("$", "noncanonical-encoding");
             }
-            validated = new ValidatedRouteCatalogEncoding(canonical);
+            validated = new ValidatedRouteCatalogEncoding(canonical, envelope.Profile);
             // One immutable entry bounds retention to the existing maximum catalog size. Concurrent
             // different catalogs can replace it without accepting a partially validated document.
             Volatile.Write(ref _validatedEncoding, validated);
@@ -308,7 +327,13 @@ public static class RouteCatalogCodec
         RouteCatalogDecodeScope? scope = RouteCatalogDecodeScope.Current;
         if (scope?.HasCanonicalHashMemo != true)
         {
-            return Convert.ToHexStringLower(SHA256.HashData(CanonicalBytes(value)));
+            using var directStream = new MemoryStream();
+            using (var directWriter = new Utf8JsonWriter(directStream))
+            {
+                WriteCanonical(directWriter, JsonSerializer.SerializeToElement(value, Options));
+            }
+            return Convert.ToHexStringLower(SHA256.HashData(
+                directStream.TryGetBuffer(out ArraySegment<byte> directSegment) ? directSegment.AsSpan() : directStream.ToArray()));
         }
 
         // Preserve the original serializer and its original position after validation/normalization.
@@ -324,7 +349,10 @@ public static class RouteCatalogCodec
         {
             WriteCanonical(writer, captured);
         }
-        string digest = Convert.ToHexStringLower(SHA256.HashData(stream.ToArray()));
+        string digest = Convert.ToHexStringLower(
+            stream.TryGetBuffer(out ArraySegment<byte> scopedBuffer)
+                ? SHA256.HashData(scopedBuffer.AsSpan())
+                : SHA256.HashData(stream.ToArray()));
         scope.RememberCanonicalHash(ownedKey, digest);
         return digest;
     }

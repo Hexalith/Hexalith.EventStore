@@ -76,7 +76,20 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
     }
 
     /// <inheritdoc/>
-    public async Task<RouteCatalogHostIdentity> ObserveAsync(RouteCatalogActivation activation, RouteCatalogStateCoordinates coordinates, CancellationToken cancellationToken)
+    public Task<RouteCatalogHostIdentity> ObserveAsync(RouteCatalogActivation activation, RouteCatalogStateCoordinates coordinates, CancellationToken cancellationToken)
+        => ObserveCoreAsync(activation, validatedBinding: null, coordinates, cancellationToken);
+
+    /// <summary>Reuses the exact activation binding already computed by <see cref="RouteCatalogAuthority"/> for this same frozen activation.</summary>
+    internal Task<RouteCatalogHostIdentity> ObserveWithValidatedBindingAsync(RouteCatalogActivation activation, string validatedBinding,
+        RouteCatalogStateCoordinates coordinates, CancellationToken cancellationToken)
+    {
+        if (validatedBinding is not { Length: 64 } || !validatedBinding.All(char.IsAsciiHexDigitLower))
+            throw new ArgumentException("Validated activation binding must be a 64-character lowercase SHA-256 hex digest.", nameof(validatedBinding));
+        return ObserveCoreAsync(activation, validatedBinding, coordinates, cancellationToken);
+    }
+
+    private async Task<RouteCatalogHostIdentity> ObserveCoreAsync(RouteCatalogActivation activation, string? validatedBinding,
+        RouteCatalogStateCoordinates coordinates, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(activation);
         ArgumentNullException.ThrowIfNull(coordinates);
@@ -88,7 +101,7 @@ public sealed class ObservedRouteCatalogHost(Func<CancellationToken, Task<RouteC
         // The activation binding validates every candidate field. A later fresh capture with
         // the same complete host identity has the same executable, topology, auth and policy
         // facts that already passed the structural walk for this exact activation.
-        string binding = RouteCatalogActivationBinding.ComputeDigest(activation);
+        string binding = validatedBinding ?? RouteCatalogActivationBinding.ComputeDigest(activation);
         ValidatedObservation? validated = Volatile.Read(ref _validated);
         if (validated is not null && validated.Binding == binding && validated.Identity == identity)
             return identity;

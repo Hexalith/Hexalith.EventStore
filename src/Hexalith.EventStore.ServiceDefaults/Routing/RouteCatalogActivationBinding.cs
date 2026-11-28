@@ -56,7 +56,7 @@ public static class RouteCatalogActivationBinding
                     || verbs.Any(verb => verb is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS"))
                     || !verbs.Order(StringComparer.Ordinal).SequenceEqual(verbs, StringComparer.Ordinal)
                     || verbs.Distinct(StringComparer.Ordinal).Count() != verbs.Length))
-                || auxiliary.Select(operation => JsonSerializer.Serialize(operation)).Distinct(StringComparer.Ordinal).Count() != auxiliary.Count))
+                || auxiliary.Count > 1 && auxiliary.Select(operation => JsonSerializer.Serialize(operation)).Distinct(StringComparer.Ordinal).Count() != auxiliary.Count))
             || envelope.Routes.Any(r => !activation.RequiredHosts.Any(h => h.AppId == r.AppId))
             || envelope.Idempotency.Any(i => !activation.RequiredHosts.Any(h => h.AppId == i.ConsumerAppId)))
         {
@@ -73,31 +73,33 @@ public static class RouteCatalogActivationBinding
                 && envelope.Routes.Any(r => r.RouteId == d.RouteId && r.AppId == c.AppId && r.ContractVersion == c.ContractVersion && r.Method == "project/v2"))))
             || capabilities.Select(c => (c.AppId, c.Domain, c.ContractVersion)).Distinct().Count() != capabilities.Count)
             throw new RouteCatalogUnavailableException("Named projection capabilities disagree with declared executable targets.");
-        byte[] binding = JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            purpose = "route-catalog-activation", version = 1,
-            activation.AttemptId, activation.RootDigest, activation.PredecessorRootDigest,
-            envelope.Generation, envelope.Profile, envelope.RouteFacetDigest, envelope.IdempotencyFacetDigest,
-            activation.Owner, hosts = activation.RequiredHosts.OrderBy(h => h.HostId, StringComparer.Ordinal).ToArray(),
-            auxiliary = (activation.AuxiliaryOperations ?? []).OrderBy(a => a.AppId, StringComparer.Ordinal)
-                .ThenBy(a => a.Domain, StringComparer.Ordinal).ThenBy(a => a.Method, StringComparer.Ordinal).ThenBy(a => a.Operation, StringComparer.Ordinal).ToArray(),
-            capabilities = capabilities.OrderBy(c => c.AppId, StringComparer.Ordinal).ThenBy(c => c.Domain, StringComparer.Ordinal)
-                .ThenBy(c => c.ContractVersion, StringComparer.Ordinal).Select(c => c with { ProjectionTypes = c.ProjectionTypes.Order(StringComparer.Ordinal).ToArray() }).ToArray(),
-        });
-        if (activation.TechnicalHttpReceivers is { Count: > 0 } technical)
-        {
-            // Keep the exact legacy v1 preimage above when technical membership is absent.
-            var versioned = System.Text.Json.Nodes.JsonNode.Parse(binding)!.AsObject();
-            versioned["version"] = 2;
-            versioned["technicalHttpReceivers"] = JsonSerializer.SerializeToNode(technical.OrderBy(receiver => receiver.AppId, StringComparer.Ordinal)
-                .Select(receiver => receiver with
-                {
-                    Endpoints = receiver.Endpoints.OrderBy(TechnicalHttpCatalogBinding.Key, StringComparer.Ordinal).ToArray(),
-                    Invocations = receiver.Invocations?.OrderBy(TechnicalHttpCatalogBinding.InvocationKey, StringComparer.Ordinal)
-                        .Select(invocation => invocation with { HttpMethods = invocation.HttpMethods.Order(StringComparer.Ordinal).ToArray() }).ToArray(),
-                }).ToArray());
-            binding = System.Text.Encoding.UTF8.GetBytes(versioned.ToJsonString());
-        }
+        var orderedHosts = activation.RequiredHosts.OrderBy(h => h.HostId, StringComparer.Ordinal).ToArray();
+        var orderedAuxiliary = (activation.AuxiliaryOperations ?? []).OrderBy(a => a.AppId, StringComparer.Ordinal)
+            .ThenBy(a => a.Domain, StringComparer.Ordinal).ThenBy(a => a.Method, StringComparer.Ordinal).ThenBy(a => a.Operation, StringComparer.Ordinal).ToArray();
+        var orderedCapabilities = capabilities.OrderBy(c => c.AppId, StringComparer.Ordinal).ThenBy(c => c.Domain, StringComparer.Ordinal)
+            .ThenBy(c => c.ContractVersion, StringComparer.Ordinal).Select(c => c with { ProjectionTypes = c.ProjectionTypes.Order(StringComparer.Ordinal).ToArray() }).ToArray();
+        byte[] binding = activation.TechnicalHttpReceivers is { Count: > 0 } technical
+            ? JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                purpose = "route-catalog-activation", version = 2,
+                activation.AttemptId, activation.RootDigest, activation.PredecessorRootDigest,
+                envelope.Generation, envelope.Profile, envelope.RouteFacetDigest, envelope.IdempotencyFacetDigest,
+                activation.Owner, hosts = orderedHosts, auxiliary = orderedAuxiliary, capabilities = orderedCapabilities,
+                technicalHttpReceivers = technical.OrderBy(receiver => receiver.AppId, StringComparer.Ordinal)
+                    .Select(receiver => receiver with
+                    {
+                        Endpoints = receiver.Endpoints.OrderBy(TechnicalHttpCatalogBinding.Key, StringComparer.Ordinal).ToArray(),
+                        Invocations = receiver.Invocations?.OrderBy(TechnicalHttpCatalogBinding.InvocationKey, StringComparer.Ordinal)
+                            .Select(invocation => invocation with { HttpMethods = invocation.HttpMethods.Order(StringComparer.Ordinal).ToArray() }).ToArray(),
+                    }).ToArray(),
+            })
+            : JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                purpose = "route-catalog-activation", version = 1,
+                activation.AttemptId, activation.RootDigest, activation.PredecessorRootDigest,
+                envelope.Generation, envelope.Profile, envelope.RouteFacetDigest, envelope.IdempotencyFacetDigest,
+                activation.Owner, hosts = orderedHosts, auxiliary = orderedAuxiliary, capabilities = orderedCapabilities,
+            });
         return Convert.ToHexStringLower(SHA256.HashData(binding));
     }
 

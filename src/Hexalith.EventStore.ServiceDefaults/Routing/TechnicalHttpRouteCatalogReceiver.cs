@@ -167,7 +167,10 @@ public sealed class TechnicalHttpRouteCatalogReceiver
                 {
                     using (var stage = diagnostics?.Start(DispatchStageName.ReceiverAcquire))
                     {
-                        lease = await context.RequestServices.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                        var authority = context.RequestServices.GetRequiredService<IRouteCatalogAuthority>();
+                        lease = authority is RouteCatalogAuthority concrete && IsReadOnlyStreamWorkloadEndpoint(context, description)
+                            ? await concrete.AcquireReadOnlyAsync(context.RequestAborted).ConfigureAwait(false)
+                            : await authority.AcquireAsync(context.RequestAborted).ConfigureAwait(false);
                         stage?.Complete();
                     }
                     var snapshot = lease.Snapshot;
@@ -322,7 +325,10 @@ public sealed class TechnicalHttpRouteCatalogReceiver
         {
             using (var stage = diagnostics?.Start(DispatchStageName.NativeAcquire))
             {
-                lease = await context.RequestServices.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                var authority = context.RequestServices.GetRequiredService<IRouteCatalogAuthority>();
+                lease = native is not null && authority is RouteCatalogAuthority concrete && IsReadOnlyAggregateActorMethod(context, native)
+                    ? await concrete.AcquireReadOnlyAsync(context.RequestAborted).ConfigureAwait(false)
+                    : await authority.AcquireAsync(context.RequestAborted).ConfigureAwait(false);
                 stage?.Complete();
             }
             var snapshot = lease.Snapshot;
@@ -462,4 +468,31 @@ public sealed class TechnicalHttpRouteCatalogReceiver
 
     private static string[] Methods(RouteEndpoint endpoint) => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Order(StringComparer.Ordinal).ToArray() ?? [];
     private static string[] Policies(RouteEndpoint endpoint) => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(data => data.Policy ?? string.Empty).Order(StringComparer.Ordinal).ToArray();
+
+    internal static bool IsReadOnlyStreamWorkloadEndpoint(HttpContext context, RouteCatalogTechnicalHttpEndpoint? description)
+        => HttpMethods.IsPost(context.Request.Method)
+            && string.Equals(context.Request.Path.Value?.Trim('/'), RouteCatalogMetadataRequest.Method, StringComparison.Ordinal)
+            && description is { CredentialKind: "workload" }
+            && description.ActionIdentity.StartsWith("Hexalith.EventStore.Gateway,", StringComparison.Ordinal);
+
+    internal static bool IsReadOnlyAggregateActorMethod(HttpContext context, RouteCatalogNativeActorTransport? native)
+    {
+        if (!HttpMethods.IsPut(context.Request.Method) || native is not { Kind: "method" })
+        {
+            return false;
+        }
+
+        if (!string.Equals(context.Request.RouteValues["actorTypeName"] as string, "AggregateActor", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // Only native source-proof probes that explicitly reject pending finalizer/count recovery
+        // mutations before EnsureStateCacheBarrierAsync are strictly side-effect-free.
+        return context.Request.RouteValues["methodName"] as string is
+            "InspectSourceProofAsync"
+            or "InspectSourceMetadataPairAsync"
+            or "ReadNativeSourceBatchAsync"
+            or "ReadNativeEventsBoundedRangeAsync";
+    }
 }

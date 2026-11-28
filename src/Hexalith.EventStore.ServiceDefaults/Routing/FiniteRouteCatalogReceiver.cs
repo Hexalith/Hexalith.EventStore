@@ -158,7 +158,10 @@ public sealed class FiniteRouteCatalogReceiver
                 RouteCatalogDispatchLease? nativeLease = null;
                 try
                 {
-                    nativeLease = await app.Services.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                    var authority = app.Services.GetRequiredService<IRouteCatalogAuthority>();
+                    nativeLease = authority is RouteCatalogAuthority concrete && TechnicalHttpRouteCatalogReceiver.IsReadOnlyAggregateActorMethod(context, native)
+                        ? await concrete.AcquireReadOnlyAsync(context.RequestAborted).ConfigureAwait(false)
+                        : await authority.AcquireAsync(context.RequestAborted).ConfigureAwait(false);
                     var snapshot = nativeLease.Snapshot;
                     if (snapshot.Envelope.SchemaVersion != 3 || snapshot.Envelope.Profile != "Development" || !fence._native.AllowsSnapshot(context, snapshot)
                         || !snapshot.AuxiliaryOperations.Any(operation => operation.AppId == snapshot.LocalAppId
@@ -246,7 +249,27 @@ public sealed class FiniteRouteCatalogReceiver
                 RouteCatalogDispatchLease? lease = null;
                 try
                 {
-                    lease = await app.Services.GetRequiredService<IRouteCatalogAuthority>().AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                    var authority = app.Services.GetRequiredService<IRouteCatalogAuthority>();
+                    if (authority is RouteCatalogAuthority concrete
+                        && HttpMethods.IsPost(context.Request.Method)
+                        && string.Equals(context.Request.Path.Value?.Trim('/'), RouteCatalogMetadataRequest.Method, StringComparison.Ordinal))
+                    {
+                        RouteCatalogDispatchLease readOnly = await concrete.AcquireReadOnlyAsync(context.RequestAborted).ConfigureAwait(false);
+                        if (readOnly.Snapshot.LocalAppId is { } localAppId
+                            && RouteCatalogMetadataRequest.IsGateway(readOnly.Snapshot, localAppId, RouteCatalogMetadataRequest.Method, HttpMethod.Post))
+                        {
+                            lease = readOnly;
+                        }
+                        else
+                        {
+                            await readOnly.DisposeAsync().ConfigureAwait(false);
+                            lease = await authority.AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                        }
+                    }
+                    else
+                    {
+                        lease = await authority.AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                    }
                     string pattern = endpoint.RoutePattern.RawText!.Trim('/');
                     var snapshot = lease.Snapshot;
                     if (snapshot.Envelope.SchemaVersion != 3 || snapshot.Envelope.Profile != "Development" || snapshot.LocalAppId is null
