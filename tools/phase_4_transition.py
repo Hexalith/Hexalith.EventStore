@@ -567,7 +567,7 @@ class Control:
         if self.tenant_story:
             import phase_4_story_2_14 as A
             extra_controls = STORY_COMPLETION_FILES + A.CONTROL_FILES
-        if self.conditional_story:
+        elif self.conditional_story:
             import phase_4_story_2_18 as A
             extra_controls = STORY_COMPLETION_FILES + A.CONTROL_FILES
         if request["transition"] == "readiness":
@@ -1011,6 +1011,8 @@ class Control:
         if canonical(candidate) != canonical(expected):
             if readiness:
                 R.diagnose_candidate(candidate, expected)
+            if self.conditional_story:
+                self.story_evidence = None
             raise Refusal("RESULT_MISMATCH", "completed result differs from current bound inputs/approvals/predecessors")
         if readiness:
             R.reconfirm(self)
@@ -1028,16 +1030,17 @@ class Control:
             except Refusal:
                 self.story_evidence = None
                 raise
-        if self.conditional_story:
-            try:
+        try:
+            if self.conditional_story:
                 self.reconfirm_candidate(run_id, attempt, expected, artifact_id)
                 self.reconfirm_approvals()
-            except Refusal:
+            if readiness or self.status_gate or self.tenant_story or self.conditional_story:
+                self.current_attempt(run_id, attempt)
+            self.current_head()
+        except Refusal:
+            if self.conditional_story:
                 self.story_evidence = None
-                raise
-        if readiness or self.status_gate or self.tenant_story or self.conditional_story:
-            self.current_attempt(run_id, attempt)
-        self.current_head()
+            raise
         seal = {"run_id": run_id, "attempt": attempt, "artifact_id": artifact_id, "ci_app_id": ACTIONS_APP_ID}
         result = self.result("consume", [], seal)
         if readiness:
