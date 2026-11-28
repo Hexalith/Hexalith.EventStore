@@ -1,6 +1,5 @@
 
 using System.Globalization;
-using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -62,7 +61,6 @@ public partial class QueriesController : ControllerBase {
     }
 
     private IMediator mediator { get; }
-    private IETagService eTagService { get; }
     private ITenantValidator tenantValidator { get; }
     private IRbacValidator rbacValidator { get; }
     private ILogger<QueriesController> logger { get; }
@@ -103,7 +101,7 @@ public partial class QueriesController : ControllerBase {
         Hexalith.EventStore.ServiceDefaults.Routing.IRouteCatalogAuthority? catalogAuthority = null)
     {
         this.mediator = mediator;
-        this.eTagService = eTagService;
+        _ = eTagService; // Retained for constructor compatibility.
         this.tenantValidator = tenantValidator;
         this.rbacValidator = rbacValidator;
         this.logger = logger;
@@ -389,38 +387,26 @@ public partial class QueriesController : ControllerBase {
 
         QueryResponseMetadata producerMetadata = NormalizeProducerMetadata(result.Metadata);
         bool projectionBacked = producerMetadata.Provenance == QueryResponseProvenance.ProjectionBacked;
-        string? projectionType = projectionBacked ? result.ProjectionType : null;
-        bool hasProducerETag = !string.IsNullOrWhiteSpace(projectionType) && !string.IsNullOrWhiteSpace(producerMetadata.ETag);
-        string? currentETag = hasProducerETag
+        string? producerETag = projectionBacked && !string.IsNullOrWhiteSpace(result.ProjectionType)
+            && IsStrongETagToken(producerMetadata.ETag)
             ? producerMetadata.ETag
             : null;
-        if (currentETag is null && !string.IsNullOrWhiteSpace(projectionType)) {
-            try {
-                currentETag = await eTagService
-                    .GetCurrentETagAsync(projectionType, request.Tenant, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex) {
-                // Fail-open: no ETag header on response is acceptable
-                Log.ETagPreCheckFailed(logger, correlationId, ex.GetType().Name);
-            }
-        }
 
         DateTimeOffset servedAt = DateTimeOffset.UtcNow;
         QueryResponseMetadata metadata = MergeQueryMetadata(
             producerMetadata,
-            currentETag,
+            producerETag,
             isNotModified: false,
             servedAt);
         EnforceFreshnessPolicy(request, correlationId, producerMetadata, metadata, servedAt);
 
         string? projectionVersionHeader = GetLosslessProjectionVersionHeader(metadata.ProjectionVersion);
         string? warningCodes = FormatWarningCodes(metadata.WarningCodes);
-        bool conditionalMatch = (string.IsNullOrEmpty(metadata.ProjectionVersion) || projectionVersionHeader is not null)
+        bool conditionalMatch = producerETag is not null
+            && (string.IsNullOrEmpty(metadata.ProjectionVersion) || projectionVersionHeader is not null)
             && (metadata.WarningCodes is not { Count: > 0 } || warningCodes is not null)
-            && ShouldEvaluateConditionalRequest(request, ifNoneMatch, correlationId, hasProducerETag)
-            && currentETag is not null
-            && ETagMatches(ifNoneMatch, currentETag, hasProducerETag);
+            && ShouldEvaluateConditionalRequest(request, ifNoneMatch, correlationId)
+            && ETagMatches(ifNoneMatch, producerETag);
 
         Response.Headers[QueryResponseProvenancePolicy.HeaderName] = QueryResponseProvenancePolicy.Format(metadata.Provenance);
         _ = Response.Headers.Remove(ProjectionLifecyclePolicy.HeaderName);
@@ -448,13 +434,13 @@ public partial class QueriesController : ControllerBase {
             Response.Headers["X-Hexalith-Warning-Codes"] = warningCodes;
         }
 
-        if (currentETag is not null) {
-            Response.Headers.ETag = $"\"{currentETag}\"";
-        }
+        if (producerETag is not null) {
+            Response.Headers.ETag = $"\"{producerETag}\"";
 
-        if (conditionalMatch && currentETag is not null) {
-            Log.ETagPreCheckMatch(logger, correlationId, currentETag[..Math.Min(8, currentETag.Length)]);
-            return StatusCode(StatusCodes.Status304NotModified);
+            if (conditionalMatch) {
+                Log.ETagPreCheckMatch(logger, correlationId, producerETag[..Math.Min(8, producerETag.Length)]);
+                return StatusCode(StatusCodes.Status304NotModified);
+            }
         }
 
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload, Metadata: metadata));
@@ -463,8 +449,7 @@ public partial class QueriesController : ControllerBase {
     private bool ShouldEvaluateConditionalRequest(
         SubmitQueryRequest request,
         string? ifNoneMatch,
-        string correlationId,
-        bool hasProducerETag) {
+        string correlationId) {
         if (string.IsNullOrWhiteSpace(ifNoneMatch)) {
             return false;
         }
@@ -485,11 +470,6 @@ public partial class QueriesController : ControllerBase {
             return false;
         }
 
-        if (analysis.ProjectionType is null && !hasProducerETag) {
-            Log.ETagDecodeSkipped(logger, correlationId);
-            return false;
-        }
-
         return true;
     }
 
@@ -501,11 +481,11 @@ public partial class QueriesController : ControllerBase {
 
     private static QueryResponseMetadata MergeQueryMetadata(
         QueryResponseMetadata? producerMetadata,
-        string? gatewayETag,
+        string? producerETag,
         bool isNotModified,
         DateTimeOffset servedAt)
         => new(
-            ETag: gatewayETag,
+            ETag: producerETag,
             IsNotModified: producerMetadata?.Provenance == QueryResponseProvenance.ProjectionBacked
                 ? isNotModified
                 : null,
@@ -646,25 +626,26 @@ public partial class QueriesController : ControllerBase {
         return new HeaderProjectionTypeAnalysis(firstProjectionType, false);
     }
 
-    private static bool ETagMatches(string? ifNoneMatch, string currentETag, bool hasProducerETag) {
+    private static bool IsStrongETagToken(string? etag)
+        => etag is { Length: > 0 and <= MaxMetadataHeaderValueLength }
+            && etag != "*"
+            && !etag.StartsWith("W/", StringComparison.OrdinalIgnoreCase)
+            && etag.All(IsOpaqueETagCharacter);
+
+    private static bool IsOpaqueETagCharacter(char character)
+        => character is '!' or (>= '#' and <= '~');
+
+    private static bool ETagMatches(string? ifNoneMatch, string producerETag) {
         if (ifNoneMatch is null || !TryGetConditionalValidators(ifNoneMatch, out List<string> validators)) {
             return false;
         }
 
-        foreach (string validator in validators) {
-            string candidate = validator.Trim('"');
-            if ((hasProducerETag && validator.StartsWith('"') || SelfRoutingETag.TryDecode(candidate, out _, out _))
-                && string.Equals(candidate, currentETag, StringComparison.Ordinal)) {
-                return true;
-            }
-        }
-
-        return false;
+        return validators.Any(validator => string.Equals(validator.Trim('"'), producerETag, StringComparison.Ordinal));
     }
 
     private static bool TryGetConditionalValidators(string ifNoneMatch, out List<string> validators) {
         validators = [];
-        ReadOnlySpan<char> header = ifNoneMatch.AsSpan().Trim();
+        ReadOnlySpan<char> header = ifNoneMatch.AsSpan();
         int start = 0;
         bool inQuotes = false;
         for (int i = 0; i <= header.Length; i++) {
@@ -678,19 +659,18 @@ public partial class QueriesController : ControllerBase {
                 }
             }
 
-            string candidate = header[start..i].Trim().ToString();
+            string candidate = header[start..i].Trim(" \t").ToString();
             if (validators.Count == MaxIfNoneMatchValues || candidate.Length == 0 || inQuotes) {
                 return false;
             }
 
             if (candidate.StartsWith('"')) {
-                if (!EntityTagHeaderValue.TryParse(candidate, out EntityTagHeaderValue? parsed)
-                    || parsed.IsWeak || parsed.Tag == "*") {
+                if (candidate.Length < 2 || candidate.Length > MaxMetadataHeaderValueLength + 2
+                    || !candidate.EndsWith('"') || !candidate[1..^1].All(IsOpaqueETagCharacter)) {
                     return false;
                 }
             }
-            else if (candidate == "*" || candidate.StartsWith("W/", StringComparison.OrdinalIgnoreCase)
-                || candidate.Any(static character => character == '"' || char.IsWhiteSpace(character) || char.IsControl(character))) {
+            else if (!IsStrongETagToken(candidate)) {
                 return false;
             }
 
@@ -802,18 +782,6 @@ public partial class QueriesController : ControllerBase {
             Level = LogLevel.Warning,
             Message = "If-None-Match contained too many values. ParsedValueCount={ParsedValueCount}, MaximumAllowed={MaximumAllowed}. Skipping Gate 1 pre-check.")]
         public static partial void TooManyIfNoneMatchValues(ILogger logger, int parsedValueCount, int maximumAllowed);
-
-        [LoggerMessage(
-            EventId = 1065,
-            Level = LogLevel.Warning,
-            Message = "ETag pre-check failed. Proceeding without ETag optimization: CorrelationId={CorrelationId}, ExceptionType={ExceptionType}.")]
-        public static partial void ETagPreCheckFailed(ILogger logger, string correlationId, string exceptionType);
-
-        [LoggerMessage(
-            EventId = 1066,
-            Level = LogLevel.Debug,
-            Message = "Self-routing ETag decode skipped (malformed or old-format). Proceeding to query: CorrelationId={CorrelationId}.")]
-        public static partial void ETagDecodeSkipped(ILogger logger, string correlationId);
 
         [LoggerMessage(
             EventId = 1067,

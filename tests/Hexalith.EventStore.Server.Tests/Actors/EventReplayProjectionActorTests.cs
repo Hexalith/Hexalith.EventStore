@@ -336,6 +336,60 @@ public partial class EventReplayProjectionActorTests {
     }
 
     [Fact]
+    public async Task ExecuteQueryAsync_ValidatorIsDeterministicAndBoundToReadStateBytes() {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
+        // Forces three state reads so the stable validator is verified independently of the actor cache.
+        _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        var revisionOne = new ProjectionState(TestProjectionType, TestTenantId, """{ "count": 42 }"""u8.ToArray());
+        ProjectionState revisionTwo = revisionOne with { StateBytes = """{"count":43}"""u8.ToArray() };
+        _ = stateManager.TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<ProjectionState>(true, revisionOne),
+                new ConditionalValue<ProjectionState>(true, revisionOne with { StateBytes = [.. revisionOne.StateBytes] }),
+                new ConditionalValue<ProjectionState>(true, revisionTwo));
+
+        QueryEnvelope envelope = CreateTestEnvelope();
+        QueryResult first = await actor.QueryAsync(envelope, TestContext.Current.CancellationToken);
+        QueryResult repeated = await actor.QueryAsync(envelope, TestContext.Current.CancellationToken);
+        QueryResult changed = await actor.QueryAsync(envelope, TestContext.Current.CancellationToken);
+
+        first.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
+        changed.GetPayload().GetProperty("count").GetInt32().ShouldBe(43);
+        string firstTag = first.Metadata.ShouldNotBeNull().ETag.ShouldNotBeNull();
+        SelfRoutingETag.TryDecode(firstTag, out string? projectionType, out string? firstDigest).ShouldBeTrue();
+        projectionType.ShouldBe(TestProjectionType);
+        firstDigest.ShouldBe("-MgRMZaOot2T-_g3q-E4Tw");
+        repeated.Metadata.ShouldNotBeNull().ETag.ShouldBe(firstTag);
+
+        SelfRoutingETag.TryDecode(changed.Metadata.ShouldNotBeNull().ETag, out string? changedType, out string? changedDigest)
+            .ShouldBeTrue();
+        changedType.ShouldBe(TestProjectionType);
+        changedDigest.ShouldBe("9y6teHqiNxIMi1FJ-jNkfA");
+        _ = await stateManager.Received(3).TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("counter:projection")]
+    [InlineData(null)]
+    public async Task ExecuteQueryAsync_InvalidProjectionType_OmitsValidator(string? invalidProjectionType) {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, _, _) = CreateActor();
+        ProjectionState state = CreateTestState(invalidProjectionType ?? new string('x', 101));
+        _ = stateManager.TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<ProjectionState>(true, state));
+
+        QueryResult result = await actor.QueryAsync(CreateTestEnvelope(), TestContext.Current.CancellationToken);
+
+        result.Success.ShouldBeTrue();
+        result.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
+        result.Metadata?.ETag.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task ExecuteQueryAsync_WithCancellationToken_PassesTokenToStateRead() {
         (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
         QueryEnvelope envelope = CreateTestEnvelope();
@@ -383,22 +437,23 @@ public partial class EventReplayProjectionActorTests {
     }
 
     [Fact]
-    public async Task QueryAsync_CacheHit_DoesNotCallStateManagerAgain() {
+    public async Task QueryAsync_CacheHitKeepsValidator_ChangedCacheStampReadsNewState() {
         (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
 
         // Use projection type matching the envelope domain to avoid projection type
         // discovery skip (CachingProjectionActor skips caching on first call when
         // ProjectionType differs from envelope.Domain).
         ProjectionState state = CreateTestState(projectionType: "counter");
+        ProjectionState updatedState = state with { StateBytes = """{"count":43}"""u8.ToArray() };
         QueryEnvelope envelope = CreateTestEnvelope();
 
-        // Same ETag on both calls -> second call should be a cache hit
+        // Two reads share an actor cache stamp. The third sees an invalidation.
         _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns("etag-stable");
+            .Returns("cache-stamp-1", "cache-stamp-1", "cache-stamp-2");
 
         _ = stateManager.TryGetStateAsync<ProjectionState>(
             EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<ProjectionState>(true, state));
+            .Returns(new ConditionalValue<ProjectionState>(true, state), new ConditionalValue<ProjectionState>(true, updatedState));
 
         // First call: cache miss -> reads from state manager
         QueryResult result1 = await actor.QueryAsync(envelope);
@@ -408,9 +463,18 @@ public partial class EventReplayProjectionActorTests {
         QueryResult result2 = await actor.QueryAsync(envelope);
         result2.Success.ShouldBeTrue();
         result2.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
+        string cachedValidator = result2.Metadata.ShouldNotBeNull().ETag.ShouldNotBeNull();
+        cachedValidator.ShouldBe(result1.Metadata.ShouldNotBeNull().ETag);
 
         // TryGetStateAsync should only be called once (first cache miss)
         _ = await stateManager.Received(1).TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
+
+        QueryResult changed = await actor.QueryAsync(envelope);
+        changed.Success.ShouldBeTrue();
+        changed.GetPayload().GetProperty("count").GetInt32().ShouldBe(43);
+        changed.Metadata.ShouldNotBeNull().ETag.ShouldNotBeNull().ShouldNotBe(cachedValidator);
+        _ = await stateManager.Received(2).TryGetStateAsync<ProjectionState>(
             EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
     }
 

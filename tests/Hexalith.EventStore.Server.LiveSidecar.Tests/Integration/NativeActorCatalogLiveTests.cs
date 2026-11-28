@@ -392,6 +392,8 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
             }
             var result = await new DefaultProjectionActorInvoker(proxyFactory).InvokeAsync(actorId, "ProjectionActor", new QueryEnvelope("tenant-a", "counter", "one", "get-counter-status", [], "native-query", "native-user", "one"), TestContext.Current.CancellationToken);
             result.Success.ShouldBeTrue(); result.GetPayload().GetProperty("count").GetInt32().ShouldBe(7);
+            // Self-routing validator for the persisted {"count":7} bytes.
+            result.Metadata.ShouldNotBeNull().ETag.ShouldBe("Y291bnRlcg.sL6vWj2-gq6EGsiL3DsRdA");
             var aggregate = proxyFactory.Create(new ActorId("tenant-a:counter:one"), "AggregateActor");
             await aggregate.InvokeMethodAsync<AggregateStreamMetadata>(nameof(IAggregateActor.GetStreamMetadataAsync), TestContext.Current.CancellationToken);
             foreach (string kind in new[] { "wrong-channel", "remote-service", "unknown-actor", "unknown-method" })

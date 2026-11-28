@@ -2,7 +2,8 @@
 title: 'Story 2.18: Bind Conditional Queries To The Returned Representation'
 type: 'bugfix'
 created: '2026-11-28'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_commit: '629d3325684d603887dfb2d916909a70b83e765a'
 route: 'dispatch'
 review_loop_iteration: 0
 story_key: '2-18-bind-conditional-queries-to-the-returned-representation'
@@ -66,13 +67,13 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/Hexalith.EventStore/Controllers/QueriesController.cs` -- Remove L397-407 post-read `eTagService.GetCurrentETagAsync` call, validate producer `Metadata.ETag` as a wire-safe strong validator before header/body/304 emission, and keep constructor signatures warning-free -- stops detached validator attachment while preserving NFR12.
-- [ ] `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs` -- In `ExecuteQueryAsync`, compute a deterministic 16-byte SHA-256 self-routing ETag from valid `ProjectionType` + `StateBytes` and pass it via `QueryResponseMetadata(ETag: ...)` -- binds replay projection validators to the returned bytes without schema changes.
-- [ ] `tests/Hexalith.EventStore.ProviderVerification/StatefulQueryRouter.cs` -- Bind `Metadata.ETag` directly for tagged provider states using `StatefulETagService` constants -- aligns Pact fixture with producer-bound validators.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` -- Replace post-read `IETagService` tests with producer-bound tests, cover every I/O matrix row, and assert `IETagService` is never invoked by `Submit` -- proves AC 1–3 at controller layer.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs` -- Test deterministic self-routing ETag generation, change on state update, and omission on invalid projection type -- proves actor-level representation binding.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Integration/QueryResponseProvenancePersistenceTests.cs` -- Add typed + untyped Kestrel/`EventStoreGatewayClient` tests for untagged rev-1 with rev-2 advance (`200`, no ETag, preserved metadata, no follow-up `304`) and producer-bound `200`/`304`/changed `200` -- proves controller + client contract.
-- [ ] `docs/reference/query-api.md` -- Update Conditional Requests docs to remove post-read fallback wording -- keeps docs truthful.
+- [x] `src/Hexalith.EventStore/Controllers/QueriesController.cs` -- Remove L397-407 post-read `eTagService.GetCurrentETagAsync` call, validate producer `Metadata.ETag` as a wire-safe strong validator before header/body/304 emission, and keep constructor signatures warning-free -- stops detached validator attachment while preserving NFR12.
+- [x] `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs` -- In `ExecuteQueryAsync`, compute a deterministic 16-byte SHA-256 self-routing ETag from valid `ProjectionType` + `StateBytes` and pass it via `QueryResponseMetadata(ETag: ...)` -- binds replay projection validators to the returned bytes without schema changes.
+- [x] `tests/Hexalith.EventStore.ProviderVerification/StatefulQueryRouter.cs` -- Bind `Metadata.ETag` directly for tagged provider states using `StatefulETagService` constants -- aligns Pact fixture with producer-bound validators.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` -- Replace post-read `IETagService` tests with producer-bound tests, cover every I/O matrix row, and assert `IETagService` is never invoked by `Submit` -- proves AC 1–3 at controller layer.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs` -- Test deterministic self-routing ETag generation, change on state update, and omission on invalid projection type -- proves actor-level representation binding.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Integration/QueryResponseProvenancePersistenceTests.cs` -- Add typed + untyped Kestrel/`EventStoreGatewayClient` tests for untagged rev-1 with rev-2 advance (`200`, no ETag, preserved metadata, no follow-up `304`) and producer-bound `200`/`304`/changed `200` -- proves controller + client contract.
+- [x] `docs/reference/query-api.md` -- Update Conditional Requests docs to remove post-read fallback wording -- keeps docs truthful.
 
 **Acceptance Criteria:**
 - Given a `ProjectionBacked` read returning revision 1 without a validator while revision 2 advances, when served through `QueriesController` and `EventStoreGatewayClient`, then the response is `200` with revision 1's payload, independent projection metadata, and no header/body ETag, and a conditional follow-up carrying revision 2's tag returns `200`.
@@ -81,13 +82,48 @@ context:
 
 ## Implementation Notes
 
+- The gateway validates the producer token after authorization and routing and uses the same accepted value in the response header, body metadata, and conditional comparison. Replay projections derive a self-routing validator from the selected state's bytes. The actor cache continues to use its existing invalidation stamp.
+- The regression tests select revision 1, persist revision 2, and then return revision 1. The detached service fixture exposes a self-routing tag for revision 2, so its use would attach the wrong validator and permit a false `304`. Raw HTTP, typed SDK, and untyped SDK cases check the original read and the conditional retry.
+
 ## Spec Change Log
 
+- 2026-11-28. Implemented the approved producer-bound validator design. Review strengthened the wire, cache, length-limit, and provider-state assertions and clarified the query documentation.
+
 ## Review Triage Log
+
+| Finding | Verdict | Route and evidence |
+| --- | --- | --- |
+| Blind 1. Paging metadata on `304` | Medium | Deferred. The bodyless response has no paging carrier. This behavior predates the change, and the approved story preserves the conditional guard for explicit request paging. |
+| Blind 2. Dotted opaque tags treated as self-routing | Medium | Deferred. The existing decoder accepts any nonempty suffix after a decodable prefix, which can make two quoted opaque tokens appear to name different projections. |
+| Blind 3. Repeated conditional parsing | Low | Rejected. The two existing parse calls use the same bounded parser and preserve the same result. Consolidating their control flow is outside this correction. |
+| Blind 4. Unnamed projection fixtures | Medium | Patch. The fixtures supplied no producer tag and could pass with the required projection-name guard removed. |
+| Blind 5. Raw ETag omission | Medium | Patch. Client normalization replaces body metadata from the header. Assert both wire carriers directly alongside the typed and untyped client checks. |
+| Blind 6. Replay producer transport | Medium | Patch. The Kestrel test substitutes the actor invoker and cannot prove replay actor remoting. Add a content-derived tag assertion to the existing live Dapr proof. |
+| Blind 7. Cache hit may compare two null tags | Low | Patch. Assert the producer tag survives a warm hit and changes when the cache stamp invalidates the previous state. |
+| Blind 8. Pact fixture service shares producer values | Low | Rejected. Controller and Kestrel tests already assert that the service receives no calls, including the regression where the service holds a later tag. The provider states preserve the consumer's established validator values. |
+| Blind 9. SDK and raw HTTP wording | Low | Patch. The SDK quotes an opaque token before transmission, while the server splits bare list members at commas. Document both behaviors and the validator length limit. |
+| Blind 10. Stale architecture and router description | Low | Patch. Update the pre-routing lookup description and remove the obsolete fallback claim from the router comment. |
+| Blind 11. Verification section lists expected results | Low | Rejected as a code change. Actual verification and the guarded completion result are recorded during this workflow. |
+| Blind 12. Review diff contains an intervening commit | False | Rejected. The workflow requires the full diff from the captured baseline. The workflow and Python fixture hunks belong to intervening commit `4505d0688c4f191fe480d10f6accf6be7644c8c0`, as confirmed by the current worktree diff. |
+| Edge 1. Detached fixture tag cannot reproduce old `304` | Medium | Patch. The old service-only matcher required a self-routing tag, and the in-memory store returned a numeric token. Make the test service return a self-routing validator for the advanced persisted entry. |
+| Edge 2. Client normalization masks raw ETag | Medium | Patch. Shared cause and fix with Blind 5. |
+| Verification 1. Replay validator across Dapr | Medium | Patch. Shared cause and fix with Blind 6. |
+| Verification 2. Inclusive 4096-character limit | Low | Patch. Exercise the maximum supported length in the producer-bound `200`, `304`, and changed `200` sequence. |
+| Verification 3. Provider state coverage | Medium | Patch. Exercise the three newly tagged states with the existing real Kestrel provider test and assert their consumer-pinned status and tag. |
 
 ## Verification
 
 **Commands:**
-- `dotnet build Hexalith.EventStore.slnx -c Release -warnaserror -p:NuGetAudit=false` -- expected: 0 warnings, 0 errors.
-- Build and run `Hexalith.EventStore.Server.Tests`, `Hexalith.EventStore.ProviderVerification.Tests`, `Hexalith.EventStore.Client.Tests`, `Hexalith.EventStore.QueryRouting.Tests`, `Hexalith.EventStore.RestApi.Generators.Tests`, and `Hexalith.EventStore.Sample.Tests` in `Release` -- expected: 0 failed.
-- `python3 -B tools/validate-phase-4-story-completion.py --spec _bmad-output/implementation-artifacts/spec-2-18-bind-conditional-queries-to-the-returned-representation.md --target spec --write` -- expected: verify Phase 4 gate; keep status open and record diagnostic if refused for NFR12.
+
+- `dotnet build Hexalith.EventStore.slnx -c Release -warnaserror` uses the repository's enabled NuGet audit.
+- `dotnet test --project tests/<project>/<project>.csproj -c Release --no-build --no-restore` runs each of the six requested suites after the solution build. The Server run uses the pinned signed Tenants Contracts 7.0.0 archive in a private fixture package root.
+- `dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net11.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method '*NativeQueryRegisteredActorsAndLifecycleKeepActualChannelCatalogAndMethodBoundaries'` passed all six cases using the pinned Dapr 1.19.1 runtime. This checks the expected content-derived tag after persisted actor reactivation and native remoting.
+- `python3 -B tools/validate-phase-4-story-completion.py --spec _bmad-output/implementation-artifacts/spec-2-18-bind-conditional-queries-to-the-returned-representation.md --target spec --write` checks the guarded completion transition.
+
+**Results on the reviewed tree**
+
+- Release solution build passed with zero warnings and errors. The focused Server matrix passed 534 cases without skips, and `git diff --check` passed.
+- Server passed 8,653 cases with 25 existing skips. Client passed 2,490 with two existing skips. Query Routing passed 15, REST API Generators passed 320, and Sample passed 268, all without failures or skips.
+- `dotnet test --project tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj -c Release --no-build --no-restore` exited 2 with 82 passes and one failure. `ObserveLive_RecordsCurrentProvenanceWithoutInventingApproval` requires a clean provider source worktree and reports `RuntimeMatches == false` for the local edits. The real Kestrel Pact cases passed.
+- The standalone Aspire baseline started but `timeout 35s aspire wait eventstore --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` timed out while the `security` resource was unhealthy. The AppHost was stopped after inspection.
+- The guarded completion command exited 1 with `ADAPTER_UNAVAILABLE` for NFR12. Completion requires a story-owned evidence adapter, fresh authenticated approval, and a seal. The spec remains `in-review` and the sprint row stays `in-progress` with the full Provider Verification check outstanding.

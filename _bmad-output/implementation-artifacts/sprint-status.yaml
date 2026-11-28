@@ -43,7 +43,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 2026-11-26
+last_updated: 2026-11-28
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -108,7 +108,7 @@ development_status:
   # 2026-11-14 code review (owned paths 37f0b65ef..2bd75f6b2): 1 test patch applied (UnconditionalSuppressMessage ban), 201/201;
   # 2 existing deferrals kept, 20 rejected. 2bd75f6b2 is green in CI 43531295585.
   2-17-generated-code-and-generator-build-quality: done
-  2-18-bind-conditional-queries-to-the-returned-representation: backlog
+  2-18-bind-conditional-queries-to-the-returned-representation: in-progress
   2-19-classify-and-redact-query-adapter-failures: backlog
   epic-2-retrospective: done
 

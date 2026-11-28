@@ -1,4 +1,5 @@
 
+using System.Buffers.Text;
 using Dapr.Actors.Runtime;
 using Dapr.Actors.Client;
 using System.Security.Cryptography;
@@ -353,8 +354,21 @@ public partial class EventReplayProjectionActor(
             return QueryResult.Failure("No projection state available for this aggregate");
         }
 
-        Log.PersistedStateReturned(logger, Id.GetId(), result.Value.ProjectionType);
-        return QueryResult.FromPayload(result.Value.GetState(), result.Value.ProjectionType);
+        ProjectionState state = result.Value;
+        Log.PersistedStateReturned(logger, Id.GetId(), state.ProjectionType);
+        return QueryResult.FromPayload(state.GetState(), state.ProjectionType, GetRepresentationMetadata(state));
+    }
+
+    private static QueryResponseMetadata? GetRepresentationMetadata(ProjectionState state) {
+        string projectionType = state.ProjectionType;
+        // Use the same routable projection names as the actor cache.
+        if (string.IsNullOrWhiteSpace(projectionType) || projectionType.Length > 100 || projectionType.Contains(':')) {
+            return null;
+        }
+
+        Span<byte> digest = stackalloc byte[SHA256.HashSizeInBytes];
+        _ = SHA256.HashData(state.StateBytes, digest);
+        return new QueryResponseMetadata(ETag: SelfRoutingETag.Encode(projectionType, Base64Url.EncodeToString(digest[..16])));
     }
 
     private static void ValidateState(ProjectionState state) {

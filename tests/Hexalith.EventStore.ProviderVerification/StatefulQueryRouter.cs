@@ -28,7 +28,7 @@ internal sealed class StatefulQueryRouter(ProviderStateCoordinator coordinator) 
         _ = Interlocked.Increment(ref _invocationCount);
         QueryRouterResult result = SupportedProviderStates.RequireActive(coordinator) switch
         {
-            "query-empty-result" => Success(_emptyPayload, 0),
+            "query-empty-result" => Success(_emptyPayload, 0, StatefulETagService.QueryETag),
             "query-malformed-payload" => new(false, null, false, QueryAdapterFailureReason.InvalidEnvelope),
             "query-forbidden" => new(false, null, false, QueryAdapterFailureReason.Forbidden),
             "query-not-found" => new(false, null, true),
@@ -39,21 +39,23 @@ internal sealed class StatefulQueryRouter(ProviderStateCoordinator coordinator) 
                 query.AggregateId,
                 2,
                 1),
-            "query-fresh-data" or "query-etag-match" or "query-etag-no-cache"
-                or "query-auth-tenant" => Success(_rowPayload, 1),
-            "query-large-valid-metadata" => Success(_rowPayload, 73),
+            "query-etag-match" => Success(_rowPayload, 1, StatefulETagService.CacheETag),
+            "query-etag-no-cache" => Success(_rowPayload, 1, StatefulETagService.CallerETag),
+            "query-fresh-data" => Success(_rowPayload, 1, StatefulETagService.QueryETag),
+            "query-auth-tenant" => Success(_rowPayload, 1),
+            "query-large-valid-metadata" => Success(_rowPayload, 73, StatefulETagService.QueryETag),
             _ => throw new InvalidOperationException("provider-query-state-unsupported"),
         };
         return Task.FromResult(result);
     }
 
-    private static QueryRouterResult Success(JsonElement payload, long totalCount)
+    private static QueryRouterResult Success(JsonElement payload, long totalCount, string? etag = null)
         => new(
             true,
             payload,
             false,
             ProjectionType: "orders",
-            Metadata: new QueryResponseMetadata(Paging: new QueryPagingMetadata(
+            Metadata: new QueryResponseMetadata(ETag: etag, Paging: new QueryPagingMetadata(
                 PageSize: 25,
                 Offset: 0,
                 TotalCount: totalCount,

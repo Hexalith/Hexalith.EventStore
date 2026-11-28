@@ -6950,3 +6950,11 @@ reason: The qualification profile still declares `deadLetterTopic: qualification
 status: open
 
 ---
+
+- source_spec: `spec-2-18-bind-conditional-queries-to-the-returned-representation.md`
+  summary: Define how conditional revalidation preserves producer paging metadata when the request has no explicit paging inputs.
+  evidence: The existing gateway can return `304` for an otherwise eligible request while the selected response has paging metadata. The bodyless carrier and the client omit paging in that case. Story 2.18 preserves the existing guard for explicit request paging.
+
+- source_spec: `spec-2-18-bind-conditional-queries-to-the-returned-representation.md`
+  summary: Distinguish opaque dotted validators from self-routing validators during mixed-projection detection.
+  evidence: The existing decoder accepts any nonempty suffix after a decodable prefix. A list of quoted opaque validators with different decodable prefixes can therefore miss revalidation despite containing the selected validator.

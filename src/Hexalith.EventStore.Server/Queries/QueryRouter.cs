@@ -208,8 +208,8 @@ public partial class QueryRouter : IQueryRouter {
                     continue;
                 }
 
-                // The read may overlap target removal. Unknown provenance suppresses both the
-                // producer validator and the gateway's fallback validator for this response.
+                // The read may overlap target removal. Unknown provenance suppresses
+                // the producer validator for this response.
                 QueryResponseMetadata metadata = erasing
                     ? QueryResponseProvenancePolicy.NormalizeMetadata(
                         result.Metadata, QueryResponseProvenance.Unknown, ProjectionLifecycleState.Unknown)

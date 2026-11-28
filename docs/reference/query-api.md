@@ -158,9 +158,11 @@ If the query pipeline returns a `200 OK` envelope with `"success": false`, the .
 
 ### Conditional Requests with ETag
 
-`POST /api/v1/queries` supports the `If-None-Match` header. Authentication, tenant/RBAC authorization, and query routing execute before comparison. The gateway compares the current representation ETag when a `ProjectionBacked` result names its projection. A match may then return `304 Not Modified`. The producer's ETag takes precedence over a later validator-service lookup. A strong opaque ETag can match only when that producer supplied it for the routed representation. Legacy service-only opaque validators remain cache misses. A matching projection validator on a handler-computed or unknown route never short-circuits execution and is never returned on that response.
+`POST /api/v1/queries` supports the `If-None-Match` header. Authentication, tenant/RBAC authorization, and query routing execute before comparison. The gateway emits and compares an ETag only when a `ProjectionBacked` result names its projection and the producer supplies a strong validator for the returned representation. The producer supplies an unquoted, wire-safe ASCII token of up to 4096 characters. The gateway quotes it in the HTTP response header and includes the unquoted token in the response metadata. A matching validator may return `304 Not Modified`. Missing or invalid validators, unnamed projections, and handler-computed or unknown routes return the full response without an ETag.
 
-HTTP examples show quoted ETags because HTTP headers require quoted entity tags. The .NET gateway client exposes response ETags as normalized unquoted strong tokens. When calling `SubmitQueryAsync`, pass either the normalized token (`etag-value-from-previous-response`) or the quoted header form (`"etag-value-from-previous-response"`); the client sends the quoted HTTP header. This includes normalized opaque tokens containing commas: the API treats an unquoted token as one validator, so a returned `opaque,validator` can be reused directly. Empty values omit the header. Unsupported weak, wildcard, quoted tag-list, or malformed input falls back to an unconditional request. The server validates the entire list and its ten-value limit before decoding or comparing candidates, rejects wildcard/weak or malformed list members, and skips comparison when encoded validators name mixed projection types. Commas inside quoted opaque tags remain part of one validator.
+For raw HTTP, send quoted entity tags in `If-None-Match`. Multiple validators are comma-separated. A comma inside a quoted tag stays part of that validator. The gateway validates the full list against its ten-value limit, rejects weak, wildcard, malformed, or oversized validators, and skips comparison when self-routing validators name different projection types.
+
+The .NET gateway client exposes the response ETag as an unquoted token. Pass either that token or one quoted entity tag to `SubmitQueryAsync`. The client sends a single quoted HTTP header value, so the SDK token `opaque,validator` is sent as `"opaque,validator"`. Empty, weak, wildcard, quoted-list, or malformed SDK inputs produce an unconditional request.
 
 ```bash
 $ curl -X POST https://localhost:5001/api/v1/queries \
@@ -190,7 +192,7 @@ X-Hexalith-Warning-Codes: degraded_search
 
 The bodyless response retains available metadata in the existing `X-Hexalith-Projection-Version`, `X-Hexalith-Served-At`, `X-Hexalith-Is-Stale`, `X-Hexalith-Is-Degraded`, and `X-Hexalith-Warning-Codes` headers alongside provenance and lifecycle. Projection version is opaque and independent of ETag; it is never inferred from the validator. A single version value can contain commas. The server emits a version header only when it can carry the value unchanged: wire-safe ASCII, at most 4096 characters, no controls, and no leading or trailing whitespace. If a nonempty producer version cannot survive that carrier exactly, a matching ETag retains `200` with the original payload and unchanged JSON metadata instead of losing independent version evidence on `304`. Null or empty versions retain the existing conditional behavior; version tokens are never trimmed or normalized. Served-at uses the invariant round-trip timestamp format. The .NET gateway client preserves these fields for both typed and untyped results. It ignores missing, malformed, actual multiple header values, oversized (over 4096 characters), or control-containing metadata values; it does not split a version's contents to infer duplicates. Warning codes use the existing comma-separated carrier, at most sixteen non-empty ASCII letter/digit/`-`/`_`/`.` tokens within 4096 characters. When producer warnings cannot fit that carrier, the server retains `200` with the JSON evidence. Canonical lifecycle controls the compatibility flags; legacy flags do not establish a lifecycle when lifecycle evidence is absent.
 
-If the projection changed, the API returns `200 OK` with a new response body and an updated opaque `ETag` header. Conditional comparison is skipped for requests that carry explicit query policy inputs or a non-empty `payload` other than an exact entity `id`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes. If provenance is not `ProjectionBacked`, or producer freshness is otherwise unknown and the request explicitly requires freshness, the response fails closed with `query_projection_stale`.
+When the validator changes, the API returns `200 OK` with a new response body and an updated opaque `ETag` header. Conditional comparison is skipped for requests that carry explicit query policy inputs or a non-empty `payload` other than an exact entity `id`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. If provenance is not `ProjectionBacked`, or producer freshness is otherwise unknown and the request explicitly requires freshness, the response fails closed with `query_projection_stale`.
 
 ### Error Responses
 
@@ -278,7 +280,7 @@ EventStore uses three deterministic actor ID modes. Routing segments must not co
 
 If `projectionType` is omitted, EventStore uses `queryType` as the first actor ID segment for compatibility. If `projectionActorType` is omitted, EventStore uses DAPR actor type `ProjectionActor`; otherwise it uses the supplied actor type selector. `projectionActorType` does not bypass authentication, authorization, tenant validation, or future Story 22.3 policy. The field must not contain colons (`:`, reserved as the actor ID segment separator) or dangerous characters; it is limited to 64 characters. These constraints are enforced at the gateway validator before the value reaches the actor proxy factory.
 
-The `/project` projection update/rebuild contract is separate from `POST /api/v1/queries` query serving. Projection update endpoints change read-model state and ETags; query actors serve current read-model data.
+Projection update and rebuild endpoints change read-model state and invalidate actor caches. Query actors serve read-model data and may supply a validator bound to the representation they return.
 
 ## POST /api/v1/queries/validate
 
@@ -321,7 +323,7 @@ If authorization fails, the endpoint still returns `200 OK`, but `isAuthorized` 
 
 ## POST /projections/changed
 
-Notify the Command API that a projection changed so it can regenerate the current ETag and optionally broadcast a SignalR refresh signal.
+Notify the Command API that a projection changed so it can regenerate the actor-cache stamp and optionally broadcast a SignalR refresh signal.
 
 This endpoint is designed for internal projection/update flows rather than browser clients. The current implementation consumes a `ProjectionChangedNotification` payload:
 
@@ -341,7 +343,7 @@ This endpoint is designed for internal projection/update flows rather than brows
 }
 ```
 
-The API uses this signal to refresh the projection ETag and, when SignalR is enabled, broadcast a `ProjectionChanged` message to subscribed clients in the corresponding `{projectionType}:{tenantId}` group.
+The API uses this signal to refresh the actor-cache stamp and, when SignalR is enabled, broadcast a `ProjectionChanged` message to subscribed clients in the corresponding `{projectionType}:{tenantId}` group.
 
 ## SignalR Hub: /hubs/projection-changes
 
@@ -424,7 +426,7 @@ The sample Blazor UI demonstrates three client reactions to this signal-only mod
 
 ## Projection Type Naming
 
-Projection type names are base64url-encoded inside self-routing ETags (format: `{base64url(projectionType)}.{base64url-guid}`, where `base64url-guid` is the 16-byte GUID encoded with the URL-safe alphabet and trailing `=` padding stripped). Longer names produce proportionally longer ETag tokens in HTTP headers. Use short, descriptive names to keep ETags compact.
+Projection type names are base64url-encoded inside self-routing ETags. Replay projections use the format `{base64url(projectionType)}.{base64url(digest)}`, where `digest` is the first 16 bytes of SHA-256 over the returned state's persisted bytes. The separate actor-cache stamp uses a generated GUID in the suffix. Both use the URL-safe alphabet with padding stripped. Short projection type names keep HTTP ETags compact.
 
 | Recommended | Avoid | Reason |
 |-------------|-------|--------|

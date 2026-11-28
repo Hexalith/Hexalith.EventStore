@@ -235,6 +235,9 @@ public sealed class RealKestrelPactTests
     [Theory]
     [InlineData("query-fresh-data", null, true, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.OK, 1, 1)]
     [InlineData("query-etag-match", "\"b3JkZXJz.Y2FjaGUtMQ\"", true, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.NotModified, 1, 1)]
+    [InlineData("query-etag-no-cache", "\"b3JkZXJz.Y2FsbGVyLTE\"", true, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.NotModified, 1, 1)]
+    [InlineData("query-empty-result", null, true, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.OK, 1, 1)]
+    [InlineData("query-large-valid-metadata", "\"b3JkZXJz.cXVlcnktdmFsaWRhdG9yLTE\", \"b3JkZXJz.cXVlcnktMg\", \"b3JkZXJz.cXVlcnktMw\"", true, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.OK, 1, 1)]
     [InlineData("query-auth-tenant", null, true, "GetOrders", "orders", "tenant-contract-case", HttpStatusCode.OK, 1, 1)]
     [InlineData("query-fresh-data", null, false, "GetOrders", "orders", "tenant-contract-a", HttpStatusCode.Forbidden, 0, 1)]
     [InlineData("query-fresh-data", null, true, "GetOrders", "undeclared-projection", "tenant-contract-a", HttpStatusCode.ServiceUnavailable, 0, 1)]
@@ -284,7 +287,7 @@ public sealed class RealKestrelPactTests
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credential.AccessToken);
             if (validator is not null)
             {
-                request.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(validator));
+                request.Headers.IfNoneMatch.ParseAdd(validator);
             }
 
             using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -294,12 +297,18 @@ public sealed class RealKestrelPactTests
             if (expectedStatus == HttpStatusCode.OK)
             {
                 using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-                body.RootElement.GetProperty("payload").GetArrayLength().ShouldBe(1);
-                body.RootElement.GetProperty("success").GetBoolean().ShouldBeTrue();
-                body.RootElement.GetProperty("metadata").GetProperty("paging").GetProperty("totalCount").GetInt64().ShouldBe(1);
-                if (state == "query-fresh-data")
+                (int payloadSize, long totalCount) = state switch
                 {
-                    response.Headers.ETag.ShouldNotBeNull().Tag.ShouldBe("\"" + StatefulETagService.QueryETag + "\"");
+                    "query-empty-result" => (0, 0),
+                    "query-large-valid-metadata" => (1, 73),
+                    _ => (1, 1),
+                };
+                body.RootElement.GetProperty("payload").GetArrayLength().ShouldBe(payloadSize);
+                body.RootElement.GetProperty("success").GetBoolean().ShouldBeTrue();
+                body.RootElement.GetProperty("metadata").GetProperty("paging").GetProperty("totalCount").GetInt64().ShouldBe(totalCount);
+                if (state is "query-fresh-data" or "query-empty-result" or "query-large-valid-metadata")
+                {
+                    response.Headers.ETag.ShouldNotBeNull().Tag.ShouldBe("\"b3JkZXJz.cXVlcnktMQ\"");
                 }
             }
             else if (expectedStatus == HttpStatusCode.NotModified)

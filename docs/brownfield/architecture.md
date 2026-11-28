@@ -156,16 +156,16 @@ orchestrator over a checkpointed 5-step pipeline — `PipelineState` persisted f
 
 `POST /api/v1/queries` (`QueriesController`):
 
-- **Gate 1 (ETag pre-check):** if `If-None-Match` is present and no explicit policy inputs (paging/search/filter/orderby/freshness), `IETagService.GetCurrentETagAsync()` is consulted before routing → **304 Not Modified** on match (fail-open: skip on error). ETags are **self-routing** — they encode the projection type (base64url) for multi-tenant lookup.
-- **Gate 2 (execution):** route to projection actor (`EventReplayProjectionActor`, registered as DAPR type `"ProjectionActor"`), execute, set ETag response header.
-- **ETag tracking:** `ETagActor` holds the current ETag per `{ProjectionType}:{TenantId}`, persisting before updating its in-memory cache (FM-1) and degrading gracefully on load failure (FM-2).
+- **Gateway conditional response.** After authorization and routing, the gateway compares `If-None-Match` with the strong validator supplied by a named projection for the returned representation. An eligible match returns **304 Not Modified**. Explicit paging, search, filters, ordering, or freshness inputs skip the comparison.
+- **Projection execution.** `EventReplayProjectionActor`, registered as DAPR type `"ProjectionActor"`, returns a self-routing validator from the projection type and a SHA-256 digest of the state bytes it read.
+- **Actor-cache invalidation.** `CachingProjectionActor` uses `IETagService.GetCurrentETagAsync()` to read a separate cache stamp. `ETagActor` holds that stamp per `{ProjectionType}:{TenantId}`, persists it before updating its in-memory cache (FM-1), and degrades gracefully on load failure (FM-2).
 
 ## 7. Projection & Real-Time Refresh
 
 1. After events persist, `EventPublisher` fires `IProjectionUpdateOrchestrator.UpdateProjectionAsync` (fire-and-forget).
-2. `EventReplayProjectionActor.UpdateProjectionAsync` persists projection state, regenerates the ETag, and calls `IProjectionChangeNotifier`.
+2. `EventReplayProjectionActor.UpdateProjectionAsync` persists projection state and calls `IProjectionChangeNotifier`.
 3. `DaprProjectionChangeNotifier` notifies via **PubSub** (`{ProjectionType}-{TenantId}-changed`) or **Direct** (in-process ETag actor invocation), then broadcasts to SignalR via `IProjectionChangedBroadcaster` (fail-open per ADR-18.5a).
-4. The gateway also exposes `POST /projections/changed` (anonymous, DAPR pub/sub subscription `*.*.projection-changed`) which regenerates the ETag and broadcasts to the SignalR hub (`ProjectionChangedHub`).
+4. The gateway also exposes `POST /projections/changed` (anonymous, DAPR pub/sub subscription `*.*.projection-changed`) which regenerates the actor-cache stamp and broadcasts to the SignalR hub (`ProjectionChangedHub`).
 5. Clients use `EventStoreSignalRClient` (`src/Hexalith.EventStore.SignalR`) — auto-reconnect, group rejoin per `{projectionType}:{tenantId}`.
 
 ## 8. Authentication & Authorization
