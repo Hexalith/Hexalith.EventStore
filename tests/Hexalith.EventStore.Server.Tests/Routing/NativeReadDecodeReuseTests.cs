@@ -17,11 +17,7 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 /// <summary>Checks owner-scoped decoding at each fresh validation of a still-open native read lease.</summary>
 public sealed class NativeReadDecodeReuseTests(ITestOutputHelper output)
 {
-#if DEBUG
     private static bool PrivateExpected => true;
-#else
-    private static bool PrivateExpected => false;
-#endif
 
     /// <summary>Every native validation owns a closing scope, preserves an unrelated ambient scope, and freshly observes the owner.</summary>
     [Theory]

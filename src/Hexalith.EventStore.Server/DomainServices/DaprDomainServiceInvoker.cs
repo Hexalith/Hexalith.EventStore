@@ -131,7 +131,7 @@ public partial class DaprDomainServiceInvoker : IDomainServiceInvoker {
         CompleteCommandSource? completeSource = null) {
         ArgumentNullException.ThrowIfNull(command);
 
-        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        var catalogLease = catalogAuthority is null ? null : await Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogAuthority.AcquireOrBorrowScopeAsync(catalogAuthority, cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
         Hexalith.EventStore.Contracts.Routing.RouteCatalogEntry? committedTarget = catalogLease?.Snapshot
             .Resolve("command", command.TenantId, command.Domain, command.CommandType).Target;

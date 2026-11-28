@@ -26,8 +26,8 @@ public sealed class RouteCatalogEligibilityBehavior<TRequest, TResponse>(IHttpCo
             SubmitQuery query => ("query", query.Tenant, query.Domain, query.QueryType),
             _ => throw new InvalidOperationException(),
         };
-        var lease = await authority.AcquireAsync(cancellationToken).ConfigureAwait(false);
-        await using var release = lease.ConfigureAwait(false);
+        var lease = await RouteCatalogAuthority.AcquireOrBorrowScopeAsync(authority, cancellationToken).ConfigureAwait(false);
+        await using var release = new RouteCatalogLeaseReleaser(lease).ConfigureAwait(false);
         if (lease.Snapshot.Envelope.SchemaVersion == 3)
         {
             if (contexts.HttpContext is not { } context)

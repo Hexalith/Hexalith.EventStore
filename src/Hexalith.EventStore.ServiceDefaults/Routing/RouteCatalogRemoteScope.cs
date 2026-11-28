@@ -8,6 +8,7 @@ internal sealed class RouteCatalogRemoteScope : IDisposable
     private readonly IRouteCatalogRemoteBoundary? _priorBoundary;
     private readonly IReadOnlyList<RouteCatalogDispatchLease>? _prior;
     private readonly IReadOnlyList<RouteCatalogRemoteScope>? _priorMetadataScopes;
+    private readonly IReadOnlyList<RouteCatalogRemoteScope>? _priorReceiverScopes;
     private int _closed;
     private readonly CancellationToken? _receiverToken;
     private readonly CancellationTokenSource? _closure;
@@ -21,6 +22,7 @@ internal sealed class RouteCatalogRemoteScope : IDisposable
         _priorBoundary = RouteCatalogRemoteExecution.Current;
         _prior = RouteCatalogRemoteCall.Push(lease, isolated);
         _priorMetadataScopes = RouteCatalogRemoteCall.PushMetadataScope(this, isolated);
+        _priorReceiverScopes = RouteCatalogRemoteCall.PushReceiverScope(this, isolated);
     }
 
     /// <summary>Gets the actual lease held by this scope.</summary>
@@ -35,6 +37,14 @@ internal sealed class RouteCatalogRemoteScope : IDisposable
     /// <summary>Gets the original receiver cancellation and private closure tokens.</summary>
     internal IEnumerable<CancellationToken> MetadataTokens
         => _receiverToken is { } receiver ? [receiver, _closure!.Token] : [_closure!.Token];
+
+    /// <summary>Checks scope closure and original receiver cancellation under the shared lifetime gate.</summary>
+    internal void RequireScopeOpen()
+    {
+        if (IsClosed)
+            throw new RouteCatalogUnavailableException("A closed catalog receiver scope cannot admit nested work.");
+        if (_receiverToken is { } token) token.ThrowIfCancellationRequested();
+    }
 
     /// <summary>Checks closure, issuer and original receiver cancellation under the shared lifetime gate.</summary>
     internal void RequireMetadataLifetime(object issuer)
@@ -61,6 +71,7 @@ internal sealed class RouteCatalogRemoteScope : IDisposable
             try { _closure?.Dispose(); }
             finally
             {
+                RouteCatalogRemoteCall.RestoreReceiverScopes(_priorReceiverScopes);
                 RouteCatalogRemoteCall.RestoreMetadataScopes(_priorMetadataScopes);
                 RouteCatalogRemoteCall.Restore(_prior);
                 RouteCatalogRemoteExecution.Current = _priorBoundary;

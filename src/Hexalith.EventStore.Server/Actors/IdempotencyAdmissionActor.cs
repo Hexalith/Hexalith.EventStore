@@ -321,8 +321,28 @@ public sealed partial class IdempotencyAdmissionActor(
     public async Task BeginAsync(IdempotencyAdmissionTransitionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        IdempotencyAdmissionRecord record = await LoadRequiredAsync().ConfigureAwait(false);
-        EnsureFence(record, request.FencingToken);
+        IdempotencyAdmissionRecord record;
+        DateTimeOffset now;
+        if (request.Authority is { } authority)
+        {
+            ValidateAuthorityRequest(
+                authority,
+                expectedFencingToken: request.FencingToken,
+                requiredPurpose: IdempotencyExecutionPurpose.Execute);
+            (record, now) = await LoadCurrentAuthorityRecordAsync().ConfigureAwait(false);
+            if (!MatchesAuthorityIdentity(record, authority))
+            {
+                throw new InvalidOperationException("The idempotency execution authority is no longer current.");
+            }
+        }
+        else
+        {
+            await EnsureNoRedirectOrUnactivatedPromotionAsync().ConfigureAwait(false);
+            record = await LoadRequiredAsync().ConfigureAwait(false);
+            EnsureFence(record, request.FencingToken);
+            now = Max(record.LastObservedAt, Clock.GetUtcNow());
+        }
+
         if (!IdempotencyAdmissionStateTransitions.IsAllowed(
                 record.State,
                 IdempotencyAdmissionState.Pending))
@@ -330,7 +350,6 @@ public sealed partial class IdempotencyAdmissionActor(
             throw new InvalidOperationException("The admission reservation cannot begin from its current state.");
         }
 
-        DateTimeOffset now = Max(record.LastObservedAt, Clock.GetUtcNow());
         await PersistAsync(record with
         {
             State = IdempotencyAdmissionState.Pending,
@@ -344,8 +363,26 @@ public sealed partial class IdempotencyAdmissionActor(
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Result);
-        IdempotencyAdmissionRecord record = await LoadRequiredAsync().ConfigureAwait(false);
-        EnsureFence(record, request.FencingToken);
+        IdempotencyAdmissionRecord record;
+        DateTimeOffset finalizedAt;
+        if (request.Authority is { } authority)
+        {
+            ValidateAuthorityRequest(authority, expectedFencingToken: request.FencingToken);
+            (record, finalizedAt) = await LoadCurrentAuthorityRecordAsync().ConfigureAwait(false);
+            IdempotencyAdmissionState requiredState = GetRequiredAuthorityState(authority.Purpose);
+            if (record.State != requiredState || !MatchesAuthorityIdentity(record, authority))
+            {
+                throw new InvalidOperationException("The idempotency execution authority is no longer current.");
+            }
+        }
+        else
+        {
+            await EnsureNoRedirectOrUnactivatedPromotionAsync().ConfigureAwait(false);
+            record = await LoadRequiredAsync().ConfigureAwait(false);
+            EnsureFence(record, request.FencingToken);
+            finalizedAt = Max(record.LastObservedAt, Clock.GetUtcNow());
+        }
+
         if (!IdempotencyAdmissionStateTransitions.IsAllowed(
                 record.State,
                 IdempotencyAdmissionState.Terminal))
@@ -353,7 +390,6 @@ public sealed partial class IdempotencyAdmissionActor(
             throw new InvalidOperationException("The admission cannot be finalized from its current state.");
         }
 
-        DateTimeOffset finalizedAt = Max(record.LastObservedAt, Clock.GetUtcNow());
         DateTimeOffset expiresAt = record.RetentionTier switch
         {
             IdempotencyReplayRetentionTier.Mutation => finalizedAt.AddSeconds(86_400),
@@ -402,15 +438,101 @@ public sealed partial class IdempotencyAdmissionActor(
     public async Task ValidateAuthorityAsync(IdempotencyAdmissionAuthorityRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ValidateAuthorityRequest(request);
+        (IdempotencyAdmissionRecord record, DateTimeOffset effectiveNow) = await LoadCurrentAuthorityRecordAsync()
+            .ConfigureAwait(false);
+        IdempotencyAdmissionState requiredState = GetRequiredAuthorityState(request.Purpose);
+        if (record.State != requiredState || !MatchesAuthorityIdentity(record, request))
+        {
+            throw new InvalidOperationException("The idempotency execution authority is no longer current.");
+        }
+
+        if (effectiveNow > record.LastObservedAt)
+        {
+            await PersistAsync(record with { LastObservedAt = effectiveNow }).ConfigureAwait(false);
+        }
+    }
+
+    private static void ValidateAuthorityRequest(
+        IdempotencyAdmissionAuthorityRequest request,
+        long? expectedFencingToken = null,
+        IdempotencyExecutionPurpose? requiredPurpose = null)
+    {
         if (request.FencingToken <= 0
+            || (expectedFencingToken is not null && request.FencingToken != expectedFencingToken.Value)
             || string.IsNullOrWhiteSpace(request.DigestKeyVersion)
             || string.IsNullOrWhiteSpace(request.ExecutionMessageId)
             || string.IsNullOrWhiteSpace(request.ExecutionCorrelationId)
-            || !Enum.IsDefined(request.Purpose))
+            || !Enum.IsDefined(request.Purpose)
+            || (requiredPurpose is not null && request.Purpose != requiredPurpose.Value))
         {
             throw new InvalidOperationException("The idempotency execution authority is invalid.");
         }
+    }
 
+    private static IdempotencyAdmissionState GetRequiredAuthorityState(IdempotencyExecutionPurpose purpose)
+        => purpose switch
+        {
+            IdempotencyExecutionPurpose.Execute => IdempotencyAdmissionState.Pending,
+            IdempotencyExecutionPurpose.Reconcile => IdempotencyAdmissionState.UnknownProviderOutcome,
+            _ => throw new InvalidOperationException("The idempotency execution authority is invalid."),
+        };
+
+    private static bool MatchesAuthorityIdentity(
+        IdempotencyAdmissionRecord record,
+        IdempotencyAdmissionAuthorityRequest request)
+        => record.FencingToken == request.FencingToken
+            && string.Equals(record.DigestKeyVersion, request.DigestKeyVersion, StringComparison.Ordinal)
+            && string.Equals(record.ExecutionMessageId, request.ExecutionMessageId, StringComparison.Ordinal)
+            && string.Equals(record.ExecutionCorrelationId, request.ExecutionCorrelationId, StringComparison.Ordinal);
+
+    private async Task EnsureNoRedirectOrUnactivatedPromotionAsync()
+    {
+        ConditionalValue<IdempotencyAdmissionRedirectRecord> redirect = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionRedirectRecord>(RedirectStateName)
+            .ConfigureAwait(false);
+        if (redirect.HasValue)
+        {
+            if (redirect.Value.SchemaVersion != IdempotencyAdmissionRedirectRecord.CurrentSchemaVersion
+                || string.IsNullOrWhiteSpace(redirect.Value.TargetActorId))
+            {
+                throw new InvalidOperationException("The idempotency execution authority is corrupt.");
+            }
+
+            throw new InvalidOperationException("The idempotency execution authority is no longer current.");
+        }
+
+        ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
+            .ConfigureAwait(false);
+        if (promotion.HasValue)
+        {
+            ConditionalValue<IdempotencyAdmissionTombstone> tombstone = await StateManager
+                .TryGetStateAsync<IdempotencyAdmissionTombstone>(TombstoneStateName)
+                .ConfigureAwait(false);
+            ConditionalValue<IdempotencyAdmissionRecord> stored = await StateManager
+                .TryGetStateAsync<IdempotencyAdmissionRecord>(StateName)
+                .ConfigureAwait(false);
+            string currentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+                stored.HasValue ? stored.Value : null,
+                tombstone.HasValue ? tombstone.Value : null);
+            IdempotencyAdmissionPromotionRecord normalized = await NormalizePromotionAsync(
+                promotion.Value,
+                currentStateDigest).ConfigureAwait(false);
+            if (!string.Equals(normalized.CurrentStateDigest, currentStateDigest, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The idempotency execution authority is corrupt.");
+            }
+
+            if (!normalized.Activated)
+            {
+                throw new InvalidOperationException("The idempotency execution authority is no longer current.");
+            }
+        }
+    }
+
+    private async Task<(IdempotencyAdmissionRecord Record, DateTimeOffset EffectiveNow)> LoadCurrentAuthorityRecordAsync()
+    {
         ConditionalValue<IdempotencyAdmissionRedirectRecord> redirect = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionRedirectRecord>(RedirectStateName)
             .ConfigureAwait(false);
@@ -479,25 +601,7 @@ public sealed partial class IdempotencyAdmissionActor(
             throw new InvalidOperationException("The idempotency execution authority is no longer current.");
         }
 
-        IdempotencyAdmissionState requiredState = request.Purpose switch
-        {
-            IdempotencyExecutionPurpose.Execute => IdempotencyAdmissionState.Pending,
-            IdempotencyExecutionPurpose.Reconcile => IdempotencyAdmissionState.UnknownProviderOutcome,
-            _ => throw new InvalidOperationException("The idempotency execution authority is invalid."),
-        };
-        if (record.State != requiredState
-            || record.FencingToken != request.FencingToken
-            || !string.Equals(record.DigestKeyVersion, request.DigestKeyVersion, StringComparison.Ordinal)
-            || !string.Equals(record.ExecutionMessageId, request.ExecutionMessageId, StringComparison.Ordinal)
-            || !string.Equals(record.ExecutionCorrelationId, request.ExecutionCorrelationId, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("The idempotency execution authority is no longer current.");
-        }
-
-        if (effectiveNow > record.LastObservedAt)
-        {
-            await PersistAsync(record with { LastObservedAt = effectiveNow }).ConfigureAwait(false);
-        }
+        return (record, effectiveNow);
     }
 
     /// <inheritdoc/>

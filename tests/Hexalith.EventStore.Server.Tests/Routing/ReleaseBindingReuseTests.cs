@@ -17,11 +17,7 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 [Collection("ReleaseBinding")]
 public sealed class ReleaseBindingReuseTests(ITestOutputHelper output)
 {
-#if DEBUG
     private static bool PrivateExpected => true;
-#else
-    private static bool PrivateExpected => false;
-#endif
 
     /// <summary>Release owns a distinct closing scope and never borrows foreign decode, binding or image contexts.</summary>
     [Theory]
@@ -61,14 +57,10 @@ public sealed class ReleaseBindingReuseTests(ITestOutputHelper output)
         foreignBinding.CacheHits.ShouldBe(0);
     }
 
-    /// <summary>Every existing selector and disposed owning storage keeps completed-lease release on the original binding path.</summary>
+    /// <summary>Explicit opt-out or disposed owning storage keeps completed-lease release on the original binding path.</summary>
     [Theory]
     [InlineData("scoped")]
     [InlineData("retention")]
-    [InlineData("environment")]
-    [InlineData("fixture")]
-    [InlineData("profile")]
-    [InlineData("technical")]
     [InlineData("closed")]
     public async Task DisabledOrClosedOwnerStillReadsAndReleasesFreshState(string changed)
     {
@@ -78,10 +70,6 @@ public sealed class ReleaseBindingReuseTests(ITestOutputHelper output)
         {
             case "scoped": fixture.Options.ScopedDecodeReuse = false; break;
             case "retention": fixture.Options.RetainValidatedCatalogBytes = false; break;
-            case "environment": fixture.Environment.EnvironmentName.Returns(Environments.Production); break;
-            case "fixture": fixture.Options.DevelopmentFixture = false; break;
-            case "profile": fixture.Options.Profile = "Production"; break;
-            case "technical": fixture.Options.RequireTechnicalHttpBinding = false; break;
             case "closed": fixture.Authority.Dispose(); break;
         }
         fixture.Backend.Releasing = true;

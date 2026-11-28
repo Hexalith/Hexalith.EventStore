@@ -109,7 +109,7 @@ public sealed class CatalogUpdateContentionTests
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         int observations = 0;
-        var options = Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development", DevelopmentFixture = true });
+        var options = Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development", DevelopmentFixture = true, ScopedDecodeReuse = false });
         var environment = Substitute.For<IHostEnvironment>(); environment.EnvironmentName.Returns("Development");
         var authority = new RouteCatalogAuthority(store, new DevelopmentRouteCatalogTrustValidator(options, environment), options,
             new ObservedRouteCatalogHost(async token =>
@@ -160,7 +160,7 @@ public sealed class CatalogUpdateContentionTests
 
     private static RouteCatalogAuthority Authority(RouteCatalogTestFixture fixture, IRouteCatalogStateStore store)
     {
-        var options = Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development", DevelopmentFixture = true });
+        var options = Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development", DevelopmentFixture = true, ScopedDecodeReuse = false });
         var environment = Substitute.For<IHostEnvironment>(); environment.EnvironmentName.Returns("Development");
         return new(store, new DevelopmentRouteCatalogTrustValidator(options, environment), options,
             new ObservedRouteCatalogHost(_ => Task.FromResult(fixture.Observations[0])));

@@ -54,22 +54,14 @@ public sealed class CatalogAcquisitionDiagnosticsTests
             {
                 log.Records.Where(record => Equals(record["Stage"], "CatalogStateRead")).Select(record => record["Status"])
                     .ShouldBe(new object[] { "Started", "Completed", "Started", "Completed" });
-                object[] admissionWaits = ["Started", "Completed"];
-#if DEBUG
-                if (development) admissionWaits = [.. admissionWaits, .. admissionWaits];
-#endif
+                object[] admissionWaits = ["Started", "Completed", "Started", "Completed"];
                 log.Records.Where(record => Equals(record["Stage"], "CatalogAdmissionWait")).Select(record => record["Status"])
                     .ShouldBe(admissionWaits);
                 foreach (string stage in new[] { "CatalogActivationDigest", "CatalogHostCapture", "CatalogTrust", "CatalogCompareExchange", "CatalogSnapshot" })
                     CommandDispatchDiagnosticsTests.AssertClosed(log, stage, "Completed");
             }
         }
-#if DEBUG
-        if (development) observedScope.ShouldNotBeNull().Count.ShouldBe(0);
-        else observedScope.ShouldBeNull();
-#else
-        observedScope.ShouldBeNull();
-#endif
+        observedScope.ShouldNotBeNull().Count.ShouldBe(0);
         (await fixture.Store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
         CommandDispatchDiagnosticsTests.AssertPrivate(log);
     }
@@ -150,6 +142,6 @@ public sealed class CatalogAcquisitionDiagnosticsTests
 
     private static RouteCatalogAuthority Authority(RouteCatalogTestFixture fixture, IRouteCatalogHostObserver observer,
         IRouteCatalogTrustValidator trust, ILoggerFactory logging) => new(fixture.Store, trust,
-            Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development" }), observer, null,
+            Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development", ScopedDecodeReuse = false }), observer, null,
             logging.CreateLogger<RouteCatalogAuthority>());
 }

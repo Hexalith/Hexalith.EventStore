@@ -82,11 +82,11 @@ public sealed partial class SubmitCommandHandlerProjectionActivationTests
         else await Should.ThrowAsync<OperationCanceledException>(() => handler.Handle(command, caller.Token));
         await admission.Received(1).MarkRecoveryAsync(Arg.Any<IdempotencyAdmissionSession>(),
             IdempotencyAdmissionState.UnknownProviderOutcome, CancellationToken.None);
-        await admission.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+        await admission.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default!, default);
         (await persisted.GetAsync(fixture.Identity) is not null).ShouldBe(!failRestoration);
 
         session = session with { Decision = IdempotencyAdmissionDecision.UnknownProviderOutcome };
-        admission.CompleteAsync(Arg.Any<IdempotencyAdmissionSession>(), result, Arg.Any<CancellationToken>())
+        admission.CompleteAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<SubmitCommand>(), result, Arg.Any<CancellationToken>())
             .Returns(async _ => { (await persisted.GetAsync(fixture.Identity)).ShouldNotBeNull(); });
         using ServiceProvider reconciliationScope = BuildProvider(fixture.Backend, forwarding, router, replay,
             workersEnabled: !removeOwnership, clock: fixture.Clock, coordinator: admission);
@@ -100,7 +100,7 @@ public sealed partial class SubmitCommandHandlerProjectionActivationTests
                 await fallbackEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
                 response.IsCompleted.ShouldBeFalse();
                 (await persisted.GetAsync(fixture.Identity)).ShouldNotBeNull();
-                await admission.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+                await admission.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default!, default);
                 resumeFallback.SetResult();
             }
             reconciled = await response.WaitAsync(TimeSpan.FromSeconds(5));

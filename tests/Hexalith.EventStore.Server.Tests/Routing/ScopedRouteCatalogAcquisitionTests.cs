@@ -19,12 +19,9 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 /// <summary>Proves computational reuse preserves fresh state, ETag, local-host and trust admission on every attempt.</summary>
 public sealed class ScopedRouteCatalogAcquisitionTests
 {
-#if DEBUG
     private static bool ReuseExpected => true;
-#else
-    private static bool ReuseExpected => false;
-#endif
-    /// <summary>Only the complete actual private selection enables a scope, even when acquisition otherwise refuses.</summary>
+
+    /// <summary>Default-mode computational reuse works across Development and Production while honoring explicit opt-out.</summary>
     [Theory]
     [InlineData("enabled")]
     [InlineData("flag")]
@@ -68,13 +65,14 @@ public sealed class ScopedRouteCatalogAcquisitionTests
             environment: changed == "missing-environment" ? null : environment);
         try { await using var lease = await authority.AcquireAsync(TestContext.Current.CancellationToken); }
         catch (RouteCatalogUnavailableException) when (changed is "fixture" or "profile" or "environment") { }
-        if (changed == "enabled" && ReuseExpected) observed.ShouldNotBeNull().Count.ShouldBe(0);
+        bool expectedScope = changed != "flag" && ReuseExpected;
+        if (expectedScope) observed.ShouldNotBeNull().Count.ShouldBe(0);
         else observed.ShouldBeNull();
         // Release scheduling is no longer a private selector: every real acquisition marks its open turn.
         schedulingObserved.ShouldBe(true);
-        hostMemoObserved.ShouldBe(changed == "enabled" && ReuseExpected);
+        hostMemoObserved.ShouldBe(expectedScope);
         RouteCatalogDecodeScope.Current.ShouldBeNull();
-        concurrentPoolObserved.ShouldBe(changed == "enabled" && ReuseExpected);
+        concurrentPoolObserved.ShouldBe(expectedScope);
     }
 
     /// <summary>The exact SDK bootstrap options and real host environment select reuse without raw profile keys.</summary>

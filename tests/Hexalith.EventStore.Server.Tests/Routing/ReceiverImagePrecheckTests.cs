@@ -21,11 +21,7 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 [Collection("RouteCatalogImageBufferPool")]
 public sealed class ReceiverImagePrecheckTests
 {
-#if DEBUG
     private static bool PrivateExpected => true;
-#else
-    private static bool PrivateExpected => false;
-#endif
 
     [Theory]
     [InlineData("dapr/config")]
@@ -95,10 +91,6 @@ public sealed class ReceiverImagePrecheckTests
     [Theory]
     [InlineData("scoped")]
     [InlineData("retention")]
-    [InlineData("fixture")]
-    [InlineData("technical")]
-    [InlineData("profile")]
-    [InlineData("environment")]
     [InlineData("closed")]
     [InlineData("custom")]
     [InlineData("missing")]
@@ -110,10 +102,6 @@ public sealed class ReceiverImagePrecheckTests
         {
             case "scoped": fixture.Options.ScopedDecodeReuse = false; break;
             case "retention": fixture.Options.RetainValidatedCatalogBytes = false; break;
-            case "fixture": fixture.Options.DevelopmentFixture = false; break;
-            case "technical": fixture.Options.RequireTechnicalHttpBinding = false; break;
-            case "profile": fixture.Options.Profile = "Production"; break;
-            case "environment": fixture.App.Services.GetRequiredService<IHostEnvironment>().EnvironmentName = "Production"; break;
             case "closed": owner!.Dispose(); break;
         }
         using var foreignMemo = new RouteCatalogImageDigestMemo();

@@ -60,7 +60,7 @@ public sealed class IdempotencyAdmissionCoordinator : IIdempotencyAdmissionCoord
     {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
-        var catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        var catalogLease = catalogAuthority is null ? null : await RouteCatalogAuthority.AcquireOrBorrowScopeAsync(catalogAuthority, cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
         if (catalogLease is not null)
         {
@@ -251,6 +251,53 @@ public sealed class IdempotencyAdmissionCoordinator : IIdempotencyAdmissionCoord
     }
 
     /// <inheritdoc/>
+    public async Task BeginAsync(
+        IdempotencyAdmissionSession session,
+        SubmitCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(command);
+        var catalogLease = await AcquireSessionLeaseAsync(session, cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        if (catalogLease is not null)
+        {
+            var selected = catalogLease.Snapshot.Resolve("command", command.Tenant, command.Domain, command.CommandType);
+            _ = catalogLease.Snapshot.Admission(selected.Declaration);
+        }
+
+        if (session.Decision is not (IdempotencyAdmissionDecision.Execute
+            or IdempotencyAdmissionDecision.Recoverable))
+        {
+            throw new IdempotencyCapabilityValidationException("The idempotency admission session is not executable.");
+        }
+
+        IdempotencyExecutionContext context;
+        try
+        {
+            context = RequireSessionBoundContext(session);
+            await (executionContextProtector
+                ?? throw new InvalidOperationException("Idempotency execution-context protection is unavailable."))
+                .ValidateCapabilityAsync(context, command, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (InvalidOperationException ex) when (ex is not IdempotencyCapabilityValidationException)
+        {
+            throw new IdempotencyCapabilityValidationException(ex.Message, ex);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        var authority = new IdempotencyAdmissionAuthorityRequest(
+            context.FencingToken,
+            context.DigestKeyVersion,
+            context.MessageId,
+            context.CorrelationId,
+            IdempotencyExecutionPurpose.Execute);
+        await RouteCatalogRemoteCall.InvokeAsync(CreateActor(session.ActorId), catalogRemoteProxy => catalogRemoteProxy
+            .BeginAsync(new IdempotencyAdmissionTransitionRequest(session.FencingToken, authority))).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    /// <inheritdoc/>
     public async Task ValidateExecutionCapabilityAsync(
         IdempotencyAdmissionSession session,
         SubmitCommand command,
@@ -335,6 +382,49 @@ public sealed class IdempotencyAdmissionCoordinator : IIdempotencyAdmissionCoord
     }
 
     /// <inheritdoc/>
+    public async Task CompleteAsync(
+        IdempotencyAdmissionSession session,
+        SubmitCommand command,
+        CommandProcessingResult result,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(result);
+        var catalogLease = await AcquireSessionLeaseAsync(session, cancellationToken).ConfigureAwait(false);
+        await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
+        if (catalogLease is not null)
+        {
+            var selected = catalogLease.Snapshot.Resolve("command", command.Tenant, command.Domain, command.CommandType);
+            _ = catalogLease.Snapshot.Admission(selected.Declaration);
+        }
+
+        IdempotencyExecutionPurpose purpose = session.Decision switch
+        {
+            IdempotencyAdmissionDecision.Execute or IdempotencyAdmissionDecision.Recoverable
+                => IdempotencyExecutionPurpose.Execute,
+            IdempotencyAdmissionDecision.UnknownProviderOutcome
+                => IdempotencyExecutionPurpose.Reconcile,
+            _ => throw new InvalidOperationException("The idempotency admission session is not executable."),
+        };
+        IdempotencyExecutionContext context = RequireSessionBoundContext(session);
+        await (executionContextProtector
+            ?? throw new InvalidOperationException("Idempotency execution-context protection is unavailable."))
+            .ValidateCapabilityAsync(context, command, cancellationToken)
+            .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        var authority = new IdempotencyAdmissionAuthorityRequest(
+            context.FencingToken,
+            context.DigestKeyVersion,
+            context.MessageId,
+            context.CorrelationId,
+            purpose);
+        await RouteCatalogRemoteCall.InvokeAsync(CreateActor(session.ActorId), catalogRemoteProxy => catalogRemoteProxy
+            .CompleteAsync(new IdempotencyAdmissionCompletionRequest(session.FencingToken, result, authority))).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    /// <inheritdoc/>
     public async Task MarkRecoveryAsync(
         IdempotencyAdmissionSession session,
         IdempotencyAdmissionState state,
@@ -355,7 +445,7 @@ public sealed class IdempotencyAdmissionCoordinator : IIdempotencyAdmissionCoord
         IdempotencyAdmissionSession session, CancellationToken cancellationToken)
     {
         if (catalogAuthority is null) return null;
-        var lease = await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        var lease = await RouteCatalogAuthority.AcquireOrBorrowScopeAsync(catalogAuthority, cancellationToken).ConfigureAwait(false);
         if (session.CatalogRootDigest == lease.Snapshot.RootDigest && session.CatalogEpoch == lease.Snapshot.Epoch) return lease;
         await lease.DisposeAsync().ConfigureAwait(false);
         throw new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogUnavailableException("The admission session belongs to a different catalog generation or epoch.");

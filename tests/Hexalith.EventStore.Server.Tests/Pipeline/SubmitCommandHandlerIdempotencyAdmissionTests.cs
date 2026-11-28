@@ -58,7 +58,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         writes.ShouldBe(2);
         await context.Coordinator.Received(1).MarkRecoveryAsync(Arg.Any<IdempotencyAdmissionSession>(),
             IdempotencyAdmissionState.UnknownProviderOutcome, CancellationToken.None);
-        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default!, default);
         await context.Router.DidNotReceiveWithAnyArgs().RouteCommandAsync(default!, default);
     }
 
@@ -101,7 +101,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         var aggregate = new AggregateIdentity(execution.Tenant, execution.Domain, execution.AggregateId);
         var accepted = new CommandProcessingResult(true, EventCount: 1);
         List<string> calls = [];
-        _ = context.Coordinator.BeginAsync(session, cancellation.Token)
+        _ = context.Coordinator.BeginAsync(session, execution, cancellation.Token)
             .Returns(_ => { calls.Add("begin"); return Task.CompletedTask; });
         _ = context.Coordinator.ValidateExecutionAsync(session, execution, cancellation.Token)
             .Returns(_ => { calls.Add("fence"); return Task.CompletedTask; });
@@ -111,7 +111,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             .Returns(_ => { calls.Add("route"); return accepted; });
         _ = projection.UpdateProjectionAsync(aggregate, CancellationToken.None)
             .Returns(_ => { calls.Add("projection"); return Task.CompletedTask; });
-        _ = context.Coordinator.CompleteAsync(session, accepted, cancellation.Token)
+        _ = context.Coordinator.CompleteAsync(session, execution, accepted, cancellation.Token)
             .Returns(_ => { calls.Add("complete"); return Task.CompletedTask; });
         await worker.StartAsync(CancellationToken.None);
 
@@ -121,9 +121,9 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
 
             result.MessageId.ShouldBe(context.Command.MessageId);
             calls.ShouldBe(workerOwnsOutbox
-                ? ["begin", "fence", "activation", "route", "activation", "fence", "fence", "fence", "complete"]
-                : ["begin", "fence", "activation", "route", "activation", "fence", "fence", "fence", "projection", "fence", "complete"]);
-            await context.Coordinator.ReceivedWithAnyArgs(workerOwnsOutbox ? 4 : 5).ValidateExecutionAsync(default!, default!, default);
+                ? ["begin", "activation", "route", "activation", "fence", "complete"]
+                : ["begin", "activation", "route", "activation", "fence", "fence", "projection", "complete"]);
+            await context.Coordinator.ReceivedWithAnyArgs(workerOwnsOutbox ? 1 : 2).ValidateExecutionAsync(default!, default!, default);
             await projection.ReceivedWithAnyArgs(workerOwnsOutbox ? 0 : 1).UpdateProjectionAsync(default!, default);
         }
         finally
@@ -145,13 +145,13 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         var error = await Should.ThrowAsync<IdempotencyAdmissionFailureException>(() => context.Handler.Handle(context.Command, default));
         error.StatusCode.ShouldBe(503);
         await context.Coordinator.Received(1).MarkRecoveryAsync(Arg.Any<IdempotencyAdmissionSession>(), IdempotencyAdmissionState.Recoverable, default);
-        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default!, default);
         var recovered = await context.Handler.Handle(context.Command, default);
         recovered.MessageId.ShouldBe(context.Command.MessageId);
         var originalExecution = context.Command with { IdempotencyKey = null };
         await context.Coordinator.Received().ValidateExecutionAsync(retry, originalExecution, default);
         await context.Router.Received(2).RouteFencedCommandAsync(originalExecution, session.ExecutionContext!, default);
-        await context.Coordinator.Received(1).CompleteAsync(Arg.Any<IdempotencyAdmissionSession>(),
+        await context.Coordinator.Received(1).CompleteAsync(Arg.Any<IdempotencyAdmissionSession>(), originalExecution,
             Arg.Is<CommandProcessingResult>(result => result.Accepted && result.EventCount == 1), default);
     }
 
@@ -159,7 +159,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
     public async Task Handle_RecoverableContenderLosingBeginCannotResetWinningFence()
     {
         TestContext context = CreateContext(IdempotencyAdmissionDecision.Recoverable);
-        context.Coordinator.BeginAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<CancellationToken>())
+        context.Coordinator.BeginAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Already pending")));
         await Should.ThrowAsync<InvalidOperationException>(() => context.Handler.Handle(context.Command, default));
         await context.Coordinator.DidNotReceiveWithAnyArgs().MarkRecoveryAsync(default!, default, default);
@@ -209,6 +209,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             Arg.Any<CancellationToken>());
         await context.Coordinator.DidNotReceive().BeginAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
             Arg.Any<CancellationToken>());
         await context.Coordinator.DidNotReceive().ValidateExecutionAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
@@ -216,6 +217,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             Arg.Any<CancellationToken>());
         await context.Coordinator.DidNotReceive().CompleteAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
             Arg.Any<CommandProcessingResult>(),
             Arg.Any<CancellationToken>());
         await context.Coordinator.DidNotReceive().MarkRecoveryAsync(
@@ -372,20 +374,13 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
         var calls = new List<string>();
         bool terminal = false;
-        _ = context.Coordinator.ValidateExecutionCapabilityAsync(
+        _ = context.Coordinator.BeginAsync(
                 Arg.Any<IdempotencyAdmissionSession>(),
                 Arg.Any<SubmitCommand>(),
                 Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 terminal.ShouldBeFalse();
-                calls.Add("capability");
-                return Task.CompletedTask;
-            });
-        _ = context.Coordinator.BeginAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
-                calls.ShouldHaveSingleItem().ShouldBe("capability");
                 calls.Add("begin");
                 return Task.CompletedTask;
             });
@@ -418,6 +413,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             });
         _ = context.Coordinator.CompleteAsync(
                 Arg.Any<IdempotencyAdmissionSession>(),
+                Arg.Any<SubmitCommand>(),
                 Arg.Any<CommandProcessingResult>(),
                 Arg.Any<CancellationToken>())
             .Returns(_ =>
@@ -430,10 +426,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
 
         _ = await context.Handler.Handle(context.Command, CancellationToken.None);
 
-        calls[0].ShouldBe("capability");
-        calls[1].ShouldBe("begin");
-        calls.ShouldContain("route");
-        calls[^1].ShouldBe("complete");
+        calls.ShouldBe(["begin", "route", "validate", "complete"]);
         calls.ShouldNotContain("invalid-post-terminal-validation");
         terminal.ShouldBeTrue();
     }
@@ -442,18 +435,15 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
     public async Task Handle_TamperedCapabilityLeavesAdmissionUnchangedBeforeBegin()
     {
         TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
-        _ = context.Coordinator.ValidateExecutionCapabilityAsync(
+        _ = context.Coordinator.BeginAsync(
                 Arg.Any<IdempotencyAdmissionSession>(),
                 Arg.Any<SubmitCommand>(),
                 Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("tampered capability"));
+            .Returns<Task>(_ => throw new IdempotencyCapabilityValidationException("tampered capability"));
 
         _ = await Should.ThrowAsync<InvalidOperationException>(
             () => context.Handler.Handle(context.Command, CancellationToken.None));
 
-        await context.Coordinator.DidNotReceive().BeginAsync(
-            Arg.Any<IdempotencyAdmissionSession>(),
-            Arg.Any<CancellationToken>());
         await context.Coordinator.DidNotReceive().MarkRecoveryAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
             Arg.Any<IdempotencyAdmissionState>(),
@@ -468,7 +458,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
     public async Task Handle_ContextThatLostDurableAuthorityPerformsZeroDownstreamWork()
     {
         TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
-        _ = context.Coordinator.ValidateExecutionAsync(
+        _ = context.Coordinator.BeginAsync(
                 Arg.Any<IdempotencyAdmissionSession>(),
                 Arg.Any<SubmitCommand>(),
                 Arg.Any<CancellationToken>())
@@ -479,6 +469,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
 
         await context.Coordinator.Received(1).BeginAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
             Arg.Any<CancellationToken>());
         await context.Router.DidNotReceive().RouteFencedCommandAsync(
             Arg.Any<SubmitCommand>(),
@@ -486,6 +477,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             Arg.Any<CancellationToken>());
         await context.Coordinator.DidNotReceive().CompleteAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
             Arg.Any<CommandProcessingResult>(),
             Arg.Any<CancellationToken>());
         context.StatusStore.GetAllStatuses().ShouldBeEmpty();
@@ -536,6 +528,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         result.CorrelationId.ShouldBe(context.Command.CorrelationId);
         await context.Coordinator.Received(1).BeginAsync(
             Arg.Is<IdempotencyAdmissionSession>(session => session.FencingToken == 3),
+            Arg.Is<SubmitCommand>(command => command.MessageId == firstMessageId && command.CorrelationId == firstCorrelationId),
             Arg.Any<CancellationToken>());
         await context.Router.Received(1).RouteFencedCommandAsync(
             Arg.Is<SubmitCommand>(command =>
@@ -572,10 +565,12 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         result.ResultPayload.ShouldBe(reconciled.ResultPayload);
         await context.Coordinator.Received(1).CompleteAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
             reconciled,
             Arg.Any<CancellationToken>());
         await context.Coordinator.DidNotReceive().BeginAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
             Arg.Any<CancellationToken>());
         await context.Router.DidNotReceive().RouteFencedCommandAsync(
             Arg.Any<SubmitCommand>(),
@@ -643,13 +638,13 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             () => handler.Handle(context.Command, CancellationToken.None));
         unavailable.Code.ShouldBe("idempotency_reconciliation_unavailable");
         unavailable.Retryable.ShouldBeTrue();
-        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default!, default);
 
         writeUnavailable = false;
         DateTimeOffset receiptExpiry = clock.GetUtcNow().AddHours(24);
         SubmitCommandResult recovered = await handler.Handle(context.Command, CancellationToken.None);
         recovered.MessageId.ShouldBe(messageId);
-        await context.Coordinator.Received(1).CompleteAsync(Arg.Any<IdempotencyAdmissionSession>(), reconciled, Arg.Any<CancellationToken>());
+        await context.Coordinator.Received(1).CompleteAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<SubmitCommand>(), reconciled, Arg.Any<CancellationToken>());
 
         IdempotencyAdmissionSession session = await context.Coordinator.AdmitAsync(context.Command, CancellationToken.None);
         _ = context.Coordinator.AdmitAsync(context.Command, Arg.Any<CancellationToken>())
@@ -688,7 +683,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         failure.StatusCode.ShouldBe(503);
         failure.Retryable.ShouldBeTrue();
         context.StatusStore.GetStatusHistory(context.Command.Tenant, context.Command.MessageId).Count.ShouldBe(domain is null ? 0 : 1);
-        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default);
+        await context.Coordinator.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default!, default!, default);
         await context.Router.DidNotReceiveWithAnyArgs().RouteFencedCommandAsync(default!, default!, default);
     }
 
@@ -706,6 +701,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             Arg.Any<CancellationToken>());
         await context.Coordinator.DidNotReceive().CompleteAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
             Arg.Any<CommandProcessingResult>(),
             Arg.Any<CancellationToken>());
         await context.Router.DidNotReceive().RouteFencedCommandAsync(
@@ -748,6 +744,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
 
         await context.Coordinator.Received(1).BeginAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
             Arg.Any<CancellationToken>());
         await context.Coordinator.Received(1).MarkRecoveryAsync(
             Arg.Any<IdempotencyAdmissionSession>(),
@@ -767,7 +764,7 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             IdempotencyAdmissionDecision.Execute,
             projectionActivationOutbox: outbox,
             executionContext: ExecutionContext());
-        _ = context.Coordinator.BeginAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<CancellationToken>())
+        _ = context.Coordinator.BeginAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(_ => { calls.Add("begin"); return Task.CompletedTask; });
         _ = outbox.EnsureAsync(Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(), Arg.Any<CancellationToken>())
             .Returns(_ => { calls.Add("outbox"); return Task.CompletedTask; });

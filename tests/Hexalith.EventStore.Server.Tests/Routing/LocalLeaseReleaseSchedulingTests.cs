@@ -291,7 +291,7 @@ public sealed class LocalLeaseReleaseSchedulingTests
         IRouteCatalogQuiescenceVerifier? verifier = null)
     {
         var options = Options.Create(new RouteCatalogHostOptions { Identity = fixture.Hosts[0], Profile = "Development",
-            DevelopmentFixture = true, RequireTechnicalHttpBinding = true, SerializeLocalLeaseRelease = selected });
+            DevelopmentFixture = true, RequireTechnicalHttpBinding = true, ScopedDecodeReuse = false, SerializeLocalLeaseRelease = selected });
         IHostEnvironment environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Development);
         return new(fixture.Store, new DevelopmentRouteCatalogTrustValidator(options, environment), options,

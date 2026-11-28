@@ -12,19 +12,59 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     private int _remoteCalls;
     private TaskCompletionSource? _remoteDrain;
 
+    private readonly object? _issuer;
+    private readonly RouteCatalogDispatchLease? _borrowedFrom;
     private readonly object? _metadataIssuer;
     private readonly byte[]? _metadataActivation;
 
     /// <summary>Coordinates original private scope closure with actual remote enrollment.</summary>
     internal static object MetadataLifetimeGate => _stateGate;
 
-    /// <summary>Marks only a real, durably acquired private metadata scope with its actual issuing authority.</summary>
-    internal RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snapshot, Func<Task> release, object metadataIssuer, byte[] activation)
+    /// <summary>Marks a real, durably acquired dispatch lease with its actual issuing authority.</summary>
+    internal RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snapshot, Func<Task> release, object issuer)
         : this(snapshot, release)
     {
-        ArgumentNullException.ThrowIfNull(metadataIssuer);
+        ArgumentNullException.ThrowIfNull(issuer);
+        _issuer = issuer;
+    }
+
+    /// <summary>Marks only a real, durably acquired private metadata scope with its actual issuing authority.</summary>
+    internal RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snapshot, Func<Task> release, object metadataIssuer, byte[] activation)
+        : this(snapshot, release, metadataIssuer)
+    {
         _metadataIssuer = metadataIssuer;
         _metadataActivation = activation.ToArray();
+    }
+
+    private RouteCatalogDispatchLease(RouteCatalogDispatchLease parent)
+        : this(parent.Snapshot, static () => Task.CompletedTask)
+    {
+        RouteCatalogDispatchLease root = parent.Root;
+        _borrowedFrom = root;
+        _issuer = root._issuer;
+        Activation = root.Activation;
+    }
+
+    /// <summary>Gets the underlying durable lease owned by the enclosing dispatch scope.</summary>
+    internal RouteCatalogDispatchLease Root => _borrowedFrom ?? this;
+
+    /// <summary>Gets whether this lease borrows an enclosing durable fence instead of owning its own.</summary>
+    internal bool IsBorrowed => _borrowedFrom is not null;
+
+    /// <summary>Checks whether this lease (or its underlying durable parent) was issued by the exact authority instance.</summary>
+    internal bool IsIssuedBy(object issuer) => ReferenceEquals(Root._issuer, issuer);
+
+    /// <summary>Creates a non-owning scoped lease handle bound to an open durable parent lease.</summary>
+    internal static RouteCatalogDispatchLease CreateBorrowed(RouteCatalogDispatchLease parent)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+        RouteCatalogDispatchLease root = parent.Root;
+        lock (_stateGate)
+        {
+            if (parent._closedForExecution || root._closedForExecution)
+                throw new RouteCatalogUnavailableException("A disposed catalog dispatch scope cannot admit nested work.");
+            return new RouteCatalogDispatchLease(root);
+        }
     }
 
     /// <summary>Gets whether this lease carries a platform-issued metadata scope marker.</summary>
@@ -58,7 +98,8 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     internal void RequireOpenForExecution()
     {
         lock (_stateGate)
-            if (_closedForExecution) throw new RouteCatalogUnavailableException("A disposed catalog dispatch scope cannot admit detached work.");
+            if (_closedForExecution || (_borrowedFrom is not null && _borrowedFrom._closedForExecution))
+                throw new RouteCatalogUnavailableException("A disposed catalog dispatch scope cannot admit detached work.");
     }
 
     /// <summary>Enrolls the complete captured scope before any remote factory can run, or refuses it without effects.</summary>
@@ -66,9 +107,13 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     {
         lock (_stateGate)
         {
-            if (leases.Any(lease => lease._closedForExecution))
+            if (leases.Any(lease => lease._closedForExecution || lease.Root._closedForExecution))
                 throw new RouteCatalogUnavailableException("A disposed catalog dispatch scope cannot start remote execution.");
-            foreach (var lease in leases) lease._remoteCalls++;
+            foreach (var lease in leases)
+            {
+                lease._remoteCalls++;
+                if (lease._borrowedFrom is { } root) root._remoteCalls++;
+            }
         }
     }
 
@@ -79,9 +124,16 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
         {
             foreach (var lease in leases)
             {
-                if (--lease._remoteCalls != 0) continue;
-                lease._remoteDrain?.TrySetResult();
-                lease._remoteDrain = null;
+                if (--lease._remoteCalls == 0)
+                {
+                    lease._remoteDrain?.TrySetResult();
+                    lease._remoteDrain = null;
+                }
+                if (lease._borrowedFrom is { } root && --root._remoteCalls == 0)
+                {
+                    root._remoteDrain?.TrySetResult();
+                    root._remoteDrain = null;
+                }
             }
         }
     }
@@ -96,7 +148,11 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     /// <summary>Retains the durable fence when remote completion is ambiguous. It never expires automatically.</summary>
     public void Retain()
     {
-        lock (_stateGate) _retained = true;
+        lock (_stateGate)
+        {
+            _retained = true;
+            if (_borrowedFrom is { } root) root._retained = true;
+        }
     }
 
     /// <summary>Awaits remote execution and retains this fence if transport completion cannot prove quiescence. A token already cancelled on entry throws before enrollment and retains nothing.</summary>
@@ -119,6 +175,11 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
             if (_disposed) return;
             _closedForExecution = true;
             _disposed = true;
+            if (_borrowedFrom is { } root)
+            {
+                if (_remoteCalls != 0) root._retained = true;
+                return;
+            }
             if (_remoteCalls != 0) _retained = true;
             if (_retained) return;
         }

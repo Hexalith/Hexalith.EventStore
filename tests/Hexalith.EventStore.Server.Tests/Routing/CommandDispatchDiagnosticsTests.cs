@@ -398,10 +398,8 @@ public sealed class CommandDispatchDiagnosticsTests
 
     [Theory]
     [InlineData(false, "Admission", "Admission")]
-    [InlineData(false, "ExecutionCapability", "ExecutionCapability")]
     [InlineData(false, "ExecutionBegin", "ExecutionBegin")]
-    [InlineData(false, "InitialFence", "ExecutionFence")]
-    [InlineData(false, "CompletionFence", "ExecutionFence")]
+    [InlineData(false, "AdvisoryFence", "ExecutionFence")]
     [InlineData(false, "AdmissionCompletion", "AdmissionCompletion")]
     [InlineData(true, "Admission", "Admission")]
     [InlineData(true, "ReconciliationFence", "ExecutionFence")]
@@ -429,17 +427,16 @@ public sealed class CommandDispatchDiagnosticsTests
             ExecutionContext: ExecutionContext(execution), ExecutionMessageId: execution.MessageId, ExecutionCorrelationId: execution.CorrelationId);
         var coordinator = Substitute.For<IIdempotencyAdmissionCoordinator>();
         coordinator.AdmitAsync(command, Arg.Any<CancellationToken>()).Returns(async call => { await HoldAsync("Admission", call.Arg<CancellationToken>()); return (IdempotencyAdmissionSession?)session; });
-        coordinator.ValidateExecutionCapabilityAsync(session, Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(call => HoldAsync("ExecutionCapability", call.Arg<CancellationToken>()));
-        coordinator.BeginAsync(session, Arg.Any<CancellationToken>()).Returns(call => HoldAsync("ExecutionBegin", call.Arg<CancellationToken>()));
+        coordinator.BeginAsync(session, Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(call => HoldAsync("ExecutionBegin", call.Arg<CancellationToken>()));
         int fences = 0;
         coordinator.ValidateExecutionAsync(session, Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<SubmitCommand>().MessageId.ShouldBe(execution.MessageId);
-            string step = ++fences == 1 ? unknown ? "ReconciliationFence" : "InitialFence" : unknown ? "ReconciledFence" : "CompletionFence";
+            string step = unknown ? (++fences == 1 ? "ReconciliationFence" : "ReconciledFence") : "AdvisoryFence";
             return HoldAsync(step, call.Arg<CancellationToken>());
         });
         var result = new CommandProcessingResult(true, ResultPayload: "ok");
-        coordinator.CompleteAsync(session, result, Arg.Any<CancellationToken>()).Returns(call => HoldAsync("AdmissionCompletion", call.Arg<CancellationToken>()));
+        coordinator.CompleteAsync(session, Arg.Any<SubmitCommand>(), result, Arg.Any<CancellationToken>()).Returns(call => HoldAsync("AdmissionCompletion", call.Arg<CancellationToken>()));
         var router = Substitute.For<ICommandRouter>();
         router.RouteFencedCommandAsync(Arg.Any<SubmitCommand>(), session.ExecutionContext!, Arg.Any<CancellationToken>()).Returns(result);
         router.ReconcileFencedCommandAsync(Arg.Any<SubmitCommand>(), session.ExecutionContext!, Arg.Any<CancellationToken>()).Returns(async call =>
@@ -451,7 +448,7 @@ public sealed class CommandDispatchDiagnosticsTests
         statuses.ReadStatusAsync(command.Tenant, execution.MessageId, Arg.Any<CancellationToken>()).Returns(
             new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow, command.AggregateId, 0, null, null, null, execution.MessageId));
         var archives = Substitute.For<ICommandArchiveStore>();
-        archives.ReadCommandAsync(command.Tenant, execution.MessageId, Arg.Any<CancellationToken>()).Returns(execution.ToArchivedCommand());
+        archives.ReadCommandAsync(command.Tenant, execution.MessageId, Arg.Any<CancellationToken>()).Returns((ArchivedCommand?)null);
         var handler = new SubmitCommandHandler(statuses, archives, router, null, null, new NoOpProjectionUpdateOrchestrator(),
             logging.CreateLogger<SubmitCommandHandler>(), idempotencyAdmissionCoordinator: coordinator);
         try
@@ -469,7 +466,7 @@ public sealed class CommandDispatchDiagnosticsTests
             returned.MessageId.ShouldBe(execution.MessageId);
             returned.CorrelationId.ShouldBe(command.CorrelationId);
             log.Records.Last(record => Equals(record["Stage"], stageName))["Status"].ShouldBe("Completed");
-            await coordinator.Received(1).CompleteAsync(session, result, cancellation.Token);
+            await coordinator.Received(1).CompleteAsync(session, Arg.Any<SubmitCommand>(), result, cancellation.Token);
             await coordinator.DidNotReceiveWithAnyArgs().MarkRecoveryAsync(default!, default, default);
             AssertProtectedOutput(log);
         }
@@ -529,11 +526,10 @@ public sealed class CommandDispatchDiagnosticsTests
             : new InvalidOperationException("protected-execution-message protected-execution-correlation protected-admission-actor protected-key protected-proof");
         var coordinator = Substitute.For<IIdempotencyAdmissionCoordinator>();
         coordinator.AdmitAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(session);
-        if (failureAt == "begin") coordinator.BeginAsync(session, Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
-        int fences = 0;
+        if (failureAt == "begin") coordinator.BeginAsync(session, Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
         coordinator.ValidateExecutionAsync(session, Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>()).Returns(_ =>
-            ++fences == 2 && failureAt == "validation" ? Task.FromException(original) : Task.CompletedTask);
-        if (failureAt == "completion") coordinator.CompleteAsync(session, Arg.Any<CommandProcessingResult>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
+            failureAt == "validation" ? Task.FromException(original) : Task.CompletedTask);
+        if (failureAt == "completion") coordinator.CompleteAsync(session, Arg.Any<SubmitCommand>(), Arg.Any<CommandProcessingResult>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
         IdempotencyAdmissionState? state = null;
         coordinator.MarkRecoveryAsync(session, Arg.Any<IdempotencyAdmissionState>(), Arg.Any<CancellationToken>()).Returns(async call =>
         {
@@ -551,7 +547,8 @@ public sealed class CommandDispatchDiagnosticsTests
             ? Task.FromException<CommandStatusRecord?>(original)
             : Task.FromResult<CommandStatusRecord?>(new(CommandStatus.Completed, DateTimeOffset.UtcNow, execution.AggregateId, 0, null, null, null, execution.MessageId)));
         var archives = Substitute.For<ICommandArchiveStore>();
-        archives.ReadCommandAsync(execution.Tenant, execution.MessageId, Arg.Any<CancellationToken>()).Returns(execution.ToArchivedCommand());
+        archives.ReadCommandAsync(execution.Tenant, execution.MessageId, Arg.Any<CancellationToken>()).Returns(
+            failureAt == "validation" ? (ArchivedCommand?)null : execution.ToArchivedCommand());
         var handler = new SubmitCommandHandler(statuses, archives, router, null, null, new NoOpProjectionUpdateOrchestrator(),
             logging.CreateLogger<SubmitCommandHandler>(), idempotencyAdmissionCoordinator: coordinator);
         try

@@ -7,7 +7,20 @@ public static class RouteCatalogRemoteCall
 {
     private static readonly AsyncLocal<IReadOnlyList<RouteCatalogDispatchLease>?> Active = new();
     private static readonly AsyncLocal<IReadOnlyList<RouteCatalogRemoteScope>?> MetadataScopes = new();
+    private static readonly AsyncLocal<IReadOnlyList<RouteCatalogRemoteScope>?> ReceiverScopes = new();
     internal static IReadOnlyList<RouteCatalogDispatchLease> Current => Active.Value ?? [];
+
+    /// <summary>Tracks trusted SDK receiver lifetimes so nested lease borrows enforce original cancellation and closure.</summary>
+    internal static IReadOnlyList<RouteCatalogRemoteScope>? PushReceiverScope(RouteCatalogRemoteScope scope, bool isolated)
+    {
+        var prior = ReceiverScopes.Value;
+        if (scope.IsReceiver || prior is not null)
+            ReceiverScopes.Value = isolated ? [scope] : [.. prior ?? [], scope];
+        return prior;
+    }
+
+    /// <summary>Restores the enclosing receiver lifetime markers.</summary>
+    internal static void RestoreReceiverScopes(IReadOnlyList<RouteCatalogRemoteScope>? prior) => ReceiverScopes.Value = prior;
 
     /// <summary>Tracks selected private scope lifetimes without changing ordinary remote enrollment.</summary>
     internal static IReadOnlyList<RouteCatalogRemoteScope>? PushMetadataScope(RouteCatalogRemoteScope scope, bool isolated)
@@ -33,6 +46,21 @@ public static class RouteCatalogRemoteCall
                 throw new RouteCatalogUnavailableException("Nested metadata requires every original receiver layer.");
             foreach (var scope in scopes) scope.RequireMetadataLifetime(issuer);
             return scopes.ToArray();
+        }
+    }
+
+    /// <summary>Verifies that any active receiver scope wrapping this durable lease is still open and uncanceled.</summary>
+    internal static void RequireOpenReceiverScopes(RouteCatalogDispatchLease root)
+    {
+        lock (RouteCatalogDispatchLease.MetadataLifetimeGate)
+        {
+            var scopes = ReceiverScopes.Value;
+            if (scopes is null) return;
+            foreach (var scope in scopes)
+            {
+                if (!ReferenceEquals(scope.Lease.Root, root)) continue;
+                scope.RequireScopeOpen();
+            }
         }
     }
 

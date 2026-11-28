@@ -16,11 +16,7 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 /// <summary>Proves private parallel observations retain serialized local state phases and independent fresh authority.</summary>
 public sealed class ParallelCatalogObservationTests(ITestOutputHelper output)
 {
-#if DEBUG
     private static bool PrivateExpected => true;
-#else
-    private static bool PrivateExpected => false;
-#endif
 
     /// <summary>The admission CAS validates the freshly read binding against the digest retained by this attempt.</summary>
     [Fact]

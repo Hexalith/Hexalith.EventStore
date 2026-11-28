@@ -13,11 +13,7 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 /// <summary>Proves host byte retention never retains admission authority or leaks into independent host operations.</summary>
 public sealed class HostMemoAdmissionTests
 {
-#if DEBUG
     private static bool PrivateExpected => true;
-#else
-    private static bool PrivateExpected => false;
-#endif
 
     /// <summary>Only explicit retention makes the first decode of a later acquisition warm; every scope is still new and closing.</summary>
     [Theory]

@@ -117,7 +117,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
         RouteCatalogDispatchLease? catalogLease;
         using (var stage = diagnostics?.Start(DispatchStageName.SubmitAcquire))
         {
-            catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            catalogLease = catalogAuthority is null ? null : await RouteCatalogAuthority.AcquireOrBorrowScopeAsync(catalogAuthority, cancellationToken).ConfigureAwait(false);
             stage?.Complete();
         }
         var catalogRelease = new RouteCatalogLeaseReleaser(catalogLease);
@@ -358,7 +358,7 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
 
                     using var reconciledCompletionStage = diagnostics?.Start(DispatchStageName.AdmissionCompletion);
                     await idempotencyAdmissionCoordinator
-                        .CompleteAsync(admissionSession, reconciledResult, cancellationToken)
+                        .CompleteAsync(admissionSession, executionRequest, reconciledResult, cancellationToken)
                         .ConfigureAwait(false);
                     reconciledCompletionStage?.Complete();
                     return await CreateReplayResultAsync(
@@ -379,15 +379,6 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
 
             string diagnosticMessageId = admissionSession is null ? request.MessageId : "protected";
 
-            if (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
-            {
-                using var capabilityStage = diagnostics?.Start(DispatchStageName.ExecutionCapability);
-                await idempotencyAdmissionCoordinator
-                    .ValidateExecutionCapabilityAsync(admissionSession, executionRequest, cancellationToken)
-                    .ConfigureAwait(false);
-                capabilityStage?.Complete();
-            }
-
             CommandProcessingResult processingResult;
             bool sideEffectBoundaryCrossed = false;
             bool executionBegan = false;
@@ -398,17 +389,12 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                 {
                     using var beginStage = diagnostics?.Start(DispatchStageName.ExecutionBegin);
                     await idempotencyAdmissionCoordinator
-                        .BeginAsync(admissionSession, cancellationToken)
+                        .BeginAsync(admissionSession, executionRequest, cancellationToken)
                         .ConfigureAwait(false);
                     executionBegan = true;
                     beginStage?.Complete();
                     executionContext = admissionSession.ExecutionContext
                         ?? throw new InvalidOperationException("Executable idempotency admission returned no execution fence.");
-                    using var initialFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
-                    await idempotencyAdmissionCoordinator
-                        .ValidateExecutionAsync(admissionSession, executionRequest, cancellationToken)
-                        .ConfigureAwait(false);
-                    initialFenceStage?.Complete();
                 }
 
                 if (projectionActivationOutbox is not null)
@@ -445,7 +431,9 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
             }
             // Two equivalent recoverable submissions can race Begin. A losing contender never
             // owns the Pending execution and must not move the winner back to Recoverable.
-            catch (Exception) when (admissionSession is not null && idempotencyAdmissionCoordinator is not null
+            // Local capability rejection happens before any actor call and leaves admission unchanged.
+            catch (Exception exception) when (admissionSession is not null && idempotencyAdmissionCoordinator is not null
+                && exception is not IdempotencyCapabilityValidationException
                 && (admissionSession.Decision != IdempotencyAdmissionDecision.Recoverable || executionBegan))
             {
                 await MarkRecoveryStateAsync(
@@ -542,9 +530,58 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
 
             omissionReason = GetResultPayloadOmissionReason(executionRequest, observedStatus);
 
-            if (!coordinatedConflict && statusReadSucceeded
+            ArchivedCommand? archived = null;
+            bool archiveReadSucceeded = false;
+            try {
+                using var archiveReadStage = diagnostics?.Start(DispatchStageName.ArchiveRead);
+                archived = await archiveStore
+                    .ReadCommandAsync(request.Tenant, executionMessageId, cancellationToken)
+                    .ConfigureAwait(false);
+                archiveReadStage?.Complete();
+                archiveReadSucceeded = true;
+                if (archived is not null
+                    && (!string.Equals(archived.MessageId, executionMessageId, StringComparison.Ordinal)
+                        || !string.Equals(archived.CommandType, request.CommandType, StringComparison.Ordinal))) {
+                    throw new CommandIdentityConflictException(
+                        executionMessageId,
+                        request.CorrelationId,
+                        request.Tenant);
+                }
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (CommandIdentityConflictException) {
+                throw;
+            }
+            catch (Exception ex) {
+                Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
+            }
+
+            bool needsStatusWrite = !coordinatedConflict && statusReadSucceeded
                 && observedStatus is null
-                && processingResult.ResultPayload is null) {
+                && processingResult.ResultPayload is null;
+            bool needsArchiveWrite = archiveReadSucceeded && archived is null;
+            bool needsCorrelationWrite = correlationIndex is not null;
+            bool needsActivityTracking = activityTracker is not null;
+            bool needsStreamTracking = streamActivityTracker is not null
+                && processingResult.Accepted
+                && (observedStatus?.EventCount ?? 0) > 0;
+
+            // Validate execution authority once immediately before the consecutive advisory writes.
+            // A stale fence fails fast here instead of writing any advisory side effect.
+            if (needsStatusWrite || needsArchiveWrite || needsCorrelationWrite
+                || needsActivityTracking || needsStreamTracking) {
+                using var advisoryFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
+                await ValidateExecutionFenceAsync(
+                    idempotencyAdmissionCoordinator,
+                    admissionSession,
+                    executionRequest,
+                    cancellationToken).ConfigureAwait(false);
+                advisoryFenceStage?.Complete();
+            }
+
+            if (needsStatusWrite) {
                 try {
                     observedStatus = new CommandStatusRecord(
                         CommandStatus.Received,
@@ -556,13 +593,6 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                         TimeoutDuration: null,
                         MessageId: executionMessageId,
                         CorrelationId: executionCorrelationId);
-                    using var statusFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
-                    await ValidateExecutionFenceAsync(
-                        idempotencyAdmissionCoordinator,
-                        admissionSession,
-                        executionRequest,
-                        cancellationToken).ConfigureAwait(false);
-                    statusFenceStage?.Complete();
                     using var statusWriteStage = diagnostics?.Start(DispatchStageName.StatusWrite);
                     await statusStore.WriteStatusAsync(
                         request.Tenant,
@@ -580,29 +610,8 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                 }
             }
 
-            try {
-                using var archiveReadStage = diagnostics?.Start(DispatchStageName.ArchiveRead);
-                ArchivedCommand? archived = await archiveStore
-                    .ReadCommandAsync(request.Tenant, executionMessageId, cancellationToken)
-                    .ConfigureAwait(false);
-                archiveReadStage?.Complete();
-                if (archived is not null) {
-                    if (!string.Equals(archived.MessageId, executionMessageId, StringComparison.Ordinal)
-                        || !string.Equals(archived.CommandType, request.CommandType, StringComparison.Ordinal)) {
-                        throw new CommandIdentityConflictException(
-                            executionMessageId,
-                            request.CorrelationId,
-                            request.Tenant);
-                    }
-                }
-                else {
-                    using var archiveFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
-                    await ValidateExecutionFenceAsync(
-                        idempotencyAdmissionCoordinator,
-                        admissionSession,
-                        executionRequest,
-                        cancellationToken).ConfigureAwait(false);
-                    archiveFenceStage?.Complete();
+            if (needsArchiveWrite) {
+                try {
                     using var archiveWriteStage = diagnostics?.Start(DispatchStageName.ArchiveWrite);
                     await archiveStore.WriteCommandAsync(
                         request.Tenant,
@@ -611,28 +620,18 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
                         cancellationToken).ConfigureAwait(false);
                     archiveWriteStage?.Complete();
                 }
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (CommandIdentityConflictException) {
-                throw;
-            }
-            catch (Exception ex) {
-                Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
+                catch (OperationCanceledException) {
+                    throw;
+                }
+                catch (Exception ex) {
+                    Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
+                }
             }
 
-            if (correlationIndex is not null) {
+            if (needsCorrelationWrite) {
                 try {
-                    using var correlationFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
-                    await ValidateExecutionFenceAsync(
-                        idempotencyAdmissionCoordinator,
-                        admissionSession,
-                        executionRequest,
-                        cancellationToken).ConfigureAwait(false);
-                    correlationFenceStage?.Complete();
                     using var correlationStage = diagnostics?.Start(DispatchStageName.CorrelationWrite);
-                    CommandCorrelationIndexAddOutcome indexOutcome = await correlationIndex.AddAsync(
+                    CommandCorrelationIndexAddOutcome indexOutcome = await correlationIndex!.AddAsync(
                         request.Tenant,
                         executionCorrelationId,
                         executionMessageId,
@@ -677,17 +676,10 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
             finalStatus = observedStatus;
 
             // Track command in admin activity index (advisory, rule #12)
-            if (activityTracker is not null) {
+            if (needsActivityTracking) {
                 try {
-                    using var activityFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
-                    await ValidateExecutionFenceAsync(
-                        idempotencyAdmissionCoordinator,
-                        admissionSession,
-                        executionRequest,
-                        cancellationToken).ConfigureAwait(false);
-                    activityFenceStage?.Complete();
                     using var activityStage = diagnostics?.Start(DispatchStageName.ActivityTracking);
-                    await activityTracker.TrackAsync(
+                    await activityTracker!.TrackAsync(
                         request.Tenant,
                         request.Domain,
                         request.AggregateId,
@@ -709,19 +701,10 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
             }
 
             // Track stream activity in admin stream index (advisory, rule #12)
-            if (streamActivityTracker is not null
-                && processingResult.Accepted
-                && (finalStatus?.EventCount ?? 0) > 0) {
+            if (needsStreamTracking) {
                 try {
-                    using var streamFenceStage = diagnostics?.Start(DispatchStageName.ExecutionFence);
-                    await ValidateExecutionFenceAsync(
-                        idempotencyAdmissionCoordinator,
-                        admissionSession,
-                        executionRequest,
-                        cancellationToken).ConfigureAwait(false);
-                    streamFenceStage?.Complete();
                     using var streamStage = diagnostics?.Start(DispatchStageName.StreamTracking);
-                    await streamActivityTracker.TrackAsync(
+                    await streamActivityTracker!.TrackAsync(
                         request.Tenant,
                         request.Domain,
                         request.AggregateId,
@@ -1058,14 +1041,9 @@ public partial class SubmitCommandHandler : IRequestHandler<SubmitCommand, Submi
 
         try
         {
-            using (var stage = diagnostics?.Start(DispatchStageName.ExecutionFence))
-            {
-                await coordinator.ValidateExecutionAsync(session, command, cancellationToken).ConfigureAwait(false);
-                stage?.Complete();
-            }
             using (var stage = diagnostics?.Start(DispatchStageName.AdmissionCompletion))
             {
-                await coordinator.CompleteAsync(session, result, cancellationToken).ConfigureAwait(false);
+                await coordinator.CompleteAsync(session, command, result, cancellationToken).ConfigureAwait(false);
                 stage?.Complete();
             }
         }

@@ -190,6 +190,43 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
         }, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Borrows an open durable dispatch lease already held by this exact authority on the current execution flow, or acquires a fresh lease.</summary>
+    public static Task<RouteCatalogDispatchLease> AcquireOrBorrowScopeAsync(IRouteCatalogAuthority authority, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+        if (authority is RouteCatalogAuthority concrete && concrete.TryBorrowActiveLease(cancellationToken) is { } borrowed)
+            return Task.FromResult(borrowed);
+        return authority.AcquireAsync(cancellationToken);
+    }
+
+    internal RouteCatalogDispatchLease? TryBorrowActiveLease(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<RouteCatalogDispatchLease> active = RouteCatalogRemoteCall.Current;
+        if (active.Count == 0) return null;
+        RouteCatalogDispatchLease? parent = null;
+        for (int index = active.Count - 1; index >= 0; index--)
+        {
+            RouteCatalogDispatchLease candidate = active[index].Root;
+            if (candidate.IsIssuedBy(this))
+            {
+                parent = candidate;
+                break;
+            }
+        }
+        if (parent is null) return null;
+        RouteCatalogRemoteCall.RequireOpenReceiverScopes(parent);
+        RequireLocalIdentity();
+        RouteCatalogHostOptions local = options.Value;
+        if (parent.Activation is not { } activation
+            || parent.Snapshot.LocalAppId != local.Identity!.AppId
+            || parent.Snapshot.AuthorityCoordinates != store.Coordinates
+            || !string.Equals(parent.Snapshot.Envelope.Profile, local.Profile, StringComparison.Ordinal)
+            || !activation.RequiredHosts.Contains(local.Identity))
+            throw new RouteCatalogUnavailableException("The local catalog authority changed during the active dispatch scope.");
+        return RouteCatalogDispatchLease.CreateBorrowed(parent);
+    }
+
     /// <inheritdoc/>
     public async Task<RouteCatalogDispatchLease> AcquireAsync(CancellationToken cancellationToken = default)
     {
@@ -255,8 +292,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
     private static bool ScopedDecodeBuildEnabled => false;
 #endif
 
-    private bool PrivateScopedDecodeEnabled() => ScopedDecodeBuildEnabled && environment?.IsDevelopment() == true
-        && options.Value is { ScopedDecodeReuse: true, DevelopmentFixture: true, Profile: "Development", RequireTechnicalHttpBinding: true };
+    private bool PrivateScopedDecodeEnabled() => options.Value.ScopedDecodeReuse;
 
     private bool PrivateHeldMetadataEnabled() => ScopedDecodeBuildEnabled && environment?.IsDevelopment() == true
         && options.Value is { ReuseHeldMetadataDispatch: true, DevelopmentFixture: true, Profile: "Development", RequireTechnicalHttpBinding: true };
@@ -432,7 +468,7 @@ public sealed class RouteCatalogAuthority(IRouteCatalogStateStore store, IRouteC
             && System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(captured, System.Text.Json.JsonSerializerOptions.Web) is { Length: <= 4 * 1024 * 1024 } activation)
             lease = new(snapshot, () => ReleaseAsync(leaseId), this, activation) { Activation = captured };
         else
-            lease = new(snapshot, () => ReleaseAsync(leaseId)) { Activation = captured };
+            lease = new(snapshot, () => ReleaseAsync(leaseId), this) { Activation = captured };
         snapshotStage?.Complete();
         return lease;
     }

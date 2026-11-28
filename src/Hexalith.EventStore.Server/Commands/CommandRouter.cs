@@ -74,7 +74,7 @@ public partial class CommandRouter : ICommandRouter {
         RouteCatalogDispatchLease? catalogLease;
         using (var stage = diagnostics?.Start(DispatchStageName.RouterAcquire))
         {
-            catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            catalogLease = catalogAuthority is null ? null : await RouteCatalogAuthority.AcquireOrBorrowScopeAsync(catalogAuthority, cancellationToken).ConfigureAwait(false);
             stage?.Complete();
         }
         var catalogRelease = new RouteCatalogLeaseReleaser(catalogLease);
@@ -139,7 +139,7 @@ public partial class CommandRouter : ICommandRouter {
         RouteCatalogDispatchLease? catalogLease;
         using (var stage = diagnostics?.Start(DispatchStageName.RouterAcquire))
         {
-            catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            catalogLease = catalogAuthority is null ? null : await RouteCatalogAuthority.AcquireOrBorrowScopeAsync(catalogAuthority, cancellationToken).ConfigureAwait(false);
             stage?.Complete();
         }
         var catalogRelease = new RouteCatalogLeaseReleaser(catalogLease);
@@ -222,7 +222,7 @@ public partial class CommandRouter : ICommandRouter {
         RouteCatalogDispatchLease? catalogLease;
         using (var stage = diagnostics?.Start(DispatchStageName.RouterAcquire))
         {
-            catalogLease = catalogAuthority is null ? null : await catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            catalogLease = catalogAuthority is null ? null : await RouteCatalogAuthority.AcquireOrBorrowScopeAsync(catalogAuthority, cancellationToken).ConfigureAwait(false);
             stage?.Complete();
         }
         var catalogRelease = new RouteCatalogLeaseReleaser(catalogLease);

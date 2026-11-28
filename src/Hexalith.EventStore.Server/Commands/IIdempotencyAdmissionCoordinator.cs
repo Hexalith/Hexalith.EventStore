@@ -16,6 +16,13 @@ public interface IIdempotencyAdmissionCoordinator
         IdempotencyAdmissionSession session,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Validates local execution capability and atomically moves a reservation to pending with actor authority verification.</summary>
+    Task BeginAsync(
+        IdempotencyAdmissionSession session,
+        SubmitCommand command,
+        CancellationToken cancellationToken = default)
+        => BeginAsync(session, cancellationToken);
+
     /// <summary>Validates only the signed capability and exact command boundary before state mutation.</summary>
     Task ValidateExecutionCapabilityAsync(
         IdempotencyAdmissionSession session,
@@ -33,6 +40,14 @@ public interface IIdempotencyAdmissionCoordinator
         IdempotencyAdmissionSession session,
         CommandProcessingResult result,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Validates local execution capability and atomically finalizes the command result with actor authority verification.</summary>
+    Task CompleteAsync(
+        IdempotencyAdmissionSession session,
+        SubmitCommand command,
+        CommandProcessingResult result,
+        CancellationToken cancellationToken = default)
+        => CompleteAsync(session, result, cancellationToken);
 
     /// <summary>Persists recoverable or unknown-outcome state under the active fence.</summary>
     Task MarkRecoveryAsync(

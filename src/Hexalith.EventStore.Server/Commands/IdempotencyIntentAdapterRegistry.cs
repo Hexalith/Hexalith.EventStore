@@ -118,7 +118,7 @@ public sealed class IdempotencyIntentAdapterRegistry : IIdempotencyIntentAdapter
     public async Task<TrustedIdempotencyDescriptor> ResolveAsync(SubmitCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var catalogLease = _catalogAuthority is null ? null : await _catalogAuthority.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        var catalogLease = _catalogAuthority is null ? null : await Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogAuthority.AcquireOrBorrowScopeAsync(_catalogAuthority, cancellationToken).ConfigureAwait(false);
         await using var catalogRelease = new Hexalith.EventStore.ServiceDefaults.Routing.RouteCatalogLeaseReleaser(catalogLease).ConfigureAwait(false);
         var registration = _adapters.Values.SingleOrDefault(value => value.Route is { } route
             && route.Domain == command.Domain

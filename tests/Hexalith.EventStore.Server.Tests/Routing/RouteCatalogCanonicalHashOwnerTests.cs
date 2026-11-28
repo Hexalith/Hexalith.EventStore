@@ -15,13 +15,9 @@ namespace Hexalith.EventStore.Server.Tests.Routing;
 /// <summary>Checks both existing host scope-entry sites without changing option observation order.</summary>
 public sealed class RouteCatalogCanonicalHashOwnerTests
 {
-#if DEBUG
     private static bool PrivateBuild => true;
-#else
-    private static bool PrivateBuild => false;
-#endif
 
-    /// <summary>Only the original complete host selection lends a live pure memo, with the original option reads.</summary>
+    /// <summary>Default-mode computational reuse lends a live pure memo across environments while honoring explicit opt-out and disposal.</summary>
     [Theory]
     [InlineData("enabled")]
     [InlineData("disabled")]
@@ -51,12 +47,11 @@ public sealed class RouteCatalogCanonicalHashOwnerTests
         if (changed == "disposed") authority.Dispose();
         using var scope = (RouteCatalogDecodeScope?)typeof(RouteCatalogAuthority)
             .GetMethod("BeginPrivateDecodeScope", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(authority, null);
-        bool host = PrivateBuild && changed == "enabled";
+        bool host = PrivateBuild && changed is not ("disabled" or "retention-disabled" or "disposed");
         (scope?.HasCanonicalHashMemo == true).ShouldBe(host);
-        bool scoped = PrivateBuild && changed is "enabled" or "retention-disabled" or "disposed";
+        bool scoped = PrivateBuild && changed != "disabled";
         (scope is not null).ShouldBe(scoped);
-        int expected = !PrivateBuild || changed is "environment" or "missing-environment" ? 0
-            : changed is "enabled" or "retention-disabled" ? 3 : changed == "disposed" ? 2 : 1;
+        int expected = changed == "disabled" ? 1 : changed == "disposed" ? 2 : 3;
         reads.ShouldBe(expected);
         var owner = (RouteCatalogCanonicalHashMemo)typeof(RouteCatalogAuthority)
             .GetField("_canonicalHashes", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(authority)!;
