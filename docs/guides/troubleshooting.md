@@ -1004,7 +1004,7 @@ $ az containerapp logs show \
 
 Hexalith.EventStore assigns a correlation ID to every command submission. Use it to trace a command through the entire processing pipeline:
 
-1. **Find the correlation ID** from the HTTP response header when submitting a command.
+1. **Find the correlation IDs.** Use `correlationId` from the `202 Accepted` response body to trace command processing and the `X-Correlation-ID` response header to trace the HTTP request. These values can differ.
 
 2. **Search structured logs** for the correlation ID across all services:
 
@@ -1018,9 +1018,11 @@ Hexalith.EventStore assigns a correlation ID to every command submission. Use it
 
 3. **Trace through OpenTelemetry spans** if you have a tracing backend (Zipkin, Jaeger) configured. The correlation ID appears as a span attribute across the complete processing chain.
 
-4. **Check command status** using the `messageId` from the `202 Accepted` body or the URL in its `Location` header. Generated hosts build `Location` only from a `messageId` valid for the command's declared version.
+4. **Check command status** using the `messageId` from the `202 Accepted` body or the URL in its `Location` header. Use the correlation ID for tracing. Generated hosts omit `Location` when the response has no `messageId` valid for the command's declared version or the configured gateway status base is missing or unusable. When present, the status link always uses that `messageId`. If you have the `messageId` and know the gateway URL, poll `/api/v1/commands/status/{messageId}` on the gateway directly.
 
-    For a tenant-scoped command, use a bearer token authorized for the command's tenant.
+    Send exactly one scope header. For either scope, the gateway returns `403 Forbidden` when a request with a valid `messageId` includes a `tenant` or `tenantId` query parameter. Any tenant grants must be valid tenant IDs and unique after normalization.
+
+    For a tenant-scoped command, send `X-Hexalith-Tenant` and use a bearer token authorized for the command's tenant.
 
     ```bash
     $ curl "http://localhost:8080/api/v1/commands/status/${MESSAGE_ID}" \
@@ -1028,7 +1030,7 @@ Hexalith.EventStore assigns a correlation ID to every command submission. Use it
       -H "X-Hexalith-Tenant: ${TENANT_ID}"
     ```
 
-    For a platform-scoped command, send the platform scope in `X-Hexalith-Scope` and use a bearer token with the corresponding platform read permission.
+    For a platform-scoped command, send `X-Hexalith-Scope: platform:tenants` with the `tenants:read` permission or `X-Hexalith-Scope: platform:global-administrators` with the `global-administrators:read` permission. After gateway claim normalization, exactly one `eventstore:permission` claim must match the required value. The JWT can supply that value through `permissions`.
 
 5. **Inspect dead-letter topics** if the command failed. Dead-letter messages include the full command payload, error details, and the correlation ID:
 

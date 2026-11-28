@@ -2,7 +2,7 @@
 title: '2.15 MessageId-only command-status identity'
 type: 'feature'
 created: '2026-11-18'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'def48eb38f87ad4a0e0be832d0e7f5a6ffca6866'
@@ -116,8 +116,8 @@ Rejected:
 
 Review pass 3 (2026-11-28): blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor layers over the Story 2.15 hunks of `821b779d6` (the emitter, generator and Sample tests, gate script, matrix, two docs, and this spec's `deferred-work.md` section). The Story 2.18 query hunks in the same commit are out of scope. No acceptance-criteria or Never-list violation was found.
 
-- [ ] [Review][Patch] Make the platform-scope status guidance usable: name the two accepted `X-Hexalith-Scope` values and the permission each needs (`platform:tenants` → `tenants:read`, `platform:global-administrators` → `global-administrators:read`), say the `eventstore:permission` claim must appear exactly once, and say `tenant`/`tenantId` query parameters are refused [docs/guides/troubleshooting.md:1031; docs/reference/problems/bad-request.md:53]
-- [ ] [Review][Patch] Restore the explicit statement that status is addressed by `messageId`, never by the correlation ID, and that generated hosts omit `Location` instead of falling back to it [docs/guides/troubleshooting.md:1021]
+- [x] [Review][Patch] Make the platform-scope status guidance usable: name the two accepted `X-Hexalith-Scope` values and the permission each needs (`platform:tenants` → `tenants:read`, `platform:global-administrators` → `global-administrators:read`), say the `eventstore:permission` claim must appear exactly once, and say `tenant`/`tenantId` query parameters are refused [docs/guides/troubleshooting.md:1031; docs/reference/problems/bad-request.md:53]
+- [x] [Review][Patch] Restore the explicit statement that status is addressed by `messageId`, never by the correlation ID, and that generated hosts omit `Location` instead of falling back to it [docs/guides/troubleshooting.md:1021]
 - [x] [Review][Defer] `forbidden.md` still lists "Command status query attempted without any tenant claims" and none of the explicit-scope 403 causes enforced by `TryResolveExplicitStatusScope` [docs/reference/problems/forbidden.md:17] — deferred: pre-existing; the page is not a 2.15 deliverable
 
 Rejected (pass 3):
@@ -168,6 +168,12 @@ Rejected (pass 3):
 - The targeted transition and gate-decision fixtures and all 147 matrix fixtures passed. The matrix validator reported no G-STATUS-ID binding finding and still requires an owner attestation and seal. The fallback search and `git diff --check` passed.
 - Both read-only completion checks returned `ordinary-slice` with no verification. The spec and tracker remain in review pending verified G-STATUS-ID assurance. The completion writer gap is recorded in `deferred-work.md`.
 
+**Pass 3 verification (2026-11-28)**
+
+- The two documentation patches passed Markdown lint and `git diff --check`. The fallback search returned no matches.
+- Four focused Release projects built with zero warnings and errors. All 355 selected tests passed, including the grammar, compiled controller, generated status response, sample host, declaration and gateway scope cases. The local G-STATUS-ID verifier matched all 166 required cases in their xUnit TRX reports.
+- The gate risk matrix reported no G-STATUS-ID binding finding. Its assurance findings remain `SEAL_MISSING`, `ATTESTATION_MISSING` and `ACHIEVED_BELOW_REQUIRED`.
+
 ## Review Triage Log
 
 Review pass 1 (2026-11-18): blind-hunter, edge-case-hunter and verification-gap layers.
@@ -217,3 +223,16 @@ Review of the 2026-11-28 patches
 | Edge case | A generated GET can collide with the command-only reservation | medium | The shared identifier set blocks both route-bound and query-bound properties before query generation. | patch with the Blind reservation finding |
 | Edge case | Platform status requests fail with the tenant example | low | The gateway requires the authorized platform scope for these records. | patch with the Blind troubleshooting finding |
 | Verification gap | The compiled generator rejected two previously valid GET bindings | medium | The reviewer reproduced `HESREST004` for both bindings and compiled both against the pre-patch generator. | patch with the Blind reservation finding |
+
+Review of the pass-3 documentation patches
+
+| Layer | Finding | Verdict | Evidence | Route |
+| --- | --- | --- | --- | --- |
+| Blind | Both pages imply that the raw JWT must contain `eventstore:permission` | low | `EventStoreClaimsTransformation` can derive the claim from `permissions`. The scope check counts only claims with the required value. | patch both pages |
+| Blind | The `tenant` and `tenantId` restriction reads as platform-only and omits the response status | low | `TryResolveExplicitStatusScope` refuses either query parameter before distinguishing scope. A valid identifier reaches the check and returns 403. | patch both pages |
+| Blind | The guide leaves out `Location` omission when no usable gateway status base is configured | low | `CommandStatusLocationBuilder.TryBuild` returns false for an absent or relative base even when the selector accepted the `MessageId`. | patch troubleshooting |
+| Blind | The tracing steps use the request header to trace command processing | low | `X-Correlation-ID` identifies the HTTP request. The accepted body's `correlationId` is the command's correlation ID. | patch troubleshooting |
+| Edge case | The guide can lead callers to interpret a missing `Location` as an invalid `MessageId` | low | A valid `MessageId` with an unconfigured status base still produces `202` without `Location`. | patch with the Blind gateway-base finding |
+| Edge case | Troubleshooting implies a literal JWT permission claim is required | low | A native JWT `permissions` claim can produce the matching `eventstore:permission` after normalization. | patch with the Blind claim finding |
+| Edge case | Bad Request can cause callers to discard a valid token while correcting the identifier | low | The scope check reads the normalized principal, which can supply the matching permission from the token's `permissions` claim. | patch with the Blind claim finding |
+| Edge case | Malformed or duplicate normalized tenant grants can cause a platform-scope refusal | low | The gateway canonicalizes all tenant grants before either scope branch. An invalid or duplicate canonical value refuses the request. | patch troubleshooting |
