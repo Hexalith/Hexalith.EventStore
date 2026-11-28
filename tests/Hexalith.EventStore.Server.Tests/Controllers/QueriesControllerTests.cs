@@ -1,6 +1,5 @@
 
 using System.Diagnostics;
-using System.Reflection;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -160,22 +159,6 @@ public partial class QueriesControllerTests {
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         return controller;
     }
-
-    private static HeaderProjectionTypeAnalysis AnalyzeHeader(string ifNoneMatch) {
-        MethodInfo method = typeof(QueriesController).GetMethod(
-            "AnalyzeHeaderProjectionTypes",
-            BindingFlags.Static | BindingFlags.NonPublic)!;
-
-        object result = method.Invoke(null, [ifNoneMatch])!;
-        PropertyInfo projectionTypeProperty = result.GetType().GetProperty("ProjectionType")!;
-        PropertyInfo mixedProperty = result.GetType().GetProperty("HasMixedProjectionTypes")!;
-
-        return new HeaderProjectionTypeAnalysis(
-            (string?)projectionTypeProperty.GetValue(result),
-            (bool)mixedProperty.GetValue(result)!);
-    }
-
-    private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
 
     [Fact]
     public async Task Submit_ValidRequest_Returns200WithPayload() {
@@ -652,18 +635,21 @@ public partial class QueriesControllerTests {
 
         (await controller.Submit(CreateTestRequest(), $"\"{validator}\",{tail}", CancellationToken.None))
             .ShouldBeOfType<OkObjectResult>();
-        AnalyzeHeader($"\"{validator}\",{tail}").ProjectionType.ShouldBeNull();
     }
 
     [Fact]
-    public void AnalyzeHeaderProjectionTypes_OverLimitMixedList_ReturnsNoAnalysis() {
-        string header = string.Join(",", new[] { $"\"{GenerateTestETag("orders")}\"", $"\"{GenerateTestETag("counter")}\"" }
+    public async Task Submit_OverLimitMixedListWithMatchingValidator_Returns200() {
+        string validator = GenerateTestETag("orders");
+        string otherProjection = GenerateTestETag("counter");
+        string header = string.Join(",", new[] { $"\"{validator}\"", $"\"{otherProjection}\"" }
             .Concat(Enumerable.Repeat("\"opaque\"", 9)));
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: validator)));
+        QueriesController controller = CreateController(mediator);
 
-        HeaderProjectionTypeAnalysis analysis = AnalyzeHeader(header);
-
-        analysis.ProjectionType.ShouldBeNull();
-        analysis.HasMixedProjectionTypes.ShouldBeFalse();
+        (await controller.Submit(CreateTestRequest(), header, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>();
     }
 
     [Theory]
@@ -915,6 +901,8 @@ public partial class QueriesControllerTests {
     [Theory]
     [InlineData("")]
     [InlineData("W/\"v1\"")]
+    [InlineData("W/v1")]
+    [InlineData("w/v1")]
     [InlineData("*")]
     [InlineData("\"quoted\"")]
     [InlineData("bad\"q")]
@@ -1299,8 +1287,10 @@ public partial class QueriesControllerTests {
         _ = await eTagService.DidNotReceiveWithAnyArgs().GetCurrentETagAsync(default!, default!, default);
     }
 
-    [Fact]
-    public async Task Submit_MultipleETagsOneMatches_Returns304() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Submit_MultipleETagsOneMatches_Returns304(bool quoteTags) {
         // Arrange — self-routing ETags in comma-separated list
         string matchingETag = GenerateTestETag();
         string otherETag1 = GenerateTestETag();
@@ -1311,10 +1301,12 @@ public partial class QueriesControllerTests {
         IETagService eTagService = Substitute.For<IETagService>();
 
         QueriesController controller = CreateController(mediator, eTagService);
+        string header = string.Join(", ", new[] { otherETag1, matchingETag, otherETag2 }
+            .Select(tag => quoteTags ? $"\"{tag}\"" : tag));
 
         // Act
         IActionResult actionResult = await controller.Submit(
-            CreateTestRequest(), $"\"{otherETag1}\", \"{matchingETag}\", \"{otherETag2}\"", CancellationToken.None);
+            CreateTestRequest(), header, CancellationToken.None);
 
         // Assert
         StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
@@ -1401,24 +1393,6 @@ public partial class QueriesControllerTests {
     }
 
     [Fact]
-    public void AnalyzeHeaderProjectionTypes_WeakETagPrefix_FailsDecodeReturnsNull() {
-        // Arrange — W/"etag" per RFC 7232 §2.3; our ETags are strong validators
-        string validETag = GenerateTestETag("orders");
-
-        // Control case: a strong validator decodes as expected.
-        HeaderProjectionTypeAnalysis strongResult = AnalyzeHeader($"\"{validETag}\"");
-        strongResult.ProjectionType.ShouldBe("orders");
-        strongResult.HasMixedProjectionTypes.ShouldBeFalse();
-
-        // W/ prefix outside quotes: the quote stripping only removes outer quotes,
-        // leaving "W/" prefix on the value → TryDecode fails → null projection type
-        HeaderProjectionTypeAnalysis result = AnalyzeHeader($"W/\"{validETag}\"");
-
-        result.ProjectionType.ShouldBeNull();
-        result.HasMixedProjectionTypes.ShouldBeFalse();
-    }
-
-    [Fact]
     public async Task Submit_NonAsciiProjectionType_UsesAuthoritativeSelectedRouteProjectionType() {
         string projectionType = "données";
         string nonAsciiETag = GenerateTestETag(projectionType);
@@ -1463,28 +1437,6 @@ public partial class QueriesControllerTests {
         controller.Response.Headers.ETag.ToString().ShouldNotStartWith("W/");
         _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
         _ = await eTagService.DidNotReceiveWithAnyArgs().GetCurrentETagAsync(default!, default!, default);
-    }
-
-    [Fact]
-    public void AnalyzeHeaderProjectionTypes_MixedProjectionTypes_ReturnsSkipSignal() {
-        string ordersETag = GenerateTestETag("orders");
-        string countersETag = GenerateTestETag("counter");
-
-        HeaderProjectionTypeAnalysis result = AnalyzeHeader($"\"{ordersETag}\", \"{countersETag}\"");
-
-        result.HasMixedProjectionTypes.ShouldBeTrue();
-        result.ProjectionType.ShouldBeNull();
-    }
-
-    [Fact]
-    public void AnalyzeHeaderProjectionTypes_SameProjectionTypes_ReturnsProjectionType() {
-        string etag1 = GenerateTestETag("orders");
-        string etag2 = GenerateTestETag("orders");
-
-        HeaderProjectionTypeAnalysis result = AnalyzeHeader($"\"{etag1}\", \"{etag2}\"");
-
-        result.HasMixedProjectionTypes.ShouldBeFalse();
-        result.ProjectionType.ShouldBe("orders");
     }
 
     [Fact]

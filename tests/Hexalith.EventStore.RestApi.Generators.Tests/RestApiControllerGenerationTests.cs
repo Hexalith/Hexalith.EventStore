@@ -547,6 +547,82 @@ public sealed class RestApiControllerGenerationTests
     }
 
     [Fact]
+    public void Run_CommandRouteParameterCollidesWithStatusMessageId_ReportsDuplicateIdentifier()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation("""
+            using Hexalith.EventStore.Contracts.Commands;
+            using Hexalith.EventStore.Contracts.Rest;
+
+            [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+            namespace Smoke;
+
+            [RestRoute(RestVerb.Post, "{__hexalithStatusMessageId}/increment")]
+            public sealed record IncrementCounter(string __hexalithStatusMessageId) : ICommandContract
+            {
+                public static string Domain => "counter";
+                public static string CommandType => "increment-counter";
+                public string AggregateId => __hexalithStatusMessageId;
+            }
+            """);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        Diagnostic diagnostic = updateDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ShouldHaveSingleItem();
+        diagnostic.Id.ShouldBe("HESREST004");
+        diagnostic.GetMessage().ShouldContain("duplicate action identifier '__hexalithStatusMessageId'");
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(runResult, ".Controller.g.cs").ShouldBeFalse();
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public void Run_QueriesCanBindStatusMessageIdFromRouteAndQueryString()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation("""
+            using Hexalith.EventStore.Contracts.Queries;
+            using Hexalith.EventStore.Contracts.Rest;
+
+            [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+            namespace Smoke;
+
+            [RestRoute(RestVerb.Get, "{__hexalithStatusMessageId}")]
+            public sealed record GetCounterByRoute(string __hexalithStatusMessageId) : IQueryContract
+            {
+                public static string QueryType => "get-counter-by-route";
+                public static string Domain => "counter";
+                public static string ProjectionType => "counter";
+            }
+
+            [RestRoute(RestVerb.Get, "")]
+            public sealed record GetCounterByQuery(string __hexalithStatusMessageId) : IQueryContract
+            {
+                public static string QueryType => "get-counter-by-query";
+                public static string Domain => "counter";
+                public static string ProjectionType => "counter";
+            }
+            """);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+        source.ShouldContain("[FromRoute(Name = \"__hexalithStatusMessageId\")] string __hexalithStatusMessageId");
+        source.ShouldContain("[FromQuery(Name = \"__hexalithStatusMessageId\")]");
+        source.ShouldContain("[\"__hexalithStatusMessageId\"] = __hexalithStatusMessageId,");
+    }
+
+    [Fact]
     public void Run_ReferencedContractsOutsideApiScope_AreExcluded()
     {
         CSharpCompilation contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedMixedApiScopeSource);

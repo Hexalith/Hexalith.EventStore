@@ -1325,6 +1325,11 @@ internal static class RestApiControllerEmitter
             _ = identifiers.Add(reserved);
         }
 
+        if (message.IsCommand)
+        {
+            _ = identifiers.Add("__hexalithStatusMessageId");
+        }
+
         foreach (RestApiRouteParameterDescriptor parameter in routeParameters)
         {
             if (!identifiers.Add(parameter.Identifier))

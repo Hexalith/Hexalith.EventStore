@@ -50,6 +50,8 @@ Content-Type: application/problem+json
 
 2. Use the `messageId` from the `202 Accepted` body returned when you submitted the command, or follow that response's `Location` header.
 
+3. On the retried request, send a bearer token and exactly one scope header. Use `X-Hexalith-Tenant` for the command's tenant with a token authorized for that tenant, or `X-Hexalith-Scope` for a platform command with a token that grants the corresponding read permission.
+
 ## Related
 
 - [Error Reference Index](./index.md)

@@ -1018,11 +1018,17 @@ Hexalith.EventStore assigns a correlation ID to every command submission. Use it
 
 3. **Trace through OpenTelemetry spans** if you have a tracing backend (Zipkin, Jaeger) configured. The correlation ID appears as a span attribute across the complete processing chain.
 
-4. **Check command status** using the status tracking endpoint and the `messageId` from the `202 Accepted` body, or follow its `Location` header. Status is addressed by `messageId`; generated hosts never build a status `Location` from a correlation ID:
+4. **Check command status** using the `messageId` from the `202 Accepted` body or the URL in its `Location` header. Generated hosts build `Location` only from a `messageId` valid for the command's declared version.
+
+    For a tenant-scoped command, use a bearer token authorized for the command's tenant.
 
     ```bash
-    $ curl http://localhost:8080/api/v1/commands/status/<message-id>
+    $ curl "http://localhost:8080/api/v1/commands/status/${MESSAGE_ID}" \
+      -H "Authorization: Bearer ${TOKEN}" \
+      -H "X-Hexalith-Tenant: ${TENANT_ID}"
     ```
+
+    For a platform-scoped command, send the platform scope in `X-Hexalith-Scope` and use a bearer token with the corresponding platform read permission.
 
 5. **Inspect dead-letter topics** if the command failed. Dead-letter messages include the full command payload, error details, and the correlation ID:
 

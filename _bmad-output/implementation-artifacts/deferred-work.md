@@ -6958,3 +6958,36 @@ status: open
 - source_spec: `spec-2-18-bind-conditional-queries-to-the-returned-representation.md`
   summary: Distinguish opaque dotted validators from self-routing validators during mixed-projection detection.
   evidence: The existing decoder accepts any nonempty suffix after a decodable prefix. A list of quoted opaque validators with different decodable prefixes can therefore miss revalidation despite containing the selected validator.
+
+- source_spec: `spec-2-18-bind-conditional-queries-to-the-returned-representation.md`
+  summary: Require a definitive status observation before repairing an exact command replay.
+  evidence: The separate command-recovery change in `f84fad626865c5ba1fafeb85bfef6fcba83b7c06` treats both a missing key and a failed Dapr read as null. A repair after a transient read failure can replace terminal status and discard its committed event sequence.
+
+- source_spec: `spec-2-18-bind-conditional-queries-to-the-returned-representation.md`
+  summary: Protect command replay status repair against a concurrent status update.
+  evidence: The separate command-recovery change checks the existing row and then saves without a condition. A status update between the read and repair can be replaced by the repair.
+
+- source_spec: `spec-2-18-bind-conditional-queries-to-the-returned-representation.md`
+  summary: Reconcile exact replay status repair with fenced command reconciliation.
+  evidence: The fenced actor method returns the inspected terminal result without running the direct command replay repair. The gateway returns 503 for a receipt-only result when the original status cannot be refreshed.
+
+- source_spec: `spec-2-18-bind-conditional-queries-to-the-returned-representation.md`
+  summary: Verify aggregate identity binding for the command replay status fallback.
+  evidence: Medium, unverified. The lookup uses tenant and command identity and the fallback lacks the adjacent branch's full actor identity check. Confirm whether a compatibility or local caller can reach the fallback with a mismatched aggregate actor.
+
+## Deferred from: code review of spec-2-15-messageid-only-command-status-identity.md (2026-11-28)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
+  summary: Add a real-filter G-STATUS-ID row with a digest-matched v2 compiled declaration (low).
+  evidence: `GeneratedCatalogDeclarationTests.GeneratedCommandPublishesOnlyTheCompiledDeclarationMessageIdVersionForTheAction` pins `declared.ShouldBe(1)` and then `published.ShouldBe(declared)`; every v2 runtime row writes `MessageIdVersionKey` directly. A filter that published a constant `1` would pass every test. No v2 declaration exists in the routing catalog, so add the row (publish `2`, refuse a v1-only id) when the first v2 contract is introduced.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
+  summary: List the replay endpoint's invalid-identifier 400 in `docs/reference/problems/bad-request.md` (low).
+  evidence: `src/Hexalith.EventStore/Controllers/ReplayController.cs:87-94` returns `ProblemTypeUris.BadRequest` with "Correlation ID must be 1-128 characters of alphanumerics and hyphens (with alphanumeric anchors).", but the page's Common Causes name only the status endpoint. Pre-existing; the page never listed replay.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
+  summary: Enforce G-STATUS-ID assurance at the Story 2.15 completion writer.
+  evidence: Read-only completion checks for both targets returned `ordinary-slice` with no verification even though G-STATUS-ID has no owner attestation or completed seal. The Phase 4 completion owner needs to bind Story 2.15 to verified gate consumption before allowing either `done` write.
+  status: open

@@ -88,6 +88,7 @@ context:
 ## Spec Change Log
 
 - 2026-11-28. Implemented the approved producer-bound validator design. Review strengthened the wire, cache, length-limit, and provider-state assertions and clarified the query documentation.
+- 2026-11-28. Resumed review from the committed implementation. Added direct coverage for both cases of the reserved weak-validator prefix, simplified the mixed-projection check, and corrected conditional-query telemetry and documentation. The controller tests exercise the action for malformed, mixed, quoted, and legacy unquoted lists.
 
 ## Review Triage Log
 
@@ -110,6 +111,26 @@ context:
 | Verification 1. Replay validator across Dapr | Medium | Patch. Shared cause and fix with Blind 6. |
 | Verification 2. Inclusive 4096-character limit | Low | Patch. Exercise the maximum supported length in the producer-bound `200`, `304`, and changed `200` sequence. |
 | Verification 3. Provider state coverage | Medium | Patch. Exercise the three newly tagged states with the existing real Kestrel provider test and assert their consumer-pinned status and tag. |
+| Resumed Blind 1. Replay status read failure | High | Deferred. The unrelated command-recovery commit treats the Dapr store's read-failure result as confirmed absence and can replace a terminal row. |
+| Resumed Blind 2. Concurrent replay status write | Medium | Deferred. The unrelated repair writes without conditioning the write on the row it observed. |
+| Resumed Blind 3. Fenced replay skips status repair | Medium | Deferred. Fenced reconciliation inspects the terminal result directly. A receipt-only retry still returns 503 if the original status cannot be refreshed. |
+| Resumed Blind 4. Opaque tokens with a weak prefix | Low | Patch documentation. Raw HTTP can quote these tokens, and the SDK reserves the unquoted prefix. The producer contract now documents that existing reservation. |
+| Resumed Blind 5. Dotted opaque tags | Medium | Carried. Deferred under Blind 2. |
+| Resumed Blind 6. Paging metadata on 304 | Medium | Carried. Deferred under Blind 1. |
+| Resumed Blind 7. Deferred-work entry format | Low | Rejected. The ledger checker emits an advisory, and the documented attended build workflow appends this format for later sweep migration. |
+| Resumed Blind 8. Full-stack stale ETag test | Medium | Verification blocked. The native Dapr proof passed and the Tier 3 stale ETag proof timed out during fixture initialization. |
+| Resumed Blind 9. Provider fixture shares validator values | Low | Carried. Rejected under Blind 8. |
+| Resumed Blind 10. Wildcard log says routing is about to start | Low | Patch. The controller logs after routing and now records that the wildcard skips comparison. |
+| Resumed Blind 11. Brownfield query API matrix | Low | Patch. The matrix describes conditional ETag emission and distinguishes HTTP comparison from actor caching. |
+| Resumed Edge 1. Replay status repair checks only tenant and command identity | Medium (unverified) | Deferred. The unrelated fallback lacks the actor identity check used in the intent branch. Confirm whether a compatibility or local caller can present the matching command envelope to the wrong aggregate actor. |
+| Resumed Edge 2. Replay status read failure | High | Deferred. Same cause as Resumed Blind 1. |
+| Resumed Edge 3. Concurrent replay status write | Medium | Deferred. Same cause as Resumed Blind 2. |
+| Resumed Edge 4. Opaque tokens with a weak prefix | Low | Patch documentation. Same cause as Resumed Blind 4. |
+| Resumed Edge 5. Paging metadata on 304 | Medium | Carried. Deferred under Blind 1. |
+| Resumed Edge 6. Dotted opaque tags | Medium | Carried. Deferred under Blind 2. |
+| Resumed Edge 7. Unused projection-type result | Low | Patch. The helper reports whether multiple projection types were found. The controller-action tests cover the responses previously checked through reflection. |
+| Resumed Verification 1. Weak prefix guard can be removed undetected | Low | Patch. The prior weak-prefixed test also contained quotes. Add cases that isolate both forms of the prefix. |
+| Resumed Verification 2. Replay status read failure | High | Deferred. Same cause as Resumed Blind 1. |
 
 ## Verification
 
@@ -127,3 +148,12 @@ context:
 - `dotnet test --project tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj -c Release --no-build --no-restore` passed all 83 cases (0 failed, 0 skipped) on the clean checkout of `e0c9cd5fc02cff0266a729a6ea71f163535bbc2b`, including `ObserveLive_RecordsCurrentProvenanceWithoutInventingApproval` and all real Kestrel Pact cases.
 - The standalone Aspire baseline started but `timeout 35s aspire wait eventstore --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` timed out while the `security` resource was unhealthy. The AppHost was stopped after inspection.
 - Both guarded completion commands (`--target spec --write` and `--target tracker --write`) exited 1 with `ADAPTER_UNAVAILABLE` for `NFR12`. Completion requires a registered story-owned NFR12 evidence adapter, fresh authenticated `product-owner` and `test-owner` approvals, and a completed CI evaluation seal from `.github/workflows/phase-4-high-risk-nfr-story-done.yml` on the published `main` head. The spec remains `in-review` and the sprint row stays `in-progress`.
+
+**Resumed review verification**
+
+- `dotnet build Hexalith.EventStore.slnx -c Release -warnaserror -m:4` passed with zero warnings and errors in a disposable checkout at `00cd57ad52ef1ab58ed489639ff1d3589d078e33` with the review patch. The final Server test project build and its 240-case focused selection also passed after the controller tests were updated and the concurrent command-replay test commit `f29390dc9b1858f7c150403fb33fbfce833fec12` reached `main`.
+- The full Release Server rerun on `f29390dc9b1858f7c150403fb33fbfce833fec12` with the final review patch passed 8,656 cases with 25 existing skips and no failures. It used the SHA-pinned signed Tenants Contracts 7.0.0 fixture in a private package root.
+- The Release Client suite passed 2,490 cases with two existing skips. Query Routing passed 15, REST API Generators passed 320, and Sample passed 268. All six native Dapr cases passed again with the pinned 1.19.1 runtime.
+- Provider Verification passed 82 of 83 cases on the review patch, including Pact. The only failure was `ObserveLive_RecordsCurrentProvenanceWithoutInventingApproval`. Its provenance check requires a clean committed provider tree. All 83 cases passed in the starting committed workspace.
+- `EVENTSTORE_DAPR_RUNTIME_PROFILE=1.19.1 dotnet tests/Hexalith.EventStore.IntegrationTests/bin/Release/net11.0/Hexalith.EventStore.IntegrationTests.dll -class '*HttpStaleETagProofE2ETests'` failed during `AspireContractTestFixture` initialization before the query ran. The writer-protocol setup timed out waiting for EventStore health, and the route-catalog readiness check reported `configuration-missing`. The standalone Aspire baseline also timed out waiting for `eventstore` because `security` was unhealthy. That AppHost was stopped.
+- Fresh guarded writes for the spec and tracker both exited 1 with `ADAPTER_UNAVAILABLE` for NFR12 and preserved the open statuses.

@@ -17,7 +17,7 @@ import phase_4_transition as C
 GATE = "G-STATUS-ID"
 PATH = "tools/phase_4_status_id_gate.py"
 ADAPTER = "generated-command-status-id-v1"
-DECLARATION = "14bb87ffd3d8e3812a66e74203ea1f174118b52acebffeeabc7101f34f087538"
+DECLARATION = "444d0155057749a0337aa7ce7044b1203b5f6468125c3eeb747a7bbdfae278ba"
 WORKFLOW = ".github/workflows/ci.yml"
 TRX_NAMESPACE = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"
 JOBS = T.JOBS["eventstore_ci"]

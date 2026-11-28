@@ -30,7 +30,7 @@
 
 | Method | Route | Controller | Auth | Notes |
 |--------|-------|------------|------|-------|
-| `POST` | `/api/v1/queries` | `QueriesController.Submit` | JWT | Execute query. Honors `If-None-Match` → **304** (Gate 1). Body `SubmitQueryRequest` (paging/search/filters/orderby/freshness skip cache). Sets ETag response header. |
+| `POST` | `/api/v1/queries` | `QueriesController.Submit` | JWT | Executes the query and emits an ETag when a named projection supplies a strong validator for the returned representation. A matching `If-None-Match` can return **304** after authorization and routing. Explicit paging, search, filters, ordering, or freshness inputs skip HTTP validator comparison. |
 | `POST` | `/api/v1/queries/validate` | `QueryValidationController.Validate` | JWT | Preflight query auth → **200** `PreflightValidationResult`. |
 
 **`POST /api/v1/queries` status codes:** 200, 304, 400, 401, 403, 404, 429, 503.

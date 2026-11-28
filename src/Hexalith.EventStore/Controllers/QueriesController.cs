@@ -117,8 +117,6 @@ public partial class QueriesController : ControllerBase {
     private const int MaxMetadataHeaderValueLength = 4096;
     private const int MaxWarningCodeCount = 16;
 
-    private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
-
     /// <summary>Routes only configured owner evidence queries under an exact signed requester binding.</summary>
     [HttpPost("owner-authority/workload")]
     [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayOwnerAuthorityQueryPolicy)]
@@ -455,7 +453,7 @@ public partial class QueriesController : ControllerBase {
         }
 
         if (ifNoneMatch.AsSpan().Trim().SequenceEqual("*".AsSpan())) {
-            Log.ETagPreCheckMiss(logger, correlationId, false, true);
+            Log.ETagPreCheckMiss(logger, correlationId, true, true);
             return false;
         }
 
@@ -464,8 +462,7 @@ public partial class QueriesController : ControllerBase {
             return false;
         }
 
-        HeaderProjectionTypeAnalysis analysis = AnalyzeHeaderProjectionTypes(ifNoneMatch);
-        if (analysis.HasMixedProjectionTypes) {
+        if (HasMixedProjectionTypes(ifNoneMatch)) {
             Log.MixedProjectionTypesSkipped(logger, correlationId);
             return false;
         }
@@ -602,13 +599,11 @@ public partial class QueriesController : ControllerBase {
     }
 
     /// <summary>
-    /// Analyzes the If-None-Match header for self-routing ETags.
-    /// Returns the first decoded projection type when all decodable ETags agree on the same projection type.
-    /// If multiple decodable projection types are present, Gate 1 should be skipped for safety.
+    /// Checks whether the If-None-Match header contains self-routing validators for different projection types.
     /// </summary>
-    private static HeaderProjectionTypeAnalysis AnalyzeHeaderProjectionTypes(string ifNoneMatch) {
+    private static bool HasMixedProjectionTypes(string ifNoneMatch) {
         if (!TryGetConditionalValidators(ifNoneMatch, out List<string> validators)) {
-            return new HeaderProjectionTypeAnalysis(null, false);
+            return false;
         }
 
         string? firstProjectionType = null;
@@ -618,12 +613,12 @@ public partial class QueriesController : ControllerBase {
                     firstProjectionType = projectionType;
                 }
                 else if (!string.Equals(firstProjectionType, projectionType, StringComparison.Ordinal)) {
-                    return new HeaderProjectionTypeAnalysis(null, true);
+                    return true;
                 }
             }
         }
 
-        return new HeaderProjectionTypeAnalysis(firstProjectionType, false);
+        return false;
     }
 
     private static bool IsStrongETagToken(string? etag)
@@ -774,7 +769,7 @@ public partial class QueriesController : ControllerBase {
         [LoggerMessage(
             EventId = 1063,
             Level = LogLevel.Debug,
-            Message = "ETag pre-check miss. Proceeding to query routing: CorrelationId={CorrelationId}, HasCurrentETag={HasCurrentETag}, HasIfNoneMatch={HasIfNoneMatch}, Stage=ETagPreCheckMiss")]
+            Message = "ETag comparison skipped for wildcard validator: CorrelationId={CorrelationId}, HasCurrentETag={HasCurrentETag}, HasIfNoneMatch={HasIfNoneMatch}, Stage=ETagPreCheckMiss")]
         public static partial void ETagPreCheckMiss(ILogger logger, string correlationId, bool hasCurrentETag, bool hasIfNoneMatch);
 
         [LoggerMessage(

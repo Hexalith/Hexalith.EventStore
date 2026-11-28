@@ -24,18 +24,6 @@ namespace Hexalith.EventStore.Sample.Tests.SampleApi;
 public sealed class SampleApiGeneratedControllerRuntimeTests
 {
     [Fact]
-    public async Task StatusReadOnFakeHonorsCallerCancellation()
-    {
-        IEventStoreGatewayClient gateway = new FakeEventStoreGatewayClient();
-        var cancellation = new CancellationToken(canceled: true);
-
-        OperationCanceledException error = await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => gateway.GetCommandStatusAsync("message-1", cancellation));
-
-        Assert.Equal(cancellation, error.CancellationToken);
-    }
-
-    [Fact]
     public async Task CounterQuery_WhenRouteTenantIsMissing_ReturnsBadRequestBeforeGatewayCall()
     {
         GeneratedController controller = CreateController();

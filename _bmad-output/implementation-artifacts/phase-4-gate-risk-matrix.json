@@ -134,7 +134,9 @@
       "subject_paths": [
         ".github/workflows/ci.yml",
         "deploy/dapr/eventstore-routing-catalog.json",
+        "samples/Hexalith.EventStore.Sample.Contracts/Counter/CounterCatalogDeclarations.cs",
         "src/Hexalith.EventStore.Contracts/Identity/MessageIdGrammar.cs",
+        "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogCodec.cs",
         "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogGeneratedAction.cs",
         "src/Hexalith.EventStore.Contracts/Routing/RouteCatalogValidator.cs",
         "src/Hexalith.EventStore.Contracts/Routing/RouteContractDeclaration.cs",
@@ -144,10 +146,13 @@
         "tests/Hexalith.EventStore.Contracts.Tests/Identity/MessageIdGrammarTests.cs",
         "tests/Hexalith.EventStore.RestApi.Generators.Tests/FakeEventStoreGatewayClient.cs",
         "tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs",
+        "tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedController.cs",
         "tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedControllerErrorSemanticsTests.StatusIdentity.cs",
         "tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedControllerErrorSemanticsTests.cs",
+        "tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratorTestHarness.cs",
         "tests/Hexalith.EventStore.Sample.Tests/SampleApi/FakeEventStoreGatewayClient.cs",
         "tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiGeneratedControllerRuntimeTests.cs",
+        "tests/Hexalith.EventStore.Sample.Tests/SampleApiCommittedCatalog.cs",
         "tests/Hexalith.EventStore.Sample.Tests/SampleApiGeneratedFilterFixture.cs",
         "tests/Hexalith.EventStore.Server.Tests/Routing/GeneratedCatalogDeclarationTests.cs",
         "tests/Hexalith.EventStore.Server.Tests/Routing/RouteCatalogTestFixture.cs"
