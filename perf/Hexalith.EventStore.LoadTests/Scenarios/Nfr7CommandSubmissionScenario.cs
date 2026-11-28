@@ -39,7 +39,7 @@ internal static class Nfr7CommandSubmissionScenario {
             string aggregateId = $"counter-{Guid.NewGuid():N}";
 
             HttpRequestMessage request = BuildCommandRequest(baseAddress, token, aggregateId);
-            Response<HttpResponseMessage> response = await Http.Send(s_httpClient, request).ConfigureAwait(false);
+            Response<HttpResponseMessage> response = await s_httpClient.SendRequest(request).ConfigureAwait(false);
             return response;
         })
         .WithoutWarmUp()
