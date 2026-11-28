@@ -80,7 +80,7 @@ def supported(claim):
             and claim["nfr_ids"] == ["NFR3", "NFR4"] and claim["high_risk_nfr_ids"] == ["NFR3", "NFR4"])
 
 
-def subject_at(api, commit, allow_absent=False):
+def authenticated_tree(api, commit, allow_absent=False):
     try:
         document = api.get("/git/commits/" + commit)
     except C.Refusal as error:
@@ -89,7 +89,11 @@ def subject_at(api, commit, allow_absent=False):
         raise
     tree = document.get("tree", {}).get("sha")
     C.require(document.get("sha") == commit and C.sha(tree, 40), "API_INVALID", "subject lacks authenticated root tree")
-    return C.digest(C.canonical({"adapter": ADAPTER, "root_tree": tree}))
+    return tree
+
+
+def subject_at(api, commit, allow_absent=False):
+    return C.digest(C.canonical({"adapter": ADAPTER, "root_tree": authenticated_tree(api, commit, allow_absent)}))
 
 
 def git(root, *arguments, content=None, limit=MAX_INVENTORY_BYTES):
@@ -229,12 +233,12 @@ def bind_entries(root, entries, exact=True):
     return result
 
 
-def submodule_entries(root, entries, exact):
+def submodule_entries(root, entries, exact, paths=SUBMODULES):
     config = configparser.ConfigParser(interpolation=None)
     config.read_string((root / ".gitmodules").read_text(encoding="utf-8"))
     declarations = {config.get(section, "path"): config.get(section, "url") for section in config.sections()}
     result = []
-    for path in SUBMODULES:
+    for path in paths:
         repo = path.split("/")[-1]
         C.require(declarations.get(path) == "https://github.com/Hexalith/" + repo + ".git",
                   "SOURCE_MISMATCH", "required input is not a root-declared submodule: " + path)
@@ -295,7 +299,7 @@ def read_objects(root, oids):
     return result
 
 
-def metadata_inventory(root, head, submodules, tree=None):
+def metadata_inventory(root, head, submodules, tree=None, publication_history=True):
     """Only exact current trees and the publisher's existing pinned ancestry."""
     result = []
     repositories = [("", head), *((row["path"], row["commit"]) for row in submodules)]
@@ -305,9 +309,10 @@ def metadata_inventory(root, head, submodules, tree=None):
         found = re.match(rb"tree ([0-9a-f]{40})\n", value)
         C.require(found is not None and (path or tree is None or found[1].decode() == tree),
                   "SOURCE_MISMATCH", "commit tree differs from authenticated identity")
-        revisions = [revision, *(BUILDS_HISTORY if path.endswith("Hexalith.Builds") else ())]
+        include_history = publication_history and path.endswith("Hexalith.Builds")
+        revisions = [revision, *(BUILDS_HISTORY if include_history else ())]
         oids = set(revisions)
-        if path.endswith("Hexalith.Builds"):
+        if include_history:
             ancestors = git(repository, "rev-list", "--max-count=5001", *revisions).decode().splitlines()
             C.require(len(ancestors) <= 5000, "SOURCE_MISMATCH", "publisher history exceeds bound")
             oids.update(ancestors)
@@ -392,27 +397,25 @@ def diagnostic_entries(root, entries=None):
     return validate_entries(entries)
 
 
+def authenticated_entries(root, api, tree):
+    entries = index_entries(root)
+    document = api.get("/git/trees/" + tree + "?recursive=1")
+    C.require(document.get("sha") == tree and document.get("truncated") is False
+              and isinstance(document.get("tree"), list), "PAGINATION_INCOMPLETE", "complete source tree required")
+    remote = []
+    for item in document["tree"]:
+        C.require(isinstance(item, dict) and item.get("type") in ("tree", "blob", "commit"), "API_INVALID", "invalid tree member")
+        if item["type"] != "tree":
+            remote.append({"path": item.get("path"), "mode": item.get("mode"), "git_sha": item.get("sha")})
+    C.require(entries == validate_entries(remote), "SOURCE_MISMATCH", "tracked membership differs from authenticated head")
+    return entries
+
+
 def inventory(root, api=None, head=None):
     """Derive membership independently; never accept an inventory from a caller."""
-    entries = index_entries(root)
-    tree = None
-    if api is not None:
-        commit = api.get("/git/commits/" + head)
-        tree = commit.get("tree", {}).get("sha")
-        C.require(commit.get("sha") == head and C.sha(tree, 40), "API_INVALID", "commit lacks authenticated tree identity")
-        document = api.get("/git/trees/" + tree + "?recursive=1")
-        C.require(document.get("sha") == tree and document.get("truncated") is False
-                  and isinstance(document.get("tree"), list), "PAGINATION_INCOMPLETE", "complete source tree required")
-        remote = []
-        for item in document["tree"]:
-            C.require(isinstance(item, dict) and item.get("type") in ("tree", "blob", "commit"), "API_INVALID", "invalid tree member")
-            if item["type"] != "tree":
-                remote.append({"path": item.get("path"), "mode": item.get("mode"), "git_sha": item.get("sha")})
-        C.require(entries == validate_entries(remote), "SOURCE_MISMATCH", "tracked membership differs from authenticated head")
-    else:
-        # Local diagnostics bind new adapter code too. This path has no approval
-        # or seal authority, and is never used by shared evaluation/consumption.
-        entries = diagnostic_entries(root, entries)
+    tree = authenticated_tree(api, head) if api is not None else None
+    # Local diagnostics bind new code but never grant approval or seal authority.
+    entries = authenticated_entries(root, api, tree) if api is not None else diagnostic_entries(root)
     names = {entry["path"] for entry in entries}
     C.require({*CONTROL_FILES, ORIGINAL_SPEC, "Hexalith.EventStore.slnx", "global.json", "Directory.Build.props",
                "Directory.Build.targets", "Directory.Packages.props", *C.CONTROL_FILES, *C.STORY_CONTROL_FILES} <= names,
@@ -564,7 +567,7 @@ def write_index(root, entries):
     (directory / "refs").mkdir(exist_ok=True)
 
 
-def materialize(root, scratch, manifest):
+def materialize_sources(root, scratch, manifest):
     for prefix, entries in [("", manifest["entries"]), *((item["path"], item["entries"]) for item in manifest["submodules"])]:
         for entry in entries:
             if entry["mode"] == "160000":
@@ -594,6 +597,10 @@ def materialize(root, scratch, manifest):
         (destination / ".git/HEAD").write_text(repository["head"] + "\n")
         with (destination / ".git/config").open("a") as stream:
             stream.write('[remote "origin"]\nurl = ' + repository["origin"] + "\n")
+
+
+def materialize(root, scratch, manifest):
+    materialize_sources(root, scratch, manifest)
     runtime = []
     for item in manifest.get("runtime", []):
         source = Path(item["source"])
@@ -817,8 +824,11 @@ def capability_probe(scratch, source_root, dotnet, fallback):
 
 def cleanup_authentication_containers(owner, run):
     """Reap only this invocation's labelled containers, including on lane timeout."""
+    cleanup_owned_containers(owner, run, "hexalith.eventstore.authentication-test-owner")
+
+
+def cleanup_owned_containers(owner, run, label):
     C.require(re.fullmatch(r"[0-9a-f]{32}", owner) is not None, "STORY_EVIDENCE_FAILED", "invalid private topology owner")
-    label = "hexalith.eventstore.authentication-test-owner"
     raw = run(["docker", "ps", "--all", "--filter", "label=" + label + "=" + owner,
                "--format", "{{.ID}}", "--no-trunc"], "integration-auth-cleanup-list", timeout=30)
     identifiers = raw.decode().splitlines()

@@ -475,7 +475,8 @@
         "story_adapter": {
           "oneOf": [
             { "$ref": "#/$defs/story_adapter_binding" },
-            { "$ref": "#/$defs/story_2_14_binding" }
+            { "$ref": "#/$defs/story_2_14_binding" },
+            { "$ref": "#/$defs/story_2_18_binding" }
           ]
         },
         "tenant_qualification": {
@@ -2020,8 +2021,74 @@
     "story_evidence": {
       "oneOf": [
         { "$ref": "#/$defs/story_5_3_evidence" },
-        { "$ref": "#/$defs/story_2_14_evidence" }
+        { "$ref": "#/$defs/story_2_14_evidence" },
+        { "$ref": "#/$defs/story_2_18_evidence" }
       ]
+    },
+    "story_2_18_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter", "head_sha", "root_tree", "builds_gitlink", "inventory_sha256"],
+      "properties": {
+        "adapter": { "const": "story-2-18-conditional-query-v1" },
+        "head_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "root_tree": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "builds_gitlink": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "inventory_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "story_2_18_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "adapter", "result", "binding", "selector", "test_source", "http_status_sequence",
+                   "dotnet_sdk", "packages_sha256", "runtime", "cases"],
+      "properties": {
+        "schema": { "const": "hexalith.eventstore.story-2-18-evidence.v1" },
+        "adapter": { "const": "story-2-18-conditional-query-v1" },
+        "result": { "const": "PASS" },
+        "binding": { "$ref": "#/$defs/story_2_18_binding" },
+        "selector": {
+          "const": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NativeActorCatalogLiveTests.NativeQueryRegisteredActorsAndLifecycleKeepActualChannelCatalogAndMethodBoundaries"
+        },
+        "test_source": {
+          "const": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NativeActorCatalogLiveTests.cs"
+        },
+        "http_status_sequence": { "const": [200, 304, 200] },
+        "dotnet_sdk": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "packages_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "daprd_sha256", "images"],
+          "properties": {
+            "version": { "const": "1.19.1" },
+            "daprd_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "images": {
+              "type": "object",
+              "required": ["placement", "scheduler", "redis"],
+              "maxProperties": 3,
+              "additionalProperties": { "type": "string", "pattern": "@sha256:[0-9a-f]{64}$" }
+            }
+          }
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["component", "declarative", "legacy_finite", "result"],
+            "properties": {
+              "component": { "enum": ["in-memory-events", "pubsub"] },
+              "declarative": { "type": "boolean" },
+              "legacy_finite": { "type": "boolean" },
+              "result": { "const": "PASS" }
+            }
+          }
+        }
+      }
     },
     "story_2_14_evidence": {
       "type": "object",

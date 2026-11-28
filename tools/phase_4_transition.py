@@ -440,6 +440,10 @@ class Control:
         self.tenant_gate = request["gate"] == "G-TENANT" and request["transition"] == "high-risk-gate-pass"
         self.status_gate = request["gate"] == "G-STATUS-ID" and request["transition"] == "high-risk-gate-pass"
         self.tenant_story = "tenant_gate" in request
+        self.conditional_story = False
+        if request["transition"] == "high-risk-nfr-story-done" and request["story"]["story_id"] == "2.18":
+            import phase_4_story_2_18 as A
+            self.conditional_story = A.supported(request["story"])
         self.readiness_owners = {}
 
     def local(self, path):
@@ -476,6 +480,9 @@ class Control:
                 # the subject for current and historical pushes. Caller-selected
                 # coverage files cannot hide a recent auth/scanner/build edit.
                 return A.subject_at(self.api, commit, allow_absent)
+        if self.conditional_story:
+            import phase_4_story_2_18 as A
+            return A.subject_at(self.api, commit, allow_absent)
         if self.request["subject_mode"] == "ad26":
             content = self.api.file(commit, ARCHITECTURE, allow_absent)
             return None if content is None else ad26_subject(content)
@@ -559,6 +566,9 @@ class Control:
         extra_controls = STORY_CONTROL_FILES if request["transition"] == "high-risk-nfr-story-done" else ()
         if self.tenant_story:
             import phase_4_story_2_14 as A
+            extra_controls = STORY_COMPLETION_FILES + A.CONTROL_FILES
+        if self.conditional_story:
+            import phase_4_story_2_18 as A
             extra_controls = STORY_COMPLETION_FILES + A.CONTROL_FILES
         if request["transition"] == "readiness":
             import phase_4_readiness as R
@@ -989,7 +999,7 @@ class Control:
         readiness = self.request["transition"] == "readiness"
         if readiness:
             import phase_4_readiness as R
-        if readiness or self.status_gate or self.tenant_story:
+        if readiness or self.status_gate or self.tenant_story or self.conditional_story:
             self.current_attempt(run_id, attempt)
         self.authenticate_run(run_id, attempt)
         candidate, artifact_id = self.artifact(run_id, attempt)
@@ -1018,7 +1028,14 @@ class Control:
             except Refusal:
                 self.story_evidence = None
                 raise
-        if readiness or self.status_gate or self.tenant_story:
+        if self.conditional_story:
+            try:
+                self.reconfirm_candidate(run_id, attempt, expected, artifact_id)
+                self.reconfirm_approvals()
+            except Refusal:
+                self.story_evidence = None
+                raise
+        if readiness or self.status_gate or self.tenant_story or self.conditional_story:
             self.current_attempt(run_id, attempt)
         self.current_head()
         seal = {"run_id": run_id, "attempt": attempt, "artifact_id": artifact_id, "ci_app_id": ACTIONS_APP_ID}

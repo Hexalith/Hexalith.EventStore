@@ -6996,3 +6996,8 @@ status: open
   summary: Update `docs/reference/problems/forbidden.md` for explicit-scope command-status refusals (low).
   evidence: The page still lists "Command status query attempted without any tenant claims". `CommandStatusController.TryResolveExplicitStatusScope` returns 403 for both or neither of `X-Hexalith-Tenant`/`X-Hexalith-Scope`, a repeated header, a `tenant`/`tenantId` query parameter, an unknown platform scope, or a platform permission claim not present exactly once. Pre-existing; found by review pass 3.
   status: open
+
+## Deferred from: code review of spec-2-18-bind-conditional-queries-to-the-returned-representation.md (2026-11-28)
+
+- The existing default-paging entry also covers this review. `QueriesController` can return `304` for a request without explicit paging and lose producer paging metadata because the response has no carrier for it.
+- The existing dotted-validator entry also covers this review. Different decodable prefixes on quoted opaque tags can skip a valid match because the decoder accepts any nonempty suffix.

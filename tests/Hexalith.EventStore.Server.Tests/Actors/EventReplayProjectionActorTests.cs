@@ -370,14 +370,20 @@ public partial class EventReplayProjectionActorTests {
             EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
     }
 
+    public static TheoryData<string?, bool> ProjectionNameCases => new() {
+        { "", false },
+        { " ", false },
+        { "counter:projection", false },
+        { null, false },
+        { new string('x', 101), false },
+        { new string('x', 100), true },
+    };
+
     [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData("counter:projection")]
-    [InlineData(null)]
-    public async Task ExecuteQueryAsync_InvalidProjectionType_OmitsValidator(string? invalidProjectionType) {
+    [MemberData(nameof(ProjectionNameCases))]
+    public async Task ExecuteQueryAsync_ValidatorRequiresValidProjectionName(string? projectionType, bool expectValidator) {
         (EventReplayProjectionActor actor, IActorStateManager stateManager, _, _) = CreateActor();
-        ProjectionState state = CreateTestState(invalidProjectionType ?? new string('x', 101));
+        ProjectionState state = CreateTestState() with { ProjectionType = projectionType! };
         _ = stateManager.TryGetStateAsync<ProjectionState>(
             EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<ProjectionState>(true, state));
@@ -386,7 +392,14 @@ public partial class EventReplayProjectionActorTests {
 
         result.Success.ShouldBeTrue();
         result.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
-        result.Metadata?.ETag.ShouldBeNull();
+        if (expectValidator) {
+            string validator = result.Metadata.ShouldNotBeNull().ETag.ShouldNotBeNull();
+            SelfRoutingETag.TryDecode(validator, out string? decodedType, out _).ShouldBeTrue();
+            decodedType.ShouldBe(projectionType);
+        }
+        else {
+            result.Metadata?.ETag.ShouldBeNull();
+        }
     }
 
     [Fact]

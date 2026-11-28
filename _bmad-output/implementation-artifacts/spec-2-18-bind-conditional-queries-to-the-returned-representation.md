@@ -2,7 +2,7 @@
 title: 'Story 2.18: Bind Conditional Queries To The Returned Representation'
 type: 'bugfix'
 created: '2026-11-28'
-status: 'in-review'
+status: 'in-progress'
 baseline_commit: '629d3325684d603887dfb2d916909a70b83e765a'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -74,6 +74,7 @@ context:
 - [x] `tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs` -- Test deterministic self-routing ETag generation, change on state update, and omission on invalid projection type -- proves actor-level representation binding.
 - [x] `tests/Hexalith.EventStore.Server.Tests/Integration/QueryResponseProvenancePersistenceTests.cs` -- Add typed + untyped Kestrel/`EventStoreGatewayClient` tests for untagged rev-1 with rev-2 advance (`200`, no ETag, preserved metadata, no follow-up `304`) and producer-bound `200`/`304`/changed `200` -- proves controller + client contract.
 - [x] `docs/reference/query-api.md` -- Update Conditional Requests docs to remove post-read fallback wording -- keeps docs truthful.
+- [ ] `tools/phase_4_story_2_18.py`, `tools/phase_4_story_completion.py`, and `tools/phase_4_transition.py` -- Register a fixed adapter for this exact Story 2.18 supporting slice (`NFR8`, high-risk `NFR12`) for both completion targets. Bind approvals and evidence to the authenticated main revision and its root tree, including root build dependency gitlinks. Reuse the Story 5.3 source-binding and private-build patterns and the shared bounded, credential-free runner. Build the LiveSidecar project from the bound sources and execute the actual Dapr 1.19.1 `NativeActorCatalogLiveTests` conditional-query theory. Require all six expected theory cases, with every result passing and none skipped. Seal a deterministic proof summary and reproduce it at consumption. Saved results, unrelated passing tests, a different revision, missing native prerequisites, and altered case membership must fail closed. Keep the review patches, the existing approval and CI seal requirements, and both `in-progress` labels. Tests in `tools/tests/` must exercise registration and refusal paths. For the hosted runner, reuse existing qualification tooling for pinned Dapr provisioning where possible. Workflow ownership is governed by the Hexalith.CiCd baseline.
 
 **Acceptance Criteria:**
 - Given a `ProjectionBacked` read returning revision 1 without a validator while revision 2 advances, when served through `QueriesController` and `EventStoreGatewayClient`, then the response is `200` with revision 1's payload, independent projection metadata, and no header/body ETag, and a conditional follow-up carrying revision 2's tag returns `200`.
@@ -157,3 +158,33 @@ context:
 - Provider Verification passed 82 of 83 cases on the review patch, including Pact. The only failure was `ObserveLive_RecordsCurrentProvenanceWithoutInventingApproval`. Its provenance check requires a clean committed provider tree. All 83 cases passed in the starting committed workspace.
 - `EVENTSTORE_DAPR_RUNTIME_PROFILE=1.19.1 dotnet tests/Hexalith.EventStore.IntegrationTests/bin/Release/net11.0/Hexalith.EventStore.IntegrationTests.dll -class '*HttpStaleETagProofE2ETests'` failed during `AspireContractTestFixture` initialization before the query ran. The writer-protocol setup timed out waiting for EventStore health, and the route-catalog readiness check reported `configuration-missing`. The standalone Aspire baseline also timed out waiting for `eventstore` because `security` was unhealthy. That AppHost was stopped.
 - Fresh guarded writes for the spec and tracker both exited 1 with `ADAPTER_UNAVAILABLE` for NFR12 and preserved the open statuses.
+
+### Review Findings
+
+- [x] [Review][Patch] Preserve HTTP revalidation for opaque producer tokens beginning with `W/` or `w/` [src/Hexalith.EventStore/Controllers/QueriesController.cs:624]. Medium. The owner chose to retain compatibility. Emit valid opaque producer tokens such as `W/v1` in both response carriers and allow an exact quoted conditional match. Keep rejecting weak HTTP syntax such as `W/"v1"` and preserve the SDK's existing input behavior. Cover emission, quoted matching, and weak syntax rejection, and align the query reference with the accepted grammar. Blind Hunter and Acceptance Auditor.
+- [x] [Review][Patch] Verify persisted replay validators through the authorized public HTTP route [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NativeActorCatalogLiveTests.cs:393]. Medium. The Dapr proof ends at the actor invoker and Kestrel substitutes the invoker. The existing full-stack test stopped at fixture startup. Exercise an initial tagged `200`, matching `304`, and changed tagged `200` against a real replay actor through the installed query router. Blind Hunter, Verification Gap Reviewer, and Acceptance Auditor.
+- [x] [Review][Patch] Document the SDK's behavior for non-ASCII conditional inputs [docs/reference/query-api.md:165]. Low. The default .NET transport rejects a validator such as `modèle` before sending. The revised reference promises an unconditional request. Describe the supported input and the limit of that fallback. Blind Hunter and Edge Case Hunter.
+- [x] [Review][Patch] Cover valid boundary and missing replay projection names [tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs:374]. Low. The tests cover 101 characters and leave the accepted 100-character boundary untested. The current null theory row supplies a 101-character name, leaving an actual missing name untested. Blind Hunter and Verification Gap Reviewer.
+- [x] [Review][Patch] Update the self-routing validator helper documentation [src/Hexalith.EventStore.Server/Queries/SelfRoutingETag.cs:6]. Low. The replay producer passes a digest as the suffix. The HTTP controller uses the decoded type for conditional comparison and routes independently. The helper still describes only GUIDs and locating an ETag actor. Blind Hunter.
+- [x] [Review][Defer] Preserve default paging evidence on a matching conditional request [src/Hexalith.EventStore/Controllers/QueriesController.cs:403] — deferred: medium, pre-existing. A bodyless `304` has no paging carrier when the request omits paging and the producer supplies default paging. Already recorded in the deferred-work ledger. Blind Hunter and Edge Case Hunter.
+- [x] [Review][Defer] Distinguish dotted opaque tokens from self-routing validators [src/Hexalith.EventStore/Controllers/QueriesController.cs:609] — deferred: medium, pre-existing. The decoder can interpret different opaque prefixes as different projections and skip a valid match. Already recorded in the deferred-work ledger. Blind Hunter and Edge Case Hunter.
+
+#### Verification on `0fa8662f616c9af764128afc9ddf91d38b5d255c`
+
+- Release builds for Server.Tests and ProviderVerification.Tests passed with warnings as errors. The focused Server selection passed 232 cases across `QueriesControllerTests`, `EventReplayProjectionActorTests`, and `QueryResponseProvenancePersistenceTests`. Provider Verification passed all 83 cases from a clean checkout with the pinned Builds and FrontComposer checkouts.
+- Running `python3 -B tools/validate-phase-4-story-completion.py --spec _bmad-output/implementation-artifacts/spec-2-18-bind-conditional-queries-to-the-returned-representation.md --target spec` exited 1 with `ADAPTER_UNAVAILABLE` for NFR12. The story requires its evidence adapter, authenticated approval, and a completed CI seal.
+
+#### Patch verification on `9212c1a4a` plus the review edits
+
+- Scoped Release builds for Server.Tests, Server.LiveSidecar.Tests, and ProviderVerification.Tests passed with `-warnaserror` and zero warnings or errors.
+- The focused Server selection passed all 236 controller, replay actor, and persistence cases. All 13 real Kestrel Pact tests passed.
+- With `EVENTSTORE_DAPR_RUNTIME_PROFILE=1.19.1`, all nine `NativeActorCatalogLiveTests` cases passed. Six exercise the public HTTP route with an authenticated UI principal against two persisted replay actor revisions. The requests return a tagged `200`, a bodyless `304` for the matching tag, and a tagged `200` for the changed bytes after actor reactivation.
+- The isolated general AppHost started, but `aspire wait eventstore --timeout 20` timed out while the Keycloak `security` resource was unhealthy. The AppHost was stopped. The native Dapr proof uses its own gateway and sidecar.
+- Both guarded completion commands with `--target spec --write` and `--target tracker --write` exited 1 with `ADAPTER_UNAVAILABLE` for NFR12. The spec and sprint tracker are both `in-progress`.
+
+#### Rejected
+
+- Blind Hunter, low. Pact repeats a consumer-pinned token in independent provider states. The coordinator allows one expected state per interaction. The Kestrel progression test already changes the persisted representation and verifies that its validator changes.
+- Acceptance Auditor, low. Pact variants exercise isolated compatibility expectations. The AC2 state transition uses separately persisted revisions and independent validators in the Kestrel proof.
+- Blind Hunter, low. The 4096-character bound is covered by the controller's `200`, `304`, and changed `200` sequence. HTTP transport and SDK normalization have separate Kestrel coverage. Adding a dedicated maximum-length Kestrel fixture would duplicate the matrix without evidence of a transport boundary at that length.
+- Blind Hunter, false after rerun. The clean reviewed commit now has a passing 83-case Provider Verification run, including the provenance assertion.

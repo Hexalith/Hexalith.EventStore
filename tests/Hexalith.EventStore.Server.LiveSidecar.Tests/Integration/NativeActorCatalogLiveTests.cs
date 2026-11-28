@@ -3,9 +3,12 @@ using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Projections;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -16,6 +19,7 @@ using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Routing;
 using Hexalith.EventStore.Extensions;
 using Hexalith.EventStore.Sample.Counter;
+using Hexalith.EventStore.Sample.Counter.Queries;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Pipeline.Queries;
@@ -32,6 +36,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Shouldly;
 
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
@@ -67,6 +73,8 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
         Directory.CreateDirectory(directory);
         string appId = "native-catalog-" + Guid.NewGuid().ToString("N");
         string appToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        const string JwtIssuer = "native-catalog";
+        string signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
         await using var redis = new RouteCatalogDevelopmentRedis();
         await redis.StartAsync();
         string resources = Path.Combine(directory, "components"); Directory.CreateDirectory(resources);
@@ -109,8 +117,8 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
             ["APP_API_TOKEN"] = appToken, ["NAMESPACE"] = appId, ["DAPR_HTTP_ENDPOINT"] = sidecar.HttpEndpoint, ["DAPR_GRPC_ENDPOINT"] = sidecar.GrpcEndpoint,
             ["EventStore:DomainService:AppId"] = appId, ["EventStore:DomainService:ServiceVersion"] = "v1",
             ["EventStore:DataProtection:PersistToStateStore"] = "false",
-            ["Authentication:JwtBearer:Issuer"] = "native-catalog", ["Authentication:JwtBearer:Audience"] = appId,
-            ["Authentication:JwtBearer:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)), ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
+            ["Authentication:JwtBearer:Issuer"] = JwtIssuer, ["Authentication:JwtBearer:Audience"] = appId,
+            ["Authentication:JwtBearer:SigningKey"] = signingKey, ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
             ["EventStore:RouteCatalog:DevelopmentBootstrap:Directory"] = directory, ["EventStore:RouteCatalog:DevelopmentBootstrap:HostId"] = "native",
             ["EventStore:RouteCatalog:DevelopmentBootstrap:ReceiverProfile"] = RouteCatalogTechnicalHttpPolicy.FenceVersion,
             ["EventStore:RouteCatalog:DevelopmentBootstrap:BindingVersion"] = "2",
@@ -154,6 +162,7 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
         bool notificationHadHttpGeneration = false;
         int notificationCount = 0;
         var secondNotificationObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thirdNotificationObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var reminderObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         app.Use(async (context, next) =>
         {
@@ -163,7 +172,9 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
             {
                 notificationHadHttpGeneration = context.Request.Headers.ContainsKey(RouteCatalogInvocationHandler.RootHeader)
                     || context.Request.Headers.ContainsKey(RouteCatalogInvocationHandler.EpochHeader);
-                if (Interlocked.Increment(ref notificationCount) == 2) secondNotificationObserved.TrySetResult(true);
+                int count = Interlocked.Increment(ref notificationCount);
+                if (count == 2) secondNotificationObserved.TrySetResult(true);
+                if (count == 3) thirdNotificationObserved.TrySetResult(true);
                 notificationObserved.TrySetResult(true);
             }
             if (context.Request.Path.Value?.EndsWith("/method/remind/native-catalog-proof", StringComparison.Ordinal) == true
@@ -384,16 +395,58 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
             await secondNotificationObserved.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
             rpcObserver.PublishCalls.ShouldBe(2);
             // Re-activation must load the previously persisted projection from the real actor store.
-            using (var deactivatePersisted = new HttpRequestMessage(HttpMethod.Delete, $"/actors/ProjectionActor/{actorId}"))
-            {
-                deactivatePersisted.Headers.Add("dapr-api-token", appToken);
-                using var deactivatedPersisted = await direct.SendAsync(deactivatePersisted, TestContext.Current.CancellationToken);
-                deactivatedPersisted.StatusCode.ShouldBe(HttpStatusCode.OK);
-            }
+            await DeactivateReplayProjectionAsync();
             var result = await new DefaultProjectionActorInvoker(proxyFactory).InvokeAsync(actorId, "ProjectionActor", new QueryEnvelope("tenant-a", "counter", "one", "get-counter-status", [], "native-query", "native-user", "one"), TestContext.Current.CancellationToken);
             result.Success.ShouldBeTrue(); result.GetPayload().GetProperty("count").GetInt32().ShouldBe(7);
             // Self-routing validator for the persisted {"count":7} bytes.
-            result.Metadata.ShouldNotBeNull().ETag.ShouldBe("Y291bnRlcg.sL6vWj2-gq6EGsiL3DsRdA");
+            const string FirstTag = "Y291bnRlcg.sL6vWj2-gq6EGsiL3DsRdA";
+            result.Metadata.ShouldNotBeNull().ETag.ShouldBe(FirstTag);
+            if (ambiguityFailure is null)
+            {
+                CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+                string bearer = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+                {
+                    Issuer = JwtIssuer,
+                    Audience = appId,
+                    Expires = DateTime.UtcNow.AddMinutes(2),
+                    SigningCredentials = new(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)), SecurityAlgorithms.HmacSha256),
+                    Subject = new ClaimsIdentity([
+                        new Claim("sub", "native-user"),
+                        new Claim("eventstore:tenant", "tenant-a"),
+                        new Claim("eventstore:permission", "query:read"),
+                        new Claim(RouteCatalogSurfacePolicy.ClaimType, "ui"),
+                    ]),
+                });
+
+                using HttpResponseMessage initial = await SubmitReplayQueryAsync();
+                await AssertTaggedReplayResponseAsync(initial, 7, FirstTag, cancellationToken);
+                using HttpResponseMessage matching = await SubmitReplayQueryAsync(FirstTag);
+                matching.StatusCode.ShouldBe(HttpStatusCode.NotModified);
+                matching.Headers.ETag.ShouldBe(new EntityTagHeaderValue($"\"{FirstTag}\""));
+                matching.Headers.GetValues(QueryResponseProvenancePolicy.HeaderName).ShouldHaveSingleItem().ShouldBe("ProjectionBacked");
+                (await matching.Content.ReadAsStringAsync(cancellationToken)).ShouldBeEmpty();
+
+                // Persist revised bytes and observe the callback before reading them from a fresh activation.
+                await actor.InvokeMethodAsync(nameof(IProjectionWriteActor.UpdateProjectionAsync),
+                    ProjectionState.FromJsonElement("counter", "tenant-a", JsonSerializer.SerializeToElement(new { count = 8 })), cancellationToken);
+                await thirdNotificationObserved.Task.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+                await DeactivateReplayProjectionAsync();
+                using HttpResponseMessage changed = await SubmitReplayQueryAsync(FirstTag);
+                await AssertTaggedReplayResponseAsync(changed, 8, "Y291bnRlcg.KG75lHOEI4bgk7cOLLQ1JA", cancellationToken);
+
+                async Task<HttpResponseMessage> SubmitReplayQueryAsync(string? validator = null)
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/queries")
+                    {
+                        Content = JsonContent.Create(new SubmitQueryRequest("tenant-a", "counter", "one",
+                            GetCounterStatusQuery.QueryType, GetCounterStatusQuery.ProjectionType, EntityId: "one")),
+                    };
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+                    if (validator is not null)
+                        request.Headers.IfNoneMatch.Add(new EntityTagHeaderValue($"\"{validator}\""));
+                    return await direct.SendAsync(request, cancellationToken);
+                }
+            }
             var aggregate = proxyFactory.Create(new ActorId("tenant-a:counter:one"), "AggregateActor");
             await aggregate.InvokeMethodAsync<AggregateStreamMetadata>(nameof(IAggregateActor.GetStreamMetadataAsync), TestContext.Current.CancellationToken);
             foreach (string kind in new[] { "wrong-channel", "remote-service", "unknown-actor", "unknown-method" })
@@ -418,8 +471,7 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
                     removed.IsSuccessStatusCode.ShouldBeTrue();
                 }
             }
-            using var deactivate = new HttpRequestMessage(HttpMethod.Delete, $"/actors/ProjectionActor/{actorId}"); deactivate.Headers.Add("dapr-api-token", appToken);
-            using var deactivated = await direct.SendAsync(deactivate, TestContext.Current.CancellationToken); deactivated.StatusCode.ShouldBe(HttpStatusCode.OK);
+            await DeactivateReplayProjectionAsync();
             (await store.ReadAsync(default)).State.Leases.ShouldBeEmpty();
             if (ambiguityFailure is not null)
             {
@@ -476,7 +528,28 @@ public sealed class NativeActorCatalogLiveTests(ITestOutputHelper output)
                     retainedFences = refused.State.Leases.Count, committedEpoch = refused.State.Epoch,
                     pendingGeneration = nextEnvelope.Generation, ready = refused.State.Ready.Count }));
             }
+            async Task DeactivateReplayProjectionAsync()
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Delete, $"/actors/ProjectionActor/{actorId}");
+                request.Headers.Add("dapr-api-token", appToken);
+                using HttpResponseMessage response = await direct.SendAsync(request, TestContext.Current.CancellationToken);
+                response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            }
         }
         finally { await sidecar.StopAsync(); await app.StopAsync(CancellationToken.None); Directory.Delete(directory, recursive: true); }
+    }
+
+    private static async Task AssertTaggedReplayResponseAsync(
+        HttpResponseMessage response, int expectedCount, string expectedTag, CancellationToken cancellationToken)
+    {
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(cancellationToken));
+        response.Headers.ETag.ShouldBe(new EntityTagHeaderValue($"\"{expectedTag}\""));
+        response.Headers.GetValues(QueryResponseProvenancePolicy.HeaderName).ShouldHaveSingleItem().ShouldBe("ProjectionBacked");
+        SubmitQueryResponse body = (await response.Content.ReadFromJsonAsync<SubmitQueryResponse>(cancellationToken)).ShouldNotBeNull();
+        body.Success.ShouldBeTrue();
+        body.Payload.GetProperty("count").GetInt32().ShouldBe(expectedCount);
+        QueryResponseMetadata metadata = body.Metadata.ShouldNotBeNull();
+        metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        metadata.ETag.ShouldBe(expectedTag);
     }
 }

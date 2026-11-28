@@ -5,17 +5,17 @@ namespace Hexalith.EventStore.Server.Queries;
 
 /// <summary>
 /// Utility for encoding and decoding self-routing ETags.
-/// Format: {base64url(projectionType)}.{base64url-guid}.
-/// The projection type is embedded in the ETag so the query endpoint
-/// can determine the correct ETag actor without server-side routing state.
+/// The format is {base64url(projectionType)}.{suffix}. Actor-cache stamps use a
+/// base64url GUID suffix, and replay query validators use a base64url content digest suffix.
+/// The query endpoint uses the embedded type to check for mixed projections in a conditional request.
 /// </summary>
 internal static class SelfRoutingETag {
     /// <summary>
-    /// Encodes a projection type and GUID part into a self-routing ETag.
+    /// Encodes a projection type and suffix into a self-routing ETag.
     /// </summary>
     /// <param name="projectionType">The projection type name.</param>
-    /// <param name="guid">The base64url-encoded GUID portion.</param>
-    /// <returns>A self-routing ETag string in the format {base64url(projectionType)}.{guid}.</returns>
+    /// <param name="guid">The base64url-encoded GUID or digest suffix.</param>
+    /// <returns>A self-routing ETag string containing the encoded type and supplied suffix.</returns>
     public static string Encode(string projectionType, string guid) {
         string encodedType = EncodeProjectionType(projectionType);
         return $"{encodedType}.{guid}";
@@ -36,12 +36,11 @@ internal static class SelfRoutingETag {
     }
 
     /// <summary>
-    /// Attempts to decode a self-routing ETag into its projection type and GUID parts.
-    /// Returns false for malformed ETags, old-format ETags, and invalid base64url.
+    /// Attempts to decode the projection type in a self-routing ETag and return the nonempty suffix.
     /// </summary>
     /// <param name="etag">The ETag string to decode.</param>
     /// <param name="projectionType">The decoded projection type, or null if decode fails.</param>
-    /// <param name="guidPart">The GUID portion of the ETag, or null if decode fails.</param>
+    /// <param name="guidPart">The opaque suffix, or null if decode fails.</param>
     /// <returns>True if the ETag was successfully decoded; false otherwise.</returns>
     public static bool TryDecode(string? etag, out string? projectionType, out string? guidPart) {
         projectionType = null;

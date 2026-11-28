@@ -624,7 +624,6 @@ public partial class QueriesController : ControllerBase {
     private static bool IsStrongETagToken(string? etag)
         => etag is { Length: > 0 and <= MaxMetadataHeaderValueLength }
             && etag != "*"
-            && !etag.StartsWith("W/", StringComparison.OrdinalIgnoreCase)
             && etag.All(IsOpaqueETagCharacter);
 
     private static bool IsOpaqueETagCharacter(char character)
@@ -665,7 +664,7 @@ public partial class QueriesController : ControllerBase {
                     return false;
                 }
             }
-            else if (!IsStrongETagToken(candidate)) {
+            else if (!IsStrongETagToken(candidate) || candidate.StartsWith("W/", StringComparison.OrdinalIgnoreCase)) {
                 return false;
             }
 

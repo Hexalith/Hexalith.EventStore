@@ -24,8 +24,12 @@ internal sealed class RouteCatalogDevelopmentRedis : IAsyncDisposable
         _docker = await RouteCatalogDocker.CaptureAsync();
         string[] storage = Environment.GetEnvironmentVariable("EVENTSTORE_DAPR_RUNTIME_PROFILE") == "1.19.1"
             ? ["--tmpfs", "/data"] : [];
+        string? transitionOwner = Environment.GetEnvironmentVariable("EVENTSTORE_STORY_2_18_TEST_OWNER");
+        string[] transitionOwnership = transitionOwner is { Length: 32 } && transitionOwner.All(char.IsAsciiHexDigitLower)
+            ? ["--label", "hexalith.eventstore.story-2-18-test-owner=" + transitionOwner] : [];
         _containerId = (await RunAsync(["run", "--detach", "--rm", "--pull", "never", "--name", "catalog-redis-" + _owner,
-            "--label", OwnerLabel + "=" + _owner, "--publish", "127.0.0.1::6379", .. storage, Image, "redis-server", "--save", "", "--appendonly", "no"])).Trim();
+            "--label", OwnerLabel + "=" + _owner, .. transitionOwnership,
+            "--publish", "127.0.0.1::6379", .. storage, Image, "redis-server", "--save", "", "--appendonly", "no"])).Trim();
         using var inspection = JsonDocument.Parse(await RunAsync(["inspect", _containerId]));
         JsonElement owned = inspection.RootElement[0];
         RequireOwnership(owned);

@@ -567,6 +567,33 @@ public partial class QueriesControllerTests {
     }
 
     [Theory]
+    [InlineData("W/", "v1")]
+    [InlineData("w/", "v1")]
+    [InlineData("W/", "v1.opaque")]
+    [InlineData("w/", "v1.opaque")]
+    public async Task Submit_WeakPrefixInsideQuotedOpaqueValidator_AllowsOnlyStrongRevalidation(string prefix, string suffix) {
+        string producerETag = prefix + suffix;
+        string quotedETag = $"\"{producerETag}\"";
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: producerETag)));
+        SubmitQueryRequest request = CreateTestRequest();
+        QueriesController controller = CreateController(mediator);
+
+        SubmitQueryResponse initial = (await controller.Submit(request, null, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<SubmitQueryResponse>();
+        controller.Response.Headers.ETag.ToString().ShouldBe(quotedETag);
+        initial.Metadata.ShouldNotBeNull().ETag.ShouldBe(producerETag);
+
+        (await CreateController(mediator).Submit(request, quotedETag, CancellationToken.None))
+            .ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status304NotModified);
+        (await CreateController(mediator).Submit(request, prefix + quotedETag, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>();
+        (await CreateController(mediator).Submit(request, producerETag, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>();
+    }
+
+    [Theory]
     [InlineData("miss")]
     [InlineData("weak")]
     [InlineData("wildcard")]
@@ -901,8 +928,6 @@ public partial class QueriesControllerTests {
     [Theory]
     [InlineData("")]
     [InlineData("W/\"v1\"")]
-    [InlineData("W/v1")]
-    [InlineData("w/v1")]
     [InlineData("*")]
     [InlineData("\"quoted\"")]
     [InlineData("bad\"q")]

@@ -202,6 +202,8 @@ def adapter_for(claim):
     """Select a fixed adapter from the derived story identity and NFR coverage."""
     if claim["story_id"] == "2.14":
         import phase_4_story_2_14 as adapter
+    elif claim["story_id"] == "2.18":
+        import phase_4_story_2_18 as adapter
     elif claim["story_id"] == "5.3":
         import phase_4_story_5_3 as adapter
     else:
