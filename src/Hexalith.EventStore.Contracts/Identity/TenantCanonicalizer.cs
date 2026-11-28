@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Hexalith.EventStore.Contracts.Identity;
 
 /// <summary>Canonicalizes public tenant identifiers at request and grant boundaries.</summary>
@@ -6,14 +8,14 @@ public static class TenantCanonicalizer
     /// <summary>The reserved historical storage partition, which is never a public tenant.</summary>
     public const string ReservedStorageTenant = "system";
 
-    /// <summary>Canonicalizes one explicit public tenant without trimming malformed input.</summary>
+    /// <summary>Canonicalizes one explicit ASCII public tenant without trimming malformed input.</summary>
     /// <param name="value">The tenant supplied by a request or a grant.</param>
     /// <param name="canonicalTenant">The lowercase tenant when the input is valid.</param>
     /// <returns>Whether the identifier satisfies the AD-27 public tenant contract.</returns>
     public static bool TryCanonicalize(string? value, out string canonicalTenant)
     {
         canonicalTenant = string.Empty;
-        if (value is null or { Length: < 1 or > 64 })
+        if (value is null or { Length: < 1 or > 64 } || !Ascii.IsValid(value))
         {
             return false;
         }
