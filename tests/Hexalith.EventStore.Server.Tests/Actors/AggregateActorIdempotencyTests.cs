@@ -94,9 +94,20 @@ public class AggregateActorIdempotencyTests {
 
         // Assert
         result.ShouldBe(original);
-        // Returning cached evidence must preserve the already recorded status and its command-specific proof.
-        await ctx.StatusStore.DidNotReceive().WriteStatusAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CommandStatusRecord>());
+        // Exact replay of a published command fills an absent advisory status so readers
+        // can observe Completed without re-executing the domain. Existing non-placeholder
+        // statuses stay untouched (see CommandRecoveryIntegrityTests).
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            envelope.TenantId,
+            envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(s =>
+                s.Status == CommandStatus.Completed
+                && s.EventCount == original.EventCount
+                && s.MessageId == envelope.MessageId
+                && s.CorrelationId == envelope.CorrelationId
+                && s.AggregateId == envelope.AggregateId
+                && s.Domain == envelope.Domain),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
