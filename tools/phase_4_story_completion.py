@@ -2,7 +2,7 @@
 
 Only an ordinary, unambiguously unguarded slice can complete without assurance.
 Governed claims always use fresh shared consumption and complete story-owned NFR
-evidence. The fixed Story 5.3 adapter refuses any missing business evidence.
+evidence from their registered adapter.
 """
 
 import datetime as dt
@@ -198,6 +198,18 @@ def bind(control):
     return expected
 
 
+def adapter_for(claim):
+    """Select a fixed adapter from the derived story identity and NFR coverage."""
+    if claim["story_id"] == "2.14":
+        import phase_4_story_2_14 as adapter
+    elif claim["story_id"] == "5.3":
+        import phase_4_story_5_3 as adapter
+    else:
+        return None
+
+    return adapter if adapter.supported(claim) else None
+
+
 def git(root, *arguments, absent=False):
     """Fixed read-only history access; never accept caller commands or revisions."""
     process = subprocess.run(["git", "--no-replace-objects", "-C", str(root), *arguments], capture_output=True, timeout=15)
@@ -233,6 +245,7 @@ def complete(root, spec_path, target, request=None, run_id=None, attempt=None, w
         C.require(re.match(r"(?:spec-)?[1-9][0-9]*-[1-9][0-9]*-", Path(spec_path).name),
                   "STORY_IDENTITY_MISSING", "new specs require a matching numeric story filename")
     claim = derive(read, spec_path, target)
+    adapter = adapter_for(claim)
     snapshot = {source: read(source) for source in (PRD, EPICS, TRACKER, spec_path)}
     C.require(not (target == "tracker" and claim["story_id"] == "9.2"),
               "BUSINESS_PREREQUISITE_MISSING", "parent Story 9.2 remains in-progress; this delivery closes only its completion-guard slice")
@@ -247,16 +260,15 @@ def complete(root, spec_path, target, request=None, run_id=None, attempt=None, w
             error.story_evidence = control.story_evidence
             raise
         # Defense at the writer boundary too: assurance never substitutes NFR proof.
-        import phase_4_story_5_3 as A
-        C.require(A.supported(claim) and control.story_inventory is not None
+        C.require(adapter is not None and control.story_inventory is not None
                   and verification.get("story_evidence", {}).get("result") == "PASS",
                   "ADAPTER_UNAVAILABLE", "complete story-owned NFR evidence required")
     else:
         for source in (PRD, EPICS):
             C.require(git(root, "show", "HEAD:" + source) == read(source), "SOURCE_MISMATCH",
                       "planning source differs from committed authority: " + source)
-        import phase_4_story_5_3 as A
-        C.require(not A.supported(claim), "SEAL_MISSING", "Story 5.3 completion requires fresh authenticated approval and completed-run consumption")
+        C.require(adapter is None, "SEAL_MISSING",
+                  "Story " + claim["story_id"] + " completion requires fresh authenticated approval and completed-run consumption")
         C.require(not claim["high_risk_nfr_ids"], "ADAPTER_UNAVAILABLE",
                   "story-owned NFR evidence adapter unavailable: " + ", ".join(claim["high_risk_nfr_ids"])
                   + "; completion also requires fresh authenticated approval and seal")
@@ -266,7 +278,7 @@ def complete(root, spec_path, target, request=None, run_id=None, attempt=None, w
               and read(path) == original and derive(read, spec_path, target) == claim,
               "SOURCE_MISMATCH", "completion inputs changed during verification")
     if request is not None:
-        A.assert_stable(root, control.story_inventory)
+        adapter.assert_stable(root, control.story_inventory)
     if write:
         text = original.decode("utf-8")
         if target == "spec":
@@ -290,7 +302,7 @@ def complete(root, spec_path, target, request=None, run_id=None, attempt=None, w
                       and read(path) == original and derive(read, spec_path, target) == claim,
                       "SOURCE_MISMATCH", "completion inputs changed during temporary preparation")
             if request is not None:
-                A.assert_stable(root, control.story_inventory)
+                adapter.assert_stable(root, control.story_inventory)
             temporary.replace(destination)
         finally:
             if temporary is not None:

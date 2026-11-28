@@ -19,7 +19,10 @@
       "$ref": "#/$defs/story_completion"
     },
     {
-      "$ref": "#/$defs/story_evidence"
+      "$ref": "#/$defs/story_5_3_evidence"
+    },
+    {
+      "$ref": "#/$defs/story_2_14_evidence"
     }
   ],
   "$defs": {
@@ -235,6 +238,9 @@
         "story": {
           "$ref": "#/$defs/story_claim"
         },
+        "tenant_gate": {
+          "$ref": "#/$defs/story_tenant_gate"
+        },
         "tenant_qualification": {
           "$ref": "#/$defs/tenant_qualification"
         },
@@ -246,6 +252,27 @@
         }
       },
       "allOf": [
+        {
+          "if": {
+            "required": ["tenant_gate"]
+          },
+          "then": {
+            "required": ["story"],
+            "properties": {
+              "transition": { "const": "high-risk-nfr-story-done" },
+              "predecessors": { "maxItems": 0 },
+              "story": {
+                "properties": {
+                  "story_id": { "const": "2.14" },
+                  "story_key": { "const": "2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts" },
+                  "spec_path": { "const": "_bmad-output/implementation-artifacts/spec-2-14-canonical-tenant-boundary.md" },
+                  "nfr_ids": { "const": ["NFR2"] },
+                  "high_risk_nfr_ids": { "const": ["NFR2"] }
+                }
+              }
+            }
+          }
+        },
         {
           "if": {
             "properties": {
@@ -446,7 +473,10 @@
           "$ref": "#/$defs/story_claim"
         },
         "story_adapter": {
-          "$ref": "#/$defs/story_adapter_binding"
+          "oneOf": [
+            { "$ref": "#/$defs/story_adapter_binding" },
+            { "$ref": "#/$defs/story_2_14_binding" }
+          ]
         },
         "tenant_qualification": {
           "$ref": "#/$defs/tenant_qualification"
@@ -1957,7 +1987,57 @@
         }
       }
     },
+    "story_tenant_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner_request", "run_id", "attempt", "tenants_head"],
+      "properties": {
+        "owner_request": {
+          "$ref": "#/$defs/request",
+          "required": ["tenant_qualification"],
+          "properties": {
+            "transition": { "const": "high-risk-gate-pass" },
+            "gate": { "const": "G-TENANT" }
+          }
+        },
+        "run_id": { "type": "integer", "minimum": 1 },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "tenants_head": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "story_2_14_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter", "eventstore_head", "tenants_head", "gate_subject_sha256", "decision_sha256"],
+      "properties": {
+        "adapter": { "const": "story-2-14-canonical-tenant-boundary-v1" },
+        "eventstore_head": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "tenants_head": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "gate_subject_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "decision_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
     "story_evidence": {
+      "oneOf": [
+        { "$ref": "#/$defs/story_5_3_evidence" },
+        { "$ref": "#/$defs/story_2_14_evidence" }
+      ]
+    },
+    "story_2_14_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "adapter", "result", "binding", "gate", "seal", "assurance_level"],
+      "properties": {
+        "schema": { "const": "hexalith.eventstore.story-2-14-evidence.v1" },
+        "adapter": { "const": "story-2-14-canonical-tenant-boundary-v1" },
+        "result": { "const": "PASS" },
+        "binding": { "$ref": "#/$defs/story_2_14_binding" },
+        "gate": { "const": "G-TENANT" },
+        "seal": { "$ref": "#/$defs/result/properties/seal", "type": "object" },
+        "assurance_level": { "enum": ["single-maintainer-attested", "independent"] }
+      }
+    },
+    "story_5_3_evidence": {
       "type": "object",
       "additionalProperties": false,
       "required": [

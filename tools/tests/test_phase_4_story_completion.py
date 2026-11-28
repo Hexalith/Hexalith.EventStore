@@ -18,6 +18,8 @@ from unittest import mock
 import phase_4_transport_fixture as HTTP
 import test_phase_4_transition as T
 import phase_4_story_completion as S
+import phase_4_story_2_14 as A
+import phase_4_tenant_fixture as Tenant
 import phase_4_transition as C
 
 CONSUMER = 'tools/validate-phase-4-story-completion.py'
@@ -26,6 +28,7 @@ WORKFLOW = '.github/workflows/phase-4-high-risk-nfr-story-done.yml'
 # Supported spec-5-3-* identities and genuine business execution are covered by
 # test_phase_4_story_5_3.py; HTTP fixtures never manufacture business success.
 SPEC = '_bmad-output/implementation-artifacts/5-3-completion-fixture.md'
+TENANT_GATE_RUN = 70
 
 
 class StoryCompletionTests(unittest.TestCase):
@@ -56,6 +59,7 @@ class StoryCompletionTests(unittest.TestCase):
         tracker = re.sub(r'(?m)^(  ' + re.escape(self.key) + r': )[a-z-]+', r'\g<1>in-progress', tracker)
         (f.root / S.TRACKER).write_text(tracker)
         f.request.update(transition='high-risk-nfr-story-done', gate=None, subject_mode='files', evidence=[], predecessors=[])
+        f.request.pop('tenant_gate', None)
         f.request['subjects'] = []
         for path in (S.PRD, S.EPICS, S.TRACKER, self.spec):
             content = (f.root / path).read_bytes()
@@ -73,7 +77,8 @@ class StoryCompletionTests(unittest.TestCase):
     def environment(self, **extra):
         f = self.f
         f.state_path.write_text(json.dumps(f.state))
-        environment = {key: value for key, value in os.environ.items() if not key.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
+        environment = {key: value for key, value in os.environ.items()
+                       if key != 'PHASE4_TENANTS_READ_TOKEN' and not key.startswith(('GH_', 'GITHUB_', 'PYTHON'))}
         environment.update(PYTHONPATH=str(f.site) + os.pathsep + str(T.ROOT / 'tools/tests'),
                            PHASE4_FIXTURE_STATE=str(f.state_path), GH_TOKEN=f.fixture_token,
                            PHASE4_REQUEST_JSON=T.canonical(f.request).decode())
@@ -131,6 +136,114 @@ class StoryCompletionTests(unittest.TestCase):
         candidate.update(result='PASS', codes=[])
         self.f.artifact(candidate=candidate)
         return candidate
+
+    def tenant_story_fixture(self, target):
+        f = self.f
+        self.select('2.14', target, path=A.SPEC)
+        (f.root / A.PATH).write_bytes((T.ROOT / A.PATH).read_bytes())
+        f.blob(T.HEAD, A.PATH, (f.root / A.PATH).read_bytes())
+        story_request = f.request
+        f.request = {key: value for key, value in story_request.items() if key != 'story'}
+        f.request.update(transition='high-risk-gate-pass', nfr_ids=[])
+        Tenant.Qualification(f)
+        f.approve(first_id=200)
+        f.add_run(TENANT_GATE_RUN)
+        gate_candidate = f.assert_pass()
+        f.artifact(candidate=gate_candidate, run_id=TENANT_GATE_RUN)
+        owner_request = f.request
+        f.request = story_request
+        f.request['tenant_gate'] = {'owner_request': owner_request, 'run_id': TENANT_GATE_RUN,
+                                    'attempt': 2, 'tenants_head': Tenant.TENANTS_HEAD}
+        f.approve(roles=['product-owner', 'test-owner'])
+        story_candidate = f.assert_pass()
+        f.artifact(candidate=story_candidate)
+        return story_candidate
+
+    def test_nfr2_both_writers_require_fresh_gate_consumption(self):
+        for target in ('spec', 'tracker'):
+            with self.subTest(target=target):
+                candidate = self.tenant_story_fixture(target)
+                self.assertIsNone(candidate['seal'])
+                evidence = candidate['story_evidence']
+                self.assertEqual(A.ADAPTER, evidence['adapter'])
+                self.assertEqual({'run_id': TENANT_GATE_RUN, 'attempt': 2, 'artifact_id': TENANT_GATE_RUN + 9,
+                                  'ci_app_id': 15368}, evidence['seal'])
+                self.assertEqual('G-TENANT', evidence['gate'])
+                self.assertEqual(T.HEAD, evidence['binding']['eventstore_head'])
+                self.assertEqual(Tenant.TENANTS_HEAD, evidence['binding']['tenants_head'])
+                self.assertEqual(T.SINGLE, evidence['assurance_level'])
+                self.assertEqual(evidence['binding']['decision_sha256'], candidate['predecessors'][0]['output_sha256'])
+                self.assertEqual(evidence['binding'], candidate['binding']['story_adapter'])
+                other = S.TRACKER if target == 'spec' else self.spec
+                original = (self.f.root / other).read_bytes()
+                self.f.state['observed'] = []
+                process, result = self.cli(target=target, authenticated=True,
+                                           PHASE4_TENANTS_READ_TOKEN='synthetic-tenants-read-token')
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual('assured-story-slice', result['disposition'])
+                self.assertEqual(evidence, result['story_evidence'])
+                self.assertEqual(T.SINGLE, result['verification']['downstream_minimum'])
+                self.assertEqual(7, result['verification']['seal']['run_id'])
+                self.assertEqual(original, (self.f.root / other).read_bytes())
+                status = (S.frontmatter((self.f.root / self.spec).read_bytes())['status'] if target == 'spec'
+                          else S.tracker_rows((self.f.root / S.TRACKER).read_bytes())[self.key])
+                self.assertEqual('done', status)
+                requests = {row['url']: row['headers'] for row in self.f.state['observed']}
+                urls = requests.keys()
+                self.assertIn(T.API + f'/actions/runs/{TENANT_GATE_RUN}/attempts/2', urls)
+                self.assertIn(T.API + '/issues/comments/200', urls)
+                tenants_tree = Tenant.prefix(Tenant.TENANTS) + '/git/trees/' + Tenant.TREE + '?recursive=1'
+                self.assertEqual('Bearer synthetic-tenants-read-token', requests[tenants_tree]['authorization'])
+                self.assertEqual('Bearer ' + self.f.fixture_token, requests[T.API + '/issues/comments/200']['authorization'])
+
+    def test_nfr2_both_writers_refuse_missing_seal_or_human_attestation(self):
+        for target in ('spec', 'tracker'):
+            with self.subTest(target=target):
+                self.tenant_story_fixture(target)
+                self.refused('SEAL_MISSING', target=target)
+                claim = self.f.request['tenant_gate']
+                claim['attempt'] = 0
+                self.refused('SEAL_MISSING', target=target, authenticated=True)
+                claim['attempt'] = 2
+                endpoint = f'/actions/runs/{TENANT_GATE_RUN}/artifacts?per_page=100'
+                original = copy.deepcopy(self.f.api_document(endpoint))
+                self.f.put(endpoint, {'total_count': 0, 'artifacts': []})
+                self.refused('ARTIFACT_INVALID', target=target, authenticated=True)
+                self.f.put(endpoint, original)
+                claim['owner_request']['approvals'] = []
+                self.f.approve(roles=['product-owner', 'test-owner'])
+                self.refused('APPROVAL_MISSING', target=target, authenticated=True)
+
+    def test_nfr2_both_writers_clear_evidence_when_gate_attestation_changes_during_consumption(self):
+        for target in ('spec', 'tracker'):
+            with self.subTest(target=target):
+                self.tenant_story_fixture(target)
+                endpoint = T.API + '/issues/comments/200'
+                original = self.f.state['responses'][endpoint]
+                edited = {'json': {**original['json'], 'updated_at': '2026-01-03T00:00:00Z'}}
+                self.f.state['responses'][endpoint] = {'sequence': [original, original, edited]}
+                result = self.refused('APPROVAL_EDITED', target=target, authenticated=True)
+                self.assertIsNone(result['story_evidence'])
+
+    def test_nfr2_both_writers_refuse_mismatched_eventstore_and_tenants_subjects(self):
+        for target in ('spec', 'tracker'):
+            with self.subTest(target=target):
+                candidate = self.tenant_story_fixture(target)
+                claim = self.f.request['tenant_gate']
+                claim['owner_request']['head_sha'] = T.BEFORE
+                self.refused('SUBJECT_MISMATCH', target=target, authenticated=True)
+                claim['owner_request']['head_sha'] = T.HEAD
+                claim['tenants_head'] = T.BEFORE
+                self.refused('SUBJECT_MISMATCH', target=target, authenticated=True)
+                claim['tenants_head'] = Tenant.TENANTS_HEAD
+                forged = copy.deepcopy(candidate)
+                forged['story_evidence']['binding']['tenants_head'] = T.BEFORE
+                self.f.artifact(candidate=forged)
+                self.refused('RESULT_MISMATCH', target=target, authenticated=True)
+                self.f.artifact(candidate=candidate)
+                tree = self.f.state['responses'][Tenant.prefix(Tenant.TENANTS) + '/git/trees/' + Tenant.TREE + '?recursive=1']['json']
+                tree['tree'][0]['sha'] = T.BEFORE
+                self.refused('SOURCE_MISMATCH', target=target, authenticated=True)
 
     def test_primary_supporting_ranges_and_supplemental_coverage_are_derived(self):
         for story_id, guarded in [('5.3', ['NFR3', 'NFR4']), ('1.2', ['NFR16']),

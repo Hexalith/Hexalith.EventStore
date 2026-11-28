@@ -49,9 +49,10 @@ HIGH_RISK_NFRS = {f"NFR{n}" for n in (1, 2, 3, 4, 7, 10, 11, 12, 14, 15, 16, 17)
 CONTROL_FILES = ("tools/phase_4_transition.py", "tools/validate-phase-4-transition.py",
                  "tools/phase-4-transition.schema.json", "tools/validate-phase-4-gate-risk-matrix.py",
                  "tools/phase_4_gate_decision.py", "tools/validate-phase-4-gate-decision.py")
-STORY_CONTROL_FILES = ("tools/phase_4_story_completion.py", "tools/validate-phase-4-story-completion.py",
-                       "_bmad/custom/bmad-build.toml", "tools/phase_4_story_5_3.py",
-                       "tools/validate-story-5-3-nfr.py", "tools/tests/test_phase_4_story_5_3.py")
+STORY_COMPLETION_FILES = ("tools/phase_4_story_completion.py", "tools/validate-phase-4-story-completion.py",
+                          "_bmad/custom/bmad-build.toml")
+STORY_CONTROL_FILES = (*STORY_COMPLETION_FILES, "tools/phase_4_story_5_3.py", "tools/validate-story-5-3-nfr.py",
+                       "tools/tests/test_phase_4_story_5_3.py")
 OQ8_VALIDATOR = "tools/validate-oq8-governing-design.py"
 OQ8_FIXTURES = "tools/tests/test_oq8_governing_design.py"
 OQ8_INPUTS = (
@@ -178,9 +179,12 @@ def validate_request(request):
     story_completion = request.get("transition") == "high-risk-nfr-story-done"
     if story_completion:
         require("story" in request, "STORY_IDENTITY_MISSING", "story completion needs a canonical story claim")
-        closed(request, (REQUEST_KEYS - {"nfr_ids"}) | {"story"} | ({"nfr_ids"} & set(request)))
+        closed(request, (REQUEST_KEYS - {"nfr_ids"}) | {"story"} | ({"nfr_ids", "tenant_gate"} & set(request)))
         import phase_4_story_completion as S
         S.validate_claim(request["story"])
+        if "tenant_gate" in request:
+            import phase_4_story_2_14 as A
+            A.validate_request(request)
     elif request.get("gate") == "G-TENANT" and request.get("transition") == "high-risk-gate-pass":
         closed(request, REQUEST_KEYS | ({"tenant_qualification"} & request.keys()))
         if "tenant_qualification" in request:
@@ -435,6 +439,7 @@ class Control:
         self.story_inventory = None
         self.tenant_gate = request["gate"] == "G-TENANT" and request["transition"] == "high-risk-gate-pass"
         self.status_gate = request["gate"] == "G-STATUS-ID" and request["transition"] == "high-risk-gate-pass"
+        self.tenant_story = "tenant_gate" in request
         self.readiness_owners = {}
 
     def local(self, path):
@@ -463,7 +468,8 @@ class Control:
                 return P.lifecycle_subject_at(self, commit, allow_absent)
             except P.Refusal as error:
                 raise Refusal("SUBJECT_MISMATCH", error.code, error.exit_code) from error
-        if self.request["transition"] == "high-risk-nfr-story-done":
+        if (self.request["transition"] == "high-risk-nfr-story-done"
+                and self.request["story"]["story_id"] == "5.3"):
             import phase_4_story_5_3 as A
             if A.supported(self.request["story"]):
                 # The complete authenticated root tree, including gitlinks, is
@@ -551,6 +557,9 @@ class Control:
             require(path not in paths or paths[path] == entry["sha256"], "INPUT_INVALID", "conflicting file bindings", 2)
             paths[path] = entry["sha256"]
         extra_controls = STORY_CONTROL_FILES if request["transition"] == "high-risk-nfr-story-done" else ()
+        if self.tenant_story:
+            import phase_4_story_2_14 as A
+            extra_controls = STORY_COMPLETION_FILES + A.CONTROL_FILES
         if request["transition"] == "readiness":
             import phase_4_readiness as R
             extra_controls = R.CONTROL_FILES
@@ -868,8 +877,11 @@ class Control:
             require(len(request["predecessors"]) == 1 and request["predecessors"][0]["adapter"] == "oq8-governing-design-v1",
                     "BUSINESS_PREREQUISITE_MISSING", "G-OQ8 requires genuine governing-design validator success")
         elif transition == "high-risk-nfr-story-done":
-            import phase_4_story_5_3 as A
-            A.evaluate(self)
+            import phase_4_story_completion as S
+            adapter = S.adapter_for(self.story)
+            require(adapter is not None, "ADAPTER_UNAVAILABLE",
+                    "story-owned NFR evidence adapter unavailable: " + ", ".join(self.story["high_risk_nfr_ids"]))
+            adapter.evaluate(self)
         elif transition == "readiness":
             import phase_4_readiness as R
             R.verify_gates(self)
@@ -977,7 +989,7 @@ class Control:
         readiness = self.request["transition"] == "readiness"
         if readiness:
             import phase_4_readiness as R
-        if readiness or self.status_gate:
+        if readiness or self.status_gate or self.tenant_story:
             self.current_attempt(run_id, attempt)
         self.authenticate_run(run_id, attempt)
         candidate, artifact_id = self.artifact(run_id, attempt)
@@ -997,7 +1009,16 @@ class Control:
             self.reconfirm_candidate(run_id, attempt, expected, artifact_id)
             self.reconfirm_approvals()
             S.reconfirm(self)
-        if readiness or self.status_gate:
+        if self.tenant_story:
+            import phase_4_story_2_14 as A
+            try:
+                self.reconfirm_candidate(run_id, attempt, expected, artifact_id)
+                self.reconfirm_approvals()
+                A.reconfirm(self.tenant_story_verifier, self.story_evidence["seal"])
+            except Refusal:
+                self.story_evidence = None
+                raise
+        if readiness or self.status_gate or self.tenant_story:
             self.current_attempt(run_id, attempt)
         self.current_head()
         seal = {"run_id": run_id, "attempt": attempt, "artifact_id": artifact_id, "ci_app_id": ACTIONS_APP_ID}
