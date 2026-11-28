@@ -9,6 +9,8 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     private bool _disposed;
     private bool _closedForExecution;
     private bool _retained;
+    private bool _sharedReferenceCompleted;
+    private bool _releaseSharedFence;
     private int _remoteCalls;
     private TaskCompletionSource? _remoteDrain;
 
@@ -84,6 +86,9 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     /// <summary>The immutable activation that this authority validated when acquiring the lease.</summary>
     internal RouteCatalogActivation? Activation { get; init; }
 
+    /// <summary>Gets the shared durable fence backing this independent dispatch, when enrolled.</summary>
+    internal RouteCatalogActiveGenerationLease? ActiveGeneration { get; init; }
+
     /// <summary>Copies the issuer's privately retained frozen activation for fresh nested validation.</summary>
     internal byte[] GetMetadataActivation(object issuer)
     {
@@ -126,11 +131,13 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
             {
                 if (--lease._remoteCalls == 0)
                 {
+                    lease.CompleteClosedSharedReference();
                     lease._remoteDrain?.TrySetResult();
                     lease._remoteDrain = null;
                 }
                 if (lease._borrowedFrom is { } root && --root._remoteCalls == 0)
                 {
+                    root.CompleteClosedSharedReference();
                     root._remoteDrain?.TrySetResult();
                     root._remoteDrain = null;
                 }
@@ -150,8 +157,23 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
     {
         lock (_stateGate)
         {
-            _retained = true;
-            if (_borrowedFrom is { } root) root._retained = true;
+            RetainCore();
+            _borrowedFrom?.RetainCore();
+        }
+    }
+
+    private void RetainCore()
+    {
+        _retained = true;
+        if (!_sharedReferenceCompleted) ActiveGeneration?.Retain();
+    }
+
+    private void CompleteClosedSharedReference()
+    {
+        if (_disposed && _remoteCalls == 0 && !_sharedReferenceCompleted && ActiveGeneration is { } generation)
+        {
+            _releaseSharedFence = generation.CompleteReference();
+            _sharedReferenceCompleted = true;
         }
     }
 
@@ -177,11 +199,12 @@ public sealed class RouteCatalogDispatchLease(CommittedRouteCatalogSnapshot snap
             _disposed = true;
             if (_borrowedFrom is { } root)
             {
-                if (_remoteCalls != 0) root._retained = true;
+                if (_remoteCalls != 0) root.RetainCore();
                 return;
             }
-            if (_remoteCalls != 0) _retained = true;
-            if (_retained) return;
+            if (_remoteCalls != 0) RetainCore();
+            CompleteClosedSharedReference();
+            if (_retained || ActiveGeneration is not null && !_releaseSharedFence) return;
         }
         try
         {

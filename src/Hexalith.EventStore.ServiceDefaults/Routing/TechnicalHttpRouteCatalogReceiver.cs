@@ -168,9 +168,10 @@ public sealed class TechnicalHttpRouteCatalogReceiver
                     using (var stage = diagnostics?.Start(DispatchStageName.ReceiverAcquire))
                     {
                         var authority = context.RequestServices.GetRequiredService<IRouteCatalogAuthority>();
-                        lease = authority is RouteCatalogAuthority concrete && IsReadOnlyStreamWorkloadEndpoint(context, description)
-                            ? await concrete.AcquireReadOnlyAsync(context.RequestAborted).ConfigureAwait(false)
-                            : await authority.AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                        bool commandSubmit = selectedAction?.ControllerTypeInfo.FullName == "Hexalith.EventStore.Controllers.CommandsController"
+                            && selectedAction.ActionName is "Submit" or "SubmitWorkload" or "SubmitBoundWorkload";
+                        lease = await AcquireDispatchAsync(authority, IsReadOnlyStreamWorkloadEndpoint(context, description),
+                            commandSubmit, context.RequestAborted).ConfigureAwait(false);
                         stage?.Complete();
                     }
                     var snapshot = lease.Snapshot;
@@ -326,9 +327,8 @@ public sealed class TechnicalHttpRouteCatalogReceiver
             using (var stage = diagnostics?.Start(DispatchStageName.NativeAcquire))
             {
                 var authority = context.RequestServices.GetRequiredService<IRouteCatalogAuthority>();
-                lease = native is not null && authority is RouteCatalogAuthority concrete && IsReadOnlyAggregateActorMethod(context, native)
-                    ? await concrete.AcquireReadOnlyAsync(context.RequestAborted).ConfigureAwait(false)
-                    : await authority.AcquireAsync(context.RequestAborted).ConfigureAwait(false);
+                lease = await AcquireDispatchAsync(authority, IsReadOnlyAggregateActorMethod(context, native),
+                    native is not null, context.RequestAborted).ConfigureAwait(false);
                 stage?.Complete();
             }
             var snapshot = lease.Snapshot;
@@ -369,6 +369,14 @@ public sealed class TechnicalHttpRouteCatalogReceiver
             await lease.DisposeAsync().ConfigureAwait(false);
             stage?.Complete();
         }
+    }
+
+    private static Task<RouteCatalogDispatchLease> AcquireDispatchAsync(IRouteCatalogAuthority authority, bool readOnly, bool shareActiveGeneration,
+        CancellationToken cancellationToken)
+    {
+        if (authority is not RouteCatalogAuthority concrete) return authority.AcquireAsync(cancellationToken);
+        if (readOnly) return concrete.AcquireReadOnlyAsync(cancellationToken);
+        return shareActiveGeneration ? concrete.AcquireActiveGenerationAsync(cancellationToken) : concrete.AcquireAsync(cancellationToken);
     }
 
     private IEnumerable<RouteEndpoint> Current() => (_endpoints?.Invoke() ?? throw new RouteCatalogUnavailableException("The technical receiver endpoint source is unavailable."))
