@@ -131,6 +131,19 @@ Rejected (pass 3):
 - low — The query-binding test does not assert that query actions omit the status block: unlikely regression; the fix adds an assertion for a path no query emits.
 - low — Query-only locals (`__hexalithETag`, `__hexalithProvenance`, …) are not reserved, so a parameter with such a name gives CS0136 instead of `HESREST004`: pre-existing (`f8b616f84`, `86c2f7b95`), needs a `__hexalith`-prefixed parameter, and the fix needs a new query-only branch.
 
+Review pass 4 (2026-11-28): blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor layers over commit `84ee94e8b` (`165d11c5f..HEAD`, the pass-3 documentation patch commit). No acceptance-criteria, `Never`-list, or verification-gap finding was raised.
+
+- [x] [Review][Patch] Restore the explicit statement that callers poll status with `messageId` (not `correlationId`) and that generated hosts never fall back to `correlationId` when building `Location` [docs/guides/troubleshooting.md:1021]
+- [x] [Review][Patch] Align Step 4's `Location` omission causes with `RouteCatalogGeneratedAction.TrySelectStatusMessageId` and `command-api.md` by adding missing published declaration version (`1` or `2`) and noting that `202 Accepted` with `Retry-After: 1` is still returned [docs/guides/troubleshooting.md:1021]
+- [x] [Review][Patch] Clarify the JWT `permissions` normalization preconditions and shape: `EventStoreClaimsTransformation` only reads `permissions` when the principal has no existing `eventstore:tenant`, `eventstore:domain`, or `eventstore:permission` claim, and reads only a single `permissions` claim (JSON array or space-delimited) [docs/guides/troubleshooting.md:1033; docs/reference/problems/bad-request.md:55]
+- [x] [Review][Patch] Reconcile Step 1's two-ID split with the intro and Steps 2–4 (clarify which ID is used in HTTP vs command-processing logs/spans), note that synchronous `4xx`/`5xx` failures have no `202 Accepted` body (use `X-Correlation-ID` / ProblemDetails `correlationId`), and note that `X-Correlation-ID` is emitted by the gateway [docs/guides/troubleshooting.md:1005-1021]
+- [x] [Review][Patch] Add the tenant-grant validation rule (valid tenant IDs, excluding reserved `system`, unique after normalization, enforced before tenant vs platform scope branching) to `bad-request.md` and link `./forbidden.md` under `## Related` [docs/reference/problems/bad-request.md:53-61]
+- [x] [Review][Patch] Clarify scope-header and tenant-grant error/casing semantics: missing/combined/repeated scope headers and invalid/reserved `system`/duplicate `eventstore:tenant` grants return `403 Forbidden` (even on platform scope); `X-Hexalith-Scope` and `eventstore:permission` are case-sensitive; and a valid platform scope for the wrong command domain returns `404 Not Found` [docs/guides/troubleshooting.md:1023-1033; docs/reference/problems/bad-request.md:53-55]
+
+Rejected (pass 4):
+- rejected (spec edit) — `Pass 3 verification` omits exact commands run and commit SHA required by `project-context.md:68` (`acceptance-auditor`): accurate observation, but the only fix edits the spec under review.
+- rejected (spec edit) — `Pass 3 verification` is non-reproducible and the `Review of the pass-3 documentation patches` triage table leaves completion timing implicit (`blind-hunter`): accurate observation, but the only fix edits the spec under review.
+
 ## Design Notes
 
 **Manifest:** the drift-checked routing catalog. All 18 commands are v1, and no contract changes version.
