@@ -94,7 +94,7 @@ public sealed class RouteCatalogCanonicalHashOwnerTests
         using var authority = new RouteCatalogAuthority(store, Substitute.For<IRouteCatalogTrustValidator>(), options, environment: environment);
         if (changed == "disposed") authority.Dispose();
         await (Task)typeof(RouteCatalogAuthority).GetMethod("ReleaseCoreAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(authority, ["synthetic-lease"])!;
+            .Invoke(authority, ["synthetic-lease", null])!;
         selected.ShouldBe(PrivateBuild && changed == "enabled");
         reads.ShouldBe(!PrivateBuild ? 0 : changed == "disposed" ? 2 : 4);
         RouteCatalogDecodeScope.Current.ShouldBeNull();
