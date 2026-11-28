@@ -2,7 +2,7 @@
 title: '2.15 MessageId-only command-status identity'
 type: 'feature'
 created: '2026-11-18'
-status: 'in-review'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'def48eb38f87ad4a0e0be832d0e7f5a6ffca6866'
@@ -113,6 +113,23 @@ Rejected:
 - rejected (spec edit) — NFR12 Design Notes omit the `Testing` fake behavior change (two layers); the commit body documents it.
 - rejected (spec edit) — Verification records no CI run link; main run 44350934826 passed on `8a0e3613b`'s push.
 - rejected (spec edit) — Design Notes say 18 commands; HEAD has 19, all v1 (after `2efd7ac6b`).
+
+Review pass 3 (2026-11-28): blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor layers over the Story 2.15 hunks of `821b779d6` (the emitter, generator and Sample tests, gate script, matrix, two docs, and this spec's `deferred-work.md` section). The Story 2.18 query hunks in the same commit are out of scope. No acceptance-criteria or Never-list violation was found.
+
+- [ ] [Review][Patch] Make the platform-scope status guidance usable: name the two accepted `X-Hexalith-Scope` values and the permission each needs (`platform:tenants` → `tenants:read`, `platform:global-administrators` → `global-administrators:read`), say the `eventstore:permission` claim must appear exactly once, and say `tenant`/`tenantId` query parameters are refused [docs/guides/troubleshooting.md:1031; docs/reference/problems/bad-request.md:53]
+- [ ] [Review][Patch] Restore the explicit statement that status is addressed by `messageId`, never by the correlation ID, and that generated hosts omit `Location` instead of falling back to it [docs/guides/troubleshooting.md:1021]
+- [x] [Review][Defer] `forbidden.md` still lists "Command status query attempted without any tenant claims" and none of the explicit-scope 403 causes enforced by `TryResolveExplicitStatusScope` [docs/reference/problems/forbidden.md:17] — deferred: pre-existing; the page is not a 2.15 deliverable
+
+Rejected (pass 3):
+- false — The collision and query-binding generator tests are outside the gate's `CASES` (two layers): the gate requires the `Unit tests (Tier 1…)` job to complete successfully (`phase_4_tenant_gate.py`, "missing successful job"), and that job runs them, so a reservation regression fails the gate.
+- low — No CI step checks a real Sample TRX against the closed inventory: a stray test fails the gate loudly ("unexpected compiled case"), and the fix needs a story-evidence step in a CiCd-owned workflow, which this spec's Never list and the baseline exclude.
+- false — The cancellation-test move is unexplained: this section's pass-2 patch line records the reason.
+- false — `FakeEventStoreGatewayClientTests` reuses the Testing class name: a different namespace and assembly, named for the Sample `FakeEventStoreGatewayClient` beside it.
+- false — `"__hexalithStatusMessageId"` is typed twice: every reserved local follows the same literal pattern, and no diverging caller exists.
+- false — `bad-request.md` step 3 belongs on another page and the example lacks a scope header: the retried request meets the scope check next, and the example shows the failing request, whose 400 precedes that check.
+- low — The new completion-writer ledger entry has no severity tag and unnamed targets: cosmetic; no consumer reads the tag.
+- low — The query-binding test does not assert that query actions omit the status block: unlikely regression; the fix adds an assertion for a path no query emits.
+- low — Query-only locals (`__hexalithETag`, `__hexalithProvenance`, …) are not reserved, so a parameter with such a name gives CS0136 instead of `HESREST004`: pre-existing (`f8b616f84`, `86c2f7b95`), needs a `__hexalith`-prefixed parameter, and the fix needs a new query-only branch.
 
 ## Design Notes
 

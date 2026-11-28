@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-11-21
+# last_updated: 2026-11-28
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -97,7 +97,7 @@ development_status:
   # 2.13: closed 2026-10-25 by an owner-accepted SignalR Redis exception; no Dapr replacement.
   2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts: in-progress
   # do 5.12 before
-  2-15-messageid-only-command-status-identity: review
+  2-15-messageid-only-command-status-identity: in-progress
   # 2026-11-06: NFR5 local conformance 178/178 server + 63/63 client; independent review complete.
   # CI green on run 42288133749 (23252aef5). Code review 2026-11-06: 3 test patches applied, 178/178 locally.
   # Commands/results: spec-2-16-bounded-signalr-detail-metadata.md.

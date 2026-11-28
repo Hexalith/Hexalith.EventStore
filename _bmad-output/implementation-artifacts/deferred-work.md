@@ -6991,3 +6991,8 @@ status: open
   summary: Enforce G-STATUS-ID assurance at the Story 2.15 completion writer.
   evidence: Read-only completion checks for both targets returned `ordinary-slice` with no verification even though G-STATUS-ID has no owner attestation or completed seal. The Phase 4 completion owner needs to bind Story 2.15 to verified gate consumption before allowing either `done` write.
   status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-15-messageid-only-command-status-identity.md`
+  summary: Update `docs/reference/problems/forbidden.md` for explicit-scope command-status refusals (low).
+  evidence: The page still lists "Command status query attempted without any tenant claims". `CommandStatusController.TryResolveExplicitStatusScope` returns 403 for both or neither of `X-Hexalith-Tenant`/`X-Hexalith-Scope`, a repeated header, a `tenant`/`tenantId` query parameter, an unknown platform scope, or a platform permission claim not present exactly once. Pre-existing; found by review pass 3.
+  status: open
